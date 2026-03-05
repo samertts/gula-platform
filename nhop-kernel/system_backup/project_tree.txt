@@ -1,0 +1,73 @@
+.
+├── Cargo.lock
+├── Cargo.toml
+├── constitution.json
+├── core
+│   └── constitution
+│       └── constitution.json
+├── reporter.rs
+├── src
+│   ├── ai
+│   │   ├── bus.rs
+│   │   ├── client.rs
+│   │   ├── engine.rs
+│   │   ├── memory.rs
+│   │   ├── mod.rs
+│   │   ├── policy.rs
+│   │   └── tasks
+│   │       └── lab_analysis.rs
+│   ├── audit.rs
+│   ├── boot.rs
+│   ├── comms
+│   │   ├── cli.rs
+│   │   ├── engine.rs
+│   │   ├── message.rs
+│   │   ├── mod.rs
+│   │   └── router.rs
+│   ├── constitution.rs
+│   ├── context.rs
+│   ├── db.rs
+│   ├── gatekeeper.rs
+│   ├── guardian.rs
+│   ├── identity.rs
+│   ├── kernel.rs
+│   ├── main.rs
+│   ├── status.rs
+│   └── telemetry
+│       ├── mod.rs
+│       └── monitor.rs
+├── system_backup
+│   ├── project_tree.txt
+│   └── src
+│       ├── ai
+│       │   ├── bus.rs
+│       │   ├── client.rs
+│       │   ├── engine.rs
+│       │   ├── memory.rs
+│       │   ├── mod.rs
+│       │   ├── policy.rs
+│       │   └── tasks
+│       │       └── lab_analysis.rs
+│       ├── audit.rs
+│       ├── boot.rs
+│       ├── comms
+│       │   ├── cli.rs
+│       │   ├── engine.rs
+│       │   ├── message.rs
+│       │   ├── mod.rs
+│       │   └── router.rs
+│       ├── constitution.rs
+│       ├── context.rs
+│       ├── db.rs
+│       ├── gatekeeper.rs
+│       ├── guardian.rs
+│       ├── identity.rs
+│       ├── kernel.rs
+│       ├── main.rs
+│       ├── status.rs
+│       └── telemetry
+│           ├── mod.rs
+│           └── monitor.rs
+└── system_export.sh
+
+13 directories, 57 files

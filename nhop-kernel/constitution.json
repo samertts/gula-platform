@@ -1,0 +1,28 @@
+{
+  "system": {
+    "name": "NHOP Sovereign Kernel",
+    "version": "1.0"
+  },
+
+  "guardian": {
+    "enabled": true,
+    "max_repair_actions_per_hour": 10,
+    "watchdog_interval_seconds": 30
+  },
+
+  "security": {
+    "allow_self_modification": false,
+    "audit_required": true,
+    "require_signed_messages": true
+  },
+
+  "network": {
+    "internal_comms_enabled": true,
+    "max_peers": 128
+  },
+
+  "runtime": {
+    "log_level": "info",
+    "cli_enabled": true
+  }
+}

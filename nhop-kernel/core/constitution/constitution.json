@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "system": "NHOP Sovereign Kernel",
+  "constitution_id": "nhop-core-constitution",
+  "created_by": "Activation Kernel Authority",
+
+  "principles": {
+    "no_direct_db_access": true,
+    "require_audit_logging": true,
+    "require_signed_tokens": true,
+    "no_unsafe_modules": true,
+    "require_error_handling": true,
+    "immutable_audit_trail": true,
+    "least_privilege_enforced": true,
+    "clinical_safety_priority": true
+  },
+
+  "runtime_laws": {
+    "all_requests_must_pass_gatekeeper": true,
+    "tokens_required_for_execution": true,
+    "epoch_enforced": true,
+    "decision_lineage_required": true,
+    "context_validation_required": true,
+    "deny_on_policy_failure": true
+  },
+
+  "authority_model": {
+    "kernel_is_root_of_trust": true,
+    "capability_tokens_only_authority": true,
+    "token_must_include_epoch": true,
+    "token_must_be_signed": true,
+    "token_short_lived_minutes": 5
+  },
+
+  "audit_governance": {
+    "audit_every_action": true,
+    "audit_denials": true,
+    "audit_integrity_hash_chain": true,
+    "external_review_possible": true,
+    "audit_storage_immutable": true
+  },
+
+  "decision_lineage": {
+    "required": true,
+    "store_policy_version": true,
+    "store_rules_triggered": true,
+    "store_risk_score": true,
+    "store_context_hash": true
+  },
+
+  "self_protection": {
+    "guardian_hash_check": true,
+    "kernel_integrity_verification": true,
+    "detect_privilege_escalation": true,
+    "tamper_response": "lockdown",
+    "guardian_cannot_be_disabled": true
+  },
+
+  "emergency": {
+    "allow_emergency_mode": true,
+    "requires_dual_authority": true,
+    "max_duration_minutes": 60,
+    "force_full_audit": true,
+    "restricted_operations_only": true,
+    "post_review_required": true,
+    "auto_revert_after_expiry": true
+  },
+
+  "network_enforcement": {
+    "service_mesh_required": true,
+    "reject_requests_without_token": true,
+    "mtls_required": true,
+    "direct_service_calls_forbidden": true
+  },
+
+  "data_governance": {
+    "metadata_signature_required": true,
+    "data_access_scoped": true,
+    "patient_data_requires_context": true,
+    "write_operations_high_trust_only": true
+  },
+
+  "observability": {
+    "health_monitor_required": true,
+    "constitutional_metrics_enabled": true,
+    "anomaly_detection_enabled": true,
+    "self_healing_allowed": true
+  }
+}

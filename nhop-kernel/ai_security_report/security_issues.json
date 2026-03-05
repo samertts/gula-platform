@@ -1,0 +1,38 @@
+[
+  {
+    "file": "/ai_system_brain_secure.py",
+    "issue": "subprocess"
+  },
+  {
+    "file": "/src/db.rs",
+    "issue": "password\\s*="
+  },
+  {
+    "file": "/src/db.rs",
+    "issue": "unwrap\\("
+  },
+  {
+    "file": "/src/comms/cli.rs",
+    "issue": "unwrap\\("
+  },
+  {
+    "file": "/src/ai/client.rs",
+    "issue": "api[_-]?key"
+  },
+  {
+    "file": "/system_backup/src/db.rs",
+    "issue": "password\\s*="
+  },
+  {
+    "file": "/system_backup/src/db.rs",
+    "issue": "unwrap\\("
+  },
+  {
+    "file": "/system_backup/src/comms/cli.rs",
+    "issue": "unwrap\\("
+  },
+  {
+    "file": "/system_backup/src/ai/client.rs",
+    "issue": "api[_-]?key"
+  }
+]

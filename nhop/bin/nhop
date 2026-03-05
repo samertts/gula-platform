@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+
+"use strict";
+
+const path = require("path");
+const fs = require("fs");
+
+const PROJECT_ROOT = path.resolve(__dirname, "..");
+const SERVER_FILE = path.join(PROJECT_ROOT, "server.js");
+
+if (!fs.existsSync(SERVER_FILE)) {
+  console.error("NHOP bootstrap error: server.js not found");
+  process.exit(1);
+}
+
+process.chdir(PROJECT_ROOT);
+
+console.log("NHOP Bootstrap starting...");
+console.log("Working directory:", process.cwd());
+
+require(SERVER_FILE);
