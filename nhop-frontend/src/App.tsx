@@ -8,10 +8,13 @@ import RegisterPage  from "./pages/auth/RegisterPage";
 import Layout        from "./components/Layout";
 
 /* Lab Pages */
-import LabDashboard  from "./pages/lab/LabDashboard";
-import SamplesPage   from "./pages/lab/SamplesPage";
-import ResultsEntry  from "./pages/lab/ResultsEntry";
-import OrdersPage    from "./pages/lab/OrdersPage";
+import LabDashboard    from "./pages/lab/LabDashboard";
+import SamplesPage     from "./pages/lab/SamplesPage";
+import ResultsEntry    from "./pages/lab/ResultsEntry";
+import OrdersPage      from "./pages/lab/OrdersPage";
+import WorkQueuePage   from "./pages/lab/WorkQueuePage";
+import ApprovalPage    from "./pages/lab/ApprovalPage";
+import CriticalValuesPage from "./pages/lab/CriticalValuesPage";
 
 /* Doctor Pages */
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
@@ -30,6 +33,10 @@ import ReportPage       from "./pages/patient/ReportPage";
 import AdminDashboard  from "./pages/admin/AdminDashboard";
 import CatalogPage     from "./pages/admin/CatalogPage";
 import UsersPage       from "./pages/admin/UsersPage";
+import LinkPatientPage from "./pages/admin/LinkPatientPage";
+
+/* Shared Pages */
+import ProfilePage     from "./pages/shared/ProfilePage";
 
 /* ---------------------------------------------------------------- */
 
@@ -69,10 +76,14 @@ export default function App() {
             <Layout role="lab" />
           </PrivateRoute>
         }>
-          <Route index        element={<LabDashboard />} />
-          <Route path="orders"  element={<OrdersPage />} />
-          <Route path="samples" element={<SamplesPage />} />
-          <Route path="results" element={<ResultsEntry />} />
+          <Route index              element={<LabDashboard />} />
+          <Route path="orders"      element={<OrdersPage />} />
+          <Route path="samples"     element={<SamplesPage />} />
+          <Route path="results"     element={<ResultsEntry />} />
+          <Route path="queue"       element={<WorkQueuePage />} />
+          <Route path="approval"    element={<ApprovalPage />} />
+          <Route path="critical"    element={<CriticalValuesPage />} />
+          <Route path="profile"     element={<ProfilePage />} />
         </Route>
 
         {/* Doctor */}
@@ -85,6 +96,7 @@ export default function App() {
           <Route path="patients"         element={<PatientsPage />} />
           <Route path="patients/:id"     element={<PatientDetail />} />
           <Route path="orders/new"       element={<NewOrderPage />} />
+          <Route path="profile"          element={<ProfilePage />} />
         </Route>
 
         {/* Patient / Citizen Portal */}
@@ -98,6 +110,7 @@ export default function App() {
           <Route path="orders"            element={<MyOrdersPage />} />
           <Route path="orders/:id/track"  element={<TrackOrderPage />} />
           <Route path="reports/:id"       element={<ReportPage />} />
+          <Route path="profile"           element={<ProfilePage />} />
         </Route>
 
         {/* Admin */}
@@ -106,9 +119,11 @@ export default function App() {
             <Layout role="admin" />
           </PrivateRoute>
         }>
-          <Route index           element={<AdminDashboard />} />
-          <Route path="catalog"  element={<CatalogPage />} />
-          <Route path="users"    element={<UsersPage />} />
+          <Route index                element={<AdminDashboard />} />
+          <Route path="catalog"       element={<CatalogPage />} />
+          <Route path="users"         element={<UsersPage />} />
+          <Route path="link-patient"  element={<LinkPatientPage />} />
+          <Route path="profile"       element={<ProfilePage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

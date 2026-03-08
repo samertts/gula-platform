@@ -344,5 +344,81 @@ module.exports.register = async function (capabilities) {
     }
   });
 
+  /* -------------------------------------------------------
+     CHANGE PASSWORD
+     POST /auth/change-password
+  ------------------------------------------------------- */
+  router.post("/auth/change-password", requireAuth(), async (req, res) => {
+    try {
+      const { current_password, new_password } = req.body;
+
+      if (!current_password || !new_password) {
+        return res.status(400).json({ error: "current_password and new_password required" });
+      }
+
+      if (new_password.length < 8) {
+        return res.status(400).json({ error: "password_must_be_at_least_8_chars" });
+      }
+
+      const result = await db.query("SELECT password_hash FROM users WHERE id=$1", [req.user.id]);
+      if (!result.rows.length) return res.status(404).json({ error: "user_not_found" });
+
+      const valid = await bcrypt.compare(current_password, result.rows[0].password_hash);
+      if (!valid) return res.status(401).json({ error: "current_password_incorrect" });
+
+      const newHash = await bcrypt.hash(new_password, 12);
+      await db.query("UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2", [newHash, req.user.id]);
+
+      /* invalidate all refresh tokens */
+      await db.query("DELETE FROM refresh_tokens WHERE user_id=$1", [req.user.id]);
+
+      res.json({ ok: true, message: "password_changed_successfully" });
+    } catch (err) {
+      logger.error("Change password failed", { error: err.message });
+      res.status(500).json({ error: "change_failed" });
+    }
+  });
+
+  /* -------------------------------------------------------
+     UPDATE PROFILE
+     PATCH /auth/me
+  ------------------------------------------------------- */
+  router.patch("/auth/me", requireAuth(), async (req, res) => {
+    try {
+      const { name, phone } = req.body;
+      const result = await db.query(
+        "UPDATE users SET name=COALESCE($1,name), phone=COALESCE($2,phone), updated_at=NOW() WHERE id=$3 RETURNING id,name,email,role,phone",
+        [name || null, phone || null, req.user.id]
+      );
+      res.json({ ok: true, user: result.rows[0] });
+    } catch (err) {
+      res.status(500).json({ error: "update_failed" });
+    }
+  });
+
+  /* -------------------------------------------------------
+     ADMIN: RESET USER PASSWORD
+     POST /auth/users/:id/reset-password
+  ------------------------------------------------------- */
+  router.post("/auth/users/:id/reset-password", requireAuth(["admin"]), async (req, res) => {
+    try {
+      const { new_password } = req.body;
+      if (!new_password || new_password.length < 8) {
+        return res.status(400).json({ error: "new_password_min_8_chars" });
+      }
+
+      const hash = await bcrypt.hash(new_password, 12);
+      await db.query(
+        "UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2",
+        [hash, req.params.id]
+      );
+      await db.query("DELETE FROM refresh_tokens WHERE user_id=$1", [req.params.id]);
+
+      res.json({ ok: true, message: "password_reset_done" });
+    } catch (err) {
+      res.status(500).json({ error: "reset_failed" });
+    }
+  });
+
   logger.info("Auth Extension fully activated");
 };

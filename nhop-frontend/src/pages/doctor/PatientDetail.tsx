@@ -2,10 +2,37 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../../api/client";
 
+/* ---- Inline SVG Sparkline ---- */
+function Sparkline({ values, color = "var(--primary)", width = 120, height = 36 }: {
+  values: number[]; color?: string; width?: number; height?: number;
+}) {
+  if (values.length < 2) return <span style={{ fontSize: ".75rem", color: "var(--gray-400)" }}>—</span>;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const pad = 3;
+  const W = width - pad * 2;
+  const H = height - pad * 2;
+  const pts = values.map((v, i) => {
+    const x = pad + (i / (values.length - 1)) * W;
+    const y = pad + H - ((v - min) / range) * H;
+    return `${x},${y}`;
+  }).join(" ");
+  const lastPt = pts.split(" ").pop()!;
+  const [lx, ly] = lastPt.split(",").map(Number);
+  return (
+    <svg width={width} height={height} style={{ display: "block" }}>
+      <polyline fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" points={pts} />
+      <circle cx={lx} cy={ly} r={3} fill={color} />
+    </svg>
+  );
+}
+
 export default function PatientDetail() {
   const { id }    = useParams<{ id: string }>();
   const [data,    setData]    = useState<any>(null);
   const [ai,      setAi]      = useState<any>(null);
+  const [trends,  setTrends]  = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -15,6 +42,10 @@ export default function PatientDetail() {
       .then(r => setData(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    api.get(`/doctor/patients/${id}/results`)
+      .then(r => setTrends(r.data.trends || []))
+      .catch(() => {}); /* trends are optional — don't block the page */
   }, [id]);
 
   async function runAI() {
@@ -144,6 +175,43 @@ export default function PatientDetail() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Trend Charts */}
+          {trends.length > 0 && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card-title">اتجاهات النتائج عبر الزمن</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+                {trends.map((t: any) => {
+                  const vals = (t.history || []).map((h: any) => parseFloat(h.value)).filter((v: number) => !isNaN(v));
+                  const last = vals[vals.length - 1];
+                  const isHigh = t.last_flag === "H";
+                  const isLow  = t.last_flag === "L";
+                  const sparkColor = isHigh ? "var(--danger)" : isLow ? "var(--info, #3b82f6)" : "var(--success)";
+                  return (
+                    <div key={t.code} style={{ background: "var(--gray-50)", borderRadius: 8, padding: "10px 12px", border: `1px solid ${isHigh || isLow ? "var(--warning)" : "var(--gray-200)"}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: ".8rem", fontWeight: 600 }}>{t.name_ar || t.code}</span>
+                        {(isHigh || isLow) && (
+                          <span style={{ fontSize: ".7rem", color: sparkColor, fontWeight: 700 }}>
+                            {isHigh ? "↑" : "↓"} {t.last_flag}
+                          </span>
+                        )}
+                      </div>
+                      <Sparkline values={vals} color={sparkColor} />
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                        <span style={{ fontSize: ".75rem", color: "var(--gray-500)" }}>
+                          آخر: <strong style={{ color: sparkColor }}>{last != null ? `${last} ${t.unit || ""}` : "—"}</strong>
+                        </span>
+                        <span style={{ fontSize: ".7rem", color: "var(--gray-400)" }}>
+                          {(t.history || []).length} قياس
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

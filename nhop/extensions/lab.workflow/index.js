@@ -715,5 +715,256 @@ module.exports.register = async function (capabilities) {
     });
   });
 
+  /* =======================================================
+     WORK QUEUE — what needs to be done right now
+  ======================================================= */
+
+  /* GET /lab/work-queue - pending tasks for lab staff */
+  router.get("/lab/work-queue", async (req, res) => {
+    if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
+    global.requireAuth(["admin", "lab_staff"])(req, res, async () => {
+      try {
+        const [toCollect, toReceive, toResult, toApprove, toRelease] = await Promise.all([
+          /* samples needing collection */
+          db.query(
+            `SELECT s.id, s.barcode, s.sample_type, s.created_at,
+                    p.name AS patient_name, lo.priority
+             FROM samples s
+             JOIN patients p ON p.id = s.patient_id
+             JOIN lab_orders lo ON lo.id = s.order_id
+             WHERE s.status='ordered'
+             ORDER BY CASE lo.priority WHEN 'stat' THEN 0 WHEN 'urgent' THEN 1 ELSE 2 END, s.created_at ASC
+             LIMIT 20`
+          ),
+          /* samples received, need lab processing */
+          db.query(
+            `SELECT s.id, s.barcode, s.sample_type, s.received_at,
+                    p.name AS patient_name, lo.priority
+             FROM samples s
+             JOIN patients p ON p.id = s.patient_id
+             JOIN lab_orders lo ON lo.id = s.order_id
+             WHERE s.status='received'
+             ORDER BY CASE lo.priority WHEN 'stat' THEN 0 WHEN 'urgent' THEN 1 ELSE 2 END
+             LIMIT 20`
+          ),
+          /* results to be entered */
+          db.query(
+            `SELECT s.id, s.barcode, s.sample_type, s.received_at,
+                    p.name AS patient_name, lo.priority,
+                    COUNT(loi.id) AS test_count
+             FROM samples s
+             JOIN patients p ON p.id = s.patient_id
+             JOIN lab_orders lo ON lo.id = s.order_id
+             JOIN lab_order_items loi ON loi.order_id = lo.id AND loi.status = 'pending'
+             WHERE s.status IN ('received','processing')
+             GROUP BY s.id, p.name, lo.priority
+             ORDER BY CASE lo.priority WHEN 'stat' THEN 0 WHEN 'urgent' THEN 1 ELSE 2 END
+             LIMIT 20`
+          ),
+          /* results needing approval */
+          db.query(
+            `SELECT tr.id, tr.value, tr.is_abnormal, tr.abnormal_flag,
+                    tr.created_at, tc.name_ar, tc.code,
+                    p.name AS patient_name, lo.priority
+             FROM test_results tr
+             JOIN test_catalog tc ON tc.id = tr.test_catalog_id
+             JOIN samples s ON s.id = tr.sample_id
+             JOIN lab_orders lo ON lo.id = s.order_id
+             JOIN patients p ON p.id = tr.patient_id
+             WHERE tr.status='resulted'
+             ORDER BY tr.is_abnormal DESC,
+               CASE lo.priority WHEN 'stat' THEN 0 WHEN 'urgent' THEN 1 ELSE 2 END
+             LIMIT 30`
+          ),
+          /* orders with all results approved, ready to release */
+          db.query(
+            `SELECT lo.id, lo.priority, lo.updated_at,
+                    p.name AS patient_name,
+                    COUNT(tr.id) AS result_count
+             FROM lab_orders lo
+             JOIN patients p ON p.id = lo.patient_id
+             JOIN samples s ON s.order_id = lo.id
+             JOIN test_results tr ON tr.sample_id = s.id AND tr.status='approved'
+             WHERE lo.status='processing'
+             GROUP BY lo.id, p.name
+             HAVING COUNT(tr.id) > 0
+             ORDER BY CASE lo.priority WHEN 'stat' THEN 0 WHEN 'urgent' THEN 1 ELSE 2 END
+             LIMIT 20`
+          )
+        ]);
+
+        res.json({
+          ok: true,
+          queue: {
+            to_collect:  toCollect.rows,
+            to_process:  toReceive.rows,
+            enter_results: toResult.rows,
+            to_approve:  toApprove.rows,
+            to_release:  toRelease.rows,
+          },
+          counts: {
+            to_collect:    toCollect.rows.length,
+            to_process:    toReceive.rows.length,
+            enter_results: toResult.rows.length,
+            to_approve:    toApprove.rows.length,
+            to_release:    toRelease.rows.length,
+          }
+        });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+  });
+
+  /* =======================================================
+     PENDING RESULTS APPROVAL (for one order)
+  ======================================================= */
+
+  /* GET /lab/orders/:id/pending-results - get results needing approval */
+  router.get("/lab/orders/:id/pending-results", async (req, res) => {
+    if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
+    global.requireAuth(["admin", "lab_staff"])(req, res, async () => {
+      try {
+        const results = await db.query(
+          `SELECT tr.id, tr.value, tr.value_numeric, tr.unit, tr.status,
+                  tr.is_abnormal, tr.abnormal_flag, tr.notes, tr.created_at,
+                  tc.name_ar, tc.name_en, tc.code,
+                  tc.normal_range_min, tc.normal_range_max, tc.normal_range_text,
+                  u.name AS tech_name
+           FROM test_results tr
+           JOIN test_catalog tc ON tc.id = tr.test_catalog_id
+           JOIN samples s ON s.id = tr.sample_id
+           LEFT JOIN users u ON u.id = tr.tech_id
+           WHERE s.order_id=$1 AND tr.status='resulted'
+           ORDER BY tr.is_abnormal DESC, tc.category, tc.name_ar`,
+          [req.params.id]
+        );
+
+        res.json({ ok: true, results: results.rows });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+  });
+
+  /* POST /lab/orders/:id/approve-all - bulk approve all resulted results */
+  router.post("/lab/orders/:id/approve-all", async (req, res) => {
+    if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
+    global.requireAuth(["lab_staff", "admin"])(req, res, async () => {
+      try {
+        const result = await db.query(
+          `UPDATE test_results
+           SET status='approved', approved_by=$1, approved_at=NOW(), updated_at=NOW()
+           WHERE sample_id IN (SELECT id FROM samples WHERE order_id=$2)
+             AND status='resulted'
+           RETURNING id`,
+          [req.user.id, req.params.id]
+        );
+
+        res.json({ ok: true, approved: result.rows.length });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+  });
+
+  /* =======================================================
+     CRITICAL VALUE DETECTION
+  ======================================================= */
+
+  /* GET /lab/critical-values - results with critical values (needs urgent attention) */
+  router.get("/lab/critical-values", async (req, res) => {
+    if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
+    global.requireAuth(["admin", "lab_staff", "doctor"])(req, res, async () => {
+      try {
+        /* critical thresholds */
+        const CRITICAL = {
+          GLU:   { high: 400 },
+          HGB:   { low: 7 },
+          PLT:   { low: 50 },
+          WBC:   { high: 30 },
+          K:     { low: 2.5, high: 6.5 },
+          NA:    { low: 120, high: 160 },
+          CREA:  { high: 10 },
+          INR:   { high: 5 },
+        };
+
+        /* get recent abnormal results and check against critical thresholds */
+        const result = await db.query(
+          `SELECT tr.id, tr.value_numeric, tr.is_abnormal, tr.created_at,
+                  tr.status, tc.code, tc.name_ar, tc.unit,
+                  p.name AS patient_name, p.phone AS patient_phone,
+                  lo.id AS order_id, lo.priority,
+                  u_doc.name AS doctor_name
+           FROM test_results tr
+           JOIN test_catalog tc ON tc.id = tr.test_catalog_id
+           JOIN samples s ON s.id = tr.sample_id
+           JOIN lab_orders lo ON lo.id = s.order_id
+           JOIN patients p ON p.id = tr.patient_id
+           LEFT JOIN users u_doc ON u_doc.id = lo.doctor_id
+           WHERE tr.status IN ('resulted','approved')
+             AND tr.created_at > NOW() - INTERVAL '24 hours'
+             AND tr.value_numeric IS NOT NULL
+           ORDER BY tr.created_at DESC
+           LIMIT 200`
+        );
+
+        /* filter to critical values only */
+        const critical = result.rows.filter(r => {
+          const thres = CRITICAL[r.code];
+          if (!thres) return false;
+          if (thres.high && r.value_numeric > thres.high) return true;
+          if (thres.low  && r.value_numeric < thres.low)  return true;
+          return false;
+        }).map(r => {
+          const thres = CRITICAL[r.code] || {};
+          return {
+            ...r,
+            critical_type: (thres.high && r.value_numeric > thres.high) ? "critically_high" : "critically_low"
+          };
+        });
+
+        res.json({
+          ok: true,
+          critical_values: critical,
+          count: critical.length
+        });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+  });
+
+  /* =======================================================
+     TAT (Turnaround Time) REPORT
+  ======================================================= */
+
+  /* GET /lab/tat-report - turnaround time analytics */
+  router.get("/lab/tat-report", async (req, res) => {
+    if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
+    global.requireAuth(["admin", "lab_staff"])(req, res, async () => {
+      try {
+        const result = await db.query(
+          `SELECT tc.category,
+                  COUNT(*) AS total,
+                  ROUND(AVG(EXTRACT(EPOCH FROM (tr.created_at - lo.created_at))/3600)::numeric, 1) AS avg_hours,
+                  ROUND(MAX(EXTRACT(EPOCH FROM (tr.created_at - lo.created_at))/3600)::numeric, 1) AS max_hours,
+                  COUNT(CASE WHEN EXTRACT(EPOCH FROM (tr.created_at - lo.created_at))/3600 > tc.turnaround_hours THEN 1 END) AS breached
+           FROM test_results tr
+           JOIN test_catalog tc ON tc.id = tr.test_catalog_id
+           JOIN samples s ON s.id = tr.sample_id
+           JOIN lab_orders lo ON lo.id = s.order_id
+           WHERE tr.created_at > NOW() - INTERVAL '30 days'
+           GROUP BY tc.category
+           ORDER BY avg_hours DESC`
+        );
+
+        res.json({ ok: true, tat: result.rows });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+  });
+
   logger.info("Lab Workflow Extension fully activated");
 };

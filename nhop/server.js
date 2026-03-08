@@ -94,6 +94,25 @@ const app = express();
 
 app.disable("x-powered-by");
 app.set("trust proxy", true);
+
+/* ======================================================
+   CORS — allow frontend dev server and production origin
+====================================================== */
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:3001").split(",");
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*")) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-ID");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  if (req.method === "OPTIONS") return res.status(204).end();
+  next();
+});
+
 app.use(express.json({ limit: "1mb" }));
 
 /* ======================================================
