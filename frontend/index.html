@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>National Laboratory Dashboard</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f6f7;
+margin:40px;
+}
+
+.container{
+background:white;
+padding:20px;
+margin-bottom:20px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+button{
+padding:10px;
+margin:5px;
+background:#3498db;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#2980b9;
+}
+
+table{
+border-collapse:collapse;
+width:100%;
+margin-top:20px;
+}
+
+td,th{
+border:1px solid #ccc;
+padding:8px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Laboratory Dashboard</h1>
+
+<div class="container">
+
+<h3>Add Patient</h3>
+
+<input id="first" placeholder="First Name">
+<input id="last" placeholder="Last Name">
+<input id="age" placeholder="Age">
+<input id="gender" placeholder="Gender">
+
+<button onclick="createPatient()">Add Patient</button>
+
+</div>
+
+<div class="container">
+
+<h3>Patients</h3>
+
+<button onclick="loadPatients()">Load Patients</button>
+
+<table id="patients"></table>
+
+</div>
+
+<div class="container">
+
+<h3>Analytics</h3>
+
+<button onclick="loadDaily()">Tests Per Day</button>
+<button onclick="loadTop()">Top Tests</button>
+<button onclick="loadAbnormal()">Abnormal Rate</button>
+
+<table id="analytics"></table>
+
+</div>
+
+<script>
+
+const API="http://localhost:8000"
+
+async function createPatient(){
+
+const first=document.getElementById("first").value
+const last=document.getElementById("last").value
+const age=document.getElementById("age").value
+const gender=document.getElementById("gender").value
+
+await fetch(API+"/patients?first_name="+first+"&last_name="+last+"&age="+age+"&gender="+gender,{
+method:"POST"
+})
+
+alert("Patient Added")
+
+loadPatients()
+
+}
+
+async function loadPatients(){
+
+const res=await fetch(API+"/patients")
+
+const data=await res.json()
+
+const table=document.getElementById("patients")
+
+table.innerHTML=""
+
+data.forEach(row=>{
+
+let tr="<tr>"
+
+row.forEach(v=>tr+="<td>"+v+"</td>")
+
+tr+="</tr>"
+
+table.innerHTML+=tr
+
+})
+
+}
+
+async function loadDaily(){
+
+const res=await fetch(API+"/analytics/tests-per-day")
+
+const data=await res.json()
+
+renderAnalytics(data)
+
+}
+
+async function loadTop(){
+
+const res=await fetch(API+"/analytics/top-tests")
+
+const data=await res.json()
+
+renderAnalytics(data)
+
+}
+
+async function loadAbnormal(){
+
+const res=await fetch(API+"/analytics/abnormal-rate")
+
+const data=await res.json()
+
+document.getElementById("analytics").innerHTML=
+"<tr><th>Abnormal Rate %</th></tr><tr><td>"+data.abnormal_rate_percent+"</td></tr>"
+
+}
+
+function renderAnalytics(data){
+
+const table=document.getElementById("analytics")
+
+table.innerHTML=""
+
+data.forEach(row=>{
+
+let tr="<tr>"
+
+row.forEach(v=>tr+="<td>"+v+"</td>")
+
+tr+="</tr>"
+
+table.innerHTML+=tr
+
+})
+
+}
+
+</script>
+
+</body>
+</html>

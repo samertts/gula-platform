@@ -1,0 +1,44 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Result Entry</title>
+</head>
+
+<body>
+
+<h2>Enter Lab Result</h2>
+
+<form id="form">
+
+Test:
+<input name="test">
+
+Value:
+<input name="value">
+
+<button>Save</button>
+
+</form>
+
+<script>
+
+document.getElementById("form").onsubmit=async(e)=>{
+e.preventDefault()
+
+let f=new FormData(e.target)
+
+await fetch("http://localhost:8000/results/add",{
+method:"POST",
+body:f
+})
+
+alert("saved")
+
+}
+
+</script>
+
+</body>
+</html>
