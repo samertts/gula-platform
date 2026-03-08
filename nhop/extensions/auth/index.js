@@ -173,6 +173,11 @@ module.exports.register = async function (capabilities) {
       const refresh = signRefresh(user.id);
       await storeRefreshToken(user.id, refresh);
 
+      /* audit */
+      if (global.auditLog) {
+        global.auditLog({ userId: user.id, userName: user.name, userRole: user.role, action: "login", ip: req.ip });
+      }
+
       res.json({
         ok: true,
         user: { id: user.id, name: user.name, email: user.email, role: user.role },
@@ -419,6 +424,78 @@ module.exports.register = async function (capabilities) {
       res.status(500).json({ error: "reset_failed" });
     }
   });
+
+  /* -------------------------------------------------------
+     AUDIT LOGS TABLE — lazy create on boot
+  ------------------------------------------------------- */
+  db.query(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id          BIGSERIAL PRIMARY KEY,
+      user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_name   TEXT,
+      user_role   TEXT,
+      action      TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id   TEXT,
+      details     JSONB DEFAULT '{}',
+      ip          TEXT,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    )
+  `).catch(err => logger.warn("audit_logs table warning", { err: err.message }));
+
+  /* -------------------------------------------------------
+     AUDIT HELPER — global for all extensions
+  ------------------------------------------------------- */
+  global.auditLog = async function({ userId, userName, userRole, action, entityType, entityId, details, ip }) {
+    try {
+      await db.query(
+        `INSERT INTO audit_logs (user_id, user_name, user_role, action, entity_type, entity_id, details, ip)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [userId||null, userName||null, userRole||null, action, entityType||null,
+         entityId ? String(entityId) : null, details ? JSON.stringify(details) : '{}', ip||null]
+      );
+    } catch (err) {
+      logger.warn("auditLog write failed", { err: err.message });
+    }
+  };
+
+  /* -------------------------------------------------------
+     ADMIN: GET AUDIT LOGS
+     GET /auth/audit-logs?page=1&limit=50&action=login&user_id=5
+  ------------------------------------------------------- */
+  router.get("/auth/audit-logs", requireAuth(["admin"]), async (req, res) => {
+    try {
+      const { page = 1, limit = 50, action, user_id } = req.query;
+      const offset = (Number(page) - 1) * Number(limit);
+      const conditions = [];
+      const values = [];
+      let idx = 1;
+
+      if (action) { conditions.push(`action ILIKE $${idx++}`); values.push(`%${action}%`); }
+      if (user_id) { conditions.push(`user_id = $${idx++}`); values.push(Number(user_id)); }
+
+      const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+      const [data, count] = await Promise.all([
+        db.query(
+          `SELECT id, user_id, user_name, user_role, action, entity_type, entity_id, details, ip, created_at
+           FROM audit_logs ${where}
+           ORDER BY created_at DESC
+           LIMIT $${idx} OFFSET $${idx + 1}`,
+          [...values, Number(limit), offset]
+        ),
+        db.query(`SELECT COUNT(*) FROM audit_logs ${where}`, values)
+      ]);
+
+      res.json({ ok: true, logs: data.rows, total: Number(count.rows[0].count), page: Number(page), limit: Number(limit) });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  /* hook audit into login */
+  const _origLogin = router.stack.find(l => l.route && l.route.path === "/auth/login");
+  /* Audit is written inside login handler via global.auditLog after this point */
 
   logger.info("Auth Extension fully activated");
 };

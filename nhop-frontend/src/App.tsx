@@ -34,6 +34,10 @@ import AdminDashboard  from "./pages/admin/AdminDashboard";
 import CatalogPage     from "./pages/admin/CatalogPage";
 import UsersPage       from "./pages/admin/UsersPage";
 import LinkPatientPage from "./pages/admin/LinkPatientPage";
+import AuditLogPage    from "./pages/admin/AuditLogPage";
+
+/* Lab Extra */
+import TatReportPage   from "./pages/lab/TatReportPage";
 
 /* Shared Pages */
 import ProfilePage     from "./pages/shared/ProfilePage";
@@ -83,6 +87,7 @@ export default function App() {
           <Route path="queue"       element={<WorkQueuePage />} />
           <Route path="approval"    element={<ApprovalPage />} />
           <Route path="critical"    element={<CriticalValuesPage />} />
+          <Route path="tat-report"  element={<TatReportPage />} />
           <Route path="profile"     element={<ProfilePage />} />
         </Route>
 
@@ -123,6 +128,7 @@ export default function App() {
           <Route path="catalog"       element={<CatalogPage />} />
           <Route path="users"         element={<UsersPage />} />
           <Route path="link-patient"  element={<LinkPatientPage />} />
+          <Route path="audit-log"     element={<AuditLogPage />} />
           <Route path="profile"       element={<ProfilePage />} />
         </Route>
 

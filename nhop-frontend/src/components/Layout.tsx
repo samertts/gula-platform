@@ -17,6 +17,8 @@ const Icon = {
   alert:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
   user:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   link:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+  clock:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  shield:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
 };
 
 const NAV_CONFIG: Record<string, Array<{ label: string; to: string; icon: React.ReactNode; group?: string }>> = {
@@ -28,6 +30,7 @@ const NAV_CONFIG: Record<string, Array<{ label: string; to: string; icon: React.
     { label: "إدخال النتائج", to: "/lab/results",     icon: Icon.activity },
     { label: "اعتماد النتائج", to: "/lab/approval",   icon: Icon.check },
     { label: "القيم الحرجة",  to: "/lab/critical",    icon: Icon.alert },
+    { label: "تقرير TAT",     to: "/lab/tat-report",  icon: Icon.clock },
     { label: "الملف الشخصي",  to: "/lab/profile",     icon: Icon.user },
   ],
   doctor: [
@@ -47,6 +50,7 @@ const NAV_CONFIG: Record<string, Array<{ label: string; to: string; icon: React.
     { label: "قائمة الفحوصات", to: "/admin/catalog",      icon: Icon.flask },
     { label: "المستخدمون",     to: "/admin/users",        icon: Icon.users },
     { label: "ربط المريض",     to: "/admin/link-patient", icon: Icon.link },
+    { label: "سجل العمليات",   to: "/admin/audit-log",    icon: Icon.shield },
     { label: "المختبر",        to: "/lab",                icon: Icon.settings },
     { label: "الطبيب",         to: "/doctor",             icon: Icon.activity },
     { label: "الملف الشخصي",   to: "/admin/profile",      icon: Icon.user },
