@@ -45,36 +45,42 @@ module.exports.register = async function (capabilities) {
      TEST CATALOG
   ======================================================= */
 
-  /* GET /lab/catalog - list all active tests */
+  /* GET /lab/catalog - list all active tests (requires auth) */
   router.get("/lab/catalog", async (req, res) => {
-    try {
-      const { category } = req.query;
-      let query  = "SELECT * FROM test_catalog WHERE is_active=TRUE";
-      const params = [];
+    if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
+    global.requireAuth(["admin", "lab_staff", "doctor", "patient", "citizen"])(req, res, async () => {
+      try {
+        const { category } = req.query;
+        let query  = "SELECT * FROM test_catalog WHERE is_active=TRUE";
+        const params = [];
 
-      if (category) {
-        params.push(category);
-        query += ` AND category=$${params.length}`;
+        if (category) {
+          params.push(category);
+          query += ` AND category=$${params.length}`;
+        }
+
+        query += " ORDER BY category, name_ar";
+        const result = await db.query(query, params);
+        res.json({ ok: true, tests: result.rows });
+      } catch (err) {
+        res.status(500).json({ error: "catalog_fetch_failed" });
       }
-
-      query += " ORDER BY category, name_ar";
-      const result = await db.query(query, params);
-      res.json({ ok: true, tests: result.rows });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+    });
   });
 
-  /* GET /lab/catalog/categories - list categories */
+  /* GET /lab/catalog/categories - list categories (requires auth) */
   router.get("/lab/catalog/categories", async (req, res) => {
-    try {
-      const result = await db.query(
-        "SELECT DISTINCT category FROM test_catalog WHERE is_active=TRUE ORDER BY category"
-      );
-      res.json({ ok: true, categories: result.rows.map(r => r.category) });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+    if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
+    global.requireAuth(["admin", "lab_staff", "doctor", "patient", "citizen"])(req, res, async () => {
+      try {
+        const result = await db.query(
+          "SELECT DISTINCT category FROM test_catalog WHERE is_active=TRUE ORDER BY category"
+        );
+        res.json({ ok: true, categories: result.rows.map(r => r.category) });
+      } catch (err) {
+        res.status(500).json({ error: "categories_fetch_failed" });
+      }
+    });
   });
 
   /* POST /lab/catalog - add test (admin only) */
@@ -181,9 +187,11 @@ module.exports.register = async function (capabilities) {
     if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
     global.requireAuth(["admin", "lab_staff", "doctor"])(req, res, async () => {
       try {
-        const { status, patient_id, page = 1, limit = 30 } = req.query;
-        const offset = (Number(page) - 1) * Number(limit);
+        const rawPage  = Math.max(1, Number(req.query.page)  || 1);
+        const rawLimit = Math.min(100, Math.max(1, Number(req.query.limit) || 30));
+        const offset   = (rawPage - 1) * rawLimit;
         const params = [];
+        const { status, patient_id } = req.query;
         let where = "WHERE 1=1";
 
         if (status)     { params.push(status);     where += ` AND lo.status=$${params.length}`; }
@@ -195,7 +203,7 @@ module.exports.register = async function (capabilities) {
           where += ` AND lo.doctor_id=$${params.length}`;
         }
 
-        params.push(Number(limit), offset);
+        params.push(rawLimit, offset);
 
         const result = await db.query(
           `SELECT lo.*, p.name AS patient_name, p.national_id AS patient_national_id,
@@ -296,8 +304,10 @@ module.exports.register = async function (capabilities) {
     if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
     global.requireAuth(["admin", "lab_staff"])(req, res, async () => {
       try {
-        const { status, page = 1, limit = 30 } = req.query;
-        const offset = (Number(page) - 1) * Number(limit);
+        const { status } = req.query;
+        const rawPage  = Math.max(1, Number(req.query.page)  || 1);
+        const rawLimit = Math.min(100, Math.max(1, Number(req.query.limit) || 30));
+        const offset   = (rawPage - 1) * rawLimit;
         const params = [];
         let where = "WHERE 1=1";
 
@@ -306,7 +316,7 @@ module.exports.register = async function (capabilities) {
           where += ` AND s.status=$${params.length}`;
         }
 
-        params.push(Number(limit), offset);
+        params.push(rawLimit, offset);
 
         const result = await db.query(
           `SELECT s.*, p.name AS patient_name, p.national_id AS patient_national_id
@@ -417,49 +427,62 @@ module.exports.register = async function (capabilities) {
      RESULT ENTRY
   ======================================================= */
 
-  /* POST /lab/results - enter test results */
+  /* POST /lab/results - enter test results (wrapped in DB transaction) */
   router.post("/lab/results", async (req, res) => {
     if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
     global.requireAuth(["lab_staff", "admin"])(req, res, async () => {
+      const { sample_id, results } = req.body;
+      /* results: [{test_catalog_id, value, notes}] */
+
+      if (!sample_id || !results?.length) {
+        return res.status(400).json({ error: "sample_id and results[] required" });
+      }
+
+      /* Validate max batch size */
+      if (results.length > 50) {
+        return res.status(400).json({ error: "max_50_results_per_request" });
+      }
+
+      const client = await db.pool.connect();
       try {
-        const { sample_id, results } = req.body;
-        /* results: [{test_catalog_id, value, notes}] */
+        await client.query("BEGIN");
 
-        if (!sample_id || !results?.length) {
-          return res.status(400).json({ error: "sample_id and results[] required" });
-        }
-
-        /* get sample */
-        const sampleRes = await db.query("SELECT * FROM samples WHERE id=$1", [sample_id]);
+        /* get sample — lock row for this transaction */
+        const sampleRes = await client.query("SELECT * FROM samples WHERE id=$1 FOR UPDATE", [sample_id]);
         if (!sampleRes.rows.length) {
+          await client.query("ROLLBACK");
           return res.status(404).json({ error: "sample_not_found" });
         }
         const sample = sampleRes.rows[0];
+
+        if (!["received", "processing"].includes(sample.status)) {
+          await client.query("ROLLBACK");
+          return res.status(409).json({ error: "sample_not_in_valid_state_for_results", state: sample.status });
+        }
 
         const inserted = [];
 
         for (const r of results) {
           const { test_catalog_id, value, notes } = r;
+          if (!test_catalog_id || value === undefined || value === null || value === "") continue;
 
-          /* get catalog info for range check */
-          const catRes = await db.query(
+          const catRes = await client.query(
             "SELECT unit, normal_range_min, normal_range_max FROM test_catalog WHERE id=$1",
             [test_catalog_id]
           );
           if (!catRes.rows.length) continue;
           const cat = catRes.rows[0];
 
-          const flag    = getAbnormalFlag(value, cat.normal_range_min, cat.normal_range_max);
-          const numVal  = parseFloat(value);
+          const flag   = getAbnormalFlag(value, cat.normal_range_min, cat.normal_range_max);
+          const numVal = parseFloat(value);
 
-          /* get order_item_id */
-          const itemRes = await db.query(
+          const itemRes = await client.query(
             `SELECT id FROM lab_order_items WHERE order_id=$1 AND test_catalog_id=$2`,
             [sample.order_id, test_catalog_id]
           );
           const orderItemId = itemRes.rows[0]?.id || null;
 
-          const res2 = await db.query(
+          const ins = await client.query(
             `INSERT INTO test_results
                (sample_id, order_item_id, test_catalog_id, patient_id, value, value_numeric,
                 unit, status, is_abnormal, abnormal_flag, tech_id, notes)
@@ -467,36 +490,37 @@ module.exports.register = async function (capabilities) {
              ON CONFLICT DO NOTHING
              RETURNING *`,
             [sample_id, orderItemId, test_catalog_id, sample.patient_id,
-             value, isNaN(numVal) ? null : numVal,
+             String(value), isNaN(numVal) ? null : numVal,
              cat.unit, !!flag, flag, req.user.id, notes || null]
           );
 
-          if (res2.rows.length) {
-            inserted.push(res2.rows[0]);
-
-            /* update order item status */
+          if (ins.rows.length) {
+            inserted.push(ins.rows[0]);
             if (orderItemId) {
-              await db.query(
-                "UPDATE lab_order_items SET status='resulted' WHERE id=$1",
-                [orderItemId]
-              );
+              await client.query("UPDATE lab_order_items SET status='resulted' WHERE id=$1", [orderItemId]);
             }
           }
         }
 
-        /* update sample status */
-        await db.query(
+        await client.query(
           "UPDATE samples SET status='processing', updated_at=NOW() WHERE id=$1",
           [sample_id]
         );
 
-        logger.info("Results entered", { sampleId: sample_id, count: inserted.length });
+        await client.query("COMMIT");
+
+        logger.info("Results entered", { sampleId: sample_id, count: inserted.length, tech: req.user.id });
+
+        if (global.auditLog) global.auditLog({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: "results_entered", entityType: "sample", entityId: sample_id, details: { count: inserted.length }, ip: req.ip });
 
         res.status(201).json({ ok: true, results: inserted });
 
       } catch (err) {
-        logger.error("Result entry failed", { error: err.message });
-        res.status(500).json({ error: err.message });
+        await client.query("ROLLBACK").catch(() => {});
+        logger.error("Result entry failed — rolled back", { error: err.message });
+        res.status(500).json({ error: "result_entry_failed" });
+      } finally {
+        client.release();
       }
     });
   });
@@ -521,9 +545,11 @@ module.exports.register = async function (capabilities) {
           return res.status(404).json({ error: "result_not_found_or_not_in_resulted_state" });
         }
 
+        if (global.auditLog) global.auditLog({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: "result_approved", entityType: "test_result", entityId: req.params.id, ip: req.ip });
+
         res.json({ ok: true, result: result.rows[0] });
       } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: "approval_failed" });
       }
     });
   });
@@ -566,9 +592,11 @@ module.exports.register = async function (capabilities) {
           });
         }
 
+        if (global.auditLog) global.auditLog({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: "order_released", entityType: "lab_order", entityId: req.params.id, ip: req.ip });
+
         res.json({ ok: true, message: "results_released_to_patient" });
       } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: "release_failed" });
       }
     });
   });

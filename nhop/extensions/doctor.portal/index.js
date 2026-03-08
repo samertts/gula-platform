@@ -81,10 +81,12 @@ module.exports.register = async function (capabilities) {
            phone || null, address || null, blood_type || null, notes || null]
         );
 
+        if (global.auditLog) global.auditLog({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: "patient_created", entityType: "patient", entityId: result.rows[0].id, ip: req.ip });
+
         res.status(201).json({ ok: true, patient: result.rows[0] });
       } catch (err) {
         if (err.code === "23505") return res.status(409).json({ error: "national_id_already_exists" });
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: "patient_creation_failed" });
       }
     });
   });
@@ -239,6 +241,23 @@ module.exports.register = async function (capabilities) {
     if (!global.requireAuth) return res.status(503).json({ error: "auth_not_loaded" });
     global.requireAuth(["doctor", "admin"])(req, res, async () => {
       try {
+        /* Verify patient exists */
+        const patCheck = await db.query("SELECT id FROM patients WHERE id=$1", [req.params.patientId]);
+        if (!patCheck.rows.length) {
+          return res.status(404).json({ error: "patient_not_found" });
+        }
+
+        /* Doctors can only analyze patients they have ordered tests for (unless admin) */
+        if (req.user.role === "doctor") {
+          const access = await db.query(
+            "SELECT 1 FROM lab_orders WHERE patient_id=$1 AND doctor_id=$2 LIMIT 1",
+            [req.params.patientId, req.user.id]
+          );
+          if (!access.rows.length) {
+            return res.status(403).json({ error: "access_denied_no_orders_for_this_patient" });
+          }
+        }
+
         /* get latest results for patient */
         const results = await db.query(
           `SELECT tr.value_numeric AS value, tc.code AS test, tc.name_ar,

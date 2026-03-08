@@ -102,14 +102,27 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,h
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (!origin || ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*")) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  /* Only whitelist explicit origins — never wildcard with credentials */
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-ID");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Max-Age", "86400");
   if (req.method === "OPTIONS") return res.status(204).end();
+  next();
+});
+
+/* ======================================================
+   SECURITY HEADERS
+====================================================== */
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options",  "nosniff");
+  res.setHeader("X-Frame-Options",         "DENY");
+  res.setHeader("X-XSS-Protection",        "1; mode=block");
+  res.setHeader("Referrer-Policy",         "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy",      "camera=(), microphone=(), geolocation=()");
   next();
 });
 

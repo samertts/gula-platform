@@ -1,11 +1,6 @@
-export async function createPatient(name: string) {
-  const response = await fetch("http://localhost:3000/patients", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name }),
-  });
+import api from "./client";
 
-  return response.json();
+export async function createPatient(name: string) {
+  const response = await api.post("/doctor/patients", { name });
+  return response.data;
 }

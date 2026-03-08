@@ -13,9 +13,52 @@ const jwt     = require("jsonwebtoken");
 const crypto  = require("crypto");
 const db      = require("../../core/database/db");
 
-const JWT_SECRET      = process.env.JWT_SECRET      || "nhop-secret-change-in-production-2024";
+/* --- Require JWT_SECRET from env; never fall back to a weak default --- */
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  console.error("[AUTH] FATAL: JWT_SECRET env var is missing or too short (min 32 chars). Server cannot start.");
+  process.exit(1);
+}
 const JWT_EXPIRES     = process.env.JWT_EXPIRES     || "8h";
 const REFRESH_EXPIRES = process.env.REFRESH_EXPIRES || "30d";
+
+/* -------------------------------------------------------
+   In-memory rate limiter (no external dep required)
+   Limits: 10 attempts per IP per 15 minutes on auth routes
+------------------------------------------------------- */
+const rateLimitStore = new Map(); // ip -> { count, resetAt }
+const RATE_LIMIT_MAX      = 10;
+const RATE_LIMIT_WINDOW   = 15 * 60 * 1000; // 15 min
+
+function rateLimit(req, res, next) {
+  const ip  = req.ip || "unknown";
+  const now = Date.now();
+  const rec = rateLimitStore.get(ip);
+
+  if (!rec || now > rec.resetAt) {
+    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return next();
+  }
+
+  rec.count++;
+  if (rec.count > RATE_LIMIT_MAX) {
+    const retryAfter = Math.ceil((rec.resetAt - now) / 1000);
+    res.setHeader("Retry-After", retryAfter);
+    return res.status(429).json({
+      error: "too_many_requests",
+      retry_after_seconds: retryAfter
+    });
+  }
+  next();
+}
+
+/* Cleanup stale rate-limit entries every 30 minutes */
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, rec] of rateLimitStore) {
+    if (now > rec.resetAt) rateLimitStore.delete(ip);
+  }
+}, 30 * 60 * 1000);
 
 /* -------------------------------------------------------
    Token Helpers
@@ -83,7 +126,7 @@ module.exports.register = async function (capabilities) {
      REGISTER
      POST /auth/register
   ------------------------------------------------------- */
-  router.post("/auth/register", async (req, res) => {
+  router.post("/auth/register", rateLimit, async (req, res) => {
     try {
       const { name, email, password, phone, role = "citizen", national_id } = req.body;
 
@@ -141,7 +184,7 @@ module.exports.register = async function (capabilities) {
      LOGIN
      POST /auth/login
   ------------------------------------------------------- */
-  router.post("/auth/login", async (req, res) => {
+  router.post("/auth/login", rateLimit, async (req, res) => {
     try {
       const { email, password } = req.body;
 
@@ -151,21 +194,27 @@ module.exports.register = async function (capabilities) {
 
       const result = await db.query(
         "SELECT id, name, email, password_hash, role, is_active FROM users WHERE email=$1",
-        [email.toLowerCase()]
+        [email.toLowerCase().trim()]
       );
 
       const user = result.rows[0];
 
       if (!user) {
+        /* Audit failed attempt — use setTimeout to avoid timing-based enumeration */
+        setTimeout(() => {
+          if (global.auditLog) global.auditLog({ action: "login_failed", details: { email }, ip: req.ip });
+        }, 0);
         return res.status(401).json({ error: "invalid_credentials" });
       }
 
       if (!user.is_active) {
+        if (global.auditLog) global.auditLog({ userId: user.id, userName: user.name, userRole: user.role, action: "login_failed_disabled", ip: req.ip });
         return res.status(403).json({ error: "account_disabled" });
       }
 
       const valid = await bcrypt.compare(password, user.password_hash);
       if (!valid) {
+        if (global.auditLog) global.auditLog({ userId: user.id, userName: user.name, userRole: user.role, action: "login_failed_wrong_password", ip: req.ip });
         return res.status(401).json({ error: "invalid_credentials" });
       }
 
@@ -173,10 +222,7 @@ module.exports.register = async function (capabilities) {
       const refresh = signRefresh(user.id);
       await storeRefreshToken(user.id, refresh);
 
-      /* audit */
-      if (global.auditLog) {
-        global.auditLog({ userId: user.id, userName: user.name, userRole: user.role, action: "login", ip: req.ip });
-      }
+      if (global.auditLog) global.auditLog({ userId: user.id, userName: user.name, userRole: user.role, action: "login", ip: req.ip });
 
       res.json({
         ok: true,
@@ -361,8 +407,15 @@ module.exports.register = async function (capabilities) {
         return res.status(400).json({ error: "current_password and new_password required" });
       }
 
+      /* Require min 8 chars + at least 1 digit + 1 uppercase */
       if (new_password.length < 8) {
         return res.status(400).json({ error: "password_must_be_at_least_8_chars" });
+      }
+      if (!/[0-9]/.test(new_password)) {
+        return res.status(400).json({ error: "password_must_contain_a_digit" });
+      }
+      if (!/[A-Z]/.test(new_password)) {
+        return res.status(400).json({ error: "password_must_contain_an_uppercase_letter" });
       }
 
       const result = await db.query("SELECT password_hash FROM users WHERE id=$1", [req.user.id]);
@@ -376,6 +429,8 @@ module.exports.register = async function (capabilities) {
 
       /* invalidate all refresh tokens */
       await db.query("DELETE FROM refresh_tokens WHERE user_id=$1", [req.user.id]);
+
+      if (global.auditLog) global.auditLog({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: "password_changed", ip: req.ip });
 
       res.json({ ok: true, message: "password_changed_successfully" });
     } catch (err) {
@@ -418,6 +473,8 @@ module.exports.register = async function (capabilities) {
         [hash, req.params.id]
       );
       await db.query("DELETE FROM refresh_tokens WHERE user_id=$1", [req.params.id]);
+
+      if (global.auditLog) global.auditLog({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: "admin_password_reset", entityType: "user", entityId: req.params.id, ip: req.ip });
 
       res.json({ ok: true, message: "password_reset_done" });
     } catch (err) {
