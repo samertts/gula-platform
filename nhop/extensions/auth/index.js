@@ -1,0 +1,348 @@
+"use strict";
+
+/*
+==========================================================
+NHOP AUTH EXTENSION
+JWT-based authentication with role management
+Roles: admin | lab_staff | doctor | patient | citizen
+==========================================================
+*/
+
+const bcrypt  = require("bcryptjs");
+const jwt     = require("jsonwebtoken");
+const crypto  = require("crypto");
+const db      = require("../../core/database/db");
+
+const JWT_SECRET      = process.env.JWT_SECRET      || "nhop-secret-change-in-production-2024";
+const JWT_EXPIRES     = process.env.JWT_EXPIRES     || "8h";
+const REFRESH_EXPIRES = process.env.REFRESH_EXPIRES || "30d";
+
+/* -------------------------------------------------------
+   Token Helpers
+------------------------------------------------------- */
+
+function signAccess(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+}
+
+function signRefresh(userId) {
+  const token = crypto.randomBytes(40).toString("hex");
+  return token;
+}
+
+async function storeRefreshToken(userId, rawToken) {
+  const hash    = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  await db.query(
+    "INSERT INTO refresh_tokens(user_id, token_hash, expires_at) VALUES ($1,$2,$3)",
+    [userId, hash, expires]
+  );
+}
+
+/* -------------------------------------------------------
+   Auth Middleware (exported for use by other extensions)
+------------------------------------------------------- */
+
+function requireAuth(roles = []) {
+  return (req, res, next) => {
+    const header = req.headers["authorization"] || "";
+    const token  = header.startsWith("Bearer ") ? header.slice(7) : null;
+
+    if (!token) {
+      return res.status(401).json({ error: "authentication_required" });
+    }
+
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+
+      if (roles.length && !roles.includes(decoded.role)) {
+        return res.status(403).json({ error: "insufficient_permissions", required: roles });
+      }
+
+      next();
+    } catch {
+      return res.status(401).json({ error: "token_invalid_or_expired" });
+    }
+  };
+}
+
+/* expose globally so other extensions can use it */
+global.requireAuth = requireAuth;
+
+/* -------------------------------------------------------
+   EXTENSION REGISTER
+------------------------------------------------------- */
+
+module.exports.register = async function (capabilities) {
+  const { router, logger } = capabilities;
+
+  logger.info("Auth Extension booting");
+
+  /* -------------------------------------------------------
+     REGISTER
+     POST /auth/register
+  ------------------------------------------------------- */
+  router.post("/auth/register", async (req, res) => {
+    try {
+      const { name, email, password, phone, role = "citizen", national_id } = req.body;
+
+      if (!name || !email || !password) {
+        return res.status(400).json({ error: "name, email, and password are required" });
+      }
+
+      const validRoles = ["patient", "citizen"];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: "self_registration_only_patient_or_citizen" });
+      }
+
+      const existing = await db.query("SELECT id FROM users WHERE email=$1", [email]);
+      if (existing.rows.length) {
+        return res.status(409).json({ error: "email_already_registered" });
+      }
+
+      const hash = await bcrypt.hash(password, 12);
+
+      const result = await db.query(
+        `INSERT INTO users(name, email, password_hash, phone, role, national_id)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, name, email, role`,
+        [name, email.toLowerCase(), hash, phone || null, role, national_id || null]
+      );
+
+      const user = result.rows[0];
+
+      /* if patient role, create patient record */
+      if (role === "patient") {
+        await db.query(
+          `INSERT INTO patients(user_id, name, phone, national_id)
+           VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+          [user.id, name, phone || null, national_id || null]
+        );
+      }
+
+      const access  = signAccess({ id: user.id, email: user.email, role: user.role, name: user.name });
+      const refresh = signRefresh(user.id);
+      await storeRefreshToken(user.id, refresh);
+
+      res.status(201).json({
+        ok: true,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+        access_token:  access,
+        refresh_token: refresh
+      });
+
+    } catch (err) {
+      logger.error("Register failed", { error: err.message });
+      res.status(500).json({ error: "registration_failed" });
+    }
+  });
+
+  /* -------------------------------------------------------
+     LOGIN
+     POST /auth/login
+  ------------------------------------------------------- */
+  router.post("/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "email_and_password_required" });
+      }
+
+      const result = await db.query(
+        "SELECT id, name, email, password_hash, role, is_active FROM users WHERE email=$1",
+        [email.toLowerCase()]
+      );
+
+      const user = result.rows[0];
+
+      if (!user) {
+        return res.status(401).json({ error: "invalid_credentials" });
+      }
+
+      if (!user.is_active) {
+        return res.status(403).json({ error: "account_disabled" });
+      }
+
+      const valid = await bcrypt.compare(password, user.password_hash);
+      if (!valid) {
+        return res.status(401).json({ error: "invalid_credentials" });
+      }
+
+      const access  = signAccess({ id: user.id, email: user.email, role: user.role, name: user.name });
+      const refresh = signRefresh(user.id);
+      await storeRefreshToken(user.id, refresh);
+
+      res.json({
+        ok: true,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+        access_token:  access,
+        refresh_token: refresh
+      });
+
+    } catch (err) {
+      logger.error("Login failed", { error: err.message });
+      res.status(500).json({ error: "login_failed" });
+    }
+  });
+
+  /* -------------------------------------------------------
+     REFRESH TOKEN
+     POST /auth/refresh
+  ------------------------------------------------------- */
+  router.post("/auth/refresh", async (req, res) => {
+    try {
+      const { refresh_token } = req.body;
+      if (!refresh_token) {
+        return res.status(400).json({ error: "refresh_token_required" });
+      }
+
+      const hash = crypto.createHash("sha256").update(refresh_token).digest("hex");
+
+      const result = await db.query(
+        `SELECT rt.user_id, u.name, u.email, u.role, u.is_active
+         FROM refresh_tokens rt
+         JOIN users u ON u.id = rt.user_id
+         WHERE rt.token_hash=$1 AND rt.expires_at > NOW()`,
+        [hash]
+      );
+
+      if (!result.rows.length) {
+        return res.status(401).json({ error: "invalid_or_expired_refresh_token" });
+      }
+
+      const user = result.rows[0];
+      if (!user.is_active) {
+        return res.status(403).json({ error: "account_disabled" });
+      }
+
+      const access = signAccess({ id: user.user_id, email: user.email, role: user.role, name: user.name });
+
+      res.json({ ok: true, access_token: access });
+
+    } catch (err) {
+      res.status(500).json({ error: "refresh_failed" });
+    }
+  });
+
+  /* -------------------------------------------------------
+     LOGOUT
+     POST /auth/logout
+  ------------------------------------------------------- */
+  router.post("/auth/logout", requireAuth(), async (req, res) => {
+    try {
+      const { refresh_token } = req.body;
+      if (refresh_token) {
+        const hash = crypto.createHash("sha256").update(refresh_token).digest("hex");
+        await db.query("DELETE FROM refresh_tokens WHERE token_hash=$1", [hash]);
+      }
+      res.json({ ok: true, message: "logged_out" });
+    } catch {
+      res.json({ ok: true });
+    }
+  });
+
+  /* -------------------------------------------------------
+     GET CURRENT USER
+     GET /auth/me
+  ------------------------------------------------------- */
+  router.get("/auth/me", requireAuth(), async (req, res) => {
+    try {
+      const result = await db.query(
+        "SELECT id, name, email, role, phone, national_id, created_at FROM users WHERE id=$1",
+        [req.user.id]
+      );
+      if (!result.rows.length) {
+        return res.status(404).json({ error: "user_not_found" });
+      }
+      res.json({ ok: true, user: result.rows[0] });
+    } catch (err) {
+      res.status(500).json({ error: "fetch_failed" });
+    }
+  });
+
+  /* -------------------------------------------------------
+     ADMIN: CREATE USER (lab_staff, doctor, admin)
+     POST /auth/users
+  ------------------------------------------------------- */
+  router.post("/auth/users", requireAuth(["admin"]), async (req, res) => {
+    try {
+      const { name, email, password, role, phone, national_id } = req.body;
+
+      if (!name || !email || !password || !role) {
+        return res.status(400).json({ error: "name, email, password, role are required" });
+      }
+
+      const validRoles = ["admin", "lab_staff", "doctor", "patient", "citizen"];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: "invalid_role" });
+      }
+
+      const existing = await db.query("SELECT id FROM users WHERE email=$1", [email]);
+      if (existing.rows.length) {
+        return res.status(409).json({ error: "email_already_exists" });
+      }
+
+      const hash = await bcrypt.hash(password, 12);
+
+      const result = await db.query(
+        `INSERT INTO users(name, email, password_hash, phone, role, national_id)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, name, email, role`,
+        [name, email.toLowerCase(), hash, phone || null, role, national_id || null]
+      );
+
+      res.status(201).json({ ok: true, user: result.rows[0] });
+
+    } catch (err) {
+      logger.error("Create user failed", { error: err.message });
+      res.status(500).json({ error: "create_failed" });
+    }
+  });
+
+  /* -------------------------------------------------------
+     ADMIN: LIST USERS
+     GET /auth/users
+  ------------------------------------------------------- */
+  router.get("/auth/users", requireAuth(["admin"]), async (req, res) => {
+    try {
+      const { role, page = 1, limit = 50 } = req.query;
+      const offset = (Number(page) - 1) * Number(limit);
+
+      let query  = "SELECT id, name, email, role, phone, national_id, is_active, created_at FROM users";
+      const params = [];
+
+      if (role) {
+        params.push(role);
+        query += ` WHERE role=$${params.length}`;
+      }
+
+      query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(Number(limit), offset);
+
+      const result = await db.query(query, params);
+      res.json({ ok: true, users: result.rows });
+
+    } catch (err) {
+      res.status(500).json({ error: "fetch_failed" });
+    }
+  });
+
+  /* -------------------------------------------------------
+     ADMIN: TOGGLE USER STATUS
+     PATCH /auth/users/:id/status
+  ------------------------------------------------------- */
+  router.patch("/auth/users/:id/status", requireAuth(["admin"]), async (req, res) => {
+    try {
+      const { is_active } = req.body;
+      await db.query(
+        "UPDATE users SET is_active=$1, updated_at=NOW() WHERE id=$2",
+        [!!is_active, req.params.id]
+      );
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "update_failed" });
+    }
+  });
+
+  logger.info("Auth Extension fully activated");
+};

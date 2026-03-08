@@ -1,20 +1,24 @@
 {
   "name": "nhop",
   "version": "1.0.0",
-"bin": {
-  "nhop": "./bin/nhop"
-},
+  "bin": {
+    "nhop": "./bin/nhop"
+  },
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start":   "node server.js",
+    "migrate": "node migrations/migrate.js",
+    "dev":     "nodemon server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.19.0"
   }
 }
