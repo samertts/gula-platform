@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Lab Alpha",
+    "city": "Baghdad",
+    "capacity": 120,
+    "status": "online"
+  },
+  {
+    "name": "Lab Beta",
+    "city": "Baghdad",
+    "capacity": 80,
+    "status": "online"
+  }
+]

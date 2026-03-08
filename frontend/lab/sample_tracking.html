@@ -1,0 +1,41 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Sample Tracking</title>
+</head>
+
+<body>
+
+<h2>Sample Tracking</h2>
+
+<input id="barcode" placeholder="scan barcode">
+
+<button onclick="track()">Track</button>
+
+<div id="result"></div>
+
+<script>
+
+function track(){
+
+let b=document.getElementById("barcode").value
+
+fetch("http://localhost:8000/sample/"+b)
+.then(r=>r.json())
+.then(d=>{
+
+document.getElementById("result").innerHTML=
+"Location:"+d.location+
+"<br>Device:"+d.device+
+"<br>Technician:"+d.tech
+
+})
+
+}
+
+</script>
+
+</body>
+</html>

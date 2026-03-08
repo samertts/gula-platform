@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reports</title>
+</head>
+
+<body>
+
+<h2>Reports</h2>
+
+<button onclick="load()">Load Reports</button>
+
+<div id="reports"></div>
+
+<script>
+
+function load(){
+
+fetch("http://localhost:8000/reports")
+.then(r=>r.json())
+.then(d=>{
+
+let html=""
+
+d.forEach(r=>{
+html+="<p>"+r+"</p>"
+})
+
+document.getElementById("reports").innerHTML=html
+
+})
+
+}
+
+</script>
+
+</body>
+</html>
