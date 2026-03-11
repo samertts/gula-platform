@@ -1,4 +1,4 @@
-name: Deploy GULA Platform
+iname: Deploy GULA Platform
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
 
       - name: Deploy to server
         run: |
-          ssh samertts@${{ secrets.SERVER_IP }} << 'EOF'
+          ssh root${{ secrets.SERVER_IP }} << 'EOF'
           cd /home/samertts/nhop-platform
           git pull origin main
           docker compose down
