@@ -1,0 +1,207 @@
+{
+  "rabbit_version": "3.12",
+  "rabbitmq_version": "3.12",
+  "product_name": "RabbitMQ",
+  "vhosts": [
+    {"name": "gula"}
+  ],
+  "users": [
+    {
+      "name": "gula",
+      "password_hash": "gula_rabbit_2024",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"],
+      "limits": {}
+    }
+  ],
+  "permissions": [
+    {
+      "user": "gula",
+      "vhost": "gula",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "gula.events",
+      "vhost": "gula",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "gula.retry",
+      "vhost": "gula",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "gula.deadletter",
+      "vhost": "gula",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "orders.events",
+      "vhost": "gula",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-dead-letter-exchange": "gula.deadletter",
+        "x-dead-letter-routing-key": "orders.dead"
+      }
+    },
+    {
+      "name": "samples.events",
+      "vhost": "gula",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-dead-letter-exchange": "gula.deadletter",
+        "x-dead-letter-routing-key": "samples.dead"
+      }
+    },
+    {
+      "name": "results.events",
+      "vhost": "gula",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-dead-letter-exchange": "gula.deadletter",
+        "x-dead-letter-routing-key": "results.dead"
+      }
+    },
+    {
+      "name": "alerts.events",
+      "vhost": "gula",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-dead-letter-exchange": "gula.deadletter",
+        "x-dead-letter-routing-key": "alerts.dead"
+      }
+    },
+    {
+      "name": "retry.queue",
+      "vhost": "gula",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 30000,
+        "x-dead-letter-exchange": "gula.events",
+        "x-dead-letter-routing-key": "retry.requeue"
+      }
+    },
+    {
+      "name": "audit.events",
+      "vhost": "gula",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 604800000
+      }
+    },
+    {
+      "name": "orders.dead",
+      "vhost": "gula",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "results.dead",
+      "vhost": "gula",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "gula.events",
+      "vhost": "gula",
+      "destination": "orders.events",
+      "destination_type": "queue",
+      "routing_key": "orders.*",
+      "arguments": {}
+    },
+    {
+      "source": "gula.events",
+      "vhost": "gula",
+      "destination": "samples.events",
+      "destination_type": "queue",
+      "routing_key": "samples.*",
+      "arguments": {}
+    },
+    {
+      "source": "gula.events",
+      "vhost": "gula",
+      "destination": "results.events",
+      "destination_type": "queue",
+      "routing_key": "results.*",
+      "arguments": {}
+    },
+    {
+      "source": "gula.events",
+      "vhost": "gula",
+      "destination": "alerts.events",
+      "destination_type": "queue",
+      "routing_key": "alerts.*",
+      "arguments": {}
+    },
+    {
+      "source": "gula.events",
+      "vhost": "gula",
+      "destination": "audit.events",
+      "destination_type": "queue",
+      "routing_key": "audit.*",
+      "arguments": {}
+    },
+    {
+      "source": "gula.deadletter",
+      "vhost": "gula",
+      "destination": "orders.dead",
+      "destination_type": "queue",
+      "routing_key": "orders.dead",
+      "arguments": {}
+    },
+    {
+      "source": "gula.deadletter",
+      "vhost": "gula",
+      "destination": "results.dead",
+      "destination_type": "queue",
+      "routing_key": "results.dead",
+      "arguments": {}
+    }
+  ],
+  "policies": [
+    {
+      "vhost": "gula",
+      "name": "ha-all",
+      "pattern": ".*",
+      "definition": {
+        "ha-mode": "all",
+        "ha-sync-mode": "automatic",
+        "message-ttl": 86400000
+      },
+      "priority": 0,
+      "apply-to": "queues"
+    }
+  ]
+}
