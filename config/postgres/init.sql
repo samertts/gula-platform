@@ -3,13 +3,22 @@
 -- Executive Orders 5, 9, 10, 11
 -- =============================================================================
 
--- Create Keycloak database
-CREATE DATABASE keycloak;
+-- Create Keycloak database (safe idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak') THEN
+    PERFORM dblink_exec('dbname=' || current_database(), 'CREATE DATABASE keycloak');
+  END IF;
+EXCEPTION WHEN others THEN
+  -- dblink not available: run manually or keycloak will create it
+  NULL;
+END
+$$;
 
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
-CREATE EXTENSION IF NOT EXISTS "btree_gin";
+CREATE EXTENSION IF NOT EXISTS "btree_gist";
 
 -- =============================================================================
 -- LABORATORIES

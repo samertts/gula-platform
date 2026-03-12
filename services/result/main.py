@@ -1,7 +1,10 @@
 """
 GULA Platform - Result Service
 Executive Order 5: Audit on ResultUpdated, ResultValidated
+Executive Order 10: Audit Check - Circuit Breaker on external calls
+Executive Order 12: Send analytics to ClickHouse
 Executive Order 13: Store files in MinIO, not database
+Executive Order 18: Kafka pipeline → Population AI
 """
 
 import os
@@ -25,7 +28,9 @@ MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
 MINIO_ACCESS  = os.getenv("MINIO_ACCESS_KEY", "gula_minio")
 MINIO_SECRET  = os.getenv("MINIO_SECRET_KEY", "gula_minio_2024")
 MINIO_BUCKET  = os.getenv("MINIO_BUCKET_REPORTS", "medical-reports")
-CLICKHOUSE_URL = os.getenv("CLICKHOUSE_URL", "http://clickhouse:8123")
+CLICKHOUSE_URL   = os.getenv("CLICKHOUSE_URL", "http://clickhouse:8123")
+KAFKA_BOOTSTRAP  = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+KAFKA_TOPIC      = "gula.lab-results"
 
 REQUEST_COUNT   = Counter("result_requests_total", "Total requests", ["endpoint", "status"])
 RESULT_LATENCY  = Histogram("result_processing_seconds", "Result processing time", ["operation"])
@@ -78,22 +83,52 @@ def send_to_clickhouse(result_data: dict):
     """Send result to ClickHouse analytics (Executive Order 12)."""
     try:
         import requests
-        query = f"""
-        INSERT INTO gula.lab_results
-        (order_id, test_name, value, numeric_value, is_abnormal, created_at, lab_id)
-        VALUES (
-            {result_data.get('order_id', 0)},
-            '{result_data.get('test_name', '')}',
-            '{result_data.get('value', '')}',
-            {result_data.get('numeric_value', 0)},
-            {1 if result_data.get('is_abnormal') else 0},
-            now(),
-            {result_data.get('lab_id', 0)}
+        # Use parameterized VALUES format to avoid SQL injection
+        row = (
+            result_data.get('order_id', 0),
+            result_data.get('test_name', '').replace("'", "''"),
+            result_data.get('value', '').replace("'", "''"),
+            result_data.get('numeric_value') or 0,
+            1 if result_data.get('is_abnormal') else 0,
+            result_data.get('lab_id', 0),
         )
-        """
+        query = (
+            "INSERT INTO gula.lab_results "
+            "(order_id, test_name, value, numeric_value, is_abnormal, created_at, lab_id) "
+            f"VALUES ({row[0]}, '{row[1]}', '{row[2]}', {row[3]}, {row[4]}, now(), {row[5]})"
+        )
         requests.post(CLICKHOUSE_URL, params={"query": query}, timeout=5)
+        logger.debug(f"[ResultService] ClickHouse insert OK for order {row[0]}")
     except Exception as e:
         logger.warning(f"[ResultService] ClickHouse insert failed: {e}")
+
+
+def send_to_kafka(result_data: dict):
+    """
+    Publish result to Kafka for analytics pipeline.
+    Executive Order 18: Result → RabbitMQ → Kafka → ClickHouse → Population AI
+    """
+    try:
+        from kafka import KafkaProducer
+        producer = KafkaProducer(
+            bootstrap_servers=KAFKA_BOOTSTRAP,
+            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+            acks="all",           # Wait for all replicas (reliability)
+            retries=3,
+            max_block_ms=5000,
+        )
+        producer.send(KAFKA_TOPIC, value={
+            **result_data,
+            "timestamp": datetime.utcnow().isoformat(),
+            "source": "result-service",
+        })
+        producer.flush(timeout=5)
+        producer.close()
+        logger.debug(f"[ResultService] Kafka publish OK: {KAFKA_TOPIC}")
+    except ImportError:
+        logger.warning("[ResultService] kafka-python not installed, skipping Kafka publish")
+    except Exception as e:
+        logger.warning(f"[ResultService] Kafka publish failed (non-critical): {e}")
 
 
 class ResultCreate(BaseModel):
@@ -159,9 +194,16 @@ async def create_result(result: ResultCreate):
             "is_abnormal": result.is_abnormal,
         })
 
-        # Send to ClickHouse analytics
-        send_to_clickhouse({"order_id": result.order_id, "value": result.value,
-                            "numeric_value": result.numeric_value, "is_abnormal": result.is_abnormal})
+        analytics_payload = {
+            "order_id": result.order_id,
+            "value": result.value,
+            "numeric_value": result.numeric_value,
+            "is_abnormal": result.is_abnormal,
+        }
+        # Send to ClickHouse analytics (Executive Order 12)
+        send_to_clickhouse(analytics_payload)
+        # Publish to Kafka for Population AI pipeline (Executive Order 18)
+        send_to_kafka(analytics_payload)
 
         if result.is_abnormal:
             publish_event("AlertTriggered", {

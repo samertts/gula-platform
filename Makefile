@@ -2,19 +2,34 @@
 # GULA Platform - Operations Makefile
 # =============================================================================
 
-.PHONY: help up down restart ps logs pull-ai status health
+.PHONY: help up down restart ps logs pull-ai status health test audit k8s-dev k8s-prod
 
 help:
 	@echo "GULA Platform Commands:"
-	@echo "  make up          - Start all services"
-	@echo "  make down        - Stop all services"
-	@echo "  make restart     - Restart all services (rebuild)"
-	@echo "  make ps          - Show service status"
-	@echo "  make logs        - Follow all logs"
-	@echo "  make pull-ai     - Pull llama3 model to Ollama"
-	@echo "  make health      - Check all service health"
-	@echo "  make backup      - Run manual database backup"
-	@echo "  make status      - Show platform status"
+	@echo ""
+	@echo "  Operations:"
+	@echo "    make up          - Start all services"
+	@echo "    make down        - Stop all services"
+	@echo "    make restart     - Restart all services (rebuild)"
+	@echo "    make ps          - Show service status"
+	@echo "    make logs        - Follow all logs"
+	@echo "    make status      - Full platform status"
+	@echo ""
+	@echo "  AI:"
+	@echo "    make pull-ai     - Pull llama3 model to Ollama"
+	@echo ""
+	@echo "  Testing:"
+	@echo "    make health      - Quick health check all services"
+	@echo "    make audit       - Run full integration test suite"
+	@echo "    make check-queues - Verify RabbitMQ queues"
+	@echo ""
+	@echo "  Maintenance:"
+	@echo "    make backup      - Manual database backup"
+	@echo "    make vault-init  - Initialize Vault secrets"
+	@echo ""
+	@echo "  Kubernetes (Order 21):"
+	@echo "    make k8s-dev     - Apply K8s dev overlay"
+	@echo "    make k8s-prod    - Apply K8s prod overlay"
 
 # Executive Order 1: System restart and verification
 up:
@@ -73,6 +88,20 @@ status:
 	@echo ""
 	@echo "=== Autonomous Manager Status ==="
 	@curl -sf http://localhost:8010/status | python3 -m json.tool || echo "Manager unavailable"
+
+# Hardening Phase: Run full integration test suite
+audit:
+	@echo "=== GULA Platform Integration Tests ==="
+	bash scripts/integration_test.sh
+
+test: audit
+
+# Kubernetes deployment (Executive Order 21)
+k8s-dev:
+	kubectl apply -k k8s/overlays/dev
+
+k8s-prod:
+	kubectl apply -k k8s/overlays/prod
 
 # Initialize Vault with GULA secrets
 vault-init:
