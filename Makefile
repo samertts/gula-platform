@@ -2,34 +2,44 @@
 # GULA Platform - Operations Makefile
 # =============================================================================
 
-.PHONY: help up down restart ps logs pull-ai status health test audit k8s-dev k8s-prod
+.PHONY: help up down restart ps logs pull-ai status health test audit k8s-dev k8s-prod chaos load-test dr-verify dr-drill pg-test linkerd-install vault-status redis-status
 
 help:
-	@echo "GULA Platform Commands:"
+	@echo "GULA Platform - Enterprise Medical Laboratory System"
 	@echo ""
 	@echo "  Operations:"
-	@echo "    make up          - Start all services"
-	@echo "    make down        - Stop all services"
-	@echo "    make restart     - Restart all services (rebuild)"
-	@echo "    make ps          - Show service status"
-	@echo "    make logs        - Follow all logs"
-	@echo "    make status      - Full platform status"
+	@echo "    make up            - Start all services"
+	@echo "    make down          - Stop all services"
+	@echo "    make restart       - Full rebuild and restart"
+	@echo "    make ps            - Service status table"
+	@echo "    make logs          - Follow all logs"
+	@echo "    make status        - Full platform status"
 	@echo ""
 	@echo "  AI:"
-	@echo "    make pull-ai     - Pull llama3 model to Ollama"
+	@echo "    make pull-ai       - Pull llama3 model to Ollama (run once)"
 	@echo ""
 	@echo "  Testing:"
-	@echo "    make health      - Quick health check all services"
-	@echo "    make audit       - Run full integration test suite"
-	@echo "    make check-queues - Verify RabbitMQ queues"
+	@echo "    make health        - Quick health check all services"
+	@echo "    make audit         - Full integration test suite (10 checks)"
+	@echo "    make chaos         - Chaos engineering tests"
+	@echo "    make load-test     - k6 load test (10k req/min)"
+	@echo "    make check-queues  - Verify RabbitMQ queues"
+	@echo ""
+	@echo "  Reliability:"
+	@echo "    make pg-test       - PostgreSQL failover test"
+	@echo "    make redis-status  - Redis Sentinel status"
+	@echo "    make vault-status  - Vault seal/unseal status"
+	@echo "    make dr-verify     - Verify latest backup is restorable"
+	@echo "    make dr-drill      - Monthly disaster recovery drill"
 	@echo ""
 	@echo "  Maintenance:"
-	@echo "    make backup      - Manual database backup"
-	@echo "    make vault-init  - Initialize Vault secrets"
+	@echo "    make backup        - Manual database backup"
+	@echo "    make vault-init    - Initialize Vault secrets"
 	@echo ""
 	@echo "  Kubernetes (Order 21):"
-	@echo "    make k8s-dev     - Apply K8s dev overlay"
-	@echo "    make k8s-prod    - Apply K8s prod overlay"
+	@echo "    make k8s-dev       - Apply K8s dev overlay"
+	@echo "    make k8s-prod      - Apply K8s prod overlay (5-8 replicas)"
+	@echo "    make linkerd-install - Install Linkerd service mesh"
 
 # Executive Order 1: System restart and verification
 up:
@@ -102,6 +112,55 @@ k8s-dev:
 
 k8s-prod:
 	kubectl apply -k k8s/overlays/prod
+
+# Chaos engineering tests
+chaos:
+	@echo "=== Chaos Engineering Tests ==="
+	bash tests/chaos/chaos_test.sh
+
+# Load testing with k6 (requires k6 installed: https://k6.io/docs/getting-started/installation/)
+load-test:
+	@echo "=== Load Test: 10k requests/min ==="
+	k6 run tests/load/gula-load-test.js
+
+# PostgreSQL failover test
+pg-test:
+	bash scripts/pg_failover.sh test
+
+# PostgreSQL replication monitoring
+pg-monitor:
+	bash scripts/pg_failover.sh monitor
+
+# Redis Sentinel status
+redis-status:
+	@echo "=== Redis HA Status ==="
+	@echo "Primary:" && redis-cli -p 6379 ping || echo "DOWN"
+	@echo "Replica:" && redis-cli -p 6380 ping || echo "DOWN"
+	@echo "Sentinel:" && redis-cli -p 26379 ping || echo "DOWN"
+	@echo ""
+	@redis-cli -p 26379 sentinel masters 2>/dev/null || echo "Sentinel not reachable"
+
+# Vault status
+vault-status:
+	@echo "=== Vault Status ==="
+	@curl -sf http://localhost:8200/v1/sys/health | python3 -m json.tool || echo "Vault not reachable"
+
+# Disaster Recovery
+dr-verify:
+	bash scripts/dr_recovery.sh verify
+
+dr-drill:
+	bash scripts/dr_recovery.sh drill
+
+# Linkerd Service Mesh install (requires kubectl and linkerd CLI)
+linkerd-install:
+	@echo "Installing Linkerd service mesh..."
+	curl -sL run.linkerd.io/install | sh
+	linkerd install --crds | kubectl apply -f -
+	linkerd install | kubectl apply -f -
+	linkerd check
+	kubectl apply -f k8s/base/mesh/linkerd.yaml
+	@echo "Linkerd installed. Run: linkerd viz install | kubectl apply -f -"
 
 # Initialize Vault with GULA secrets
 vault-init:

@@ -94,15 +94,24 @@ services:
     networks:
       - gula-net
 
+  # Redis Primary (Executive improvement: Sentinel HA replaces single node)
   redis:
     image: redis:7-alpine
     container_name: gula-redis
     restart: always
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server
+        --appendonly yes
+        --maxmemory 512mb
+        --maxmemory-policy allkeys-lru
+        --save 60 1000
+        --loglevel notice
+        --protected-mode no
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
+      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf
     networks:
       - gula-net
     healthcheck:
@@ -110,6 +119,50 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Redis Replica — read scaling + failover target
+  redis-replica:
+    image: redis:7-alpine
+    container_name: gula-redis-replica
+    restart: always
+    command: >
+      redis-server
+        --appendonly yes
+        --maxmemory 512mb
+        --maxmemory-policy allkeys-lru
+        --replicaof redis 6379
+        --replica-read-only yes
+        --protected-mode no
+    volumes:
+      - redis-replica-data:/data
+    depends_on:
+      - redis
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Sentinel — automatic failover
+  redis-sentinel:
+    image: redis:7-alpine
+    container_name: gula-redis-sentinel
+    restart: always
+    command: >
+      sh -c "echo 'sentinel monitor gula-redis redis 6379 1
+      sentinel down-after-milliseconds gula-redis 5000
+      sentinel failover-timeout gula-redis 10000
+      sentinel parallel-syncs gula-redis 1' > /tmp/sentinel.conf
+      && redis-sentinel /tmp/sentinel.conf"
+    ports:
+      - "26379:26379"
+    depends_on:
+      - redis
+      - redis-replica
+    networks:
+      - gula-net
 
   clickhouse:
     image: clickhouse/clickhouse-server:23.8
@@ -168,29 +221,47 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
     volumes:
       - zookeeper-data:/var/lib/zookeeper/data
       - zookeeper-log:/var/lib/zookeeper/log
     networks:
       - gula-net
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181 | grep imok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
+  # Kafka Broker 1 (single-node dev; use 3 brokers in production for replication.factor=3)
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: gula-kafka
     restart: always
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      # NOTE: Set to 3 in production with 3 brokers (Executive Risk: single-node replication)
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: kafka
     ports:
       - "9092:9092"
+      - "9101:9101"
     volumes:
       - kafka-data:/var/lib/kafka/data
     networks:
@@ -199,6 +270,7 @@ services:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 30s
       timeout: 10s
+      start_period: 30s
       retries: 5
 
   # ===========================================================================
@@ -246,6 +318,9 @@ services:
   # OBJECT STORAGE
   # ===========================================================================
 
+  # MinIO single-node (dev/staging)
+  # Production: use distributed mode with 4+ nodes for erasure coding
+  # Command: minio server http://minio-{1...4}/data{1...4} --console-address ":9002"
   minio:
     image: minio/minio:latest
     container_name: gula-minio
@@ -254,6 +329,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-gula_minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-gula_minio_2024}
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+      MINIO_UPDATE: "off"
     ports:
       - "9003:9000"
       - "9002:9002"
@@ -266,6 +343,25 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+
+  # Node Exporter — host metrics for Prometheus
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: gula-node-exporter
+    restart: always
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "9100:9100"
+    networks:
+      - gula-net
 
   # ===========================================================================
   # SECURITY & IDENTITY
@@ -299,9 +395,15 @@ services:
     restart: always
     cap_add:
       - IPC_LOCK
+    # Dev mode for local development (auto-unsealed, in-memory)
+    # Production: replace 'server -dev' with 'server' and configure auto-unseal
+    # via AWS KMS, GCP KMS, or Transit seal (see config/vault/vault-prod.hcl)
+    command: vault server -dev -dev-root-token-id=${VAULT_TOKEN:-gula_vault_root_token}
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-gula_vault_root_token}
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://0.0.0.0:8200
+      VAULT_LOG_LEVEL: warn
     ports:
       - "8200:8200"
     volumes:
@@ -309,6 +411,12 @@ services:
       - ./config/vault/vault.hcl:/vault/config/vault.hcl
     networks:
       - gula-net
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # ===========================================================================
   # MONITORING & OBSERVABILITY
@@ -594,6 +702,8 @@ volumes:
   pgdata-replica:
     driver: local
   redis-data:
+    driver: local
+  redis-replica-data:
     driver: local
   rabbitmq-data:
     driver: local
