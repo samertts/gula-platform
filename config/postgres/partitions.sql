@@ -48,6 +48,22 @@ $$ LANGUAGE plpgsql;
 SELECT ensure_future_partitions();
 
 -- =============================================================================
--- pg_hba.conf for replication
+-- Auto-partition maintenance: cron job or pg_cron recommended in production
+-- Example pg_cron entry:
+--   SELECT cron.schedule('0 0 1 * *', 'SELECT ensure_future_partitions()');
 -- =============================================================================
--- (This is handled by the pg_hba.conf file mount in docker-compose)
+
+-- Default/catch-all partition for any data beyond pre-created partitions
+-- This prevents insert failures when monthly partitions don't exist yet
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE relname = 'test_results_default'
+  ) THEN
+    EXECUTE 'CREATE TABLE test_results_default PARTITION OF test_results DEFAULT';
+    RAISE NOTICE 'Created default partition: test_results_default';
+  END IF;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Default partition may already exist: %', SQLERRM;
+END
+$$;
