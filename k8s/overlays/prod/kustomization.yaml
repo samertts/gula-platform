@@ -1,0 +1,35 @@
+# =============================================================================
+# Production overlay - Blue/Green deployment (Executive Order 22)
+# Usage: kubectl apply -k k8s/overlays/prod
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+bases:
+  - ../../base
+
+# Scale up for production (1000+ labs)
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 5
+    target:
+      kind: Deployment
+      name: patient-service
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 8
+    target:
+      kind: Deployment
+      name: result-service
+
+images:
+  - name: gula-platform/patient-service
+    newTag: "prod-latest"
+  - name: gula-platform/result-service
+    newTag: "prod-latest"
+
+commonLabels:
+  environment: production

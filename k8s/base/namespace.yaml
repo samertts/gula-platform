@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gula-platform
+  labels:
+    name: gula-platform
+    environment: production
