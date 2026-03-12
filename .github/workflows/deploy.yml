@@ -1,4 +1,4 @@
-iname: Deploy GULA Platform
+name: Deploy GULA Platform
 
 on:
   push:
@@ -22,9 +22,32 @@ jobs:
 
       - name: Deploy to server
         run: |
-          ssh root${{ secrets.SERVER_IP }} << 'EOF'
-          cd /home/samertts/nhop-platform
+          ssh samertts@${{ secrets.SERVER_IP }} << 'EOF'
+
+          echo "Starting deployment..."
+
+          cd /home/samertts/projects/gula-platform
+
+          echo "Pulling latest code..."
           git pull origin main
+
+          echo "Stopping old containers..."
           docker compose down
-          docker compose up -d --build
+
+          echo "Building new containers..."
+          docker compose build
+
+          echo "Starting services..."
+          docker compose up -d
+
+          echo "Cleaning unused images..."
+          docker image prune -f
+
+          echo "Deployment finished."
+
           EOF
+
+      - name: Health Check
+        run: |
+          echo "Checking platform status..."
+          curl -I http://${{ secrets.SERVER_IP }} || exit 1
