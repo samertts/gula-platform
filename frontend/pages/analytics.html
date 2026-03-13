@@ -1,0 +1,35 @@
+
+<h1 style="margin-bottom:20px;">Analytics</h1>
+
+<canvas id="labChart"></canvas>
+
+<script>
+
+const ctx=document.getElementById('labChart');
+
+new Chart(ctx,{
+
+type:'bar',
+
+data:{
+
+labels:['CBC','Glucose','Lipid','Creatinine'],
+
+datasets:[{
+
+label:'Tests',
+
+data:[120,90,70,40],
+
+backgroundColor:'#6366f1'
+
+}]
+
+},
+
+options:{responsive:true}
+
+})
+
+</script>
+
