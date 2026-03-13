@@ -1,5 +1,10 @@
 venv/
 __pycache__/
+*.pyc
+*.pyo
+*.log
 .env
 node_modules/
-system_logs.json
+dist/
+build/
+.DS_Store
