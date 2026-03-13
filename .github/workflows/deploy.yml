@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -23,13 +22,14 @@ jobs:
 
       - name: Deploy to server
         run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
 
-          echo "===== GULA DEPLOYMENT START ====="
+          echo "Starting deployment..."
 
           cd /home/samertts/gula-platform
 
           echo "Pulling latest code..."
+          git reset --hard
           git pull origin main
 
           echo "Stopping old containers..."
@@ -38,17 +38,17 @@ jobs:
           echo "Building containers..."
           docker compose build
 
-          echo "Starting containers..."
+          echo "Starting services..."
           docker compose up -d
 
-          echo "Cleaning unused docker images..."
+          echo "Cleaning unused images..."
           docker image prune -f
 
-          echo "===== DEPLOYMENT FINISHED ====="
+          echo "Deployment finished."
 
           EOF
 
       - name: Health Check
         run: |
           echo "Checking platform status..."
-          curl -I https://${{ secrets.SERVER_HOST }} || exit 1
+          curl -I http://${{ secrets.SERVER_HOST }} || exit 1
