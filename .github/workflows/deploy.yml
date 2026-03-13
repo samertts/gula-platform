@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -18,15 +19,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to server
         run: |
-          ssh samertts@${{ secrets.SERVER_IP }} << 'EOF'
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
 
-          echo "Starting deployment..."
+          echo "===== GULA DEPLOYMENT START ====="
 
-          cd /home/samertts/projects/gula-platform
+          cd /home/samertts/gula-platform
 
           echo "Pulling latest code..."
           git pull origin main
@@ -34,20 +35,20 @@ jobs:
           echo "Stopping old containers..."
           docker compose down
 
-          echo "Building new containers..."
+          echo "Building containers..."
           docker compose build
 
-          echo "Starting services..."
+          echo "Starting containers..."
           docker compose up -d
 
-          echo "Cleaning unused images..."
+          echo "Cleaning unused docker images..."
           docker image prune -f
 
-          echo "Deployment finished."
+          echo "===== DEPLOYMENT FINISHED ====="
 
           EOF
 
       - name: Health Check
         run: |
           echo "Checking platform status..."
-          curl -I http://${{ secrets.SERVER_IP }} || exit 1
+          curl -I https://${{ secrets.SERVER_HOST }} || exit 1
