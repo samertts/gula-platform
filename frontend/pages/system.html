@@ -1,0 +1,31 @@
+<h2 class="text-2xl mb-6">
+System Status
+</h2>
+
+<div id="system"></div>
+
+<script>
+
+async function load(){
+
+let s=await api("/system")
+
+system.innerHTML=`
+
+<div class="bg-gray-800 p-6 rounded">
+
+CPU: ${s.cpu}%<br>
+RAM: ${s.ram}%<br>
+Services: ${s.services}
+
+</div>
+
+`
+
+}
+
+setInterval(load,3000)
+
+load()
+
+</script>

@@ -1,0 +1,38 @@
+<h2 class="text-2xl mb-6">
+Check Your Lab Result
+</h2>
+
+<input id="code"
+class="w-full p-3 bg-gray-800 rounded mb-4"
+placeholder="Enter Result Code">
+
+<button onclick="check()"
+class="bg-green-600 px-6 py-2 rounded">
+
+Check Result
+
+</button>
+
+<div id="result"></div>
+
+<script>
+
+async function check(){
+
+let code=document.getElementById("code").value
+
+let r=await api("/public/result/"+code)
+
+result.innerHTML=`
+
+<div class="bg-gray-800 p-6 mt-6 rounded">
+
+${JSON.stringify(r)}
+
+</div>
+
+`
+
+}
+
+</script>

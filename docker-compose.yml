@@ -290,7 +290,7 @@ services:
     deploy:
       resources:
         reservations:
-          memory: 4G
+          memory: 1G
 
   ai-service:
     build:
@@ -738,3 +738,13 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/16
+
+  gula-backend:
+
+    build: ./backend
+
+    container_name: gula-backend
+
+    ports:
+      - "8000:8000"
+
