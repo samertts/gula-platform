@@ -5,63 +5,63 @@
 <head>
 
 <meta charset="UTF-8">
-<title>GULA</title>
-
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<link rel="stylesheet" href="/css/pro.css">
+<title>GULA Platform</title>
 
+<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 
-<body>
+<body class="bg-gray-100">
 
-<div class="sidebar">
+<div class="flex min-h-screen">
 
-<div class="logo">
+<div class="w-64 bg-gray-900 text-white p-6">
+
+<h1 class="text-xl font-bold mb-6">
 GULA
+</h1>
+
+<nav class="space-y-2">
+
+<button onclick="GULA.loadPage('dashboard')" class="block w-full text-left px-3 py-2 hover:bg-gray-700 rounded">Dashboard</button>
+
+<button onclick="GULA.loadPage('patients')" class="block w-full text-left px-3 py-2 hover:bg-gray-700 rounded">Patients</button>
+
+<button onclick="GULA.loadPage('results')" class="block w-full text-left px-3 py-2 hover:bg-gray-700 rounded">Results</button>
+
+<button onclick="GULA.loadPage('analytics')" class="block w-full text-left px-3 py-2 hover:bg-gray-700 rounded">Analytics</button>
+
+</nav>
+
 </div>
 
-<div class="nav" onclick="loadPage('dashboard')">Dashboard</div>
-<div class="nav" onclick="loadPage('worklist')">Worklist</div>
-<div class="nav" onclick="loadPage('patients')">Patients</div>
-<div class="nav" onclick="loadPage('results')">Results</div>
-<div class="nav" onclick="loadPage('analytics')">Analytics</div>
+<div class="flex-1 p-8">
 
-</div>
-
-<div class="content">
-
-<div id="content"></div>
-
-</div>
-
-<div class="sam">
-
-<div class="sam-head">
-سامر
-</div>
-
-<div class="sam-body">
-
-أنا سامر. سأرشدك أثناء استخدام منصة GULA.
+<div id="gula-content"></div>
 
 </div>
 
 </div>
 
-<div class="mobile-nav">
+<div class="fixed bottom-4 right-4 bg-white shadow rounded p-4 w-64">
 
-<div onclick="loadPage('dashboard')">Dashboard</div>
-<div onclick="loadPage('worklist')">Worklist</div>
-<div onclick="loadPage('patients')">Patients</div>
-<div onclick="loadPage('results')">Results</div>
+<b>سامر</b><br>
+
+أنا هنا لمساعدتك أثناء استخدام منصة GULA.
 
 </div>
 
-<script src="/js/ui.js"></script>
+<script src="/js/gula-core.js"></script>
+
+<script>
+
+GULA.loadPage("dashboard")
+
+</script>
 
 </body>
-
 </html>
 

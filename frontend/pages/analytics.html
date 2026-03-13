@@ -1,11 +1,15 @@
 
-<h1 style="margin-bottom:20px;">Analytics</h1>
+<h1 class="text-2xl font-bold mb-6">
 
-<canvas id="labChart"></canvas>
+Analytics
+
+</h1>
+
+<canvas id="chart"></canvas>
 
 <script>
 
-const ctx=document.getElementById('labChart');
+const ctx=document.getElementById('chart')
 
 new Chart(ctx,{
 
@@ -19,15 +23,11 @@ datasets:[{
 
 label:'Tests',
 
-data:[120,90,70,40],
-
-backgroundColor:'#6366f1'
+data:[120,90,70,40]
 
 }]
 
-},
-
-options:{responsive:true}
+}
 
 })
 
