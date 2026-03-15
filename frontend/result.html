@@ -123,7 +123,7 @@ async function loadResult() {
   }
 
   try {
-    const res = await fetch(`/r/${token}`);
+    const res = await fetch(`/api/r/${token}`);
     if (!res.ok) {
       showError();
       return;
@@ -173,7 +173,7 @@ function renderResult(data) {
   // Set PDF download link and medical QR
   const path = window.location.pathname;
   const token = path.split('/r/')[1];
-  document.getElementById('pdf-download').href = `${path}/pdf`;
+  document.getElementById('pdf-download').href = `/api/r/${token}/pdf`;
   document.getElementById('medical-qr').src = `/qr-medical/${token}`;
 
   const list = document.getElementById('results-list');

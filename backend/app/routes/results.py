@@ -190,28 +190,37 @@ def create_order(
     db.refresh(order)
 
     # Build WhatsApp auto-send link
+    # Build sharing links (WhatsApp + SMS fallback)
+    import urllib.parse
     whatsapp_link = None
+    sms_link = None
     if patient and patient.phone:
         phone_clean = patient.phone.replace("+", "").replace("-", "").replace(" ", "")
         # Add Iraq country code if not present
         if phone_clean.startswith("07"):
             phone_clean = "964" + phone_clean[1:]
         first_link = result_links[0]["link"] if result_links else ""
+        result_url = f"{BASE_URL}{first_link}"
         msg = (
             f"*GULA Lab Result*\n"
             f"Patient: {patient.full_name}\n"
             f"Tests: {len(result_links)} result(s)\n"
-            f"View: {BASE_URL}{first_link}\n\n"
+            f"View: {result_url}\n\n"
             f"_Powered by GULA Platform_"
         )
-        import urllib.parse
+        sms_msg = (
+            f"GULA Lab Result - {patient.full_name}\n"
+            f"View your results: {result_url}"
+        )
         whatsapp_link = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg)}"
+        sms_link = f"sms:{patient.phone}?body={urllib.parse.quote(sms_msg)}"
 
     return {
         "message": "Order created with results",
         "order": order_to_dict(order),
         "result_links": result_links,
         "whatsapp_link": whatsapp_link,
+        "sms_link": sms_link,
     }
 
 
@@ -252,7 +261,7 @@ def get_order(
 
 # ===== PUBLIC RESULT PAGE (THE KILLER FEATURE) =====
 
-@router.get("/r/{token}")
+@router.get("/api/r/{token}")
 def get_public_result(token: str, request: Request, db: Session = Depends(get_db)):
     """Public result page - accessible without authentication. Rate limited."""
     # Rate limit public access
@@ -336,7 +345,7 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
 
 # ===== PDF DOWNLOAD =====
 
-@router.get("/r/{token}/pdf")
+@router.get("/api/r/{token}/pdf")
 def download_result_pdf(token: str, request: Request, db: Session = Depends(get_db)):
     """Download result as a professional PDF report with QR code."""
     from ..services.pdf_report import generate_result_pdf
