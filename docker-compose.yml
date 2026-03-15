@@ -294,8 +294,8 @@ services:
 
   ai-service:
     build:
-      context: ./services/ai
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: ai/Dockerfile
     container_name: gula-ai-service
     restart: always
     environment:
@@ -513,20 +513,17 @@ services:
       - ./config/nginx/conf.d:/etc/nginx/conf.d
       - ./config/ssl:/etc/nginx/ssl
     depends_on:
-      - lab-service
-      - patient-service
-      - order-service
-      - result-service
-      - sample-service
-      - gula-backend
-      - frontend
+      gula-backend:
+        condition: service_started
+      frontend:
+        condition: service_started
     networks:
       - gula-net
 
   lab-service:
     build:
-      context: ./services/lab
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: lab/Dockerfile
     container_name: gula-lab-service
     restart: always
     environment:
@@ -552,8 +549,8 @@ services:
 
   patient-service:
     build:
-      context: ./services/patient
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: patient/Dockerfile
     container_name: gula-patient-service
     restart: always
     environment:
@@ -574,8 +571,8 @@ services:
 
   order-service:
     build:
-      context: ./services/order
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: order/Dockerfile
     container_name: gula-order-service
     restart: always
     environment:
@@ -596,8 +593,8 @@ services:
 
   result-service:
     build:
-      context: ./services/result
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: result/Dockerfile
     container_name: gula-result-service
     restart: always
     environment:
@@ -622,8 +619,8 @@ services:
 
   sample-service:
     build:
-      context: ./services/sample
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: sample/Dockerfile
     container_name: gula-sample-service
     restart: always
     environment:
@@ -644,8 +641,8 @@ services:
 
   notification-service:
     build:
-      context: ./services/notification
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: notification/Dockerfile
     container_name: gula-notification-service
     restart: always
     environment:
@@ -663,8 +660,8 @@ services:
 
   autonomous-manager:
     build:
-      context: ./services/autonomous_manager
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: autonomous_manager/Dockerfile
     container_name: gula-autonomous-manager
     restart: always
     environment:

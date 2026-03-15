@@ -4,7 +4,8 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir fastapi uvicorn[standard] asyncpg pika prometheus-client pydantic
 
-COPY main.py .
+COPY patient/main.py .
+COPY shared /app/shared
 
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser

@@ -4,7 +4,8 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir fastapi uvicorn[standard] asyncpg pika prometheus-client pydantic minio python-multipart requests kafka-python
 
-COPY main.py .
+COPY result/main.py .
+COPY shared /app/shared
 
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
