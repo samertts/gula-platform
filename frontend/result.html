@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GULA - نتيجة التحليل</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:100vh;padding:20px}
+.container{max-width:700px;margin:0 auto}
+.logo{text-align:center;margin-bottom:24px}
+.logo h1{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#22d3ee,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{color:#64748b;font-size:.8rem;margin-top:4px}
+.card{background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;margin-bottom:16px}
+.card-title{font-size:.85rem;color:#64748b;margin-bottom:12px;font-weight:600}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.info-item label{font-size:.75rem;color:#64748b;display:block}
+.info-item span{font-size:.95rem;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:right;padding:10px;color:#64748b;font-size:.8rem;border-bottom:1px solid #1e293b}
+td{padding:10px;border-bottom:1px solid #1e293b40}
+.normal{color:#34d399}
+.high{color:#f87171;font-weight:700}
+.low{color:#fbbf24}
+.range{color:#64748b;font-size:.8rem}
+.actions{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;border:none;font-size:.88rem;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit}
+.btn-wa{background:#25d366;color:#fff}
+.btn-pdf{background:#818cf8;color:#fff}
+.btn-copy{background:transparent;border:1px solid #1e293b;color:#94a3b8}
+.disclaimer{text-align:center;font-size:.72rem;color:#475569;margin-top:24px;line-height:1.6}
+.qr{text-align:center;margin:16px 0}
+.qr img{width:120px;height:120px;border-radius:8px;background:#fff;padding:4px}
+.spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#818cf8;border-radius:50%;animation:spin .7s linear infinite;margin:60px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{text-align:center;padding:60px 20px;color:#f87171}
+.expired{text-align:center;padding:60px 20px}
+.expired h2{color:#fbbf24;margin-bottom:8px}
+.expired p{color:#64748b}
+.lab-brand{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #1e293b}
+.lab-brand .lab-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#818cf8,#22d3ee);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+.lab-brand .lab-name{font-size:1.1rem;font-weight:700}
+.lab-brand .lab-city{font-size:.8rem;color:#64748b}
+@media print{body{background:#fff;color:#000}
+.card{border:1px solid #ddd;box-shadow:none}
+.actions,.disclaimer{display:none}
+th,td{border-bottom:1px solid #ddd}
+.normal{color:#059669}.high{color:#dc2626}.low{color:#d97706}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo"><h1>GULA</h1><p>نتيجة تحليل مختبري</p></div>
+  <div id="content"><div class="spinner"></div></div>
+</div>
+<script>
+const token = window.location.pathname.split('/r/')[1]?.split('/')[0] || window.location.pathname.split('/').pop();
+
+async function loadResult() {
+  if (!token) { showError('رابط غير صالح'); return; }
+  try {
+    const res = await fetch('/api/results/api/r/' + token);
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 410 || (data.detail && data.detail.includes('انتهت'))) {
+        document.getElementById('content').innerHTML = `<div class="expired"><h2>انتهت صلاحية الرابط</h2><p>يرجى مراجعة المختبر للحصول على رابط جديد</p></div>`;
+        return;
+      }
+      throw new Error(data.detail || 'خطأ');
+    }
+    renderResult(data);
+  } catch (e) { showError(e.message); }
+}
+
+function showError(msg) {
+  document.getElementById('content').innerHTML = `<div class="error-msg"><p>${msg}</p></div>`;
+}
+
+function flag(val, low, high) {
+  const v = parseFloat(val);
+  if (isNaN(v) || !low || !high) return '';
+  if (v < parseFloat(low)) return '<span class="low">&#x25BC; منخفض</span>';
+  if (v > parseFloat(high)) return '<span class="high">&#x25B2; مرتفع</span>';
+  return '<span class="normal">&#10003; طبيعي</span>';
+}
+
+function renderResult(d) {
+  const date = new Date(d.order_date).toLocaleDateString('ar-IQ', {year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="lab-brand">
+        <div class="lab-avatar">${(d.lab?.name || 'م')[0]}</div>
+        <div><div class="lab-name">${d.lab?.name || 'المختبر'}</div><div class="lab-city">${d.lab?.city || ''}</div></div>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><label>المريض</label><span>${d.patient?.name || '-'}</span></div>
+        <div class="info-item"><label>التاريخ</label><span>${date}</span></div>
+        <div class="info-item"><label>الطبيب</label><span>${d.doctor_name || '-'}</span></div>
+        <div class="info-item"><label>المعرف الصحي</label><span style="color:#22d3ee">${d.patient?.health_id || '-'}</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">نتائج التحاليل</div>
+      <table>
+        <thead><tr><th>التحليل</th><th>النتيجة</th><th>الوحدة</th><th>المدى الطبيعي</th><th>التقييم</th></tr></thead>
+        <tbody>${(d.results || []).map(r => `<tr>
+          <td>${r.test_name}</td>
+          <td><strong>${r.value || r.value_text || '-'}</strong></td>
+          <td>${r.unit || ''}</td>
+          <td class="range">${r.normal_range_low || '?'} - ${r.normal_range_high || '?'}</td>
+          <td>${flag(r.value, r.normal_range_low, r.normal_range_high)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="qr"><img src="/api/qr/${token}" alt="QR" onerror="this.style.display='none'"></div>
+    <div class="actions">
+      ${d.whatsapp_link ? `<a href="${d.whatsapp_link}" target="_blank" class="btn btn-wa">مشاركة واتساب</a>` : ''}
+      <a href="/api/results/api/r/${token}/pdf" target="_blank" class="btn btn-pdf">تحميل PDF</a>
+      <button class="btn btn-copy" onclick="navigator.clipboard.writeText(window.location.href);this.textContent='تم النسخ!'">نسخ الرابط</button>
+      <button class="btn btn-copy" onclick="window.print()">طباعة</button>
+    </div>
+    <div class="disclaimer">${d.disclaimer || 'هذه النتائج للاطلاع فقط ولا تغني عن استشارة الطبيب'}</div>
+  `;
+}
+
+loadResult();
+</script>
+</body>
+</html>

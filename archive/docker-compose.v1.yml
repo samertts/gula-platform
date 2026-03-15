@@ -1,0 +1,50 @@
+version: "3.8"
+
+# GULA v1 - Production deployment
+# Usage: docker-compose -f docker-compose.v1.yml up --build -d
+#
+# IMPORTANT: Before deploying, set these environment variables:
+#   export GULA_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(64))")
+#   export GULA_DB_PASSWORD=<strong-password>
+#   export GULA_BASE_URL=https://gula-platform.org
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gula
+      POSTGRES_PASSWORD: ${GULA_DB_PASSWORD:-postgres}
+      POSTGRES_DB: gula
+    volumes:
+      - gula_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gula"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://gula:${GULA_DB_PASSWORD:-postgres}@db:5432/gula
+      SECRET_KEY: ${GULA_SECRET_KEY:-change-me-in-production}
+      BASE_URL: ${GULA_BASE_URL:-https://gula-platform.org}
+      FRONTEND_DIR: /app/static_frontend
+      GULA_ADMIN_EMAIL: ${GULA_ADMIN_EMAIL:-admin@gula-platform.org}
+      GULA_ADMIN_PASSWORD: ${GULA_ADMIN_PASSWORD:-gula-admin-2024}
+      GULA_ADMIN_NAME: ${GULA_ADMIN_NAME:-GULA Admin}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app/static_frontend
+
+volumes:
+  gula_db_data:

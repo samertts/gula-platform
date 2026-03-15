@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "=============================="
-echo "LAB PLATFORM DIAGNOSTIC"
+echo "GULA PLATFORM DIAGNOSTIC"
 echo "=============================="
 
 echo ""

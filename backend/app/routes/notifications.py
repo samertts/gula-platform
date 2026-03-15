@@ -1,11 +1,111 @@
+"""Notification endpoints - WhatsApp and SMS result delivery."""
+import urllib.parse
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from typing import Optional
 
-from fastapi import APIRouter
+from ..database import get_db
+from ..models.lab_result import LabResult, hash_token
+from ..models.lab_order import LabOrder
+from ..models.patient import Patient
+from ..models.lab import Lab
+from ..models.lab_user import LabUser
+from ..security.dependencies import get_current_user
+from ..config import BASE_URL
 
-router=APIRouter()
+router = APIRouter(prefix="/notify", tags=["notifications"])
 
-@router.post("/notify")
 
-def notify():
+class NotifyRequest(BaseModel):
+    order_id: int
+    channel: str = "whatsapp"  # whatsapp, sms
 
-    return {"status":"sent"}
 
+@router.post("/send")
+def send_result_notification(
+    data: NotifyRequest,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate notification link to send results to patient."""
+    order = db.query(LabOrder).filter(
+        LabOrder.id == data.order_id,
+        LabOrder.lab_id == current_user.lab_id,
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
+    if not patient or not patient.phone:
+        raise HTTPException(status_code=400, detail="Patient has no phone number")
+
+    lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
+
+    # Get first result token for the link
+    result = db.query(LabResult).filter(LabResult.order_id == order.id).first()
+    if not result:
+        raise HTTPException(status_code=400, detail="Order has no results")
+
+    result_url = f"{BASE_URL}/r/{result.token}"
+    results_count = db.query(LabResult).filter(LabResult.order_id == order.id).count()
+
+    # Build phone number
+    phone_clean = patient.phone.replace("+", "").replace("-", "").replace(" ", "")
+    if phone_clean.startswith("07"):
+        phone_clean = "964" + phone_clean[1:]
+
+    lab_name = lab.name if lab else "GULA Lab"
+
+    if data.channel == "whatsapp":
+        msg = (
+            f"*{lab_name} - Lab Result*\n\n"
+            f"Patient: {patient.full_name}\n"
+            f"Tests: {results_count} result(s)\n\n"
+            f"View results: {result_url}\n\n"
+            f"_Powered by GULA Platform_"
+        )
+        link = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg)}"
+    else:
+        msg = f"{lab_name} - Your lab results are ready. View: {result_url}"
+        link = f"sms:{patient.phone}?body={urllib.parse.quote(msg)}"
+
+    return {
+        "channel": data.channel,
+        "link": link,
+        "patient_phone": patient.phone,
+        "message_preview": msg[:200],
+    }
+
+
+@router.get("/history/{order_id}")
+def notification_status(
+    order_id: int,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Check if results for an order have been viewed."""
+    from ..models.audit_log import AuditLog
+
+    order = db.query(LabOrder).filter(
+        LabOrder.id == order_id,
+        LabOrder.lab_id == current_user.lab_id,
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Check audit logs for result views
+    views = db.query(AuditLog).filter(
+        AuditLog.action == "view_result",
+        AuditLog.resource_type == "lab_result",
+    ).all()
+
+    result_ids = [r.id for r in db.query(LabResult).filter(LabResult.order_id == order_id).all()]
+    relevant_views = [v for v in views if v.resource_id in result_ids]
+
+    return {
+        "order_id": order_id,
+        "total_views": len(relevant_views),
+        "first_viewed": relevant_views[0].created_at.isoformat() if relevant_views else None,
+        "last_viewed": relevant_views[-1].created_at.isoformat() if relevant_views else None,
+    }

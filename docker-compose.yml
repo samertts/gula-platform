@@ -1,43 +1,28 @@
-version: "3.9"
-
 # =============================================================================
-# GULA PLATFORM - Enterprise Medical Laboratory System
-# Full Infrastructure Stack
+# GULA PLATFORM - MVP Configuration
+# Minimal services for production launch
+# For full infrastructure: docker compose -f docker-compose.full.yml up
 # =============================================================================
 
 services:
 
-  # ===========================================================================
-  # DATABASES
-  # ===========================================================================
+  # ---------------------------------------------------------------------------
+  # DATABASE
+  # ---------------------------------------------------------------------------
 
-  postgres-primary:
+  postgres:
     image: postgres:14
-    container_name: gula-postgres-primary
+    container_name: gula-postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gula_secure_2024}
       POSTGRES_DB: labdb
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
-    command: >
-      postgres
-        -c wal_level=replica
-        -c hot_standby=on
-        -c max_wal_senders=3
-        -c max_replication_slots=3
-        -c hot_standby_feedback=on
-        -c shared_preload_libraries=pg_stat_statements
-        -c log_statement=all
-        -c log_duration=on
     ports:
       - "5432:5432"
     volumes:
-      - pgdata-primary:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
       - ./config/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./config/postgres/audit.sql:/docker-entrypoint-initdb.d/02-audit.sql
-      - ./config/postgres/partitions.sql:/docker-entrypoint-initdb.d/03-partitions.sql
-      - ./config/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
     networks:
       - gula-net
     healthcheck:
@@ -46,55 +31,10 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres-replica:
-    image: postgres:14
-    container_name: gula-postgres-replica
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gula_secure_2024}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-gula_secure_2024}
-      POSTGRES_DB: labdb
-      PGDATA: /var/lib/postgresql/data
-    command: >
-      bash -c "
-        until pg_isready -h postgres-primary -U postgres; do sleep 2; done;
-        if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
-          pg_basebackup -h postgres-primary -U postgres -D /var/lib/postgresql/data -Fp -Xs -P -R;
-        fi;
-        postgres -c hot_standby=on -c primary_conninfo='host=postgres-primary port=5432 user=postgres password=${POSTGRES_PASSWORD:-gula_secure_2024}'
-      "
-    ports:
-      - "5433:5432"
-    volumes:
-      - pgdata-replica:/var/lib/postgresql/data
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-    networks:
-      - gula-net
+  # ---------------------------------------------------------------------------
+  # CACHE
+  # ---------------------------------------------------------------------------
 
-  pgbouncer:
-    image: edoburu/pgbouncer:latest
-    container_name: gula-pgbouncer
-    restart: always
-    environment:
-      DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@postgres-primary:5432/labdb"
-      POOL_MODE: transaction
-      MAX_CLIENT_CONN: 1000
-      DEFAULT_POOL_SIZE: 50
-      MIN_POOL_SIZE: 10
-      RESERVE_POOL_SIZE: 5
-      SERVER_TLS_SSLMODE: disable
-    ports:
-      - "6432:5432"
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-    networks:
-      - gula-net
-
-  # Redis Primary (Executive improvement: Sentinel HA replaces single node)
   redis:
     image: redis:7-alpine
     container_name: gula-redis
@@ -102,583 +42,47 @@ services:
     command: >
       redis-server
         --appendonly yes
-        --maxmemory 512mb
+        --maxmemory 256mb
         --maxmemory-policy allkeys-lru
-        --save 60 1000
-        --loglevel notice
-        --protected-mode no
+        --requirepass ${REDIS_PASSWORD:-gula_redis_2024}
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
-      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf
     networks:
       - gula-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-gula_redis_2024}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Redis Replica — read scaling + failover target
-  redis-replica:
-    image: redis:7-alpine
-    container_name: gula-redis-replica
+  # ---------------------------------------------------------------------------
+  # BACKEND API
+  # ---------------------------------------------------------------------------
+
+  gula-backend:
+    build: ./backend
+    container_name: gula-backend
     restart: always
-    command: >
-      redis-server
-        --appendonly yes
-        --maxmemory 512mb
-        --maxmemory-policy allkeys-lru
-        --replicaof redis 6379
-        --replica-read-only yes
-        --protected-mode no
-    volumes:
-      - redis-replica-data:/data
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@postgres:5432/labdb
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-in-production}
+    ports:
+      - "8000:8000"
     depends_on:
-      - redis
-    networks:
-      - gula-net
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis Sentinel — automatic failover
-  redis-sentinel:
-    image: redis:7-alpine
-    container_name: gula-redis-sentinel
-    restart: always
-    command: >
-      sh -c "echo 'sentinel monitor gula-redis redis 6379 1
-      sentinel down-after-milliseconds gula-redis 5000
-      sentinel failover-timeout gula-redis 10000
-      sentinel parallel-syncs gula-redis 1' > /tmp/sentinel.conf
-      && redis-sentinel /tmp/sentinel.conf"
-    ports:
-      - "26379:26379"
-    depends_on:
-      - redis
-      - redis-replica
-    networks:
-      - gula-net
-
-  clickhouse:
-    image: clickhouse/clickhouse-server:23.8
-    container_name: gula-clickhouse
-    restart: always
-    ports:
-      - "8123:8123"
-      - "9001:9000"
-    volumes:
-      - clickhouse-data:/var/lib/clickhouse
-      - ./config/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-    networks:
-      - gula-net
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ===========================================================================
-  # MESSAGING & STREAMING
-  # ===========================================================================
-
-  rabbitmq:
-    image: rabbitmq:3.12-management
-    container_name: gula-rabbitmq
-    restart: always
-    hostname: gula-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-gula}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-gula_rabbit_2024}
-      RABBITMQ_DEFAULT_VHOST: gula
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-      - ./config/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json
-      - ./config/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-    networks:
-      - gula-net
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: gula-zookeeper
-    restart: always
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-      ZOOKEEPER_SYNC_LIMIT: 2
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-log:/var/lib/zookeeper/log
-    networks:
-      - gula-net
-    healthcheck:
-      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181 | grep imok"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-
-  # Kafka Broker 1 (single-node dev; use 3 brokers in production for replication.factor=3)
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: gula-kafka
-    restart: always
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      # NOTE: Set to 3 in production with 3 brokers (Executive Risk: single-node replication)
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
-      KAFKA_MIN_INSYNC_REPLICAS: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_LOG_RETENTION_HOURS: 168
-      KAFKA_LOG_SEGMENT_BYTES: 1073741824
-      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_JMX_PORT: 9101
-      KAFKA_JMX_HOSTNAME: kafka
-    ports:
-      - "9092:9092"
-      - "9101:9101"
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    networks:
-      - gula-net
-    healthcheck:
-      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 5
-
-  # ===========================================================================
-  # AI & ML SERVICES
-  # ===========================================================================
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: gula-ollama
-    restart: always
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    networks:
-      - gula-net
-    deploy:
-      resources:
-        reservations:
-          memory: 1G
-
-  ai-service:
-    build:
-      context: ./services/ai
-      dockerfile: Dockerfile
-    container_name: gula-ai-service
-    restart: always
-    environment:
-      AI_PROVIDER: ${AI_PROVIDER:-ollama}
-      AI_FALLBACK: ${AI_FALLBACK:-false}
-      OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
-    ports:
-      - "9000:9000"
-    depends_on:
-      - ollama
-      - redis
-      - rabbitmq
-    networks:
-      - gula-net
-
-  # ===========================================================================
-  # OBJECT STORAGE
-  # ===========================================================================
-
-  # MinIO single-node (dev/staging)
-  # Production: use distributed mode with 4+ nodes for erasure coding
-  # Command: minio server http://minio-{1...4}/data{1...4} --console-address ":9002"
-  minio:
-    image: minio/minio:latest
-    container_name: gula-minio
-    restart: always
-    command: server /data --console-address ":9002"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-gula_minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-gula_minio_2024}
-      MINIO_PROMETHEUS_AUTH_TYPE: public
-      MINIO_UPDATE: "off"
-    ports:
-      - "9003:9000"
-      - "9002:9002"
-    volumes:
-      - minio-data:/data
-    networks:
-      - gula-net
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  # Node Exporter — host metrics for Prometheus
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: gula-node-exporter
-    restart: always
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    ports:
-      - "9100:9100"
-    networks:
-      - gula-net
-
-  # ===========================================================================
-  # SECURITY & IDENTITY
-  # ===========================================================================
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    container_name: gula-keycloak
-    restart: always
-    command: start-dev
-    environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-gula_keycloak_2024}
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres-primary:5432/keycloak
-      KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-gula_secure_2024}
-      KC_HOSTNAME_STRICT: "false"
-      KC_HTTP_ENABLED: "true"
-    ports:
-      - "8081:8080"
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-    networks:
-      - gula-net
-
-  vault:
-    image: hashicorp/vault:1.15
-    container_name: gula-vault
-    restart: always
-    cap_add:
-      - IPC_LOCK
-    # Dev mode for local development (auto-unsealed, in-memory)
-    # Production: replace 'server -dev' with 'server' and configure auto-unseal
-    # via AWS KMS, GCP KMS, or Transit seal (see config/vault/vault-prod.hcl)
-    command: vault server -dev -dev-root-token-id=${VAULT_TOKEN:-gula_vault_root_token}
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-gula_vault_root_token}
-      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
-      VAULT_ADDR: http://0.0.0.0:8200
-      VAULT_LOG_LEVEL: warn
-    ports:
-      - "8200:8200"
-    volumes:
-      - vault-data:/vault/data
-      - ./config/vault/vault.hcl:/vault/config/vault.hcl
-    networks:
-      - gula-net
-    healthcheck:
-      test: ["CMD", "vault", "status"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-  # ===========================================================================
-  # MONITORING & OBSERVABILITY
-  # ===========================================================================
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: gula-prometheus
-    restart: always
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
-      - '--web.enable-lifecycle'
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    networks:
-      - gula-net
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: gula-grafana
-    restart: always
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-gula_grafana_2024}
-      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./config/grafana/provisioning:/etc/grafana/provisioning
-    depends_on:
-      - prometheus
-      - loki
-    networks:
-      - gula-net
-
-  loki:
-    image: grafana/loki:2.9.0
-    container_name: gula-loki
-    restart: always
-    command: -config.file=/etc/loki/local-config.yaml
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./config/loki/loki-config.yml:/etc/loki/local-config.yaml
-      - loki-data:/loki
-    networks:
-      - gula-net
-
-  promtail:
-    image: grafana/promtail:2.9.0
-    container_name: gula-promtail
-    restart: always
-    command: -config.file=/etc/promtail/config.yml
-    volumes:
-      - ./config/promtail/promtail-config.yml:/etc/promtail/config.yml
-      - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    networks:
-      - gula-net
-
-  jaeger:
-    image: jaegertracing/all-in-one:1.51
-    container_name: gula-jaeger
-    restart: always
-    environment:
-      COLLECTOR_OTLP_ENABLED: "true"
-    ports:
-      - "16686:16686"
-      - "14268:14268"
-      - "4317:4317"
-      - "4318:4318"
-    networks:
-      - gula-net
-
-  # ===========================================================================
-  # CORE PLATFORM SERVICES
-  # ===========================================================================
-
-  api-gateway:
-    image: nginx:1.25-alpine
-    container_name: gula-api-gateway
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./config/nginx/conf.d:/etc/nginx/conf.d
-      - ./config/ssl:/etc/nginx/ssl
-    depends_on:
-      - lab-service
-      - patient-service
-      - order-service
-      - result-service
-      - sample-service
-    networks:
-      - gula-net
-
-  lab-service:
-    build:
-      context: ./services/lab
-      dockerfile: Dockerfile
-    container_name: gula-lab-service
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-gula_minio}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-gula_minio_2024}
-      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
-      SERVICE_NAME: lab-service
-    ports:
-      - "8001:8000"
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-      rabbitmq:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - gula-net
 
-  patient-service:
-    build:
-      context: ./services/patient
-      dockerfile: Dockerfile
-    container_name: gula-patient-service
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
-      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
-      SERVICE_NAME: patient-service
-    ports:
-      - "8002:8000"
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - gula-net
-
-  order-service:
-    build:
-      context: ./services/order
-      dockerfile: Dockerfile
-    container_name: gula-order-service
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
-      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
-      SERVICE_NAME: order-service
-    ports:
-      - "8003:8000"
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - gula-net
-
-  result-service:
-    build:
-      context: ./services/result
-      dockerfile: Dockerfile
-    container_name: gula-result-service
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
-      CLICKHOUSE_URL: http://clickhouse:8123
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-gula_minio}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-gula_minio_2024}
-      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
-      SERVICE_NAME: result-service
-    ports:
-      - "8004:8000"
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - gula-net
-
-  sample-service:
-    build:
-      context: ./services/sample
-      dockerfile: Dockerfile
-    container_name: gula-sample-service
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
-      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
-      SERVICE_NAME: sample-service
-    ports:
-      - "8005:8000"
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - gula-net
-
-  notification-service:
-    build:
-      context: ./services/notification
-      dockerfile: Dockerfile
-    container_name: gula-notification-service
-    restart: always
-    environment:
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
-      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
-      SERVICE_NAME: notification-service
-    ports:
-      - "8006:8000"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - gula-net
-
-  autonomous-manager:
-    build:
-      context: ./services/autonomous_manager
-      dockerfile: Dockerfile
-    container_name: gula-autonomous-manager
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
-      DOCKER_HOST: unix:///var/run/docker.sock
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - "8010:8000"
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-    networks:
-      - gula-net
+  # ---------------------------------------------------------------------------
+  # FRONTEND
+  # ---------------------------------------------------------------------------
 
   frontend:
     image: nginx:1.25-alpine
@@ -692,40 +96,40 @@ services:
     networks:
       - gula-net
 
+  # ---------------------------------------------------------------------------
+  # API GATEWAY (Nginx reverse proxy)
+  # ---------------------------------------------------------------------------
+
+  api-gateway:
+    image: nginx:1.25-alpine
+    container_name: gula-api-gateway
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./config/nginx/conf.d:/etc/nginx/conf.d
+      - ./config/ssl:/etc/nginx/ssl
+    depends_on:
+      - gula-backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gula-net
+
 # =============================================================================
 # VOLUMES
 # =============================================================================
 
 volumes:
-  pgdata-primary:
-    driver: local
-  pgdata-replica:
+  pgdata:
     driver: local
   redis-data:
-    driver: local
-  redis-replica-data:
-    driver: local
-  rabbitmq-data:
-    driver: local
-  kafka-data:
-    driver: local
-  zookeeper-data:
-    driver: local
-  zookeeper-log:
-    driver: local
-  clickhouse-data:
-    driver: local
-  minio-data:
-    driver: local
-  ollama-data:
-    driver: local
-  prometheus-data:
-    driver: local
-  grafana-data:
-    driver: local
-  loki-data:
-    driver: local
-  vault-data:
     driver: local
 
 # =============================================================================
@@ -735,16 +139,3 @@ volumes:
 networks:
   gula-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-
-  gula-backend:
-
-    build: ./backend
-
-    container_name: gula-backend
-
-    ports:
-      - "8000:8000"
-

@@ -1,17 +1,29 @@
+"""Basic intrusion detection with time-windowed tracking."""
 
-failed_attempts={}
+import time
+from collections import defaultdict
 
-def detect(ip):
 
-    if ip not in failed_attempts:
+class IntrusionDetector:
+    def __init__(self, max_attempts: int = 10, window_seconds: int = 300):
+        self._attempts: dict[str, list[float]] = defaultdict(list)
+        self._max = max_attempts
+        self._window = window_seconds
 
-        failed_attempts[ip]=0
+    def detect(self, ip: str) -> str:
+        """Check if an IP should be blocked. Returns 'blocked' or 'ok'."""
+        now = time.time()
+        # Clean old entries
+        self._attempts[ip] = [t for t in self._attempts[ip] if now - t < self._window]
+        self._attempts[ip].append(now)
 
-    failed_attempts[ip]+=1
+        if len(self._attempts[ip]) > self._max:
+            return "blocked"
+        return "ok"
 
-    if failed_attempts[ip]>10:
+    def reset(self, ip: str):
+        """Reset attempts for an IP (e.g., after successful login)."""
+        self._attempts.pop(ip, None)
 
-        return "blocked"
 
-    return "ok"
-
+detector = IntrusionDetector()
