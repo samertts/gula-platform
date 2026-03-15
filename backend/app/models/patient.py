@@ -1,16 +1,28 @@
-from sqlalchemy import Column,String
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
-import uuid
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Enum
+from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
+from ..database import Base
+import enum
 
-Base = declarative_base()
+
+class Gender(str, enum.Enum):
+    male = "M"
+    female = "F"
+
 
 class Patient(Base):
+    __tablename__ = "patients"
 
-    __tablename__ = "health_identity"
+    id = Column(Integer, primary_key=True, index=True)
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
+    health_id = Column(String(20), unique=True, nullable=True, index=True)
+    national_id_hash = Column(String(255), nullable=True, index=True)
+    full_name = Column(String(200), nullable=False)
+    phone = Column(String(20), nullable=False)
+    birth_date = Column(Date, nullable=True)
+    gender = Column(String(1), nullable=True)
+    email = Column(String(100), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    patient_uuid = Column(UUID(as_uuid=True),primary_key=True,default=uuid.uuid4)
-
-    insurance_id = Column(String)
-
-    health_card_number = Column(String)
+    lab = relationship("Lab", back_populates="patients")
+    orders = relationship("LabOrder", back_populates="patient", cascade="all, delete-orphan")

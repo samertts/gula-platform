@@ -1,20 +1,56 @@
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from ..database import get_db
+from ..models.lab import Lab
+from ..models.lab_user import LabUser
+from ..security.auth import hash_password, create_token
 
-from fastapi import APIRouter
-import uuid
+router = APIRouter(tags=["auth"])
 
-router=APIRouter()
+
+class LabRegisterRequest(BaseModel):
+    lab_name: str
+    city: str = ""
+    address: str = ""
+    phone: str = ""
+    admin_name: str
+    email: str
+    password: str
+
 
 @router.post("/register")
+def register_lab(data: LabRegisterRequest, db: Session = Depends(get_db)):
+    existing = db.query(LabUser).filter(LabUser.email == data.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-def register():
+    lab = Lab(
+        name=data.lab_name,
+        city=data.city,
+        address=data.address,
+        phone=data.phone,
+    )
+    db.add(lab)
+    db.flush()
 
-    patient_uuid=str(uuid.uuid4())
+    user = LabUser(
+        lab_id=lab.id,
+        name=data.admin_name,
+        email=data.email,
+        password_hash=hash_password(data.password),
+        role="admin",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(lab)
+    db.refresh(user)
+
+    token = create_token({"user_id": user.id, "lab_id": lab.id, "role": user.role})
 
     return {
-
-        "patient_uuid":patient_uuid,
-
-        "message":"account created"
-
+        "message": "Lab registered successfully",
+        "lab_id": lab.id,
+        "user_id": user.id,
+        "token": token,
     }
-
