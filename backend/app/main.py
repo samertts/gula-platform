@@ -1,15 +1,16 @@
 import os
+import traceback
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 from .database import Base, engine
 from .config import APP_NAME, APP_VERSION
 
 # Import all models so they are registered with Base
-from .models import Lab, LabUser, Patient, TestType, LabOrder, LabResult, AuditLog
+from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -20,6 +21,21 @@ app = FastAPI(
     description="GULA - Smart Health Platform for Labs",
 )
 
+# ===== GLOBAL ERROR HANDLER =====
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
+    print(f"[GULA ERROR] {request.method} {request.url}: {exc}")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Something went wrong. Please try again.",
+            "detail_ar": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+        },
+    )
+
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -29,32 +45,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routes
+# ===== ROUTES =====
 from .routes import login, register, patients, results, dashboard, labs
 from .routes import identity, notifications, ehr, security
 from .routes import national_identity, insurance, device_results
-from .routes import qr, id_scan
+from .routes import qr, id_scan, admin, samples
 
+# Core routes
 app.include_router(login.router)
 app.include_router(register.router)
 app.include_router(patients.router)
 app.include_router(results.router)
 app.include_router(dashboard.router)
 app.include_router(labs.router)
+app.include_router(samples.router)
+
+# Feature routes
 app.include_router(qr.router)
 app.include_router(id_scan.router)
 app.include_router(identity.router)
 app.include_router(notifications.router)
 app.include_router(ehr.router)
 app.include_router(security.router)
-app.include_router(national_identity.router)
-app.include_router(insurance.router)
 app.include_router(device_results.router)
 
-# Frontend static files
+# Admin routes
+app.include_router(admin.router)
+
+# Legacy routes (national_identity, insurance - kept for API compatibility)
+app.include_router(national_identity.router)
+app.include_router(insurance.router)
+
+
+# ===== FRONTEND SERVING =====
 FRONTEND_DIR = Path(os.getenv("FRONTEND_DIR", "/app/static_frontend"))
 if not FRONTEND_DIR.exists():
-    # Fallback for local development
     FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend"
 
 
@@ -67,22 +92,18 @@ def serve_index():
     return JSONResponse({"system": "GULA Platform", "version": APP_VERSION, "status": "running"})
 
 
-# Serve result page for public links
 @app.get("/r/{token}", response_class=HTMLResponse)
 def serve_result_page(token: str):
-    """Serve result HTML page for public result links.
-    The page loads data from /api/r/{token} via JS fetch.
-    """
+    """Serve result HTML page for public result links."""
     result_file = FRONTEND_DIR / "result.html"
     if result_file.exists():
         return HTMLResponse(content=result_file.read_text(encoding="utf-8"))
     return HTMLResponse(content="<h1>Result page not found</h1>", status_code=404)
 
 
-# Also handle /r/{token}/pdf for direct browser access
 @app.get("/r/{token}/pdf")
 def serve_result_pdf_redirect(token: str, request: Request):
-    """Redirect to API PDF endpoint."""
+    """Direct PDF download for result."""
     from .routes.results import download_result_pdf
     from .database import SessionLocal
     db = SessionLocal()
@@ -94,15 +115,15 @@ def serve_result_pdf_redirect(token: str, request: Request):
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": APP_VERSION}
 
 
-# Mount frontend static assets (CSS, JS, images) if directory exists
+# Static files
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
-# Test types listing (public)
+# ===== PUBLIC ENDPOINTS =====
 @app.get("/test-types")
 def list_test_types():
     from .database import SessionLocal
@@ -127,9 +148,16 @@ def list_test_types():
         db.close()
 
 
-# Seed test types on startup
+# ===== STARTUP =====
 @app.on_event("startup")
-def seed_test_types():
+def on_startup():
+    """Bootstrap the system on first run."""
+    _seed_test_types()
+    _ensure_master_admin()
+
+
+def _seed_test_types():
+    """Seed test types catalog if empty."""
     from .database import SessionLocal
     from .models.test_type import TestType
 
@@ -152,8 +180,20 @@ def seed_test_types():
                 TestType(test_code="sodium", test_name="Sodium", test_name_ar="الصوديوم", category="Electrolytes", unit="mEq/L", normal_range_low=135, normal_range_high=145),
                 TestType(test_code="hba1c", test_name="HbA1c", test_name_ar="السكر التراكمي", category="Diabetes", unit="%", normal_range_low=0, normal_range_high=5.7),
                 TestType(test_code="vitamin_d", test_name="Vitamin D", test_name_ar="فيتامين د", category="Vitamins", unit="ng/mL", normal_range_low=20, normal_range_high=100),
+                TestType(test_code="rbc", test_name="Red Blood Cells", test_name_ar="كريات الدم الحمراء", category="CBC", unit="×10⁶/µL", normal_range_low=4.0, normal_range_high=6.0),
+                TestType(test_code="mcv", test_name="MCV", test_name_ar="حجم الكرية الوسطي", category="CBC", unit="fL", normal_range_low=80, normal_range_high=100),
+                TestType(test_code="ldl", test_name="LDL Cholesterol", test_name_ar="الكوليسترول الضار", category="Lipid", unit="mg/dL", normal_range_low=0, normal_range_high=130),
+                TestType(test_code="hdl", test_name="HDL Cholesterol", test_name_ar="الكوليسترول النافع", category="Lipid", unit="mg/dL", normal_range_low=40, normal_range_high=100),
+                TestType(test_code="uric_acid", test_name="Uric Acid", test_name_ar="حمض اليوريك", category="Kidney", unit="mg/dL", normal_range_low=2.5, normal_range_high=7.0),
             ]
             db.add_all(test_types)
             db.commit()
+            print(f"[GULA] Seeded {len(test_types)} test types")
     finally:
         db.close()
+
+
+def _ensure_master_admin():
+    """Create master admin on first startup if not exists."""
+    from .routes.admin import ensure_master_admin
+    ensure_master_admin()
