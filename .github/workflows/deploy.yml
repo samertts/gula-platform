@@ -8,47 +8,50 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo "Host gula-server
+            HostName $SERVER_HOST
+            User ${{ secrets.SERVER_USER }}
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking accept-new
+          " > ~/.ssh/config
+          chmod 600 ~/.ssh/config
 
       - name: Deploy to server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          ssh gula-server "cd /home/samertts/gula-platform && git reset --hard && git pull origin main && docker compose down && docker compose build --no-cache && docker compose up -d && docker image prune -f"
 
-          echo "Starting deployment..."
-
-          cd /home/samertts/gula-platform
-
-          echo "Pulling latest code..."
-          git reset --hard
-          git pull origin main
-
-          echo "Stopping old containers..."
-          docker compose down
-
-          echo "Building containers..."
-          docker compose build
-
-          echo "Starting services..."
-          docker compose up -d
-
-          echo "Cleaning unused images..."
-          docker image prune -f
-
-          echo "Deployment finished."
-
-          EOF
+      - name: Wait for services to start
+        run: sleep 15
 
       - name: Health Check
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          echo "Checking platform status..."
-          curl -I http://${{ secrets.SERVER_HOST }} || exit 1
+          for i in 1 2 3 4 5; do
+            if curl -sf --max-time 10 "http://$SERVER_HOST/health" > /dev/null 2>&1; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
