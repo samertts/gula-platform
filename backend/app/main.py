@@ -36,13 +36,15 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# CORS
+# CORS - use explicit origins from env, fallback to same-origin only
+_allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
+_allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed_origins or ["*"],
+    allow_credentials=bool(_allowed_origins),
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # ===== ROUTES =====
