@@ -518,6 +518,8 @@ services:
       - order-service
       - result-service
       - sample-service
+      - gula-backend
+      - frontend
     networks:
       - gula-net
 
@@ -680,6 +682,23 @@ services:
     networks:
       - gula-net
 
+  gula-backend:
+    build: ./backend
+    container_name: gula-backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gula-net
+
   frontend:
     image: nginx:1.25-alpine
     container_name: gula-frontend
@@ -738,13 +757,4 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/16
-
-  gula-backend:
-
-    build: ./backend
-
-    container_name: gula-backend
-
-    ports:
-      - "8000:8000"
 
