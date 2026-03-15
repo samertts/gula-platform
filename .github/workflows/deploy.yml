@@ -8,47 +8,87 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo "Host gula-server
+            HostName $SERVER_HOST
+            User ${{ secrets.SERVER_USER }}
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking yes
+          " > ~/.ssh/config
+          chmod 600 ~/.ssh/config
 
       - name: Deploy to server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          ssh gula-server << 'DEPLOY_SCRIPT'
+            set -e
+            cd /home/samertts/gula-platform
 
-          echo "Starting deployment..."
+            # Reset to match remote exactly (discard any manual changes on server)
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
 
-          cd /home/samertts/gula-platform
+            # Build and deploy (force rebuild to ensure fresh images)
+            docker compose build --no-cache
+            docker compose down --remove-orphans
+            docker compose up -d
 
-          echo "Pulling latest code..."
-          git reset --hard
-          git pull origin main
+            # Clean up old images
+            docker image prune -f
 
-          echo "Stopping old containers..."
-          docker compose down
+            # Verify containers are running
+            echo "=== Container Status ==="
+            docker compose ps
 
-          echo "Building containers..."
-          docker compose build
+            echo "Deployment completed successfully"
+          DEPLOY_SCRIPT
 
-          echo "Starting services..."
-          docker compose up -d
-
-          echo "Cleaning unused images..."
-          docker image prune -f
-
-          echo "Deployment finished."
-
-          EOF
+      - name: Wait for services to start
+        run: sleep 20
 
       - name: Health Check
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          echo "Checking platform status..."
-          curl -I http://${{ secrets.SERVER_HOST }} || exit 1
+          for i in 1 2 3 4 5 6; do
+            if curl -sf --max-time 10 "http://$SERVER_HOST/health" > /dev/null 2>&1; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 6 attempts"
+
+          # Show service logs for debugging
+          ssh gula-server "cd /home/samertts/gula-platform && docker compose ps && docker compose logs --tail=20 api-gateway gula-backend" || true
+          exit 1
+
+      - name: Verify API endpoint
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          response=$(curl -sf --max-time 10 "http://$SERVER_HOST/health" 2>/dev/null || echo "FAILED")
+          echo "API Response: $response"
+          if echo "$response" | grep -q "healthy"; then
+            echo "API is healthy!"
+          else
+            echo "WARNING: API health check returned unexpected response"
+          fi

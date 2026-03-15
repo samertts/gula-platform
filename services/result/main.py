@@ -36,7 +36,8 @@ REQUEST_COUNT   = Counter("result_requests_total", "Total requests", ["endpoint"
 RESULT_LATENCY  = Histogram("result_processing_seconds", "Result processing time", ["operation"])
 
 app = FastAPI(title="GULA Result Service", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+_cors_origins = os.getenv("CORS_ORIGINS", "https://gula-platform.org,http://gula-platform.org").split(",")
+app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in _cors_origins], allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
 
 _pool = None
 _minio_client = None
@@ -83,22 +84,34 @@ def send_to_clickhouse(result_data: dict):
     """Send result to ClickHouse analytics (Executive Order 12)."""
     try:
         import requests
-        # Use parameterized VALUES format to avoid SQL injection
-        row = (
-            result_data.get('order_id', 0),
-            result_data.get('test_name', '').replace("'", "''"),
-            result_data.get('value', '').replace("'", "''"),
-            result_data.get('numeric_value') or 0,
-            1 if result_data.get('is_abnormal') else 0,
-            result_data.get('lab_id', 0),
+
+        # Validate and cast types to prevent SQL injection
+        order_id = int(result_data.get('order_id', 0))
+        test_name = str(result_data.get('test_name', ''))[:255]
+        value = str(result_data.get('value', ''))[:255]
+        numeric_value = float(result_data.get('numeric_value') or 0)
+        is_abnormal = 1 if result_data.get('is_abnormal') else 0
+        lab_id = int(result_data.get('lab_id', 0))
+
+        # Use ClickHouse JSONEachRow format to avoid SQL injection entirely
+        import json as _json
+        row_data = _json.dumps({
+            "order_id": order_id,
+            "test_name": test_name,
+            "value": value,
+            "numeric_value": numeric_value,
+            "is_abnormal": is_abnormal,
+            "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "lab_id": lab_id,
+        })
+        requests.post(
+            CLICKHOUSE_URL,
+            params={"query": "INSERT INTO gula.lab_results FORMAT JSONEachRow"},
+            data=row_data,
+            headers={"Content-Type": "application/json"},
+            timeout=5,
         )
-        query = (
-            "INSERT INTO gula.lab_results "
-            "(order_id, test_name, value, numeric_value, is_abnormal, created_at, lab_id) "
-            f"VALUES ({row[0]}, '{row[1]}', '{row[2]}', {row[3]}, {row[4]}, now(), {row[5]})"
-        )
-        requests.post(CLICKHOUSE_URL, params={"query": query}, timeout=5)
-        logger.debug(f"[ResultService] ClickHouse insert OK for order {row[0]}")
+        logger.debug(f"[ResultService] ClickHouse insert OK for order {order_id}")
     except Exception as e:
         logger.warning(f"[ResultService] ClickHouse insert failed: {e}")
 

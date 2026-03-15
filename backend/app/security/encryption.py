@@ -1,15 +1,29 @@
-
+import os
+import logging
 from cryptography.fernet import Fernet
 
-KEY = Fernet.generate_key()
+_logger = logging.getLogger("gula.encryption")
 
-cipher = Fernet(KEY)
+# Use persistent key from environment variable
+# Generate one with: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+_key = os.getenv("ENCRYPTION_KEY")
+if _key:
+    cipher = Fernet(_key.encode() if isinstance(_key, str) else _key)
+else:
+    # Fallback: generate ephemeral key - data won't persist across restarts
+    _key = Fernet.generate_key()
+    cipher = Fernet(_key)
+    _logger.warning(
+        "[SECURITY] ENCRYPTION_KEY not set! Using ephemeral key. "
+        "Encrypted data will be LOST on restart. Set ENCRYPTION_KEY env var for production."
+    )
 
-def encrypt(data):
 
+def encrypt(data: str) -> str:
+    """Encrypt a string value."""
     return cipher.encrypt(data.encode()).decode()
 
-def decrypt(data):
 
+def decrypt(data: str) -> str:
+    """Decrypt an encrypted string value."""
     return cipher.decrypt(data.encode()).decode()
-

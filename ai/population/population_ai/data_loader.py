@@ -2,7 +2,7 @@ import json
 import os
 
 RECORD_DB = os.path.expanduser(
-    "~/lab-platform/health_record_engine/health_records.json"
+    "~/gula-platform/health_record_engine/health_records.json"
 )
 
 
