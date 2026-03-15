@@ -40,18 +40,22 @@ jobs:
             set -e
             cd /home/samertts/gula-platform
 
-            # Stash any local changes instead of destroying them
-            git stash --include-untracked 2>/dev/null || true
+            # Reset to match remote exactly (discard any manual changes on server)
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
 
-            # Pull latest changes
-            git pull origin main
-
-            # Build and deploy with rolling restart
-            docker compose build
-            docker compose up -d --remove-orphans
+            # Build and deploy (force rebuild to ensure fresh images)
+            docker compose build --no-cache
+            docker compose down --remove-orphans
+            docker compose up -d
 
             # Clean up old images
             docker image prune -f
+
+            # Verify containers are running
+            echo "=== Container Status ==="
+            docker compose ps
 
             echo "Deployment completed successfully"
           DEPLOY_SCRIPT

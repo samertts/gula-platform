@@ -1,7 +1,7 @@
 import json
 import os
 
-DB = os.path.expanduser("~/lab-platform/health_record_engine/health_records.json")
+DB = os.path.expanduser("~/gula-platform/health_record_engine/health_records.json")
 
 
 def load_data():
