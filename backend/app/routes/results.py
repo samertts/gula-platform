@@ -239,9 +239,16 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
 
-    # Check expiry
+    # Check expiry - return friendly JSON instead of raw error
     if result.expires_at and result.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=410, detail="Result link has expired")
+        return {
+            "expired": True,
+            "message": "This result link has expired.",
+            "message_ar": "انتهت صلاحية رابط النتيجة.",
+            "expired_at": result.expires_at.isoformat(),
+            "advice": "Please contact your laboratory for a new link.",
+            "advice_ar": "يرجى التواصل مع المختبر للحصول على رابط جديد.",
+        }
 
     order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
     patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
@@ -367,13 +374,20 @@ def get_patient_history_by_id(
 
 # Public history by phone (rate limited)
 @router.get("/history/{phone}")
-def get_patient_history(phone: str, request: Request, db: Session = Depends(get_db)):
-    """Get patient test history by phone number (public, rate limited)."""
+def get_patient_history(phone: str, request: Request, name: str = None, db: Session = Depends(get_db)):
+    """Get patient test history by phone number (public, rate limited).
+    Requires 'name' query param matching first 3 chars of patient name as basic verification."""
     rate_limit_public(request, max_per_minute=10)
 
     patient = db.query(Patient).filter(Patient.phone == phone).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+
+    # Basic verification: require first 3 characters of patient name
+    if not name or len(name) < 3:
+        raise HTTPException(status_code=400, detail="Please provide the first 3 letters of the patient name (?name=...)")
+    if not patient.full_name.lower().startswith(name.lower()[:3]):
+        raise HTTPException(status_code=403, detail="Name verification failed")
 
     orders = db.query(LabOrder).filter(
         LabOrder.patient_id == patient.id,
