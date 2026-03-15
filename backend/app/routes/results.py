@@ -189,10 +189,29 @@ def create_order(
     db.commit()
     db.refresh(order)
 
+    # Build WhatsApp auto-send link
+    whatsapp_link = None
+    if patient and patient.phone:
+        phone_clean = patient.phone.replace("+", "").replace("-", "").replace(" ", "")
+        # Add Iraq country code if not present
+        if phone_clean.startswith("07"):
+            phone_clean = "964" + phone_clean[1:]
+        first_link = result_links[0]["link"] if result_links else ""
+        msg = (
+            f"*GULA Lab Result*\n"
+            f"Patient: {patient.full_name}\n"
+            f"Tests: {len(result_links)} result(s)\n"
+            f"View: {BASE_URL}{first_link}\n\n"
+            f"_Powered by GULA Platform_"
+        )
+        import urllib.parse
+        whatsapp_link = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg)}"
+
     return {
         "message": "Order created with results",
         "order": order_to_dict(order),
         "result_links": result_links,
+        "whatsapp_link": whatsapp_link,
     }
 
 
