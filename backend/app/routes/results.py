@@ -1,5 +1,5 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
@@ -12,10 +12,45 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.test_type import TestType
 from ..security.dependencies import get_current_user
+from ..security.rate_limit import rate_limit_public
 from ..services.interpretation import interpret_result, get_flag
+from ..services.audit_service import log_action
 from ..config import BASE_URL
 
 router = APIRouter(tags=["results"])
+
+
+# ===== Composite test profiles =====
+TEST_PROFILES = {
+    "CBC": [
+        {"test_name": "Hemoglobin", "unit": "g/dL", "normal_range_low": 12.0, "normal_range_high": 17.0},
+        {"test_name": "WBC", "unit": "x10^3/uL", "normal_range_low": 4.0, "normal_range_high": 11.0},
+        {"test_name": "Platelets", "unit": "x10^3/uL", "normal_range_low": 150.0, "normal_range_high": 400.0},
+    ],
+    "Lipid Profile": [
+        {"test_name": "Cholesterol", "unit": "mg/dL", "normal_range_low": 0, "normal_range_high": 200.0},
+        {"test_name": "Triglycerides", "unit": "mg/dL", "normal_range_low": 0, "normal_range_high": 150.0},
+    ],
+    "Liver Function": [
+        {"test_name": "ALT", "unit": "U/L", "normal_range_low": 0, "normal_range_high": 40.0},
+        {"test_name": "AST", "unit": "U/L", "normal_range_low": 0, "normal_range_high": 40.0},
+    ],
+    "Kidney Function": [
+        {"test_name": "Creatinine", "unit": "mg/dL", "normal_range_low": 0.6, "normal_range_high": 1.3},
+        {"test_name": "Urea", "unit": "mg/dL", "normal_range_low": 15.0, "normal_range_high": 45.0},
+    ],
+    "Thyroid": [
+        {"test_name": "TSH", "unit": "mIU/L", "normal_range_low": 0.4, "normal_range_high": 4.5},
+    ],
+    "Electrolytes": [
+        {"test_name": "Sodium", "unit": "mEq/L", "normal_range_low": 135.0, "normal_range_high": 145.0},
+        {"test_name": "Potassium", "unit": "mEq/L", "normal_range_low": 3.5, "normal_range_high": 5.0},
+    ],
+    "Diabetes": [
+        {"test_name": "Glucose", "unit": "mg/dL", "normal_range_low": 70.0, "normal_range_high": 100.0},
+        {"test_name": "HbA1c", "unit": "%", "normal_range_low": 0, "normal_range_high": 5.7},
+    ],
+}
 
 
 class ResultItem(BaseModel):
@@ -68,7 +103,6 @@ def order_to_dict(o: LabOrder, include_results: bool = True) -> dict:
     }
     if include_results:
         d["results"] = [result_to_dict(r) for r in o.results]
-        # Generate share links for all results
         if o.results:
             first_token = o.results[0].token
             d["share_link"] = f"/r/{first_token}"
@@ -77,13 +111,25 @@ def order_to_dict(o: LabOrder, include_results: bool = True) -> dict:
     return d
 
 
+@router.get("/test-profiles")
+def list_test_profiles():
+    """List available composite test profiles (CBC, Lipid, etc.)."""
+    return {
+        name: [{"test_name": t["test_name"], "unit": t["unit"],
+                "normal_range_low": t["normal_range_low"],
+                "normal_range_high": t["normal_range_high"]}
+               for t in tests]
+        for name, tests in TEST_PROFILES.items()
+    }
+
+
 @router.post("/orders")
 def create_order(
     data: CreateOrderRequest,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Verify patient belongs to this lab
     patient = db.query(Patient).filter(
         Patient.id == data.patient_id,
         Patient.lab_id == current_user.lab_id,
@@ -91,7 +137,6 @@ def create_order(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Create order
     order = LabOrder(
         patient_id=data.patient_id,
         lab_id=current_user.lab_id,
@@ -101,7 +146,6 @@ def create_order(
     db.add(order)
     db.flush()
 
-    # Create results
     result_links = []
     for item in data.results:
         flag = "unknown"
@@ -109,7 +153,6 @@ def create_order(
             flag = get_flag(item.value, item.normal_range_low, item.normal_range_high)
 
         token = secrets.token_urlsafe(32)
-        # Ensure unique token
         while db.query(LabResult).filter(LabResult.token == token).first():
             token = secrets.token_urlsafe(32)
 
@@ -126,6 +169,18 @@ def create_order(
         )
         db.add(result)
         result_links.append({"test": item.test_name, "link": f"/r/{token}"})
+
+    # Audit log
+    log_action(
+        db,
+        action="create",
+        resource_type="lab_order",
+        resource_id=order.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Created order with {len(data.results)} results for patient {patient.full_name}",
+        ip_address=request.client.host if request.client else None,
+    )
 
     db.commit()
     db.refresh(order)
@@ -175,8 +230,11 @@ def get_order(
 # ===== PUBLIC RESULT PAGE (THE KILLER FEATURE) =====
 
 @router.get("/r/{token}")
-def get_public_result(token: str, db: Session = Depends(get_db)):
-    """Public result page - accessible without authentication."""
+def get_public_result(token: str, request: Request, db: Session = Depends(get_db)):
+    """Public result page - accessible without authentication. Rate limited."""
+    # Rate limit public access
+    rate_limit_public(request, max_per_minute=30)
+
     result = db.query(LabResult).filter(LabResult.token == token).first()
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
@@ -185,7 +243,6 @@ def get_public_result(token: str, db: Session = Depends(get_db)):
     if result.expires_at and result.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=410, detail="Result link has expired")
 
-    # Get order, patient, and lab info
     order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
     patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
     lab = db.query(Lab).filter(Lab.id == order.lab_id).first() if order else None
@@ -193,7 +250,6 @@ def get_public_result(token: str, db: Session = Depends(get_db)):
     # Get all results for this order
     all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
 
-    # Build interpretation
     results_with_interpretation = []
     for r in all_results:
         interp = None
@@ -211,6 +267,17 @@ def get_public_result(token: str, db: Session = Depends(get_db)):
             "interpretation": interp,
             "created_at": r.created_at.isoformat() if r.created_at else None,
         })
+
+    # Audit: log result view
+    log_action(
+        db,
+        action="view",
+        resource_type="lab_result",
+        resource_id=result.id,
+        details=f"Public result viewed for patient {patient.full_name if patient else 'unknown'}",
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
 
     share_text = f"Lab results - GULA Platform"
     whatsapp_link = f"https://wa.me/?text={share_text}%20{BASE_URL}/r/{token}"
@@ -233,10 +300,77 @@ def get_public_result(token: str, db: Session = Depends(get_db)):
     }
 
 
-# Patient history - get all results for a patient by phone
+# ===== PATIENT HISTORY =====
+
+@router.get("/patient-history/{patient_id}")
+def get_patient_history_by_id(
+    patient_id: int,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get complete test history for a patient (authenticated, lab-scoped)."""
+    patient = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.lab_id == current_user.lab_id,
+    ).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    orders = db.query(LabOrder).filter(
+        LabOrder.patient_id == patient.id,
+        LabOrder.lab_id == current_user.lab_id,
+    ).options(joinedload(LabOrder.results)).order_by(LabOrder.created_at.desc()).limit(50).all()
+
+    # Group results by test name for trend analysis
+    trends = {}
+    all_results = []
+    for order in orders:
+        for result in order.results:
+            entry = {
+                "test_name": result.test_name,
+                "value": result.value,
+                "unit": result.unit,
+                "flag": result.flag,
+                "normal_range_low": result.normal_range_low,
+                "normal_range_high": result.normal_range_high,
+                "date": result.created_at.isoformat() if result.created_at else None,
+                "token": result.token,
+            }
+            all_results.append(entry)
+
+            # Build trends
+            key = result.test_name
+            if key not in trends:
+                trends[key] = []
+            if result.value is not None:
+                trends[key].append({
+                    "value": result.value,
+                    "date": result.created_at.isoformat() if result.created_at else None,
+                    "flag": result.flag,
+                })
+
+    return {
+        "patient": {
+            "id": patient.id,
+            "full_name": patient.full_name,
+            "phone": patient.phone,
+            "health_id": patient.health_id,
+            "gender": patient.gender,
+            "birth_date": str(patient.birth_date) if patient.birth_date else None,
+        },
+        "total_orders": len(orders),
+        "total_results": len(all_results),
+        "results": all_results,
+        "trends": trends,
+    }
+
+
+# Public history by phone (rate limited)
 @router.get("/history/{phone}")
-def get_patient_history(phone: str, db: Session = Depends(get_db)):
-    """Get patient test history by phone number (simplified public access)."""
+def get_patient_history(phone: str, request: Request, db: Session = Depends(get_db)):
+    """Get patient test history by phone number (public, rate limited)."""
+    rate_limit_public(request, max_per_minute=10)
+
     patient = db.query(Patient).filter(Patient.phone == phone).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
