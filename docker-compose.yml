@@ -71,6 +71,11 @@ services:
     depends_on:
       postgres-primary:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d labdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - gula-net
 
@@ -91,6 +96,11 @@ services:
     depends_on:
       postgres-primary:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - gula-net
 
@@ -106,7 +116,8 @@ services:
         --maxmemory-policy allkeys-lru
         --save 60 1000
         --loglevel notice
-        --protected-mode no
+        --protected-mode yes
+        --requirepass ${REDIS_PASSWORD:-gula_redis_2024}
     ports:
       - "6379:6379"
     volumes:
@@ -115,7 +126,7 @@ services:
     networks:
       - gula-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-gula_redis_2024}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -132,7 +143,9 @@ services:
         --maxmemory-policy allkeys-lru
         --replicaof redis 6379
         --replica-read-only yes
-        --protected-mode no
+        --protected-mode yes
+        --requirepass ${REDIS_PASSWORD:-gula_redis_2024}
+        --masterauth ${REDIS_PASSWORD:-gula_redis_2024}
     volumes:
       - redis-replica-data:/data
     depends_on:
@@ -161,6 +174,11 @@ services:
     depends_on:
       - redis
       - redis-replica
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     networks:
       - gula-net
 
@@ -303,7 +321,7 @@ services:
       AI_FALLBACK: ${AI_FALLBACK:-false}
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
     ports:
       - "9000:9000"
@@ -517,6 +535,11 @@ services:
         condition: service_started
       frontend:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     networks:
       - gula-net
 
@@ -528,7 +551,7 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-gula_minio}
@@ -555,7 +578,7 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: patient-service
@@ -565,6 +588,8 @@ services:
       postgres-primary:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - gula-net
@@ -577,7 +602,7 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: order-service
@@ -599,7 +624,7 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
       CLICKHOUSE_URL: http://clickhouse:8123
       MINIO_ENDPOINT: minio:9000
@@ -625,7 +650,7 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: sample-service
@@ -646,7 +671,7 @@ services:
     container_name: gula-notification-service
     restart: always
     environment:
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: notification-service
@@ -654,6 +679,8 @@ services:
       - "8006:8000"
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - gula-net
@@ -666,7 +693,7 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:-gula_rabbit_2024}@rabbitmq:5672/gula
       DOCKER_HOST: unix:///var/run/docker.sock
     volumes:
@@ -685,7 +712,7 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_redis_2024}@redis:6379
       SECRET_KEY: ${SECRET_KEY:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
     ports:

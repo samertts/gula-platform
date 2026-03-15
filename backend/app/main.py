@@ -36,13 +36,20 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# CORS - use explicit origins from env, fallback to same-origin only
+# CORS - use explicit origins from env; default to platform domain (never wildcard)
 _allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
 _allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
+if not _allowed_origins:
+    _allowed_origins = [
+        "https://gula-platform.org",
+        "http://gula-platform.org",
+        "http://localhost:8080",
+        "http://localhost:80",
+    ]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allowed_origins or ["*"],
-    allow_credentials=bool(_allowed_origins),
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["Authorization", "Content-Type"],
 )
