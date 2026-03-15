@@ -1,35 +1,55 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-
 <meta charset="UTF-8">
-<title>Login</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GULA - Login</title>
 <script src="https://cdn.tailwindcss.com"></script>
-
 </head>
-
-<body class="bg-gray-900 flex items-center justify-center h-screen">
-
-<div class="bg-gray-800 p-8 rounded w-96">
-
-<h2 class="text-2xl mb-6 text-center">
-GULA Login
-</h2>
-
-<input id="username" class="w-full p-2 mb-3 bg-gray-700 rounded" placeholder="Username">
-
-<input id="password" type="password" class="w-full p-2 mb-4 bg-gray-700 rounded" placeholder="Password">
-
-<button onclick="login()" class="w-full bg-blue-600 p-2 rounded">
-Login
-</button>
-
+<body class="bg-gradient-to-br from-gray-900 to-blue-900 min-h-screen flex items-center justify-center">
+<div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+  <div class="text-center mb-8">
+    <h1 class="text-4xl font-bold text-gray-900">GULA</h1>
+    <p class="text-gray-500 mt-2">Smart Health Platform</p>
+  </div>
+  <div class="mb-4">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+    <input id="email" type="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="lab@example.com">
+  </div>
+  <div class="mb-6">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+    <input id="password" type="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="********" onkeypress="if(event.key==='Enter')login()">
+  </div>
+  <button onclick="login()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">Login</button>
+  <div id="error" class="text-red-500 text-sm mt-3 hidden"></div>
+  <p class="text-center mt-4 text-sm text-gray-500">New lab? Go to the <a href="/" class="text-blue-600">main page</a> to register.</p>
 </div>
-
-<script src="/js/auth.js"></script>
-
+<script>
+async function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const errEl = document.getElementById('error');
+  errEl.classList.add('hidden');
+  try {
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password})
+    });
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem('gula_token', data.token);
+      localStorage.setItem('gula_user', JSON.stringify(data.user));
+      window.location.href = '/';
+    } else {
+      errEl.textContent = data.detail || 'Login failed';
+      errEl.classList.remove('hidden');
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error';
+    errEl.classList.remove('hidden');
+  }
+}
+</script>
 </body>
-
 </html>
