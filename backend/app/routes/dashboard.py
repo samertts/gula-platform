@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from datetime import datetime, timezone, timedelta
 from ..database import get_db
 from ..models.patient import Patient
 from ..models.lab_order import LabOrder
@@ -17,7 +18,11 @@ def dashboard(
     db: Session = Depends(get_db),
 ):
     lab_id = current_user.lab_id
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=today_start.weekday())
 
+    # Total counts
     patients_count = db.query(func.count(Patient.id)).filter(
         Patient.lab_id == lab_id
     ).scalar() or 0
@@ -34,6 +39,49 @@ def dashboard(
         LabOrder.lab_id == lab_id,
         LabResult.flag == "critical",
     ).scalar() or 0
+
+    # Today's stats
+    patients_today = db.query(func.count(Patient.id)).filter(
+        Patient.lab_id == lab_id,
+        Patient.created_at >= today_start,
+    ).scalar() or 0
+
+    orders_today = db.query(func.count(LabOrder.id)).filter(
+        LabOrder.lab_id == lab_id,
+        LabOrder.created_at >= today_start,
+    ).scalar() or 0
+
+    tests_today = db.query(func.count(LabResult.id)).join(LabOrder).filter(
+        LabOrder.lab_id == lab_id,
+        LabResult.created_at >= today_start,
+    ).scalar() or 0
+
+    # This week's stats
+    orders_week = db.query(func.count(LabOrder.id)).filter(
+        LabOrder.lab_id == lab_id,
+        LabOrder.created_at >= week_start,
+    ).scalar() or 0
+
+    # Abnormal results (H, L, critical) from last 7 days
+    abnormal_results = db.query(LabResult).join(LabOrder).filter(
+        LabOrder.lab_id == lab_id,
+        LabResult.flag.in_(["H", "L", "critical"]),
+        LabResult.created_at >= week_start,
+    ).order_by(LabResult.created_at.desc()).limit(10).all()
+
+    abnormal = []
+    for r in abnormal_results:
+        order = db.query(LabOrder).filter(LabOrder.id == r.order_id).first()
+        patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
+        abnormal.append({
+            "patient_name": patient.full_name if patient else "Unknown",
+            "test_name": r.test_name,
+            "value": r.value,
+            "unit": r.unit,
+            "flag": r.flag,
+            "date": r.created_at.isoformat() if r.created_at else None,
+            "token": r.token,
+        })
 
     # Recent orders
     recent_orders = db.query(LabOrder).filter(
@@ -55,6 +103,15 @@ def dashboard(
         "orders": orders_count,
         "tests": results_count,
         "critical": critical_count,
+        "today": {
+            "patients": patients_today,
+            "orders": orders_today,
+            "tests": tests_today,
+        },
+        "this_week": {
+            "orders": orders_week,
+        },
+        "abnormal_results": abnormal,
         "recent_orders": recent,
         "lab_name": current_user.lab.name if hasattr(current_user, 'lab') else None,
     }
