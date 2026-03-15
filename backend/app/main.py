@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+import os
+from pathlib import Path
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 
 from .database import Base, engine
 from .config import APP_NAME, APP_VERSION
@@ -49,19 +51,55 @@ app.include_router(national_identity.router)
 app.include_router(insurance.router)
 app.include_router(device_results.router)
 
+# Frontend static files
+FRONTEND_DIR = Path(os.getenv("FRONTEND_DIR", "/app/static_frontend"))
+if not FRONTEND_DIR.exists():
+    # Fallback for local development
+    FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend"
 
-@app.get("/")
-def root():
-    return {
-        "system": "GULA Platform",
-        "version": APP_VERSION,
-        "status": "running",
-    }
+
+@app.get("/", response_class=HTMLResponse)
+def serve_index():
+    """Serve the main SPA."""
+    index_file = FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        return HTMLResponse(content=index_file.read_text(encoding="utf-8"))
+    return JSONResponse({"system": "GULA Platform", "version": APP_VERSION, "status": "running"})
+
+
+# Serve result page for public links
+@app.get("/r/{token}", response_class=HTMLResponse)
+def serve_result_page(token: str):
+    """Serve result HTML page for public result links.
+    The page loads data from /api/r/{token} via JS fetch.
+    """
+    result_file = FRONTEND_DIR / "result.html"
+    if result_file.exists():
+        return HTMLResponse(content=result_file.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>Result page not found</h1>", status_code=404)
+
+
+# Also handle /r/{token}/pdf for direct browser access
+@app.get("/r/{token}/pdf")
+def serve_result_pdf_redirect(token: str, request: Request):
+    """Redirect to API PDF endpoint."""
+    from .routes.results import download_result_pdf
+    from .database import SessionLocal
+    db = SessionLocal()
+    try:
+        return download_result_pdf(token, request, db)
+    finally:
+        db.close()
 
 
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+
+# Mount frontend static assets (CSS, JS, images) if directory exists
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
 # Test types listing (public)
