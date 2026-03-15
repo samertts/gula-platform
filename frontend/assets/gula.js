@@ -36,6 +36,13 @@ function checkAuth() {
 
 // ---- UI Helpers ----
 function $(id) { return document.getElementById(id); }
+// XSS protection: escape user-provided strings
+function esc(str) {
+  if (str == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
 function toast(msg, type = 'success') {
   const t = $('toast');
   t.textContent = msg;
@@ -188,7 +195,7 @@ async function loadPatients(search = '') {
           <td>${formatDate(p.created_at)}</td>
           <td>
             <button class="btn btn-outline btn-sm" onclick="viewPatient(${p.id})">عرض</button>
-            <button class="btn btn-outline btn-sm" onclick="newOrderForPatient(${p.id},'${p.full_name}')">+ طلب</button>
+            <button class="btn btn-outline btn-sm" onclick="newOrderForPatient(${p.id})">+ طلب</button>
           </td>
         </tr>`).join('')}</tbody>
       </table></div>
@@ -264,7 +271,7 @@ async function viewPatient(id) {
         </table></div>
       ` : '<div class="empty"><p>لا توجد نتائج سابقة</p></div>'}
       <div style="margin-top:16px">
-        <button class="btn btn-primary btn-sm" onclick="closeModal();newOrderForPatient(${p.id},'${p.full_name}')">+ طلب تحليل جديد</button>
+        <button class="btn btn-primary btn-sm" onclick="closeModal();newOrderForPatient(${p.id})">+ طلب تحليل جديد</button>
       </div>
     `);
   } catch (e) { toast(e.message, 'error'); }
@@ -352,7 +359,7 @@ function openNewOrder() {
   addTestRow();
 }
 
-function newOrderForPatient(id, name) {
+function newOrderForPatient(id) {
   openNewOrder();
   $('ordPatientId').value = id;
 }
@@ -421,11 +428,12 @@ async function loadSamples(status = '') {
   try {
     const d = await api(`/samples?status=${status}&limit=50`);
     const el = $('samplesTable');
-    if (!d.length) { el.innerHTML = '<div class="empty"><p>لا توجد عينات</p></div>'; return; }
+    const samples = d.samples || d;
+    if (!samples || !samples.length) { el.innerHTML = '<div class="empty"><p>لا توجد عينات</p></div>'; return; }
     el.innerHTML = `
       <div class="table-wrap"><table>
         <thead><tr><th>الباركود</th><th>النوع</th><th>الحالة</th><th>الموقع</th><th>ملاحظات</th><th></th></tr></thead>
-        <tbody>${d.map(s => `<tr>
+        <tbody>${samples.map(s => `<tr>
           <td><code style="color:var(--accent)">${s.barcode}</code></td>
           <td>${s.sample_type}</td>
           <td>${statusBadge(s.status)}</td>

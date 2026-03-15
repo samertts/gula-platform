@@ -39,9 +39,7 @@ def generate_medical_qr(token: str, db: Session = Depends(get_db)):
     directly without manual entry. Uses a FHIR-lite JSON format.
     """
     token_h = hash_token(token)
-    result = db.query(LabResult).filter(
-        (LabResult.token_hash == token_h) | (LabResult.token == token)
-    ).first()
+    result = db.query(LabResult).filter(LabResult.token_hash == token_h).first()
     if not result:
         return Response(content=b"Not found", status_code=404)
 

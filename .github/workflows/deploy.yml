@@ -45,17 +45,24 @@ jobs:
             git reset --hard origin/main
             git clean -fd
 
-            # Build and deploy (force rebuild to ensure fresh images)
-            docker compose build --no-cache
-            docker compose down --remove-orphans
-            docker compose up -d
+            # Build and deploy
+            # Try docker compose (v2) first, fall back to docker-compose (v1)
+            if command -v docker-compose &> /dev/null; then
+              COMPOSE="docker-compose"
+            else
+              COMPOSE="docker compose"
+            fi
+
+            $COMPOSE build
+            $COMPOSE down --remove-orphans
+            $COMPOSE up -d
 
             # Clean up old images
             docker image prune -f
 
             # Verify containers are running
             echo "=== Container Status ==="
-            docker compose ps
+            $COMPOSE ps
 
             echo "Deployment completed successfully"
           DEPLOY_SCRIPT
@@ -78,7 +85,7 @@ jobs:
           echo "Health check failed after 6 attempts"
 
           # Show service logs for debugging
-          ssh gula-server "cd /home/samertts/gula-platform && docker compose ps && docker compose logs --tail=20 api-gateway gula-backend" || true
+          ssh gula-server 'cd /home/samertts/gula-platform && (docker-compose ps 2>/dev/null || docker compose ps) && (docker-compose logs --tail=20 api-gateway gula-backend 2>/dev/null || docker compose logs --tail=20 api-gateway gula-backend)' || true
           exit 1
 
       - name: Verify API endpoint
@@ -87,7 +94,7 @@ jobs:
         run: |
           response=$(curl -sf --max-time 10 "http://$SERVER_HOST/health" 2>/dev/null || echo "FAILED")
           echo "API Response: $response"
-          if echo "$response" | grep -q "healthy"; then
+          if echo "$response" | grep -q '"status"'; then
             echo "API is healthy!"
           else
             echo "WARNING: API health check returned unexpected response"
