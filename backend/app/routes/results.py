@@ -1,5 +1,6 @@
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
@@ -9,7 +10,7 @@ from ..models.patient import Patient
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.lab_order import LabOrder
-from ..models.lab_result import LabResult
+from ..models.lab_result import LabResult, hash_token
 from ..models.test_type import TestType
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_public
@@ -153,8 +154,10 @@ def create_order(
             flag = get_flag(item.value, item.normal_range_low, item.normal_range_high)
 
         token = secrets.token_urlsafe(32)
-        while db.query(LabResult).filter(LabResult.token == token).first():
+        token_h = hash_token(token)
+        while db.query(LabResult).filter(LabResult.token_hash == token_h).first():
             token = secrets.token_urlsafe(32)
+            token_h = hash_token(token)
 
         result = LabResult(
             order_id=order.id,
@@ -166,6 +169,7 @@ def create_order(
             normal_range_high=item.normal_range_high,
             flag=flag,
             token=token,
+            token_hash=token_h,
         )
         db.add(result)
         result_links.append({"test": item.test_name, "link": f"/r/{token}"})
@@ -235,7 +239,11 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
     # Rate limit public access
     rate_limit_public(request, max_per_minute=30)
 
-    result = db.query(LabResult).filter(LabResult.token == token).first()
+    # Look up by hash for security (prevents token exposure from DB leak)
+    token_h = hash_token(token)
+    result = db.query(LabResult).filter(
+        (LabResult.token_hash == token_h) | (LabResult.token == token)
+    ).first()
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
 
@@ -305,6 +313,75 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
         "disclaimer": "This interpretation is for informational purposes only. It is not a medical diagnosis. Please consult your doctor.",
         "disclaimer_ar": "هذا التفسير لأغراض إعلامية فقط. ليس تشخيصاً طبياً. يرجى مراجعة طبيبك.",
     }
+
+
+# ===== PDF DOWNLOAD =====
+
+@router.get("/r/{token}/pdf")
+def download_result_pdf(token: str, request: Request, db: Session = Depends(get_db)):
+    """Download result as a professional PDF report with QR code."""
+    from ..services.pdf_report import generate_result_pdf
+
+    rate_limit_public(request, max_per_minute=10)
+
+    token_h = hash_token(token)
+    result = db.query(LabResult).filter(
+        (LabResult.token_hash == token_h) | (LabResult.token == token)
+    ).first()
+    if not result:
+        raise HTTPException(status_code=404, detail="Result not found")
+
+    if result.expires_at and result.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="Result link has expired")
+
+    order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
+    patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
+    lab = db.query(Lab).filter(Lab.id == order.lab_id).first() if order else None
+    all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
+
+    results_data = []
+    for r in all_results:
+        interp = None
+        if r.value is not None:
+            interp = interpret_result(r.test_name, r.value, r.normal_range_low, r.normal_range_high)
+        results_data.append({
+            "test_name": r.test_name,
+            "value": r.value,
+            "value_text": r.value_text,
+            "unit": r.unit,
+            "normal_range_low": r.normal_range_low,
+            "normal_range_high": r.normal_range_high,
+            "flag": r.flag,
+            "interpretation": interp,
+        })
+
+    data = {
+        "patient": {"name": patient.full_name if patient else "Unknown",
+                     "health_id": patient.health_id if patient else None},
+        "lab": {"name": lab.name if lab else "Unknown",
+                "city": lab.city if lab else None},
+        "order_date": order.created_at.isoformat() if order and order.created_at else None,
+        "doctor_name": order.doctor_name if order else None,
+        "results": results_data,
+    }
+
+    result_url = f"{BASE_URL}/r/{token}"
+    pdf_bytes = generate_result_pdf(data, result_url)
+
+    patient_name = (patient.full_name if patient else "result").replace(" ", "_")
+    filename = f"GULA_Report_{patient_name}.pdf"
+
+    log_action(db, action="download_pdf", resource_type="lab_result",
+               resource_id=result.id,
+               details=f"PDF downloaded for patient {patient.full_name if patient else 'unknown'}",
+               ip_address=request.client.host if request.client else None)
+    db.commit()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ===== PATIENT HISTORY =====
