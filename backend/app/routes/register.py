@@ -24,6 +24,13 @@ class LabRegisterRequest(BaseModel):
 @router.post("/register")
 def register_lab(data: LabRegisterRequest, request: Request, db: Session = Depends(get_db)):
     rate_limit_auth(request)
+
+    # Password strength validation
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if data.password.isdigit() or data.password.isalpha():
+        raise HTTPException(status_code=400, detail="Password must contain both letters and numbers")
+
     existing = db.query(LabUser).filter(LabUser.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")

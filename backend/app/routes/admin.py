@@ -21,9 +21,9 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 def require_admin(current_user: LabUser = Depends(get_current_user)):
-    """Only allow master_admin or admin role."""
-    if current_user.role not in ("master_admin", "admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
+    """Only allow master_admin for platform-wide admin operations."""
+    if current_user.role != "master_admin":
+        raise HTTPException(status_code=403, detail="Master admin access required")
     return current_user
 
 

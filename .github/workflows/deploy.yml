@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -27,7 +27,7 @@ jobs:
             HostName $SERVER_HOST
             User ${{ secrets.SERVER_USER }}
             IdentityFile ~/.ssh/id_ed25519
-            StrictHostKeyChecking accept-new
+            StrictHostKeyChecking yes
           " > ~/.ssh/config
           chmod 600 ~/.ssh/config
 
@@ -36,16 +36,34 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          ssh gula-server "cd /home/samertts/gula-platform && git reset --hard && git pull origin main && docker compose down && docker compose build --no-cache && docker compose up -d && docker image prune -f"
+          ssh gula-server << 'DEPLOY_SCRIPT'
+            set -e
+            cd /home/samertts/gula-platform
+
+            # Stash any local changes instead of destroying them
+            git stash --include-untracked 2>/dev/null || true
+
+            # Pull latest changes
+            git pull origin main
+
+            # Build and deploy with rolling restart
+            docker compose build
+            docker compose up -d --remove-orphans
+
+            # Clean up old images
+            docker image prune -f
+
+            echo "Deployment completed successfully"
+          DEPLOY_SCRIPT
 
       - name: Wait for services to start
-        run: sleep 15
+        run: sleep 20
 
       - name: Health Check
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6; do
             if curl -sf --max-time 10 "http://$SERVER_HOST/health" > /dev/null 2>&1; then
               echo "Health check passed!"
               exit 0
@@ -53,5 +71,20 @@ jobs:
             echo "Attempt $i failed, retrying in 10s..."
             sleep 10
           done
-          echo "Health check failed after 5 attempts"
+          echo "Health check failed after 6 attempts"
+
+          # Show service logs for debugging
+          ssh gula-server "cd /home/samertts/gula-platform && docker compose ps && docker compose logs --tail=20 api-gateway gula-backend" || true
           exit 1
+
+      - name: Verify API endpoint
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          response=$(curl -sf --max-time 10 "http://$SERVER_HOST/health" 2>/dev/null || echo "FAILED")
+          echo "API Response: $response"
+          if echo "$response" | grep -q "healthy"; then
+            echo "API is healthy!"
+          else
+            echo "WARNING: API health check returned unexpected response"
+          fi

@@ -354,7 +354,7 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
 
     token_h = hash_token(token)
     result = db.query(LabResult).filter(
-        (LabResult.token_hash == token_h) | (LabResult.token == token)
+        LabResult.token_hash == token_h
     ).first()
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
@@ -494,7 +494,8 @@ def get_patient_history(phone: str, request: Request, name: str = None, db: Sess
     # Full name verification (case-insensitive, stripped)
     if not name or len(name) < 4:
         raise HTTPException(status_code=400, detail="Please provide the full patient name (?name=...)")
-    if patient.full_name.strip().lower() != name.strip().lower():
+    import hmac
+    if not hmac.compare_digest(patient.full_name.strip().lower(), name.strip().lower()):
         raise HTTPException(status_code=403, detail=generic_error)
 
     orders = db.query(LabOrder).filter(

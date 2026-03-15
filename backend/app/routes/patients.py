@@ -91,10 +91,10 @@ def create_patient(
                     "existing_patient": patient_to_dict(existing),
                 }
 
-        # Check for probable duplicates in same lab
+        # Check for probable duplicates in same lab (limit to recent 500 for performance)
         lab_patients = db.query(Patient).filter(
             Patient.lab_id == current_user.lab_id
-        ).all()
+        ).order_by(Patient.created_at.desc()).limit(500).all()
 
         duplicates = []
         for p in lab_patients:
