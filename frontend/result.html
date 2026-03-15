@@ -1,269 +1,126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lab Result - GULA</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GULA - نتيجة التحليل</title>
 <style>
-  .flag-H { color: #ef4444; }
-  .flag-L { color: #3b82f6; }
-  .flag-critical { color: #dc2626; font-weight: bold; }
-  .flag-normal { color: #22c55e; }
-  .status-bar { height: 8px; border-radius: 4px; position: relative; }
-  .status-marker { width: 12px; height: 12px; border-radius: 50%; position: absolute; top: -2px; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.3); }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:100vh;padding:20px}
+.container{max-width:700px;margin:0 auto}
+.logo{text-align:center;margin-bottom:24px}
+.logo h1{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#22d3ee,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{color:#64748b;font-size:.8rem;margin-top:4px}
+.card{background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;margin-bottom:16px}
+.card-title{font-size:.85rem;color:#64748b;margin-bottom:12px;font-weight:600}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.info-item label{font-size:.75rem;color:#64748b;display:block}
+.info-item span{font-size:.95rem;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:right;padding:10px;color:#64748b;font-size:.8rem;border-bottom:1px solid #1e293b}
+td{padding:10px;border-bottom:1px solid #1e293b40}
+.normal{color:#34d399}
+.high{color:#f87171;font-weight:700}
+.low{color:#fbbf24}
+.range{color:#64748b;font-size:.8rem}
+.actions{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;border:none;font-size:.88rem;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit}
+.btn-wa{background:#25d366;color:#fff}
+.btn-pdf{background:#818cf8;color:#fff}
+.btn-copy{background:transparent;border:1px solid #1e293b;color:#94a3b8}
+.disclaimer{text-align:center;font-size:.72rem;color:#475569;margin-top:24px;line-height:1.6}
+.qr{text-align:center;margin:16px 0}
+.qr img{width:120px;height:120px;border-radius:8px;background:#fff;padding:4px}
+.spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#818cf8;border-radius:50%;animation:spin .7s linear infinite;margin:60px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{text-align:center;padding:60px 20px;color:#f87171}
+.expired{text-align:center;padding:60px 20px}
+.expired h2{color:#fbbf24;margin-bottom:8px}
+.expired p{color:#64748b}
+.lab-brand{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #1e293b}
+.lab-brand .lab-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#818cf8,#22d3ee);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+.lab-brand .lab-name{font-size:1.1rem;font-weight:700}
+.lab-brand .lab-city{font-size:.8rem;color:#64748b}
+@media print{body{background:#fff;color:#000}
+.card{border:1px solid #ddd;box-shadow:none}
+.actions,.disclaimer{display:none}
+th,td{border-bottom:1px solid #ddd}
+.normal{color:#059669}.high{color:#dc2626}.low{color:#d97706}}
 </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-
-<div class="max-w-2xl mx-auto px-4 py-8">
-  <!-- Header -->
-  <div class="text-center mb-8">
-    <h1 class="text-3xl font-bold text-gray-900">GULA</h1>
-    <p class="text-gray-500 text-sm">Smart Health Platform</p>
-  </div>
-
-  <div id="loading" class="text-center py-12">
-    <p class="text-gray-400">Loading result...</p>
-  </div>
-
-  <div id="error" class="hidden text-center py-12">
-    <p class="text-red-500 text-lg font-semibold">Result not found.</p>
-    <p class="text-gray-400 mt-2">Please contact your lab for a new link.</p>
-  </div>
-
-  <div id="expired" class="hidden text-center py-12">
-    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-8 max-w-md mx-auto">
-      <svg class="w-16 h-16 text-amber-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-      <p class="text-amber-800 text-xl font-bold mb-2">Result Link Expired</p>
-      <p class="text-amber-700 text-sm mb-1" id="expired-message"></p>
-      <p class="text-amber-600 text-sm mb-4" dir="rtl" id="expired-message-ar"></p>
-      <p class="text-amber-700 text-sm font-medium" id="expired-advice"></p>
-      <p class="text-amber-600 text-sm mt-1" dir="rtl" id="expired-advice-ar"></p>
-    </div>
-  </div>
-
-  <div id="result-content" class="hidden">
-    <!-- Lab & Patient Info -->
-    <div class="bg-white rounded-2xl shadow-sm p-6 mb-4">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <p class="text-sm text-gray-500">Patient</p>
-          <p class="text-xl font-bold text-gray-800" id="patient-name"></p>
-          <p class="text-xs text-blue-600" id="health-id"></p>
-        </div>
-        <div class="text-right">
-          <p class="text-sm text-gray-500">Laboratory</p>
-          <p class="font-semibold text-gray-700" id="lab-name"></p>
-          <p class="text-xs text-gray-400" id="lab-city"></p>
-        </div>
-      </div>
-      <div class="flex items-center justify-between text-sm text-gray-500 border-t pt-3">
-        <span id="order-date"></span>
-        <span id="doctor-name"></span>
-      </div>
-    </div>
-
-    <!-- Results -->
-    <div id="results-list" class="space-y-4 mb-6">
-    </div>
-
-    <!-- Disclaimer -->
-    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-      <p class="text-amber-800 text-sm font-medium mb-1">Important Notice</p>
-      <p class="text-amber-700 text-xs" id="disclaimer"></p>
-      <p class="text-amber-700 text-xs mt-1 font-arabic" dir="rtl" id="disclaimer-ar"></p>
-    </div>
-
-    <!-- Share -->
-    <div class="flex flex-wrap gap-3 justify-center mb-6">
-      <a id="whatsapp-share" href="#" target="_blank" class="bg-green-500 text-white px-6 py-3 rounded-xl hover:bg-green-600 flex items-center gap-2 font-medium">
-        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.634-1.215A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.319 0-4.469-.676-6.286-1.835l-.451-.268-2.978.781.795-2.903-.293-.467A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-        Share via WhatsApp
-      </a>
-      <a id="pdf-download" href="#" class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 flex items-center gap-2 font-medium">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-        Download PDF
-      </a>
-      <button onclick="copyCurrentLink()" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 font-medium">
-        Copy Link
-      </button>
-    </div>
-
-    <!-- Medical QR Code -->
-    <div class="bg-white rounded-xl shadow-sm p-6 mb-6 text-center">
-      <h3 class="font-semibold text-gray-800 mb-2">Medical QR Code</h3>
-      <p class="text-gray-500 text-xs mb-3">This QR contains the actual test data. Scan it to import results into any compatible health system.</p>
-      <img id="medical-qr" class="mx-auto rounded-lg border p-2" style="max-width:200px" alt="Medical QR">
-    </div>
-
-    <!-- Health Record CTA -->
-    <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-center text-white">
-      <h3 class="text-lg font-bold mb-2">Keep all your results in one place</h3>
-      <p class="text-blue-100 text-sm mb-4">Create your free GULA health record to track all your lab results over time.</p>
-      <a href="/" class="inline-block bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition">
-        Create Free Health Record
-      </a>
-    </div>
-
-    <!-- Footer -->
-    <div class="text-center mt-8 text-gray-400 text-xs">
-      <p>Powered by GULA Platform - gula-platform.org</p>
-    </div>
-  </div>
+<body>
+<div class="container">
+  <div class="logo"><h1>GULA</h1><p>نتيجة تحليل مختبري</p></div>
+  <div id="content"><div class="spinner"></div></div>
 </div>
-
 <script>
-async function loadResult() {
-  const path = window.location.pathname;
-  const token = path.split('/r/')[1];
-  if (!token) {
-    showError();
-    return;
-  }
+const token = window.location.pathname.split('/r/')[1]?.split('/')[0] || window.location.pathname.split('/').pop();
 
+async function loadResult() {
+  if (!token) { showError('رابط غير صالح'); return; }
   try {
-    const res = await fetch(`/api/r/${token}`);
-    if (!res.ok) {
-      showError();
-      return;
-    }
+    const res = await fetch('/api/results/api/r/' + token);
     const data = await res.json();
-    if (data.expired) {
-      showExpired(data);
-      return;
+    if (!res.ok) {
+      if (res.status === 410 || (data.detail && data.detail.includes('انتهت'))) {
+        document.getElementById('content').innerHTML = `<div class="expired"><h2>انتهت صلاحية الرابط</h2><p>يرجى مراجعة المختبر للحصول على رابط جديد</p></div>`;
+        return;
+      }
+      throw new Error(data.detail || 'خطأ');
     }
     renderResult(data);
-  } catch (e) {
-    showError();
-  }
+  } catch (e) { showError(e.message); }
 }
 
-function showError() {
-  document.getElementById('loading').classList.add('hidden');
-  document.getElementById('error').classList.remove('hidden');
+function showError(msg) {
+  document.getElementById('content').innerHTML = `<div class="error-msg"><p>${msg}</p></div>`;
 }
 
-function showExpired(data) {
-  document.getElementById('loading').classList.add('hidden');
-  document.getElementById('expired').classList.remove('hidden');
-  document.getElementById('expired-message').textContent = data.message;
-  document.getElementById('expired-message-ar').textContent = data.message_ar;
-  document.getElementById('expired-advice').textContent = data.advice;
-  document.getElementById('expired-advice-ar').textContent = data.advice_ar;
+function flag(val, low, high) {
+  const v = parseFloat(val);
+  if (isNaN(v) || !low || !high) return '';
+  if (v < parseFloat(low)) return '<span class="low">&#x25BC; منخفض</span>';
+  if (v > parseFloat(high)) return '<span class="high">&#x25B2; مرتفع</span>';
+  return '<span class="normal">&#10003; طبيعي</span>';
 }
 
-function renderResult(data) {
-  document.getElementById('loading').classList.add('hidden');
-  document.getElementById('result-content').classList.remove('hidden');
-
-  document.getElementById('patient-name').textContent = data.patient.name;
-  document.getElementById('health-id').textContent = data.patient.health_id ? `Health ID: ${data.patient.health_id}` : '';
-  document.getElementById('lab-name').textContent = data.lab.name;
-  document.getElementById('lab-city').textContent = data.lab.city || '';
-  document.getElementById('order-date').textContent = data.order_date ? `Date: ${new Date(data.order_date).toLocaleDateString()}` : '';
-  document.getElementById('doctor-name').textContent = data.doctor_name ? `Dr. ${data.doctor_name}` : '';
-  document.getElementById('disclaimer').textContent = data.disclaimer;
-  document.getElementById('disclaimer-ar').textContent = data.disclaimer_ar;
-
-  if (data.whatsapp_link) {
-    document.getElementById('whatsapp-share').href = data.whatsapp_link;
-  }
-
-  // Set PDF download link and medical QR
-  const path = window.location.pathname;
-  const token = path.split('/r/')[1];
-  document.getElementById('pdf-download').href = `/api/r/${token}/pdf`;
-  document.getElementById('medical-qr').src = `/qr-medical/${token}`;
-
-  const list = document.getElementById('results-list');
-  list.innerHTML = data.results.map(r => {
-    const interp = r.interpretation;
-    const statusColor = {
-      'normal': 'bg-green-50 border-green-200',
-      'high': 'bg-red-50 border-red-200',
-      'low': 'bg-blue-50 border-blue-200',
-      'critical': 'bg-red-100 border-red-300',
-      'unknown': 'bg-gray-50 border-gray-200'
-    }[interp ? interp.status : 'unknown'];
-
-    const flagText = {
-      'H': 'Above Normal',
-      'L': 'Below Normal',
-      'critical': 'CRITICAL',
-      'normal': 'Normal',
-      'unknown': '-'
-    }[r.flag || 'unknown'];
-
-    const flagColor = {
-      'H': 'text-red-600 bg-red-50',
-      'L': 'text-blue-600 bg-blue-50',
-      'critical': 'text-red-700 bg-red-100 font-bold',
-      'normal': 'text-green-600 bg-green-50',
-      'unknown': 'text-gray-500 bg-gray-50'
-    }[r.flag || 'unknown'];
-
-    // Visual range bar
-    let rangeBar = '';
-    if (r.normal_range_low !== null && r.normal_range_high !== null && r.value !== null) {
-      const range = r.normal_range_high - r.normal_range_low;
-      const extended = range * 0.5;
-      const minVal = Math.max(0, r.normal_range_low - extended);
-      const maxVal = r.normal_range_high + extended;
-      const totalRange = maxVal - minVal;
-      const normalStart = ((r.normal_range_low - minVal) / totalRange) * 100;
-      const normalEnd = ((r.normal_range_high - minVal) / totalRange) * 100;
-      const markerPos = Math.min(100, Math.max(0, ((r.value - minVal) / totalRange) * 100));
-      const markerColor = r.flag === 'normal' ? '#22c55e' : r.flag === 'critical' ? '#dc2626' : r.flag === 'H' ? '#ef4444' : '#3b82f6';
-
-      rangeBar = `
-        <div class="mt-3">
-          <div class="status-bar bg-gray-200 w-full">
-            <div style="position:absolute; left:${normalStart}%; width:${normalEnd-normalStart}%; height:100%; background:#bbf7d0; border-radius:4px;"></div>
-            <div class="status-marker" style="left:${markerPos}%; background:${markerColor};"></div>
-          </div>
-          <div class="flex justify-between text-xs text-gray-400 mt-1">
-            <span>${r.normal_range_low}</span>
-            <span>Normal Range</span>
-            <span>${r.normal_range_high}</span>
-          </div>
-        </div>
-      `;
-    }
-
-    return `
-      <div class="bg-white rounded-xl shadow-sm p-6 border ${statusColor}">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="font-semibold text-gray-800 text-lg">${r.test_name}</h3>
-          <span class="px-3 py-1 rounded-full text-xs ${flagColor}">${flagText}</span>
-        </div>
-        <div class="flex items-baseline gap-2 mb-1">
-          <span class="text-3xl font-bold text-gray-900">${r.value !== null ? r.value : (r.value_text || '-')}</span>
-          <span class="text-gray-500">${r.unit || ''}</span>
-        </div>
-        ${r.normal_range_low !== null && r.normal_range_high !== null ? `
-          <p class="text-sm text-gray-500">Normal range: ${r.normal_range_low} - ${r.normal_range_high} ${r.unit || ''}</p>
-        ` : ''}
-        ${rangeBar}
-        ${interp ? `
-          <div class="mt-4 bg-gray-50 rounded-lg p-4">
-            <p class="text-sm text-gray-700 font-medium mb-1">${interp.interpretation}</p>
-            <p class="text-sm text-gray-600">${interp.advice}</p>
-            <div class="mt-2 border-t pt-2" dir="rtl">
-              <p class="text-sm text-gray-700 font-medium mb-1">${interp.interpretation_ar}</p>
-              <p class="text-sm text-gray-600">${interp.advice_ar}</p>
-            </div>
-          </div>
-        ` : ''}
+function renderResult(d) {
+  const date = new Date(d.order_date).toLocaleDateString('ar-IQ', {year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="lab-brand">
+        <div class="lab-avatar">${(d.lab?.name || 'م')[0]}</div>
+        <div><div class="lab-name">${d.lab?.name || 'المختبر'}</div><div class="lab-city">${d.lab?.city || ''}</div></div>
       </div>
-    `;
-  }).join('');
-}
-
-function copyCurrentLink() {
-  navigator.clipboard.writeText(window.location.href).then(() => {
-    alert('Link copied!');
-  });
+      <div class="info-grid">
+        <div class="info-item"><label>المريض</label><span>${d.patient?.name || '-'}</span></div>
+        <div class="info-item"><label>التاريخ</label><span>${date}</span></div>
+        <div class="info-item"><label>الطبيب</label><span>${d.doctor_name || '-'}</span></div>
+        <div class="info-item"><label>المعرف الصحي</label><span style="color:#22d3ee">${d.patient?.health_id || '-'}</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">نتائج التحاليل</div>
+      <table>
+        <thead><tr><th>التحليل</th><th>النتيجة</th><th>الوحدة</th><th>المدى الطبيعي</th><th>التقييم</th></tr></thead>
+        <tbody>${(d.results || []).map(r => `<tr>
+          <td>${r.test_name}</td>
+          <td><strong>${r.value || r.value_text || '-'}</strong></td>
+          <td>${r.unit || ''}</td>
+          <td class="range">${r.normal_range_low || '?'} - ${r.normal_range_high || '?'}</td>
+          <td>${flag(r.value, r.normal_range_low, r.normal_range_high)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="qr"><img src="/api/qr/${token}" alt="QR" onerror="this.style.display='none'"></div>
+    <div class="actions">
+      ${d.whatsapp_link ? `<a href="${d.whatsapp_link}" target="_blank" class="btn btn-wa">مشاركة واتساب</a>` : ''}
+      <a href="/api/results/api/r/${token}/pdf" target="_blank" class="btn btn-pdf">تحميل PDF</a>
+      <button class="btn btn-copy" onclick="navigator.clipboard.writeText(window.location.href);this.textContent='تم النسخ!'">نسخ الرابط</button>
+      <button class="btn btn-copy" onclick="window.print()">طباعة</button>
+    </div>
+    <div class="disclaimer">${d.disclaimer || 'هذه النتائج للاطلاع فقط ولا تغني عن استشارة الطبيب'}</div>
+  `;
 }
 
 loadResult();

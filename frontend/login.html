@@ -1,55 +1,169 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GULA - Login</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GULA - تسجيل الدخول</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.login-container{width:100%;max-width:420px;padding:20px}
+.logo{text-align:center;margin-bottom:40px}
+.logo h1{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,#22d3ee,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{color:#64748b;margin-top:8px;font-size:.9rem}
+.card{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:32px;box-shadow:0 25px 50px rgba(0,0,0,.3)}
+.card h2{font-size:1.3rem;margin-bottom:24px;color:#f1f5f9}
+.field{margin-bottom:20px}
+.field label{display:block;font-size:.85rem;color:#94a3b8;margin-bottom:6px}
+.field input{width:100%;padding:12px 16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;color:#e2e8f0;font-size:.95rem;transition:border .2s}
+.field input:focus{outline:none;border-color:#818cf8}
+.btn{width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(99,102,241,.3)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.error{background:#7f1d1d33;border:1px solid #991b1b;color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:.85rem;margin-bottom:16px;display:none}
+.register-link{text-align:center;margin-top:20px;font-size:.85rem;color:#64748b}
+.register-link a{color:#818cf8;text-decoration:none}
+.tabs{display:flex;gap:0;margin-bottom:24px;background:#0f172a;border-radius:10px;padding:4px}
+.tab{flex:1;padding:10px;text-align:center;border-radius:8px;cursor:pointer;font-size:.9rem;color:#64748b;transition:all .2s}
+.tab.active{background:#1e293b;color:#e2e8f0}
+.form-section{display:none}
+.form-section.active{display:block}
+</style>
 </head>
-<body class="bg-gradient-to-br from-gray-900 to-blue-900 min-h-screen flex items-center justify-center">
-<div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-  <div class="text-center mb-8">
-    <h1 class="text-4xl font-bold text-gray-900">GULA</h1>
-    <p class="text-gray-500 mt-2">Smart Health Platform</p>
+<body>
+<div class="login-container">
+  <div class="logo">
+    <h1>GULA</h1>
+    <p>منصة المختبرات الطبية</p>
   </div>
-  <div class="mb-4">
-    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-    <input id="email" type="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="lab@example.com">
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('login')">تسجيل الدخول</div>
+      <div class="tab" onclick="switchTab('register')">تسجيل مختبر جديد</div>
+    </div>
+    <div id="error" class="error"></div>
+
+    <!-- Login Form -->
+    <form id="loginForm" class="form-section active" onsubmit="handleLogin(event)">
+      <div class="field">
+        <label>البريد الإلكتروني</label>
+        <input type="email" id="loginEmail" required placeholder="admin@lab.com">
+      </div>
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input type="password" id="loginPassword" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn" id="loginBtn">دخول</button>
+    </form>
+
+    <!-- Register Form -->
+    <form id="registerForm" class="form-section" onsubmit="handleRegister(event)">
+      <div class="field">
+        <label>اسم المختبر</label>
+        <input type="text" id="regLabName" required placeholder="مختبر الحياة">
+      </div>
+      <div class="field">
+        <label>المدينة</label>
+        <input type="text" id="regCity" required placeholder="بغداد">
+      </div>
+      <div class="field">
+        <label>اسم المسؤول</label>
+        <input type="text" id="regAdminName" required placeholder="الاسم الكامل">
+      </div>
+      <div class="field">
+        <label>البريد الإلكتروني</label>
+        <input type="email" id="regEmail" required placeholder="admin@lab.com">
+      </div>
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input type="password" id="regPassword" required minlength="6" placeholder="6 أحرف على الأقل">
+      </div>
+      <div class="field">
+        <label>رقم الهاتف</label>
+        <input type="tel" id="regPhone" placeholder="07xxxxxxxxx">
+      </div>
+      <button type="submit" class="btn" id="regBtn">تسجيل المختبر</button>
+    </form>
   </div>
-  <div class="mb-6">
-    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-    <input id="password" type="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="********" onkeypress="if(event.key==='Enter')login()">
-  </div>
-  <button onclick="login()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">Login</button>
-  <div id="error" class="text-red-500 text-sm mt-3 hidden"></div>
-  <p class="text-center mt-4 text-sm text-gray-500">New lab? Go to the <a href="/" class="text-blue-600">main page</a> to register.</p>
 </div>
 <script>
-async function login() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  const errEl = document.getElementById('error');
-  errEl.classList.add('hidden');
+const API = '/api';
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+  });
+  document.getElementById('loginForm').classList.toggle('active', tab === 'login');
+  document.getElementById('registerForm').classList.toggle('active', tab === 'register');
+  document.getElementById('error').style.display = 'none';
+}
+
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'جاري الدخول...';
   try {
-    const res = await fetch('/login', {
+    const res = await fetch(API + '/login', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({email, password})
+      body: JSON.stringify({
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value
+      })
     });
     const data = await res.json();
-    if (data.token) {
-      localStorage.setItem('gula_token', data.token);
-      localStorage.setItem('gula_user', JSON.stringify(data.user));
-      window.location.href = '/';
-    } else {
-      errEl.textContent = data.detail || 'Login failed';
-      errEl.classList.remove('hidden');
-    }
-  } catch(e) {
-    errEl.textContent = 'Connection error';
-    errEl.classList.remove('hidden');
+    if (!res.ok) throw new Error(data.detail || 'فشل تسجيل الدخول');
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    window.location.href = '/';
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'دخول';
   }
 }
+
+async function handleRegister(e) {
+  e.preventDefault();
+  const btn = document.getElementById('regBtn');
+  btn.disabled = true; btn.textContent = 'جاري التسجيل...';
+  try {
+    const res = await fetch(API + '/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        lab_name: document.getElementById('regLabName').value,
+        city: document.getElementById('regCity').value,
+        admin_name: document.getElementById('regAdminName').value,
+        email: document.getElementById('regEmail').value,
+        password: document.getElementById('regPassword').value,
+        phone: document.getElementById('regPhone').value,
+        address: ''
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'فشل التسجيل');
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify({
+      id: data.user_id, name: document.getElementById('regAdminName').value,
+      email: document.getElementById('regEmail').value, role: 'admin', lab_id: data.lab_id
+    }));
+    window.location.href = '/';
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'تسجيل المختبر';
+  }
+}
+
+// Redirect if already logged in
+if (localStorage.getItem('token')) window.location.href = '/';
 </script>
 </body>
 </html>
