@@ -34,6 +34,10 @@ services:
       SECRET_KEY: ${GULA_SECRET_KEY:-change-me-in-production}
       BASE_URL: ${GULA_BASE_URL:-https://gula-platform.org}
       FRONTEND_DIR: /app/static_frontend
+      GULA_ADMIN_EMAIL: ${GULA_ADMIN_EMAIL:-admin@gula-platform.org}
+      GULA_ADMIN_PASSWORD: ${GULA_ADMIN_PASSWORD:-gula-admin-2024}
+      GULA_ADMIN_NAME: ${GULA_ADMIN_NAME:-GULA Admin}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
     ports:
       - "8000:8000"
     depends_on:
