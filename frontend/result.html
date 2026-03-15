@@ -28,8 +28,19 @@
   </div>
 
   <div id="error" class="hidden text-center py-12">
-    <p class="text-red-500 text-lg font-semibold">Result not found or link has expired.</p>
+    <p class="text-red-500 text-lg font-semibold">Result not found.</p>
     <p class="text-gray-400 mt-2">Please contact your lab for a new link.</p>
+  </div>
+
+  <div id="expired" class="hidden text-center py-12">
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-8 max-w-md mx-auto">
+      <svg class="w-16 h-16 text-amber-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <p class="text-amber-800 text-xl font-bold mb-2">Result Link Expired</p>
+      <p class="text-amber-700 text-sm mb-1" id="expired-message"></p>
+      <p class="text-amber-600 text-sm mb-4" dir="rtl" id="expired-message-ar"></p>
+      <p class="text-amber-700 text-sm font-medium" id="expired-advice"></p>
+      <p class="text-amber-600 text-sm mt-1" dir="rtl" id="expired-advice-ar"></p>
+    </div>
   </div>
 
   <div id="result-content" class="hidden">
@@ -107,6 +118,10 @@ async function loadResult() {
       return;
     }
     const data = await res.json();
+    if (data.expired) {
+      showExpired(data);
+      return;
+    }
     renderResult(data);
   } catch (e) {
     showError();
@@ -116,6 +131,15 @@ async function loadResult() {
 function showError() {
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('error').classList.remove('hidden');
+}
+
+function showExpired(data) {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('expired').classList.remove('hidden');
+  document.getElementById('expired-message').textContent = data.message;
+  document.getElementById('expired-message-ar').textContent = data.message_ar;
+  document.getElementById('expired-advice').textContent = data.advice;
+  document.getElementById('expired-advice-ar').textContent = data.advice_ar;
 }
 
 function renderResult(data) {
