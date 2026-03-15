@@ -56,14 +56,22 @@ th,td{border-bottom:1px solid #ddd}
 <script>
 const token = window.location.pathname.split('/r/')[1]?.split('/')[0] || window.location.pathname.split('/').pop();
 
+// XSS protection: escape all user-provided strings before rendering
+function esc(str) {
+  if (str == null) return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
 async function loadResult() {
-  if (!token) { showError('رابط غير صالح'); return; }
+  if (!token || !/^[A-Za-z0-9_-]+$/.test(token)) { showError('رابط غير صالح'); return; }
   try {
-    const res = await fetch('/api/results/api/r/' + token);
+    const res = await fetch('/api/results/api/r/' + encodeURIComponent(token));
     const data = await res.json();
     if (!res.ok) {
-      if (res.status === 410 || (data.detail && data.detail.includes('انتهت'))) {
-        document.getElementById('content').innerHTML = `<div class="expired"><h2>انتهت صلاحية الرابط</h2><p>يرجى مراجعة المختبر للحصول على رابط جديد</p></div>`;
+      if (res.status === 410 || data.expired) {
+        document.getElementById('content').innerHTML = '<div class="expired"><h2>انتهت صلاحية الرابط</h2><p>يرجى مراجعة المختبر للحصول على رابط جديد</p></div>';
         return;
       }
       throw new Error(data.detail || 'خطأ');
@@ -73,7 +81,14 @@ async function loadResult() {
 }
 
 function showError(msg) {
-  document.getElementById('content').innerHTML = `<div class="error-msg"><p>${msg}</p></div>`;
+  const el = document.getElementById('content');
+  el.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'error-msg';
+  const p = document.createElement('p');
+  p.textContent = msg;
+  div.appendChild(p);
+  el.appendChild(div);
 }
 
 function flag(val, low, high) {
@@ -86,17 +101,18 @@ function flag(val, low, high) {
 
 function renderResult(d) {
   const date = new Date(d.order_date).toLocaleDateString('ar-IQ', {year:'numeric',month:'long',day:'numeric'});
+  const safeToken = encodeURIComponent(token);
   document.getElementById('content').innerHTML = `
     <div class="card">
       <div class="lab-brand">
-        <div class="lab-avatar">${(d.lab?.name || 'م')[0]}</div>
-        <div><div class="lab-name">${d.lab?.name || 'المختبر'}</div><div class="lab-city">${d.lab?.city || ''}</div></div>
+        <div class="lab-avatar">${esc((d.lab?.name || 'م')[0])}</div>
+        <div><div class="lab-name">${esc(d.lab?.name || 'المختبر')}</div><div class="lab-city">${esc(d.lab?.city || '')}</div></div>
       </div>
       <div class="info-grid">
-        <div class="info-item"><label>المريض</label><span>${d.patient?.name || '-'}</span></div>
-        <div class="info-item"><label>التاريخ</label><span>${date}</span></div>
-        <div class="info-item"><label>الطبيب</label><span>${d.doctor_name || '-'}</span></div>
-        <div class="info-item"><label>المعرف الصحي</label><span style="color:#22d3ee">${d.patient?.health_id || '-'}</span></div>
+        <div class="info-item"><label>المريض</label><span>${esc(d.patient?.name || '-')}</span></div>
+        <div class="info-item"><label>التاريخ</label><span>${esc(date)}</span></div>
+        <div class="info-item"><label>الطبيب</label><span>${esc(d.doctor_name || '-')}</span></div>
+        <div class="info-item"><label>المعرف الصحي</label><span style="color:#22d3ee">${esc(d.patient?.health_id || '-')}</span></div>
       </div>
     </div>
     <div class="card">
@@ -104,22 +120,22 @@ function renderResult(d) {
       <table>
         <thead><tr><th>التحليل</th><th>النتيجة</th><th>الوحدة</th><th>المدى الطبيعي</th><th>التقييم</th></tr></thead>
         <tbody>${(d.results || []).map(r => `<tr>
-          <td>${r.test_name}</td>
-          <td><strong>${r.value || r.value_text || '-'}</strong></td>
-          <td>${r.unit || ''}</td>
-          <td class="range">${r.normal_range_low || '?'} - ${r.normal_range_high || '?'}</td>
+          <td>${esc(r.test_name)}</td>
+          <td><strong>${esc(r.value != null ? r.value : (r.value_text || '-'))}</strong></td>
+          <td>${esc(r.unit || '')}</td>
+          <td class="range">${esc(r.normal_range_low != null ? r.normal_range_low : '?')} - ${esc(r.normal_range_high != null ? r.normal_range_high : '?')}</td>
           <td>${flag(r.value, r.normal_range_low, r.normal_range_high)}</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
-    <div class="qr"><img src="/api/qr/${token}" alt="QR" onerror="this.style.display='none'"></div>
+    <div class="qr"><img src="/api/qr/${safeToken}" alt="QR" onerror="this.style.display='none'"></div>
     <div class="actions">
-      ${d.whatsapp_link ? `<a href="${d.whatsapp_link}" target="_blank" class="btn btn-wa">مشاركة واتساب</a>` : ''}
-      <a href="/api/results/api/r/${token}/pdf" target="_blank" class="btn btn-pdf">تحميل PDF</a>
+      ${d.whatsapp_link ? `<a href="${esc(d.whatsapp_link)}" target="_blank" rel="noopener" class="btn btn-wa">مشاركة واتساب</a>` : ''}
+      <a href="/api/results/api/r/${safeToken}/pdf" target="_blank" rel="noopener" class="btn btn-pdf">تحميل PDF</a>
       <button class="btn btn-copy" onclick="navigator.clipboard.writeText(window.location.href);this.textContent='تم النسخ!'">نسخ الرابط</button>
       <button class="btn btn-copy" onclick="window.print()">طباعة</button>
     </div>
-    <div class="disclaimer">${d.disclaimer || 'هذه النتائج للاطلاع فقط ولا تغني عن استشارة الطبيب'}</div>
+    <div class="disclaimer">${esc(d.disclaimer || 'هذه النتائج للاطلاع فقط ولا تغني عن استشارة الطبيب')}</div>
   `;
 }
 

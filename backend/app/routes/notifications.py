@@ -94,14 +94,23 @@ def notification_status(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Check audit logs for result views
-    views = db.query(AuditLog).filter(
-        AuditLog.action == "view_result",
-        AuditLog.resource_type == "lab_result",
-    ).all()
+    # Get result IDs for this order
+    result_ids = [r.id for r in db.query(LabResult.id).filter(LabResult.order_id == order_id).all()]
 
-    result_ids = [r.id for r in db.query(LabResult).filter(LabResult.order_id == order_id).all()]
-    relevant_views = [v for v in views if v.resource_id in result_ids]
+    if not result_ids:
+        return {"order_id": order_id, "total_views": 0, "first_viewed": None, "last_viewed": None}
+
+    # Query only relevant audit logs (filtered in DB, not in Python)
+    relevant_views = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.action == "view",
+            AuditLog.resource_type == "lab_result",
+            AuditLog.resource_id.in_(result_ids),
+        )
+        .order_by(AuditLog.created_at.asc())
+        .all()
+    )
 
     return {
         "order_id": order_id,

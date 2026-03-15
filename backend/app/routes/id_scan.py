@@ -103,12 +103,16 @@ def extract_fields(text: str) -> dict:
     if id_match:
         result["national_id"] = id_match.group()
 
-    # Extract dates
+    # Extract dates with validation
     dates = DATE_PATTERN.findall(text)
     if dates:
-        # First date is usually birth date on Iraqi ID
-        year, month, day = dates[-1]  # birth date is typically last date found
-        result["birth_date"] = f"{year}-{month}-{day}"
+        year, month, day = dates[-1]
+        try:
+            y, m, d = int(year), int(month), int(day)
+            if 1900 <= y <= 2025 and 1 <= m <= 12 and 1 <= d <= 31:
+                result["birth_date"] = f"{year}-{month}-{day}"
+        except ValueError:
+            pass
 
     # Try to extract name (lines that contain mostly letters)
     lines = [l.strip() for l in text.split("\n") if l.strip()]
@@ -145,10 +149,10 @@ async def scan_national_id(
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Please upload an image file")
 
-    # Read image (max 10MB)
+    # Read image (max 5MB - ID card photos shouldn't be larger)
     contents = await image.read()
-    if len(contents) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image too large (max 10MB)")
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image too large (max 5MB)")
 
     # Extract text via OCR
     text = extract_text_ocr(contents)
