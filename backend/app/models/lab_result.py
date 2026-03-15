@@ -1,4 +1,5 @@
 import secrets
+import hashlib
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone, timedelta
@@ -7,6 +8,11 @@ from ..database import Base
 
 def generate_token():
     return secrets.token_urlsafe(32)
+
+
+def hash_token(token: str) -> str:
+    """SHA-256 hash of token for secure storage and lookup."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def default_expiry():
@@ -27,6 +33,7 @@ class LabResult(Base):
     normal_range_high = Column(Float, nullable=True)
     flag = Column(String(10), nullable=True)  # H, L, normal, critical
     token = Column(String(64), unique=True, nullable=False, default=generate_token, index=True)
+    token_hash = Column(String(64), unique=True, nullable=True, index=True)
     expires_at = Column(DateTime(timezone=True), default=default_expiry)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
