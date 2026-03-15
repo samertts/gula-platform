@@ -130,6 +130,14 @@
 <script>
 // ========== GULA v1 Frontend ==========
 const API = '';  // same origin
+
+// XSS protection - escape HTML in user data before innerHTML
+function esc(str) {
+  if (str == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
 let TOKEN = localStorage.getItem('gula_token');
 let USER = JSON.parse(localStorage.getItem('gula_user') || 'null');
 
@@ -411,12 +419,12 @@ async function searchPatients(query) {
     if (!tbody) return;
     tbody.innerHTML = data.patients.map(p => `
       <tr class="border-b hover:bg-gray-50 patient-row">
-        <td class="px-6 py-4 font-medium">${p.full_name}</td>
-        <td class="px-6 py-4 text-gray-600">${p.phone}</td>
-        <td class="px-6 py-4"><span class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">${p.health_id || '-'}</span></td>
+        <td class="px-6 py-4 font-medium">${esc(p.full_name)}</td>
+        <td class="px-6 py-4 text-gray-600">${esc(p.phone)}</td>
+        <td class="px-6 py-4"><span class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">${esc(p.health_id || '-')}</span></td>
         <td class="px-6 py-4 text-gray-600">${p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : '-'}</td>
         <td class="px-6 py-4">
-          <button onclick="startNewOrder(${p.id}, '${p.full_name}')" class="text-blue-600 hover:text-blue-800 text-sm mr-3">+ New Test</button>
+          <button onclick="startNewOrder(${p.id}, '${esc(p.full_name)}')" class="text-blue-600 hover:text-blue-800 text-sm mr-3">+ New Test</button>
           <button onclick="viewPatientHistory(${p.id})" class="text-green-600 hover:text-green-800 text-sm">History</button>
         </td>
       </tr>

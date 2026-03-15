@@ -686,11 +686,13 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
       REDIS_URL: redis://redis:6379
+      SECRET_KEY: ${SECRET_KEY:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
     ports:
       - "8000:8000"
     depends_on:
-      postgres-primary:
-        condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     networks:
