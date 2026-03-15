@@ -2,11 +2,12 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from ..database import get_db
 from ..models.patient import Patient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..services.identity import normalize_name, match_score, hash_national_id
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -17,6 +18,8 @@ class PatientCreate(BaseModel):
     birth_date: Optional[str] = None
     gender: Optional[str] = None
     email: Optional[str] = None
+    national_id: Optional[str] = None  # will be hashed before storage
+    force_create: bool = False  # skip duplicate check
 
 
 class PatientUpdate(BaseModel):
@@ -71,6 +74,48 @@ def create_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Hash national ID if provided
+    nid_hash = hash_national_id(data.national_id) if data.national_id else None
+
+    # Duplicate detection (unless force_create is True)
+    if not data.force_create:
+        # Check for exact national ID match first
+        if nid_hash:
+            existing = db.query(Patient).filter(
+                Patient.national_id_hash == nid_hash
+            ).first()
+            if existing:
+                return {
+                    "duplicate": True,
+                    "message": "Patient with this national ID already exists",
+                    "existing_patient": patient_to_dict(existing),
+                }
+
+        # Check for probable duplicates in same lab
+        lab_patients = db.query(Patient).filter(
+            Patient.lab_id == current_user.lab_id
+        ).all()
+
+        duplicates = []
+        for p in lab_patients:
+            score = match_score(
+                data.full_name, data.phone, data.birth_date or "",
+                p.full_name, p.phone, str(p.birth_date) if p.birth_date else "",
+                nid_hash, p.national_id_hash,
+            )
+            if score >= 0.65:
+                duplicates.append({
+                    "patient": patient_to_dict(p),
+                    "score": round(score, 2),
+                })
+
+        if duplicates:
+            return {
+                "duplicate": True,
+                "message": "Possible duplicate patients found. Set force_create=true to create anyway.",
+                "matches": sorted(duplicates, key=lambda x: x["score"], reverse=True),
+            }
+
     health_id = f"GULA-{secrets.token_hex(4).upper()}"
 
     patient = Patient(
@@ -81,6 +126,7 @@ def create_patient(
         gender=data.gender,
         email=data.email,
         health_id=health_id,
+        national_id_hash=nid_hash,
     )
     db.add(patient)
     db.commit()

@@ -31,7 +31,7 @@ app.add_middleware(
 from .routes import login, register, patients, results, dashboard, labs
 from .routes import identity, notifications, ehr, security
 from .routes import national_identity, insurance, device_results
-from .routes import qr
+from .routes import qr, id_scan
 
 app.include_router(login.router)
 app.include_router(register.router)
@@ -40,6 +40,7 @@ app.include_router(results.router)
 app.include_router(dashboard.router)
 app.include_router(labs.router)
 app.include_router(qr.router)
+app.include_router(id_scan.router)
 app.include_router(identity.router)
 app.include_router(notifications.router)
 app.include_router(ehr.router)

@@ -277,6 +277,34 @@ async function renderDashboard(el) {
         <p class="text-3xl font-bold text-red-600">${data.critical}</p>
       </div>
     </div>
+    ${data.patients === 0 ? `
+    <!-- Guided Onboarding for New Labs -->
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 mb-8 text-white">
+      <h3 class="text-2xl font-bold mb-2">Welcome to GULA!</h3>
+      <p class="text-blue-100 mb-6">Get your lab up and running in 3 easy steps. Your first result link will be ready in under 5 minutes.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white/15 rounded-xl p-5 backdrop-blur-sm">
+          <div class="w-10 h-10 bg-white/25 rounded-full flex items-center justify-center text-xl font-bold mb-3">1</div>
+          <h4 class="font-semibold mb-1">Add Your First Patient</h4>
+          <p class="text-blue-100 text-sm mb-3">Enter patient name and phone number.</p>
+          <button onclick="loadPage('patients'); setTimeout(showAddPatientModal, 300)" class="bg-white text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-50 transition">Add Patient</button>
+        </div>
+        <div class="bg-white/15 rounded-xl p-5 backdrop-blur-sm">
+          <div class="w-10 h-10 bg-white/25 rounded-full flex items-center justify-center text-xl font-bold mb-3">2</div>
+          <h4 class="font-semibold mb-1">Create a Test Order</h4>
+          <p class="text-blue-100 text-sm mb-3">Enter results using Quick Add profiles (CBC, Lipid, etc).</p>
+          <button onclick="loadPage('new-order')" class="bg-white/25 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/35 transition">Create Order</button>
+        </div>
+        <div class="bg-white/15 rounded-xl p-5 backdrop-blur-sm">
+          <div class="w-10 h-10 bg-white/25 rounded-full flex items-center justify-center text-xl font-bold mb-3">3</div>
+          <h4 class="font-semibold mb-1">Share Result Link</h4>
+          <p class="text-blue-100 text-sm mb-3">Send the smart result link via WhatsApp or print PDF.</p>
+          <div class="text-white/70 text-sm italic">Available after creating your first order</div>
+        </div>
+      </div>
+    </div>
+    ` : ''}
+
     <div class="bg-white rounded-xl shadow-sm p-6">
       <h3 class="text-lg font-semibold mb-4">Recent Orders</h3>
       ${data.recent_orders && data.recent_orders.length > 0 ? `
@@ -400,7 +428,7 @@ function showAddPatientModal() {
   modal.classList.remove('hidden');
 }
 
-async function addPatient() {
+async function addPatient(forceCreate = false) {
   const name = document.getElementById('new-patient-name').value;
   const phone = document.getElementById('new-patient-phone').value;
   const gender = document.getElementById('new-patient-gender').value;
@@ -413,10 +441,38 @@ async function addPatient() {
     return;
   }
 
+  const body = { full_name: name, phone, gender: gender || null, birth_date: dob || null };
+  if (forceCreate) body.force_create = true;
+
   const data = await api('/patients', {
     method: 'POST',
-    body: JSON.stringify({ full_name: name, phone, gender: gender || null, birth_date: dob || null })
+    body: JSON.stringify(body)
   });
+
+  if (data && data.duplicate) {
+    // Show duplicate warning
+    const matches = data.matches || [{ patient: data.existing_patient, score: 1.0 }];
+    errEl.innerHTML = `
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-3">
+        <p class="text-amber-800 font-semibold mb-2">Possible duplicate patient found:</p>
+        ${matches.map(m => `
+          <div class="flex items-center justify-between bg-white rounded p-2 mb-1 border">
+            <div>
+              <span class="font-medium">${m.patient.full_name}</span>
+              <span class="text-gray-500 text-xs ml-2">${m.patient.phone}</span>
+            </div>
+            <span class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">${Math.round(m.score * 100)}% match</span>
+          </div>
+        `).join('')}
+        <div class="flex gap-2 mt-3">
+          <button onclick="closeModal(); loadPage('patients')" class="px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200">Use Existing</button>
+          <button onclick="addPatient(true)" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Create Anyway</button>
+        </div>
+      </div>
+    `;
+    errEl.classList.remove('hidden');
+    return;
+  }
 
   if (data && data.patient) {
     closeModal();
