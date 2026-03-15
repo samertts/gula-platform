@@ -267,10 +267,10 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
     # Rate limit public access
     rate_limit_public(request, max_per_minute=30)
 
-    # Look up by hash for security (prevents token exposure from DB leak)
+    # Look up by hash only (prevents token exposure from DB leak)
     token_h = hash_token(token)
     result = db.query(LabResult).filter(
-        (LabResult.token_hash == token_h) | (LabResult.token == token)
+        LabResult.token_hash == token_h
     ).first()
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
@@ -477,22 +477,25 @@ def get_patient_history_by_id(
     }
 
 
-# Public history by phone (rate limited)
+# Public history by phone (rate limited, requires full name match)
 @router.get("/history/{phone}")
 def get_patient_history(phone: str, request: Request, name: str = None, db: Session = Depends(get_db)):
     """Get patient test history by phone number (public, rate limited).
-    Requires 'name' query param matching first 3 chars of patient name as basic verification."""
-    rate_limit_public(request, max_per_minute=10)
+    Requires 'name' query param matching full patient name as verification."""
+    rate_limit_public(request, max_per_minute=5)
+
+    # Use generic error to prevent enumeration
+    generic_error = "Patient not found or name verification failed"
 
     patient = db.query(Patient).filter(Patient.phone == phone).first()
     if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        raise HTTPException(status_code=404, detail=generic_error)
 
-    # Basic verification: require first 3 characters of patient name
-    if not name or len(name) < 3:
-        raise HTTPException(status_code=400, detail="Please provide the first 3 letters of the patient name (?name=...)")
-    if not patient.full_name.lower().startswith(name.lower()[:3]):
-        raise HTTPException(status_code=403, detail="Name verification failed")
+    # Full name verification (case-insensitive, stripped)
+    if not name or len(name) < 4:
+        raise HTTPException(status_code=400, detail="Please provide the full patient name (?name=...)")
+    if patient.full_name.strip().lower() != name.strip().lower():
+        raise HTTPException(status_code=403, detail=generic_error)
 
     orders = db.query(LabOrder).filter(
         LabOrder.patient_id == patient.id,
