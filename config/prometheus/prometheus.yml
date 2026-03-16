@@ -26,18 +26,18 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # PostgreSQL metrics
-  - job_name: 'postgres-primary'
-    static_configs:
-      - targets: ['postgres-primary:9187']
-    metrics_path: /metrics
+  # PostgreSQL metrics (requires postgres_exporter sidecar - not yet deployed)
+  # - job_name: 'postgres-primary'
+  #   static_configs:
+  #     - targets: ['postgres-primary:9187']
+  #   metrics_path: /metrics
 
-  # Redis metrics
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis:9121']
+  # Redis metrics (requires redis_exporter sidecar - not yet deployed)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis:9121']
 
-  # RabbitMQ metrics
+  # RabbitMQ metrics via built-in Prometheus plugin
   - job_name: 'rabbitmq'
     static_configs:
       - targets: ['rabbitmq:15692']
@@ -85,20 +85,20 @@ scrape_configs:
       - targets: ['autonomous-manager:8000']
     metrics_path: /metrics
 
-  # Nginx API Gateway
-  - job_name: 'nginx'
-    static_configs:
-      - targets: ['api-gateway:9113']
+  # Nginx API Gateway (requires nginx_exporter sidecar - not yet deployed)
+  # - job_name: 'nginx'
+  #   static_configs:
+  #     - targets: ['api-gateway:9113']
 
   # Kafka
   - job_name: 'kafka'
     static_configs:
       - targets: ['kafka:9101']
 
-  # ClickHouse
+  # ClickHouse (built-in metrics endpoint)
   - job_name: 'clickhouse'
     static_configs:
-      - targets: ['clickhouse:9363']
+      - targets: ['clickhouse:8123']
     metrics_path: /metrics
 
   # MinIO
