@@ -98,12 +98,25 @@ function navigate(page) {
   routes[page]();
 }
 
+// ---- Arabic Greeting ----
+function arabicGreeting() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return 'صباح الخير';
+  if (h >= 12 && h < 17) return 'مساء الخير';
+  if (h >= 17 && h < 21) return 'مساء النور';
+  return 'أهلاً';
+}
+
 // ---- DASHBOARD PAGE ----
 async function pageDashboard() {
   try {
     const d = await api('/dashboard');
+    const greetText = d.greeting || (arabicGreeting() + '، ' + (G.user?.name || 'مستخدم'));
     $('page').innerHTML = `
-      <div class="page-header"><h2>لوحة التحكم</h2><p>نظرة عامة على نشاط المختبر</p></div>
+      <div class="greeting-banner">
+        <h2>${esc(greetText)}</h2>
+        <p>نظرة عامة على نشاط المختبر</p>
+      </div>
       <div class="stats-grid">
         <div class="stat-card blue"><div class="stat-label">المرضى</div><div class="stat-value">${d.patients}</div><div class="stat-sub">إجمالي المسجلين</div></div>
         <div class="stat-card green"><div class="stat-label">الطلبات</div><div class="stat-value">${d.orders}</div><div class="stat-sub">إجمالي الطلبات</div></div>
