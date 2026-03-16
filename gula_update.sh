@@ -16,6 +16,22 @@ if ! $COMPOSE version >/dev/null 2>&1; then
   COMPOSE="docker-compose"
 fi
 
+if [ ! -f "$BASE_DIR/docker-compose.yml" ]; then
+  log "docker-compose.yml not found in $BASE_DIR"
+  exit 2
+fi
+
+if [ ! -f "$BASE_DIR/.env" ]; then
+  log "WARNING: .env file not found; compose may fail if required vars are missing"
+fi
+
+lock_file="/tmp/gula-deploy.lock"
+exec 9>"$lock_file"
+if ! flock -n 9; then
+  log "Another deployment is running (lock: $lock_file). Exiting."
+  exit 1
+fi
+
 PREVIOUS_COMMIT="$(git rev-parse HEAD)"
 rollback() {
   log "Deployment failed - rolling back to ${PREVIOUS_COMMIT}"
@@ -30,12 +46,15 @@ log "Fetching latest code"
 git fetch --all --prune
 git reset --hard origin/main
 
+log "Validating compose configuration"
+$COMPOSE config >/dev/null
+
 log "Pulling and starting updated services"
 $COMPOSE pull --ignore-pull-failures
 $COMPOSE up -d --build --remove-orphans
 
-log "Waiting for healthy services (up to 2 minutes)"
-for _ in {1..24}; do
+log "Waiting for healthy services (up to 3 minutes)"
+for _ in {1..36}; do
   if ./gula_health.sh; then
     log "Deployment completed successfully"
     exit 0

@@ -23,6 +23,14 @@ if ! $COMPOSE ps; then
   failed=1
 fi
 
+# Ensure critical services exist and are running before endpoint checks
+for svc in postgres redis gula-backend frontend api-gateway; do
+  if ! $COMPOSE ps "$svc" >/dev/null 2>&1; then
+    log "FAIL: missing compose service: $svc"
+    failed=1
+  fi
+done
+
 for endpoint in \
   "http://localhost/health" \
   "http://localhost/health/backend" \
