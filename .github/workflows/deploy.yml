@@ -15,8 +15,6 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          REPO_URL: https://github.com/samertts/gula-platform.git
-          REPO_DIR: /home/samertts/gula-platform
         run: |
           set -euo pipefail
 
@@ -27,20 +25,9 @@ jobs:
 
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          ssh -i ~/.ssh/gula_deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" \
-            "REPO_URL='$REPO_URL' REPO_DIR='$REPO_DIR' bash -se" <<'REMOTE_EOF'
+          ssh -i ~/.ssh/gula_deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" <<'REMOTE_EOF'
           set -euo pipefail
-
-          if [ ! -d "$REPO_DIR/.git" ]; then
-            rm -rf "$REPO_DIR"
-            git clone "$REPO_URL" "$REPO_DIR"
-          fi
-
-          cd "$REPO_DIR"
-          git fetch --all --prune
-          git reset --hard origin/main
-          chmod +x gula_update.sh gula_autofix.sh gula_health.sh
-
+          cd /home/samertts/gula-platform
           ./gula_update.sh
           ./gula_autofix.sh
           ./gula_health.sh
