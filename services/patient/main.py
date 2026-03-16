@@ -135,6 +135,8 @@ async def create_patient(patient: PatientCreate):
 
 @app.get("/patients", response_model=List[PatientResponse])
 async def list_patients(lab_id: Optional[int] = None, skip: int = 0, limit: int = 100):
+    skip = max(0, skip)
+    limit = max(1, min(limit, 500))
     pool = await get_db()
     async with pool.acquire() as conn:
         if lab_id:

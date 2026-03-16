@@ -122,6 +122,7 @@ def send_to_kafka(result_data: dict):
     Publish result to Kafka for analytics pipeline.
     Executive Order 18: Result → RabbitMQ → Kafka → ClickHouse → Population AI
     """
+    producer = None
     try:
         from kafka import KafkaProducer
         producer = KafkaProducer(
@@ -137,12 +138,17 @@ def send_to_kafka(result_data: dict):
             "source": "result-service",
         })
         producer.flush(timeout=5)
-        producer.close()
         logger.debug(f"[ResultService] Kafka publish OK: {KAFKA_TOPIC}")
     except ImportError:
         logger.warning("[ResultService] kafka-python not installed, skipping Kafka publish")
     except Exception as e:
         logger.warning(f"[ResultService] Kafka publish failed (non-critical): {e}")
+    finally:
+        if producer:
+            try:
+                producer.close()
+            except Exception:
+                pass
 
 
 class ResultCreate(BaseModel):
@@ -260,16 +266,28 @@ async def validate_result(result_id: int, validation: ResultValidate):
         return dict(row)
 
 
+ALLOWED_REPORT_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+
 @app.post("/upload/report")
 async def upload_report(file: UploadFile = File(...), order_id: int = 0):
     """Upload PDF report to MinIO (Executive Order 13: No files in database)."""
+    if order_id <= 0:
+        raise HTTPException(status_code=400, detail="Valid order_id is required")
+    if file.content_type and file.content_type not in ALLOWED_REPORT_TYPES:
+        raise HTTPException(status_code=400, detail="Only PDF, JPEG, and PNG files are allowed")
+
     minio = get_minio()
     if not minio:
         raise HTTPException(status_code=503, detail="MinIO storage not available")
 
     try:
-        object_name = f"reports/{order_id}/{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
         content = await file.read()
+        if len(content) > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="File too large (max 50MB)")
+        # Sanitize filename to prevent path traversal
+        safe_filename = file.filename.replace("/", "_").replace("\\", "_").replace("..", "_") if file.filename else "report"
+        object_name = f"reports/{order_id}/{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{safe_filename}"
         import io
         minio.put_object(MINIO_BUCKET, object_name, io.BytesIO(content), len(content), content_type=file.content_type)
         file_url = f"http://{MINIO_ENDPOINT}/{MINIO_BUCKET}/{object_name}"
