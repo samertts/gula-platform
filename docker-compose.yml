@@ -82,8 +82,10 @@ services:
         condition: service_healthy
     networks:
       - gula-net
+    # IMPORTANT: Use python for health check (available in image) instead of wget/curl.
+    # This avoids false-unhealthy state and upstream 502 when wget is not installed.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5

@@ -16,10 +16,11 @@ if ! $COMPOSE version >/dev/null 2>&1; then
   COMPOSE="docker-compose"
 fi
 
+PREVIOUS_COMMIT="$(git rev-parse HEAD)"
 rollback() {
-  log "Deployment failed - rolling back to previous commit"
-  git reset --hard HEAD~1
-  $COMPOSE up -d --build
+  log "Deployment failed - rolling back to ${PREVIOUS_COMMIT}"
+  git reset --hard "$PREVIOUS_COMMIT"
+  $COMPOSE up -d --build --remove-orphans
   ./gula_health.sh || true
 }
 
@@ -33,10 +34,14 @@ log "Pulling and starting updated services"
 $COMPOSE pull --ignore-pull-failures
 $COMPOSE up -d --build --remove-orphans
 
-log "Waiting for containers to initialize"
-sleep 15
+log "Waiting for healthy services (up to 2 minutes)"
+for _ in {1..24}; do
+  if ./gula_health.sh; then
+    log "Deployment completed successfully"
+    exit 0
+  fi
+  sleep 5
+done
 
-log "Validating health endpoints"
-./gula_health.sh
-
-log "Deployment completed successfully"
+log "Health checks did not pass in time"
+exit 1
