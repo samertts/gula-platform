@@ -26,9 +26,9 @@ jobs:
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
           ssh -i ~/.ssh/gula_deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" <<'REMOTE_EOF'
-            set -euo pipefail
-            cd /home/samertts/gula-platform
-            ./gula_update.sh
-            ./gula_autofix.sh
-            ./gula_health.sh
-REMOTE_EOF
+          set -euo pipefail
+          cd /home/samertts/gula-platform
+          ./gula_update.sh
+          ./gula_autofix.sh
+          ./gula_health.sh
+          REMOTE_EOF
