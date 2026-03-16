@@ -746,6 +746,32 @@ services:
     networks:
       - gula-net
 
+  # ===========================================================================
+  # AUTOMATED BACKUP (cron-based pg_dump)
+  # ===========================================================================
+
+  backup-cron:
+    image: postgres:14.11-alpine
+    container_name: gula-backup-cron
+    restart: always
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    volumes:
+      - ./backups:/backups
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      mkdir -p /backups/daily /backups/hourly /backups/logs &&
+      echo '0 2 * * * pg_dump -h postgres-primary -U postgres labdb --no-owner --no-privileges | gzip > /backups/daily/gula_full_$$(date +\%Y\%m\%d_\%H\%M\%S).sql.gz && find /backups/daily -name \"*.gz\" -mtime +30 -delete 2>/dev/null' > /etc/crontabs/root &&
+      echo '0 * * * * pg_dump -h postgres-primary -U postgres labdb --no-owner --no-privileges | gzip > /backups/hourly/gula_hourly_$$(date +\%Y\%m\%d_\%H\%M\%S).sql.gz && find /backups/hourly -name \"*.gz\" -mtime +2 -delete 2>/dev/null' >> /etc/crontabs/root &&
+      crond -f -l 2
+      "
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    networks:
+      - gula-net
+
 # =============================================================================
 # VOLUMES
 # =============================================================================
