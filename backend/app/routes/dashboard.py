@@ -29,7 +29,7 @@ def greeting(current_user: LabUser = Depends(get_current_user)):
     """Return a personalized Arabic greeting based on time of day."""
     now = datetime.now(timezone.utc)
     greet = _arabic_greeting(now.hour)
-    user_name = current_user.full_name or current_user.username or "مستخدم"
+    user_name = current_user.name or "مستخدم"
     return {
         "greeting": greet,
         "message": f"{greet}، {user_name}",
@@ -135,7 +135,7 @@ def dashboard(
         })
 
     greet = _arabic_greeting(now.hour)
-    user_name = current_user.full_name or current_user.username or "مستخدم"
+    user_name = current_user.name or "مستخدم"
 
     return {
         "greeting": f"{greet}، {user_name}",

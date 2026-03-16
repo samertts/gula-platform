@@ -3,11 +3,13 @@
    Lightweight SPA: Router, API, Pages, State
    ============================================================ */
 
+// ---- Constants ----
+const PAGE_SIZE = 50;
+
 // ---- State ----
 const G = {
   token: localStorage.getItem('token'),
   user: JSON.parse(localStorage.getItem('user') || 'null'),
-  cache: {},
   page: null
 };
 
@@ -36,30 +38,47 @@ function checkAuth() {
 
 // ---- UI Helpers ----
 function $(id) { return document.getElementById(id); }
-// XSS protection: escape user-provided strings
+
+// XSS protection: escape user-provided strings before inserting into HTML
 function esc(str) {
   if (str == null) return '';
   const d = document.createElement('div');
   d.textContent = String(str);
   return d.innerHTML;
 }
+
+// Escape for use inside HTML attribute values (e.g. onclick="fn('${escAttr(val)}')")
+function escAttr(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function toast(msg, type = 'success') {
   const t = $('toast');
   t.textContent = msg;
   t.className = 'toast show ' + type;
-  setTimeout(() => t.className = 'toast', 3000);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = 'toast', 3000);
 }
+
 function openModal(title, html) {
   $('modalTitle').textContent = title;
   $('modalBody').innerHTML = html;
   $('modal').style.display = 'flex';
+  // Focus first input inside modal
+  const firstInput = $('modalBody').querySelector('input,select,textarea');
+  if (firstInput) setTimeout(() => firstInput.focus(), 50);
 }
+
 function closeModal() { $('modal').style.display = 'none'; }
+
 function toggleSidebar() { $('sidebar').classList.toggle('open'); }
+
 function formatDate(d) {
   if (!d) return '-';
   return new Date(d).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
 function timeAgo(d) {
   const diff = (Date.now() - new Date(d)) / 1000;
   if (diff < 60) return 'الآن';
@@ -67,6 +86,7 @@ function timeAgo(d) {
   if (diff < 86400) return Math.floor(diff / 3600) + ' ساعة';
   return Math.floor(diff / 86400) + ' يوم';
 }
+
 function statusBadge(status) {
   const map = {
     collected: ['تم الجمع', 'blue'], received: ['مستلمة', 'blue'],
@@ -74,9 +94,10 @@ function statusBadge(status) {
     rejected: ['مرفوضة', 'red'], completed: ['مكتملة', 'green'],
     pending: ['معلقة', 'gray']
   };
-  const [label, color] = map[status] || [status, 'gray'];
+  const [label, color] = map[status] || [esc(status), 'gray'];
   return `<span class="badge badge-${color}">${label}</span>`;
 }
+
 function resultFlag(val, low, high) {
   const v = parseFloat(val);
   if (isNaN(v) || !low || !high) return '';
@@ -84,6 +105,43 @@ function resultFlag(val, low, high) {
   if (v > parseFloat(high)) return '<span class="val-high">&#x25B2; مرتفع</span>';
   return '<span class="val-normal">طبيعي</span>';
 }
+
+// Confirmation dialog replacing prompt() and confirm()
+function confirmAction(title, message, onConfirm, hasInput = false, inputLabel = '') {
+  let inputHtml = '';
+  if (hasInput) {
+    inputHtml = `<div class="field" style="margin-top:12px"><label>${esc(inputLabel)}</label><input id="confirmInput" class="search-input" required></div>`;
+  }
+  openModal(title, `
+    <p style="margin-bottom:16px;color:var(--text-dim)">${esc(message)}</p>
+    ${inputHtml}
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="confirmBtn">تأكيد</button>
+    </div>
+  `);
+  $('confirmBtn').onclick = function() {
+    const val = hasInput ? $('confirmInput').value : true;
+    if (hasInput && !val) { toast('الرجاء إدخال القيمة', 'error'); return; }
+    closeModal();
+    onConfirm(val);
+  };
+}
+
+// Phone validation (Iraqi format)
+function isValidPhone(phone) {
+  const cleaned = phone.replace(/[\s\-\+]/g, '');
+  // Iraqi: 07xxxxxxxxx (11 digits) or +9647xxxxxxxxx
+  return /^(07\d{9}|9647\d{9}|\+9647\d{9})$/.test(cleaned);
+}
+
+// ---- Keyboard Shortcuts ----
+document.addEventListener('keydown', function(e) {
+  // Escape closes modal
+  if (e.key === 'Escape' && $('modal').style.display === 'flex') {
+    closeModal();
+  }
+});
 
 // ---- Router ----
 const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, lab: pageLab, admin: pageAdmin };
@@ -118,10 +176,10 @@ async function pageDashboard() {
         <p>نظرة عامة على نشاط المختبر</p>
       </div>
       <div class="stats-grid">
-        <div class="stat-card blue"><div class="stat-label">المرضى</div><div class="stat-value">${d.patients}</div><div class="stat-sub">إجمالي المسجلين</div></div>
-        <div class="stat-card green"><div class="stat-label">الطلبات</div><div class="stat-value">${d.orders}</div><div class="stat-sub">إجمالي الطلبات</div></div>
-        <div class="stat-card cyan"><div class="stat-label">التحاليل</div><div class="stat-value">${d.tests}</div><div class="stat-sub">نتيجة تحليل</div></div>
-        <div class="stat-card red"><div class="stat-label">حرجة</div><div class="stat-value">${d.critical}</div><div class="stat-sub">نتائج غير طبيعية</div></div>
+        <div class="stat-card blue"><div class="stat-label">المرضى</div><div class="stat-value">${parseInt(d.patients) || 0}</div><div class="stat-sub">إجمالي المسجلين</div></div>
+        <div class="stat-card green"><div class="stat-label">الطلبات</div><div class="stat-value">${parseInt(d.orders) || 0}</div><div class="stat-sub">إجمالي الطلبات</div></div>
+        <div class="stat-card cyan"><div class="stat-label">التحاليل</div><div class="stat-value">${parseInt(d.tests) || 0}</div><div class="stat-sub">نتيجة تحليل</div></div>
+        <div class="stat-card red"><div class="stat-label">حرجة</div><div class="stat-value">${parseInt(d.critical) || 0}</div><div class="stat-sub">نتائج غير طبيعية</div></div>
       </div>
       <div class="grid-2">
         <div class="card">
@@ -144,7 +202,7 @@ async function pageDashboard() {
             <div class="activity-item">
               <div class="activity-dot" style="background:var(--primary)"></div>
               <div>
-                <div class="activity-text">${o.patient_name || 'مريض'} - ${o.test_count || 0} تحاليل</div>
+                <div class="activity-text">${esc(o.patient_name || 'مريض')} - ${parseInt(o.test_count) || 0} تحاليل</div>
                 <div class="activity-time">${timeAgo(o.created_at)}</div>
               </div>
             </div>
@@ -158,9 +216,9 @@ async function pageDashboard() {
           <thead><tr><th>المريض</th><th>التحليل</th><th>القيمة</th><th>المدى الطبيعي</th><th>الحالة</th></tr></thead>
           <tbody>
             ${d.abnormal_results.slice(0, 10).map(r => `<tr>
-              <td>${r.patient_name || '-'}</td><td>${r.test_name}</td>
-              <td><strong>${r.value}</strong> ${r.unit || ''}</td>
-              <td>${r.normal_range_low || '?'} - ${r.normal_range_high || '?'}</td>
+              <td>${esc(r.patient_name || '-')}</td><td>${esc(r.test_name)}</td>
+              <td><strong>${esc(r.value)}</strong> ${esc(r.unit || '')}</td>
+              <td>${esc(r.normal_range_low || '?')} - ${esc(r.normal_range_high || '?')}</td>
               <td>${resultFlag(r.value, r.normal_range_low, r.normal_range_high)}</td>
             </tr>`).join('')}
           </tbody>
@@ -168,7 +226,7 @@ async function pageDashboard() {
       </div>` : ''}
     `;
   } catch (e) {
-    $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات: ${e.message}</p></div>`;
+    $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`;
   }
 }
 
@@ -192,33 +250,33 @@ async function pagePatients() {
 
 async function loadPatients(search = '') {
   try {
-    const d = await api(`/patients?search=${encodeURIComponent(search)}&skip=${patientPage * 50}&limit=50`);
+    const d = await api(`/patients?search=${encodeURIComponent(search)}&skip=${patientPage * PAGE_SIZE}&limit=${PAGE_SIZE}`);
     const el = $('patientsTable');
     if (!d.patients.length) { el.innerHTML = '<div class="empty"><p>لا يوجد مرضى</p></div>'; return; }
     el.innerHTML = `
       <div class="table-wrap"><table>
         <thead><tr><th>#</th><th>الاسم</th><th>الهاتف</th><th>الجنس</th><th>تاريخ الميلاد</th><th>المعرف الصحي</th><th>التسجيل</th><th></th></tr></thead>
         <tbody>${d.patients.map((p, i) => `<tr>
-          <td>${patientPage * 50 + i + 1}</td>
-          <td><strong>${p.full_name}</strong></td>
-          <td dir="ltr">${p.phone || '-'}</td>
+          <td>${patientPage * PAGE_SIZE + i + 1}</td>
+          <td><strong>${esc(p.full_name)}</strong></td>
+          <td dir="ltr">${esc(p.phone || '-')}</td>
           <td>${p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : '-'}</td>
           <td>${formatDate(p.birth_date)}</td>
-          <td><code style="color:var(--accent)">${p.health_id || '-'}</code></td>
+          <td><code style="color:var(--accent)">${esc(p.health_id || '-')}</code></td>
           <td>${formatDate(p.created_at)}</td>
           <td>
-            <button class="btn btn-outline btn-sm" onclick="viewPatient(${p.id})">عرض</button>
-            <button class="btn btn-outline btn-sm" onclick="newOrderForPatient(${p.id})">+ طلب</button>
+            <button class="btn btn-outline btn-sm" onclick="viewPatient(${parseInt(p.id)})">عرض</button>
+            <button class="btn btn-outline btn-sm" onclick="newOrderForPatient(${parseInt(p.id)})">+ طلب</button>
           </td>
         </tr>`).join('')}</tbody>
       </table></div>
       <div class="pagination">
+        <span class="pagination-info">صفحة ${patientPage + 1} ${d.total ? '- إجمالي ' + d.total : ''}</span>
         <button ${patientPage === 0 ? 'disabled' : ''} onclick="patientPage--;loadPatients()">السابق</button>
-        <button class="active">${patientPage + 1}</button>
-        <button ${d.patients.length < 50 ? 'disabled' : ''} onclick="patientPage++;loadPatients()">التالي</button>
+        <button ${d.patients.length < PAGE_SIZE ? 'disabled' : ''} onclick="patientPage++;loadPatients()">التالي</button>
       </div>
     `;
-  } catch (e) { $('patientsTable').innerHTML = `<div class="empty"><p>${e.message}</p></div>`; }
+  } catch (e) { $('patientsTable').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`; }
 }
 
 let searchTimer;
@@ -231,17 +289,18 @@ function openAddPatient() {
   openModal('إضافة مريض جديد', `
     <form onsubmit="savePatient(event)">
       <div class="form-row">
-        <div class="field"><label>الاسم الكامل *</label><input id="pName" required></div>
-        <div class="field"><label>رقم الهاتف *</label><input id="pPhone" required dir="ltr"></div>
+        <div class="field"><label>الاسم الكامل *</label><input id="pName" required maxlength="200"></div>
+        <div class="field"><label>رقم الهاتف *</label><input id="pPhone" required dir="ltr" placeholder="07xxxxxxxxx" maxlength="15"></div>
       </div>
       <div class="form-row">
         <div class="field"><label>الجنس</label><select id="pGender"><option value="">-</option><option value="male">ذكر</option><option value="female">أنثى</option></select></div>
-        <div class="field"><label>تاريخ الميلاد</label><input type="date" id="pDob"></div>
+        <div class="field"><label>تاريخ الميلاد</label><input type="date" id="pDob" max="${new Date().toISOString().split('T')[0]}"></div>
       </div>
       <div class="form-row">
-        <div class="field"><label>البريد الإلكتروني</label><input type="email" id="pEmail"></div>
-        <div class="field"><label>الرقم الوطني</label><input id="pNatId" dir="ltr"></div>
+        <div class="field"><label>البريد الإلكتروني</label><input type="email" id="pEmail" maxlength="100"></div>
+        <div class="field"><label>الرقم الوطني</label><input id="pNatId" dir="ltr" maxlength="20" pattern="[0-9]*" placeholder="رقم مكون من 12 خانة"></div>
       </div>
+      <div id="phoneError" style="color:var(--danger);font-size:.8rem;display:none;margin-bottom:8px">صيغة الهاتف غير صحيحة (مثال: 07xxxxxxxxx)</div>
       <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
         <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
         <button type="submit" class="btn btn-primary" id="savePatientBtn">حفظ</button>
@@ -252,15 +311,27 @@ function openAddPatient() {
 
 async function savePatient(e) {
   e.preventDefault();
+  const phone = $('pPhone').value.trim();
+  if (!isValidPhone(phone)) {
+    $('phoneError').style.display = 'block';
+    return;
+  }
+  $('phoneError').style.display = 'none';
+
   const btn = $('savePatientBtn');
   btn.disabled = true;
   try {
     const body = {
-      full_name: $('pName').value, phone: $('pPhone').value,
+      full_name: $('pName').value.trim(), phone: phone,
       gender: $('pGender').value || undefined, birth_date: $('pDob').value || undefined,
       email: $('pEmail').value || undefined, national_id: $('pNatId').value || undefined
     };
-    await api('/patients', { method: 'POST', body: JSON.stringify(body) });
+    const result = await api('/patients', { method: 'POST', body: JSON.stringify(body) });
+    if (result.duplicate) {
+      toast('تحذير: يوجد مريض مشابه - تحقق من البيانات', 'error');
+      btn.disabled = false;
+      return;
+    }
     closeModal(); toast('تم إضافة المريض بنجاح'); loadPatients();
   } catch (e) { toast(e.message, 'error'); }
   btn.disabled = false;
@@ -272,19 +343,19 @@ async function viewPatient(id) {
     const ehr = await api(`/ehr/patient/${id}/summary`).catch(() => null);
     openModal('ملف المريض', `
       <div class="kpi-row" style="margin-bottom:16px">
-        <div class="kpi"><span class="kpi-val">${p.full_name}</span><span class="kpi-label">الاسم</span></div>
-        <div class="kpi"><span class="kpi-val" dir="ltr">${p.phone || '-'}</span><span class="kpi-label">الهاتف</span></div>
-        <div class="kpi"><span class="kpi-val">${p.health_id || '-'}</span><span class="kpi-label">المعرف الصحي</span></div>
+        <div class="kpi"><span class="kpi-val">${esc(p.full_name)}</span><span class="kpi-label">الاسم</span></div>
+        <div class="kpi"><span class="kpi-val" dir="ltr">${esc(p.phone || '-')}</span><span class="kpi-label">الهاتف</span></div>
+        <div class="kpi"><span class="kpi-val">${esc(p.health_id || '-')}</span><span class="kpi-label">المعرف الصحي</span></div>
       </div>
       ${ehr && ehr.summary ? `
         <div class="card-title">آخر النتائج</div>
         <div class="table-wrap"><table>
           <thead><tr><th>التحليل</th><th>القيمة</th><th>التاريخ</th></tr></thead>
-          <tbody>${ehr.summary.map(s => `<tr><td>${s.test_name}</td><td><strong>${s.value}</strong> ${s.unit || ''}</td><td>${formatDate(s.date)}</td></tr>`).join('')}</tbody>
+          <tbody>${ehr.summary.map(s => `<tr><td>${esc(s.test_name)}</td><td><strong>${esc(s.value)}</strong> ${esc(s.unit || '')}</td><td>${formatDate(s.date)}</td></tr>`).join('')}</tbody>
         </table></div>
       ` : '<div class="empty"><p>لا توجد نتائج سابقة</p></div>'}
       <div style="margin-top:16px">
-        <button class="btn btn-primary btn-sm" onclick="closeModal();newOrderForPatient(${p.id})">+ طلب تحليل جديد</button>
+        <button class="btn btn-primary btn-sm" onclick="closeModal();newOrderForPatient(${parseInt(p.id)})">+ طلب تحليل جديد</button>
       </div>
     `);
   } catch (e) { toast(e.message, 'error'); }
@@ -293,9 +364,6 @@ async function viewPatient(id) {
 // ---- ORDERS & RESULTS PAGE ----
 let orderPage = 0;
 async function pageOrders() {
-  let profiles = [];
-  try { profiles = await api('/results/test-profiles'); } catch(e) {}
-
   $('page').innerHTML = `
     <div class="page-header">
       <div class="page-header-row">
@@ -310,43 +378,43 @@ async function pageOrders() {
 
 async function loadOrders() {
   try {
-    const d = await api(`/results/orders?skip=${orderPage * 50}&limit=50`);
+    const d = await api(`/results/orders?skip=${orderPage * PAGE_SIZE}&limit=${PAGE_SIZE}`);
     const el = $('ordersTable');
     if (!d.orders.length) { el.innerHTML = '<div class="empty"><p>لا توجد طلبات</p></div>'; return; }
     el.innerHTML = `
       <div class="table-wrap"><table>
         <thead><tr><th>#</th><th>المريض</th><th>الطبيب</th><th>التحاليل</th><th>التاريخ</th><th></th></tr></thead>
         <tbody>${d.orders.map((o, i) => `<tr>
-          <td>${orderPage * 50 + i + 1}</td>
-          <td><strong>${o.patient_name || '-'}</strong></td>
-          <td>${o.doctor_name || '-'}</td>
+          <td>${orderPage * PAGE_SIZE + i + 1}</td>
+          <td><strong>${esc(o.patient_name || '-')}</strong></td>
+          <td>${esc(o.doctor_name || '-')}</td>
           <td><span class="badge badge-blue">${(o.results || []).length} تحليل</span></td>
           <td>${formatDate(o.created_at)}</td>
-          <td><button class="btn btn-outline btn-sm" onclick="viewOrder(${o.id})">تفاصيل</button></td>
+          <td><button class="btn btn-outline btn-sm" onclick="viewOrder(${parseInt(o.id)})">تفاصيل</button></td>
         </tr>`).join('')}</tbody>
       </table></div>
     `;
-  } catch (e) { $('ordersTable').innerHTML = `<div class="empty"><p>${e.message}</p></div>`; }
+  } catch (e) { $('ordersTable').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`; }
 }
 
 async function viewOrder(id) {
   try {
     const o = await api(`/results/orders/${id}`);
-    openModal(`طلب #${o.id}`, `
+    openModal(`طلب #${parseInt(o.id)}`, `
       <div class="kpi-row" style="margin-bottom:16px">
-        <div class="kpi"><span class="kpi-val">${o.patient_name || '-'}</span><span class="kpi-label">المريض</span></div>
-        <div class="kpi"><span class="kpi-val">${o.doctor_name || '-'}</span><span class="kpi-label">الطبيب</span></div>
+        <div class="kpi"><span class="kpi-val">${esc(o.patient_name || '-')}</span><span class="kpi-label">المريض</span></div>
+        <div class="kpi"><span class="kpi-val">${esc(o.doctor_name || '-')}</span><span class="kpi-label">الطبيب</span></div>
         <div class="kpi"><span class="kpi-val">${formatDate(o.created_at)}</span><span class="kpi-label">التاريخ</span></div>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>التحليل</th><th>القيمة</th><th>الوحدة</th><th>المدى الطبيعي</th><th>الحالة</th><th>رابط</th></tr></thead>
         <tbody>${(o.results || []).map(r => `<tr>
-          <td>${r.test_name}</td>
-          <td><strong>${r.value || r.value_text || '-'}</strong></td>
-          <td>${r.unit || ''}</td>
-          <td>${r.normal_range_low || '?'} - ${r.normal_range_high || '?'}</td>
+          <td>${esc(r.test_name)}</td>
+          <td><strong>${esc(r.value || r.value_text || '-')}</strong></td>
+          <td>${esc(r.unit || '')}</td>
+          <td>${esc(r.normal_range_low || '?')} - ${esc(r.normal_range_high || '?')}</td>
           <td>${resultFlag(r.value, r.normal_range_low, r.normal_range_high)}</td>
-          <td>${r.result_token ? `<a href="/r/${r.result_token}" target="_blank" class="btn btn-outline btn-sm">مشاركة</a>` : '-'}</td>
+          <td>${r.result_token ? `<a href="/r/${escAttr(r.result_token)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">مشاركة</a>` : '-'}</td>
         </tr>`).join('')}</tbody>
       </table></div>
     `);
@@ -357,8 +425,8 @@ function openNewOrder() {
   openModal('طلب تحليل جديد', `
     <form onsubmit="submitOrder(event)">
       <div class="form-row">
-        <div class="field"><label>رقم المريض *</label><input id="ordPatientId" required type="number"></div>
-        <div class="field"><label>اسم الطبيب</label><input id="ordDoctor"></div>
+        <div class="field"><label>رقم المريض *</label><input id="ordPatientId" required type="number" min="1"></div>
+        <div class="field"><label>اسم الطبيب</label><input id="ordDoctor" maxlength="200"></div>
       </div>
       <div class="card-title">التحاليل</div>
       <div id="orderTests"></div>
@@ -377,18 +445,16 @@ function newOrderForPatient(id) {
   $('ordPatientId').value = id;
 }
 
-let testRowCount = 0;
 function addTestRow() {
-  testRowCount++;
   const div = document.createElement('div');
   div.className = 'form-row';
   div.style.marginBottom = '8px';
   div.innerHTML = `
-    <div class="field"><label>اسم التحليل</label><input class="t-name" required></div>
+    <div class="field"><label>اسم التحليل</label><input class="t-name" required maxlength="100"></div>
     <div class="field"><label>القيمة</label><input class="t-val" required></div>
-    <div class="field"><label>الوحدة</label><input class="t-unit"></div>
-    <div class="field"><label>أدنى</label><input class="t-low" type="number" step="any"></div>
-    <div class="field"><label>أعلى</label><input class="t-high" type="number" step="any"></div>
+    <div class="field"><label>الوحدة</label><input class="t-unit" maxlength="20"></div>
+    <div class="field"><label>أدنى</label><input class="t-low" type="number" step="any" min="0"></div>
+    <div class="field"><label>أعلى</label><input class="t-high" type="number" step="any" min="0"></div>
   `;
   $('orderTests').appendChild(div);
 }
@@ -424,7 +490,7 @@ async function pageSamples() {
         <div><h2>العينات</h2><p>تتبع العينات بالباركود</p></div>
       </div>
     </div>
-    <div class="toolbar">
+    <div class="toolbar" role="radiogroup" aria-label="تصفية العينات">
       <div class="filter-chip active" onclick="filterSamples(this,'')">الكل</div>
       <div class="filter-chip" onclick="filterSamples(this,'collected')">تم الجمع</div>
       <div class="filter-chip" onclick="filterSamples(this,'received')">مستلمة</div>
@@ -437,9 +503,11 @@ async function pageSamples() {
   loadSamples();
 }
 
-async function loadSamples(status = '') {
+let currentSampleFilter = '';
+async function loadSamples(status) {
+  if (status !== undefined) currentSampleFilter = status;
   try {
-    const d = await api(`/samples?status=${status}&limit=50`);
+    const d = await api(`/samples?status=${currentSampleFilter}&limit=${PAGE_SIZE}`);
     const el = $('samplesTable');
     const samples = d.samples || d;
     if (!samples || !samples.length) { el.innerHTML = '<div class="empty"><p>لا توجد عينات</p></div>'; return; }
@@ -447,13 +515,13 @@ async function loadSamples(status = '') {
       <div class="table-wrap"><table>
         <thead><tr><th>الباركود</th><th>النوع</th><th>الحالة</th><th>الموقع</th><th>ملاحظات</th><th></th></tr></thead>
         <tbody>${samples.map(s => `<tr>
-          <td><code style="color:var(--accent)">${s.barcode}</code></td>
-          <td>${s.sample_type}</td>
+          <td><code style="color:var(--accent)">${esc(s.barcode)}</code></td>
+          <td>${esc(s.sample_type)}</td>
           <td>${statusBadge(s.status)}</td>
-          <td>${s.storage_location || '-'}</td>
-          <td>${s.notes || '-'}</td>
+          <td>${esc(s.storage_location || '-')}</td>
+          <td>${esc(s.notes || '-')}</td>
           <td>
-            <select class="btn btn-outline btn-sm" onchange="updateSampleStatus('${s.barcode}',this.value)" style="padding:4px 8px">
+            <select class="btn btn-outline btn-sm" onchange="updateSampleStatus('${escAttr(s.barcode)}',this.value)" style="padding:4px 8px">
               <option value="">تحديث</option>
               <option value="received">استلام</option>
               <option value="processing">معالجة</option>
@@ -464,7 +532,7 @@ async function loadSamples(status = '') {
         </tr>`).join('')}</tbody>
       </table></div>
     `;
-  } catch (e) { $('samplesTable').innerHTML = `<div class="empty"><p>${e.message}</p></div>`; }
+  } catch (e) { $('samplesTable').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`; }
 }
 
 function filterSamples(el, status) {
@@ -475,14 +543,20 @@ function filterSamples(el, status) {
 
 async function updateSampleStatus(barcode, status) {
   if (!status) return;
+  if (status === 'rejected') {
+    confirmAction('رفض العينة', 'هل أنت متأكد من رفض هذه العينة؟', function(reason) {
+      doUpdateSample(barcode, status, reason);
+    }, true, 'سبب الرفض');
+    return;
+  }
+  doUpdateSample(barcode, status);
+}
+
+async function doUpdateSample(barcode, status, rejectionReason) {
   try {
     let body = { status };
-    if (status === 'rejected') {
-      const reason = prompt('سبب الرفض:');
-      if (!reason) return;
-      body.rejection_reason = reason;
-    }
-    await api(`/samples/${barcode}`, { method: 'PUT', body: JSON.stringify(body) });
+    if (rejectionReason) body.rejection_reason = rejectionReason;
+    await api(`/samples/${encodeURIComponent(barcode)}`, { method: 'PUT', body: JSON.stringify(body) });
     toast('تم تحديث حالة العينة'); loadSamples();
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -496,15 +570,15 @@ async function pageLab() {
       <div class="card">
         <form onsubmit="saveLab(event)">
           <div class="form-row">
-            <div class="field"><label>اسم المختبر</label><input id="labNameF" value="${lab.name || ''}"></div>
-            <div class="field"><label>المدينة</label><input id="labCity" value="${lab.city || ''}"></div>
+            <div class="field"><label>اسم المختبر</label><input id="labNameF" value="${escAttr(lab.name || '')}" maxlength="200"></div>
+            <div class="field"><label>المدينة</label><input id="labCity" value="${escAttr(lab.city || '')}" maxlength="100"></div>
           </div>
           <div class="form-row">
-            <div class="field"><label>العنوان</label><input id="labAddress" value="${lab.address || ''}"></div>
-            <div class="field"><label>الهاتف</label><input id="labPhone" value="${lab.phone || ''}" dir="ltr"></div>
+            <div class="field"><label>العنوان</label><input id="labAddress" value="${escAttr(lab.address || '')}" maxlength="300"></div>
+            <div class="field"><label>الهاتف</label><input id="labPhone" value="${escAttr(lab.phone || '')}" dir="ltr" maxlength="20"></div>
           </div>
           <div class="form-row">
-            <div class="field"><label>رقم الترخيص</label><input value="${lab.license_number || '-'}" disabled></div>
+            <div class="field"><label>رقم الترخيص</label><input value="${escAttr(lab.license_number || '-')}" disabled></div>
             <div class="field"><label>الحالة</label><input value="${lab.is_active ? 'نشط' : 'معطل'}" disabled></div>
           </div>
           <div style="margin-top:16px"><button type="submit" class="btn btn-primary" id="saveLabBtn">حفظ التعديلات</button></div>
@@ -512,7 +586,7 @@ async function pageLab() {
       </div>
     `;
   } catch (e) {
-    $('page').innerHTML = `<div class="empty"><p>${e.message}</p></div>`;
+    $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`;
   }
 }
 
@@ -542,34 +616,40 @@ async function pageAdmin() {
     $('page').innerHTML = `
       <div class="page-header"><h2>إدارة المنصة</h2><p>لوحة تحكم المدير العام</p></div>
       <div class="stats-grid">
-        <div class="stat-card blue"><div class="stat-label">المختبرات</div><div class="stat-value">${stats.total_labs}</div></div>
-        <div class="stat-card green"><div class="stat-label">المستخدمون</div><div class="stat-value">${stats.total_users}</div></div>
-        <div class="stat-card cyan"><div class="stat-label">المرضى</div><div class="stat-value">${stats.total_patients}</div></div>
-        <div class="stat-card yellow"><div class="stat-label">النتائج</div><div class="stat-value">${stats.total_results}</div></div>
+        <div class="stat-card blue"><div class="stat-label">المختبرات</div><div class="stat-value">${parseInt(stats.total_labs) || 0}</div></div>
+        <div class="stat-card green"><div class="stat-label">المستخدمون</div><div class="stat-value">${parseInt(stats.total_users) || 0}</div></div>
+        <div class="stat-card cyan"><div class="stat-label">المرضى</div><div class="stat-value">${parseInt(stats.total_patients) || 0}</div></div>
+        <div class="stat-card yellow"><div class="stat-label">النتائج</div><div class="stat-value">${parseInt(stats.total_results) || 0}</div></div>
       </div>
       <div class="card">
         <div class="card-title">المختبرات المسجلة</div>
         <div class="table-wrap"><table>
           <thead><tr><th>المختبر</th><th>المدينة</th><th>المستخدمون</th><th>المرضى</th><th>الحالة</th><th></th></tr></thead>
           <tbody>${(labs.labs || labs).map(l => `<tr>
-            <td><strong>${l.name}</strong></td>
-            <td>${l.city || '-'}</td>
-            <td>${l.user_count || 0}</td>
-            <td>${l.patient_count || 0}</td>
+            <td><strong>${esc(l.name)}</strong></td>
+            <td>${esc(l.city || '-')}</td>
+            <td>${parseInt(l.user_count) || 0}</td>
+            <td>${parseInt(l.patient_count) || 0}</td>
             <td>${l.is_active ? '<span class="badge badge-green">نشط</span>' : '<span class="badge badge-red">معطل</span>'}</td>
-            <td><button class="btn btn-outline btn-sm" onclick="toggleLab(${l.id})">${l.is_active ? 'تعطيل' : 'تفعيل'}</button></td>
+            <td><button class="btn btn-outline btn-sm" onclick="toggleLab(${parseInt(l.id)})">${l.is_active ? 'تعطيل' : 'تفعيل'}</button></td>
           </tr>`).join('')}</tbody>
         </table></div>
       </div>
     `;
-  } catch (e) { $('page').innerHTML = `<div class="empty"><p>${e.message}</p></div>`; }
+  } catch (e) { $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`; }
 }
 
 async function toggleLab(id) {
-  try {
-    await api(`/admin/labs/${id}/toggle`, { method: 'PUT' });
-    toast('تم تحديث حالة المختبر'); pageAdmin();
-  } catch (e) { toast(e.message, 'error'); }
+  confirmAction(
+    'تأكيد التغيير',
+    'هل أنت متأكد من تغيير حالة هذا المختبر؟ هذا سيؤثر على جميع مستخدمي المختبر.',
+    async function() {
+      try {
+        await api(`/admin/labs/${id}/toggle`, { method: 'PUT' });
+        toast('تم تحديث حالة المختبر'); pageAdmin();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  );
 }
 
 // ---- Init ----

@@ -1,5 +1,5 @@
 """Sample collection and tracking endpoints."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -72,8 +72,8 @@ def list_samples(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
     status: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """List samples for the current lab."""
     query = db.query(Sample).join(LabOrder).filter(LabOrder.lab_id == current_user.lab_id)

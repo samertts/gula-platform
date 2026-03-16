@@ -1,6 +1,6 @@
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from ..database import get_db
@@ -21,6 +21,30 @@ class PatientCreate(BaseModel):
     national_id: Optional[str] = None  # will be hashed before storage
     force_create: bool = False  # skip duplicate check
 
+    @field_validator("full_name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("Name must be between 2 and 200 characters")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v):
+        import re
+        cleaned = re.sub(r"[\s\-\+]", "", v)
+        if not re.match(r"^(07\d{9}|9647\d{9})$", cleaned):
+            raise ValueError("Phone must be a valid Iraqi number (e.g. 07xxxxxxxxx)")
+        return v
+
+    @field_validator("gender")
+    @classmethod
+    def validate_gender(cls, v):
+        if v and v not in ("male", "female", "M", "F"):
+            raise ValueError("Gender must be 'male' or 'female'")
+        return v
+
 
 class PatientUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -28,6 +52,15 @@ class PatientUpdate(BaseModel):
     birth_date: Optional[str] = None
     gender: Optional[str] = None
     email: Optional[str] = None
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_name(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) < 2 or len(v) > 200:
+                raise ValueError("Name must be between 2 and 200 characters")
+        return v
 
 
 def patient_to_dict(p: Patient) -> dict:
@@ -45,9 +78,9 @@ def patient_to_dict(p: Patient) -> dict:
 
 @router.get("")
 def list_patients(
-    search: Optional[str] = Query(None),
-    skip: int = 0,
-    limit: int = 50,
+    search: Optional[str] = Query(None, max_length=100),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

@@ -3,6 +3,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine
 from .config import APP_NAME, APP_VERSION
@@ -60,6 +61,22 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+
+# ===== SECURITY HEADERS MIDDLEWARE =====
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if os.getenv("ENV", "production") == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 # ===== ROUTES =====
 from .routes import login, register, patients, results, dashboard, labs
 from .routes import identity, notifications, ehr, security
@@ -104,8 +121,8 @@ def health():
         db.execute(text("SELECT 1"))
         db_ok = True
         db.close()
-    except Exception:
-        logger.warning("Health check: database connection failed")
+    except Exception as exc:
+        logger.warning("Health check: database connection failed: %s", exc)
 
     status = "healthy" if db_ok else "degraded"
     return {"status": status, "version": APP_VERSION, "database": "connected" if db_ok else "disconnected"}

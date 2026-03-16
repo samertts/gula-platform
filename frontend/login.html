@@ -76,7 +76,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e2e8f0;m
       </div>
       <div class="field">
         <label>كلمة المرور</label>
-        <input type="password" id="regPassword" required minlength="6" placeholder="6 أحرف على الأقل">
+        <input type="password" id="regPassword" required minlength="8" placeholder="8 أحرف على الأقل (أحرف وأرقام)">
       </div>
       <div class="field">
         <label>رقم الهاتف</label>
@@ -131,6 +131,9 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
   e.preventDefault();
+  const pw = document.getElementById('regPassword').value;
+  if (pw.length < 8) { showError('كلمة المرور يجب أن تكون 8 أحرف على الأقل'); return; }
+  if (/^\d+$/.test(pw) || /^[a-zA-Z]+$/.test(pw)) { showError('كلمة المرور يجب أن تحتوي على أحرف وأرقام'); return; }
   const btn = document.getElementById('regBtn');
   btn.disabled = true; btn.textContent = 'جاري التسجيل...';
   try {
