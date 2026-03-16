@@ -26,8 +26,7 @@ fi
 for endpoint in \
   "http://localhost/health" \
   "http://localhost/health/backend" \
-  "http://localhost/health/frontend"
-  do
+  "http://localhost/health/frontend"; do
   if curl -fsS --max-time 10 "$endpoint" >/dev/null; then
     log "OK: $endpoint"
   else

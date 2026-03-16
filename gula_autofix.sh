@@ -30,6 +30,7 @@ $COMPOSE up -d --remove-orphans
 log "Pruning dangling images"
 docker image prune -f >/dev/null || true
 
+log "Re-checking health"
 if ./gula_health.sh; then
   log "Autofix completed successfully"
 else
