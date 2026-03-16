@@ -133,6 +133,7 @@ jobs:
         with:
           context: ./backend
           push: false
+          load: true
           tags: gula-backend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
