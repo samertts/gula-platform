@@ -92,6 +92,27 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color
 .menu-btn { background: none; border: none; color: var(--text); cursor: pointer; }
 .menu-btn svg { width: 24px; height: 24px; }
 
+/* ---- Greeting Banner ---- */
+.greeting-banner {
+  margin-bottom: 24px;
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #172554 50%, #0c4a6e 100%);
+  border-radius: var(--radius);
+  border: 1px solid #312e81;
+}
+.greeting-banner h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #c7d2fe, #67e8f9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+}
+.greeting-banner p {
+  color: var(--text-muted);
+  font-size: .9rem;
+}
+
 /* ---- Page Header ---- */
 .page-header { margin-bottom: 24px; }
 .page-header h2 { font-size: 1.5rem; font-weight: 700; }

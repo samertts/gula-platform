@@ -12,6 +12,31 @@ from ..security.dependencies import get_current_user
 router = APIRouter(tags=["dashboard"])
 
 
+def _arabic_greeting(utc_hour: int) -> str:
+    """Return a time-appropriate Arabic greeting."""
+    if 5 <= utc_hour < 12:
+        return "صباح الخير"
+    elif 12 <= utc_hour < 17:
+        return "مساء الخير"
+    elif 17 <= utc_hour < 21:
+        return "مساء النور"
+    else:
+        return "أهلاً"
+
+
+@router.get("/greeting")
+def greeting(current_user: LabUser = Depends(get_current_user)):
+    """Return a personalized Arabic greeting based on time of day."""
+    now = datetime.now(timezone.utc)
+    greet = _arabic_greeting(now.hour)
+    user_name = current_user.full_name or current_user.username or "مستخدم"
+    return {
+        "greeting": greet,
+        "message": f"{greet}، {user_name}",
+        "user_name": user_name,
+    }
+
+
 @router.get("/dashboard")
 def dashboard(
     current_user: LabUser = Depends(get_current_user),
@@ -109,7 +134,11 @@ def dashboard(
             "date": o.created_at.isoformat() if o.created_at else None,
         })
 
+    greet = _arabic_greeting(now.hour)
+    user_name = current_user.full_name or current_user.username or "مستخدم"
+
     return {
+        "greeting": f"{greet}، {user_name}",
         "patients": patients_count,
         "orders": orders_count,
         "tests": results_count,
