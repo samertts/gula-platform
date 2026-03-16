@@ -37,6 +37,17 @@ if not ENCRYPTION_KEY:
         file=sys.stderr,
     )
 
+# Stable HMAC key for hashing national IDs (must NOT change or lookups break)
+NID_HMAC_KEY = os.getenv("NID_HMAC_KEY", "")
+if not NID_HMAC_KEY:
+    # Fall back to ENCRYPTION_KEY or SECRET_KEY for backwards compatibility
+    NID_HMAC_KEY = ENCRYPTION_KEY or SECRET_KEY
+    print(
+        "[GULA WARNING] NID_HMAC_KEY not set. Set a stable key in .env "
+        "for production to ensure national ID lookups survive restarts.",
+        file=sys.stderr,
+    )
+
 # Result link settings
 RESULT_TOKEN_LENGTH = 32
 RESULT_LINK_EXPIRE_DAYS = 90

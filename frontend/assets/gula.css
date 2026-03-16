@@ -271,13 +271,14 @@ tr:hover td { background: #ffffff05; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---- Pagination ---- */
-.pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
 .pagination button {
   padding: 6px 14px; background: var(--bg-input); border: 1px solid var(--border);
   border-radius: var(--radius-sm); color: var(--text-dim); cursor: pointer; font-size: .85rem;
 }
 .pagination button.active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
 .pagination button:disabled { opacity: .4; cursor: not-allowed; }
+.pagination-info { font-size: .8rem; color: var(--text-muted); }
 
 /* ---- Tabs ---- */
 .tabs { display: flex; gap: 0; background: var(--bg-input); border-radius: var(--radius-sm); padding: 3px; margin-bottom: 20px; width: fit-content; }
