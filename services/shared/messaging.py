@@ -13,7 +13,9 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://gula:gula_rabbit_2024@rabbitmq:5672/gula")
+RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "")
+if not RABBITMQ_URL:
+    logger.warning("[Messaging] RABBITMQ_URL not set - messaging will not work")
 
 # Medical audit events (Executive Order 5)
 AUDIT_EVENTS = {
