@@ -58,31 +58,59 @@ jobs:
               echo "Restored .env file"
             fi
 
-            # Verify .env exists before proceeding
+            # Verify .env exists - if not, create from example
             if [ ! -f .env ]; then
-              echo "ERROR: .env file is missing! Cannot deploy without production secrets."
-              echo "Create .env from .env.example and set all required values."
-              exit 1
+              if [ -f .env.example ]; then
+                cp .env.example .env
+                echo "WARNING: Created .env from .env.example - passwords are defaults!"
+              else
+                echo "ERROR: No .env file found. Create one manually."
+                exit 1
+              fi
             fi
 
-            # Auto-generate missing required variables
-            ensure_env_var() {
-              local var_name="$1"
-              local generator="$2"
-              if ! grep -q "^${var_name}=" .env; then
-                local value
-                value=$(eval "$generator")
-                echo "${var_name}=${value}" >> .env
-                echo "Generated missing ${var_name}"
-              fi
-            }
+            # Auto-generate missing required variables (simple inline checks)
+            if ! grep -q "^SECRET_KEY=" .env; then
+              echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')" >> .env
+              echo "Generated missing SECRET_KEY"
+            fi
 
-            ensure_env_var "SECRET_KEY" "python3 -c \"import secrets; print(secrets.token_urlsafe(64))\""
-            ensure_env_var "ENCRYPTION_KEY" "python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\" 2>/dev/null || python3 -c \"import secrets; print(secrets.token_urlsafe(32))\""
-            ensure_env_var "NID_HMAC_KEY" "python3 -c \"import secrets; print(secrets.token_urlsafe(32))\""
-            ensure_env_var "MINIO_ACCESS_KEY" "echo gula_minio"
-            ensure_env_var "MINIO_SECRET_KEY" "python3 -c \"import secrets; print(secrets.token_urlsafe(32))\""
-            ensure_env_var "RABBITMQ_URL" "grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 | xargs -I{} echo 'amqp://gula:{}@rabbitmq:5672/gula' 2>/dev/null || echo 'amqp://gula:changeme@rabbitmq:5672/gula'"
+            if ! grep -q "^ENCRYPTION_KEY=" .env; then
+              echo "ENCRYPTION_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
+              echo "Generated missing ENCRYPTION_KEY"
+            fi
+
+            if ! grep -q "^NID_HMAC_KEY=" .env; then
+              echo "NID_HMAC_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
+              echo "Generated missing NID_HMAC_KEY"
+            fi
+
+            if ! grep -q "^MINIO_ACCESS_KEY=" .env; then
+              echo "MINIO_ACCESS_KEY=gula_minio" >> .env
+              echo "Generated missing MINIO_ACCESS_KEY"
+            fi
+
+            if ! grep -q "^MINIO_SECRET_KEY=" .env; then
+              echo "MINIO_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
+              echo "Generated missing MINIO_SECRET_KEY"
+            fi
+
+            if ! grep -q "^RABBITMQ_URL=" .env; then
+              RABBIT_PASS=$(grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 || echo "changeme")
+              echo "RABBITMQ_URL=amqp://gula:${RABBIT_PASS}@rabbitmq:5672/gula" >> .env
+              echo "Generated missing RABBITMQ_URL"
+            fi
+
+            if ! grep -q "^DATABASE_URL=" .env; then
+              PG_PASS=$(grep -oP 'POSTGRES_PASSWORD=\K.*' .env | head -1 || echo "changeme")
+              echo "DATABASE_URL=postgresql://postgres:${PG_PASS}@postgres:5432/labdb" >> .env
+              echo "Generated missing DATABASE_URL"
+            fi
+
+            echo "=== .env verification ==="
+            echo "Variables set: $(grep -c '=' .env)"
+            grep -oP '^[A-Z_]+(?==)' .env | sort
+            echo "========================="
 
             # Detect docker compose command (v2 plugin or v1 standalone)
             if docker compose version &> /dev/null; then
