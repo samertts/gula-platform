@@ -10,13 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to GULA server
+      - name: Deploy to GULA server with health validation and autofix
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-
+          script_stop: true
           script: |
+            set -euo pipefail
             cd /home/samertts/gula-platform
             ./gula_update.sh
+            ./gula_autofix.sh
+            ./gula_health.sh
