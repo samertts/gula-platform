@@ -4,11 +4,16 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: gula-production-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
@@ -37,121 +42,129 @@ jobs:
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
           ssh gula-server << 'DEPLOY_SCRIPT'
-            set -e
-            cd /home/samertts/gula-platform
+            set -euo pipefail
 
-            # Preserve .env file before git reset (contains production secrets)
-            if [ -f .env ]; then
-              cp .env /tmp/.env.gula.backup
-              echo "Backed up .env file"
+            REPO_DIR="/home/samertts/gula-platform"
+            cd "$REPO_DIR"
+
+            log() { printf '[deploy] %s\n' "$*"; }
+
+            # Detect docker compose
+            COMPOSE="docker compose"
+            if ! $COMPOSE version >/dev/null 2>&1; then
+              COMPOSE="docker-compose"
+            fi
+            if ! command -v docker >/dev/null 2>&1; then
+              log "ERROR: docker not found"
+              exit 2
             fi
 
-            # Reset to match remote exactly
+            # Preserve .env before git reset
+            if [ -f .env ]; then
+              cp .env /tmp/.env.gula.backup
+              log "Backed up .env"
+            fi
+
+            # Store current commit for rollback
+            PREVIOUS_COMMIT="$(git rev-parse HEAD)"
+
+            # Sync to latest main
             git fetch origin main
             git reset --hard origin/main
             git clean -fd -e .env
 
-            # Restore .env file
+            # Restore .env
             if [ -f /tmp/.env.gula.backup ]; then
               cp /tmp/.env.gula.backup .env
               rm -f /tmp/.env.gula.backup
-              echo "Restored .env file"
+              log "Restored .env"
             fi
 
-            # Verify .env exists - hard error if missing (never fall back to defaults)
+            # Verify .env exists - hard error if missing
             if [ ! -f .env ]; then
-              echo "ERROR: No .env file found. Production requires a manually configured .env."
-              echo "Copy .env.example and set all values before deploying."
+              log "ERROR: No .env file. Production requires a configured .env."
+              log "Copy .env.example and set all values before deploying."
               exit 1
             fi
 
-            # Auto-generate missing required variables (simple inline checks)
-            if ! grep -q "^SECRET_KEY=" .env; then
-              echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')" >> .env
-              echo "Generated missing SECRET_KEY"
-            fi
-
-            if ! grep -q "^ENCRYPTION_KEY=" .env; then
-              echo "ENCRYPTION_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
-              echo "Generated missing ENCRYPTION_KEY"
-            fi
-
-            if ! grep -q "^NID_HMAC_KEY=" .env; then
-              echo "NID_HMAC_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
-              echo "Generated missing NID_HMAC_KEY"
-            fi
+            # Auto-generate missing required variables
+            for var in SECRET_KEY ENCRYPTION_KEY NID_HMAC_KEY MINIO_SECRET_KEY; do
+              if ! grep -q "^${var}=" .env; then
+                echo "${var}=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
+                log "Generated missing $var"
+              fi
+            done
 
             if ! grep -q "^MINIO_ACCESS_KEY=" .env; then
               echo "MINIO_ACCESS_KEY=gula_minio" >> .env
-              echo "Generated missing MINIO_ACCESS_KEY"
-            fi
-
-            if ! grep -q "^MINIO_SECRET_KEY=" .env; then
-              echo "MINIO_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
-              echo "Generated missing MINIO_SECRET_KEY"
             fi
 
             if ! grep -q "^RABBITMQ_URL=" .env; then
               RABBIT_PASS=$(grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 || echo "changeme")
               echo "RABBITMQ_URL=amqp://gula:${RABBIT_PASS}@rabbitmq:5672/gula" >> .env
-              echo "Generated missing RABBITMQ_URL"
             fi
 
             if ! grep -q "^DATABASE_URL=" .env; then
               PG_PASS=$(grep -oP 'POSTGRES_PASSWORD=\K.*' .env | head -1 || echo "changeme")
               echo "DATABASE_URL=postgresql://postgres:${PG_PASS}@postgres:5432/labdb" >> .env
-              echo "Generated missing DATABASE_URL"
             fi
 
-            echo "=== .env verification ==="
-            echo "Variables set: $(grep -c '=' .env)"
-            grep -oP '^[A-Z_]+(?==)' .env | sort
-            echo "========================="
+            log "Variables set: $(grep -c '=' .env)"
 
-            # Detect docker compose command (v2 plugin or v1 standalone)
-            if docker compose version &> /dev/null; then
-              COMPOSE="docker compose"
-            elif command -v docker-compose &> /dev/null; then
-              COMPOSE="docker-compose"
+            # Use deploy scripts if available, otherwise inline
+            if [ -x "$REPO_DIR/gula_update.sh" ]; then
+              log "Using gula_update.sh"
+              "$REPO_DIR/gula_update.sh"
             else
-              echo "ERROR: Neither 'docker compose' nor 'docker-compose' found"
-              exit 1
+              log "Running inline deploy"
+              $COMPOSE config >/dev/null
+              $COMPOSE pull --ignore-pull-failures
+              $COMPOSE up -d --build --remove-orphans
+              docker image prune -f
+
+              # Wait for health (up to 3 minutes)
+              ok=0
+              for _ in $(seq 1 36); do
+                if curl -fsS --max-time 10 http://localhost/health >/dev/null 2>&1; then
+                  ok=1
+                  break
+                fi
+                sleep 5
+              done
+
+              if [ "$ok" -ne 1 ]; then
+                log "Health check failed. Rolling back to $PREVIOUS_COMMIT"
+                git reset --hard "$PREVIOUS_COMMIT"
+                $COMPOSE up -d --build --remove-orphans
+                sleep 30
+                $COMPOSE ps
+                exit 1
+              fi
             fi
-            echo "Using: $COMPOSE"
 
-            $COMPOSE build
-            $COMPOSE down --remove-orphans
-            $COMPOSE up -d
-
-            # Clean up old images
-            docker image prune -f
-
-            # Verify containers are running
-            echo "=== Container Status ==="
+            log "Deployment completed successfully"
             $COMPOSE ps
-
-            echo "Deployment completed successfully"
           DEPLOY_SCRIPT
-
-      - name: Wait for services to start
-        run: sleep 45
 
       - name: Health Check
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          for i in 1 2 3 4 5 6; do
+          echo "Waiting 30s for services to stabilize..."
+          sleep 30
+
+          for i in 1 2 3 4 5 6 7 8; do
             if curl -sf --max-time 10 "http://$SERVER_HOST/health" > /dev/null 2>&1; then
               echo "Health check passed!"
               exit 0
             fi
-            echo "Attempt $i failed, retrying in 10s..."
-            sleep 10
+            echo "Attempt $i/8 failed, retrying in 15s..."
+            sleep 15
           done
-          echo "Health check failed after 6 attempts"
+          echo "Health check failed after 8 attempts"
 
-          # Show service logs for debugging
-          ssh gula-server 'cd /home/samertts/gula-platform && if docker compose version &>/dev/null; then COMPOSE="docker compose"; else COMPOSE="docker-compose"; fi && $COMPOSE ps && $COMPOSE logs --tail=20 api-gateway gula-backend' || true
+          # Debug info
+          ssh gula-server 'cd /home/samertts/gula-platform && ./gula_health.sh' || true
           exit 1
 
       - name: Verify API endpoint
