@@ -1,6 +1,8 @@
 """Master Admin endpoints - platform-wide management."""
 import os
-from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional
@@ -16,6 +18,8 @@ from ..models.audit_log import AuditLog
 from ..security.dependencies import get_current_user
 from ..security.auth import hash_password
 from ..services.audit_service import log_action
+
+logger = logging.getLogger("gula.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -50,8 +54,25 @@ def list_all_labs(
     limit: int = 50,
 ):
     """List all labs on the platform."""
+    from sqlalchemy.orm import subqueryload
     labs = db.query(Lab).order_by(Lab.created_at.desc()).offset(skip).limit(limit).all()
     total = db.query(func.count(Lab.id)).scalar() or 0
+
+    # Batch query counts to avoid N+1
+    lab_ids = [l.id for l in labs]
+    user_counts = dict(
+        db.query(LabUser.lab_id, func.count(LabUser.id))
+        .filter(LabUser.lab_id.in_(lab_ids))
+        .group_by(LabUser.lab_id)
+        .all()
+    ) if lab_ids else {}
+    patient_counts = dict(
+        db.query(Patient.lab_id, func.count(Patient.id))
+        .filter(Patient.lab_id.in_(lab_ids))
+        .group_by(Patient.lab_id)
+        .all()
+    ) if lab_ids else {}
+
     return {
         "total": total,
         "labs": [
@@ -63,8 +84,8 @@ def list_all_labs(
                 "license_number": l.license_number,
                 "is_active": l.is_active,
                 "created_at": l.created_at.isoformat() if l.created_at else None,
-                "user_count": db.query(func.count(LabUser.id)).filter(LabUser.lab_id == l.id).scalar() or 0,
-                "patient_count": db.query(func.count(Patient.id)).filter(Patient.lab_id == l.id).scalar() or 0,
+                "user_count": user_counts.get(l.id, 0),
+                "patient_count": patient_counts.get(l.id, 0),
             }
             for l in labs
         ],
@@ -85,22 +106,31 @@ def toggle_lab(lab_id: int, admin: LabUser = Depends(require_admin), db: Session
     return {"message": f"Lab {'activated' if lab.is_active else 'deactivated'}", "is_active": lab.is_active}
 
 
+class CreateLabRequest(BaseModel):
+    name: str
+    city: str = ""
+    phone: str = ""
+    admin_email: str
+    admin_password: str
+    admin_name: str
+
+
 @router.post("/labs")
 def create_lab_admin(
+    data: CreateLabRequest,
     admin: LabUser = Depends(require_admin),
     db: Session = Depends(get_db),
-    name: str = "",
-    city: str = "",
-    phone: str = "",
-    admin_email: str = "",
-    admin_password: str = "",
-    admin_name: str = "",
 ):
     """Create a new lab with its admin user."""
-    from pydantic import BaseModel
+    name = data.name
+    city = data.city
+    phone = data.phone
+    admin_email = data.admin_email
+    admin_password = data.admin_password
+    admin_name = data.admin_name
 
-    if not all([name, admin_email, admin_password, admin_name]):
-        raise HTTPException(status_code=400, detail="name, admin_email, admin_password, admin_name required")
+    if len(admin_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
     if db.query(LabUser).filter(LabUser.email == admin_email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -133,8 +163,11 @@ def list_users(
     limit: int = 50,
 ):
     """List all users, optionally filtered by role."""
+    VALID_ROLES = {"admin", "staff", "technician", "master_admin"}
     query = db.query(LabUser)
     if role:
+        if role not in VALID_ROLES:
+            raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}")
         query = query.filter(LabUser.role == role)
     total = query.count()
     users = query.order_by(LabUser.created_at.desc()).offset(skip).limit(limit).all()
@@ -214,7 +247,12 @@ def ensure_master_admin():
             return
 
         email = os.getenv("GULA_ADMIN_EMAIL", "admin@gula-platform.org")
-        password = os.getenv("GULA_ADMIN_PASSWORD", "gula-admin-2024")
+        password = os.getenv("GULA_ADMIN_PASSWORD")
+        if not password:
+            import secrets
+            password = secrets.token_urlsafe(24)
+            print(f"[GULA] WARNING: GULA_ADMIN_PASSWORD not set. Generated temporary password: {password}")
+            print(f"[GULA] Set GULA_ADMIN_PASSWORD in .env to use a permanent password.")
         name = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
 
         # Create a platform-level lab for admin
@@ -234,9 +272,9 @@ def ensure_master_admin():
         )
         db.add(admin)
         db.commit()
-        print(f"[GULA] Master admin created: {email}")
+        logger.info(f"Master admin created: {email}")
     except Exception as e:
         db.rollback()
-        print(f"[GULA] Failed to create master admin: {e}")
+        logger.error(f"Failed to create master admin: {e}")
     finally:
         db.close()

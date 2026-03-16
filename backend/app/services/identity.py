@@ -133,8 +133,13 @@ def _name_similarity(name1: str, name2: str) -> float:
 
 
 def hash_national_id(national_id: str) -> str:
-    """Hash a national ID for secure storage using HMAC-SHA256 with app secret."""
+    """Hash a national ID for secure storage using HMAC-SHA256 with a stable key.
+
+    Uses NID_HMAC_KEY (not SECRET_KEY) so hashes survive secret rotation.
+    """
     import hmac
-    from ..config import SECRET_KEY
+    from ..config import NID_HMAC_KEY
     cleaned = re.sub(r"[^\d]", "", national_id)
-    return hmac.new(SECRET_KEY.encode(), cleaned.encode(), hashlib.sha256).hexdigest()
+    if not cleaned:
+        return ""
+    return hmac.new(NID_HMAC_KEY.encode(), cleaned.encode(), hashlib.sha256).hexdigest()

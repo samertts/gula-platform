@@ -92,6 +92,27 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color
 .menu-btn { background: none; border: none; color: var(--text); cursor: pointer; }
 .menu-btn svg { width: 24px; height: 24px; }
 
+/* ---- Greeting Banner ---- */
+.greeting-banner {
+  margin-bottom: 24px;
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #172554 50%, #0c4a6e 100%);
+  border-radius: var(--radius);
+  border: 1px solid #312e81;
+}
+.greeting-banner h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #c7d2fe, #67e8f9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+}
+.greeting-banner p {
+  color: var(--text-muted);
+  font-size: .9rem;
+}
+
 /* ---- Page Header ---- */
 .page-header { margin-bottom: 24px; }
 .page-header h2 { font-size: 1.5rem; font-weight: 700; }
@@ -250,13 +271,14 @@ tr:hover td { background: #ffffff05; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---- Pagination ---- */
-.pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
 .pagination button {
   padding: 6px 14px; background: var(--bg-input); border: 1px solid var(--border);
   border-radius: var(--radius-sm); color: var(--text-dim); cursor: pointer; font-size: .85rem;
 }
 .pagination button.active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
 .pagination button:disabled { opacity: .4; cursor: not-allowed; }
+.pagination-info { font-size: .8rem; color: var(--text-muted); }
 
 /* ---- Tabs ---- */
 .tabs { display: flex; gap: 0; background: var(--bg-input); border-radius: var(--radius-sm); padding: 3px; margin-bottom: 20px; width: fit-content; }

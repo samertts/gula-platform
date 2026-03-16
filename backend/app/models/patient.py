@@ -18,7 +18,7 @@ class Patient(Base):
     health_id = Column(String(20), unique=True, nullable=True, index=True)
     national_id_hash = Column(String(255), nullable=True, index=True)
     full_name = Column(String(200), nullable=False)
-    phone = Column(String(20), nullable=False)
+    phone = Column(String(20), nullable=False, index=True)
     birth_date = Column(Date, nullable=True)
     gender = Column(String(1), nullable=True)
     email = Column(String(100), nullable=True)
