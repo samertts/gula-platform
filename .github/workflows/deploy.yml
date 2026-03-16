@@ -13,14 +13,16 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
-      - name: Deploy to GULA server with health validation and autofix
+      - name: Deploy to GULA server (self-bootstrap + fallback recovery)
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          REPO_URL: https://github.com/samertts/gula-platform.git
+          REPO_DIR: /home/samertts/gula-platform
         run: |
           set -euo pipefail
 
@@ -28,13 +30,80 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/gula_deploy_key
           chmod 600 ~/.ssh/gula_deploy_key
-
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          ssh -i ~/.ssh/gula_deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" <<'REMOTE_EOF'
+          ssh -i ~/.ssh/gula_deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" \
+            "REPO_URL='$REPO_URL' REPO_DIR='$REPO_DIR' bash -se" <<'REMOTE_EOF'
           set -euo pipefail
-          cd /home/samertts/gula-platform
-          ./gula_update.sh
-          ./gula_autofix.sh
-          ./gula_health.sh
+
+          log() { printf '[remote-deploy] %s\n' "$*"; }
+
+          for cmd in git docker; do
+            if ! command -v "$cmd" >/dev/null 2>&1; then
+              log "Missing required command: $cmd"
+              exit 2
+            fi
+          done
+
+          COMPOSE="docker compose"
+          if ! $COMPOSE version >/dev/null 2>&1; then
+            COMPOSE="docker-compose"
+          fi
+
+          mkdir -p "$(dirname "$REPO_DIR")"
+          if [ ! -d "$REPO_DIR/.git" ]; then
+            log "Repository missing on server. Cloning..."
+            rm -rf "$REPO_DIR"
+            git clone "$REPO_URL" "$REPO_DIR"
+          fi
+
+          cd "$REPO_DIR"
+          log "Syncing repository to origin/main"
+          git fetch --all --prune
+          git reset --hard origin/main
+
+          for script in gula_update.sh gula_autofix.sh gula_health.sh; do
+            if [ -f "$REPO_DIR/$script" ]; then
+              chmod +x "$REPO_DIR/$script"
+            fi
+          done
+
+          if [ -x "$REPO_DIR/gula_update.sh" ] && [ -x "$REPO_DIR/gula_autofix.sh" ] && [ -x "$REPO_DIR/gula_health.sh" ]; then
+            log "Using repository deploy scripts"
+            "$REPO_DIR/gula_update.sh"
+            "$REPO_DIR/gula_autofix.sh"
+            "$REPO_DIR/gula_health.sh"
+            log "Deployment finished successfully via scripts"
+            exit 0
+          fi
+
+          log "Deploy scripts missing. Running inline fallback deploy flow"
+
+          if [ ! -f "$REPO_DIR/docker-compose.yml" ]; then
+            log "docker-compose.yml missing in $REPO_DIR"
+            exit 3
+          fi
+
+          $COMPOSE -f "$REPO_DIR/docker-compose.yml" config >/dev/null
+          $COMPOSE -f "$REPO_DIR/docker-compose.yml" pull --ignore-pull-failures
+          $COMPOSE -f "$REPO_DIR/docker-compose.yml" up -d --build --remove-orphans
+
+          ok=0
+          for _ in {1..36}; do
+            if curl -fsS --max-time 10 http://localhost/health >/dev/null \
+              && curl -fsS --max-time 10 http://localhost/health/backend >/dev/null \
+              && curl -fsS --max-time 10 http://localhost/health/frontend >/dev/null; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$ok" -ne 1 ]; then
+            log "Fallback health checks failed"
+            $COMPOSE -f "$REPO_DIR/docker-compose.yml" ps || true
+            exit 1
+          fi
+
+          log "Deployment finished successfully via fallback"
           REMOTE_EOF

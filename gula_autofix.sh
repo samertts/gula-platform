@@ -17,7 +17,7 @@ if ! $COMPOSE version >/dev/null 2>&1; then
 fi
 
 log "Checking unhealthy/exited containers"
-mapfile -t broken < <(docker ps -a --format '{{.Names}} {{.Status}}' | awk '/(Exited|unhealthy)/ {print $1}')
+mapfile -t broken < <(docker ps -a --format '{{.Names}} {{.Status}}' | awk '/(Exited|unhealthy|Dead)/ {print $1}')
 
 if [ "${#broken[@]}" -gt 0 ]; then
   log "Restarting broken containers: ${broken[*]}"
@@ -29,6 +29,9 @@ $COMPOSE up -d --remove-orphans
 
 log "Pruning dangling images"
 docker image prune -f >/dev/null || true
+
+log "Pruning stopped containers"
+docker container prune -f >/dev/null || true
 
 log "Re-checking health"
 if ./gula_health.sh; then
