@@ -40,18 +40,41 @@ jobs:
             set -e
             cd /home/samertts/gula-platform
 
-            # Reset to match remote exactly (discard any manual changes on server)
+            # Preserve .env file before git reset (contains production secrets)
+            if [ -f .env ]; then
+              cp .env /tmp/.env.gula.backup
+              echo "Backed up .env file"
+            fi
+
+            # Reset to match remote exactly
             git fetch origin main
             git reset --hard origin/main
-            git clean -fd
+            git clean -fd -e .env
 
-            # Build and deploy
-            # Try docker compose (v2) first, fall back to docker-compose (v1)
-            if command -v docker-compose &> /dev/null; then
+            # Restore .env file
+            if [ -f /tmp/.env.gula.backup ]; then
+              cp /tmp/.env.gula.backup .env
+              rm -f /tmp/.env.gula.backup
+              echo "Restored .env file"
+            fi
+
+            # Verify .env exists before proceeding
+            if [ ! -f .env ]; then
+              echo "ERROR: .env file is missing! Cannot deploy without production secrets."
+              echo "Create .env from .env.example and set all required values."
+              exit 1
+            fi
+
+            # Detect docker compose command (v2 plugin or v1 standalone)
+            if docker compose version &> /dev/null; then
+              COMPOSE="docker compose"
+            elif command -v docker-compose &> /dev/null; then
               COMPOSE="docker-compose"
             else
-              COMPOSE="docker compose"
+              echo "ERROR: Neither 'docker compose' nor 'docker-compose' found"
+              exit 1
             fi
+            echo "Using: $COMPOSE"
 
             $COMPOSE build
             $COMPOSE down --remove-orphans
@@ -85,7 +108,7 @@ jobs:
           echo "Health check failed after 6 attempts"
 
           # Show service logs for debugging
-          ssh gula-server 'cd /home/samertts/gula-platform && (docker-compose ps 2>/dev/null || docker compose ps) && (docker-compose logs --tail=20 api-gateway gula-backend 2>/dev/null || docker compose logs --tail=20 api-gateway gula-backend)' || true
+          ssh gula-server 'cd /home/samertts/gula-platform && if docker compose version &>/dev/null; then COMPOSE="docker compose"; else COMPOSE="docker-compose"; fi && $COMPOSE ps && $COMPOSE logs --tail=20 api-gateway gula-backend' || true
           exit 1
 
       - name: Verify API endpoint
