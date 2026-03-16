@@ -20,8 +20,8 @@ from starlette.responses import Response
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("lab-service")
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:gula_secure_2024@pgbouncer:5432/labdb")
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://gula:gula_rabbit_2024@rabbitmq:5672/gula")
+DATABASE_URL = os.environ["DATABASE_URL"]  # Required - no hardcoded fallback
+RABBITMQ_URL = os.environ["RABBITMQ_URL"]  # Required - no hardcoded fallback
 
 REQUEST_COUNT   = Counter("lab_requests_total", "Total requests", ["endpoint", "method", "status"])
 REQUEST_LATENCY = Histogram("lab_request_duration_seconds", "Request duration", ["endpoint"])
@@ -61,6 +61,13 @@ class LaboratoryResponse(BaseModel):
 async def startup():
     await get_db()
     logger.info("[LabService] Started")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    if _pool:
+        await _pool.close()
+        logger.info("[LabService] Database pool closed")
 
 
 @app.get("/health")

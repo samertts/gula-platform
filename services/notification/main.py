@@ -16,7 +16,7 @@ from starlette.responses import Response
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("notification-service")
 
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://gula:gula_rabbit_2024@rabbitmq:5672/gula")
+RABBITMQ_URL = os.environ["RABBITMQ_URL"]  # Required - no hardcoded fallback
 
 NOTIFICATIONS_SENT = Counter("notifications_sent_total", "Total notifications sent", ["type"])
 

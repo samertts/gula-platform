@@ -3,8 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="GULA - منصة المختبرات الطبية العراقية | نظام إدارة مختبرات خفيف وسريع وآمن">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>GULA - منصة المختبرات</title>
+<link rel="preload" href="/assets/gula.css" as="style">
+<link rel="preload" href="/assets/gula.js" as="script">
 <link rel="stylesheet" href="/assets/gula.css">
+<link rel="manifest" href="/manifest.json">
 </head>
 <body>
 <!-- Sidebar -->
@@ -80,6 +87,7 @@
 <!-- Toast -->
 <div id="toast" class="toast"></div>
 
-<script src="/assets/gula.js"></script>
+<script src="/assets/gula.js" defer></script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});</script>
 </body>
 </html>

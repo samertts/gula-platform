@@ -22,12 +22,13 @@ from starlette.responses import Response
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("result-service")
 
-DATABASE_URL  = os.getenv("DATABASE_URL", "postgresql://postgres:gula_secure_2024@pgbouncer:5432/labdb")
-RABBITMQ_URL  = os.getenv("RABBITMQ_URL", "amqp://gula:gula_rabbit_2024@rabbitmq:5672/gula")
+DATABASE_URL  = os.environ["DATABASE_URL"]  # Required - no hardcoded fallback
+RABBITMQ_URL  = os.environ["RABBITMQ_URL"]  # Required - no hardcoded fallback
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
-MINIO_ACCESS  = os.getenv("MINIO_ACCESS_KEY", "gula_minio")
-MINIO_SECRET  = os.getenv("MINIO_SECRET_KEY", "gula_minio_2024")
+MINIO_ACCESS  = os.environ.get("MINIO_ACCESS_KEY", "")
+MINIO_SECRET  = os.environ.get("MINIO_SECRET_KEY", "")
 MINIO_BUCKET  = os.getenv("MINIO_BUCKET_REPORTS", "medical-reports")
+MINIO_SECURE  = os.getenv("MINIO_SECURE", "true").lower() == "true"
 CLICKHOUSE_URL   = os.getenv("CLICKHOUSE_URL", "http://clickhouse:8123")
 KAFKA_BOOTSTRAP  = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 KAFKA_TOPIC      = "gula.lab-results"
@@ -55,7 +56,7 @@ def get_minio():
     if _minio_client is None:
         try:
             from minio import Minio
-            _minio_client = Minio(MINIO_ENDPOINT, access_key=MINIO_ACCESS, secret_key=MINIO_SECRET, secure=False)
+            _minio_client = Minio(MINIO_ENDPOINT, access_key=MINIO_ACCESS, secret_key=MINIO_SECRET, secure=MINIO_SECURE)
             if not _minio_client.bucket_exists(MINIO_BUCKET):
                 _minio_client.make_bucket(MINIO_BUCKET)
         except Exception as e:
@@ -176,6 +177,13 @@ async def startup():
     logger.info("[ResultService] Started")
 
 
+@app.on_event("shutdown")
+async def shutdown():
+    if _pool:
+        await _pool.close()
+        logger.info("[ResultService] Database pool closed")
+
+
 @app.get("/health")
 def health():
     return {"status": "healthy", "service": "result-service"}
@@ -277,4 +285,4 @@ async def upload_report(file: UploadFile = File(...), order_id: int = 0):
         return {"file_url": file_url, "bucket": MINIO_BUCKET, "object": object_name}
     except Exception as e:
         logger.error(f"[ResultService] Upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="File upload failed. Please try again.")
