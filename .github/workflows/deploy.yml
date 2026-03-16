@@ -58,15 +58,11 @@ jobs:
               echo "Restored .env file"
             fi
 
-            # Verify .env exists - if not, create from example
+            # Verify .env exists - hard error if missing (never fall back to defaults)
             if [ ! -f .env ]; then
-              if [ -f .env.example ]; then
-                cp .env.example .env
-                echo "WARNING: Created .env from .env.example - passwords are defaults!"
-              else
-                echo "ERROR: No .env file found. Create one manually."
-                exit 1
-              fi
+              echo "ERROR: No .env file found. Production requires a manually configured .env."
+              echo "Copy .env.example and set all values before deploying."
+              exit 1
             fi
 
             # Auto-generate missing required variables (simple inline checks)
