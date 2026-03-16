@@ -4,19 +4,71 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: gula-production-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
-      - name: Deploy to GULA server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+      - name: Deploy to GULA server with preflight, update, autofix, and health checks
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          REPO_URL: https://github.com/samertts/gula-platform.git
+          REPO_DIR: /home/samertts/gula-platform
+        run: |
+          set -euo pipefail
 
-          script: |
-            cd /home/samertts/gula-platform
-            ./gula_update.sh
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/gula_deploy_key
+          chmod 600 ~/.ssh/gula_deploy_key
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          ssh -i ~/.ssh/gula_deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" \
+            "REPO_URL='$REPO_URL' REPO_DIR='$REPO_DIR' bash -se" <<'REMOTE_EOF'
+          set -euo pipefail
+          
+          log() { printf '[remote-deploy] %s\n' "$*"; }
+          
+          for cmd in git docker; do
+            if ! command -v "$cmd" >/dev/null 2>&1; then
+              log "Missing required command: $cmd"
+              exit 2
+            fi
+          done
+          
+          mkdir -p "$(dirname "$REPO_DIR")"
+          if [ ! -d "$REPO_DIR/.git" ]; then
+            log "Repository not found on server. Cloning fresh copy..."
+            rm -rf "$REPO_DIR"
+            git clone "$REPO_URL" "$REPO_DIR"
+          fi
+          
+          cd "$REPO_DIR"
+          log "Syncing repository to origin/main"
+          git fetch --all --prune
+          git reset --hard origin/main
+          
+          for script in gula_update.sh gula_autofix.sh gula_health.sh; do
+            if [ ! -f "$REPO_DIR/$script" ]; then
+              log "Missing required script: $REPO_DIR/$script"
+              exit 3
+            fi
+            chmod +x "$REPO_DIR/$script"
+          done
+          
+          log "Running update + autofix + health pipeline"
+          "$REPO_DIR/gula_update.sh"
+          "$REPO_DIR/gula_autofix.sh"
+          "$REPO_DIR/gula_health.sh"
+          
+          log "Deployment finished successfully"
+          REMOTE_EOF
