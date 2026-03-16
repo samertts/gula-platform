@@ -6,7 +6,7 @@ from ..database import Base
 
 
 def generate_barcode():
-    return f"SMP-{secrets.token_hex(4).upper()}"
+    return f"SMP-{secrets.token_hex(6).upper()}"
 
 
 class Sample(Base):

@@ -31,17 +31,20 @@ def get_patient_ehr(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Get all orders with results
+    # Get all orders with results - eagerly load lab to avoid N+1
     orders = db.query(LabOrder).filter(
         LabOrder.patient_id == patient_id,
-    ).options(joinedload(LabOrder.results)).order_by(LabOrder.created_at.desc()).all()
+    ).options(
+        joinedload(LabOrder.results),
+        joinedload(LabOrder.lab),
+    ).order_by(LabOrder.created_at.desc()).all()
 
     # Organize results by test type for trends
     test_history = defaultdict(list)
     all_records = []
 
     for order in orders:
-        lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
+        lab = order.lab
         for result in order.results:
             record = {
                 "test_name": result.test_name,

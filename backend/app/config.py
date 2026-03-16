@@ -1,5 +1,9 @@
 import os
+import sys
 import secrets
+import logging
+
+logger = logging.getLogger("gula.config")
 
 # Database
 DATABASE_URL = os.getenv(
@@ -8,15 +12,42 @@ DATABASE_URL = os.getenv(
 )
 
 # JWT
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(64))
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_urlsafe(64)
+    print(
+        "[GULA WARNING] SECRET_KEY not set in environment. "
+        "Using random key - sessions will not survive restarts. "
+        "Set SECRET_KEY in .env for production.",
+        file=sys.stderr,
+    )
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24  # 24 hours (healthcare standard)
 
 # App
 APP_NAME = "GULA Platform"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+
+# Encryption
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
+if not ENCRYPTION_KEY:
+    print(
+        "[GULA WARNING] ENCRYPTION_KEY not set. Set it in .env for production.",
+        file=sys.stderr,
+    )
+
+# Stable HMAC key for hashing national IDs (must NOT change or lookups break)
+NID_HMAC_KEY = os.getenv("NID_HMAC_KEY", "")
+if not NID_HMAC_KEY:
+    # Fall back to ENCRYPTION_KEY or SECRET_KEY for backwards compatibility
+    NID_HMAC_KEY = ENCRYPTION_KEY or SECRET_KEY
+    print(
+        "[GULA WARNING] NID_HMAC_KEY not set. Set a stable key in .env "
+        "for production to ensure national ID lookups survive restarts.",
+        file=sys.stderr,
+    )
 
 # Result link settings
 RESULT_TOKEN_LENGTH = 32
-RESULT_LINK_EXPIRE_DAYS = 30
+RESULT_LINK_EXPIRE_DAYS = 90

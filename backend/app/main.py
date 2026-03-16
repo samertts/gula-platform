@@ -1,11 +1,20 @@
 import os
-import traceback
+import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine
 from .config import APP_NAME, APP_VERSION
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("gula")
 
 # Import all models so they are registered with Base
 from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample
@@ -23,8 +32,7 @@ app = FastAPI(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
-    print(f"[GULA ERROR] {request.method} {request.url}: {exc}")
-    traceback.print_exc()
+    logger.exception(f"{request.method} {request.url}: {exc}")
     return JSONResponse(
         status_code=500,
         content={
@@ -41,9 +49,10 @@ if not _allowed_origins:
     _allowed_origins = [
         "https://gula-platform.org",
         "http://gula-platform.org",
-        "http://localhost:8080",
-        "http://localhost:80",
     ]
+    # Only allow localhost in development
+    if os.getenv("ENV", "production") == "development":
+        _allowed_origins += ["http://localhost:8080", "http://localhost:80"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
@@ -51,6 +60,22 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+# ===== SECURITY HEADERS MIDDLEWARE =====
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if os.getenv("ENV", "production") == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ===== ROUTES =====
 from .routes import login, register, patients, results, dashboard, labs
@@ -87,7 +112,20 @@ app.include_router(insurance.router)
 # ===== HEALTH & STATUS =====
 @app.get("/health")
 def health():
-    return {"status": "healthy", "version": APP_VERSION}
+    """Health check with database connectivity verification."""
+    from .database import SessionLocal
+    from sqlalchemy import text
+    db_ok = False
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db_ok = True
+        db.close()
+    except Exception as exc:
+        logger.warning("Health check: database connection failed: %s", exc)
+
+    status = "healthy" if db_ok else "degraded"
+    return {"status": status, "version": APP_VERSION, "database": "connected" if db_ok else "disconnected"}
 
 
 @app.get("/r/{token}/pdf")
@@ -167,7 +205,7 @@ def _seed_test_types():
             ]
             db.add_all(test_types)
             db.commit()
-            print(f"[GULA] Seeded {len(test_types)} test types")
+            logger.info(f"Seeded {len(test_types)} test types")
     finally:
         db.close()
 
