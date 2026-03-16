@@ -28,7 +28,7 @@ log "Starting ${BACKUP_TYPE} backup..."
 case "${BACKUP_TYPE}" in
     daily|full)
         DEST="${BACKUP_DIR}/daily/gula_full_${TIMESTAMP}.sql.gz"
-        PGPASSWORD="${PGPASSWORD:-postgres}" pg_dump \
+        PGPASSWORD="${PGPASSWORD:?PGPASSWORD must be set}" pg_dump \
             -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" "${DB_NAME}" \
             --no-owner --no-privileges \
             | gzip > "${DEST}" && log "Daily backup: ${DEST} ($(du -h "${DEST}" | cut -f1))" \
@@ -36,7 +36,7 @@ case "${BACKUP_TYPE}" in
         ;;
     hourly|incremental)
         DEST="${BACKUP_DIR}/hourly/gula_hourly_${TIMESTAMP}.sql.gz"
-        PGPASSWORD="${PGPASSWORD:-postgres}" pg_dump \
+        PGPASSWORD="${PGPASSWORD:?PGPASSWORD must be set}" pg_dump \
             -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" "${DB_NAME}" \
             --no-owner --no-privileges \
             | gzip > "${DEST}" && log "Hourly backup: ${DEST} ($(du -h "${DEST}" | cut -f1))" \

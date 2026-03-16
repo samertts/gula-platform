@@ -134,7 +134,7 @@ jobs:
           DEPLOY_SCRIPT
 
       - name: Wait for services to start
-        run: sleep 20
+        run: sleep 45
 
       - name: Health Check
         env:
