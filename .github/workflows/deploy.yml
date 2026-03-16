@@ -65,6 +65,25 @@ jobs:
               exit 1
             fi
 
+            # Auto-generate missing required variables
+            ensure_env_var() {
+              local var_name="$1"
+              local generator="$2"
+              if ! grep -q "^${var_name}=" .env; then
+                local value
+                value=$(eval "$generator")
+                echo "${var_name}=${value}" >> .env
+                echo "Generated missing ${var_name}"
+              fi
+            }
+
+            ensure_env_var "SECRET_KEY" "python3 -c \"import secrets; print(secrets.token_urlsafe(64))\""
+            ensure_env_var "ENCRYPTION_KEY" "python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\" 2>/dev/null || python3 -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            ensure_env_var "NID_HMAC_KEY" "python3 -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            ensure_env_var "MINIO_ACCESS_KEY" "echo gula_minio"
+            ensure_env_var "MINIO_SECRET_KEY" "python3 -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            ensure_env_var "RABBITMQ_URL" "grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 | xargs -I{} echo 'amqp://gula:{}@rabbitmq:5672/gula' 2>/dev/null || echo 'amqp://gula:changeme@rabbitmq:5672/gula'"
+
             # Detect docker compose command (v2 plugin or v1 standalone)
             if docker compose version &> /dev/null; then
               COMPOSE="docker compose"
