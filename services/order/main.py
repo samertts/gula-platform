@@ -149,6 +149,8 @@ async def complete_order(order_id: int):
 
 @app.get("/orders", response_model=List[OrderResponse])
 async def list_orders(lab_id: Optional[int] = None, status: Optional[str] = None, skip: int = 0, limit: int = 100):
+    skip = max(0, skip)
+    limit = max(1, min(limit, 500))
     pool = await get_db()
     async with pool.acquire() as conn:
         query = """SELECT id, order_uuid::text, lab_id, patient_id, test_id, priority, status, ordered_at

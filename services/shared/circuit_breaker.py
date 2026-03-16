@@ -120,18 +120,19 @@ def with_retry(
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            attempt = 0
-            while attempt < max_attempts:
+            last_exc = None
+            for attempt in range(1, max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as exc:
-                    attempt += 1
+                    last_exc = exc
                     if attempt >= max_attempts:
                         logger.error(f"[Retry] {func.__name__} failed after {max_attempts} attempts: {exc}")
                         raise
                     wait = backoff_seconds * (2 ** (attempt - 1))
                     logger.warning(f"[Retry] {func.__name__} attempt {attempt}/{max_attempts} failed. Retrying in {wait}s...")
                     time.sleep(wait)
+            raise last_exc  # Should never reach here, but safety net
         return wrapper
     return decorator
 
