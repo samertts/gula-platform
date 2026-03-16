@@ -65,18 +65,33 @@ function esc(str) {
   return div.innerHTML;
 }
 
+function showExpired() {
+  const el = document.getElementById('content');
+  el.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'expired';
+  const h2 = document.createElement('h2');
+  h2.textContent = 'انتهت صلاحية الرابط';
+  const p = document.createElement('p');
+  p.textContent = 'يرجى مراجعة المختبر للحصول على رابط جديد';
+  div.appendChild(h2);
+  div.appendChild(p);
+  el.appendChild(div);
+}
+
+function isSafeUrl(url) {
+  try { const u = new URL(url, location.origin); return ['http:', 'https:', 'whatsapp:', 'tel:'].includes(u.protocol); }
+  catch { return false; }
+}
+
 async function loadResult() {
   if (!token || !/^[A-Za-z0-9_-]+$/.test(token)) { showError('رابط غير صالح'); return; }
   try {
     const res = await fetch('/api/results/api/r/' + encodeURIComponent(token));
+    if (res.status === 410) { showExpired(); return; }
+    if (!res.ok) throw new Error('خطأ في الخادم');
     const data = await res.json();
-    if (!res.ok) {
-      if (res.status === 410 || data.expired) {
-        document.getElementById('content').innerHTML = '<div class="expired"><h2>انتهت صلاحية الرابط</h2><p>يرجى مراجعة المختبر للحصول على رابط جديد</p></div>';
-        return;
-      }
-      throw new Error(data.detail || 'خطأ');
-    }
+    if (data.expired) { showExpired(); return; }
     renderResult(data);
   } catch (e) { showError(e.message); }
 }
@@ -131,7 +146,7 @@ function renderResult(d) {
     </div>
     <div class="qr"><img src="/api/qr/${safeToken}" alt="QR" onerror="this.style.display='none'"></div>
     <div class="actions">
-      ${d.whatsapp_link ? `<a href="${esc(d.whatsapp_link)}" target="_blank" rel="noopener" class="btn btn-wa">مشاركة واتساب</a>` : ''}
+      ${d.whatsapp_link && isSafeUrl(d.whatsapp_link) ? `<a href="${esc(d.whatsapp_link)}" target="_blank" rel="noopener" class="btn btn-wa">مشاركة واتساب</a>` : ''}
       <a href="/api/results/api/r/${safeToken}/pdf" target="_blank" rel="noopener" class="btn btn-pdf">تحميل PDF</a>
       <button class="btn btn-copy" onclick="navigator.clipboard.writeText(window.location.href);this.textContent='تم النسخ!'">نسخ الرابط</button>
       <button class="btn btn-copy" onclick="window.print()">طباعة</button>

@@ -85,7 +85,7 @@ services:
     container_name: gula-pgbouncer
     restart: always
     environment:
-      DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@postgres-primary:5432/labdb"
+      DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres-primary:5432/labdb"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 50
@@ -398,7 +398,7 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres-primary:5432/keycloak
       KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-gula_secure_2024}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
     ports:
@@ -552,7 +552,7 @@ services:
     container_name: gula-lab-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       MINIO_ENDPOINT: minio:9000
@@ -579,7 +579,7 @@ services:
     container_name: gula-patient-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
@@ -603,7 +603,7 @@ services:
     container_name: gula-order-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
@@ -625,7 +625,7 @@ services:
     container_name: gula-result-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       CLICKHOUSE_URL: http://clickhouse:8123
@@ -651,7 +651,7 @@ services:
     container_name: gula-sample-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
@@ -694,7 +694,7 @@ services:
     container_name: gula-autonomous-manager
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       # SECURITY: Docker socket removed - use Docker API over TLS if needed
@@ -714,7 +714,7 @@ services:
     container_name: gula-backend
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set in .env}

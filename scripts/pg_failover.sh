@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-PGPASSWORD="${POSTGRES_PASSWORD:-gula_secure_2024}"; export PGPASSWORD
+PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD env var must be set}"; export PGPASSWORD
 GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()   { echo -e "[$(date '+%H:%M:%S')] ${GREEN}✓${NC} $*"; }

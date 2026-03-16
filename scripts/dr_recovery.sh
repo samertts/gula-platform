@@ -10,7 +10,7 @@ BACKUP_DIR="${BACKUP_DIR:-/backups/gula}"
 DB_HOST="${DB_HOST:-postgres-primary}"
 DB_USER="${DB_USER:-postgres}"
 DB_NAME="${DB_NAME:-labdb}"
-PGPASSWORD="${POSTGRES_PASSWORD:-gula_secure_2024}"
+PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD env var must be set}"
 export PGPASSWORD
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -132,7 +132,7 @@ cmd_drill() {
     log "Step 3/4: RabbitMQ durability"
     docker restart gula-rabbitmq 2>/dev/null && ok "RabbitMQ restarted" || warn "RabbitMQ restart failed"
     sleep 15
-    queue_count=$(curl -sf -u gula:gula_rabbit_2024 \
+    queue_count=$(curl -sf -u "${RABBITMQ_USER:-gula}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}" \
         "http://localhost:15672/api/queues/gula" 2>/dev/null | \
         python3 -c "import sys,json; q=json.load(sys.stdin); print(len(q))" 2>/dev/null || echo 0)
     ok "RabbitMQ queues after restart: $queue_count"
