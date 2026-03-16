@@ -28,7 +28,9 @@ async function api(path, opts = {}) {
 function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  window.location.href = '/login.html';
+  G.token = null;
+  G.user = null;
+  window.location.replace('/login.html');
 }
 
 function checkAuth() {
@@ -61,16 +63,17 @@ function toast(msg, type = 'success') {
   t._timer = setTimeout(() => t.className = 'toast', 3000);
 }
 
+let _modalFocusTimer;
 function openModal(title, html) {
+  clearTimeout(_modalFocusTimer);
   $('modalTitle').textContent = title;
   $('modalBody').innerHTML = html;
   $('modal').style.display = 'flex';
-  // Focus first input inside modal
   const firstInput = $('modalBody').querySelector('input,select,textarea');
-  if (firstInput) setTimeout(() => firstInput.focus(), 50);
+  if (firstInput) _modalFocusTimer = setTimeout(() => { if (document.contains(firstInput)) firstInput.focus(); }, 50);
 }
 
-function closeModal() { $('modal').style.display = 'none'; }
+function closeModal() { clearTimeout(_modalFocusTimer); $('modal').style.display = 'none'; }
 
 function toggleSidebar() { $('sidebar').classList.toggle('open'); }
 
@@ -250,7 +253,9 @@ async function pagePatients() {
 
 async function loadPatients(search = '') {
   try {
+    const reqId = ++_lastSearchId;
     const d = await api(`/patients?search=${encodeURIComponent(search)}&skip=${patientPage * PAGE_SIZE}&limit=${PAGE_SIZE}`);
+    if (reqId !== _lastSearchId) return; // stale response, discard
     const el = $('patientsTable');
     if (!d.patients.length) { el.innerHTML = '<div class="empty"><p>لا يوجد مرضى</p></div>'; return; }
     el.innerHTML = `
@@ -272,7 +277,7 @@ async function loadPatients(search = '') {
       </table></div>
       <div class="pagination">
         <span class="pagination-info">صفحة ${patientPage + 1} ${d.total ? '- إجمالي ' + d.total : ''}</span>
-        <button ${patientPage === 0 ? 'disabled' : ''} onclick="patientPage--;loadPatients()">السابق</button>
+        <button ${patientPage === 0 ? 'disabled' : ''} onclick="patientPage=Math.max(0,patientPage-1);loadPatients()">السابق</button>
         <button ${d.patients.length < PAGE_SIZE ? 'disabled' : ''} onclick="patientPage++;loadPatients()">التالي</button>
       </div>
     `;
@@ -280,9 +285,12 @@ async function loadPatients(search = '') {
 }
 
 let searchTimer;
+let _lastSearchId = 0;
 function searchPatients() {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => { patientPage = 0; loadPatients($('patientSearch').value); }, 300);
+  const el = $('patientSearch');
+  if (!el) return;
+  searchTimer = setTimeout(() => { patientPage = 0; loadPatients(el.value); }, 300);
 }
 
 function openAddPatient() {
