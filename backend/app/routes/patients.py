@@ -1,5 +1,5 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -8,6 +8,7 @@ from ..models.patient import Patient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services.identity import normalize_name, match_score, hash_national_id
+from ..services.audit_service import log_action
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -43,6 +44,49 @@ class PatientCreate(BaseModel):
     def validate_gender(cls, v):
         if v and v not in ("male", "female", "M", "F"):
             raise ValueError("Gender must be 'male' or 'female'")
+        return v
+
+    @field_validator("birth_date")
+    @classmethod
+    def validate_birth_date(cls, v):
+        if v:
+            import re
+            from datetime import date
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
+                raise ValueError("Birth date must be YYYY-MM-DD format")
+            try:
+                d = date.fromisoformat(v)
+                if d > date.today():
+                    raise ValueError("Birth date cannot be in the future")
+                if d.year < 1900:
+                    raise ValueError("Birth date year must be after 1900")
+            except ValueError as e:
+                if "Birth date" in str(e):
+                    raise
+                raise ValueError("Invalid date")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        if v:
+            import re
+            v = v.strip().lower()
+            if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+                raise ValueError("Invalid email format")
+            if len(v) > 100:
+                raise ValueError("Email too long")
+        return v
+
+    @field_validator("national_id")
+    @classmethod
+    def validate_national_id(cls, v):
+        if v:
+            import re
+            cleaned = re.sub(r"\s", "", v)
+            if not re.match(r"^\d{12,13}$", cleaned):
+                raise ValueError("National ID must be 12-13 digits")
+            return cleaned
         return v
 
 
@@ -118,36 +162,55 @@ def create_patient(
                 Patient.national_id_hash == nid_hash
             ).first()
             if existing:
-                return {
+                raise HTTPException(status_code=409, detail={
                     "duplicate": True,
                     "message": "Patient with this national ID already exists",
+                    "message_ar": "يوجد مريض مسجل بنفس الرقم الوطني",
                     "existing_patient": patient_to_dict(existing),
-                }
+                })
 
-        # Check for probable duplicates in same lab (limit to recent 500 for performance)
-        lab_patients = db.query(Patient).filter(
-            Patient.lab_id == current_user.lab_id
-        ).order_by(Patient.created_at.desc()).limit(500).all()
+        # OPTIMIZED: Pre-filter by phone (exact match) first - O(1) indexed lookup
+        phone_digits = data.phone.replace("+", "").replace("-", "").replace(" ", "")[-10:]
+        phone_matches = db.query(Patient).filter(
+            Patient.lab_id == current_user.lab_id,
+            Patient.phone.contains(phone_digits),
+        ).limit(10).all()
 
         duplicates = []
-        for p in lab_patients:
+        for p in phone_matches:
             score = match_score(
                 data.full_name, data.phone, data.birth_date or "",
                 p.full_name, p.phone, str(p.birth_date) if p.birth_date else "",
                 nid_hash, p.national_id_hash,
             )
             if score >= 0.65:
-                duplicates.append({
-                    "patient": patient_to_dict(p),
-                    "score": round(score, 2),
-                })
+                duplicates.append({"patient": patient_to_dict(p), "score": round(score, 2)})
+
+        # If no phone match, do name-based search (limited scope)
+        if not duplicates:
+            name_prefix = data.full_name.strip().split()[0] if data.full_name.strip() else ""
+            if len(name_prefix) >= 2:
+                name_matches = db.query(Patient).filter(
+                    Patient.lab_id == current_user.lab_id,
+                    Patient.full_name.ilike(f"{name_prefix}%"),
+                ).order_by(Patient.created_at.desc()).limit(50).all()
+
+                for p in name_matches:
+                    score = match_score(
+                        data.full_name, data.phone, data.birth_date or "",
+                        p.full_name, p.phone, str(p.birth_date) if p.birth_date else "",
+                        nid_hash, p.national_id_hash,
+                    )
+                    if score >= 0.65:
+                        duplicates.append({"patient": patient_to_dict(p), "score": round(score, 2)})
 
         if duplicates:
-            return {
+            raise HTTPException(status_code=409, detail={
                 "duplicate": True,
                 "message": "Possible duplicate patients found. Set force_create=true to create anyway.",
+                "message_ar": "تم العثور على مرضى مشابهين. استخدم force_create=true للإضافة رغم ذلك.",
                 "matches": sorted(duplicates, key=lambda x: x["score"], reverse=True),
-            }
+            })
 
     health_id = f"GULA-{secrets.token_hex(4).upper()}"
 
@@ -187,6 +250,7 @@ def get_patient(
 def update_patient(
     patient_id: int,
     data: PatientUpdate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -197,8 +261,20 @@ def update_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    changed_fields = list(data.model_dump(exclude_unset=True).keys())
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(patient, field, value)
+
+    log_action(
+        db,
+        action="update",
+        resource_type="patient",
+        resource_id=patient_id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Updated fields: {', '.join(changed_fields)}",
+        ip_address=request.client.host if request.client else None,
+    )
 
     db.commit()
     db.refresh(patient)

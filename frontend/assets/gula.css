@@ -301,6 +301,31 @@ tr:hover td { background: #ffffff05; }
 .activity-text { font-size: .85rem; }
 .activity-time { font-size: .72rem; color: var(--text-muted); }
 
+/* ---- Alert Banner ---- */
+.alert-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 20px; margin-bottom: 20px;
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  border: 1px solid #dc2626; border-radius: var(--radius);
+  cursor: pointer; transition: all .2s;
+  animation: alertPulse 2s ease-in-out infinite;
+}
+.alert-banner:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(220,38,38,.3); }
+.alert-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #dc2626; color: #fff; display: flex;
+  align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1.1rem; flex-shrink: 0;
+}
+@keyframes alertPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .85; }
+}
+
+/* ---- Critical Row ---- */
+.critical-row td { background: #7f1d1d20 !important; }
+.warning-row td { background: #78350f20 !important; }
+
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
   .sidebar { transform: translateX(100%); }

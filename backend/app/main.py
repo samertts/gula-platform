@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger("gula")
 
 # Import all models so they are registered with Base
-from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample
+from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -71,6 +71,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self'; "
+            "font-src 'self'; "
+            "frame-ancestors 'none'"
+        )
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         if os.getenv("ENV", "production") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
@@ -82,6 +92,7 @@ from .routes import login, register, patients, results, dashboard, labs
 from .routes import identity, notifications, ehr, security
 from .routes import national_identity, insurance, device_results
 from .routes import qr, id_scan, admin, samples
+from .routes import quality_control, critical_alerts, batch
 
 # Core routes
 app.include_router(login.router)
@@ -101,6 +112,11 @@ app.include_router(ehr.router)
 app.include_router(security.router)
 app.include_router(device_results.router)
 
+# Advanced lab features
+app.include_router(quality_control.router)
+app.include_router(critical_alerts.router)
+app.include_router(batch.router)
+
 # Admin routes
 app.include_router(admin.router)
 
@@ -116,13 +132,16 @@ def health():
     from .database import SessionLocal
     from sqlalchemy import text
     db_ok = False
+    db = None
     try:
         db = SessionLocal()
         db.execute(text("SELECT 1"))
         db_ok = True
-        db.close()
     except Exception as exc:
         logger.warning("Health check: database connection failed: %s", exc)
+    finally:
+        if db:
+            db.close()
 
     status = "healthy" if db_ok else "degraded"
     return {"status": status, "version": APP_VERSION, "database": "connected" if db_ok else "disconnected"}

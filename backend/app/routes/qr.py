@@ -1,7 +1,7 @@
 import io
 import json
 import qrcode
-from fastapi import APIRouter, Response, Depends
+from fastapi import APIRouter, Response, Depends, Request
 from sqlalchemy.orm import Session
 from ..config import BASE_URL
 from ..database import get_db
@@ -9,13 +9,20 @@ from ..models.lab_result import LabResult, hash_token
 from ..models.lab_order import LabOrder
 from ..models.patient import Patient
 from ..models.lab import Lab
+from ..security.rate_limit import rate_limit_public
 
 router = APIRouter(tags=["qr"])
 
 
 @router.get("/qr/{token}")
-def generate_qr(token: str):
+def generate_qr(token: str, request: Request):
     """Generate QR code for a result link (URL only)."""
+    rate_limit_public(request, max_per_minute=20)
+
+    # Validate token format (base64url, expected length)
+    if not token or len(token) > 64 or len(token) < 10:
+        return Response(content=b"Invalid token", status_code=400)
+
     url = f"{BASE_URL}/r/{token}"
 
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
@@ -32,12 +39,14 @@ def generate_qr(token: str):
 
 
 @router.get("/qr-medical/{token}")
-def generate_medical_qr(token: str, db: Session = Depends(get_db)):
+def generate_medical_qr(token: str, request: Request, db: Session = Depends(get_db)):
     """Generate Structured Medical QR containing actual test data.
 
     This QR can be scanned by any compatible health system to import results
     directly without manual entry. Uses a FHIR-lite JSON format.
     """
+    rate_limit_public(request, max_per_minute=10)
+
     token_h = hash_token(token)
     result = db.query(LabResult).filter(LabResult.token_hash == token_h).first()
     if not result:

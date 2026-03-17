@@ -1,7 +1,7 @@
 """Notification endpoints - WhatsApp and SMS result delivery."""
 import urllib.parse
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -20,6 +20,13 @@ router = APIRouter(prefix="/notify", tags=["notifications"])
 class NotifyRequest(BaseModel):
     order_id: int
     channel: str = "whatsapp"  # whatsapp, sms
+
+    @field_validator("channel")
+    @classmethod
+    def validate_channel(cls, v):
+        if v not in ("whatsapp", "sms"):
+            raise ValueError("Channel must be 'whatsapp' or 'sms'")
+        return v
 
 
 @router.post("/send")

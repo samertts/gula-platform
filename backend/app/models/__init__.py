@@ -8,6 +8,7 @@ from .lab_order import LabOrder
 from .lab_result import LabResult
 from .sample import Sample
 from .audit_log import AuditLog
+from .quality_control import QualityControl
 
 __all__ = [
     "Base",
@@ -20,4 +21,5 @@ __all__ = [
     "LabResult",
     "Sample",
     "AuditLog",
+    "QualityControl",
 ]
