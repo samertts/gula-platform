@@ -95,7 +95,15 @@
 <!-- Toast -->
 <div id="toast" class="toast"></div>
 
+<!-- Offline banner -->
+<div id="offlineBanner" class="offline-banner">لا يوجد اتصال بالإنترنت</div>
+
 <script src="/assets/gula.js" defer></script>
-<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});</script>
+<script>
+// Offline/Online detection
+window.addEventListener('offline', function() { document.getElementById('offlineBanner').classList.add('show'); });
+window.addEventListener('online', function() { document.getElementById('offlineBanner').classList.remove('show'); });
+if (!navigator.onLine) document.getElementById('offlineBanner').classList.add('show');
+</script>
 </body>
 </html>

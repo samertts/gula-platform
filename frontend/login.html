@@ -136,7 +136,7 @@ async function handleRegister(e) {
   e.preventDefault();
   const pw = document.getElementById('regPassword').value;
   if (pw.length < 8) { showError('كلمة المرور يجب أن تكون 8 أحرف على الأقل'); return; }
-  if (/^\d+$/.test(pw) || /^[a-zA-Z]+$/.test(pw)) { showError('كلمة المرور يجب أن تحتوي على أحرف وأرقام'); return; }
+  if (!/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) { showError('كلمة المرور يجب أن تحتوي على حرف واحد ورقم واحد على الأقل'); return; }
   const btn = document.getElementById('regBtn');
   btn.disabled = true; btn.textContent = 'جاري التسجيل...';
   try {
