@@ -51,8 +51,13 @@ def update_my_lab(
     if not lab:
         raise HTTPException(status_code=404, detail="Lab not found")
 
+    # Explicit field assignment (whitelist) instead of dynamic setattr
+    allowed_fields = {"name", "city", "address", "phone"}
     for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(lab, field, value)
+        if field in allowed_fields:
+            if value is not None and isinstance(value, str):
+                value = value.strip()[:300]  # Truncate to prevent oversized input
+            setattr(lab, field, value)
 
     db.commit()
     db.refresh(lab)

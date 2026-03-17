@@ -71,6 +71,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self'; "
+            "font-src 'self'; "
+            "frame-ancestors 'none'"
+        )
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         if os.getenv("ENV", "production") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
@@ -122,13 +132,16 @@ def health():
     from .database import SessionLocal
     from sqlalchemy import text
     db_ok = False
+    db = None
     try:
         db = SessionLocal()
         db.execute(text("SELECT 1"))
         db_ok = True
-        db.close()
     except Exception as exc:
         logger.warning("Health check: database connection failed: %s", exc)
+    finally:
+        if db:
+            db.close()
 
     status = "healthy" if db_ok else "degraded"
     return {"status": status, "version": APP_VERSION, "database": "connected" if db_ok else "disconnected"}

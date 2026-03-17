@@ -91,7 +91,6 @@ async function loadResult() {
     if (res.status === 410) { showExpired(); return; }
     if (!res.ok) throw new Error('خطأ في الخادم');
     const data = await res.json();
-    if (data.expired) { showExpired(); return; }
     renderResult(data);
   } catch (e) { showError(e.message); }
 }

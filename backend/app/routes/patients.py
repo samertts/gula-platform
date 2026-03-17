@@ -45,6 +45,49 @@ class PatientCreate(BaseModel):
             raise ValueError("Gender must be 'male' or 'female'")
         return v
 
+    @field_validator("birth_date")
+    @classmethod
+    def validate_birth_date(cls, v):
+        if v:
+            import re
+            from datetime import date
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
+                raise ValueError("Birth date must be YYYY-MM-DD format")
+            try:
+                d = date.fromisoformat(v)
+                if d > date.today():
+                    raise ValueError("Birth date cannot be in the future")
+                if d.year < 1900:
+                    raise ValueError("Birth date year must be after 1900")
+            except ValueError as e:
+                if "Birth date" in str(e):
+                    raise
+                raise ValueError("Invalid date")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        if v:
+            import re
+            v = v.strip().lower()
+            if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+                raise ValueError("Invalid email format")
+            if len(v) > 100:
+                raise ValueError("Email too long")
+        return v
+
+    @field_validator("national_id")
+    @classmethod
+    def validate_national_id(cls, v):
+        if v:
+            import re
+            cleaned = re.sub(r"\s", "", v)
+            if not re.match(r"^\d{12,13}$", cleaned):
+                raise ValueError("National ID must be 12-13 digits")
+            return cleaned
+        return v
+
 
 class PatientUpdate(BaseModel):
     full_name: Optional[str] = None
