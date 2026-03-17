@@ -16,6 +16,7 @@ from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_public
 from ..services.interpretation import interpret_result, get_flag
 from ..services.audit_service import log_action
+from ..routes.critical_alerts import check_critical
 from ..config import BASE_URL
 
 router = APIRouter(tags=["results"])
@@ -215,12 +216,25 @@ def create_order(
         whatsapp_link = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg)}"
         sms_link = f"sms:{patient.phone}?body={urllib.parse.quote(sms_msg)}"
 
+    # Check for critical values and build alerts
+    critical_alerts = []
+    for item in data.results:
+        if item.value is not None:
+            alert = check_critical(item.test_name, item.value)
+            if alert:
+                critical_alerts.append({
+                    "test_name": item.test_name,
+                    "value": item.value,
+                    **alert,
+                })
+
     return {
         "message": "Order created with results",
         "order": order_to_dict(order),
         "result_links": result_links,
         "whatsapp_link": whatsapp_link,
         "sms_link": sms_link,
+        "critical_alerts": critical_alerts if critical_alerts else None,
     }
 
 

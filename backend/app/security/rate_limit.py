@@ -31,13 +31,19 @@ def get_client_ip(request: Request) -> str:
 class RateLimiter:
     def __init__(self):
         self._requests: dict[str, list[float]] = defaultdict(list)
+        self._last_cleanup = time.time()
+        self._cleanup_interval = 300  # Clean stale keys every 5 minutes
 
     def check(self, key: str, max_requests: int = 60, window_seconds: int = 60) -> bool:
         """Check if request is allowed. Returns True if allowed."""
         now = time.time()
         cutoff = now - window_seconds
 
-        # Clean old entries
+        # Periodic global cleanup to prevent memory leak from abandoned keys
+        if now - self._last_cleanup > self._cleanup_interval:
+            self._cleanup(now, window_seconds)
+
+        # Clean old entries for this key
         self._requests[key] = [t for t in self._requests[key] if t > cutoff]
 
         if len(self._requests[key]) >= max_requests:
@@ -45,6 +51,14 @@ class RateLimiter:
 
         self._requests[key].append(now)
         return True
+
+    def _cleanup(self, now: float, default_window: int = 60):
+        """Remove stale keys that have no recent requests."""
+        self._last_cleanup = now
+        cutoff = now - default_window * 2
+        stale_keys = [k for k, v in self._requests.items() if not v or v[-1] < cutoff]
+        for k in stale_keys:
+            del self._requests[k]
 
 
 # Global instance
