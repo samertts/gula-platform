@@ -13,7 +13,7 @@ class Lab(Base):
     city = Column(String(100))
     address = Column(String(500))
     phone = Column(String(20))
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     users = relationship("LabUser", back_populates="lab", cascade="all, delete-orphan")
