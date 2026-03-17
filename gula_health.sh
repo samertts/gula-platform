@@ -36,7 +36,15 @@ if ! "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" ps; then
   failed=1
 fi
 
-for svc in postgres-primary redis gula-backend frontend api-gateway; do
+# Service names match docker-compose.yml (MVP) or docker-compose.full.yml (enterprise)
+# MVP uses 'postgres'; full uses 'postgres-primary'
+SERVICES="redis gula-backend frontend api-gateway"
+if grep -q 'postgres-primary:' "$COMPOSE_FILE" 2>/dev/null; then
+  SERVICES="postgres-primary $SERVICES"
+else
+  SERVICES="postgres $SERVICES"
+fi
+for svc in $SERVICES; do
   status=$("${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null | grep -x "$svc" || true)
   if [ "$status" = "$svc" ]; then
     log "OK: $svc (running)"
