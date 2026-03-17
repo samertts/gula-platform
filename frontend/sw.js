@@ -1,5 +1,5 @@
 // GULA Platform Service Worker - Offline Support
-const CACHE_NAME = 'gula-v1';
+const CACHE_NAME = 'gula-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -27,14 +27,31 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch: network-first for API, cache-first for static
+// Fetch strategy:
+// - API calls: network only (never cache medical data)
+// - JS/CSS: network-first (always get latest, fall back to cache offline)
+// - Other static: stale-while-revalidate
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // API calls: network only (don't cache medical data)
+  // API calls & non-GET: pass through to network
   if (url.pathname.startsWith('/api/') || e.request.method !== 'GET') return;
 
-  // Static assets: cache-first with network fallback
+  // JS/CSS: network-first to prevent stale code
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    e.respondWith(
+      fetch(e.request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Other static assets: stale-while-revalidate
   e.respondWith(
     caches.match(e.request).then(cached => {
       const fetchPromise = fetch(e.request).then(response => {

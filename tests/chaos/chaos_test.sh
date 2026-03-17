@@ -90,7 +90,7 @@ echo -e "${BLUE}--- CHAOS 2: RabbitMQ Durability ---${NC}"
 info "Sending 5 durable messages to RabbitMQ..."
 
 RABBIT_API="http://localhost:15672/api"
-RABBIT_AUTH="-u gula:gula_rabbit_2024"
+RABBIT_AUTH="-u ${RABBITMQ_USER:?RABBITMQ_USER must be set}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}"
 
 # Send test messages
 for i in $(seq 1 5); do
@@ -172,7 +172,7 @@ echo -e "${BLUE}--- CHAOS 5: Retry Queue ---${NC}"
 info "Sending a message that will fail processing to test retry queue..."
 
 # Publish a malformed message to trigger NACK → retry
-curl -sf -u gula:gula_rabbit_2024 \
+curl -sf -u ${RABBITMQ_USER}:${RABBITMQ_PASS} \
     -H "Content-Type: application/json" \
     -d '{"properties":{"delivery_mode":2},"routing_key":"results.*","payload":"{\"malformed\":true,\"should_fail\":true}","payload_encoding":"string"}' \
     "http://localhost:15672/api/exchanges/gula/gula.events/publish" > /dev/null 2>&1 \
@@ -182,7 +182,7 @@ curl -sf -u gula:gula_rabbit_2024 \
 sleep 3
 
 # Check retry.queue has a message
-retry_info=$(curl -sf -u gula:gula_rabbit_2024 \
+retry_info=$(curl -sf -u ${RABBITMQ_USER}:${RABBITMQ_PASS} \
     "http://localhost:15672/api/queues/gula/retry.queue" 2>/dev/null || echo '{}')
 retry_count=$(echo "$retry_info" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('messages',0))" 2>/dev/null || echo "unknown")
 info "retry.queue message count: $retry_count"

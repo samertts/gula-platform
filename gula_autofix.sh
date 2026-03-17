@@ -22,15 +22,14 @@ mapfile -t broken < <(docker ps -a --format '{{.Names}} {{.Status}}' | awk '/(Ex
 if [ "${#broken[@]}" -gt 0 ]; then
   log "Restarting broken containers: ${broken[*]}"
   docker restart "${broken[@]}" || true
+  sleep 10
 fi
 
 log "Ensuring compose services are running"
 $COMPOSE up -d --remove-orphans
 
-log "Pruning dangling images"
+log "Pruning dangling images and stopped containers"
 docker image prune -f >/dev/null || true
-
-log "Pruning stopped containers"
 docker container prune -f >/dev/null || true
 
 log "Re-checking health"

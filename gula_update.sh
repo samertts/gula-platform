@@ -22,9 +22,12 @@ if [ ! -f "$BASE_DIR/docker-compose.yml" ]; then
 fi
 
 if [ ! -f "$BASE_DIR/.env" ]; then
-  log "WARNING: .env file not found; compose may fail if required vars are missing"
+  log "ERROR: .env file not found. Production requires a configured .env."
+  log "Copy .env.example and set all values before deploying."
+  exit 1
 fi
 
+# Deploy lock to prevent concurrent deployments
 lock_file="/tmp/gula-deploy.lock"
 exec 9>"$lock_file"
 if ! flock -n 9; then
@@ -54,7 +57,7 @@ $COMPOSE pull --ignore-pull-failures
 $COMPOSE up -d --build --remove-orphans
 
 log "Waiting for healthy services (up to 3 minutes)"
-for _ in {1..36}; do
+for _ in $(seq 1 36); do
   if ./gula_health.sh; then
     log "Deployment completed successfully"
     exit 0
