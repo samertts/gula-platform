@@ -11,14 +11,21 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 2
 fi
 
-COMPOSE="docker compose"
-if ! $COMPOSE version >/dev/null 2>&1; then
-  COMPOSE="docker-compose"
+COMPOSE_CMD=(docker compose)
+if ! "${COMPOSE_CMD[@]}" version >/dev/null 2>&1; then
+  COMPOSE_CMD=(docker-compose)
 fi
 
-if [ ! -f "$BASE_DIR/docker-compose.yml" ]; then
-  log "docker-compose.yml not found in $BASE_DIR"
-  exit 2
+COMPOSE_FILE="${GULA_COMPOSE_FILE:-}"
+if [ -z "$COMPOSE_FILE" ]; then
+  if [ -f "$BASE_DIR/docker-compose.full.yml" ]; then
+    COMPOSE_FILE="$BASE_DIR/docker-compose.full.yml"
+  elif [ -f "$BASE_DIR/docker-compose.yml" ]; then
+    COMPOSE_FILE="$BASE_DIR/docker-compose.yml"
+  else
+    log "No compose file found (expected docker-compose.full.yml or docker-compose.yml)"
+    exit 2
+  fi
 fi
 
 if [ ! -f "$BASE_DIR/.env" ]; then
@@ -39,26 +46,27 @@ PREVIOUS_COMMIT="$(git rev-parse HEAD)"
 rollback() {
   log "Deployment failed - rolling back to ${PREVIOUS_COMMIT}"
   git reset --hard "$PREVIOUS_COMMIT"
-  $COMPOSE up -d --build --remove-orphans
+  "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" up -d --build --remove-orphans
   ./gula_health.sh || true
 }
 
 trap 'rollback' ERR
 
+log "Using compose file: $COMPOSE_FILE"
 log "Fetching latest code"
 git fetch --all --prune
 git reset --hard origin/main
 
 log "Validating compose configuration"
-$COMPOSE config >/dev/null
+"${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" config >/dev/null
 
 log "Pulling and starting updated services"
-$COMPOSE pull --ignore-pull-failures
-$COMPOSE up -d --build --remove-orphans
+"${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" pull --ignore-pull-failures
+"${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" up -d --build --remove-orphans
 
 log "Waiting for healthy services (up to 3 minutes)"
 for _ in $(seq 1 36); do
-  if ./gula_health.sh; then
+  if GULA_COMPOSE_FILE="$COMPOSE_FILE" ./gula_health.sh; then
     log "Deployment completed successfully"
     exit 0
   fi
