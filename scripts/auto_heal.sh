@@ -6,7 +6,6 @@
 set -euo pipefail
 
 PROJECT_DIR="${GULA_DIR:-/home/samertts/gula-platform}"
-LOG_FILE="/var/log/gula-heal.log"
 MAX_RESTARTS_PER_HOUR=3
 RESTART_COUNT_FILE="/tmp/gula-restart-count"
 
@@ -14,6 +13,27 @@ cd "$PROJECT_DIR"
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') [HEAL] $*"
+}
+
+COMPOSE_CMD=(docker compose)
+if ! "${COMPOSE_CMD[@]}" version >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker-compose)
+fi
+
+COMPOSE_FILE="${GULA_COMPOSE_FILE:-}"
+if [ -z "$COMPOSE_FILE" ]; then
+    if [ -f "$PROJECT_DIR/docker-compose.full.yml" ]; then
+        COMPOSE_FILE="$PROJECT_DIR/docker-compose.full.yml"
+    elif [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
+        COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
+    else
+        log "ERROR: No compose file found"
+        exit 2
+    fi
+fi
+
+compose() {
+    "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" "$@"
 }
 
 # Reset restart counter every hour
@@ -28,35 +48,28 @@ fi
 
 restart_count=$(cat "$RESTART_COUNT_FILE" 2>/dev/null || echo 0)
 
-# Critical services that must be running
+# Service names (docker compose service keys, not container names)
 CRITICAL_SERVICES=(
-    "gula-api-gateway"
+    "api-gateway"
     "gula-backend"
-    "gula-frontend"
-    "gula-postgres-primary"
-    "gula-redis"
-    "gula-pgbouncer"
+    "frontend"
+    "postgres-primary"
+    "redis"
+    "pgbouncer"
 )
 
-# Non-critical services (restart if down, but don't alarm)
 NON_CRITICAL_SERVICES=(
-    "gula-rabbitmq"
-    "gula-lab-service"
-    "gula-patient-service"
-    "gula-order-service"
-    "gula-result-service"
-    "gula-sample-service"
-    "gula-notification-service"
+    "rabbitmq"
+    "lab-service"
+    "patient-service"
+    "order-service"
+    "result-service"
+    "sample-service"
+    "notification-service"
 )
 
 is_running() {
-    docker ps --format '{{.Names}}' | grep -q "^${1}$"
-}
-
-is_healthy() {
-    local health
-    health=$(docker inspect --format='{{.State.Health.Status}}' "$1" 2>/dev/null || echo "none")
-    [ "$health" = "healthy" ] || [ "$health" = "none" ]
+    compose ps --status running --services 2>/dev/null | grep -qx "$1"
 }
 
 restart_service() {
@@ -67,13 +80,12 @@ restart_service() {
     fi
 
     log "Restarting $service..."
-    docker compose restart "$service" 2>/dev/null || docker compose up -d "$service" 2>/dev/null || true
+    compose restart "$service" 2>/dev/null || compose up -d "$service" 2>/dev/null || true
     restart_count=$((restart_count + 1))
     echo "$restart_count" > "$RESTART_COUNT_FILE"
     log "Restarted $service (restart #$restart_count this hour)"
 }
 
-# Check critical services
 critical_down=0
 for service in "${CRITICAL_SERVICES[@]}"; do
     if ! is_running "$service"; then
@@ -83,7 +95,6 @@ for service in "${CRITICAL_SERVICES[@]}"; do
     fi
 done
 
-# Check non-critical services
 for service in "${NON_CRITICAL_SERVICES[@]}"; do
     if ! is_running "$service"; then
         log "WARNING: $service is down"
@@ -91,17 +102,15 @@ for service in "${NON_CRITICAL_SERVICES[@]}"; do
     fi
 done
 
-# Health check via HTTP
 if command -v curl &>/dev/null; then
     if ! curl -sf --max-time 5 "http://localhost/health" >/dev/null 2>&1; then
         log "WARNING: API gateway health check failed"
-        if is_running "gula-api-gateway"; then
-            restart_service "gula-api-gateway" || true
+        if is_running "api-gateway"; then
+            restart_service "api-gateway" || true
         fi
     fi
 fi
 
-# Disk space check
 disk_usage=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
 if [ "$disk_usage" -gt 90 ]; then
     log "WARNING: Disk usage at ${disk_usage}%. Cleaning up..."
@@ -109,13 +118,12 @@ if [ "$disk_usage" -gt 90 ]; then
     docker image prune -f 2>/dev/null || true
 fi
 
-# Memory check
 mem_available=$(awk '/MemAvailable/ {print $2}' /proc/meminfo 2>/dev/null || echo 999999)
-if [ "$mem_available" -lt 256000 ]; then  # Less than 256MB
+if [ "$mem_available" -lt 256000 ]; then
     log "WARNING: Low memory (${mem_available}KB available). Restarting non-critical services..."
     for service in "${NON_CRITICAL_SERVICES[@]}"; do
         if is_running "$service"; then
-            docker compose restart "$service" 2>/dev/null || true
+            compose restart "$service" 2>/dev/null || true
         fi
     done
 fi
