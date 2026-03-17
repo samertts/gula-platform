@@ -58,6 +58,17 @@ jobs:
               exit 2
             fi
 
+            # Select compose file (full stack first)
+            COMPOSE_FILE="docker-compose.full.yml"
+            if [ ! -f "$COMPOSE_FILE" ] && [ -f "docker-compose.yml" ]; then
+              COMPOSE_FILE="docker-compose.yml"
+            fi
+            if [ ! -f "$COMPOSE_FILE" ]; then
+              log "ERROR: compose file not found"
+              exit 2
+            fi
+            log "Using compose file: $COMPOSE_FILE"
+
             # Preserve .env before git reset
             if [ -f .env ]; then
               cp .env /tmp/.env.gula.backup

@@ -11,25 +11,37 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 2
 fi
 
-COMPOSE="docker compose"
-if ! $COMPOSE version >/dev/null 2>&1; then
-  COMPOSE="docker-compose"
+COMPOSE_CMD=(docker compose)
+if ! "${COMPOSE_CMD[@]}" version >/dev/null 2>&1; then
+  COMPOSE_CMD=(docker-compose)
+fi
+
+COMPOSE_FILE="${GULA_COMPOSE_FILE:-}"
+if [ -z "$COMPOSE_FILE" ]; then
+  if [ -f "$BASE_DIR/docker-compose.full.yml" ]; then
+    COMPOSE_FILE="$BASE_DIR/docker-compose.full.yml"
+  elif [ -f "$BASE_DIR/docker-compose.yml" ]; then
+    COMPOSE_FILE="$BASE_DIR/docker-compose.yml"
+  else
+    log "No compose file found (expected docker-compose.full.yml or docker-compose.yml)"
+    exit 2
+  fi
 fi
 
 failed=0
 
+log "Using compose file: $COMPOSE_FILE"
 log "Checking compose service state"
-if ! $COMPOSE ps; then
+if ! "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" ps; then
   failed=1
 fi
 
-# Check critical services exist and are running
-for svc in postgres redis gula-backend frontend api-gateway; do
-  status=$($COMPOSE ps --format '{{.State}}' "$svc" 2>/dev/null || echo "missing")
-  if [ "$status" = "running" ]; then
-    log "OK: $svc ($status)"
+for svc in postgres-primary redis gula-backend frontend api-gateway; do
+  status=$("${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null | grep -x "$svc" || true)
+  if [ "$status" = "$svc" ]; then
+    log "OK: $svc (running)"
   else
-    log "FAIL: $svc ($status)"
+    log "FAIL: $svc (not running)"
     failed=1
   fi
 done
@@ -51,11 +63,10 @@ if [ "$failed" -eq 0 ]; then
   log "Platform health checks passed"
 else
   log "Platform health checks failed"
-  # Show failing service logs for debugging
-  $COMPOSE ps
-  for svc in gula-backend api-gateway; do
-    log "--- Last 10 lines of $svc ---"
-    $COMPOSE logs --tail=10 "$svc" 2>/dev/null || true
+  "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" ps
+  for svc in gula-backend api-gateway frontend; do
+    log "--- Last 20 lines of $svc ---"
+    "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" logs --tail=20 "$svc" 2>/dev/null || true
   done
 fi
 
