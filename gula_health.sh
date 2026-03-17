@@ -34,11 +34,11 @@ for svc in postgres redis gula-backend frontend api-gateway; do
   fi
 done
 
-# Check health endpoints
+# Check health endpoints (Docker api-gateway listens on 8080)
 for endpoint in \
-  "http://localhost/health" \
-  "http://localhost/health/backend" \
-  "http://localhost/health/frontend"; do
+  "http://127.0.0.1:8080/health" \
+  "http://127.0.0.1:8080/health/backend" \
+  "http://127.0.0.1:8080/health/frontend"; do
   if curl -fsS --max-time 10 "$endpoint" >/dev/null 2>&1; then
     log "OK: $endpoint"
   else
