@@ -26,7 +26,7 @@ JWT_EXPIRE_HOURS = 24  # 24 hours (healthcare standard)
 
 # App
 APP_NAME = "GULA Platform"
-APP_VERSION = "1.1.0"
+APP_VERSION = "2.0.0"
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 # Encryption

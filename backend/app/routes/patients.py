@@ -121,31 +121,50 @@ def create_patient(
                 return {
                     "duplicate": True,
                     "message": "Patient with this national ID already exists",
+                    "message_ar": "يوجد مريض مسجل بنفس الرقم الوطني",
                     "existing_patient": patient_to_dict(existing),
                 }
 
-        # Check for probable duplicates in same lab (limit to recent 500 for performance)
-        lab_patients = db.query(Patient).filter(
-            Patient.lab_id == current_user.lab_id
-        ).order_by(Patient.created_at.desc()).limit(500).all()
+        # OPTIMIZED: Pre-filter by phone (exact match) first - O(1) indexed lookup
+        phone_digits = data.phone.replace("+", "").replace("-", "").replace(" ", "")[-10:]
+        phone_matches = db.query(Patient).filter(
+            Patient.lab_id == current_user.lab_id,
+            Patient.phone.contains(phone_digits),
+        ).limit(10).all()
 
         duplicates = []
-        for p in lab_patients:
+        for p in phone_matches:
             score = match_score(
                 data.full_name, data.phone, data.birth_date or "",
                 p.full_name, p.phone, str(p.birth_date) if p.birth_date else "",
                 nid_hash, p.national_id_hash,
             )
             if score >= 0.65:
-                duplicates.append({
-                    "patient": patient_to_dict(p),
-                    "score": round(score, 2),
-                })
+                duplicates.append({"patient": patient_to_dict(p), "score": round(score, 2)})
+
+        # If no phone match, do name-based search (limited scope)
+        if not duplicates:
+            name_prefix = data.full_name.strip().split()[0] if data.full_name.strip() else ""
+            if len(name_prefix) >= 2:
+                name_matches = db.query(Patient).filter(
+                    Patient.lab_id == current_user.lab_id,
+                    Patient.full_name.ilike(f"{name_prefix}%"),
+                ).order_by(Patient.created_at.desc()).limit(50).all()
+
+                for p in name_matches:
+                    score = match_score(
+                        data.full_name, data.phone, data.birth_date or "",
+                        p.full_name, p.phone, str(p.birth_date) if p.birth_date else "",
+                        nid_hash, p.national_id_hash,
+                    )
+                    if score >= 0.65:
+                        duplicates.append({"patient": patient_to_dict(p), "score": round(score, 2)})
 
         if duplicates:
             return {
                 "duplicate": True,
                 "message": "Possible duplicate patients found. Set force_create=true to create anyway.",
+                "message_ar": "تم العثور على مرضى مشابهين. استخدم force_create=true للإضافة رغم ذلك.",
                 "matches": sorted(duplicates, key=lambda x: x["score"], reverse=True),
             }
 

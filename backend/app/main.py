@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger("gula")
 
 # Import all models so they are registered with Base
-from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample
+from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -82,6 +82,7 @@ from .routes import login, register, patients, results, dashboard, labs
 from .routes import identity, notifications, ehr, security
 from .routes import national_identity, insurance, device_results
 from .routes import qr, id_scan, admin, samples
+from .routes import quality_control, critical_alerts, batch
 
 # Core routes
 app.include_router(login.router)
@@ -100,6 +101,11 @@ app.include_router(notifications.router)
 app.include_router(ehr.router)
 app.include_router(security.router)
 app.include_router(device_results.router)
+
+# Advanced lab features
+app.include_router(quality_control.router)
+app.include_router(critical_alerts.router)
+app.include_router(batch.router)
 
 # Admin routes
 app.include_router(admin.router)

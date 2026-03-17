@@ -147,7 +147,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ---- Router ----
-const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, lab: pageLab, admin: pageAdmin };
+const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, qc: pageQC, alerts: pageAlerts, lab: pageLab, admin: pageAdmin };
 
 function navigate(page) {
   if (!routes[page]) page = 'dashboard';
@@ -171,13 +171,25 @@ function arabicGreeting() {
 // ---- DASHBOARD PAGE ----
 async function pageDashboard() {
   try {
-    const d = await api('/dashboard');
+    const [d, alertData] = await Promise.all([
+      api('/dashboard'),
+      api('/alerts?hours=24').catch(() => ({ total_alerts: 0, alerts: [] }))
+    ]);
     const greetText = d.greeting || (arabicGreeting() + '، ' + (G.user?.name || 'مستخدم'));
+    const criticalAlerts = alertData.total_alerts || 0;
+
     $('page').innerHTML = `
       <div class="greeting-banner">
         <h2>${esc(greetText)}</h2>
         <p>نظرة عامة على نشاط المختبر</p>
       </div>
+      ${criticalAlerts > 0 ? `
+      <div class="alert-banner" onclick="navigate('alerts')">
+        <div class="alert-icon">!</div>
+        <div>
+          <strong>${criticalAlerts} تنبيه حرج</strong> - نتائج تحتاج مراجعة فورية خلال آخر 24 ساعة
+        </div>
+      </div>` : ''}
       <div class="stats-grid">
         <div class="stat-card blue"><div class="stat-label">المرضى</div><div class="stat-value">${parseInt(d.patients) || 0}</div><div class="stat-sub">إجمالي المسجلين</div></div>
         <div class="stat-card green"><div class="stat-label">الطلبات</div><div class="stat-value">${parseInt(d.orders) || 0}</div><div class="stat-sub">إجمالي الطلبات</div></div>
@@ -203,10 +215,10 @@ async function pageDashboard() {
           <div class="card-title">آخر الطلبات</div>
           ${(d.recent_orders || []).length ? d.recent_orders.slice(0, 6).map(o => `
             <div class="activity-item">
-              <div class="activity-dot" style="background:var(--primary)"></div>
+              <div class="activity-dot" style="background:${o.status === 'completed' ? 'var(--success)' : 'var(--primary)'}"></div>
               <div>
                 <div class="activity-text">${esc(o.patient_name || 'مريض')} - ${parseInt(o.test_count) || 0} تحاليل</div>
-                <div class="activity-time">${timeAgo(o.created_at)}</div>
+                <div class="activity-time">${timeAgo(o.date || o.created_at)}</div>
               </div>
             </div>
           `).join('') : '<div class="empty"><p>لا توجد طلبات حديثة</p></div>'}
@@ -218,7 +230,7 @@ async function pageDashboard() {
         <div class="table-wrap"><table>
           <thead><tr><th>المريض</th><th>التحليل</th><th>القيمة</th><th>المدى الطبيعي</th><th>الحالة</th></tr></thead>
           <tbody>
-            ${d.abnormal_results.slice(0, 10).map(r => `<tr>
+            ${d.abnormal_results.slice(0, 10).map(r => `<tr class="${r.flag === 'critical' ? 'critical-row' : ''}">
               <td>${esc(r.patient_name || '-')}</td><td>${esc(r.test_name)}</td>
               <td><strong>${esc(r.value)}</strong> ${esc(r.unit || '')}</td>
               <td>${esc(r.normal_range_low || '?')} - ${esc(r.normal_range_high || '?')}</td>
@@ -658,6 +670,191 @@ async function toggleLab(id) {
       } catch (e) { toast(e.message, 'error'); }
     }
   );
+}
+
+// ---- QC PAGE ----
+async function pageQC() {
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div><h2>مراقبة الجودة</h2><p>Westgard Rules - تتبع جودة الأجهزة والتحاليل</p></div>
+        <button class="btn btn-primary" onclick="openAddQC()">+ إضافة QC</button>
+      </div>
+    </div>
+    <div id="qcSummary"><div class="spinner"></div></div>
+    <div class="card" style="margin-top:16px"><div id="qcTable"><div class="spinner"></div></div></div>
+  `;
+  loadQCSummary();
+  loadQCResults();
+}
+
+async function loadQCSummary() {
+  try {
+    const d = await api('/qc/summary?days=7');
+    const el = $('qcSummary');
+    if (!d.tests || !d.tests.length) {
+      el.innerHTML = '<div class="card"><div class="empty"><p>لا توجد بيانات مراقبة جودة بعد</p></div></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card ${d.overall_pass_rate >= 95 ? 'green' : d.overall_pass_rate >= 80 ? 'yellow' : 'red'}">
+          <div class="stat-label">نسبة النجاح الكلية</div>
+          <div class="stat-value">${d.overall_pass_rate}%</div>
+          <div class="stat-sub">آخر 7 أيام</div>
+        </div>
+        ${d.tests.slice(0, 3).map(t => `
+          <div class="stat-card ${t.status === 'good' ? 'green' : t.status === 'review' ? 'yellow' : 'red'}">
+            <div class="stat-label">${esc(t.test_code)}</div>
+            <div class="stat-value">${t.pass_rate}%</div>
+            <div class="stat-sub">${t.total} فحص - ${t.issues} مشكلة</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) { $('qcSummary').innerHTML = ''; }
+}
+
+async function loadQCResults() {
+  try {
+    const d = await api('/qc?days=7&limit=30');
+    const el = $('qcTable');
+    if (!d.qc_results || !d.qc_results.length) {
+      el.innerHTML = '<div class="empty"><p>لا توجد نتائج QC</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="card-title">آخر نتائج مراقبة الجودة</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>التحليل</th><th>المستوى</th><th>المتوقع</th><th>المقاس</th><th>الحالة</th><th>المخالفة</th><th>التاريخ</th></tr></thead>
+        <tbody>${d.qc_results.map(q => `<tr class="${q.status === 'fail' ? 'critical-row' : q.status === 'warning' ? 'warning-row' : ''}">
+          <td>${esc(q.test_code)}</td>
+          <td>${esc(q.level)}</td>
+          <td>${esc(q.expected_value)}</td>
+          <td><strong>${esc(q.measured_value)}</strong></td>
+          <td><span class="badge badge-${q.status === 'pass' ? 'green' : q.status === 'warning' ? 'yellow' : 'red'}">${q.status === 'pass' ? 'ناجح' : q.status === 'warning' ? 'تحذير' : 'فشل'}</span></td>
+          <td>${esc(q.violation || '-')}</td>
+          <td>${formatDate(q.created_at)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    `;
+  } catch (e) { $('qcTable').innerHTML = '<div class="empty"><p>تعذر تحميل البيانات</p></div>'; }
+}
+
+function openAddQC() {
+  openModal('إضافة فحص مراقبة جودة', `
+    <form onsubmit="saveQC(event)">
+      <div class="form-row">
+        <div class="field"><label>رمز التحليل *</label><input id="qcTest" required placeholder="مثال: glucose"></div>
+        <div class="field"><label>المستوى *</label><select id="qcLevel" required><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>القيمة المتوقعة *</label><input id="qcExpected" type="number" step="any" required></div>
+        <div class="field"><label>القيمة المقاسة *</label><input id="qcMeasured" type="number" step="any" required></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>الانحراف المعياري (SD)</label><input id="qcSD" type="number" step="any"></div>
+        <div class="field"><label>الوحدة</label><input id="qcUnit"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>اسم الجهاز</label><input id="qcInstrument"></div>
+        <div class="field"><label>رقم اللوت</label><input id="qcLot"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveQCBtn">حفظ</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveQC(e) {
+  e.preventDefault();
+  const btn = $('saveQCBtn');
+  btn.disabled = true;
+  try {
+    const body = {
+      test_code: $('qcTest').value, level: $('qcLevel').value,
+      expected_value: parseFloat($('qcExpected').value), measured_value: parseFloat($('qcMeasured').value),
+      sd: $('qcSD').value ? parseFloat($('qcSD').value) : undefined,
+      unit: $('qcUnit').value || undefined,
+      instrument_name: $('qcInstrument').value || undefined,
+      lot_number: $('qcLot').value || undefined,
+    };
+    const result = await api('/qc', { method: 'POST', body: JSON.stringify(body) });
+    closeModal();
+    const statusMsg = result.evaluation?.status === 'pass' ? 'ناجح' : result.evaluation?.status === 'warning' ? 'تحذير!' : 'فشل!';
+    toast(`تم تسجيل QC - ${statusMsg}`, result.evaluation?.status === 'pass' ? 'success' : 'error');
+    loadQCSummary(); loadQCResults();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+// ---- ALERTS PAGE ----
+async function pageAlerts() {
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div><h2>التنبيهات الحرجة</h2><p>نتائج تحتاج مراجعة فورية</p></div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="filter-chip active" onclick="filterAlerts(this, 24)">24 ساعة</div>
+      <div class="filter-chip" onclick="filterAlerts(this, 48)">48 ساعة</div>
+      <div class="filter-chip" onclick="filterAlerts(this, 168)">أسبوع</div>
+    </div>
+    <div id="alertStats"></div>
+    <div class="card" style="margin-top:16px"><div id="alertsTable"><div class="spinner"></div></div></div>
+  `;
+  loadAlerts(24);
+  loadAlertStats();
+}
+
+let _alertHours = 24;
+async function loadAlerts(hours) {
+  if (hours !== undefined) _alertHours = hours;
+  try {
+    const d = await api(`/alerts?hours=${_alertHours}`);
+    const el = $('alertsTable');
+    if (!d.alerts || !d.alerts.length) {
+      el.innerHTML = '<div class="empty"><p>لا توجد تنبيهات حرجة - ممتاز!</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="card-title">${d.total_alerts} تنبيه حرج</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>المريض</th><th>الهاتف</th><th>التحليل</th><th>القيمة</th><th>المدى الطبيعي</th><th>الطبيب</th><th>التاريخ</th></tr></thead>
+        <tbody>${d.alerts.map(a => `<tr class="critical-row">
+          <td><strong>${esc(a.patient_name)}</strong></td>
+          <td dir="ltr">${esc(a.patient_phone || '-')}</td>
+          <td>${esc(a.test_name)}</td>
+          <td><span class="val-critical"><strong>${esc(a.value)}</strong></span> ${esc(a.unit || '')}</td>
+          <td>${esc(a.normal_range)}</td>
+          <td>${esc(a.doctor_name || '-')}</td>
+          <td>${timeAgo(a.created_at)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    `;
+  } catch (e) { $('alertsTable').innerHTML = '<div class="empty"><p>تعذر تحميل التنبيهات</p></div>'; }
+}
+
+async function loadAlertStats() {
+  try {
+    const d = await api('/alerts/stats');
+    $('alertStats').innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card red"><div class="stat-label">آخر 24 ساعة</div><div class="stat-value">${d.last_24h || 0}</div></div>
+        <div class="stat-card yellow"><div class="stat-label">آخر 7 أيام</div><div class="stat-value">${d.last_7d || 0}</div></div>
+        <div class="stat-card blue"><div class="stat-label">آخر 30 يوم</div><div class="stat-value">${d.last_30d || 0}</div></div>
+      </div>
+    `;
+  } catch (e) { $('alertStats').innerHTML = ''; }
+}
+
+function filterAlerts(el, hours) {
+  document.querySelectorAll('.toolbar .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  loadAlerts(hours);
 }
 
 // ---- Init ----

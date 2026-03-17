@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, case, and_, literal_column
 from datetime import datetime, timezone, timedelta
 from ..database import get_db
 from ..models.patient import Patient
@@ -12,13 +12,22 @@ from ..security.dependencies import get_current_user
 router = APIRouter(tags=["dashboard"])
 
 
-def _arabic_greeting(utc_hour: int) -> str:
-    """Return a time-appropriate Arabic greeting."""
-    if 5 <= utc_hour < 12:
+# Baghdad timezone offset (UTC+3)
+IRAQ_UTC_OFFSET = timedelta(hours=3)
+
+
+def _iraq_hour() -> int:
+    """Get current hour in Iraq time (UTC+3)."""
+    return (datetime.now(timezone.utc) + IRAQ_UTC_OFFSET).hour
+
+
+def _arabic_greeting(iraq_hour: int) -> str:
+    """Return a time-appropriate Arabic greeting based on Iraq local time."""
+    if 5 <= iraq_hour < 12:
         return "صباح الخير"
-    elif 12 <= utc_hour < 17:
+    elif 12 <= iraq_hour < 17:
         return "مساء الخير"
-    elif 17 <= utc_hour < 21:
+    elif 17 <= iraq_hour < 21:
         return "مساء النور"
     else:
         return "أهلاً"
@@ -26,9 +35,8 @@ def _arabic_greeting(utc_hour: int) -> str:
 
 @router.get("/greeting")
 def greeting(current_user: LabUser = Depends(get_current_user)):
-    """Return a personalized Arabic greeting based on time of day."""
-    now = datetime.now(timezone.utc)
-    greet = _arabic_greeting(now.hour)
+    """Return a personalized Arabic greeting based on Iraq local time."""
+    greet = _arabic_greeting(_iraq_hour())
     user_name = current_user.name or "مستخدم"
     return {
         "greeting": greet,
@@ -47,45 +55,29 @@ def dashboard(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=today_start.weekday())
 
-    # Total counts
-    patients_count = db.query(func.count(Patient.id)).filter(
-        Patient.lab_id == lab_id
-    ).scalar() or 0
+    # === OPTIMIZED: Single aggregated query for all patient/order counts ===
+    stats = db.query(
+        func.count(Patient.id).label("total_patients"),
+        func.count(case((Patient.created_at >= today_start, Patient.id))).label("patients_today"),
+        func.count(case((Patient.created_at >= week_start, Patient.id))).label("patients_week"),
+    ).filter(Patient.lab_id == lab_id).first()
 
-    orders_count = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id
-    ).scalar() or 0
+    order_stats = db.query(
+        func.count(LabOrder.id).label("total_orders"),
+        func.count(case((LabOrder.created_at >= today_start, LabOrder.id))).label("orders_today"),
+        func.count(case((LabOrder.created_at >= week_start, LabOrder.id))).label("orders_week"),
+    ).filter(LabOrder.lab_id == lab_id).first()
 
-    results_count = db.query(func.count(LabResult.id)).join(LabOrder).filter(
-        LabOrder.lab_id == lab_id
-    ).scalar() or 0
-
-    critical_count = db.query(func.count(LabResult.id)).join(LabOrder).filter(
-        LabOrder.lab_id == lab_id,
-        LabResult.flag == "critical",
-    ).scalar() or 0
-
-    # Today's stats
-    patients_today = db.query(func.count(Patient.id)).filter(
-        Patient.lab_id == lab_id,
-        Patient.created_at >= today_start,
-    ).scalar() or 0
-
-    orders_today = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id,
-        LabOrder.created_at >= today_start,
-    ).scalar() or 0
-
-    tests_today = db.query(func.count(LabResult.id)).join(LabOrder).filter(
-        LabOrder.lab_id == lab_id,
-        LabResult.created_at >= today_start,
-    ).scalar() or 0
-
-    # This week's stats
-    orders_week = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id,
-        LabOrder.created_at >= week_start,
-    ).scalar() or 0
+    result_stats = db.query(
+        func.count(LabResult.id).label("total_results"),
+        func.count(case((LabResult.flag == "critical", LabResult.id))).label("critical_count"),
+        func.count(case((LabResult.created_at >= today_start, LabResult.id))).label("tests_today"),
+        func.count(case((LabResult.created_at >= week_start, LabResult.id))).label("tests_week"),
+        func.count(case((
+            and_(LabResult.flag.in_(["H", "L", "critical"]), LabResult.created_at >= week_start),
+            LabResult.id
+        ))).label("abnormal_week"),
+    ).join(LabOrder).filter(LabOrder.lab_id == lab_id).first()
 
     # Abnormal results (H, L, critical) from last 7 days - eagerly load relationships
     abnormal_results = (
@@ -110,18 +102,20 @@ def dashboard(
             "test_name": r.test_name,
             "value": r.value,
             "unit": r.unit,
+            "normal_range_low": r.normal_range_low,
+            "normal_range_high": r.normal_range_high,
             "flag": r.flag,
             "date": r.created_at.isoformat() if r.created_at else None,
             "token": r.token,
         })
 
-    # Recent orders - eagerly load patient
+    # Recent orders with result count - eagerly load patient
     recent_orders = (
         db.query(LabOrder)
-        .options(joinedload(LabOrder.patient))
+        .options(joinedload(LabOrder.patient), joinedload(LabOrder.results))
         .filter(LabOrder.lab_id == lab_id)
         .order_by(LabOrder.created_at.desc())
-        .limit(5)
+        .limit(6)
         .all()
     )
 
@@ -131,25 +125,28 @@ def dashboard(
             "id": o.id,
             "patient_name": o.patient.full_name if o.patient else "Unknown",
             "status": o.status,
+            "test_count": len(o.results) if o.results else 0,
             "date": o.created_at.isoformat() if o.created_at else None,
         })
 
-    greet = _arabic_greeting(now.hour)
+    greet = _arabic_greeting(_iraq_hour())
     user_name = current_user.name or "مستخدم"
 
     return {
         "greeting": f"{greet}، {user_name}",
-        "patients": patients_count,
-        "orders": orders_count,
-        "tests": results_count,
-        "critical": critical_count,
+        "patients": stats.total_patients or 0,
+        "orders": order_stats.total_orders or 0,
+        "tests": result_stats.total_results or 0,
+        "critical": result_stats.critical_count or 0,
         "today": {
-            "patients": patients_today,
-            "orders": orders_today,
-            "tests": tests_today,
+            "patients": stats.patients_today or 0,
+            "orders": order_stats.orders_today or 0,
+            "tests": result_stats.tests_today or 0,
         },
         "this_week": {
-            "orders": orders_week,
+            "patients": stats.patients_week or 0,
+            "orders": order_stats.orders_week or 0,
+            "tests": result_stats.tests_week or 0,
         },
         "abnormal_results": abnormal,
         "recent_orders": recent,
