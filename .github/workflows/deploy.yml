@@ -42,6 +42,17 @@ jobs:
               exit 2
             fi
 
+            # Select compose file (full stack first)
+            COMPOSE_FILE="docker-compose.full.yml"
+            if [ ! -f "$COMPOSE_FILE" ] && [ -f "docker-compose.yml" ]; then
+              COMPOSE_FILE="docker-compose.yml"
+            fi
+            if [ ! -f "$COMPOSE_FILE" ]; then
+              log "ERROR: compose file not found"
+              exit 2
+            fi
+            log "Using compose file: $COMPOSE_FILE"
+
             # Preserve .env before git reset
             if [ -f .env ]; then
               cp .env /tmp/.env.gula.backup
@@ -100,9 +111,9 @@ jobs:
               "$REPO_DIR/gula_update.sh"
             else
               log "Running inline deploy"
-              $COMPOSE config >/dev/null
-              $COMPOSE pull --ignore-pull-failures
-              $COMPOSE up -d --build --remove-orphans
+              $COMPOSE -f "$COMPOSE_FILE" config >/dev/null
+              $COMPOSE -f "$COMPOSE_FILE" pull --ignore-pull-failures
+              $COMPOSE -f "$COMPOSE_FILE" up -d --build --remove-orphans
               docker image prune -f
 
               # Wait for health (up to 3 minutes)
@@ -118,15 +129,15 @@ jobs:
               if [ "$ok" -ne 1 ]; then
                 log "Health check failed. Rolling back to $PREVIOUS_COMMIT"
                 git reset --hard "$PREVIOUS_COMMIT"
-                $COMPOSE up -d --build --remove-orphans
+                $COMPOSE -f "$COMPOSE_FILE" up -d --build --remove-orphans
                 sleep 30
-                $COMPOSE ps
+                $COMPOSE -f "$COMPOSE_FILE" ps
                 exit 1
               fi
             fi
 
             log "Deployment completed successfully"
-            $COMPOSE ps
+            $COMPOSE -f "$COMPOSE_FILE" ps
           DEPLOY_SCRIPT
 
       - name: Health Check
@@ -149,12 +160,3 @@ jobs:
           # Debug info
           ssh gula-server 'cd /home/samertts/gula-platform && ./gula_health.sh' || true
           exit 1
-
-          if [ "$ok" -ne 1 ]; then
-            log "Fallback health checks failed"
-            $COMPOSE -f "$REPO_DIR/docker-compose.yml" ps || true
-            exit 1
-          fi
-
-          log "Deployment finished successfully via fallback"
-          REMOTE_EOF
