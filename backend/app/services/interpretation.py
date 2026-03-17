@@ -197,15 +197,30 @@ def _interpret_generic(value: float, normal_low: float = None, normal_high: floa
     }
 
 
-def get_flag(value: float, normal_low: float = None, normal_high: float = None) -> str:
-    """Return flag for result: H, L, normal, or critical."""
+def get_flag(value: float, normal_low: float = None, normal_high: float = None, test_name: str = None) -> str:
+    """Return flag for result: H, L, normal, or critical.
+
+    Uses medical critical thresholds from critical_alerts when available,
+    falls back to 2x normal range for unknown tests.
+    """
     if normal_low is None or normal_high is None:
         return "unknown"
+
+    # Check critical thresholds from the medical database first
+    if test_name:
+        from ..routes.critical_alerts import check_critical
+        alert = check_critical(test_name, value)
+        if alert:
+            return "critical"
+
     if value < normal_low:
+        # Check critically low (below 50% of normal_low for unknown tests)
+        if normal_low > 0 and value <= normal_low * 0.5:
+            return "critical"
         return "L"
     elif value > normal_high:
-        critical_threshold = normal_high * 1.5
-        if value >= critical_threshold:
+        # Check critically high (above 2x normal_high for unknown tests)
+        if value >= normal_high * 2:
             return "critical"
         return "H"
     return "normal"

@@ -86,7 +86,7 @@ def result_to_dict(r: LabResult) -> dict:
         "normal_range_low": r.normal_range_low,
         "normal_range_high": r.normal_range_high,
         "flag": r.flag,
-        "token": r.token,
+        "result_token": r.token,
         "result_link": f"/r/{r.token}",
         "interpretation": interpretation,
         "created_at": r.created_at.isoformat() if r.created_at else None,
@@ -152,7 +152,7 @@ def create_order(
     for item in data.results:
         flag = "unknown"
         if item.value is not None and item.normal_range_low is not None and item.normal_range_high is not None:
-            flag = get_flag(item.value, item.normal_range_low, item.normal_range_high)
+            flag = get_flag(item.value, item.normal_range_low, item.normal_range_high, test_name=item.test_name)
 
         token = secrets.token_urlsafe(32)
         token_h = hash_token(token)
@@ -297,8 +297,10 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
         )
 
     order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
-    patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
-    lab = db.query(Lab).filter(Lab.id == order.lab_id).first() if order else None
+    if not order:
+        raise HTTPException(status_code=404, detail="Result not found")
+    patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
+    lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
 
     # Get all results for this order
     all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
@@ -373,8 +375,10 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
         raise HTTPException(status_code=410, detail="Result link has expired")
 
     order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
-    patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
-    lab = db.query(Lab).filter(Lab.id == order.lab_id).first() if order else None
+    if not order:
+        raise HTTPException(status_code=404, detail="Result not found")
+    patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
+    lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
     all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
 
     results_data = []
@@ -404,7 +408,13 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
     }
 
     result_url = f"{BASE_URL}/r/{token}"
-    pdf_bytes = generate_result_pdf(data, result_url)
+    import logging
+    _logger = logging.getLogger("gula.results")
+    try:
+        pdf_bytes = generate_result_pdf(data, result_url)
+    except Exception as e:
+        _logger.exception("PDF generation failed for result %s", result.id)
+        raise HTTPException(status_code=500, detail="Failed to generate PDF report")
 
     patient_name = (patient.full_name if patient else "result").replace(" ", "_")
     filename = f"GULA_Report_{patient_name}.pdf"

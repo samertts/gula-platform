@@ -61,7 +61,8 @@ class RateLimiter:
             del self._requests[k]
 
 
-# Global instance
+# Global instance (in-memory only - resets on restart, not shared across processes)
+# For production multi-process deployments, use Redis-based rate limiting
 limiter = RateLimiter()
 
 
