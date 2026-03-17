@@ -146,10 +146,22 @@ jobs:
               fi
             fi
 
+            # ── Clean stale containers from previous deployments ──
+            # Prevents "dependency failed: container X is unhealthy" errors
+            $COMPOSE -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+            # Remove any ghost containers on the gula-net network
+            for stale in $(docker ps -a --filter "network=gula-net" --format '{{.Names}}' 2>/dev/null || true); do
+              if ! grep -q "container_name: $stale" "$COMPOSE_FILE" 2>/dev/null; then
+                log "Removing stale container: $stale"
+                docker rm -f "$stale" 2>/dev/null || true
+              fi
+            done
+            docker network prune -f 2>/dev/null || true
+
             # ── Deploy Docker services ──
-            $COMPOSE config >/dev/null
-            $COMPOSE pull --ignore-pull-failures
-            $COMPOSE up -d --build --remove-orphans
+            $COMPOSE -f "$COMPOSE_FILE" config >/dev/null
+            $COMPOSE -f "$COMPOSE_FILE" pull --ignore-pull-failures
+            $COMPOSE -f "$COMPOSE_FILE" up -d --build --remove-orphans
             docker image prune -f
 
             log "Waiting for services to become healthy..."
