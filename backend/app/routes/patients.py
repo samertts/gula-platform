@@ -1,5 +1,5 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -8,6 +8,7 @@ from ..models.patient import Patient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services.identity import normalize_name, match_score, hash_national_id
+from ..services.audit_service import log_action
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -161,12 +162,12 @@ def create_patient(
                 Patient.national_id_hash == nid_hash
             ).first()
             if existing:
-                return {
+                raise HTTPException(status_code=409, detail={
                     "duplicate": True,
                     "message": "Patient with this national ID already exists",
                     "message_ar": "يوجد مريض مسجل بنفس الرقم الوطني",
                     "existing_patient": patient_to_dict(existing),
-                }
+                })
 
         # OPTIMIZED: Pre-filter by phone (exact match) first - O(1) indexed lookup
         phone_digits = data.phone.replace("+", "").replace("-", "").replace(" ", "")[-10:]
@@ -204,12 +205,12 @@ def create_patient(
                         duplicates.append({"patient": patient_to_dict(p), "score": round(score, 2)})
 
         if duplicates:
-            return {
+            raise HTTPException(status_code=409, detail={
                 "duplicate": True,
                 "message": "Possible duplicate patients found. Set force_create=true to create anyway.",
                 "message_ar": "تم العثور على مرضى مشابهين. استخدم force_create=true للإضافة رغم ذلك.",
                 "matches": sorted(duplicates, key=lambda x: x["score"], reverse=True),
-            }
+            })
 
     health_id = f"GULA-{secrets.token_hex(4).upper()}"
 
@@ -249,6 +250,7 @@ def get_patient(
 def update_patient(
     patient_id: int,
     data: PatientUpdate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -259,8 +261,20 @@ def update_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    changed_fields = list(data.model_dump(exclude_unset=True).keys())
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(patient, field, value)
+
+    log_action(
+        db,
+        action="update",
+        resource_type="patient",
+        resource_id=patient_id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Updated fields: {', '.join(changed_fields)}",
+        ip_address=request.client.host if request.client else None,
+    )
 
     db.commit()
     db.refresh(patient)

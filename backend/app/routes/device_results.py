@@ -69,7 +69,7 @@ def receive_device_results(
     for item in data.results:
         flag = None
         if item.value is not None and item.normal_range_low is not None and item.normal_range_high is not None:
-            flag = get_flag(item.value, item.normal_range_low, item.normal_range_high)
+            flag = get_flag(item.value, item.normal_range_low, item.normal_range_high, test_name=item.test_name)
 
         import secrets
         from ..models.lab_result import hash_token

@@ -17,9 +17,22 @@ const G = {
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (G.token) headers['Authorization'] = 'Bearer ' + G.token;
-  const res = await fetch('/api' + path, { ...opts, headers });
+  let res;
+  try {
+    res = await fetch('/api' + path, { ...opts, headers });
+  } catch (e) {
+    throw new Error('خطأ في الاتصال - تحقق من الشبكة');
+  }
   if (res.status === 401) { logout(); return; }
-  const data = await res.json();
+  if (res.status === 403) throw new Error('ليس لديك صلاحية لهذا الإجراء');
+  if (res.status === 429) throw new Error('طلبات كثيرة جداً - حاول لاحقاً');
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    if (!res.ok) throw new Error('خطأ في الخادم');
+    return {};
+  }
   if (!res.ok) throw new Error(data.detail || 'خطأ في الخادم');
   return data;
 }
