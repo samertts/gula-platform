@@ -96,10 +96,13 @@ jobs:
               exit 1
             fi
 
-            # Auto-generate missing required variables
-            for var in SECRET_KEY ENCRYPTION_KEY NID_HMAC_KEY MINIO_SECRET_KEY; do
-              if ! grep -q "^${var}=" .env; then
-                echo "${var}=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
+            # Auto-generate ALL missing required variables
+            gen_secret() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
+
+            for var in POSTGRES_PASSWORD REDIS_PASSWORD SECRET_KEY ENCRYPTION_KEY NID_HMAC_KEY MINIO_SECRET_KEY; do
+              if ! grep -q "^${var}=" .env || grep -q "^${var}=CHANGE_ME" .env; then
+                sed -i "/^${var}=CHANGE_ME/d" .env 2>/dev/null || true
+                echo "${var}=$(gen_secret)" >> .env
                 log "Generated missing $var"
               fi
             done
@@ -108,19 +111,21 @@ jobs:
               echo "MINIO_ACCESS_KEY=gula_minio" >> .env
             fi
 
-            if ! grep -q "^RABBITMQ_URL=" .env; then
-              RABBIT_PASS=$(grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 || echo "changeme")
-              echo "RABBITMQ_URL=amqp://gula:${RABBIT_PASS}@rabbitmq:5672/gula" >> .env
-            fi
+            # Build dependent URLs from actual passwords
+            PG_PASS=$(grep -oP '^POSTGRES_PASSWORD=\K.*' .env | head -1)
+            REDIS_PASS=$(grep -oP '^REDIS_PASSWORD=\K.*' .env | head -1)
 
             if ! grep -q "^DATABASE_URL=" .env; then
-              PG_PASS=$(grep -oP 'POSTGRES_PASSWORD=\K.*' .env | head -1 || echo "changeme")
               echo "DATABASE_URL=postgresql://postgres:${PG_PASS}@postgres:5432/labdb" >> .env
             fi
 
-            if ! grep -q "^REDIS_PASSWORD=" .env; then
-              echo "REDIS_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')" >> .env
-              log "Generated missing REDIS_PASSWORD"
+            if ! grep -q "^REDIS_URL=" .env; then
+              echo "REDIS_URL=redis://:${REDIS_PASS}@redis:6379" >> .env
+            fi
+
+            if ! grep -q "^RABBITMQ_URL=" .env; then
+              RABBIT_PASS=$(grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 || echo "changeme")
+              echo "RABBITMQ_URL=amqp://gula:${RABBIT_PASS}@rabbitmq:5672/gula" >> .env
             fi
 
             log "Variables set: $(grep -c '=' .env)"
