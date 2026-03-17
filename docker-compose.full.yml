@@ -12,7 +12,7 @@ services:
   # ===========================================================================
 
   postgres-primary:
-    image: postgres:14
+    image: postgres:14.11-alpine
     container_name: gula-postgres-primary
     restart: always
     environment:
@@ -48,7 +48,7 @@ services:
       retries: 5
 
   postgres-replica:
-    image: postgres:14
+    image: postgres:14.11-alpine
     container_name: gula-postgres-replica
     restart: always
     environment:
@@ -81,11 +81,11 @@ services:
       - gula-net
 
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    image: edoburu/pgbouncer:1.22.1
     container_name: gula-pgbouncer
     restart: always
     environment:
-      DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@postgres-primary:5432/labdb"
+      DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres-primary:5432/labdb"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 50
@@ -154,7 +154,7 @@ services:
     networks:
       - gula-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -298,7 +298,7 @@ services:
   # ===========================================================================
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.1.29
     container_name: gula-ollama
     restart: always
     ports:
@@ -342,13 +342,13 @@ services:
   # Production: use distributed mode with 4+ nodes for erasure coding
   # Command: minio server http://minio-{1...4}/data{1...4} --console-address ":9002"
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
     container_name: gula-minio
     restart: always
     command: server /data --console-address ":9002"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in .env}
       MINIO_PROMETHEUS_AUTH_TYPE: public
       MINIO_UPDATE: "off"
     ports:
@@ -366,7 +366,7 @@ services:
 
   # Node Exporter — host metrics for Prometheus
   node-exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.7.0
     container_name: gula-node-exporter
     restart: always
     command:
@@ -398,7 +398,7 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres-primary:5432/keycloak
       KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-gula_secure_2024}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
     ports:
@@ -443,7 +443,7 @@ services:
   # ===========================================================================
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.48.1
     container_name: gula-prometheus
     restart: always
     command:
@@ -460,7 +460,7 @@ services:
       - gula-net
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.2.3
     container_name: gula-grafana
     restart: always
     environment:
@@ -534,7 +534,7 @@ services:
       - ./config/ssl:/etc/nginx/ssl
     depends_on:
       gula-backend:
-        condition: service_started
+        condition: service_healthy
       frontend:
         condition: service_started
     healthcheck:
@@ -552,7 +552,7 @@ services:
     container_name: gula-lab-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       MINIO_ENDPOINT: minio:9000
@@ -579,7 +579,7 @@ services:
     container_name: gula-patient-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
@@ -603,7 +603,7 @@ services:
     container_name: gula-order-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
@@ -625,7 +625,7 @@ services:
     container_name: gula-result-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       CLICKHOUSE_URL: http://clickhouse:8123
@@ -651,7 +651,7 @@ services:
     container_name: gula-sample-service
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
@@ -694,7 +694,7 @@ services:
     container_name: gula-autonomous-manager
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
       # SECURITY: Docker socket removed - use Docker API over TLS if needed
@@ -714,7 +714,7 @@ services:
     container_name: gula-backend
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_secure_2024}@pgbouncer:5432/labdb
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set in .env}
@@ -722,9 +722,15 @@ services:
       - "8000"
     depends_on:
       pgbouncer:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
     networks:
       - gula-net
 
@@ -737,6 +743,32 @@ services:
     volumes:
       - ./frontend:/usr/share/nginx/html
       - ./config/nginx/frontend.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - gula-net
+
+  # ===========================================================================
+  # AUTOMATED BACKUP (cron-based pg_dump)
+  # ===========================================================================
+
+  backup-cron:
+    image: postgres:14.11-alpine
+    container_name: gula-backup-cron
+    restart: always
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    volumes:
+      - ./backups:/backups
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      mkdir -p /backups/daily /backups/hourly /backups/logs &&
+      echo '0 2 * * * pg_dump -h postgres-primary -U postgres labdb --no-owner --no-privileges | gzip > /backups/daily/gula_full_$$(date +\%Y\%m\%d_\%H\%M\%S).sql.gz && find /backups/daily -name \"*.gz\" -mtime +30 -delete 2>/dev/null' > /etc/crontabs/root &&
+      echo '0 * * * * pg_dump -h postgres-primary -U postgres labdb --no-owner --no-privileges | gzip > /backups/hourly/gula_hourly_$$(date +\%Y\%m\%d_\%H\%M\%S).sql.gz && find /backups/hourly -name \"*.gz\" -mtime +2 -delete 2>/dev/null' >> /etc/crontabs/root &&
+      crond -f -l 2
+      "
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
     networks:
       - gula-net
 

@@ -23,19 +23,23 @@ if ! $COMPOSE ps; then
   failed=1
 fi
 
-# Ensure critical services exist and are running before endpoint checks
+# Check critical services exist and are running
 for svc in postgres redis gula-backend frontend api-gateway; do
-  if ! $COMPOSE ps "$svc" >/dev/null 2>&1; then
-    log "FAIL: missing compose service: $svc"
+  status=$($COMPOSE ps --format '{{.State}}' "$svc" 2>/dev/null || echo "missing")
+  if [ "$status" = "running" ]; then
+    log "OK: $svc ($status)"
+  else
+    log "FAIL: $svc ($status)"
     failed=1
   fi
 done
 
+# Check health endpoints
 for endpoint in \
   "http://localhost/health" \
   "http://localhost/health/backend" \
   "http://localhost/health/frontend"; do
-  if curl -fsS --max-time 10 "$endpoint" >/dev/null; then
+  if curl -fsS --max-time 10 "$endpoint" >/dev/null 2>&1; then
     log "OK: $endpoint"
   else
     log "FAIL: $endpoint"
@@ -47,6 +51,12 @@ if [ "$failed" -eq 0 ]; then
   log "Platform health checks passed"
 else
   log "Platform health checks failed"
+  # Show failing service logs for debugging
+  $COMPOSE ps
+  for svc in gula-backend api-gateway; do
+    log "--- Last 10 lines of $svc ---"
+    $COMPOSE logs --tail=10 "$svc" 2>/dev/null || true
+  done
 fi
 
 exit "$failed"

@@ -71,7 +71,7 @@ pull-ai:
 # Executive Order 2: Verify RabbitMQ queues
 check-queues:
 	@echo "Checking RabbitMQ queues..."
-	curl -s -u gula:gula_rabbit_2024 http://localhost:15672/api/queues/gula | python3 -c "import sys,json; queues=[q['name'] for q in json.load(sys.stdin)]; print('Queues:', queues); required={'orders.events','samples.events','results.events','alerts.events'}; missing=required-set(queues); print('Missing:',missing) if missing else print('All required queues present!')"
+	curl -s -u "$(RABBITMQ_USER):$(RABBITMQ_PASS)" http://localhost:15672/api/queues/gula | python3 -c "import sys,json; queues=[q['name'] for q in json.load(sys.stdin)]; print('Queues:', queues); required={'orders.events','samples.events','results.events','alerts.events'}; missing=required-set(queues); print('Missing:',missing) if missing else print('All required queues present!')"
 
 # Health check all services
 health:
@@ -166,7 +166,7 @@ linkerd-install:
 vault-init:
 	@echo "Initializing Vault with GULA secrets..."
 	docker exec gula-vault vault login $(VAULT_TOKEN)
-	docker exec gula-vault vault kv put secret/gula/database url="postgresql://postgres:gula_secure_2024@pgbouncer:5432/labdb"
-	docker exec gula-vault vault kv put secret/gula/rabbitmq url="amqp://gula:gula_rabbit_2024@rabbitmq:5672/gula"
-	docker exec gula-vault vault kv put secret/gula/minio access_key="gula_minio" secret_key="gula_minio_2024"
+	docker exec gula-vault vault kv put secret/gula/database url="$(DATABASE_URL)"
+	docker exec gula-vault vault kv put secret/gula/rabbitmq url="$(RABBITMQ_URL)"
+	docker exec gula-vault vault kv put secret/gula/minio access_key="$(MINIO_ACCESS_KEY)" secret_key="$(MINIO_SECRET_KEY)"
 	@echo "Vault secrets initialized."

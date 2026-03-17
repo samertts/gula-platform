@@ -5,15 +5,7 @@
   "vhosts": [
     {"name": "gula"}
   ],
-  "users": [
-    {
-      "name": "gula",
-      "password_hash": "UGFzc3dvcmQ6Z3VsYV9yYWJiaXRfMjAyNA==",
-      "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": ["administrator"],
-      "limits": {}
-    }
-  ],
+  "users": [],
   "permissions": [
     {
       "user": "gula",
