@@ -16,6 +16,7 @@ from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_public
 from ..services.interpretation import interpret_result, get_flag
 from ..services.audit_service import log_action
+from ..routes.critical_alerts import check_critical
 from ..config import BASE_URL
 
 router = APIRouter(tags=["results"])
@@ -85,7 +86,7 @@ def result_to_dict(r: LabResult) -> dict:
         "normal_range_low": r.normal_range_low,
         "normal_range_high": r.normal_range_high,
         "flag": r.flag,
-        "token": r.token,
+        "result_token": r.token,
         "result_link": f"/r/{r.token}",
         "interpretation": interpretation,
         "created_at": r.created_at.isoformat() if r.created_at else None,
@@ -151,7 +152,7 @@ def create_order(
     for item in data.results:
         flag = "unknown"
         if item.value is not None and item.normal_range_low is not None and item.normal_range_high is not None:
-            flag = get_flag(item.value, item.normal_range_low, item.normal_range_high)
+            flag = get_flag(item.value, item.normal_range_low, item.normal_range_high, test_name=item.test_name)
 
         token = secrets.token_urlsafe(32)
         token_h = hash_token(token)
@@ -215,12 +216,25 @@ def create_order(
         whatsapp_link = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg)}"
         sms_link = f"sms:{patient.phone}?body={urllib.parse.quote(sms_msg)}"
 
+    # Check for critical values and build alerts
+    critical_alerts = []
+    for item in data.results:
+        if item.value is not None:
+            alert = check_critical(item.test_name, item.value)
+            if alert:
+                critical_alerts.append({
+                    "test_name": item.test_name,
+                    "value": item.value,
+                    **alert,
+                })
+
     return {
         "message": "Order created with results",
         "order": order_to_dict(order),
         "result_links": result_links,
         "whatsapp_link": whatsapp_link,
         "sms_link": sms_link,
+        "critical_alerts": critical_alerts if critical_alerts else None,
     }
 
 
@@ -275,20 +289,18 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
 
-    # Check expiry - return friendly JSON instead of raw error
+    # Check expiry - return 410 Gone (prevents token enumeration via expired vs not-found)
     if result.expires_at and result.expires_at < datetime.now(timezone.utc):
-        return {
-            "expired": True,
-            "message": "This result link has expired.",
-            "message_ar": "انتهت صلاحية رابط النتيجة.",
-            "expired_at": result.expires_at.isoformat(),
-            "advice": "Please contact your laboratory for a new link.",
-            "advice_ar": "يرجى التواصل مع المختبر للحصول على رابط جديد.",
-        }
+        raise HTTPException(
+            status_code=410,
+            detail="This result link has expired. Please contact your laboratory.",
+        )
 
     order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
-    patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
-    lab = db.query(Lab).filter(Lab.id == order.lab_id).first() if order else None
+    if not order:
+        raise HTTPException(status_code=404, detail="Result not found")
+    patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
+    lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
 
     # Get all results for this order
     all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
@@ -363,8 +375,10 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
         raise HTTPException(status_code=410, detail="Result link has expired")
 
     order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
-    patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
-    lab = db.query(Lab).filter(Lab.id == order.lab_id).first() if order else None
+    if not order:
+        raise HTTPException(status_code=404, detail="Result not found")
+    patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
+    lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
     all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
 
     results_data = []
@@ -394,7 +408,13 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
     }
 
     result_url = f"{BASE_URL}/r/{token}"
-    pdf_bytes = generate_result_pdf(data, result_url)
+    import logging
+    _logger = logging.getLogger("gula.results")
+    try:
+        pdf_bytes = generate_result_pdf(data, result_url)
+    except Exception as e:
+        _logger.exception("PDF generation failed for result %s", result.id)
+        raise HTTPException(status_code=500, detail="Failed to generate PDF report")
 
     patient_name = (patient.full_name if patient else "result").replace(" ", "_")
     filename = f"GULA_Report_{patient_name}.pdf"

@@ -1,5 +1,5 @@
 """Sample collection and tracking endpoints."""
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -10,6 +10,7 @@ from ..models.sample import Sample
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..services.audit_service import log_action
 
 router = APIRouter(prefix="/samples", tags=["samples"])
 
@@ -48,7 +49,7 @@ def create_sample(
         raise HTTPException(status_code=404, detail="Order not found")
 
     if data.sample_type not in VALID_SAMPLE_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid sample type. Must be one of: {', '.join(VALID_SAMPLE_TYPES)}")
+        raise HTTPException(status_code=400, detail="Invalid sample type")
 
     sample = Sample(
         order_id=data.order_id,
@@ -107,6 +108,7 @@ def get_sample(
 def update_sample(
     barcode: str,
     data: SampleUpdate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -120,9 +122,10 @@ def update_sample(
 
     if data.status:
         if data.status not in VALID_STATUSES:
-            raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(VALID_STATUSES)}")
-        if data.status == "rejected" and not data.rejection_reason:
-            raise HTTPException(status_code=400, detail="Rejection reason required when rejecting a sample")
+            raise HTTPException(status_code=400, detail="Invalid status")
+        if data.status == "rejected":
+            if not data.rejection_reason or not data.rejection_reason.strip():
+                raise HTTPException(status_code=400, detail="Rejection reason required when rejecting a sample")
         sample.status = data.status
 
     if data.rejection_reason is not None:
@@ -131,6 +134,18 @@ def update_sample(
         sample.notes = data.notes
     if data.storage_location is not None:
         sample.storage_location = data.storage_location
+
+    log_action(
+        db,
+        action="update",
+        resource_type="sample",
+        resource_id=sample.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Sample {barcode} status: {data.status or 'unchanged'}"
+                + (f" reason: {data.rejection_reason}" if data.status == "rejected" else ""),
+        ip_address=request.client.host if request.client else None,
+    )
 
     db.commit()
     db.refresh(sample)

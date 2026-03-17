@@ -167,7 +167,7 @@ def list_users(
     query = db.query(LabUser)
     if role:
         if role not in VALID_ROLES:
-            raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}")
+            raise HTTPException(status_code=400, detail="Invalid role")
         query = query.filter(LabUser.role == role)
     total = query.count()
     users = query.order_by(LabUser.created_at.desc()).offset(skip).limit(limit).all()
@@ -251,8 +251,21 @@ def ensure_master_admin():
         if not password:
             import secrets
             password = secrets.token_urlsafe(24)
-            print(f"[GULA] WARNING: GULA_ADMIN_PASSWORD not set. Generated temporary password: {password}")
-            print(f"[GULA] Set GULA_ADMIN_PASSWORD in .env to use a permanent password.")
+            # SECURITY: Never log passwords - write to a temporary file instead
+            _pw_file = "/tmp/.gula_admin_pw"
+            try:
+                with open(_pw_file, "w") as f:
+                    f.write(password)
+                os.chmod(_pw_file, 0o600)
+                logger.warning(
+                    "[GULA] GULA_ADMIN_PASSWORD not set. Temporary password written to %s. "
+                    "Set GULA_ADMIN_PASSWORD in .env and delete this file.", _pw_file
+                )
+            except OSError:
+                logger.warning(
+                    "[GULA] GULA_ADMIN_PASSWORD not set. Could not write temp file. "
+                    "Set GULA_ADMIN_PASSWORD in .env for production."
+                )
         name = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
 
         # Create a platform-level lab for admin

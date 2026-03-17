@@ -36,6 +36,16 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
         )
+
+    # Check if lab is still active (skip for master_admin)
+    if user.role != "master_admin":
+        lab = db.query(Lab).filter(Lab.id == user.lab_id, Lab.is_active == True).first()
+        if lab is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your laboratory account is deactivated",
+            )
+
     return user
 
 
