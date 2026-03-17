@@ -10,12 +10,13 @@ Falls back to regex-based extraction if OCR libraries are not available.
 """
 import re
 import io
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..security.dependencies import get_current_user
 from ..models.lab_user import LabUser
 from ..services.identity import hash_national_id
+from ..security.rate_limit import rate_limit_auth
 
 router = APIRouter(prefix="/id-scan", tags=["identity"])
 
@@ -135,6 +136,7 @@ def extract_fields(text: str) -> dict:
 @router.post("/scan")
 async def scan_national_id(
     image: UploadFile = File(...),
+    request: Request = None,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -146,13 +148,21 @@ async def scan_national_id(
     The user should confirm the extracted data before it's used.
     The image is NOT stored - only extracted text fields are returned.
     """
-    if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Please upload an image file")
+    # Rate limit OCR requests (CPU-intensive operation)
+    if request:
+        rate_limit_auth(request, max_per_minute=5)
 
-    # Read image (max 5MB - ID card photos shouldn't be larger)
+    # Validate content type strictly
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
+    if not image.content_type or image.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Please upload a valid image file (JPEG, PNG, WebP, BMP)")
+
+    # Read image (max 2MB - ID card photos shouldn't be larger)
     contents = await image.read()
-    if len(contents) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image too large (max 5MB)")
+    if len(contents) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image too large (max 2MB)")
+    if len(contents) < 1000:
+        raise HTTPException(status_code=400, detail="Image too small - may be corrupted")
 
     # Extract text via OCR
     text = extract_text_ocr(contents)

@@ -31,9 +31,10 @@ def get_patient_ehr(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Get all orders with results - eagerly load lab to avoid N+1
+    # Get all orders with results - scoped to current lab to prevent cross-lab data leak
     orders = db.query(LabOrder).filter(
         LabOrder.patient_id == patient_id,
+        LabOrder.lab_id == current_user.lab_id,
     ).options(
         joinedload(LabOrder.results),
         joinedload(LabOrder.lab),
@@ -106,9 +107,10 @@ def get_patient_summary(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Get latest result for each unique test
+    # Get latest result for each unique test - scoped to current lab
     results = db.query(LabResult).join(LabOrder).filter(
         LabOrder.patient_id == patient_id,
+        LabOrder.lab_id == current_user.lab_id,
     ).order_by(LabResult.created_at.desc()).all()
 
     seen_tests = set()

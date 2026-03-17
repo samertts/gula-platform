@@ -289,16 +289,12 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
 
-    # Check expiry - return friendly JSON instead of raw error
+    # Check expiry - return 410 Gone (prevents token enumeration via expired vs not-found)
     if result.expires_at and result.expires_at < datetime.now(timezone.utc):
-        return {
-            "expired": True,
-            "message": "This result link has expired.",
-            "message_ar": "انتهت صلاحية رابط النتيجة.",
-            "expired_at": result.expires_at.isoformat(),
-            "advice": "Please contact your laboratory for a new link.",
-            "advice_ar": "يرجى التواصل مع المختبر للحصول على رابط جديد.",
-        }
+        raise HTTPException(
+            status_code=410,
+            detail="This result link has expired. Please contact your laboratory.",
+        )
 
     order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
     patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None

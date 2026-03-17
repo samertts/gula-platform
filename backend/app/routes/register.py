@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab import Lab
@@ -20,6 +20,33 @@ class LabRegisterRequest(BaseModel):
     email: str
     password: str
 
+    @field_validator("lab_name")
+    @classmethod
+    def validate_lab_name(cls, v):
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("Lab name must be between 2 and 200 characters")
+        return v
+
+    @field_validator("admin_name")
+    @classmethod
+    def validate_admin_name(cls, v):
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("Admin name must be between 2 and 200 characters")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        import re
+        v = v.strip().lower()
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+            raise ValueError("Invalid email format")
+        if len(v) > 100:
+            raise ValueError("Email too long")
+        return v
+
 
 @router.post("/register")
 def register_lab(data: LabRegisterRequest, request: Request, db: Session = Depends(get_db)):
@@ -30,6 +57,8 @@ def register_lab(data: LabRegisterRequest, request: Request, db: Session = Depen
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     if data.password.isdigit() or data.password.isalpha():
         raise HTTPException(status_code=400, detail="Password must contain both letters and numbers")
+    if len(data.password) > 128:
+        raise HTTPException(status_code=400, detail="Password too long")
 
     existing = db.query(LabUser).filter(LabUser.email == data.email).first()
     if existing:
