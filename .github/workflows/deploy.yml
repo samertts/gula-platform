@@ -16,13 +16,29 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - name: Deploy to GULA server (self-bootstrap + fallback recovery)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
         env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          REPO_URL: https://github.com/samertts/gula-platform.git
-          REPO_DIR: /home/samertts/gula-platform
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          cat > ~/.ssh/config << SSHEOF
+          Host gula-server
+            HostName $SERVER_HOST
+            User ${{ secrets.SERVER_USER }}
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking yes
+          SSHEOF
+          chmod 600 ~/.ssh/config
+
+      - name: Deploy to server
         run: |
           ssh gula-server << 'DEPLOY_SCRIPT'
             set -euo pipefail
@@ -63,10 +79,9 @@ jobs:
               log "Restored .env"
             fi
 
-            # Verify .env exists - hard error if missing
+            # Verify .env exists
             if [ ! -f .env ]; then
               log "ERROR: No .env file. Production requires a configured .env."
-              log "Copy .env.example and set all values before deploying."
               exit 1
             fi
 
@@ -92,41 +107,74 @@ jobs:
               echo "DATABASE_URL=postgresql://postgres:${PG_PASS}@postgres:5432/labdb" >> .env
             fi
 
+            if ! grep -q "^REDIS_PASSWORD=" .env; then
+              echo "REDIS_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')" >> .env
+              log "Generated missing REDIS_PASSWORD"
+            fi
+
             log "Variables set: $(grep -c '=' .env)"
 
-            # Use deploy scripts if available, otherwise inline
-            if [ -x "$REPO_DIR/gula_update.sh" ]; then
-              log "Using gula_update.sh"
-              "$REPO_DIR/gula_update.sh"
-            else
-              log "Running inline deploy"
-              $COMPOSE config >/dev/null
-              $COMPOSE pull --ignore-pull-failures
-              $COMPOSE up -d --build --remove-orphans
-              docker image prune -f
+            # ── Configure system nginx to proxy to Docker (port 8080) ──
+            if command -v nginx >/dev/null 2>&1 && [ -d /etc/nginx/sites-available ]; then
+              log "Configuring system nginx reverse proxy"
 
-              # Wait for health (up to 3 minutes)
-              ok=0
-              for _ in $(seq 1 36); do
-                if curl -fsS --max-time 10 http://localhost/health >/dev/null 2>&1; then
-                  ok=1
-                  break
+              # Use HTTP-only config (simpler, works without SSL certs)
+              if [ -f "$REPO_DIR/config/nginx/system/gula-platform-http.conf" ]; then
+                sudo cp "$REPO_DIR/config/nginx/system/gula-platform-http.conf" \
+                  /etc/nginx/sites-available/gula-platform
+                sudo ln -sf /etc/nginx/sites-available/gula-platform \
+                  /etc/nginx/sites-enabled/gula-platform
+                sudo rm -f /etc/nginx/sites-enabled/default
+
+                if sudo nginx -t 2>/dev/null; then
+                  sudo systemctl reload nginx
+                  log "System nginx configured and reloaded"
+                else
+                  log "WARNING: nginx config test failed, skipping reload"
                 fi
-                sleep 5
-              done
-
-              if [ "$ok" -ne 1 ]; then
-                log "Health check failed. Rolling back to $PREVIOUS_COMMIT"
-                git reset --hard "$PREVIOUS_COMMIT"
-                $COMPOSE up -d --build --remove-orphans
-                sleep 30
-                $COMPOSE ps
-                exit 1
               fi
             fi
 
-            log "Deployment completed successfully"
+            # ── Deploy Docker services ──
+            $COMPOSE config >/dev/null
+            $COMPOSE pull --ignore-pull-failures
+            $COMPOSE up -d --build --remove-orphans
+            docker image prune -f
+
+            log "Waiting for services to become healthy..."
+            sleep 15
+
+            # Show container status
             $COMPOSE ps
+
+            # Health check with retry (up to 3 minutes)
+            ok=0
+            for i in $(seq 1 36); do
+              # Check Docker api-gateway directly (port 8080)
+              if curl -fsS --max-time 5 http://127.0.0.1:8080/health >/dev/null 2>&1; then
+                ok=1
+                log "Health check passed on attempt $i"
+                break
+              fi
+              sleep 5
+            done
+
+            if [ "$ok" -ne 1 ]; then
+              log "Health check failed after 3 minutes"
+              log "Container status:"
+              $COMPOSE ps
+              log "Backend logs:"
+              $COMPOSE logs --tail=20 gula-backend 2>/dev/null || true
+              log "API gateway logs:"
+              $COMPOSE logs --tail=20 api-gateway 2>/dev/null || true
+
+              log "Rolling back to $PREVIOUS_COMMIT"
+              git reset --hard "$PREVIOUS_COMMIT"
+              $COMPOSE up -d --build --remove-orphans
+              exit 1
+            fi
+
+            log "Deployment completed successfully"
           DEPLOY_SCRIPT
 
       - name: Health Check
@@ -146,15 +194,18 @@ jobs:
           done
           echo "Health check failed after 8 attempts"
 
-          # Debug info
-          ssh gula-server 'cd /home/samertts/gula-platform && ./gula_health.sh' || true
+          # Debug: show what the server sees
+          ssh gula-server 'cd /home/samertts/gula-platform && docker compose ps 2>/dev/null || docker-compose ps' || true
           exit 1
 
-          if [ "$ok" -ne 1 ]; then
-            log "Fallback health checks failed"
-            $COMPOSE -f "$REPO_DIR/docker-compose.yml" ps || true
-            exit 1
+      - name: Verify API
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          response=$(curl -sf --max-time 10 "http://$SERVER_HOST/health" 2>/dev/null || echo "FAILED")
+          echo "API Response: $response"
+          if echo "$response" | grep -q '"status"'; then
+            echo "API is healthy!"
+          else
+            echo "WARNING: Unexpected health response"
           fi
-
-          log "Deployment finished successfully via fallback"
-          REMOTE_EOF
