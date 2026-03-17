@@ -9,8 +9,8 @@ class QualityControl(Base):
     __tablename__ = "quality_controls"
 
     id = Column(Integer, primary_key=True, index=True)
-    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
-    test_code = Column(String(50), nullable=False)  # e.g., glucose, hemoglobin
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
+    test_code = Column(String(50), nullable=False, index=True)  # e.g., glucose, hemoglobin
     instrument_name = Column(String(200), nullable=True)
     lot_number = Column(String(100), nullable=True)
 

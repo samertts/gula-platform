@@ -1,16 +1,17 @@
 import os
+import time
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .database import Base, engine
-from .config import APP_NAME, APP_VERSION
+from .database import Base, engine, check_db_connection, get_pool_status
+from .config import APP_NAME, APP_VERSION, IS_PRODUCTION
 
 # Configure structured logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING if IS_PRODUCTION else logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -26,7 +27,10 @@ app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
     description="GULA - Smart Health Platform for Labs",
+    docs_url=None if IS_PRODUCTION else "/docs",       # Disable docs in production
+    redoc_url=None if IS_PRODUCTION else "/redoc",
 )
+
 
 # ===== GLOBAL ERROR HANDLER =====
 @app.exception_handler(Exception)
@@ -62,15 +66,45 @@ app.add_middleware(
 )
 
 
+# ===== REQUEST TIMING & LOGGING MIDDLEWARE =====
+class RequestTimingMiddleware(BaseHTTPMiddleware):
+    """Log request timing for performance monitoring."""
+    async def dispatch(self, request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        # Log slow requests (>2 seconds)
+        if elapsed_ms > 2000:
+            logger.warning(
+                "SLOW REQUEST: %s %s took %.0fms (status=%d)",
+                request.method, request.url.path, elapsed_ms, response.status_code
+            )
+
+        response.headers["X-Response-Time"] = f"{elapsed_ms:.0f}ms"
+        response.headers["X-API-Version"] = APP_VERSION
+        return response
+
+
+app.add_middleware(RequestTimingMiddleware)
+
+
 # ===== SECURITY HEADERS MIDDLEWARE =====
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
+
+        # Skip security headers for static assets (handled by nginx in production)
+        path = request.url.path
+        if path.startswith("/assets/") or path.endswith((".css", ".js", ".png", ".ico")):
+            return response
+
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline'; "
@@ -81,7 +115,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "frame-ancestors 'none'"
         )
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-        if os.getenv("ENV", "production") == "production":
+        if IS_PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
@@ -128,23 +162,16 @@ app.include_router(insurance.router)
 # ===== HEALTH & STATUS =====
 @app.get("/health")
 def health():
-    """Health check with database connectivity verification."""
-    from .database import SessionLocal
-    from sqlalchemy import text
-    db_ok = False
-    db = None
-    try:
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        db_ok = True
-    except Exception as exc:
-        logger.warning("Health check: database connection failed: %s", exc)
-    finally:
-        if db:
-            db.close()
-
+    """Health check with database connectivity verification - lightweight."""
+    db_ok = check_db_connection()
+    pool = get_pool_status()
     status = "healthy" if db_ok else "degraded"
-    return {"status": status, "version": APP_VERSION, "database": "connected" if db_ok else "disconnected"}
+    return {
+        "status": status,
+        "version": APP_VERSION,
+        "database": "connected" if db_ok else "disconnected",
+        "pool": pool,
+    }
 
 
 @app.get("/r/{token}/pdf")
@@ -184,12 +211,29 @@ def list_test_types():
         db.close()
 
 
-# ===== STARTUP =====
+# ===== STARTUP & SHUTDOWN =====
 @app.on_event("startup")
 def on_startup():
     """Bootstrap the system on first run."""
+    logger.info("GULA Platform %s starting up...", APP_VERSION)
+
+    # Verify database connectivity before accepting requests
+    if not check_db_connection():
+        logger.error("DATABASE CONNECTION FAILED at startup!")
+    else:
+        logger.info("Database connection verified")
+
     _seed_test_types()
     _ensure_master_admin()
+    logger.info("GULA Platform %s ready", APP_VERSION)
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    """Graceful shutdown - close database connections."""
+    logger.info("GULA Platform shutting down gracefully...")
+    engine.dispose()
+    logger.info("Database connections closed")
 
 
 def _seed_test_types():

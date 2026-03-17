@@ -13,29 +13,53 @@ const G = {
   page: null
 };
 
-// ---- API Helper ----
+// ---- API Helper with timeout & retry ----
+const API_TIMEOUT = 15000; // 15 second timeout
+const API_RETRY_DELAYS = [1000, 2000]; // Retry delays for GET requests
+
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (G.token) headers['Authorization'] = 'Bearer ' + G.token;
-  let res;
-  try {
-    res = await fetch('/api' + path, { ...opts, headers });
-  } catch (e) {
-    throw new Error('خطأ في الاتصال - تحقق من الشبكة');
+
+  const isGet = !opts.method || opts.method === 'GET';
+  const maxRetries = isGet ? API_RETRY_DELAYS.length : 0;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
+    let res;
+    try {
+      res = await fetch('/api' + path, { ...opts, headers, signal: controller.signal });
+      clearTimeout(timer);
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') {
+        if (attempt < maxRetries) { await _sleep(API_RETRY_DELAYS[attempt]); continue; }
+        throw new Error('انتهت مهلة الاتصال - تحقق من الشبكة');
+      }
+      if (attempt < maxRetries) { await _sleep(API_RETRY_DELAYS[attempt]); continue; }
+      throw new Error('خطأ في الاتصال - تحقق من الشبكة');
+    }
+    if (res.status === 401) { logout(); return; }
+    if (res.status === 403) throw new Error('ليس لديك صلاحية لهذا الإجراء');
+    if (res.status === 429) throw new Error('طلبات كثيرة جداً - حاول لاحقاً');
+    // Retry on 502/503/504 for GET only
+    if (isGet && res.status >= 502 && res.status <= 504 && attempt < maxRetries) {
+      await _sleep(API_RETRY_DELAYS[attempt]); continue;
+    }
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      if (!res.ok) throw new Error('خطأ في الخادم');
+      return {};
+    }
+    if (!res.ok) throw new Error(data.detail || data.detail_ar || 'خطأ في الخادم');
+    return data;
   }
-  if (res.status === 401) { logout(); return; }
-  if (res.status === 403) throw new Error('ليس لديك صلاحية لهذا الإجراء');
-  if (res.status === 429) throw new Error('طلبات كثيرة جداً - حاول لاحقاً');
-  let data;
-  try {
-    data = await res.json();
-  } catch {
-    if (!res.ok) throw new Error('خطأ في الخادم');
-    return {};
-  }
-  if (!res.ok) throw new Error(data.detail || 'خطأ في الخادم');
-  return data;
 }
+
+function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ---- Auth ----
 function logout() {
@@ -48,6 +72,14 @@ function logout() {
 
 function checkAuth() {
   if (!G.token || !G.user) { window.location.href = '/login.html'; return false; }
+  // Check JWT expiry client-side (avoid unnecessary API calls with expired token)
+  try {
+    const payload = JSON.parse(atob(G.token.split('.')[1]));
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      logout();
+      return false;
+    }
+  } catch { /* ignore parse errors, server will validate */ }
   return true;
 }
 
@@ -254,7 +286,7 @@ async function pageDashboard() {
       </div>` : ''}
     `;
   } catch (e) {
-    $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`;
+    $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p><button class="btn btn-outline" style="margin-top:12px" onclick="pageDashboard()">إعادة المحاولة</button></div>`;
   }
 }
 

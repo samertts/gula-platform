@@ -31,7 +31,7 @@ class LabResult(Base):
     unit = Column(String(20), nullable=True)
     normal_range_low = Column(Float, nullable=True)
     normal_range_high = Column(Float, nullable=True)
-    flag = Column(String(10), nullable=True)  # H, L, normal, critical
+    flag = Column(String(10), nullable=True, index=True)  # H, L, normal, critical
     token = Column(String(64), unique=True, nullable=False, default=generate_token, index=True)
     token_hash = Column(String(64), unique=True, nullable=True, index=True)
     expires_at = Column(DateTime(timezone=True), default=default_expiry)
