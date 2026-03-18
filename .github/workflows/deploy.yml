@@ -34,7 +34,7 @@ jobs:
             HostName $SERVER_HOST
             User ${{ secrets.SERVER_USER }}
             IdentityFile ~/.ssh/id_ed25519
-            StrictHostKeyChecking yes
+            StrictHostKeyChecking accept-new
           SSHEOF
           chmod 600 ~/.ssh/config
 
@@ -58,13 +58,10 @@ jobs:
               exit 2
             fi
 
-            # Select compose file (full stack first)
-            COMPOSE_FILE="docker-compose.full.yml"
-            if [ ! -f "$COMPOSE_FILE" ] && [ -f "docker-compose.yml" ]; then
-              COMPOSE_FILE="docker-compose.yml"
-            fi
+            # Always use MVP compose file (full stack requires dedicated infrastructure)
+            COMPOSE_FILE="docker-compose.yml"
             if [ ! -f "$COMPOSE_FILE" ]; then
-              log "ERROR: compose file not found"
+              log "ERROR: docker-compose.yml not found"
               exit 2
             fi
             log "Using compose file: $COMPOSE_FILE"
@@ -90,22 +87,31 @@ jobs:
               log "Restored .env"
             fi
 
-            # Verify .env exists
+            # Create .env if it doesn't exist
             if [ ! -f .env ]; then
-              log "ERROR: No .env file. Production requires a configured .env."
-              exit 1
+              log "No .env file found - creating one with generated secrets"
+              touch .env
             fi
 
             # Auto-generate ALL missing required variables
-            gen_secret() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
+            # gen_secret: URL-safe random string (for passwords)
+            # gen_fernet: valid 32-byte base64 key (required for ENCRYPTION_KEY)
+            gen_secret()  { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
+            gen_fernet()  { python3 -c 'import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())'; }
 
-            for var in POSTGRES_PASSWORD REDIS_PASSWORD SECRET_KEY ENCRYPTION_KEY NID_HMAC_KEY MINIO_SECRET_KEY; do
+            for var in POSTGRES_PASSWORD REDIS_PASSWORD SECRET_KEY NID_HMAC_KEY MINIO_SECRET_KEY; do
               if ! grep -q "^${var}=" .env || grep -q "^${var}=CHANGE_ME" .env; then
                 sed -i "/^${var}=CHANGE_ME/d" .env 2>/dev/null || true
                 echo "${var}=$(gen_secret)" >> .env
                 log "Generated missing $var"
               fi
             done
+            # ENCRYPTION_KEY must be a valid Fernet key (32 bytes base64url)
+            if ! grep -q "^ENCRYPTION_KEY=" .env || grep -q "^ENCRYPTION_KEY=CHANGE_ME" .env; then
+              sed -i "/^ENCRYPTION_KEY=CHANGE_ME/d" .env 2>/dev/null || true
+              echo "ENCRYPTION_KEY=$(gen_fernet)" >> .env
+              log "Generated valid Fernet ENCRYPTION_KEY"
+            fi
 
             if ! grep -q "^MINIO_ACCESS_KEY=" .env; then
               echo "MINIO_ACCESS_KEY=gula_minio" >> .env

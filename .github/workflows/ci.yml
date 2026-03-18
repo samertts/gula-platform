@@ -53,9 +53,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
           REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: test-secret-key-for-ci-only
-          ENCRYPTION_KEY: test-encryption-key-ci
-          ENVIRONMENT: test
+          SECRET_KEY: test-secret-key-for-ci-only-not-used-in-prod
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          ENV: test
         run: |
           cd backend
           python -m pytest tests/ -v --tb=short 2>/dev/null || echo "No tests found (add tests to backend/tests/)"
