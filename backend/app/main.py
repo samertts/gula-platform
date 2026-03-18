@@ -237,13 +237,16 @@ def on_shutdown():
 
 
 def _seed_test_types():
-    """Seed test types catalog if empty."""
+    """Seed test types catalog if empty (fast: single COUNT check)."""
     from .database import SessionLocal
     from .models.test_type import TestType
 
     db = SessionLocal()
     try:
-        if db.query(TestType).count() == 0:
+        # Fast existence check - avoids full count
+        if db.query(TestType.id).first() is not None:
+            return
+        if True:
             test_types = [
                 TestType(test_code="glucose", test_name="Glucose (Fasting)", test_name_ar="السكر (صائم)", category="Chemistry", unit="mg/dL", normal_range_low=70, normal_range_high=100),
                 TestType(test_code="hemoglobin", test_name="Hemoglobin", test_name_ar="الهيموغلوبين", category="CBC", unit="g/dL", normal_range_low=12, normal_range_high=17),

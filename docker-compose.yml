@@ -12,7 +12,7 @@ services:
   # ---------------------------------------------------------------------------
 
   postgres:
-    image: postgres:14
+    image: postgres:14-alpine
     container_name: gula-postgres
     restart: always
     environment:
@@ -27,9 +27,14 @@ services:
       - ./config/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
     networks:
       - gula-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d labdb"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 5
       start_period: 10s
@@ -45,9 +50,11 @@ services:
     command: >
       redis-server
         --appendonly yes
-        --maxmemory 256mb
-        --maxmemory-policy allkeys-lru
+        --maxmemory 128mb
+        --maxmemory-policy volatile-lru
         --requirepass ${REDIS_PASSWORD:-gula_default_redis_pass}
+        --save 900 1
+        --save 300 10
     # SECURITY: No external ports - only accessible via internal network
     expose:
       - "6379"
@@ -55,9 +62,14 @@ services:
       - redis-data:/data
     networks:
       - gula-net
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: "0.5"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-gula_default_redis_pass} ping"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 5
 
@@ -69,6 +81,11 @@ services:
     build: ./backend
     container_name: gula-backend
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: "1.0"
     environment:
       ENV: ${ENV:-production}
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_default_pg_pass}@postgres:5432/labdb
@@ -102,6 +119,11 @@ services:
     image: nginx:1.25-alpine
     container_name: gula-frontend
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.25"
     # SECURITY: No external ports - only accessible via api-gateway
     expose:
       - "80"
@@ -125,6 +147,11 @@ services:
     image: nginx:1.25-alpine
     container_name: gula-api-gateway
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.25"
     ports:
       - "127.0.0.1:8080:80"
       - "127.0.0.1:8443:443"
