@@ -91,7 +91,7 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_default_pg_pass}@postgres:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:-gula_default_redis_pass}@redis:6379
       SECRET_KEY: ${SECRET_KEY:-gula_default_secret_key_change_in_production}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-gula_default_enc_key_change_in_production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=}
     # SECURITY: No external ports - only accessible via api-gateway
     expose:
       - "8000"
