@@ -1,0 +1,296 @@
+#!/usr/bin/env bash
+# =============================================================================
+# GULA PLATFORM - DigitalOcean Server Setup Script
+# Run this ONCE on a fresh Ubuntu 22.04 / 24.04 droplet as root
+#
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/samertts/gula-platform/main/scripts/server-setup.sh | sudo bash
+#   OR:
+#   sudo bash scripts/server-setup.sh
+#
+# What this does:
+#   1. Installs Docker, Nginx, Git, Certbot
+#   2. Creates deploy user 'samertts'
+#   3. Generates SSH deploy key (for GitHub)
+#   4. Clones the repository
+#   5. Configures system nginx
+#   6. Sets up firewall (UFW)
+#   7. Prints all GitHub Secrets you need to add
+# =============================================================================
+set -euo pipefail
+
+# ── Colors ──────────────────────────────────────────────────────────────────
+RED='\033[1;31m'; GREEN='\033[1;32m'; CYAN='\033[1;36m'; YELLOW='\033[1;33m'; NC='\033[0m'
+log()  { printf "${CYAN}[setup]${NC} %s\n" "$*"; }
+ok()   { printf "${GREEN}[✓]${NC} %s\n" "$*"; }
+warn() { printf "${YELLOW}[!]${NC} %s\n" "$*"; }
+err()  { printf "${RED}[✗]${NC} %s\n" "$*" >&2; exit 1; }
+
+# ── Require root ─────────────────────────────────────────────────────────────
+[ "$(id -u)" -eq 0 ] || err "Run as root: sudo bash $0"
+
+DEPLOY_USER="samertts"
+REPO_URL="https://github.com/samertts/gula-platform.git"
+REPO_DIR="/home/${DEPLOY_USER}/gula-platform"
+DOMAIN="gula-platform.org"
+
+log "======================================================="
+log " GULA PLATFORM - Server Setup"
+log " Server: $(hostname -I | awk '{print $1}')"
+log " Date: $(date)"
+log "======================================================="
+
+# ── 1. System update ─────────────────────────────────────────────────────────
+log "Updating system packages..."
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get upgrade -y -qq
+apt-get install -y -qq \
+  curl wget git vim htop ufw fail2ban \
+  ca-certificates gnupg lsb-release \
+  python3 python3-pip \
+  nginx certbot python3-certbot-nginx \
+  jq unzip
+ok "System packages installed"
+
+# ── 2. Install Docker ─────────────────────────────────────────────────────────
+if ! command -v docker &>/dev/null; then
+  log "Installing Docker..."
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+    https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | \
+    tee /etc/apt/sources.list.d/docker.list > /dev/null
+  apt-get update -qq
+  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  systemctl enable --now docker
+  ok "Docker installed"
+else
+  ok "Docker already installed: $(docker --version)"
+fi
+
+# ── 3. Create deploy user ─────────────────────────────────────────────────────
+if ! id "$DEPLOY_USER" &>/dev/null; then
+  log "Creating user: $DEPLOY_USER..."
+  useradd -m -s /bin/bash "$DEPLOY_USER"
+  usermod -aG docker "$DEPLOY_USER"
+  usermod -aG sudo "$DEPLOY_USER"
+  # Allow sudo without password for specific commands needed by deploy
+  echo "${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx, /bin/nginx, /usr/sbin/nginx, /bin/cp, /bin/ln, /bin/rm, /usr/bin/certbot" \
+    > /etc/sudoers.d/gula-deploy
+  chmod 440 /etc/sudoers.d/gula-deploy
+  ok "User $DEPLOY_USER created"
+else
+  usermod -aG docker "$DEPLOY_USER" 2>/dev/null || true
+  ok "User $DEPLOY_USER already exists"
+fi
+
+# ── 4. Generate SSH deploy key ────────────────────────────────────────────────
+SSH_DIR="/home/${DEPLOY_USER}/.ssh"
+DEPLOY_KEY="${SSH_DIR}/id_ed25519_deploy"
+
+mkdir -p "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+
+if [ ! -f "$DEPLOY_KEY" ]; then
+  log "Generating SSH deploy key..."
+  ssh-keygen -t ed25519 -C "gula-platform-deploy@${DOMAIN}" -f "$DEPLOY_KEY" -N ""
+  ok "SSH key generated: $DEPLOY_KEY"
+else
+  ok "SSH deploy key already exists"
+fi
+
+# Set up authorized_keys for GitHub Actions SSH
+touch "${SSH_DIR}/authorized_keys"
+chmod 600 "${SSH_DIR}/authorized_keys"
+
+# Allow the deploy key to login (for GitHub Actions)
+DEPLOY_PUBKEY=$(cat "${DEPLOY_KEY}.pub")
+if ! grep -qF "$DEPLOY_PUBKEY" "${SSH_DIR}/authorized_keys" 2>/dev/null; then
+  echo "$DEPLOY_PUBKEY" >> "${SSH_DIR}/authorized_keys"
+  ok "Deploy public key added to authorized_keys"
+fi
+
+chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$SSH_DIR"
+
+# ── 5. Clone repository ───────────────────────────────────────────────────────
+if [ ! -d "$REPO_DIR/.git" ]; then
+  log "Cloning repository..."
+  sudo -u "$DEPLOY_USER" git clone "$REPO_URL" "$REPO_DIR"
+  ok "Repository cloned to $REPO_DIR"
+else
+  log "Repository already exists, pulling latest..."
+  sudo -u "$DEPLOY_USER" git -C "$REPO_DIR" pull origin main || true
+  ok "Repository updated"
+fi
+
+# Set correct ownership
+chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$REPO_DIR"
+
+# ── 6. Configure system Nginx ─────────────────────────────────────────────────
+log "Configuring system nginx..."
+
+# Create certbot webroot
+mkdir -p /var/www/certbot
+
+# Copy HTTP-only config (works immediately, before SSL)
+cp "${REPO_DIR}/config/nginx/system/gula-platform-http.conf" \
+   /etc/nginx/sites-available/gula-platform
+
+ln -sf /etc/nginx/sites-available/gula-platform \
+       /etc/nginx/sites-enabled/gula-platform
+
+# Remove default nginx site
+rm -f /etc/nginx/sites-enabled/default
+
+# Test and reload nginx
+nginx -t && systemctl reload nginx
+ok "System nginx configured (HTTP mode)"
+
+# ── 7. Firewall (UFW) ─────────────────────────────────────────────────────────
+log "Configuring firewall..."
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22/tcp   comment "SSH"
+ufw allow 80/tcp   comment "HTTP"
+ufw allow 443/tcp  comment "HTTPS"
+ufw --force enable
+ok "Firewall configured (22, 80, 443 open)"
+
+# ── 8. Fail2ban ───────────────────────────────────────────────────────────────
+log "Configuring fail2ban..."
+cat > /etc/fail2ban/jail.local << 'EOF'
+[DEFAULT]
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+port = ssh
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s
+EOF
+systemctl enable --now fail2ban
+ok "Fail2ban configured"
+
+# ── 9. Create .env file template ─────────────────────────────────────────────
+if [ ! -f "${REPO_DIR}/.env" ]; then
+  log "Creating .env template..."
+  gen_secret() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
+  PG_PASS=$(gen_secret)
+  REDIS_PASS=$(gen_secret)
+
+  cat > "${REPO_DIR}/.env" << ENVEOF
+# ===== GULA PLATFORM - Production Environment =====
+# Generated: $(date)
+# Server: $(hostname -I | awk '{print $1}')
+
+# Database
+POSTGRES_PASSWORD=${PG_PASS}
+DATABASE_URL=postgresql://postgres:${PG_PASS}@postgres:5432/labdb
+
+# Cache
+REDIS_PASSWORD=${REDIS_PASS}
+REDIS_URL=redis://:${REDIS_PASS}@redis:6379
+
+# Security
+SECRET_KEY=$(gen_secret)
+ENCRYPTION_KEY=$(gen_secret)
+NID_HMAC_KEY=$(gen_secret)
+
+# App
+ENVIRONMENT=production
+DOMAIN=${DOMAIN}
+ENVEOF
+
+  chown "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/.env"
+  chmod 600 "${REPO_DIR}/.env"
+  ok ".env created"
+else
+  ok ".env already exists"
+fi
+
+# ── 10. Swap space (important for small droplets) ─────────────────────────────
+if [ ! -f /swapfile ]; then
+  log "Creating 2GB swap space..."
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  sysctl vm.swappiness=10
+  echo 'vm.swappiness=10' >> /etc/sysctl.conf
+  ok "Swap created (2GB)"
+else
+  ok "Swap already configured"
+fi
+
+# ── 11. Docker system service (auto-start on reboot) ─────────────────────────
+cat > /etc/systemd/system/gula-platform.service << SERVICEEOF
+[Unit]
+Description=GULA Platform Docker Compose
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=${DEPLOY_USER}
+WorkingDirectory=${REPO_DIR}
+ExecStart=/usr/bin/docker compose up -d --remove-orphans
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target
+SERVICEEOF
+
+systemctl daemon-reload
+systemctl enable gula-platform.service
+ok "Auto-start service configured"
+
+# ── Summary ────────────────────────────────────────────────────────────────────
+SERVER_IP=$(hostname -I | awk '{print $1}')
+PRIVATE_KEY=$(cat "${DEPLOY_KEY}")
+PUBLIC_KEY=$(cat "${DEPLOY_KEY}.pub")
+
+echo ""
+echo "============================================================"
+echo -e "${GREEN} SETUP COMPLETE! ${NC}"
+echo "============================================================"
+echo ""
+echo -e "${YELLOW}=== ADD THESE TO GITHUB SECRETS ===${NC}"
+echo -e "${CYAN}(Settings → Secrets → Actions → New repository secret)${NC}"
+echo ""
+echo -e "${YELLOW}Secret 1: SERVER_HOST${NC}"
+echo "$SERVER_IP"
+echo ""
+echo -e "${YELLOW}Secret 2: SERVER_USER${NC}"
+echo "$DEPLOY_USER"
+echo ""
+echo -e "${YELLOW}Secret 3: SERVER_SSH_KEY${NC}"
+echo "Copy the ENTIRE block below (including BEGIN and END lines):"
+echo "------------------------------------------------------------"
+echo "$PRIVATE_KEY"
+echo "------------------------------------------------------------"
+echo ""
+echo -e "${YELLOW}=== NEXT STEPS ===${NC}"
+echo "1. Add the 3 secrets above to GitHub"
+echo "2. Push to 'main' branch to trigger auto-deploy"
+echo "3. (Optional) Run SSL setup after first deploy:"
+echo "   sudo certbot --nginx -d ${DOMAIN} -d www.${DOMAIN}"
+echo ""
+echo -e "${YELLOW}=== SERVER INFO ===${NC}"
+echo "IP Address:   $SERVER_IP"
+echo "Deploy User:  $DEPLOY_USER"
+echo "Project Dir:  $REPO_DIR"
+echo "Nginx Config: /etc/nginx/sites-enabled/gula-platform"
+echo ""
+echo -e "${GREEN}Platform will be available at: http://${SERVER_IP}${NC}"
+echo "============================================================"
