@@ -13,6 +13,7 @@ HEALTH_URL="${HEALTH_URL:-http://localhost:8080/health}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-60}"   # seconds to wait for health
 SKIP_BACKUP=false
 BRANCH=""
+LOCK_FILE="/tmp/gula_deploy.lock"
 
 # ── Parse args ────────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -28,7 +29,15 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 ok()   { log "✓ $*"; }
-fail() { log "✗ $*"; exit 1; }
+fail() { log "✗ $*"; rm -f "$LOCK_FILE"; exit 1; }
+
+# ── Deploy lock (prevent concurrent runs) ────────────────────────────────────
+if [[ -f "$LOCK_FILE" ]]; then
+    echo "ERROR: Another deploy is in progress (lock: $LOCK_FILE). Aborting."
+    exit 1
+fi
+trap 'rm -f "$LOCK_FILE"' EXIT
+touch "$LOCK_FILE"
 
 log "========================================"
 log "GULA Deploy started (user=$(whoami))"
@@ -38,18 +47,18 @@ cd "$PROJECT_DIR"
 
 # ── Step 1: Backup database before any change ─────────────────────────────────
 if [[ "$SKIP_BACKUP" == "false" ]]; then
-    log "Step 1/6: Backing up database..."
+    log "Step 1/7: Backing up database..."
     if bash scripts/backup.sh daily >> "$LOG_FILE" 2>&1; then
         ok "Database backup complete"
     else
         fail "Backup failed — deploy aborted (use --skip-backup to override)"
     fi
 else
-    log "Step 1/6: Backup skipped (--skip-backup)"
+    log "Step 1/7: Backup skipped (--skip-backup)"
 fi
 
 # ── Step 2: Pull latest code ──────────────────────────────────────────────────
-log "Step 2/6: Pulling latest code..."
+log "Step 2/7: Pulling latest code..."
 if [[ -n "$BRANCH" ]]; then
     git fetch origin "$BRANCH" || fail "git fetch failed"
     git checkout "$BRANCH"     || fail "git checkout failed"
@@ -58,7 +67,7 @@ git pull || fail "git pull failed"
 ok "Code updated — $(git log -1 --oneline)"
 
 # ── Step 3: Build images (fail fast — do not touch running containers) ────────
-log "Step 3/6: Building Docker images..."
+log "Step 3/7: Building Docker images..."
 if docker compose build --pull 2>&1 | tee -a "$LOG_FILE"; then
     ok "Build successful"
 else
@@ -66,10 +75,22 @@ else
 fi
 
 # ── Step 4: Run database migrations ──────────────────────────────────────────
-log "Step 4/6: Running database migrations (alembic upgrade head)..."
-# Start only postgres first, run migrations, then bring up the rest
+log "Step 4/7: Running database migrations (alembic upgrade head)..."
 docker compose up -d postgres 2>&1 | tee -a "$LOG_FILE"
-sleep 5  # wait for postgres to be ready
+
+# Wait for postgres to be genuinely ready (not just started)
+log "Waiting for postgres to accept connections..."
+for i in $(seq 1 30); do
+    if docker compose exec -T postgres pg_isready -q 2>/dev/null; then
+        ok "Postgres ready (attempt $i)"
+        break
+    fi
+    if [[ $i -eq 30 ]]; then
+        fail "Postgres did not become ready after 60s"
+    fi
+    sleep 2
+done
+
 if docker compose run --rm --no-deps gula-backend \
         sh -c "cd /app && alembic upgrade head" 2>&1 | tee -a "$LOG_FILE"; then
     ok "Migrations applied"
