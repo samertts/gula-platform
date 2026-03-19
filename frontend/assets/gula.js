@@ -7,9 +7,10 @@
 const PAGE_SIZE = 50;
 
 // ---- State ----
+// Token stored in httpOnly cookie (not accessible here - prevents XSS theft)
+// Only non-sensitive user metadata (name, role, lab_id) stored in sessionStorage
 const G = {
-  token: localStorage.getItem('token'),
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
+  user: JSON.parse(sessionStorage.getItem('user') || 'null'),
   page: null
 };
 
@@ -19,7 +20,8 @@ const API_RETRY_DELAYS = [1000, 2000]; // Retry delays for GET requests
 
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  if (G.token) headers['Authorization'] = 'Bearer ' + G.token;
+  // Token sent automatically via httpOnly cookie (credentials: 'include')
+  // No Authorization header needed for web - prevents XSS token theft
 
   const isGet = !opts.method || opts.method === 'GET';
   const maxRetries = isGet ? API_RETRY_DELAYS.length : 0;
@@ -29,7 +31,7 @@ async function api(path, opts = {}) {
     const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
     let res;
     try {
-      res = await fetch('/api' + path, { ...opts, headers, signal: controller.signal });
+      res = await fetch('/api' + path, { ...opts, headers, credentials: 'include', signal: controller.signal });
       clearTimeout(timer);
     } catch (e) {
       clearTimeout(timer);
@@ -62,24 +64,16 @@ async function api(path, opts = {}) {
 function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ---- Auth ----
-function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  G.token = null;
+async function logout() {
+  // Clear httpOnly auth cookie via server endpoint
+  try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch {}
+  sessionStorage.removeItem('user');
   G.user = null;
   window.location.replace('/login.html');
 }
 
 function checkAuth() {
-  if (!G.token || !G.user) { window.location.href = '/login.html'; return false; }
-  // Check JWT expiry client-side (avoid unnecessary API calls with expired token)
-  try {
-    const payload = JSON.parse(atob(G.token.split('.')[1]));
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
-      logout();
-      return false;
-    }
-  } catch { /* ignore parse errors, server will validate */ }
+  if (!G.user) { window.location.href = '/login.html'; return false; }
   return true;
 }
 

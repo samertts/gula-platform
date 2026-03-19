@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +8,10 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine, check_db_connection, get_pool_status
-from .config import APP_NAME, APP_VERSION, IS_PRODUCTION
+from .config import (
+    APP_NAME, APP_VERSION, IS_PRODUCTION, ENABLE_API_DOCS,
+    MAX_REQUEST_BODY_MB, PLATFORM_NAME_AR,
+)
 
 # Configure structured logging
 logging.basicConfig(
@@ -23,12 +27,35 @@ from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
+# ─── API Documentation ─────────────────────────────────────────────────────
+# Enabled by default in non-production, or when ENABLE_API_DOCS=true in .env
+# Government testers and mobile developers need the docs
+_docs_url = None
+_redoc_url = None
+if not IS_PRODUCTION or ENABLE_API_DOCS:
+    _docs_url = "/docs"
+    _redoc_url = "/redoc"
+
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
-    description="GULA - Smart Health Platform for Labs",
-    docs_url=None if IS_PRODUCTION else "/docs",       # Disable docs in production
-    redoc_url=None if IS_PRODUCTION else "/redoc",
+    description=(
+        "**GULA** - منصة غولا الصحية الذكية للمختبرات\n\n"
+        "Smart Health Platform for Medical Laboratories in Iraq.\n\n"
+        "**Authentication:** Use `Bearer <token>` header (obtain token from `POST /login`).\n\n"
+        "**Mobile:** Refresh tokens available via `POST /auth/refresh`.\n\n"
+        "**Version:** " + APP_VERSION
+    ),
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
+    contact={
+        "name": "GULA Platform Support",
+        "url": "https://gula-platform.org",
+        "email": "support@gula-platform.org",
+    },
+    license_info={
+        "name": "Proprietary - Ministry of Health Iraq Compliant",
+    },
 )
 
 
@@ -36,17 +63,57 @@ app = FastAPI(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
-    logger.exception(f"{request.method} {request.url}: {exc}")
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
     return JSONResponse(
         status_code=500,
         content={
             "detail": "Something went wrong. Please try again.",
             "detail_ar": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+            "request_id": request_id,
         },
     )
 
 
-# CORS - use explicit origins from env; default to platform domain (never wildcard)
+# ===== REQUEST BODY SIZE LIMIT =====
+class MaxBodySizeMiddleware(BaseHTTPMiddleware):
+    """Reject oversized request bodies to prevent DoS attacks."""
+    def __init__(self, app, max_size_mb: int = 10):
+        super().__init__(app)
+        self._max_bytes = max_size_mb * 1024 * 1024
+
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > self._max_bytes:
+            return JSONResponse(
+                status_code=413,
+                content={
+                    "detail": f"Request body too large (max {MAX_REQUEST_BODY_MB}MB)",
+                    "detail_ar": f"حجم البيانات أكبر من المسموح به ({MAX_REQUEST_BODY_MB} ميغابايت)",
+                },
+            )
+        return await call_next(request)
+
+
+app.add_middleware(MaxBodySizeMiddleware, max_size_mb=MAX_REQUEST_BODY_MB)
+
+
+# ===== REQUEST ID MIDDLEWARE =====
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """Assign a unique ID to every request for tracing."""
+    async def dispatch(self, request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        request.state.request_id = request_id
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
+app.add_middleware(RequestIDMiddleware)
+
+
+# ===== CORS =====
+# Allow configured origins + mobile app schemes
 _allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
 _allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
 if not _allowed_origins:
@@ -54,15 +121,16 @@ if not _allowed_origins:
         "https://gula-platform.org",
         "http://gula-platform.org",
     ]
-    # Only allow localhost in development
-    if os.getenv("ENV", "production") == "development":
-        _allowed_origins += ["http://localhost:8080", "http://localhost:80"]
+    if os.getenv("ENV", "production") in ("development", "test"):
+        _allowed_origins += ["http://localhost:8080", "http://localhost:80", "http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Device-ID", "X-App-Version"],
+    expose_headers=["X-Request-ID", "X-Response-Time", "X-API-Version"],
 )
 
 
@@ -77,8 +145,9 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
         # Log slow requests (>2 seconds)
         if elapsed_ms > 2000:
             logger.warning(
-                "SLOW REQUEST: %s %s took %.0fms (status=%d)",
-                request.method, request.url.path, elapsed_ms, response.status_code
+                "SLOW REQUEST [%s]: %s %s took %.0fms (status=%d)",
+                getattr(request.state, "request_id", "?"),
+                request.method, request.url.path, elapsed_ms, response.status_code,
             )
 
         response.headers["X-Response-Time"] = f"{elapsed_ms:.0f}ms"
@@ -110,8 +179,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
-            "connect-src 'self'; "
+            "connect-src 'self' https://gula-platform.org; "
             "font-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
             "frame-ancestors 'none'"
         )
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
@@ -127,6 +199,7 @@ from .routes import identity, notifications, ehr, security
 from .routes import national_identity, insurance, device_results
 from .routes import qr, id_scan, admin, samples
 from .routes import quality_control, critical_alerts, batch
+from .routes import mobile, compliance
 
 # Core routes
 app.include_router(login.router)
@@ -154,24 +227,55 @@ app.include_router(batch.router)
 # Admin routes
 app.include_router(admin.router)
 
-# Legacy routes (national_identity, insurance - kept for API compatibility)
+# Mobile API routes (Android + iOS)
+app.include_router(mobile.router)
+
+# Government compliance routes
+app.include_router(compliance.router)
+
+# Legacy routes (kept for API compatibility)
 app.include_router(national_identity.router)
 app.include_router(insurance.router)
 
 
 # ===== HEALTH & STATUS =====
-@app.get("/health")
+@app.get("/health", tags=["system"])
 def health():
-    """Health check with database connectivity verification - lightweight."""
+    """
+    Health check endpoint for load balancers and monitoring.
+    Returns system status and version information.
+    """
     db_ok = check_db_connection()
     pool = get_pool_status()
     status = "healthy" if db_ok else "degraded"
     return {
         "status": status,
+        "platform": APP_NAME,
+        "platform_ar": PLATFORM_NAME_AR,
         "version": APP_VERSION,
+        "environment": os.getenv("ENV", "production"),
         "database": "connected" if db_ok else "disconnected",
         "pool": pool,
+        "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z",
     }
+
+
+@app.get("/health/ready", tags=["system"])
+def readiness():
+    """Kubernetes-style readiness probe - returns 503 if not ready to serve traffic."""
+    db_ok = check_db_connection()
+    if not db_ok:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "reason": "database_unavailable"},
+        )
+    return {"status": "ready"}
+
+
+@app.get("/health/live", tags=["system"])
+def liveness():
+    """Kubernetes-style liveness probe - always returns 200 if process is alive."""
+    return {"status": "alive", "version": APP_VERSION}
 
 
 @app.get("/r/{token}/pdf")
@@ -187,14 +291,25 @@ def serve_result_pdf_redirect(token: str, request: Request):
 
 
 # ===== PUBLIC ENDPOINTS =====
-@app.get("/test-types")
+_test_types_cache: dict = {"data": None, "at": 0.0}
+
+@app.get("/test-types", tags=["system"])
 def list_test_types():
+    """
+    Returns all available test types and their reference ranges.
+    Cached in-memory for 5 minutes to reduce database load.
+    """
+    import time
+    cache = _test_types_cache
+    if cache["data"] is not None and (time.time() - cache["at"]) < 300:
+        return cache["data"]
+
     from .database import SessionLocal
     from .models.test_type import TestType
     db = SessionLocal()
     try:
-        types = db.query(TestType).all()
-        return [
+        types = db.query(TestType).order_by(TestType.category, TestType.test_name).all()
+        result = [
             {
                 "id": t.id,
                 "code": t.test_code,
@@ -207,6 +322,9 @@ def list_test_types():
             }
             for t in types
         ]
+        cache["data"] = result
+        cache["at"] = time.time()
+        return result
     finally:
         db.close()
 
