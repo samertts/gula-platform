@@ -12,7 +12,7 @@
 #   LOG_FILE            default: /var/log/gula/monitor.log
 # =============================================================================
 
-HEALTH_URL="${HEALTH_URL:-http://localhost:8080/health}"
+HEALTH_URL="${HEALTH_URL:-http://localhost:8080/health/ready}"
 TELEGRAM_TOKEN="${TELEGRAM_TOKEN:-}"
 TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
 ALERT_COOLDOWN="${ALERT_COOLDOWN:-300}"
@@ -74,21 +74,8 @@ ${container_status}
     exit 1
 fi
 
-# ── Service is up — clear cooldown lock ──────────────────────────────────────
+# ── Service is healthy — clear cooldown lock and log OK ──────────────────────
+# /health/ready returns 200 only when DB is reachable (503 otherwise),
+# so a successful curl here means both the service AND database are up.
 rm -f "$LOCK_FILE"
-
-# ── Parse response for degraded state ────────────────────────────────────────
-if echo "$response" | grep -q '"status"'; then
-    db_ok=$(echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('database','unknown'))" 2>/dev/null || echo "unknown")
-    if [[ "$db_ok" == "False" || "$db_ok" == "false" ]]; then
-        log "DEGRADED — service up but database unhealthy"
-        send_alert "⚠️ *GULA DEGRADED*
-Host: $(hostname)
-Status: database unreachable
-Time: $(date '+%Y-%m-%d %H:%M:%S')"
-    else
-        log "OK — $HEALTH_URL"
-    fi
-else
-    log "WARN — unexpected response: ${response:0:100}"
-fi
+log "OK — $HEALTH_URL"
