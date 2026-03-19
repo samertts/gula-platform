@@ -104,7 +104,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         key="refresh_token",
         value=refresh_token,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-        path="/auth/refresh",
+        path="/api/auth/refresh",
         **cookie_kwargs,
     )
 
@@ -127,5 +127,5 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 def logout(response: Response):
     """Clear authentication cookies (web clients)."""
     response.delete_cookie(key="access_token", path="/")
-    response.delete_cookie(key="refresh_token", path="/auth/refresh")
+    response.delete_cookie(key="refresh_token", path="/api/auth/refresh")
     return {"message": "Logged out successfully"}
