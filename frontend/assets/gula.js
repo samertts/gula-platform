@@ -1028,6 +1028,7 @@ async function pageCompliance() {
               ${checkItem('rbac', 'التحكم في الوصول RBAC')}
               ${checkItem('secure_cookies', 'حماية الجلسات (httpOnly Cookies)')}
               ${checkItem('docs_protected', 'حماية صفحة التوثيق /docs')}
+              ${checkItem('disaster_recovery', 'اختبار الاسترجاع (ISO 27001 A.17.1)')}
               ${checkItem('cmc_registration', 'تسجيل هيئة الاتصالات CMC')}
               ${checkItem('iso_27001', 'شهادة ISO 27001')}
               ${checkItem('pentest', 'اختبار الاختراق السنوي')}
@@ -1045,6 +1046,33 @@ async function pageCompliance() {
           <div class="kpi"><span class="kpi-val" style="font-size:.8rem;color:${timeSyncData.ntp_synchronized ? 'var(--success)' : 'var(--danger)'}">${esc(timeSyncData.recommendation || '-')}</span><span class="kpi-label">التوصية</span></div>
         </div>
       </div>` : ''}
+
+      ${(() => {
+        const dr = status.disaster_recovery;
+        if (!dr) return `
+        <div class="card" style="margin-top:16px;border-color:var(--warning)">
+          <div class="card-title">اختبار الاسترجاع (ISO 27001 A.17.1)</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+            <span style="font-size:1.4rem">⏳</span>
+            <div>
+              <div style="font-weight:600;color:var(--warning)">لم يتم الاختبار بعد</div>
+              <div style="font-size:.85rem;color:var(--text-dim);margin-top:4px">شغّل: <code>./scripts/restore-test.sh</code> واحفظ النتيجة كدليل</div>
+            </div>
+          </div>
+        </div>`;
+        const isPass = dr.status === 'PASS';
+        return `
+        <div class="card" style="margin-top:16px;border-color:${isPass ? 'var(--success)' : 'var(--danger)'}">
+          <div class="card-title">اختبار الاسترجاع — دليل موثّق (ISO 27001 A.17.1)</div>
+          <div class="kpi-row">
+            <div class="kpi"><span class="kpi-val" style="color:${isPass ? 'var(--success)' : 'var(--danger)'}">${isPass ? '✓ PASS' : '✗ FAIL'}</span><span class="kpi-label">النتيجة</span></div>
+            <div class="kpi"><span class="kpi-val">${esc(dr.restore_seconds || '-')} ث</span><span class="kpi-label">وقت الاسترجاع</span></div>
+            <div class="kpi"><span class="kpi-val" style="font-size:.85rem">${esc(dr.tested_ago || '-')} مضى</span><span class="kpi-label">آخر اختبار</span></div>
+            <div class="kpi"><span class="kpi-val" style="font-size:.75rem;font-family:monospace">${esc(dr.backup_file || '-')}</span><span class="kpi-label">الملف المختبر</span></div>
+          </div>
+          <div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">اختُبر بواسطة: ${esc(dr.tested_by || '-')} — ${esc(dr.tested_at_human || '-')}</div>
+        </div>`;
+      })()}
 
       <div class="card" style="margin-top:16px">
         <div class="card-title" style="margin-bottom:12px">معلومات للمراجعين الحكوميين</div>
