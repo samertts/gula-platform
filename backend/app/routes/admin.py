@@ -237,44 +237,42 @@ def get_audit_logs(
 
 # ===== BOOTSTRAP =====
 def ensure_master_admin():
-    """Create master admin on first startup if not exists."""
+    """Seed the master admin account on a brand-new database.
+
+    Rules:
+    - Runs only when no master_admin row exists (fresh DB).
+    - Requires GULA_ADMIN_PASSWORD or GULA_ADMIN_PASSWORD_HASH to be set;
+      logs a clear error and skips if neither is provided — no random passwords.
+    - After first boot the DB is the sole source of truth. These env vars
+      can (and should) be cleared from .env once the admin is confirmed.
+    """
     db = SessionLocal()
     try:
         existing = db.query(LabUser).filter(LabUser.role == "master_admin").first()
         if existing:
+            logger.debug("Master admin already exists (id=%s) — bootstrap skipped", existing.id)
             return
 
         email = os.getenv("GULA_ADMIN_EMAIL", "admin@gula-platform.org")
         name  = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
 
-        # Prefer pre-hashed password (no plaintext in env) → fall back to plaintext
-        password_hash = os.getenv("GULA_ADMIN_PASSWORD_HASH")
+        # Hash takes priority; fall back to plaintext; refuse to guess.
+        password_hash = os.getenv("GULA_ADMIN_PASSWORD_HASH", "").strip() or None
         if password_hash:
-            logger.info("Master admin: using pre-hashed password from GULA_ADMIN_PASSWORD_HASH")
+            logger.info("Bootstrap: using GULA_ADMIN_PASSWORD_HASH")
         else:
-            plaintext = os.getenv("GULA_ADMIN_PASSWORD")
+            plaintext = os.getenv("GULA_ADMIN_PASSWORD", "").strip() or None
             if not plaintext:
-                import secrets, sys
-                plaintext = secrets.token_urlsafe(24)
-                print(
-                    f"\n{'='*60}\n"
-                    f"[GULA FIRST-RUN] Master admin auto-created:\n"
-                    f"  Email:    {email}\n"
-                    f"  Password: {plaintext}\n"
-                    f"  ACTION:   Set GULA_ADMIN_PASSWORD_HASH in .env and restart\n"
-                    f"  HASH CMD: docker exec gula-backend python -c \"\n"
-                    f"            import bcrypt; print(bcrypt.hashpw(b'YOUR_PASS', bcrypt.gensalt(12)).decode())\"\n"
-                    f"{'='*60}\n",
-                    file=sys.stderr,
-                    flush=True,
+                logger.error(
+                    "Bootstrap SKIPPED: no master_admin in DB and neither "
+                    "GULA_ADMIN_PASSWORD nor GULA_ADMIN_PASSWORD_HASH is set. "
+                    "Set one in .env and restart, or run: "
+                    "docker exec gula-backend python /scripts/create_master_admin.py --force"
                 )
-                logger.warning(
-                    "GULA_ADMIN_PASSWORD not set. Temp password printed to stderr. "
-                    "Set GULA_ADMIN_PASSWORD_HASH in .env immediately."
-                )
+                return
             password_hash = hash_password(plaintext)
 
-        # Create a platform-level lab for admin
+        # Create a platform-level lab for admin if needed
         platform_lab = db.query(Lab).filter(Lab.name == "GULA Platform").first()
         if not platform_lab:
             platform_lab = Lab(name="GULA Platform", city="Platform", is_active=True)
@@ -291,9 +289,9 @@ def ensure_master_admin():
         )
         db.add(admin)
         db.commit()
-        logger.info(f"Master admin created: {email}")
+        logger.info("Bootstrap: master admin created (%s)", email)
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to create master admin: {e}")
+        logger.error("Bootstrap: failed to create master admin: %s", e)
     finally:
         db.close()
