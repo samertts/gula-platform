@@ -17,6 +17,7 @@ from ..models.patient import Patient
 from ..models.audit_log import AuditLog
 from ..security.dependencies import get_current_user, require_permission
 from ..security.auth import hash_password
+from ..security.session import bump_perm_version
 from ..services.audit_service import log_action
 
 logger = logging.getLogger("gula.admin")
@@ -195,10 +196,7 @@ def toggle_user(user_id: int, admin: LabUser = Depends(require_admin), db: Sessi
     if user.role == "master_admin":
         raise HTTPException(status_code=403, detail="Cannot modify master admin")
     user.is_active = not user.is_active
-    # Invalidate any active JWTs for this user
-    user.perm_version = (user.perm_version or 1) + 1
-    log_action(db, action="toggle_user", resource_type="user", resource_id=user.id,
-               user_id=admin.id, user_role=admin.role)
+    bump_perm_version(user, db, actor_id=admin.id, actor_role=admin.role, reason="toggle_user")
     db.commit()
     return {"message": f"User {'activated' if user.is_active else 'deactivated'}"}
 
