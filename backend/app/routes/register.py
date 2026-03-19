@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -7,6 +7,7 @@ from ..models.lab_user import LabUser
 from ..security.auth import hash_password, create_token
 from ..security.rate_limit import rate_limit_auth
 from ..services.audit_service import log_action
+from ..config import IS_PRODUCTION, JWT_EXPIRE_HOURS
 
 router = APIRouter(tags=["auth"])
 
@@ -49,7 +50,7 @@ class LabRegisterRequest(BaseModel):
 
 
 @router.post("/register")
-def register_lab(data: LabRegisterRequest, request: Request, db: Session = Depends(get_db)):
+def register_lab(data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
 
     # Password strength validation
@@ -82,13 +83,15 @@ def register_lab(data: LabRegisterRequest, request: Request, db: Session = Depen
     )
     db.add(user)
 
-    # Audit log
+    # Audit log (avoid logging PII like email in details)
     log_action(
         db,
         action="register",
         resource_type="lab",
-        user_id=None,
-        details=f"New lab registered: {data.lab_name} by {data.email}",
+        resource_id=lab.id,
+        user_id=user.id,
+        user_role=user.role,
+        details=f"New lab registered: {data.lab_name} (lab_id={lab.id})",
         ip_address=request.client.host if request.client else None,
     )
 
@@ -97,6 +100,17 @@ def register_lab(data: LabRegisterRequest, request: Request, db: Session = Depen
     db.refresh(user)
 
     token = create_token({"user_id": user.id, "lab_id": lab.id, "role": user.role})
+
+    # Set httpOnly cookie for web browser clients
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        max_age=JWT_EXPIRE_HOURS * 3600,
+        path="/",
+        httponly=True,
+        samesite="strict",
+        secure=IS_PRODUCTION,
+    )
 
     return {
         "message": "Lab registered successfully",

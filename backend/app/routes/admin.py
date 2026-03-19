@@ -251,21 +251,22 @@ def ensure_master_admin():
         if not password:
             import secrets
             password = secrets.token_urlsafe(24)
-            # SECURITY: Never log passwords - write to a temporary file instead
-            _pw_file = "/tmp/.gula_admin_pw"
-            try:
-                with open(_pw_file, "w") as f:
-                    f.write(password)
-                os.chmod(_pw_file, 0o600)
-                logger.warning(
-                    "[GULA] GULA_ADMIN_PASSWORD not set. Temporary password written to %s. "
-                    "Set GULA_ADMIN_PASSWORD in .env and delete this file.", _pw_file
-                )
-            except OSError:
-                logger.warning(
-                    "[GULA] GULA_ADMIN_PASSWORD not set. Could not write temp file. "
-                    "Set GULA_ADMIN_PASSWORD in .env for production."
-                )
+            # SECURITY: Output to stderr/Docker logs only - never write to filesystem
+            import sys
+            print(
+                f"\n{'='*60}\n"
+                f"[GULA FIRST-RUN] Master admin auto-created:\n"
+                f"  Email:    {email}\n"
+                f"  Password: {password}\n"
+                f"  ACTION:   Set GULA_ADMIN_PASSWORD in .env and restart\n"
+                f"{'='*60}\n",
+                file=sys.stderr,
+                flush=True,
+            )
+            logger.warning(
+                "GULA_ADMIN_PASSWORD not set. Temporary password printed to stderr. "
+                "Set GULA_ADMIN_PASSWORD in .env immediately."
+            )
         name = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
 
         # Create a platform-level lab for admin
