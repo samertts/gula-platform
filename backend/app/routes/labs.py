@@ -7,6 +7,7 @@ from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..security.auth import hash_password
+from ..security.session import bump_perm_version
 
 router = APIRouter(prefix="/labs", tags=["labs"])
 
@@ -155,8 +156,12 @@ def update_employee(
         employee.role = data.role
         role_or_status_changed = True
     if role_or_status_changed:
-        # Invalidate any active JWTs for this employee
-        employee.perm_version = (employee.perm_version or 1) + 1
+        bump_perm_version(
+            employee, db,
+            actor_id=current_user.id,
+            actor_role=current_user.role,
+            reason="employee_update",
+        )
     db.commit()
     return {"message": "تم تحديث بيانات الموظف"}
 

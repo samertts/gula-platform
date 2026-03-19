@@ -6,6 +6,7 @@ from ..database import get_db
 from ..models.lab_user import LabUser
 from ..security.auth import verify_password, create_token, create_refresh_token, build_token_payload
 from ..security.rate_limit import rate_limit_auth, get_client_ip
+from ..security.session import warm_perm_version
 from ..services.audit_service import log_action
 from ..config import IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
 
@@ -66,6 +67,9 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         )
         db.commit()
         raise HTTPException(status_code=403, detail="Your laboratory account is deactivated")
+
+    # Warm Redis so the fast perm_version path is always a cache hit after login
+    warm_perm_version(user)
 
     base_payload = build_token_payload(user)
     token = create_token(base_payload)

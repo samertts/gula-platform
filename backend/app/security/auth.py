@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from ..config import SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_HOURS, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRE_DAYS
-from .rbac import get_permissions_for_role
+from ..config import (
+    SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_MINUTES, JWT_EXPIRE_HOURS,
+    REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRE_DAYS,
+)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -16,28 +18,38 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def build_token_payload(user) -> dict:
-    """Build the base JWT payload for a LabUser, embedding permissions + perm_version."""
+    """
+    Build the slim JWT payload for a LabUser.
+
+    We intentionally do NOT embed the permissions list.
+    Permissions are derived from role at request time (O(1) dict lookup).
+    Keeping the JWT small reduces cookie size on every HTTP request.
+    """
     return {
         "user_id": user.id,
         "lab_id": user.lab_id,
         "role": user.role,
-        "perms": get_permissions_for_role(user.role),
         "perm_ver": user.perm_version if user.perm_version is not None else 1,
     }
 
 
 def create_token(data: dict) -> str:
-    """Create a short-lived JWT access token (8 hours default)."""
+    """Create a short-lived JWT access token (default: 30 minutes)."""
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES)
     to_encode.update({"exp": expire, "type": "access"})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
 def decode_token(token: str) -> dict | None:
-    """Decode and validate an access token."""
+    """Decode and validate an access token. Returns None on any failure."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
+            options={"require": ["exp"]},
+        )
         if payload.get("type") != "access":
             return None
         return payload
@@ -46,7 +58,7 @@ def decode_token(token: str) -> dict | None:
 
 
 def create_refresh_token(data: dict) -> str:
-    """Create a long-lived JWT refresh token (30 days default)."""
+    """Create a long-lived JWT refresh token (default: 30 days)."""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
@@ -54,9 +66,14 @@ def create_refresh_token(data: dict) -> str:
 
 
 def decode_refresh_token(token: str) -> dict | None:
-    """Decode and validate a refresh token."""
+    """Decode and validate a refresh token. Returns None on any failure."""
     try:
-        payload = jwt.decode(token, REFRESH_TOKEN_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            REFRESH_TOKEN_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            options={"require": ["exp"]},
+        )
         if payload.get("type") != "refresh":
             return None
         return payload
