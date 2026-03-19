@@ -147,10 +147,16 @@ def update_employee(
     if employee.id == current_user.id:
         raise HTTPException(status_code=400, detail="لا يمكن تعديل حسابك الخاص")
 
+    role_or_status_changed = False
     if data.is_active is not None:
         employee.is_active = data.is_active
+        role_or_status_changed = True
     if data.role is not None:
         employee.role = data.role
+        role_or_status_changed = True
+    if role_or_status_changed:
+        # Invalidate any active JWTs for this employee
+        employee.perm_version = (employee.perm_version or 1) + 1
     db.commit()
     return {"message": "تم تحديث بيانات الموظف"}
 

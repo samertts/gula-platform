@@ -5,6 +5,7 @@ from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.lab import Lab
 from .auth import decode_token
+from .rbac import get_permissions_for_role
 
 security = HTTPBearer(auto_error=False)
 
@@ -49,6 +50,15 @@ def get_current_user(
             detail="User not found or inactive",
         )
 
+    # perm_version check — if admin changed user's role, old tokens are rejected
+    token_perm_ver = payload.get("perm_ver", 1)
+    db_perm_ver = user.perm_version if user.perm_version is not None else 1
+    if token_perm_ver != db_perm_ver:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Permissions updated — please log in again",
+        )
+
     # Check if lab is still active (skip for master_admin)
     if user.role != "master_admin":
         lab = db.query(Lab).filter(Lab.id == user.lab_id, Lab.is_active == True).first()
@@ -59,6 +69,28 @@ def get_current_user(
             )
 
     return user
+
+
+def require_permission(permission: str):
+    """FastAPI dependency factory: require a specific permission.
+
+    Usage:
+        @router.get("/patients")
+        def list_patients(user=Depends(require_permission("patients:read"))):
+            ...
+    """
+    def checker(
+        current_user: LabUser = Depends(get_current_user),
+    ) -> LabUser:
+        perms = get_permissions_for_role(current_user.role)
+        if permission not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission required: {permission}",
+            )
+        return current_user
+
+    return checker
 
 
 def get_current_lab(

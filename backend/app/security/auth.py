@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from ..config import SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_HOURS, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRE_DAYS
+from .rbac import get_permissions_for_role
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -12,6 +13,17 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+
+def build_token_payload(user) -> dict:
+    """Build the base JWT payload for a LabUser, embedding permissions + perm_version."""
+    return {
+        "user_id": user.id,
+        "lab_id": user.lab_id,
+        "role": user.role,
+        "perms": get_permissions_for_role(user.role),
+        "perm_ver": user.perm_version if user.perm_version is not None else 1,
+    }
 
 
 def create_token(data: dict) -> str:

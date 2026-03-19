@@ -343,6 +343,7 @@ def on_startup():
     else:
         logger.info("Database connection verified")
 
+    _migrate_perm_version()
     _seed_test_types()
     _ensure_master_admin()
     logger.info("GULA Platform %s ready", APP_VERSION)
@@ -354,6 +355,20 @@ def on_shutdown():
     logger.info("GULA Platform shutting down gracefully...")
     engine.dispose()
     logger.info("Database connections closed")
+
+
+def _migrate_perm_version():
+    """Add perm_version column to lab_users if it does not exist (safe idempotent migration)."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                "ALTER TABLE lab_users ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
+            ))
+            conn.commit()
+        logger.info("perm_version column ensured on lab_users")
+    except Exception as exc:
+        logger.warning("perm_version migration skipped: %s", exc)
 
 
 def _seed_test_types():
