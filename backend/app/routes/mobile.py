@@ -107,7 +107,7 @@ def refresh_access_token(
     )
     response.set_cookie(
         key="refresh_token", value=new_refresh_token,
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400, path="/api/auth/refresh", **cookie_kwargs,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400, path="/", **cookie_kwargs,
     )
 
     return {
