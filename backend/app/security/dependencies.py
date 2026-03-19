@@ -9,16 +9,28 @@ from .auth import decode_token
 security = HTTPBearer(auto_error=False)
 
 
+def _extract_token(
+    credentials: HTTPAuthorizationCredentials | None,
+    request: Request,
+) -> str | None:
+    """Extract JWT from Bearer header (mobile) or httpOnly cookie (web)."""
+    if credentials is not None:
+        return credentials.credentials
+    return request.cookies.get("access_token")
+
+
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> LabUser:
-    if credentials is None:
+    raw_token = _extract_token(credentials, request)
+    if raw_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
-    payload = decode_token(credentials.credentials)
+    payload = decode_token(raw_token)
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

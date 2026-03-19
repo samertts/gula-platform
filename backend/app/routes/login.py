@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -7,6 +7,7 @@ from ..models.lab_user import LabUser
 from ..security.auth import verify_password, create_token, create_refresh_token
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
+from ..config import IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
 
 logger = logging.getLogger("gula.auth")
 
@@ -24,7 +25,7 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login")
-def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
+def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
 
     client_ip = get_client_ip(request)
@@ -90,6 +91,27 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     )
     db.commit()
 
+    # Set httpOnly cookies for web browser clients (prevents XSS token theft)
+    cookie_kwargs = {
+        "httponly": True,
+        "samesite": "strict",
+        "secure": IS_PRODUCTION,
+    }
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        max_age=JWT_EXPIRE_HOURS * 3600,
+        path="/",
+        **cookie_kwargs,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/auth/refresh",
+        **cookie_kwargs,
+    )
+
     return {
         "token": token,
         "refresh_token": refresh_token,
@@ -103,3 +125,11 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
             "lab_name": lab.name if lab else None,
         },
     }
+
+
+@router.post("/logout")
+def logout(response: Response):
+    """Clear authentication cookies (web clients)."""
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/auth/refresh")
+    return {"message": "Logged out successfully"}
