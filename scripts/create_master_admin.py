@@ -24,6 +24,8 @@ def main():
     parser.add_argument('--email',    default=None)
     parser.add_argument('--password', default=None)
     parser.add_argument('--name',     default='GULA Admin')
+    parser.add_argument('--force', action='store_true',
+                        help='Update existing master admin (reset password)')
     args = parser.parse_args()
 
     # Prompt interactively if not provided
@@ -82,14 +84,19 @@ def main():
         ).fetchone()
 
         if existing:
+            if not args.force:
+                print(f'\n  Master admin already exists (id={existing.id}, email={existing.email})')
+                print('  Use --force to reset email/password.')
+                return
+            # --force: reset password and email
             db.execute(
                 text("UPDATE lab_users SET email=:email, name=:name, "
-                     "password_hash=:pw, is_active=true "
+                     "password_hash=:pw, is_active=true, perm_version=COALESCE(perm_version,1)+1 "
                      "WHERE id=:id"),
                 {'email': email, 'name': name, 'pw': pw_hash, 'id': existing.id}
             )
             db.commit()
-            print(f'\n  Master admin UPDATED (id={existing.id})')
+            print(f'\n  Master admin RESET (id={existing.id})')
         else:
             db.execute(
                 text("INSERT INTO lab_users (lab_id, name, email, password_hash, role, is_active, created_at) "
