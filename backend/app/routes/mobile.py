@@ -4,7 +4,7 @@ Endpoints optimized for Android and iOS applications.
 Supports token refresh, device registration, and mobile-friendly data.
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -16,7 +16,7 @@ from ..security.auth import decode_refresh_token, create_token, create_refresh_t
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
-from ..config import APP_VERSION, APP_NAME
+from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
 
 logger = logging.getLogger("gula.mobile")
 
@@ -26,13 +26,14 @@ router = APIRouter(prefix="/auth", tags=["mobile / auth"])
 # ─── Token Refresh ───────────────────────────────────────────────────────────
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: Optional[str] = None
 
 
-@router.post("/refresh", summary="Refresh access token (mobile)")
+@router.post("/refresh", summary="Refresh access token (mobile and web)")
 def refresh_access_token(
     data: RefreshRequest,
     request: Request,
+    response: Response,
     db: Session = Depends(get_db),
 ):
     """
@@ -48,7 +49,12 @@ def refresh_access_token(
     """
     rate_limit_auth(request)
 
-    payload = decode_refresh_token(data.refresh_token)
+    # Accept refresh token from JSON body (mobile) or httpOnly cookie (web)
+    raw_refresh = data.refresh_token or request.cookies.get("refresh_token")
+    if not raw_refresh:
+        raise HTTPException(status_code=401, detail="Refresh token required")
+
+    payload = decode_refresh_token(raw_refresh)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
@@ -88,10 +94,21 @@ def refresh_access_token(
         resource_type="auth",
         user_id=user.id,
         user_role=user.role,
-        details="Mobile token refreshed",
+        details="Token refreshed",
         ip_address=get_client_ip(request),
     )
     db.commit()
+
+    # Set updated httpOnly cookies for web clients
+    cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": IS_PRODUCTION}
+    response.set_cookie(
+        key="access_token", value=new_access_token,
+        max_age=JWT_EXPIRE_HOURS * 3600, path="/", **cookie_kwargs,
+    )
+    response.set_cookie(
+        key="refresh_token", value=new_refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400, path="/auth/refresh", **cookie_kwargs,
+    )
 
     return {
         "token": new_access_token,
