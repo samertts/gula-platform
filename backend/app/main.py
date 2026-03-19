@@ -265,13 +265,28 @@ def health():
 @app.get("/health/ready", tags=["system"])
 def readiness():
     """Kubernetes-style readiness probe - returns 503 if not ready to serve traffic."""
+    from .security.redis_client import cache
+
     db_ok = check_db_connection()
     if not db_ok:
         return JSONResponse(
             status_code=503,
             content={"status": "not_ready", "reason": "database_unavailable"},
         )
-    return {"status": "ready"}
+
+    redis_ok = True
+    try:
+        cache.set("_health", "1", ex=10)
+    except Exception:
+        redis_ok = False
+
+    if not redis_ok:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "reason": "redis_unavailable"},
+        )
+
+    return {"status": "ready", "database": "ok", "cache": "ok"}
 
 
 @app.get("/health/live", tags=["system"])

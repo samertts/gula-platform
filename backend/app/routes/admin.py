@@ -245,27 +245,34 @@ def ensure_master_admin():
             return
 
         email = os.getenv("GULA_ADMIN_EMAIL", "admin@gula-platform.org")
-        password = os.getenv("GULA_ADMIN_PASSWORD")
-        if not password:
-            import secrets
-            password = secrets.token_urlsafe(24)
-            # SECURITY: Output to stderr/Docker logs only - never write to filesystem
-            import sys
-            print(
-                f"\n{'='*60}\n"
-                f"[GULA FIRST-RUN] Master admin auto-created:\n"
-                f"  Email:    {email}\n"
-                f"  Password: {password}\n"
-                f"  ACTION:   Set GULA_ADMIN_PASSWORD in .env and restart\n"
-                f"{'='*60}\n",
-                file=sys.stderr,
-                flush=True,
-            )
-            logger.warning(
-                "GULA_ADMIN_PASSWORD not set. Temporary password printed to stderr. "
-                "Set GULA_ADMIN_PASSWORD in .env immediately."
-            )
-        name = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
+        name  = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
+
+        # Prefer pre-hashed password (no plaintext in env) → fall back to plaintext
+        password_hash = os.getenv("GULA_ADMIN_PASSWORD_HASH")
+        if password_hash:
+            logger.info("Master admin: using pre-hashed password from GULA_ADMIN_PASSWORD_HASH")
+        else:
+            plaintext = os.getenv("GULA_ADMIN_PASSWORD")
+            if not plaintext:
+                import secrets, sys
+                plaintext = secrets.token_urlsafe(24)
+                print(
+                    f"\n{'='*60}\n"
+                    f"[GULA FIRST-RUN] Master admin auto-created:\n"
+                    f"  Email:    {email}\n"
+                    f"  Password: {plaintext}\n"
+                    f"  ACTION:   Set GULA_ADMIN_PASSWORD_HASH in .env and restart\n"
+                    f"  HASH CMD: docker exec gula-backend python -c \"\n"
+                    f"            import bcrypt; print(bcrypt.hashpw(b'YOUR_PASS', bcrypt.gensalt(12)).decode())\"\n"
+                    f"{'='*60}\n",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                logger.warning(
+                    "GULA_ADMIN_PASSWORD not set. Temp password printed to stderr. "
+                    "Set GULA_ADMIN_PASSWORD_HASH in .env immediately."
+                )
+            password_hash = hash_password(plaintext)
 
         # Create a platform-level lab for admin
         platform_lab = db.query(Lab).filter(Lab.name == "GULA Platform").first()
@@ -278,7 +285,7 @@ def ensure_master_admin():
             lab_id=platform_lab.id,
             name=name,
             email=email,
-            password_hash=hash_password(password),
+            password_hash=password_hash,
             role="master_admin",
             is_active=True,
         )
