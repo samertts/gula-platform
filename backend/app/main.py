@@ -377,13 +377,20 @@ def _migrate_perm_version():
     from sqlalchemy import text
     try:
         with engine.connect() as conn:
+            # Step 1: add the column if absent
             conn.execute(text(
-                "ALTER TABLE lab_users ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
+                "ALTER TABLE lab_users "
+                "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
+            ))
+            # Step 2: back-fill any NULL values left by a partial previous migration
+            conn.execute(text(
+                "UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"
             ))
             conn.commit()
         logger.info("perm_version column ensured on lab_users")
     except Exception as exc:
-        logger.warning("perm_version migration skipped: %s", exc)
+        logger.error("perm_version migration FAILED: %s — login will fail until resolved", exc)
+        raise  # re-raise so startup logs clearly show the error
 
 
 def _seed_test_types():
