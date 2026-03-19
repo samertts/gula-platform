@@ -65,13 +65,25 @@ else
     fail "Build failed — running containers are untouched"
 fi
 
-# ── Step 4: Start / update containers ────────────────────────────────────────
-log "Step 4/6: Starting containers..."
+# ── Step 4: Run database migrations ──────────────────────────────────────────
+log "Step 4/6: Running database migrations (alembic upgrade head)..."
+# Start only postgres first, run migrations, then bring up the rest
+docker compose up -d postgres 2>&1 | tee -a "$LOG_FILE"
+sleep 5  # wait for postgres to be ready
+if docker compose run --rm --no-deps gula-backend \
+        sh -c "cd /app && alembic upgrade head" 2>&1 | tee -a "$LOG_FILE"; then
+    ok "Migrations applied"
+else
+    fail "Migration failed — database is untouched, no containers started"
+fi
+
+# ── Step 5: Start / update containers ────────────────────────────────────────
+log "Step 5/7: Starting containers..."
 docker compose up -d --remove-orphans 2>&1 | tee -a "$LOG_FILE"
 ok "Containers started"
 
-# ── Step 5: Health check (wait up to HEALTH_TIMEOUT seconds) ─────────────────
-log "Step 5/6: Waiting for health check (timeout=${HEALTH_TIMEOUT}s)..."
+# ── Step 6: Health check (wait up to HEALTH_TIMEOUT seconds) ─────────────────
+log "Step 6/7: Waiting for health check (timeout=${HEALTH_TIMEOUT}s)..."
 START=$SECONDS
 until curl -sf "$HEALTH_URL" > /dev/null 2>&1; do
     if (( SECONDS - START >= HEALTH_TIMEOUT )); then
@@ -86,8 +98,8 @@ until curl -sf "$HEALTH_URL" > /dev/null 2>&1; do
 done
 ok "Health check passed (${HEALTH_URL})"
 
-# ── Step 6: Reload system nginx (pick up any config changes) ─────────────────
-log "Step 6/6: Reloading system nginx..."
+# ── Step 7: Reload system nginx (pick up any config changes) ─────────────────
+log "Step 7/7: Reloading system nginx..."
 if systemctl is-active --quiet nginx 2>/dev/null; then
     nginx -t 2>&1 | tee -a "$LOG_FILE" \
         && systemctl reload nginx \

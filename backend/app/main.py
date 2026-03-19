@@ -24,8 +24,10 @@ logger = logging.getLogger("gula")
 # Import all models so they are registered with Base
 from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Schema management: production uses Alembic migrations (alembic upgrade head).
+# create_all is kept as a safety net for fresh dev/test environments only.
+if not IS_PRODUCTION:
+    Base.metadata.create_all(bind=engine)
 
 # ─── API Documentation ─────────────────────────────────────────────────────
 # Enabled by default in non-production, or when ENABLE_API_DOCS=true in .env
