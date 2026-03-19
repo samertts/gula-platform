@@ -203,6 +203,10 @@ volumes:
     driver: local
   certbot-webroot:
     driver: local
+  # Audit anchor file - external to DB, survives DB reconstruction
+  # Provides cryptographic proof of audit log state at each checkpoint
+  audit-anchors:
+    driver: local
 
 # =============================================================================
 # NETWORKS
