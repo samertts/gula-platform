@@ -4,7 +4,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.auth import verify_password, create_token, create_refresh_token
+from ..security.auth import verify_password, create_token, create_refresh_token, build_token_payload
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
 from ..config import IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
@@ -67,17 +67,9 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         db.commit()
         raise HTTPException(status_code=403, detail="Your laboratory account is deactivated")
 
-    token = create_token({
-        "user_id": user.id,
-        "lab_id": user.lab_id,
-        "role": user.role,
-    })
-
-    refresh_token = create_refresh_token({
-        "user_id": user.id,
-        "lab_id": user.lab_id,
-        "role": user.role,
-    })
+    base_payload = build_token_payload(user)
+    token = create_token(base_payload)
+    refresh_token = create_refresh_token(base_payload)
 
     # Audit log (don't log password in details)
     log_action(

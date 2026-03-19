@@ -15,7 +15,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.patient import Patient
 from ..models.audit_log import AuditLog
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..security.auth import hash_password
 from ..services.audit_service import log_action
 
@@ -24,10 +24,8 @@ logger = logging.getLogger("gula.admin")
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-def require_admin(current_user: LabUser = Depends(get_current_user)):
+def require_admin(current_user: LabUser = Depends(require_permission("system:admin"))):
     """Only allow master_admin for platform-wide admin operations."""
-    if current_user.role != "master_admin":
-        raise HTTPException(status_code=403, detail="Master admin access required")
     return current_user
 
 
@@ -197,6 +195,8 @@ def toggle_user(user_id: int, admin: LabUser = Depends(require_admin), db: Sessi
     if user.role == "master_admin":
         raise HTTPException(status_code=403, detail="Cannot modify master admin")
     user.is_active = not user.is_active
+    # Invalidate any active JWTs for this user
+    user.perm_version = (user.perm_version or 1) + 1
     log_action(db, action="toggle_user", resource_type="user", resource_id=user.id,
                user_id=admin.id, user_role=admin.role)
     db.commit()
