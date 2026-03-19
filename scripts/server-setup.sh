@@ -229,7 +229,25 @@ else
   ok "Swap already configured"
 fi
 
-# ── 11. Docker system service (auto-start on reboot) ─────────────────────────
+# ── 11. Nginx systemd override: Restart=always ───────────────────────────────
+# By default systemd stops retrying nginx after consecutive failures.
+# This drop-in ensures nginx is ALWAYS restarted, with nginx-ensure.sh
+# running first to pick the right config (HTTP vs HTTPS).
+log "Configuring nginx systemd override..."
+mkdir -p /etc/systemd/system/nginx.service.d
+cat > /etc/systemd/system/nginx.service.d/gula-restart.conf << 'NGINXEOF'
+[Service]
+Restart=always
+RestartSec=5s
+# Run nginx-ensure.sh before each start: picks HTTP or HTTPS config
+# based on whether SSL certs exist. Prevents startup failures.
+ExecStartPre=/bin/bash /home/samertts/gula-platform/scripts/nginx-ensure.sh
+NGINXEOF
+systemctl daemon-reload
+systemctl enable nginx
+ok "nginx systemd override installed (Restart=always + smart config)"
+
+# ── 12. Docker system service (auto-start on reboot) ─────────────────────────
 cat > /etc/systemd/system/gula-platform.service << SERVICEEOF
 [Unit]
 Description=GULA Platform Docker Compose
@@ -254,6 +272,37 @@ SERVICEEOF
 systemctl daemon-reload
 systemctl enable gula-platform.service
 ok "Auto-start service configured"
+
+# ── 13. Cron: auto_heal.sh every 5 minutes ───────────────────────────────────
+log "Installing watchdog cron..."
+chmod +x "${REPO_DIR}/scripts/auto_heal.sh"
+chmod +x "${REPO_DIR}/scripts/nginx-ensure.sh"
+
+# Allow deploy user to call nginx commands without password
+SUDOERS_FILE="/etc/sudoers.d/gula-deploy"
+cat > "$SUDOERS_FILE" << SUDOEOF
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl restart nginx
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl start nginx
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reset-failed nginx
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/sbin/nginx
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/bash ${REPO_DIR}/scripts/nginx-ensure.sh
+SUDOEOF
+chmod 440 "$SUDOERS_FILE"
+
+# Install cron for deploy user
+CRON_JOB="*/5 * * * * GULA_DIR=${REPO_DIR} ${REPO_DIR}/scripts/auto_heal.sh >> /var/log/gula-heal.log 2>&1"
+( crontab -u "$DEPLOY_USER" -l 2>/dev/null | grep -v "auto_heal" ; echo "$CRON_JOB" ) \
+    | crontab -u "$DEPLOY_USER" -
+
+touch /var/log/gula-heal.log
+chown "${DEPLOY_USER}:${DEPLOY_USER}" /var/log/gula-heal.log
+ok "Watchdog cron installed (every 5 minutes)"
+
+# ── 14. Run nginx-ensure.sh now to start nginx correctly ─────────────────────
+log "Starting nginx with correct config..."
+bash "${REPO_DIR}/scripts/nginx-ensure.sh" && ok "nginx started" \
+    || warn "nginx-ensure.sh failed (may need SSL setup first)"
 
 # ── Summary ────────────────────────────────────────────────────────────────────
 SERVER_IP=$(hostname -I | awk '{print $1}')
