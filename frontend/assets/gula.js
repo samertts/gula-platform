@@ -898,6 +898,11 @@ function filterAlerts(el, hours) {
 
 // ---- COMPLIANCE & SECURITY PAGE ----
 async function pageCompliance() {
+  // Belt-and-suspenders: frontend role check (backend enforces this too via 403)
+  if (!G.user || (G.user.role !== 'admin' && G.user.role !== 'master_admin')) {
+    $('page').innerHTML = '<div class="empty"><p>ليس لديك صلاحية الوصول لهذه الصفحة</p></div>';
+    return;
+  }
   $('page').innerHTML = `
     <div class="page-header">
       <div class="page-header-row">
