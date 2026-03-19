@@ -119,13 +119,24 @@ until curl -sf "$HEALTH_URL" > /dev/null 2>&1; do
 done
 ok "Health check passed (${HEALTH_URL})"
 
-# ── Step 7: Reload system nginx (pick up any config changes) ─────────────────
-log "Step 7/7: Reloading system nginx..."
+# ── Step 7: Recreate api-gateway + reload system nginx ────────────────────────
+log "Step 7/7: Applying nginx configs..."
+
+# Force-recreate api-gateway so it always boots with the current config from disk.
+# `nginx -s reload` can fail silently or miss volume changes; recreate is definitive.
+log "Recreating api-gateway container..."
+if docker compose up -d --force-recreate --no-deps api-gateway 2>&1 | tee -a "$LOG_FILE"; then
+    ok "api-gateway recreated with current config"
+else
+    fail "api-gateway recreate failed — check docker compose logs above"
+fi
+
+# System nginx — reload to pick up any changes to /etc/nginx/sites-available/
 if systemctl is-active --quiet nginx 2>/dev/null; then
     nginx -t 2>&1 | tee -a "$LOG_FILE" \
         && systemctl reload nginx \
         && ok "System nginx reloaded" \
-        || log "WARN: nginx config test failed — not reloading (old config still active)"
+        || log "WARN: system nginx config test failed — not reloading (old config still active)"
 else
     log "INFO: system nginx not running, skipping reload"
 fi
