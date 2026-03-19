@@ -14,7 +14,7 @@ import logging
 import threading
 import time
 from typing import Optional
-from ..config import REDIS_URL
+from ..config import REDIS_URL, IS_PRODUCTION
 
 logger = logging.getLogger("gula.redis")
 
@@ -92,8 +92,25 @@ def _build_cache():
         try:
             return _RedisWrapper(REDIS_URL)
         except Exception as exc:
+            if IS_PRODUCTION:
+                # In production Redis is mandatory — perm_version and session
+                # invalidation depend on it.  Fail loudly so ops notices.
+                import sys
+                print(
+                    f"[GULA FATAL] Redis is required in production but is unreachable: {exc}\n"
+                    "Set REDIS_URL correctly or start the Redis container.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
             logger.warning("Redis unavailable (%s) — falling back to in-memory store", exc)
     else:
+        if IS_PRODUCTION:
+            import sys
+            print(
+                "[GULA FATAL] REDIS_URL must be set in production.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         logger.info("REDIS_URL not set — using in-memory store (not shared across workers)")
     return _MemoryStore()
 
