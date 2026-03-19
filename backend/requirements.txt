@@ -17,5 +17,5 @@ httpx>=0.27.0
 # Optional: for National ID card scanning
 # opencv-python-headless>=4.9.0
 # pytesseract>=0.3.10
-# Optional: for Redis-based rate limiting (production recommended)
-# redis>=5.0.0
+# Redis — required for production perm_version invalidation + rate limiting
+redis>=5.0.0
