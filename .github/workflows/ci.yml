@@ -2,9 +2,9 @@ name: CI - Build, Test & Security Scan
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, "claude/**"]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   # ─── Backend Tests ──────────────────────────────────────────────────────────
@@ -54,11 +54,12 @@ jobs:
           DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key-for-ci-only-not-used-in-prod
+          REFRESH_TOKEN_SECRET: test-refresh-secret-for-ci-only-not-used-in-prod
           ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
           ENV: test
         run: |
           cd backend
-          python -m pytest tests/ -v --tb=short 2>/dev/null || echo "No tests found (add tests to backend/tests/)"
+          python -m pytest tests/ -v --tb=short
 
   # ─── Security Scanning ─────────────────────────────────────────────────────
   security-scan:
@@ -77,27 +78,33 @@ jobs:
         run: |
           pip install safety bandit
 
-      - name: Check Python dependencies for vulnerabilities
+      - name: Check Python dependencies for known CVEs
         run: |
-          safety check -r backend/requirements.txt --output text || true
+          safety check -r backend/requirements.txt --output text
         continue-on-error: true
 
-      - name: Run Bandit security linter on backend
+      - name: Run Bandit SAST (fail on HIGH/CRITICAL severity)
         run: |
-          bandit -r backend/app/ -f json -o bandit-report.json || true
-          bandit -r backend/app/ -ll -ii
-        continue-on-error: true
+          bandit -r backend/app/ -f json -o bandit-report.json -ll -ii
+        continue-on-error: false
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+          retention-days: 30
 
       - name: Scan Dockerfiles with Hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: backend/Dockerfile
-          failure-threshold: warning
+          failure-threshold: error
         continue-on-error: true
 
-      - name: Check for secrets in code
+      - name: Check for hardcoded secrets
         run: |
-          # Simple grep-based secret detection
           echo "Scanning for potential hardcoded secrets..."
           FOUND=0
           for pattern in 'password\s*=' 'secret_key\s*=' 'api_key\s*=' 'token\s*='; do
@@ -117,10 +124,20 @@ jobs:
             echo "✓ No hardcoded secrets detected"
           fi
 
-  # ─── Docker Build Validation ───────────────────────────────────────────────
+      - name: Verify no /tmp password files
+        run: |
+          echo "Checking for insecure /tmp file writes..."
+          if grep -r '/tmp/' backend/app/ --include="*.py" | grep -v '#' | grep -v 'nginx_cache'; then
+            echo "⚠ Found /tmp writes in backend code - review required"
+            exit 1
+          else
+            echo "✓ No insecure /tmp writes found"
+          fi
+
+  # ─── Docker Build & Container Security Scan ────────────────────────────────
   docker-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -138,10 +155,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Scan backend image with Trivy
+      - name: Scan backend image with Trivy (fail on CRITICAL)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: gula-backend:ci
           format: table
           severity: CRITICAL,HIGH
-          exit-code: 0
+          exit-code: 1
+          ignore-unfixed: true
+
+      - name: Verify container runs as non-root
+        run: |
+          USER=$(docker run --rm --entrypoint whoami gula-backend:ci 2>/dev/null || echo "unknown")
+          echo "Container user: $USER"
+          if [ "$USER" = "root" ]; then
+            echo "SECURITY FAIL: Container is running as root!"
+            exit 1
+          fi
+          echo "✓ Container runs as non-root user: $USER"

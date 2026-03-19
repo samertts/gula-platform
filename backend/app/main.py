@@ -343,6 +343,7 @@ def on_startup():
 
     _seed_test_types()
     _ensure_master_admin()
+    _ensure_audit_log_immutable()
     logger.info("GULA Platform %s ready", APP_VERSION)
 
 
@@ -398,3 +399,41 @@ def _ensure_master_admin():
     """Create master admin on first startup if not exists."""
     from .routes.admin import ensure_master_admin
     ensure_master_admin()
+
+
+def _ensure_audit_log_immutable():
+    """Apply immutability trigger to audit_logs table (ISO 27001 A.8.15).
+
+    Ensures audit records cannot be modified or deleted after creation.
+    Safe to call multiple times (CREATE OR REPLACE + DROP IF EXISTS).
+    """
+    from .database import SessionLocal
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text("""
+            CREATE OR REPLACE FUNCTION prevent_audit_modification()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                RAISE EXCEPTION
+                    'SECURITY: Audit log records are immutable. Attempted % on audit_logs',
+                    TG_OP
+                    USING ERRCODE = 'restrict_violation';
+                RETURN NULL;
+            END;
+            $$ LANGUAGE plpgsql;
+        """))
+        db.execute(text("""
+            DROP TRIGGER IF EXISTS audit_logs_immutable ON audit_logs;
+            CREATE TRIGGER audit_logs_immutable
+                BEFORE UPDATE OR DELETE ON audit_logs
+                FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+        """))
+        db.commit()
+        logger.info("Audit log immutability trigger applied")
+    except Exception as e:
+        db.rollback()
+        logger.warning("Could not apply audit immutability trigger: %s", e)
+    finally:
+        db.close()
