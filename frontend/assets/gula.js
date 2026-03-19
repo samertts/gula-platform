@@ -186,7 +186,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ---- Router ----
-const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, qc: pageQC, alerts: pageAlerts, lab: pageLab, admin: pageAdmin };
+const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, qc: pageQC, alerts: pageAlerts, lab: pageLab, compliance: pageCompliance, admin: pageAdmin };
 
 function navigate(page) {
   if (!routes[page]) page = 'dashboard';
@@ -896,6 +896,168 @@ function filterAlerts(el, hours) {
   loadAlerts(hours);
 }
 
+// ---- COMPLIANCE & SECURITY PAGE ----
+async function pageCompliance() {
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div>
+          <h2>الأمن والامتثال</h2>
+          <p>لوحة تدقيق ISO 27001 — حالة النظام الأمنية الشاملة</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="pageCompliance()">↻ تحديث</button>
+      </div>
+    </div>
+    <div id="complianceBody"><div class="spinner"></div></div>
+  `;
+  try {
+    const [status, timeSyncData] = await Promise.all([
+      api('/compliance/system-status'),
+      api('/compliance/time-sync').catch(() => null)
+    ]);
+
+    const svc = status.services || {};
+    const sec = status.security || {};
+    const data = status.data || {};
+    const checklist = status.compliance_checklist || {};
+    const alerts = status.alerts || [];
+
+    function badge(ok, passLabel = 'PASS', failLabel = 'FAIL') {
+      if (ok === true || ok === 'pass') return `<span class="badge badge-green">${passLabel}</span>`;
+      if (ok === false || ok === 'fail') return `<span class="badge badge-red">${failLabel}</span>`;
+      return `<span class="badge badge-gray">غير معروف</span>`;
+    }
+    function statusDot(s) {
+      const color = s === 'pass' ? 'var(--success)' : s === 'fail' ? 'var(--danger)' : 'var(--warning)';
+      return `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-left:6px"></span>`;
+    }
+    function checkItem(key, label) {
+      const val = checklist[key] || '';
+      const isPass = val.startsWith('PASS');
+      const isPending = val.startsWith('PENDING');
+      const color = isPass ? 'var(--success)' : isPending ? 'var(--warning)' : 'var(--text-dim)';
+      const icon = isPass ? '✓' : isPending ? '⏳' : '✗';
+      return `<tr>
+        <td style="color:${color};font-weight:600">${icon}</td>
+        <td>${label}</td>
+        <td style="color:${color};font-size:.8rem">${esc(val)}</td>
+      </tr>`;
+    }
+
+    $('complianceBody').innerHTML = `
+      ${alerts.length ? `
+      <div class="alert-banner" style="margin-bottom:16px">
+        <div class="alert-icon">!</div>
+        <div>
+          <strong>${alerts.length} تنبيه أمني</strong><br>
+          ${alerts.map(a => `<div style="font-size:.85rem;margin-top:4px">${esc(a)}</div>`).join('')}
+        </div>
+      </div>` : `
+      <div style="background:var(--success-bg);border:1px solid var(--success);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;color:var(--success)">
+        <strong>✓</strong> جميع الأنظمة تعمل بشكل طبيعي — لا تنبيهات أمنية
+      </div>`}
+
+      <div class="stats-grid">
+        <div class="stat-card ${svc.database?.status === 'pass' ? 'green' : 'red'}">
+          <div class="stat-label">قاعدة البيانات</div>
+          <div class="stat-value" style="font-size:1.4rem">${svc.database?.status === 'pass' ? '✓' : '✗'}</div>
+          <div class="stat-sub">${svc.database?.latency_ms ? `زمن الاستجابة: ${svc.database.latency_ms} ms` : 'غير متاح'}</div>
+        </div>
+        <div class="stat-card ${sec.audit_chain?.status === 'pass' ? 'green' : 'red'}">
+          <div class="stat-label">سلسلة التدقيق</div>
+          <div class="stat-value" style="font-size:1.4rem">${sec.audit_chain?.status === 'pass' ? '✓' : '✗'}</div>
+          <div class="stat-sub">${sec.audit_chain?.entries_checked || 0} سجل مُتحقق</div>
+        </div>
+        <div class="stat-card ${sec.audit_anchor?.status === 'pass' ? 'green' : 'yellow'}">
+          <div class="stat-label">نقطة الارتساء الخارجية</div>
+          <div class="stat-value" style="font-size:1.4rem">${sec.audit_anchor?.status === 'pass' ? '✓' : '⏳'}</div>
+          <div class="stat-sub">${sec.audit_anchor?.total_anchors || 0} نقطة تحقق</div>
+        </div>
+        <div class="stat-card ${sec.time_sync?.status === 'pass' ? 'green' : sec.time_sync?.status === 'fail' ? 'red' : 'yellow'}">
+          <div class="stat-label">مزامنة الوقت NTP</div>
+          <div class="stat-value" style="font-size:1.4rem">${sec.time_sync?.status === 'pass' ? '✓' : '?'}</div>
+          <div class="stat-sub">${timeSyncData?.ntp_status === 'synchronized' ? 'متزامن' : 'يحتاج تفعيل'}</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:16px">
+        <div class="card">
+          <div class="card-title">تفاصيل الأمان</div>
+          <table style="width:100%;font-size:.9rem;border-collapse:collapse">
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">إجمالي سجلات التدقيق</td>
+                <td style="padding:10px 0;text-align:left;font-weight:600">${data.total_audit_entries?.toLocaleString('ar') || 0}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">فشل تسجيل الدخول (24 ساعة)</td>
+                <td style="padding:10px 0;text-align:left;font-weight:600;color:${(data.failed_logins_24h || 0) > 10 ? 'var(--danger)' : 'var(--text)'}">${data.failed_logins_24h || 0}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">سلامة سلسلة الهاش</td>
+                <td style="padding:10px 0;text-align:left">${badge(sec.audit_chain?.status === 'pass', 'سليمة', 'مُخترقة')}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">آخر نقطة ارتساء</td>
+                <td style="padding:10px 0;text-align:left;font-size:.8rem">${sec.audit_anchor?.latest_anchor_id ? `سجل #${sec.audit_anchor.latest_anchor_id}` : 'لا توجد بعد'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">وضع البيئة</td>
+                <td style="padding:10px 0;text-align:left">${badge(status.environment === 'production', 'إنتاج', 'تطوير')}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;color:var(--text-dim)">إصدار المنصة</td>
+                <td style="padding:10px 0;text-align:left;font-family:monospace">${esc(status.platform_version || '-')}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">قائمة الامتثال</div>
+          <table style="width:100%;font-size:.9rem;border-collapse:collapse">
+            <tbody>
+              ${checkItem('fhir_r4', 'HL7 FHIR R4 — بيانات المختبر')}
+              ${checkItem('dhis2_export', 'DHIS2 — تقارير وزارة الصحة')}
+              ${checkItem('audit_immutability', 'سجل التدقيق غير قابل للتعديل')}
+              ${checkItem('rbac', 'التحكم في الوصول RBAC')}
+              ${checkItem('secure_cookies', 'حماية الجلسات (httpOnly Cookies)')}
+              ${checkItem('docs_protected', 'حماية صفحة التوثيق /docs')}
+              ${checkItem('cmc_registration', 'تسجيل هيئة الاتصالات CMC')}
+              ${checkItem('iso_27001', 'شهادة ISO 27001')}
+              ${checkItem('pentest', 'اختبار الاختراق السنوي')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      ${timeSyncData ? `
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">حالة وقت الخادم (NTP)</div>
+        <div class="kpi-row">
+          <div class="kpi"><span class="kpi-val" style="font-size:.95rem;font-family:monospace">${esc(timeSyncData.server_time_utc?.replace('T',' ').split('.')[0] || '-')} UTC</span><span class="kpi-label">وقت الخادم الحالي</span></div>
+          <div class="kpi"><span class="kpi-val">${timeSyncData.ntp_synchronized ? '✓ متزامن' : '✗ غير متزامن'}</span><span class="kpi-label">حالة NTP</span></div>
+          <div class="kpi"><span class="kpi-val" style="font-size:.8rem;color:${timeSyncData.ntp_synchronized ? 'var(--success)' : 'var(--danger)'}">${esc(timeSyncData.recommendation || '-')}</span><span class="kpi-label">التوصية</span></div>
+        </div>
+      </div>` : ''}
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title" style="margin-bottom:12px">معلومات للمراجعين الحكوميين</div>
+        <div style="font-size:.85rem;color:var(--text-dim);line-height:1.8">
+          <div>🔗 FHIR DiagnosticReport: <code style="color:var(--accent)">/api/compliance/fhir/diagnostic-report/{id}</code></div>
+          <div>🔗 FHIR ServiceRequest: <code style="color:var(--accent)">/api/compliance/fhir/service-request/{id}</code></div>
+          <div>🔗 DHIS2 تصدير: <code style="color:var(--accent)">/api/compliance/dhis2/aggregate</code></div>
+          <div>🔗 سلامة سلسلة الهاش: <code style="color:var(--accent)">/api/compliance/audit-integrity</code></div>
+          <div style="margin-top:8px;color:var(--text-muted)">تقرير الأمان الكامل: <code>/api/compliance/security-report</code> — متاح للمراجعين المخولين فقط</div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    $('complianceBody').innerHTML = `<div class="empty"><p>تعذر تحميل بيانات الامتثال</p><button class="btn btn-outline" style="margin-top:12px" onclick="pageCompliance()">إعادة المحاولة</button></div>`;
+  }
+}
+
+
 // ---- Init ----
 function init() {
   if (!checkAuth()) return;
@@ -905,6 +1067,8 @@ function init() {
   $('userRole').textContent = G.user.role === 'master_admin' ? 'مدير عام' : G.user.role === 'admin' ? 'مدير مختبر' : 'موظف';
   $('userAvatar').textContent = (G.user.name || 'م')[0];
 
+  // Show compliance nav for admin and master_admin
+  if (G.user.role === 'admin' || G.user.role === 'master_admin') $('complianceNav').style.display = '';
   // Show admin nav for master_admin
   if (G.user.role === 'master_admin') $('adminNav').style.display = '';
 

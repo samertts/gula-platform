@@ -11,6 +11,7 @@ Root Anchor System (external checkpoint):
   the entire audit_logs table and rebuilds the chain, the anchor file records
   what the hash WAS at each checkpoint — making the attack detectable.
 """
+import hmac
 import json
 import hashlib
 import os
@@ -30,6 +31,22 @@ _GENESIS_HASH = "0" * 64
 # In production: mount a dedicated volume for this file
 _ANCHOR_FILE = Path(os.getenv("AUDIT_ANCHOR_FILE", "/app/data/audit_anchors.log"))
 _ANCHOR_INTERVAL = 100  # Write anchor checkpoint every N entries
+
+# HMAC key for signing anchor lines — if someone edits the anchor file,
+# the HMAC signature will no longer match, making tampering detectable.
+# Falls back to a deterministic key if NID_HMAC_KEY is not set.
+_ANCHOR_HMAC_KEY = os.getenv("NID_HMAC_KEY", "gula-anchor-hmac-fallback").encode("utf-8")
+
+
+def _anchor_hmac(line_without_newline: str) -> str:
+    """Compute HMAC-SHA256 of an anchor line for tamper detection."""
+    return hmac.new(_ANCHOR_HMAC_KEY, line_without_newline.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _verify_anchor_hmac(line_without_newline: str, expected_hmac: str) -> bool:
+    """Constant-time HMAC verification."""
+    actual = _anchor_hmac(line_without_newline)
+    return hmac.compare_digest(actual, expected_hmac)
 
 
 def _compute_chain_hash(prev_hash: str, entry: AuditLog) -> str:
@@ -63,26 +80,33 @@ def _write_anchor(entry_id: int, chain_hash: str) -> None:
     """Append a hash anchor checkpoint to the external anchor file.
 
     The anchor file is append-only outside the database.
-    Format: ISO timestamp | entry_id | chain_hash
+    Format: ISO timestamp | entry_id | chain_hash | HMAC-SHA256(line)
     Even if the entire DB is deleted and rebuilt, this file proves
     what the chain hash was at each checkpoint interval.
+    The HMAC signature detects if the anchor file itself has been tampered.
     """
     try:
         _ANCHOR_FILE.parent.mkdir(parents=True, exist_ok=True)
-        line = (
+        # Build the data portion (without HMAC) then sign it
+        data = (
             f"{datetime.now(timezone.utc).isoformat()}|"
             f"{entry_id}|"
-            f"{chain_hash}\n"
+            f"{chain_hash}"
         )
+        sig = _anchor_hmac(data)
         with open(_ANCHOR_FILE, "a", encoding="utf-8") as f:
-            f.write(line)
+            f.write(f"{data}|{sig}\n")
     except Exception as e:
         # Don't fail audit logging if anchor write fails, but warn loudly
         logger.error("AUDIT ANCHOR WRITE FAILED (id=%s): %s", entry_id, e)
 
 
 def get_latest_anchor() -> dict | None:
-    """Read the most recent anchor from the external anchor file."""
+    """Read the most recent anchor from the external anchor file.
+
+    Each anchor line is: timestamp|entry_id|chain_hash|hmac
+    The HMAC is verified — a tampered line is flagged.
+    """
     try:
         if not _ANCHOR_FILE.exists():
             return None
@@ -90,14 +114,33 @@ def get_latest_anchor() -> dict | None:
             lines = [l.strip() for l in f.readlines() if l.strip()]
         if not lines:
             return None
+
+        # Count HMAC failures across all lines
+        hmac_failures = 0
+        for raw_line in lines:
+            parts = raw_line.split("|")
+            if len(parts) == 4:
+                data_part = "|".join(parts[:3])
+                if not _verify_anchor_hmac(data_part, parts[3]):
+                    hmac_failures += 1
+            # 3-part lines are legacy (written before HMAC was added) — skip HMAC check
+
         last = lines[-1].split("|")
-        if len(last) != 3:
+        # Support both 3-part (legacy) and 4-part (HMAC-signed) formats
+        if len(last) == 4:
+            hmac_ok = _verify_anchor_hmac("|".join(last[:3]), last[3])
+        elif len(last) == 3:
+            hmac_ok = None  # legacy line — no HMAC to verify
+        else:
             return None
+
         return {
             "timestamp": last[0],
             "entry_id": int(last[1]),
             "chain_hash": last[2],
             "total_anchors": len(lines),
+            "hmac_verified": hmac_ok,
+            "hmac_failures": hmac_failures,
             "anchor_file": str(_ANCHOR_FILE),
         }
     except Exception as e:
