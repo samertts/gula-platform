@@ -152,20 +152,30 @@ fi
 docker rm -f "${TEST_CONTAINER}" > /dev/null
 log "Test container removed."
 
-# ─── 7. Write JSON result (consumed by /compliance/system-status) ─────────────
+# ─── 7. Write HMAC-signed JSON result ────────────────────────────────────────
+# The JSON is signed so /compliance/system-status can detect tampering.
+# Signature = HMAC-SHA256(NID_HMAC_KEY, payload_without_signature).
 mkdir -p "$(dirname "${RESULT_JSON}")"
-cat > "${RESULT_JSON}" <<JSON
-{
-  "status": "PASS",
-  "tested_at": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
-  "tested_at_human": "$(date -u '+%Y-%m-%d %H:%M:%S UTC')",
-  "restore_seconds": ${RESTORE_SECONDS},
-  "backup_file": "$(basename "${BACKUP_FILE}")",
-  "tested_by": "${USER:-system}",
-  "report_path": "${REPORT}"
-}
+
+PAYLOAD=$(cat <<JSON
+{"status":"PASS","tested_at":"$(date -u '+%Y-%m-%dT%H:%M:%SZ')","tested_at_human":"$(date -u '+%Y-%m-%d %H:%M:%S UTC')","restore_seconds":${RESTORE_SECONDS},"backup_file":"$(basename "${BACKUP_FILE}")","tested_by":"${USER:-system}","report_path":"${REPORT}"}
 JSON
-log "JSON result written to: ${RESULT_JSON}"
+)
+PAYLOAD="${PAYLOAD%$'\n'}"  # strip trailing newline
+
+# Compute HMAC-SHA256 using NID_HMAC_KEY from env (or fallback)
+HMAC_KEY="${NID_HMAC_KEY:-gula-anchor-hmac-fallback}"
+SIGNATURE=$(echo -n "${PAYLOAD}" | openssl dgst -sha256 -hmac "${HMAC_KEY}" | awk '{print $2}')
+
+# Write final signed JSON (pretty-printed for readability)
+python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+data['signature'] = sys.argv[2]
+print(json.dumps(data, indent=2, ensure_ascii=False))
+" "${PAYLOAD}" "${SIGNATURE}" > "${RESULT_JSON}"
+
+log "JSON result written (HMAC-signed): ${RESULT_JSON}"
 
 # ─── 8. Write summary ────────────────────────────────────────────────────────
 log "============================================================"

@@ -1038,12 +1038,14 @@ async function pageCompliance() {
       </div>
 
       ${timeSyncData ? `
-      <div class="card" style="margin-top:16px">
+      <div class="card" style="margin-top:16px;${timeSyncData.drift_warning ? 'border-color:var(--warning)' : ''}">
         <div class="card-title">حالة وقت الخادم (NTP)</div>
+        ${timeSyncData.drift_warning ? `<div style="background:var(--warning-bg);border:1px solid var(--warning);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;font-size:.85rem;color:var(--warning)">⚠ DRIFT DETECTED — الانحراف ${esc(timeSyncData.ntp_offset_human || '')} يتجاوز الحد المسموح (${timeSyncData.max_offset_seconds}s)</div>` : ''}
         <div class="kpi-row">
           <div class="kpi"><span class="kpi-val" style="font-size:.95rem;font-family:monospace">${esc(timeSyncData.server_time_utc?.replace('T',' ').split('.')[0] || '-')} UTC</span><span class="kpi-label">وقت الخادم الحالي</span></div>
-          <div class="kpi"><span class="kpi-val">${timeSyncData.ntp_synchronized ? '✓ متزامن' : '✗ غير متزامن'}</span><span class="kpi-label">حالة NTP</span></div>
-          <div class="kpi"><span class="kpi-val" style="font-size:.8rem;color:${timeSyncData.ntp_synchronized ? 'var(--success)' : 'var(--danger)'}">${esc(timeSyncData.recommendation || '-')}</span><span class="kpi-label">التوصية</span></div>
+          <div class="kpi"><span class="kpi-val" style="color:${timeSyncData.ntp_synchronized ? (timeSyncData.drift_warning ? 'var(--warning)' : 'var(--success)') : 'var(--danger)'}">${timeSyncData.ntp_synchronized ? (timeSyncData.drift_warning ? '⚠ متزامن (drift)' : '✓ متزامن') : '✗ غير متزامن'}</span><span class="kpi-label">حالة NTP</span></div>
+          ${timeSyncData.ntp_offset_human ? `<div class="kpi"><span class="kpi-val" style="font-family:monospace;color:${timeSyncData.drift_warning ? 'var(--warning)' : 'var(--success)'}">${esc(timeSyncData.ntp_offset_human)}</span><span class="kpi-label">الانحراف الحالي</span></div>` : ''}
+          <div class="kpi"><span class="kpi-val" style="font-size:.75rem;color:${timeSyncData.drift_warning ? 'var(--warning)' : timeSyncData.ntp_synchronized ? 'var(--success)' : 'var(--danger)'}">${esc(timeSyncData.audit_impact || '-')}</span><span class="kpi-label">أثر التدقيق</span></div>
         </div>
       </div>` : ''}
 
