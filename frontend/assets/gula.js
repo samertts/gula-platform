@@ -1276,22 +1276,24 @@ async function loadEmployees() {
       el.innerHTML = '<div class="empty"><p>لا يوجد موظفون مسجلون في هذا المختبر</p></div>';
       return;
     }
+    const roleLabel = { admin: 'مدير', staff: 'موظف', technician: 'تقني', master_admin: 'مدير عام' };
+    const roleBadge = { admin: 'badge-blue', staff: 'badge-gray', technician: 'badge-blue', master_admin: 'badge-blue' };
     el.innerHTML = `
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>الهاتف</th><th>الحالة</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>الحالة</th><th>تاريخ الإضافة</th><th></th></tr></thead>
         <tbody>${employees.map((emp, i) => `<tr>
           <td>${i + 1}</td>
-          <td><strong>${esc(emp.name || emp.full_name || '-')}</strong></td>
+          <td><strong>${esc(emp.name || '-')}</strong></td>
           <td dir="ltr" style="color:var(--text-dim)">${esc(emp.email || '-')}</td>
-          <td>${emp.role === 'admin' ? '<span class="badge badge-blue">مدير</span>' : emp.role === 'master_admin' ? '<span class="badge badge-blue">مدير عام</span>' : '<span class="badge badge-gray">موظف</span>'}</td>
-          <td dir="ltr">${esc(emp.phone || '-')}</td>
+          <td><span class="badge ${roleBadge[emp.role] || 'badge-gray'}">${esc(roleLabel[emp.role] || emp.role)}</span></td>
           <td>${emp.is_active !== false ? '<span class="badge badge-green">نشط</span>' : '<span class="badge badge-red">معطل</span>'}</td>
+          <td>${formatDate(emp.created_at)}</td>
           <td>
             ${emp.id !== G.user?.id ? `<button class="btn btn-outline btn-sm" onclick="toggleEmployee(${parseInt(emp.id)},${emp.is_active !== false})">${emp.is_active !== false ? 'تعطيل' : 'تفعيل'}</button>` : '<span style="color:var(--text-muted);font-size:.8rem">أنت</span>'}
           </td>
         </tr>`).join('')}</tbody>
       </table></div>
-      <div style="padding:12px 0;color:var(--text-muted);font-size:.8rem;text-align:center">${employees.length} موظف</div>
+      <div style="padding:12px 0;color:var(--text-muted);font-size:.8rem;text-align:center">${employees.length} موظف مسجل</div>
     `;
   } catch (e) {
     $('empTable').innerHTML = `<div class="empty"><p>تعذر تحميل قائمة الموظفين: ${esc(e.message)}</p></div>`;
@@ -1307,12 +1309,12 @@ function openAddEmployee() {
       </div>
       <div class="form-row">
         <div class="field"><label>كلمة المرور *</label><input id="empPw" type="password" required minlength="8" placeholder="8 أحرف على الأقل (أحرف وأرقام)"></div>
-        <div class="field"><label>رقم الهاتف</label><input id="empPhone" dir="ltr" maxlength="15" placeholder="07xxxxxxxxx"></div>
       </div>
       <div class="form-row">
         <div class="field"><label>الدور الوظيفي</label>
           <select id="empRole">
-            <option value="employee">موظف — يدخل البيانات ويرى النتائج</option>
+            <option value="staff">موظف — يدخل البيانات ويرى النتائج</option>
+            <option value="technician">تقني — تشغيل الأجهزة وإدخال النتائج</option>
             <option value="admin">مدير — صلاحيات إدارية كاملة</option>
           </select>
         </div>
@@ -1339,7 +1341,6 @@ async function saveEmployee(e) {
       name: $('empName').value.trim(),
       email: $('empEmail').value.trim(),
       password: pw,
-      phone: $('empPhone').value.trim() || undefined,
       role: $('empRole').value,
     }) });
     closeModal(); toast('تم إضافة الموظف بنجاح'); loadEmployees();
@@ -1354,6 +1355,7 @@ async function toggleEmployee(id, isActive) {
     async () => {
       try {
         await api(`/labs/me/employees/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: !isActive }) });
+
         toast(isActive ? 'تم تعطيل الموظف' : 'تم تفعيل الموظف');
         loadEmployees();
       } catch (e) { toast(e.message, 'error'); }

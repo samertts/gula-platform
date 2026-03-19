@@ -12,7 +12,7 @@ from typing import Optional
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.lab import Lab
-from ..security.auth import decode_refresh_token, create_token, create_refresh_token
+from ..security.auth import decode_refresh_token, create_token, create_refresh_token, verify_password, hash_password
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
@@ -115,6 +115,29 @@ def refresh_access_token(
         "refresh_token": new_refresh_token,
         "token_type": "Bearer",
     }
+
+
+# ─── Change Password ─────────────────────────────────────────────────────────
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password", summary="Change current user password")
+def change_password(
+    data: ChangePasswordRequest,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Change the password for the currently authenticated user."""
+    if not verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="كلمة المرور الحالية غير صحيحة")
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل")
+    current_user.password_hash = hash_password(data.new_password)
+    db.commit()
+    return {"message": "تم تغيير كلمة المرور بنجاح"}
 
 
 # ─── App Info ────────────────────────────────────────────────────────────────
