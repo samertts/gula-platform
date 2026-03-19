@@ -15,3 +15,6 @@ class AuditLog(Base):
     details = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    # Tamper-detection: SHA-256(prev_chain_hash + this_record_data)
+    # Any modification to a record or its predecessors breaks the chain.
+    chain_hash = Column(String(64), nullable=True, index=True)

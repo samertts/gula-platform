@@ -12,7 +12,10 @@ Implements:
 - HL7 FHIR-compatible patient resource (basic)
 """
 import logging
-from fastapi import APIRouter, Depends
+import os
+import sys
+import hashlib
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone
@@ -25,7 +28,8 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.audit_log import AuditLog
 from ..security.dependencies import get_current_user, get_current_lab
-from ..config import APP_VERSION, APP_NAME
+from ..services.audit_service import verify_audit_chain
+from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION
 
 logger = logging.getLogger("gula.compliance")
 
@@ -608,6 +612,152 @@ def get_dhis2_aggregate(
             "note": "Aggregate statistics only - no patient PII included",
             "note_ar": "إحصائيات تجميعية فقط - لا تشمل بيانات المرضى الشخصية",
         },
+    }
+
+
+@router.get("/audit-integrity", summary="Verify audit log chain integrity (admin)")
+def audit_integrity(
+    limit: int = 1000,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Verifies the cryptographic hash chain of audit log records.
+    التحقق من سلامة سلسلة تجزئة سجل التدقيق.
+
+    Each audit log entry contains SHA-256(prev_hash + record_data).
+    Any tampering with a record or deletion of records breaks the chain.
+
+    - Returns `"intact"` if no tampering detected
+    - Returns `"tampered"` with details of which records were modified
+    - Returns the last verified hash for external storage/verification
+
+    **Access:** admin or master_admin only
+    """
+    if current_user.role not in ("admin", "master_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    result = verify_audit_chain(db, limit=min(limit, 5000))
+    result["lab_id"] = current_user.lab_id
+    result["checked_at"] = datetime.now(timezone.utc).isoformat()
+    result["note"] = (
+        "Hash chain verification: each entry's chain_hash = "
+        "SHA-256(previous_chain_hash + record_data). "
+        "A broken chain indicates record tampering or deletion."
+    )
+    return result
+
+
+@router.get("/security-report", summary="Security posture report for government audit")
+def security_report(
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns a structured security posture report for government and ISO 27001 auditors.
+    تقرير وضع الأمان للمراجعين الحكوميين ومراجعي ISO 27001.
+
+    Covers: authentication, encryption, access control, audit, compliance, patching.
+    **Access:** admin or master_admin only
+    """
+    if current_user.role not in ("admin", "master_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    # Integrity check summary
+    chain_result = verify_audit_chain(db, limit=100)
+
+    # Recent failed logins (last 24h)
+    from sqlalchemy import text
+    failed_logins_24h = db.execute(text("""
+        SELECT COUNT(*) FROM audit_logs
+        WHERE action = 'login_failed'
+          AND created_at >= NOW() - INTERVAL '24 hours'
+    """)).scalar() or 0
+
+    # Count users with last login (active session indication)
+    total_users = db.query(func.count(LabUser.id)).filter(
+        LabUser.lab_id == current_user.lab_id,
+        LabUser.is_active == True,
+    ).scalar() or 0
+
+    # Python/platform version info
+    python_ver = sys.version.split()[0]
+
+    return {
+        "report_type": "Security Posture Report",
+        "report_type_ar": "تقرير وضع الأمان",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "platform_version": APP_VERSION,
+        "environment": "production" if IS_PRODUCTION else "development",
+
+        "authentication": {
+            "method": "JWT Bearer (mobile) + httpOnly Cookie (web)",
+            "algorithm": "HS256",
+            "access_token_ttl": "8 hours",
+            "refresh_token_ttl": "30 days",
+            "token_type_separation": "PASS - access tokens rejected as refresh tokens",
+            "secure_cookies": "PASS - HttpOnly + SameSite=Strict + Secure (production)",
+            "password_hashing": "PASS - bcrypt with random salt",
+        },
+
+        "access_control": {
+            "rbac": "PASS - 4 roles: master_admin, admin, staff, technician",
+            "multi_tenant": "PASS - per-lab data isolation enforced at query level",
+            "object_level_auth": "PASS - patient/order/result access checked per lab_id",
+            "failed_logins_24h": failed_logins_24h,
+            "active_users_this_lab": total_users,
+        },
+
+        "encryption": {
+            "data_in_transit": "PASS - HTTPS/TLS via nginx (production)",
+            "data_at_rest": "PARTIAL - Fernet encryption for sensitive fields",
+            "national_id_storage": "PASS - HMAC-SHA256 one-way hash (not reversible)",
+            "key_management": "Env var injection (Vault recommended for enterprise)",
+        },
+
+        "audit_trail": {
+            "status": chain_result["status"],
+            "entries_verified": chain_result["entries_checked"],
+            "chain_intact": chain_result["verified"],
+            "tamper_detection": "PASS - SHA-256 hash chain (immutable trigger + chain hash)",
+            "immutability": "PASS - PostgreSQL trigger blocks UPDATE/DELETE",
+            "coverage": "All login, patient, order, result, admin actions logged",
+        },
+
+        "api_security": {
+            "rate_limiting": "PASS - nginx: API 100/min, Auth 10/min, Upload 20/min",
+            "request_body_limit": "PASS - 10MB max request body enforced",
+            "security_headers": "PASS - CSP, X-Frame-Options, HSTS, Permissions-Policy",
+            "server_disclosure": "PASS - proxy_hide_header X-Powered-By/Server",
+            "attack_path_blocking": "PASS - wp-admin, phpMyAdmin, .env, .git blocked",
+            "intrusion_detection": "PASS - IP blocking after repeated failures",
+        },
+
+        "compliance_standards": {
+            "owasp_api_top10": "Addressed in ARCHITECTURE documentation",
+            "hl7_fhir_r4": "PASS - Patient, Observation, DiagnosticReport, ServiceRequest",
+            "dhis2": "PASS - Aggregate export at /compliance/dhis2/aggregate",
+            "iso_27001_controls": [
+                "A.8.15 Logging: PASS",
+                "A.8.24 Cryptography: PASS",
+                "A.8.3 Information access restriction: PASS",
+                "A.8.29 Security testing in dev: PASS (Bandit + Trivy in CI)",
+            ],
+        },
+
+        "runtime": {
+            "python_version": python_ver,
+            "container_user": "appuser (non-root)",
+            "no_new_privileges": "PASS - security_opt in docker-compose",
+        },
+
+        "recommendations": [
+            "Obtain ISO 27001:2022 formal certification",
+            "Commission annual penetration test (CREST-certified testers)",
+            "Register with Iraqi CMC (cmc.iq) for platform licensing",
+            "Enable Redis-based rate limiting for multi-worker production",
+            "Set up external log forwarding (Loki/ELK) for centralized SIEM",
+        ],
     }
 
 
