@@ -103,25 +103,21 @@ jobs:
           failure-threshold: error
         continue-on-error: true
 
-      - name: Check for hardcoded secrets
+      - name: Scan for secrets with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        continue-on-error: true
+
+      - name: Verify no /tmp password files
         run: |
-          echo "Scanning for potential hardcoded secrets..."
-          FOUND=0
-          for pattern in 'password\s*=' 'secret_key\s*=' 'api_key\s*=' 'token\s*='; do
-            matches=$(grep -rn --include="*.py" --include="*.yml" --include="*.yaml" --include="*.json" \
-              -i "$pattern" . \
-              --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ \
-              --exclude="*.example" --exclude="ci.yml" 2>/dev/null | \
-              grep -v 'env\.' | grep -v 'os.environ' | grep -v 'getenv' | \
-              grep -v ':?' | grep -v '${' | grep -v '#' || true)
-            if [ -n "$matches" ]; then
-              echo "⚠ Potential secrets found for pattern '$pattern':"
-              echo "$matches"
-              FOUND=1
-            fi
-          done
-          if [ "$FOUND" -eq 0 ]; then
-            echo "✓ No hardcoded secrets detected"
+          echo "Checking for insecure /tmp file writes..."
+          if grep -r '/tmp/' backend/app/ --include="*.py" | grep -v '#' | grep -v 'nginx_cache'; then
+            echo "⚠ Found /tmp writes in backend code - review required"
+            exit 1
+          else
+            echo "✓ No insecure /tmp writes found"
           fi
 
       - name: Verify no /tmp password files

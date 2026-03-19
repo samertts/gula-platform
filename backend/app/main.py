@@ -112,6 +112,45 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RequestIDMiddleware)
 
 
+# ===== DOCS PROTECTION =====
+# /docs and /redoc are protected in production — accessible only to admins/master_admins.
+# This prevents unauthenticated exposure of API internals to the public internet.
+if IS_PRODUCTION and ENABLE_API_DOCS:
+    from .security.auth import decode_token
+
+    class DocsAuthMiddleware(BaseHTTPMiddleware):
+        """Require valid admin JWT to access /docs and /redoc in production."""
+        _PROTECTED = {"/docs", "/redoc", "/openapi.json"}
+
+        async def dispatch(self, request: Request, call_next):
+            if request.url.path not in self._PROTECTED:
+                return await call_next(request)
+
+            # Accept token from cookie or Authorization header
+            token = request.cookies.get("access_token")
+            if not token:
+                auth_header = request.headers.get("Authorization", "")
+                if auth_header.startswith("Bearer "):
+                    token = auth_header[7:]
+
+            if not token:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Authentication required to access API documentation"},
+                )
+
+            payload = decode_token(token)
+            if not payload or payload.get("role") not in ("admin", "master_admin"):
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Admin access required for API documentation"},
+                )
+
+            return await call_next(request)
+
+    app.add_middleware(DocsAuthMiddleware)
+
+
 # ===== CORS =====
 # Allow configured origins + mobile app schemes
 _allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
