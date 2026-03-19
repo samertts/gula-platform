@@ -186,7 +186,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ---- Router ----
-const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, qc: pageQC, alerts: pageAlerts, lab: pageLab, compliance: pageCompliance, admin: pageAdmin };
+const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, 'test-types': pageTestTypes, employees: pageEmployees, qc: pageQC, alerts: pageAlerts, lab: pageLab, profile: pageProfile, compliance: pageCompliance, admin: pageAdmin };
 
 function navigate(page) {
   if (!routes[page]) page = 'dashboard';
@@ -1093,6 +1093,355 @@ async function pageCompliance() {
 }
 
 
+// ---- TEST TYPES PAGE ----
+async function pageTestTypes() {
+  const canEdit = G.user?.role === 'admin' || G.user?.role === 'master_admin';
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div><h2>أنواع التحاليل</h2><p>قائمة التحاليل المعتمدة مع المدى الطبيعي</p></div>
+        ${canEdit ? '<button class="btn btn-primary" onclick="openAddTestType()">+ إضافة تحليل</button>' : ''}
+      </div>
+    </div>
+    <div class="search-bar">
+      <input class="search-input" id="ttSearch" placeholder="بحث باسم التحليل أو التصنيف..." oninput="searchTestTypes()">
+    </div>
+    <div class="card"><div id="ttTable"><div class="spinner"></div></div></div>
+  `;
+  loadTestTypes();
+}
+
+async function loadTestTypes(search = '') {
+  try {
+    const url = '/test-types' + (search ? '?search=' + encodeURIComponent(search) : '');
+    const d = await api(url);
+    const el = $('ttTable');
+    const types = Array.isArray(d) ? d : (d.test_types || d.items || []);
+    const canEdit = G.user?.role === 'admin' || G.user?.role === 'master_admin';
+    if (!types.length) {
+      el.innerHTML = '<div class="empty"><p>لا توجد تحاليل مسجلة</p></div>';
+      return;
+    }
+    const catLabel = { hematology: 'دموية', chemistry: 'كيمياء', microbiology: 'ميكروبيولوجيا', immunology: 'مناعة', urinalysis: 'بول', other: 'أخرى' };
+    el.innerHTML = `
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>اسم التحليل</th><th>الوحدة</th><th>أدنى</th><th>أعلى</th><th>التصنيف</th>${canEdit ? '<th></th>' : ''}</tr></thead>
+        <tbody>${types.map((t, i) => `<tr>
+          <td>${i + 1}</td>
+          <td><strong>${esc(t.name)}</strong></td>
+          <td><code style="color:var(--accent)">${esc(t.unit || '-')}</code></td>
+          <td>${t.normal_range_low != null ? esc(t.normal_range_low) : '-'}</td>
+          <td>${t.normal_range_high != null ? esc(t.normal_range_high) : '-'}</td>
+          <td>${t.category ? `<span class="badge badge-blue">${esc(catLabel[t.category] || t.category)}</span>` : '-'}</td>
+          ${canEdit ? `<td>
+            <button class="btn btn-outline btn-sm" onclick="openEditTestType(${parseInt(t.id)},'${escAttr(t.name)}','${escAttr(t.unit||'')}',${t.normal_range_low??''},'${escAttr(t.category||'')}',${t.normal_range_high??''})">تعديل</button>
+            <button class="btn btn-danger btn-sm" style="margin-right:4px" onclick="deleteTestType(${parseInt(t.id)})">حذف</button>
+          </td>` : ''}
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <div style="padding:12px 0;color:var(--text-muted);font-size:.8rem;text-align:center">${types.length} تحليل مسجل</div>
+    `;
+  } catch (e) {
+    $('ttTable').innerHTML = `<div class="empty"><p>تعذر تحميل قائمة التحاليل: ${esc(e.message)}</p></div>`;
+  }
+}
+
+let _ttSearchTimer;
+function searchTestTypes() {
+  clearTimeout(_ttSearchTimer);
+  const el = $('ttSearch');
+  if (!el) return;
+  _ttSearchTimer = setTimeout(() => loadTestTypes(el.value), 300);
+}
+
+function openAddTestType() {
+  openModal('إضافة تحليل جديد', `
+    <form onsubmit="saveTestType(event)">
+      <div class="form-row">
+        <div class="field"><label>اسم التحليل *</label><input id="ttName" required maxlength="100" placeholder="مثال: Hemoglobin"></div>
+        <div class="field"><label>الوحدة</label><input id="ttUnit" maxlength="20" placeholder="مثال: g/dL"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>أدنى حد طبيعي</label><input id="ttLow" type="number" step="any" min="0" placeholder="0.0"></div>
+        <div class="field"><label>أعلى حد طبيعي</label><input id="ttHigh" type="number" step="any" min="0" placeholder="0.0"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>التصنيف</label>
+          <select id="ttCat">
+            <option value="">-- اختر --</option>
+            <option value="hematology">دموية — Hematology</option>
+            <option value="chemistry">كيمياء — Chemistry</option>
+            <option value="microbiology">ميكروبيولوجيا — Microbiology</option>
+            <option value="immunology">مناعة — Immunology</option>
+            <option value="urinalysis">تحليل بول — Urinalysis</option>
+            <option value="other">أخرى</option>
+          </select>
+        </div>
+        <div class="field"><label>وصف (اختياري)</label><input id="ttDesc" maxlength="200"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveTTBtn">حفظ</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveTestType(e) {
+  e.preventDefault();
+  const btn = $('saveTTBtn');
+  btn.disabled = true;
+  try {
+    await api('/test-types', { method: 'POST', body: JSON.stringify({
+      name: $('ttName').value.trim(),
+      unit: $('ttUnit').value.trim() || undefined,
+      normal_range_low: $('ttLow').value !== '' ? parseFloat($('ttLow').value) : undefined,
+      normal_range_high: $('ttHigh').value !== '' ? parseFloat($('ttHigh').value) : undefined,
+      category: $('ttCat').value || undefined,
+      description: $('ttDesc').value.trim() || undefined,
+    }) });
+    closeModal(); toast('تم إضافة التحليل بنجاح'); loadTestTypes();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+function openEditTestType(id, name, unit, low, category, high) {
+  openModal('تعديل التحليل', `
+    <form onsubmit="updateTestType(event,${id})">
+      <div class="form-row">
+        <div class="field"><label>اسم التحليل *</label><input id="ettName" required value="${escAttr(name)}" maxlength="100"></div>
+        <div class="field"><label>الوحدة</label><input id="ettUnit" value="${escAttr(unit)}" maxlength="20"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>أدنى حد طبيعي</label><input id="ettLow" type="number" step="any" value="${low !== '' ? esc(low) : ''}"></div>
+        <div class="field"><label>أعلى حد طبيعي</label><input id="ettHigh" type="number" step="any" value="${high !== '' ? esc(high) : ''}"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="updateTTBtn">حفظ التعديل</button>
+      </div>
+    </form>
+  `);
+}
+
+async function updateTestType(e, id) {
+  e.preventDefault();
+  const btn = $('updateTTBtn');
+  btn.disabled = true;
+  try {
+    await api(`/test-types/${id}`, { method: 'PUT', body: JSON.stringify({
+      name: $('ettName').value.trim(),
+      unit: $('ettUnit').value.trim() || undefined,
+      normal_range_low: $('ettLow').value !== '' ? parseFloat($('ettLow').value) : undefined,
+      normal_range_high: $('ettHigh').value !== '' ? parseFloat($('ettHigh').value) : undefined,
+    }) });
+    closeModal(); toast('تم تحديث التحليل'); loadTestTypes();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+async function deleteTestType(id) {
+  confirmAction('حذف التحليل', 'هل أنت متأكد من حذف هذا التحليل؟ لا يمكن التراجع.', async () => {
+    try {
+      await api(`/test-types/${id}`, { method: 'DELETE' });
+      toast('تم حذف التحليل'); loadTestTypes();
+    } catch (e) { toast(e.message, 'error'); }
+  });
+}
+
+// ---- EMPLOYEES PAGE ----
+async function pageEmployees() {
+  if (G.user?.role !== 'admin' && G.user?.role !== 'master_admin') {
+    $('page').innerHTML = '<div class="empty"><p>ليس لديك صلاحية الوصول لهذه الصفحة</p></div>';
+    return;
+  }
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div><h2>الموظفون</h2><p>إدارة موظفي المختبر وصلاحياتهم</p></div>
+        <button class="btn btn-primary" onclick="openAddEmployee()">+ إضافة موظف</button>
+      </div>
+    </div>
+    <div class="card"><div id="empTable"><div class="spinner"></div></div></div>
+  `;
+  loadEmployees();
+}
+
+async function loadEmployees() {
+  try {
+    const d = await api('/labs/me/employees');
+    const el = $('empTable');
+    const employees = Array.isArray(d) ? d : (d.employees || d.users || []);
+    if (!employees.length) {
+      el.innerHTML = '<div class="empty"><p>لا يوجد موظفون مسجلون في هذا المختبر</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>الهاتف</th><th>الحالة</th><th></th></tr></thead>
+        <tbody>${employees.map((emp, i) => `<tr>
+          <td>${i + 1}</td>
+          <td><strong>${esc(emp.name || emp.full_name || '-')}</strong></td>
+          <td dir="ltr" style="color:var(--text-dim)">${esc(emp.email || '-')}</td>
+          <td>${emp.role === 'admin' ? '<span class="badge badge-blue">مدير</span>' : emp.role === 'master_admin' ? '<span class="badge badge-blue">مدير عام</span>' : '<span class="badge badge-gray">موظف</span>'}</td>
+          <td dir="ltr">${esc(emp.phone || '-')}</td>
+          <td>${emp.is_active !== false ? '<span class="badge badge-green">نشط</span>' : '<span class="badge badge-red">معطل</span>'}</td>
+          <td>
+            ${emp.id !== G.user?.id ? `<button class="btn btn-outline btn-sm" onclick="toggleEmployee(${parseInt(emp.id)},${emp.is_active !== false})">${emp.is_active !== false ? 'تعطيل' : 'تفعيل'}</button>` : '<span style="color:var(--text-muted);font-size:.8rem">أنت</span>'}
+          </td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <div style="padding:12px 0;color:var(--text-muted);font-size:.8rem;text-align:center">${employees.length} موظف</div>
+    `;
+  } catch (e) {
+    $('empTable').innerHTML = `<div class="empty"><p>تعذر تحميل قائمة الموظفين: ${esc(e.message)}</p></div>`;
+  }
+}
+
+function openAddEmployee() {
+  openModal('إضافة موظف جديد', `
+    <form onsubmit="saveEmployee(event)">
+      <div class="form-row">
+        <div class="field"><label>الاسم الكامل *</label><input id="empName" required maxlength="200" placeholder="الاسم الكامل"></div>
+        <div class="field"><label>البريد الإلكتروني *</label><input id="empEmail" type="email" required maxlength="100" placeholder="employee@lab.com"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>كلمة المرور *</label><input id="empPw" type="password" required minlength="8" placeholder="8 أحرف على الأقل (أحرف وأرقام)"></div>
+        <div class="field"><label>رقم الهاتف</label><input id="empPhone" dir="ltr" maxlength="15" placeholder="07xxxxxxxxx"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>الدور الوظيفي</label>
+          <select id="empRole">
+            <option value="employee">موظف — يدخل البيانات ويرى النتائج</option>
+            <option value="admin">مدير — صلاحيات إدارية كاملة</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveEmpBtn">إضافة الموظف</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveEmployee(e) {
+  e.preventDefault();
+  const pw = $('empPw').value;
+  if (pw.length < 8 || !/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) {
+    toast('كلمة المرور يجب أن تكون 8 أحرف وتحتوي على أحرف وأرقام', 'error');
+    return;
+  }
+  const btn = $('saveEmpBtn');
+  btn.disabled = true;
+  try {
+    await api('/labs/me/employees', { method: 'POST', body: JSON.stringify({
+      name: $('empName').value.trim(),
+      email: $('empEmail').value.trim(),
+      password: pw,
+      phone: $('empPhone').value.trim() || undefined,
+      role: $('empRole').value,
+    }) });
+    closeModal(); toast('تم إضافة الموظف بنجاح'); loadEmployees();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+async function toggleEmployee(id, isActive) {
+  confirmAction(
+    isActive ? 'تعطيل الموظف' : 'تفعيل الموظف',
+    isActive ? 'هل أنت متأكد من تعطيل هذا الموظف؟ لن يتمكن من تسجيل الدخول.' : 'هل تريد إعادة تفعيل حساب هذا الموظف؟',
+    async () => {
+      try {
+        await api(`/labs/me/employees/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: !isActive }) });
+        toast(isActive ? 'تم تعطيل الموظف' : 'تم تفعيل الموظف');
+        loadEmployees();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  );
+}
+
+// ---- PROFILE PAGE ----
+async function pageProfile() {
+  const u = G.user;
+  const roleLabel = u?.role === 'master_admin' ? 'مدير عام' : u?.role === 'admin' ? 'مدير مختبر' : 'موظف';
+  const roleColor = u?.role === 'master_admin' ? 'badge-blue' : u?.role === 'admin' ? 'badge-green' : 'badge-gray';
+  $('page').innerHTML = `
+    <div class="page-header"><h2>الملف الشخصي</h2><p>معلومات حسابك الشخصي</p></div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">معلومات الحساب</div>
+        <div style="display:flex;flex-direction:column;align-items:center;padding:20px 0;gap:12px">
+          <div class="user-avatar" style="width:64px;height:64px;font-size:1.6rem">${esc((u?.name || 'م')[0])}</div>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:700">${esc(u?.name || '-')}</div>
+            <div style="font-size:.85rem;color:var(--text-muted);margin-top:4px" dir="ltr">${esc(u?.email || '-')}</div>
+            <div style="margin-top:10px"><span class="badge ${roleColor}">${roleLabel}</span></div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px">
+          <table style="width:100%;font-size:.88rem;border-collapse:collapse">
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 0;color:var(--text-muted)">المعرف</td>
+              <td style="padding:10px 0;font-family:monospace;text-align:left">#${parseInt(u?.id || 0)}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 0;color:var(--text-muted)">رقم المختبر</td>
+              <td style="padding:10px 0;font-family:monospace;text-align:left">${u?.lab_id ? '#' + parseInt(u.lab_id) : 'مدير عام'}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;color:var(--text-muted)">الجلسة الحالية</td>
+              <td style="padding:10px 0;font-size:.8rem;text-align:left;color:var(--success)">نشطة ✓</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">تغيير كلمة المرور</div>
+        <form onsubmit="changePassword(event)" style="margin-top:8px">
+          <div class="field" style="margin-bottom:14px">
+            <label>كلمة المرور الحالية *</label>
+            <input type="password" id="cpCurrent" required autocomplete="current-password">
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label>كلمة المرور الجديدة *</label>
+            <input type="password" id="cpNew" required minlength="8" placeholder="8 أحرف على الأقل (أحرف وأرقام)" autocomplete="new-password">
+          </div>
+          <div class="field" style="margin-bottom:20px">
+            <label>تأكيد كلمة المرور الجديدة *</label>
+            <input type="password" id="cpConfirm" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary" id="cpBtn" style="width:100%">تغيير كلمة المرور</button>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+async function changePassword(e) {
+  e.preventDefault();
+  const newPw = $('cpNew').value;
+  const confirm = $('cpConfirm').value;
+  if (newPw !== confirm) { toast('كلمات المرور الجديدة غير متطابقة', 'error'); return; }
+  if (newPw.length < 8 || !/[a-zA-Z]/.test(newPw) || !/\d/.test(newPw)) {
+    toast('كلمة المرور يجب أن تكون 8 أحرف وتحتوي على أحرف وأرقام', 'error');
+    return;
+  }
+  const btn = $('cpBtn');
+  btn.disabled = true;
+  btn.textContent = 'جاري التغيير...';
+  try {
+    await api('/auth/change-password', { method: 'POST', body: JSON.stringify({
+      current_password: $('cpCurrent').value,
+      new_password: newPw,
+    }) });
+    toast('تم تغيير كلمة المرور بنجاح');
+    $('cpCurrent').value = ''; $('cpNew').value = ''; $('cpConfirm').value = '';
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+  btn.textContent = 'تغيير كلمة المرور';
+}
+
 // ---- Init ----
 function init() {
   if (!checkAuth()) return;
@@ -1106,6 +1455,8 @@ function init() {
   if (G.user.role === 'admin' || G.user.role === 'master_admin') $('complianceNav').style.display = '';
   // Show admin nav for master_admin
   if (G.user.role === 'master_admin') $('adminNav').style.display = '';
+  // Show employees nav for admin and master_admin
+  if (G.user.role === 'admin' || G.user.role === 'master_admin') $('employeesNav').style.display = '';
 
   // Set lab name
   if (G.user.lab_name) $('labName').textContent = G.user.lab_name;
