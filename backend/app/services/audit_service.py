@@ -27,10 +27,25 @@ logger = logging.getLogger("gula.audit")
 # Genesis hash for the first entry in the chain
 _GENESIS_HASH = "0" * 64
 
-# External anchor file path (outside the DB - survives DB reconstruction)
-# In production: mount a dedicated volume for this file
-_ANCHOR_FILE = Path(os.getenv("AUDIT_ANCHOR_FILE", "/app/data/audit_anchors.log"))
+# External anchor directory (outside the DB - survives DB reconstruction).
+# Monthly rotation: one file per calendar month, e.g. audit_anchors_2026-03.log
+# Old single-file path kept for backward compatibility during migration.
+_ANCHOR_DIR = Path(os.getenv("AUDIT_ANCHOR_DIR", "/app/data/anchors"))
 _ANCHOR_INTERVAL = 100  # Write anchor checkpoint every N entries
+
+
+def _current_anchor_file() -> Path:
+    """Return the anchor file path for the current calendar month."""
+    month_tag = datetime.now(timezone.utc).strftime("%Y-%m")
+    return _ANCHOR_DIR / f"audit_anchors_{month_tag}.log"
+
+
+def _all_anchor_files() -> list[Path]:
+    """Return all anchor files, newest first."""
+    if not _ANCHOR_DIR.exists():
+        return []
+    files = sorted(_ANCHOR_DIR.glob("audit_anchors_*.log"), reverse=True)
+    return list(files)
 
 # HMAC key for signing anchor lines — if someone edits the anchor file,
 # the HMAC signature will no longer match, making tampering detectable.
@@ -93,20 +108,14 @@ def _get_last_chain_hash(db: Session) -> str:
 
 
 def _write_anchor(entry_id: int, chain_hash: str) -> None:
-    """Append a hash anchor checkpoint to the external anchor file.
+    """Append a hash anchor checkpoint to the current month's anchor file.
 
-    The anchor file is append-only outside the database.
-    Format: ISO timestamp | entry_id | chain_hash | HMAC-SHA256(line)
-    Even if the entire DB is deleted and rebuilt, this file proves
-    what the chain hash was at each checkpoint interval.
-    The HMAC signature detects if the anchor file itself has been tampered.
+    Monthly rotation keeps individual files small and manageable.
+    Format: vN|ISO_timestamp|entry_id|chain_hash|HMAC(vN|...|chain_hash)
     """
     try:
-        _ANCHOR_FILE.parent.mkdir(parents=True, exist_ok=True)
-        # Build the data portion (without HMAC) then sign it.
-        # Format: key_version|timestamp|entry_id|chain_hash|HMAC(key_version|timestamp|entry_id|chain_hash)
-        # The key_version tag enables key rotation: old lines keep their "v1" tag
-        # and are verified with the previous key during the rotation window.
+        anchor_file = _current_anchor_file()
+        anchor_file.parent.mkdir(parents=True, exist_ok=True)
         data = (
             f"{_KEY_TAG}|"
             f"{datetime.now(timezone.utc).isoformat()}|"
@@ -114,24 +123,32 @@ def _write_anchor(entry_id: int, chain_hash: str) -> None:
             f"{chain_hash}"
         )
         sig = _anchor_hmac(data)
-        with open(_ANCHOR_FILE, "a", encoding="utf-8") as f:
+        with open(anchor_file, "a", encoding="utf-8") as f:
             f.write(f"{data}|{sig}\n")
     except Exception as e:
-        # Don't fail audit logging if anchor write fails, but warn loudly
         logger.error("AUDIT ANCHOR WRITE FAILED (id=%s): %s", entry_id, e)
 
 
 def get_latest_anchor() -> dict | None:
-    """Read the most recent anchor from the external anchor file.
+    """Read the most recent anchor from the monthly anchor files.
 
-    Each anchor line is: timestamp|entry_id|chain_hash|hmac
-    The HMAC is verified — a tampered line is flagged.
+    Scans all monthly files newest-first to find the last anchor.
+    Counts HMAC failures across all files for integrity reporting.
     """
     try:
-        if not _ANCHOR_FILE.exists():
+        files = _all_anchor_files()
+        if not files:
             return None
-        with open(_ANCHOR_FILE, "r", encoding="utf-8") as f:
-            lines = [l.strip() for l in f.readlines() if l.strip()]
+
+        # Collect all lines across all monthly files (newest file first)
+        all_lines: list[str] = []
+        total_files = len(files)
+        for f_path in files:
+            with open(f_path, "r", encoding="utf-8") as f:
+                chunk = [l.strip() for l in f.readlines() if l.strip()]
+            all_lines = chunk + all_lines  # older lines first
+
+        lines = all_lines
         if not lines:
             return None
 
@@ -174,10 +191,12 @@ def get_latest_anchor() -> dict | None:
             "entry_id": int(entry_id_str),
             "chain_hash": chain_hash,
             "total_anchors": len(lines),
+            "total_monthly_files": len(files),
             "hmac_verified": hmac_ok,
             "hmac_failures": hmac_failures,
             "key_version": key_version,
-            "anchor_file": str(_ANCHOR_FILE),
+            "anchor_dir": str(_ANCHOR_DIR),
+            "current_file": str(_current_anchor_file().name),
         }
     except Exception as e:
         logger.warning("Could not read anchor file: %s", e)

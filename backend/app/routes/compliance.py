@@ -11,12 +11,14 @@ Implements:
 - Compliance status reporting
 - HL7 FHIR-compatible patient resource (basic)
 """
+import json
 import logging
 import os
 import sys
 import time
 import hashlib
 import subprocess
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -869,6 +871,9 @@ def system_status(
             return {"status": "fail", "label": f"FAIL: {warning_msg}"}
         return {"status": "unknown", "label": "UNKNOWN"}
 
+    # ─── Restore test evidence ────────────────────────────────────────────
+    restore_test = _read_restore_test()
+
     return {
         "dashboard": "GULA System Status",
         "dashboard_ar": "لوحة حالة منصة غولا",
@@ -935,10 +940,17 @@ def system_status(
             "rbac": "PASS - 4 roles enforced",
             "secure_cookies": "PASS" if IS_PRODUCTION else "DEV - Secure=False in development",
             "docs_protected": "PASS" if IS_PRODUCTION else "DEV - /docs open in development",
+            "disaster_recovery": (
+                f"PASS - Last tested: {restore_test['tested_at_human']} ({restore_test['tested_ago']} ago, {restore_test['restore_seconds']}s)"
+                if restore_test and restore_test.get("status") == "PASS"
+                else "PENDING - Run scripts/restore-test.sh"
+            ),
             "cmc_registration": "PENDING - Register at cmc.iq",
             "iso_27001": "PENDING - Formal certification required",
             "pentest": "PENDING - Annual CREST-certified pentest required",
         },
+
+        "disaster_recovery": restore_test,
 
         "alerts": [
             msg for msg in [
@@ -953,6 +965,32 @@ def system_status(
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
+_RESTORE_RESULT_FILE = Path(os.getenv("RESTORE_RESULT_JSON", "/app/data/last_restore_test.json"))
+
+
+def _read_restore_test() -> dict | None:
+    """Read the last restore-test.sh result (written by the disaster recovery script)."""
+    try:
+        if not _RESTORE_RESULT_FILE.exists():
+            return None
+        with open(_RESTORE_RESULT_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Compute how long ago the test ran
+        from datetime import datetime, timezone
+        tested_at = datetime.fromisoformat(data["tested_at"].replace("Z", "+00:00"))
+        delta_seconds = int((datetime.now(timezone.utc) - tested_at).total_seconds())
+        if delta_seconds < 3600:
+            ago = f"{delta_seconds // 60} دقيقة"
+        elif delta_seconds < 86400:
+            ago = f"{delta_seconds // 3600} ساعة"
+        else:
+            ago = f"{delta_seconds // 86400} يوم"
+        data["tested_ago"] = ago
+        return data
+    except Exception:
+        return None
+
 
 def _fhir_gender(gender: str | None) -> str:
     mapping = {"M": "male", "F": "female", "male": "male", "female": "female"}

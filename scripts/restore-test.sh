@@ -24,6 +24,8 @@ BACKUP_DIR="${BACKUP_DIR:-${PLATFORM_DIR}/backups}"
 LOG_DIR="${PLATFORM_DIR}/logs"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 REPORT="${LOG_DIR}/restore-test-${TIMESTAMP}.log"
+# JSON result file — read by /compliance/system-status to show live evidence
+RESULT_JSON="${RESULT_JSON:-/app/data/last_restore_test.json}"
 
 DB_USER="${DB_USER:-postgres}"
 DB_NAME="${DB_NAME:-labdb}"
@@ -150,7 +152,22 @@ fi
 docker rm -f "${TEST_CONTAINER}" > /dev/null
 log "Test container removed."
 
-# ─── 7. Write summary ────────────────────────────────────────────────────────
+# ─── 7. Write JSON result (consumed by /compliance/system-status) ─────────────
+mkdir -p "$(dirname "${RESULT_JSON}")"
+cat > "${RESULT_JSON}" <<JSON
+{
+  "status": "PASS",
+  "tested_at": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+  "tested_at_human": "$(date -u '+%Y-%m-%d %H:%M:%S UTC')",
+  "restore_seconds": ${RESTORE_SECONDS},
+  "backup_file": "$(basename "${BACKUP_FILE}")",
+  "tested_by": "${USER:-system}",
+  "report_path": "${REPORT}"
+}
+JSON
+log "JSON result written to: ${RESULT_JSON}"
+
+# ─── 8. Write summary ────────────────────────────────────────────────────────
 log "============================================================"
 log "RESTORE TEST RESULT: PASS"
 log "Backup file: $(basename "${BACKUP_FILE}")"
