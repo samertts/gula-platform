@@ -82,13 +82,15 @@ def register_lab(data: LabRegisterRequest, request: Request, db: Session = Depen
     )
     db.add(user)
 
-    # Audit log
+    # Audit log (avoid logging PII like email in details)
     log_action(
         db,
         action="register",
         resource_type="lab",
-        user_id=None,
-        details=f"New lab registered: {data.lab_name} by {data.email}",
+        resource_id=lab.id,
+        user_id=user.id,
+        user_role=user.role,
+        details=f"New lab registered: {data.lab_name} (lab_id={lab.id})",
         ip_address=request.client.host if request.client else None,
     )
 
