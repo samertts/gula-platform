@@ -932,20 +932,23 @@ async function loadOrders() {
       <div class="table-wrap"><table>
         <thead><tr><th>#</th><th>المريض</th><th>الطبيب</th><th>التحاليل</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead>
         <tbody>${orders.map((o, i) => {
-          const hasCritical = (o.results || []).some(r => {
-            const v = parseFloat(r.value);
-            const lo = parseFloat(r.normal_range_low);
-            const hi = parseFloat(r.normal_range_high);
-            return !isNaN(v) && !isNaN(lo) && !isNaN(hi) && (v < lo || v > hi);
-          });
-          return `<tr class="${hasCritical ? 'critical-row' : ''}">
+          // Backend is authoritative for is_critical (calculated from result flags)
+          const isCritical = o.is_critical;
+          const isLocked = o.locked;
+          const sLabel = o.status === 'validated' ? 'معتمد ✓' : o.status === 'cancelled' ? 'ملغى' : o.status === 'completed' ? 'مكتمل' : 'معلق';
+          const sCls = o.status === 'validated' ? 'badge-green' : o.status === 'cancelled' ? 'badge-red' : o.status === 'completed' ? 'badge-blue' : 'badge-gray';
+          return `<tr class="${isCritical ? 'critical-row' : ''}">
             <td>${orderPage * PAGE_SIZE + i + 1}</td>
-            <td><strong>${esc(o.patient_name || '-')}</strong></td>
+            <td><strong>${esc(o.patient_name || '-')}</strong>${isCritical ? ' <span style="color:var(--danger);font-size:.75rem">●</span>' : ''}</td>
             <td>${esc(o.doctor_name || '-')}</td>
-            <td><span class="badge badge-blue">${(o.results || []).length} تحليل</span></td>
-            <td>${hasCritical ? '<span class="badge badge-red">حرج ▲</span>' : '<span class="badge badge-green">طبيعي</span>'}</td>
+            <td><span class="badge badge-blue">${(o.results || []).length} تحليل</span>${isCritical ? ' <span class="badge badge-red">حرج</span>' : ''}</td>
+            <td><span class="badge ${sCls}">${sLabel}</span></td>
             <td>${formatDate(o.created_at)}</td>
-            <td><button class="btn btn-outline btn-sm" onclick="viewOrder(${parseInt(o.id)})">تفاصيل</button></td>
+            <td style="white-space:nowrap;display:flex;gap:4px">
+              <button class="btn btn-outline btn-sm" onclick="viewOrder(${parseInt(o.id)})">تفاصيل</button>
+              ${o.status === 'completed' && !isLocked ? `<button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="validateOrder(${parseInt(o.id)})">اعتماد</button>` : ''}
+              ${o.status === 'pending' ? `<button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="cancelOrder(${parseInt(o.id)})">إلغاء</button>` : ''}
+            </td>
           </tr>`;
         }).join('')}</tbody>
       </table></div>
@@ -965,17 +968,31 @@ async function viewOrder(id) {
     const waText = firstToken
       ? `نتائج تحاليل ${o.patient_name} جاهزة 🔬\n${location.origin}/r/${firstToken}`
       : '';
+    const role = G.user?.role;
+    const canValidate = (role === 'admin' || role === 'master_admin' || role === 'doctor') && o.status === 'completed' && !o.locked;
+
     openModal(`طلب #${parseInt(o.id)} — ${esc(o.patient_name || '')}`, `
       <div class="kpi-row" style="margin-bottom:16px">
         <div class="kpi"><span class="kpi-val">${esc(o.patient_name || '-')}</span><span class="kpi-label">المريض</span></div>
         <div class="kpi"><span class="kpi-val">${esc(o.doctor_name || '-')}</span><span class="kpi-label">الطبيب</span></div>
         <div class="kpi"><span class="kpi-val">${formatDate(o.created_at)}</span><span class="kpi-label">التاريخ</span></div>
+        <div class="kpi">
+          <span class="kpi-val">
+            ${o.status === 'validated' ? '<span class="badge badge-green">معتمد ✓</span>' :
+              o.status === 'cancelled' ? '<span class="badge badge-red">ملغى</span>' :
+              o.status === 'completed' ? '<span class="badge badge-blue">مكتمل</span>' :
+              '<span class="badge badge-gray">معلق</span>'}
+            ${o.is_critical ? '<span class="badge badge-red" style="margin-right:4px">حرج</span>' : ''}
+          </span>
+          <span class="kpi-label">الحالة${o.locked ? ' 🔒' : ''}</span>
+        </div>
       </div>
+      ${o.validated_at ? `<div style="font-size:.8rem;color:var(--text-muted);margin-bottom:12px">تم الاعتماد: ${formatDate(o.validated_at)}</div>` : ''}
       <div class="table-wrap"><table>
         <thead><tr><th>التحليل</th><th>القيمة</th><th>الوحدة</th><th>المدى الطبيعي</th><th>الحالة</th></tr></thead>
-        <tbody>${(o.results || []).map(r => `<tr>
+        <tbody>${(o.results || []).map(r => `<tr class="${r.flag === 'critical' || r.flag === 'H' || r.flag === 'L' ? 'critical-row' : ''}">
           <td>${esc(r.test_name)}</td>
-          <td><strong>${esc(r.value || r.value_text || '-')}</strong></td>
+          <td><strong>${esc(r.value ?? r.value_text ?? '-')}</strong></td>
           <td>${esc(r.unit || '')}</td>
           <td style="direction:ltr;text-align:right">${esc(r.normal_range_low ?? '?')} – ${esc(r.normal_range_high ?? '?')}</td>
           <td>${resultFlag(r.value, r.normal_range_low, r.normal_range_high)}</td>
@@ -988,9 +1005,36 @@ async function viewOrder(id) {
           <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${location.origin}/r/${escAttr(firstToken)}').then(()=>toast('تم نسخ الرابط'))">نسخ الرابط</button>
         ` : ''}
         <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ طباعة</button>
+        ${canValidate ? `<button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="validateOrder(${parseInt(o.id)})">✓ اعتماد وقفل</button>` : ''}
       </div>
     `);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+async function validateOrder(id) {
+  const role = G.user?.role;
+  if (role !== 'admin' && role !== 'master_admin' && role !== 'doctor') {
+    toast('فقط المدراء والأطباء يمكنهم اعتماد الطلبات', 'error');
+    return;
+  }
+  confirmAction('اعتماد وقفل الطلب', 'بعد الاعتماد لا يمكن تعديل النتائج. هل أنت متأكد؟', async () => {
+    try {
+      await api(`/results/orders/${id}/validate`, { method: 'POST' });
+      toast('تم اعتماد وقفل الطلب بنجاح');
+      closeModal();
+      loadOrders();
+    } catch (e) { toast(e.message, 'error'); }
+  });
+}
+
+async function cancelOrder(id) {
+  confirmAction('إلغاء الطلب', 'هل أنت متأكد من إلغاء هذا الطلب؟', async () => {
+    try {
+      await api(`/results/orders/${id}/cancel`, { method: 'POST' });
+      toast('تم إلغاء الطلب');
+      loadOrders();
+    } catch (e) { toast(e.message, 'error'); }
+  });
 }
 
 let _ordSelectedPatient = null;

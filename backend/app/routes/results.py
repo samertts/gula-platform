@@ -96,6 +96,8 @@ def result_to_dict(r: LabResult) -> dict:
 
 
 def order_to_dict(o: LabOrder, include_results: bool = True) -> dict:
+    # Aggregate is_critical from result flags (backend is authoritative)
+    is_critical = any(r.flag in ("critical", "H", "L") for r in o.results) if o.results else False
     d = {
         "id": o.id,
         "patient_id": o.patient_id,
@@ -103,6 +105,10 @@ def order_to_dict(o: LabOrder, include_results: bool = True) -> dict:
         "patient_phone": o.patient.phone if o.patient else None,
         "doctor_name": o.doctor_name,
         "status": o.status,
+        "is_critical": is_critical,
+        "locked": getattr(o, "locked_at", None) is not None,
+        "validated_by": getattr(o, "validated_by", None),
+        "validated_at": o.validated_at.isoformat() if getattr(o, "validated_at", None) else None,
         "created_at": o.created_at.isoformat() if o.created_at else None,
     }
     if include_results:
@@ -286,10 +292,20 @@ def _base_order_query(current_user: LabUser, db: Session):
 def list_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
+    search: Optional[str] = Query(None, max_length=200),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     query = _base_order_query(current_user, db)
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.join(LabOrder.patient).filter(
+            sa.or_(
+                Patient.full_name.ilike(term),
+                Patient.phone.ilike(term),
+                LabOrder.doctor_name.ilike(term),
+            )
+        )
     total = query.count()
     orders = query.order_by(LabOrder.created_at.desc()).offset(skip).limit(limit).all()
     return {
@@ -308,6 +324,88 @@ def get_order(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order_to_dict(order)
+
+
+# ===== ORDER STATE TRANSITIONS =====
+
+_VALIDATE_ROLES = {"admin", "master_admin", "doctor"}
+
+
+@router.post("/orders/{order_id}/validate")
+def validate_order(
+    order_id: int,
+    request: Request,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Validate and lock an order.  Only admin/master_admin/doctor may do this.
+    After validation the order is immutable — results cannot be deleted or edited.
+    """
+    if current_user.role not in _VALIDATE_ROLES:
+        raise HTTPException(status_code=403, detail="Only admin or doctor can validate orders")
+
+    order = _base_order_query(current_user, db).filter(LabOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.locked_at is not None:
+        raise HTTPException(status_code=409, detail="Order is already validated and locked")
+
+    if not order.results:
+        raise HTTPException(status_code=400, detail="Cannot validate an order with no results")
+
+    now = datetime.now(timezone.utc)
+    order.status = "validated"
+    order.validated_by = current_user.id
+    order.validated_at = now
+    order.locked_at = now
+
+    log_action(
+        db,
+        action="validate",
+        resource_type="lab_order",
+        resource_id=order.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Order validated and locked by {current_user.email}",
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+    db.refresh(order)
+    return order_to_dict(order)
+
+
+@router.post("/orders/{order_id}/cancel")
+def cancel_order(
+    order_id: int,
+    request: Request,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cancel a pending order.  Cannot cancel validated/locked orders."""
+    order = _base_order_query(current_user, db).filter(LabOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.locked_at is not None:
+        raise HTTPException(status_code=409, detail="Validated orders cannot be cancelled")
+
+    if order.status == "cancelled":
+        raise HTTPException(status_code=409, detail="Order is already cancelled")
+
+    order.status = "cancelled"
+    log_action(
+        db,
+        action="cancel",
+        resource_type="lab_order",
+        resource_id=order.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Order cancelled by {current_user.email}",
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+    return {"message": "Order cancelled", "order_id": order_id}
 
 
 # ===== PUBLIC RESULT PAGE (THE KILLER FEATURE) =====
