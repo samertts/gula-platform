@@ -4,6 +4,7 @@ import uuid
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -194,6 +195,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # ===== ROUTES =====
 from .routes import login, register, patients, results, dashboard, labs
@@ -238,6 +240,26 @@ app.include_router(compliance.router)
 # Legacy routes (kept for API compatibility)
 app.include_router(national_identity.router)
 app.include_router(insurance.router)
+
+
+# ===== STARTUP WARMUP =====
+@app.on_event("startup")
+async def warmup():
+    """Pre-load hot-path modules so first real request is fast."""
+    import time as _t
+    t0 = _t.perf_counter()
+    try:
+        # Resolve deferred import inside get_flag → check_critical
+        from .routes.critical_alerts import check_critical
+        from .services.interpretation import interpret_result, get_flag
+        # Warm function caches
+        check_critical("Potassium", 4.0)
+        interpret_result("glucose", 85, 70, 100)
+        get_flag(85, 70, 100, "Glucose")
+        elapsed = (_t.perf_counter() - t0) * 1000
+        logger.info("Startup warmup complete in %.0fms", elapsed)
+    except Exception as exc:
+        logger.warning("Startup warmup skipped: %s", exc)
 
 
 # ===== HEALTH & STATUS =====
