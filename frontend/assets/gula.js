@@ -582,71 +582,167 @@ async function pageDashboard() {
     ]);
     const greetText = d.greeting || (arabicGreeting() + '، ' + (G.user?.name || 'مستخدم'));
     const criticalAlerts = alertData.total_alerts || 0;
+    const pts = parseInt(d.patients) || 0;
+    const ords = parseInt(d.orders) || 0;
+    const tests = parseInt(d.tests) || 0;
+    const critical = parseInt(d.critical) || 0;
+    const todayPts = d.today?.patients || 0;
+    const todayOrds = d.today?.orders || 0;
+    const todayTests = d.today?.tests || 0;
+    const weekPts = d.this_week?.patients || 0;
+    const weekOrds = d.this_week?.orders || 0;
+    // Completion rate (non-critical / total results)
+    const compRate = tests > 0 ? Math.round(((tests - critical) / tests) * 100) : 100;
 
     $('page').innerHTML = `
-      <div class="greeting-banner">
-        <h2>${esc(greetText)}</h2>
-        <p>نظرة عامة على نشاط المختبر</p>
+      <!-- Greeting -->
+      <div class="greeting-banner" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2>${esc(greetText)}</h2>
+          <p>نظرة شاملة على نشاط المختبر — ${new Date().toLocaleDateString('ar-IQ',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="navigate('workflow')" style="border-color:#818cf840;color:#c7d2fe">⚡ إدخال سريع</button>
+          <button class="btn btn-outline btn-sm" onclick="navigate('patients')" style="border-color:#818cf840;color:#c7d2fe">+ مريض جديد</button>
+        </div>
       </div>
+
       ${criticalAlerts > 0 ? `
-      <div class="alert-banner" onclick="navigate('alerts')">
+      <div class="alert-banner" onclick="navigate('alerts')" style="cursor:pointer">
         <div class="alert-icon">!</div>
         <div>
-          <strong>${criticalAlerts} تنبيه حرج</strong> - نتائج تحتاج مراجعة فورية خلال آخر 24 ساعة
+          <strong>${criticalAlerts} تنبيه حرج</strong> — نتائج تحتاج مراجعة فورية خلال آخر 24 ساعة
+          <div style="font-size:.78rem;margin-top:3px;opacity:.8">اضغط هنا للمراجعة الآن</div>
         </div>
-      </div>` : ''}
-      <div class="stats-grid">
-        <div class="stat-card blue"><div class="stat-label">المرضى</div><div class="stat-value">${parseInt(d.patients) || 0}</div><div class="stat-sub">إجمالي المسجلين</div></div>
-        <div class="stat-card green"><div class="stat-label">الطلبات</div><div class="stat-value">${parseInt(d.orders) || 0}</div><div class="stat-sub">إجمالي الطلبات</div></div>
-        <div class="stat-card cyan"><div class="stat-label">التحاليل</div><div class="stat-value">${parseInt(d.tests) || 0}</div><div class="stat-sub">نتيجة تحليل</div></div>
-        <div class="stat-card red"><div class="stat-label">حرجة</div><div class="stat-value">${parseInt(d.critical) || 0}</div><div class="stat-sub">نتائج غير طبيعية</div></div>
+      </div>` : `
+      <div class="info-box success" style="margin-bottom:16px">
+        <span style="font-size:1.1rem">✓</span>
+        <span>جميع النتائج ضمن النطاق الطبيعي — لا تنبيهات حرجة خلال آخر 24 ساعة</span>
+      </div>`}
+
+      <!-- Main Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+        <div class="stat-card blue" style="cursor:pointer" onclick="navigate('patients')">
+          <div class="stat-label">إجمالي المرضى</div>
+          <div class="stat-value">${pts.toLocaleString('ar')}</div>
+          <div class="stat-sub">+${todayPts} اليوم</div>
+        </div>
+        <div class="stat-card green" style="cursor:pointer" onclick="navigate('orders')">
+          <div class="stat-label">الطلبات</div>
+          <div class="stat-value">${ords.toLocaleString('ar')}</div>
+          <div class="stat-sub">+${todayOrds} اليوم</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-label">التحاليل المُنجزة</div>
+          <div class="stat-value">${tests.toLocaleString('ar')}</div>
+          <div class="stat-sub">نتيجة مسجلة</div>
+        </div>
+        <div class="stat-card ${critical > 0 ? 'red' : 'green'}" style="cursor:pointer" onclick="navigate('alerts')">
+          <div class="stat-label">نتائج حرجة</div>
+          <div class="stat-value">${critical}</div>
+          <div class="stat-sub">${critical > 0 ? 'تحتاج مراجعة' : 'لا شيء يستدعي القلق'}</div>
+        </div>
       </div>
+
+      <!-- Today + Week + Completion -->
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-title">إحصائيات اليوم والأسبوع</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+            <div style="background:#0f172a;border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:1.4rem;font-weight:800;color:var(--primary)">${todayPts}</div>
+              <div style="font-size:.72rem;color:var(--text-muted)">مرضى اليوم</div>
+            </div>
+            <div style="background:#0f172a;border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:1.4rem;font-weight:800;color:var(--success)">${todayTests}</div>
+              <div style="font-size:.72rem;color:var(--text-muted)">تحاليل اليوم</div>
+            </div>
+          </div>
+          <div class="section-title">هذا الأسبوع</div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>المرضى</span><span>${weekPts}</span></div>
+            <div class="progress-bar"><div class="progress-fill blue" style="width:${Math.min(100,weekPts > 0 ? 60 : 0)}%"></div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>الطلبات</span><span>${weekOrds}</span></div>
+            <div class="progress-bar"><div class="progress-fill green" style="width:${Math.min(100,weekOrds > 0 ? 70 : 0)}%"></div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>التحاليل</span><span>${todayTests}</span></div>
+            <div class="progress-bar"><div class="progress-fill cyan" style="width:${Math.min(100,todayTests > 0 ? 55 : 0)}%"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">معدل جودة النتائج</div>
+          <div class="ring-chart">
+            <div class="ring" style="--pct:${compRate * 3.6}deg;background:conic-gradient(var(--success) ${compRate * 3.6}deg, var(--border) 0deg)">
+              <span class="ring-val" style="font-size:.8rem;color:var(--success)">${compRate}%</span>
+            </div>
+            <div class="ring-legend">
+              <div class="ring-item"><div class="ring-dot" style="background:var(--success)"></div>ضمن المعدل الطبيعي: ${tests - critical}</div>
+              <div class="ring-item"><div class="ring-dot" style="background:var(--danger)"></div>غير طبيعية: ${critical}</div>
+              <div class="ring-item"><div class="ring-dot" style="background:var(--border)"></div>الإجمالي: ${tests}</div>
+            </div>
+          </div>
+          <div class="section-title" style="margin-top:14px">وصول سريع</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button class="btn btn-outline btn-sm" onclick="navigate('workflow')">⚡ إدخال سريع</button>
+            <button class="btn btn-outline btn-sm" onclick="navigate('samples')">🧪 العينات</button>
+            <button class="btn btn-outline btn-sm" onclick="navigate('qc')">📊 مراقبة الجودة</button>
+            ${G.user?.role === 'master_admin' || G.user?.role === 'admin' ? `<button class="btn btn-outline btn-sm" onclick="navigate('employees')">👥 الموظفون</button>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Orders + Abnormal -->
       <div class="grid-2">
         <div class="card">
-          <div class="card-title">إحصائيات اليوم</div>
-          <div class="kpi-row">
-            <div class="kpi"><span class="kpi-val">${d.today?.patients || 0}</span><span class="kpi-label">مرضى جدد</span></div>
-            <div class="kpi"><span class="kpi-val">${d.today?.orders || 0}</span><span class="kpi-label">طلبات</span></div>
-            <div class="kpi"><span class="kpi-val">${d.today?.tests || 0}</span><span class="kpi-label">تحاليل</span></div>
+          <div class="flex-between" style="margin-bottom:12px">
+            <div class="card-title" style="margin:0">آخر الطلبات</div>
+            <button class="btn btn-outline btn-sm" onclick="navigate('orders')">عرض الكل</button>
           </div>
-          <div class="card-title" style="margin-top:16px">هذا الأسبوع</div>
-          <div class="kpi-row">
-            <div class="kpi"><span class="kpi-val">${d.this_week?.patients || 0}</span><span class="kpi-label">مرضى</span></div>
-            <div class="kpi"><span class="kpi-val">${d.this_week?.orders || 0}</span><span class="kpi-label">طلبات</span></div>
-            <div class="kpi"><span class="kpi-val">${d.this_week?.tests || 0}</span><span class="kpi-label">تحاليل</span></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">آخر الطلبات</div>
-          ${(d.recent_orders || []).length ? d.recent_orders.slice(0, 6).map(o => `
-            <div class="activity-item">
+          ${(d.recent_orders || []).length ? d.recent_orders.slice(0, 8).map(o => `
+            <div class="activity-item" style="cursor:pointer" onclick="viewOrder(${parseInt(o.id || 0)})">
               <div class="activity-dot" style="background:${o.status === 'completed' ? 'var(--success)' : 'var(--primary)'}"></div>
-              <div>
-                <div class="activity-text">${esc(o.patient_name || 'مريض')} - ${parseInt(o.test_count) || 0} تحاليل</div>
-                <div class="activity-time">${timeAgo(o.date || o.created_at)}</div>
+              <div style="flex:1">
+                <div class="activity-text">${esc(o.patient_name || 'مريض')}</div>
+                <div class="activity-time">${parseInt(o.test_count) || 0} تحليل · ${timeAgo(o.date || o.created_at)}</div>
               </div>
+              ${o.has_critical ? '<span style="color:var(--danger);font-size:.7rem;font-weight:700">⚠ حرج</span>' : ''}
             </div>
-          `).join('') : '<div class="empty"><p>لا توجد طلبات حديثة</p></div>'}
+          `).join('') : '<div class="empty" style="padding:24px"><p>لا توجد طلبات حديثة</p><button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="navigate(\'workflow\')">ابدأ بإضافة طلب</button></div>'}
+        </div>
+
+        <div class="card">
+          <div class="flex-between" style="margin-bottom:12px">
+            <div class="card-title" style="margin:0">نتائج تحتاج مراجعة</div>
+            ${criticalAlerts > 0 ? `<button class="btn btn-outline btn-sm" onclick="navigate('alerts')">عرض التنبيهات</button>` : ''}
+          </div>
+          ${(d.abnormal_results || []).length ? `
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>المريض</th><th>التحليل</th><th>القيمة</th><th>الحالة</th></tr></thead>
+                <tbody>${d.abnormal_results.slice(0, 6).map(r => `<tr class="${r.flag === 'critical' ? 'critical-row' : ''}">
+                  <td>${esc(r.patient_name || '-')}</td>
+                  <td style="font-size:.8rem">${esc(r.test_name)}</td>
+                  <td><strong>${esc(r.value)}</strong> <span style="font-size:.76rem;color:var(--text-muted)">${esc(r.unit || '')}</span></td>
+                  <td>${resultFlag(r.value, r.normal_range_low, r.normal_range_high)}</td>
+                </tr>`).join('')}</tbody>
+              </table>
+            </div>
+          ` : '<div class="empty" style="padding:24px"><p style="color:var(--success)">✓ جميع النتائج طبيعية</p></div>'}
         </div>
       </div>
-      ${(d.abnormal_results || []).length ? `
-      <div class="card" style="margin-top:16px">
-        <div class="card-title">نتائج غير طبيعية تحتاج مراجعة</div>
-        <div class="table-wrap"><table>
-          <thead><tr><th>المريض</th><th>التحليل</th><th>القيمة</th><th>المدى الطبيعي</th><th>الحالة</th></tr></thead>
-          <tbody>
-            ${d.abnormal_results.slice(0, 10).map(r => `<tr class="${r.flag === 'critical' ? 'critical-row' : ''}">
-              <td>${esc(r.patient_name || '-')}</td><td>${esc(r.test_name)}</td>
-              <td><strong>${esc(r.value)}</strong> ${esc(r.unit || '')}</td>
-              <td>${esc(r.normal_range_low || '?')} - ${esc(r.normal_range_high || '?')}</td>
-              <td>${resultFlag(r.value, r.normal_range_low, r.normal_range_high)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div>
-      </div>` : ''}
     `;
   } catch (e) {
-    $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p><button class="btn btn-outline" style="margin-top:12px" onclick="pageDashboard()">إعادة المحاولة</button></div>`;
+    $('page').innerHTML = `
+      <div class="empty" style="padding:60px 20px">
+        <div style="font-size:2.5rem;margin-bottom:12px">⚡</div>
+        <p style="margin-bottom:8px">تعذر تحميل البيانات</p>
+        <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:16px">${esc(e.message)}</p>
+        <button class="btn btn-outline" onclick="pageDashboard()">إعادة المحاولة</button>
+      </div>`;
   }
 }
 
@@ -846,65 +942,175 @@ async function viewOrder(id) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+let _ordSelectedPatient = null;
+
 function openNewOrder() {
+  _ordSelectedPatient = null;
   openModal('طلب تحليل جديد', `
     <form onsubmit="submitOrder(event)">
-      <div class="form-row">
-        <div class="field"><label>رقم المريض *</label><input id="ordPatientId" required type="number" min="1"></div>
-        <div class="field"><label>اسم الطبيب</label><input id="ordDoctor" maxlength="200"></div>
+      <!-- Patient Search -->
+      <div class="field" style="margin-bottom:10px">
+        <label>المريض *</label>
+        <div class="search-with-results">
+          <input id="ordPatientSearch" class="search-input" placeholder="ابحث بالاسم أو الهاتف..."
+            autocomplete="off" oninput="searchOrderPatient(this.value)">
+          <div id="ordPatientDropdown" class="search-dropdown" style="display:none"></div>
+        </div>
+        <input type="hidden" id="ordPatientId">
+        <div id="ordPatientBadge" style="margin-top:6px;font-size:.82rem;color:var(--text-muted)">لم يتم اختيار مريض</div>
       </div>
-      <div class="card-title">التحاليل</div>
+
+      <div class="form-row">
+        <div class="field"><label>اسم الطبيب</label><input id="ordDoctor" maxlength="200" placeholder="د. أحمد..."></div>
+        <div class="field"><label>ملاحظات</label><input id="ordNotes" maxlength="300" placeholder="اختياري"></div>
+      </div>
+
+      <div class="flex-between" style="margin:14px 0 8px">
+        <div class="card-title" style="margin:0;font-size:.83rem">التحاليل</div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="addTestRow()">+ إضافة تحليل</button>
+      </div>
       <div id="orderTests"></div>
-      <button type="button" class="btn btn-outline btn-sm" onclick="addTestRow()" style="margin-bottom:16px">+ إضافة تحليل</button>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
-        <button type="submit" class="btn btn-primary" id="submitOrderBtn">حفظ الطلب</button>
+        <button type="submit" class="btn btn-primary" id="submitOrderBtn">💾 حفظ الطلب</button>
       </div>
     </form>
   `);
   addTestRow();
 }
 
+let _ordSearchTimer;
+async function searchOrderPatient(q) {
+  clearTimeout(_ordSearchTimer);
+  const dd = $('ordPatientDropdown');
+  if (!q || q.length < 2) { dd.style.display = 'none'; return; }
+  _ordSearchTimer = setTimeout(async () => {
+    try {
+      const d = await api(`/patients?search=${encodeURIComponent(q)}&limit=8`);
+      const pts = d.patients || d;
+      if (!pts.length) { dd.innerHTML = '<div class="sd-item" style="color:var(--text-muted)">لا توجد نتائج</div>'; dd.style.display = 'block'; return; }
+      dd.innerHTML = pts.map(p => `
+        <div class="sd-item" onclick="selectOrderPatient(${parseInt(p.id)},'${escAttr(p.full_name)}','${escAttr(p.phone||'')}')">
+          <strong>${esc(p.full_name)}</strong>
+          <span style="color:var(--text-muted);font-size:.78rem;margin-right:6px" dir="ltr">${esc(p.phone||'-')}</span>
+        </div>
+      `).join('');
+      dd.style.display = 'block';
+    } catch { dd.style.display = 'none'; }
+  }, 300);
+}
+
+function selectOrderPatient(id, name, phone) {
+  _ordSelectedPatient = id;
+  $('ordPatientId').value = id;
+  $('ordPatientSearch').value = name;
+  $('ordPatientDropdown').style.display = 'none';
+  $('ordPatientBadge').innerHTML = `<span style="color:var(--success)">✓ ${esc(name)}</span> <span dir="ltr" style="color:var(--text-muted)">${esc(phone)}</span>`;
+}
+
 function newOrderForPatient(id) {
   openNewOrder();
+  // Pre-fill patient id — name will just show as "تم الاختيار"
+  _ordSelectedPatient = id;
   $('ordPatientId').value = id;
+  $('ordPatientBadge').innerHTML = `<span style="color:var(--success)">✓ مريض #${id}</span>`;
+  $('ordPatientSearch').value = 'مريض #' + id;
+}
+
+let _ttCache = null;
+async function getOrderTestTypes() {
+  if (_ttCache) return _ttCache;
+  try { _ttCache = await api('/test-types'); return _ttCache || []; }
+  catch { return []; }
 }
 
 function addTestRow() {
+  const wrap = $('orderTests');
+  const idx = wrap.querySelectorAll('.order-test-row').length;
   const div = document.createElement('div');
-  div.className = 'form-row';
-  div.style.marginBottom = '8px';
+  div.className = 'order-test-row';
+  div.style.cssText = 'background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;position:relative';
   div.innerHTML = `
-    <div class="field"><label>اسم التحليل</label><input class="t-name" required maxlength="100"></div>
-    <div class="field"><label>القيمة</label><input class="t-val" required></div>
-    <div class="field"><label>الوحدة</label><input class="t-unit" maxlength="20"></div>
-    <div class="field"><label>أدنى</label><input class="t-low" type="number" step="any" min="0"></div>
-    <div class="field"><label>أعلى</label><input class="t-high" type="number" step="any" min="0"></div>
+    <button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:6px;left:8px;background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem">×</button>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;flex-wrap:wrap">
+      <div class="field" style="margin:0">
+        <label style="font-size:.75rem">اسم التحليل *</label>
+        <input class="t-name" required maxlength="100" placeholder="Glucose..." autocomplete="off"
+          oninput="suggestTestType(this,${idx})">
+        <div class="tt-suggest" style="display:none;position:absolute;z-index:50;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;max-height:150px;overflow-y:auto;min-width:200px"></div>
+      </div>
+      <div class="field" style="margin:0"><label style="font-size:.75rem">القيمة *</label><input class="t-val" required placeholder="5.2" oninput="updateOrderFlag(this)"></div>
+      <div class="field" style="margin:0"><label style="font-size:.75rem">الوحدة</label><input class="t-unit" class="t-unit" maxlength="20" placeholder="mg/dL"></div>
+      <div class="field" style="margin:0"><label style="font-size:.75rem">أدنى</label><input class="t-low" type="number" step="any" oninput="updateOrderFlag(this)"></div>
+      <div class="field" style="margin:0"><label style="font-size:.75rem">أعلى</label><input class="t-high" type="number" step="any" oninput="updateOrderFlag(this)"></div>
+    </div>
+    <div class="t-flag" style="font-size:.75rem;margin-top:4px;font-weight:700"></div>
   `;
-  $('orderTests').appendChild(div);
+  wrap.appendChild(div);
+  div.querySelector('.t-name').focus();
+}
+
+function updateOrderFlag(input) {
+  const row = input.closest('.order-test-row');
+  const val = parseFloat(row.querySelector('.t-val').value);
+  const low = parseFloat(row.querySelector('.t-low').value);
+  const high = parseFloat(row.querySelector('.t-high').value);
+  const flag = row.querySelector('.t-flag');
+  if (isNaN(val) || isNaN(low) || isNaN(high)) { flag.textContent = ''; return; }
+  if (val < low) flag.innerHTML = '<span style="color:var(--warning)">▼ منخفض</span>';
+  else if (val > high) flag.innerHTML = '<span style="color:var(--danger)">▲ مرتفع</span>';
+  else flag.innerHTML = '<span style="color:var(--success)">✓ طبيعي</span>';
+}
+
+async function suggestTestType(input, idx) {
+  const q = input.value.toLowerCase();
+  const types = await getOrderTestTypes();
+  const matches = types.filter(t => t.name && t.name.toLowerCase().includes(q)).slice(0, 5);
+  const sug = input.nextElementSibling;
+  if (!sug || !matches.length || !q) { if(sug) sug.style.display='none'; return; }
+  sug.innerHTML = matches.map(t => `
+    <div style="padding:7px 10px;cursor:pointer;font-size:.82rem;border-bottom:1px solid var(--border)"
+      onclick="fillTestType(this,${JSON.stringify(escAttr(t.name||''))},${JSON.stringify(t.unit||'')},${t.normal_range_low||'null'},${t.normal_range_high||'null'})">
+      ${esc(t.name)} ${t.unit ? `<span style="color:var(--text-muted)">${esc(t.unit)}</span>` : ''}
+    </div>
+  `).join('');
+  sug.style.display = 'block';
+}
+
+function fillTestType(el, name, unit, low, high) {
+  const row = el.closest('.order-test-row');
+  row.querySelector('.t-name').value = name;
+  row.querySelector('.t-unit').value = unit || '';
+  if (low !== null) row.querySelector('.t-low').value = low;
+  if (high !== null) row.querySelector('.t-high').value = high;
+  el.parentElement.style.display = 'none';
 }
 
 async function submitOrder(e) {
   e.preventDefault();
+  if (!$('ordPatientId').value) { toast('الرجاء اختيار مريض من قائمة البحث', 'error'); return; }
   const btn = $('submitOrderBtn');
-  btn.disabled = true;
+  btn.disabled = true; btn.textContent = 'جاري الحفظ...';
   try {
-    const rows = $('orderTests').querySelectorAll('.form-row');
+    const rows = $('orderTests').querySelectorAll('.order-test-row');
     const results = Array.from(rows).map(r => ({
-      test_name: r.querySelector('.t-name').value,
-      value: r.querySelector('.t-val').value,
-      unit: r.querySelector('.t-unit').value,
-      normal_range_low: parseFloat(r.querySelector('.t-low').value) || undefined,
-      normal_range_high: parseFloat(r.querySelector('.t-high').value) || undefined
-    }));
+      test_name: r.querySelector('.t-name').value.trim(),
+      value: r.querySelector('.t-val').value.trim(),
+      unit: r.querySelector('.t-unit').value.trim() || undefined,
+      normal_range_low: r.querySelector('.t-low').value !== '' ? parseFloat(r.querySelector('.t-low').value) : undefined,
+      normal_range_high: r.querySelector('.t-high').value !== '' ? parseFloat(r.querySelector('.t-high').value) : undefined
+    })).filter(r => r.test_name);
+    if (!results.length) { toast('أضف تحليلاً واحداً على الأقل', 'error'); btn.disabled=false; btn.textContent='💾 حفظ الطلب'; return; }
     await api('/results/orders', { method: 'POST', body: JSON.stringify({
       patient_id: parseInt($('ordPatientId').value),
-      doctor_name: $('ordDoctor').value || undefined,
+      doctor_name: $('ordDoctor').value.trim() || undefined,
+      notes: $('ordNotes').value.trim() || undefined,
       results
     })});
-    closeModal(); toast('تم حفظ الطلب بنجاح'); loadOrders();
+    closeModal(); toast('✓ تم حفظ الطلب بنجاح'); loadOrders();
   } catch (e) { toast(e.message, 'error'); }
-  btn.disabled = false;
+  btn.disabled = false; btn.textContent = '💾 حفظ الطلب';
 }
 
 // ---- SAMPLES PAGE ----

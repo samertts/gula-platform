@@ -9,186 +9,315 @@
 <title>GULA - تسجيل الدخول</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
-.login-container{width:100%;max-width:420px;padding:20px}
-.logo{text-align:center;margin-bottom:40px}
-.logo h1{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,#22d3ee,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.logo p{color:#64748b;margin-top:8px;font-size:.9rem}
-.card{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:32px;box-shadow:0 25px 50px rgba(0,0,0,.3)}
-.card h2{font-size:1.3rem;margin-bottom:24px;color:#f1f5f9}
-.field{margin-bottom:20px}
-.field label{display:block;font-size:.85rem;color:#94a3b8;margin-bottom:6px}
-.field input{width:100%;padding:12px 16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;color:#e2e8f0;font-size:.95rem;transition:border .2s}
-.field input:focus{outline:none;border-color:#818cf8}
-.btn{width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s}
-.btn:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(99,102,241,.3)}
-.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
-.error{background:#7f1d1d33;border:1px solid #991b1b;color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:.85rem;margin-bottom:16px;display:none}
-.register-link{text-align:center;margin-top:20px;font-size:.85rem;color:#64748b}
-.register-link a{color:#818cf8;text-decoration:none}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-wrap{width:100%;max-width:480px}
+.logo{text-align:center;margin-bottom:32px}
+.logo h1{font-size:2.8rem;font-weight:800;background:linear-gradient(135deg,#22d3ee,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.02em}
+.logo p{color:#64748b;margin-top:6px;font-size:.9rem}
+.logo-badge{display:inline-flex;align-items:center;gap:6px;background:#818cf81a;border:1px solid #818cf840;border-radius:20px;padding:4px 12px;margin-top:10px;font-size:.75rem;color:#818cf8}
+.card{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:28px;box-shadow:0 25px 50px rgba(0,0,0,.4)}
+.card h2{font-size:1.2rem;margin-bottom:20px;color:#f1f5f9}
+
+/* Tabs */
 .tabs{display:flex;gap:0;margin-bottom:24px;background:#0f172a;border-radius:10px;padding:4px}
-.tab{flex:1;padding:10px;text-align:center;border-radius:8px;cursor:pointer;font-size:.9rem;color:#64748b;transition:all .2s}
-.tab.active{background:#1e293b;color:#e2e8f0}
+.tab{flex:1;padding:9px 6px;text-align:center;border-radius:8px;cursor:pointer;font-size:.82rem;color:#64748b;transition:all .2s;white-space:nowrap}
+.tab.active{background:#1e293b;color:#e2e8f0;font-weight:600}
+
+/* Form sections */
 .form-section{display:none}
 .form-section.active{display:block}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.82rem;color:#94a3b8;margin-bottom:5px;font-weight:500}
+.field input,.field select{width:100%;padding:11px 14px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;color:#e2e8f0;font-size:.9rem;transition:border .2s;font-family:inherit}
+.field input:focus,.field select:focus{outline:none;border-color:#818cf8}
+.field select{cursor:pointer}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:420px){.form-row{grid-template-columns:1fr}}
+
+/* Buttons */
+.btn{width:100%;padding:13px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(99,102,241,.3)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-secondary{background:linear-gradient(135deg,#0891b2,#22d3ee);color:#fff;margin-top:8px}
+.btn-secondary:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(34,211,238,.25)}
+.btn-secondary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-success{background:linear-gradient(135deg,#059669,#34d399);color:#fff}
+.btn-success:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(52,211,153,.25)}
+.btn-success:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+/* Alerts */
+.error{background:#7f1d1d33;border:1px solid #991b1b;color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:.83rem;margin-bottom:14px;display:none;line-height:1.5}
+.success-msg{background:#05966920;border:1px solid #059669;color:#34d399;padding:10px 14px;border-radius:8px;font-size:.83rem;margin-bottom:14px;display:none;line-height:1.5;text-align:center}
+
+/* Password strength */
+.pw-strength{height:3px;border-radius:2px;margin-top:5px;transition:all .3s;background:#1e293b}
+.pw-strength.weak{background:#ef4444;width:33%}
+.pw-strength.medium{background:#f59e0b;width:66%}
+.pw-strength.strong{background:#10b981;width:100%}
+.pw-hint{font-size:.74rem;color:#64748b;margin-top:4px}
+
+/* Terms */
+.terms-note{font-size:.75rem;color:#475569;text-align:center;margin-top:12px;line-height:1.5}
+
+/* Divider */
+.divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:#475569;font-size:.78rem}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#1e293b}
 </style>
 </head>
 <body>
-<div class="login-container">
+<div class="login-wrap">
   <div class="logo">
     <h1>GULA</h1>
-    <p>منصة المختبرات الطبية</p>
+    <p>منصة المختبرات الطبية الذكية</p>
+    <div class="logo-badge">🏥 النظام الوطني العراقي للمختبرات</div>
   </div>
   <div class="card">
+    <!-- Tabs -->
     <div class="tabs">
       <div class="tab active" onclick="switchTab('login')">تسجيل الدخول</div>
-      <div class="tab" onclick="switchTab('register')">تسجيل مختبر جديد</div>
+      <div class="tab" onclick="switchTab('register')">تسجيل مختبر</div>
+      <div class="tab" onclick="switchTab('citizen')">حساب مواطن</div>
     </div>
-    <div id="error" class="error"></div>
 
-    <!-- Login Form -->
+    <div id="error" class="error"></div>
+    <div id="successMsg" class="success-msg"></div>
+
+    <!-- ═══════════════════════════════════════
+         TAB 1: LOGIN
+    ═══════════════════════════════════════ -->
     <form id="loginForm" class="form-section active" onsubmit="handleLogin(event)">
       <div class="field">
         <label>البريد الإلكتروني</label>
-        <input type="email" id="loginEmail" required placeholder="admin@lab.com">
+        <input type="email" id="loginEmail" required autocomplete="email" placeholder="example@lab.com" dir="ltr">
       </div>
       <div class="field">
         <label>كلمة المرور</label>
-        <input type="password" id="loginPassword" required placeholder="••••••••">
+        <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="••••••••">
       </div>
-      <button type="submit" class="btn" id="loginBtn">دخول</button>
+      <button type="submit" class="btn btn-primary" id="loginBtn">دخول إلى المنصة</button>
+      <div class="terms-note" style="margin-top:14px">
+        هل أنت مواطن وتريد تتبع نتائجك؟
+        <span style="color:#818cf8;cursor:pointer" onclick="switchTab('citizen')">سجّل هنا</span>
+      </div>
     </form>
 
-    <!-- Register Form -->
+    <!-- ═══════════════════════════════════════
+         TAB 2: LAB REGISTRATION
+    ═══════════════════════════════════════ -->
     <form id="registerForm" class="form-section" onsubmit="handleRegister(event)">
       <div class="field">
-        <label>اسم المختبر</label>
-        <input type="text" id="regLabName" required placeholder="مختبر الحياة">
+        <label>اسم المختبر *</label>
+        <input type="text" id="regLabName" required maxlength="200" placeholder="مختبر الأمل الطبي">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>المدينة *</label>
+          <input type="text" id="regCity" required maxlength="100" placeholder="بغداد">
+        </div>
+        <div class="field">
+          <label>رقم الهاتف</label>
+          <input type="tel" id="regPhone" placeholder="07xxxxxxxxx" dir="ltr">
+        </div>
       </div>
       <div class="field">
-        <label>المدينة</label>
-        <input type="text" id="regCity" required placeholder="بغداد">
+        <label>اسم المسؤول *</label>
+        <input type="text" id="regAdminName" required maxlength="200" placeholder="الاسم الكامل للمسؤول">
       </div>
       <div class="field">
-        <label>اسم المسؤول</label>
-        <input type="text" id="regAdminName" required placeholder="الاسم الكامل">
+        <label>البريد الإلكتروني *</label>
+        <input type="email" id="regEmail" required maxlength="100" placeholder="admin@lab.com" dir="ltr">
       </div>
       <div class="field">
-        <label>البريد الإلكتروني</label>
-        <input type="email" id="regEmail" required placeholder="admin@lab.com">
+        <label>كلمة المرور *</label>
+        <input type="password" id="regPassword" required minlength="8" placeholder="8 أحرف وأرقام على الأقل"
+          oninput="checkPwStrength(this,'regPwBar','regPwHint')">
+        <div class="pw-strength" id="regPwBar"></div>
+        <div class="pw-hint" id="regPwHint">يجب أن تحتوي على أحرف وأرقام</div>
+      </div>
+      <button type="submit" class="btn btn-secondary" id="regBtn">تسجيل المختبر</button>
+      <div class="terms-note">بالتسجيل توافق على شروط الاستخدام وسياسة الخصوصية للمنصة</div>
+    </form>
+
+    <!-- ═══════════════════════════════════════
+         TAB 3: CITIZEN REGISTRATION
+    ═══════════════════════════════════════ -->
+    <form id="citizenForm" class="form-section" onsubmit="handleCitizenRegister(event)">
+      <p style="font-size:.83rem;color:#64748b;margin-bottom:16px;line-height:1.6">
+        أنشئ حسابك الشخصي لتتمكن من متابعة نتائج تحاليلك الطبية بشكل آمن وسري.
+      </p>
+      <div class="form-row">
+        <div class="field">
+          <label>الاسم الكامل *</label>
+          <input type="text" id="citName" required maxlength="200" placeholder="الاسم الكامل">
+        </div>
+        <div class="field">
+          <label>رقم الهاتف *</label>
+          <input type="tel" id="citPhone" required placeholder="07xxxxxxxxx" dir="ltr">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>الجنس</label>
+          <select id="citGender">
+            <option value="">اختر</option>
+            <option value="male">ذكر</option>
+            <option value="female">أنثى</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>تاريخ الميلاد</label>
+          <input type="date" id="citDob" max="">
+        </div>
       </div>
       <div class="field">
-        <label>كلمة المرور</label>
-        <input type="password" id="regPassword" required minlength="8" placeholder="8 أحرف على الأقل (أحرف وأرقام)">
+        <label>البريد الإلكتروني *</label>
+        <input type="email" id="citEmail" required maxlength="100" placeholder="your@email.com" dir="ltr">
       </div>
       <div class="field">
-        <label>رقم الهاتف</label>
-        <input type="tel" id="regPhone" placeholder="07xxxxxxxxx">
+        <label>كلمة المرور *</label>
+        <input type="password" id="citPassword" required minlength="8" placeholder="8 أحرف وأرقام على الأقل"
+          oninput="checkPwStrength(this,'citPwBar','citPwHint')">
+        <div class="pw-strength" id="citPwBar"></div>
+        <div class="pw-hint" id="citPwHint">يجب أن تحتوي على أحرف وأرقام</div>
       </div>
-      <button type="submit" class="btn" id="regBtn">تسجيل المختبر</button>
+      <div class="field">
+        <label>الرقم الوطني (اختياري)</label>
+        <input type="text" id="citNatId" maxlength="20" placeholder="رقم مكون من 12 خانة" dir="ltr" pattern="[0-9]*">
+      </div>
+      <button type="submit" class="btn btn-success" id="citBtn">إنشاء الحساب</button>
+      <div class="terms-note">بيانات نتائجك الطبية محمية بالتشفير ولا تُشارك مع أي جهة</div>
     </form>
   </div>
 </div>
+
 <script>
 const API = '/api';
 
+// ── Set max date for DOB ──────────────────────────────
+document.getElementById('citDob').max = new Date().toISOString().split('T')[0];
+
+// ── Tab switching ─────────────────────────────────────
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+  const tabs = document.querySelectorAll('.tab');
+  const forms = { login: 0, register: 1, citizen: 2 };
+  tabs.forEach((t, i) => t.classList.toggle('active', i === forms[tab]));
+  ['loginForm','registerForm','citizenForm'].forEach((id, i) => {
+    document.getElementById(id).classList.toggle('active', i === forms[tab]);
   });
-  document.getElementById('loginForm').classList.toggle('active', tab === 'login');
-  document.getElementById('registerForm').classList.toggle('active', tab === 'register');
+  document.getElementById('error').style.display = 'none';
+  document.getElementById('successMsg').style.display = 'none';
+}
+
+// ── Password strength checker ─────────────────────────
+function checkPwStrength(input, barId, hintId) {
+  const pw = input.value;
+  const bar = document.getElementById(barId);
+  const hint = document.getElementById(hintId);
+  if (!pw) { bar.className = 'pw-strength'; hint.textContent = 'يجب أن تحتوي على أحرف وأرقام'; return; }
+  const hasLetters = /[a-zA-Z]/.test(pw);
+  const hasNums = /\d/.test(pw);
+  const hasSpecial = /[^a-zA-Z0-9]/.test(pw);
+  if (pw.length < 8 || !hasLetters || !hasNums) {
+    bar.className = 'pw-strength weak'; hint.textContent = 'ضعيفة - أضف حروفاً وأرقاماً';
+  } else if (pw.length >= 12 && hasSpecial) {
+    bar.className = 'pw-strength strong'; hint.textContent = '✓ قوية جداً';
+  } else {
+    bar.className = 'pw-strength medium'; hint.textContent = 'متوسطة - أضف رموزاً لمزيد من الأمان';
+  }
+}
+
+// ── Error / Success display ───────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('successMsg').style.display = 'none';
+}
+function showSuccess(msg) {
+  const el = document.getElementById('successMsg');
+  el.textContent = msg; el.style.display = 'block';
   document.getElementById('error').style.display = 'none';
 }
 
-function showError(msg) {
-  const el = document.getElementById('error');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-async function _fetchWithTimeout(url, opts, ms = 12000) {
+// ── Fetch with timeout ────────────────────────────────
+async function _fetch(url, opts, ms = 12000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
   finally { clearTimeout(t); }
 }
 
+// ── LOGIN ─────────────────────────────────────────────
 async function handleLogin(e) {
   e.preventDefault();
   const btn = document.getElementById('loginBtn');
-  btn.disabled = true; btn.textContent = 'جاري الدخول...';
+  btn.disabled = true; btn.textContent = 'جاري التحقق...';
   try {
     let res;
     try {
-      res = await _fetchWithTimeout(API + '/login', {
+      res = await _fetch(API + '/login', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          email: document.getElementById('loginEmail').value,
+          email: document.getElementById('loginEmail').value.trim(),
           password: document.getElementById('loginPassword').value
         })
       });
     } catch (netErr) {
-      if (netErr.name === 'AbortError') {
-        throw new Error('انتهت مهلة الانتظار (12 ثانية) — الخادم لا يستجيب. أعد تشغيل الحاوية: docker compose restart');
-      }
+      if (netErr.name === 'AbortError') throw new Error('انتهت مهلة الانتظار (12 ثانية) — الخادم لا يستجيب');
       throw new Error(navigator.onLine
-        ? 'تعذّر الاتصال بالخادم — الخادم قد يكون متوقفاً، تحقق: docker compose ps'
-        : 'لا يوجد اتصال بالإنترنت — تحقق من شبكتك');
+        ? 'تعذّر الاتصال بالخادم — تحقق من تشغيل الحاويات: docker compose ps'
+        : 'لا يوجد اتصال بالإنترنت');
     }
-    let data;
-    try { data = await res.json(); } catch { data = {}; }
+    let data = {};
+    try { data = await res.json(); } catch {}
     if (res.status === 401) throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
     if (res.status === 403) throw new Error(data.detail || 'الحساب غير مفعّل — تواصل مع المسؤول');
-    if (res.status === 429) throw new Error('محاولات كثيرة — انتظر دقيقة ثم حاول');
+    if (res.status === 429) throw new Error('محاولات كثيرة — انتظر دقيقة');
     if (res.status >= 500) throw new Error(`خطأ في الخادم (${res.status}) — تحقق: docker logs gula-backend`);
     if (!res.ok) throw new Error(data.detail || `خطأ ${res.status}`);
-    if (!data.user) throw new Error('لم تصل بيانات المستخدم — تحقق من إعداد الخادم');
+    if (!data.user) throw new Error('لم تصل بيانات المستخدم');
     sessionStorage.setItem('user', JSON.stringify(data.user));
     window.location.href = '/';
   } catch (err) {
     showError(err.message);
   } finally {
-    btn.disabled = false; btn.textContent = 'دخول';
+    btn.disabled = false; btn.textContent = 'دخول إلى المنصة';
   }
 }
 
+// ── LAB REGISTRATION ──────────────────────────────────
 async function handleRegister(e) {
   e.preventDefault();
   const pw = document.getElementById('regPassword').value;
   if (pw.length < 8) { showError('كلمة المرور يجب أن تكون 8 أحرف على الأقل'); return; }
-  if (!/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) { showError('كلمة المرور يجب أن تحتوي على حرف واحد ورقم واحد على الأقل'); return; }
+  if (!/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) { showError('كلمة المرور يجب أن تحتوي على حرف ورقم على الأقل'); return; }
   const btn = document.getElementById('regBtn');
   btn.disabled = true; btn.textContent = 'جاري التسجيل...';
   try {
-    let res;
-    try {
-      res = await fetch(API + '/register', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        credentials: 'include',
-        body: JSON.stringify({
-          lab_name: document.getElementById('regLabName').value,
-          city: document.getElementById('regCity').value,
-          admin_name: document.getElementById('regAdminName').value,
-          email: document.getElementById('regEmail').value,
-          password: document.getElementById('regPassword').value,
-          phone: document.getElementById('regPhone').value,
-          address: ''
-        })
-      });
-    } catch {
-      throw new Error('تعذّر الاتصال بالخادم — تحقق من الشبكة');
-    }
-    let data;
-    try { data = await res.json(); } catch { data = {}; }
-    if (!res.ok) throw new Error(data.detail || `خطأ ${res.status} — حاول مجدداً`);
-    // Token stored in httpOnly cookie by server
+    const res = await fetch(API + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        lab_name: document.getElementById('regLabName').value.trim(),
+        city: document.getElementById('regCity').value.trim(),
+        admin_name: document.getElementById('regAdminName').value.trim(),
+        email: document.getElementById('regEmail').value.trim(),
+        password: pw,
+        phone: document.getElementById('regPhone').value.trim() || undefined,
+        address: ''
+      })
+    });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (!res.ok) throw new Error(data.detail || `خطأ ${res.status}`);
     sessionStorage.setItem('user', JSON.stringify({
-      id: data.user_id, name: document.getElementById('regAdminName').value,
-      email: document.getElementById('regEmail').value, role: 'admin', lab_id: data.lab_id
+      id: data.user_id,
+      name: document.getElementById('regAdminName').value.trim(),
+      email: document.getElementById('regEmail').value.trim(),
+      role: 'admin', lab_id: data.lab_id
     }));
     window.location.href = '/';
   } catch (err) {
@@ -198,7 +327,51 @@ async function handleRegister(e) {
   }
 }
 
-// Redirect if already logged in (check sessionStorage user metadata)
+// ── CITIZEN REGISTRATION ──────────────────────────────
+async function handleCitizenRegister(e) {
+  e.preventDefault();
+  const pw = document.getElementById('citPassword').value;
+  if (pw.length < 8) { showError('كلمة المرور يجب أن تكون 8 أحرف على الأقل'); return; }
+  if (!/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) { showError('كلمة المرور يجب أن تحتوي على حرف ورقم على الأقل'); return; }
+  const phone = document.getElementById('citPhone').value.trim();
+  if (!/^(07\d{9}|9647\d{9}|\+9647\d{9})$/.test(phone.replace(/[\s\-]/g,''))) {
+    showError('صيغة رقم الهاتف غير صحيحة - مثال: 07xxxxxxxxx'); return;
+  }
+  const btn = document.getElementById('citBtn');
+  btn.disabled = true; btn.textContent = 'جاري إنشاء الحساب...';
+  try {
+    const res = await fetch(API + '/register/citizen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        full_name: document.getElementById('citName').value.trim(),
+        phone: phone,
+        email: document.getElementById('citEmail').value.trim(),
+        password: pw,
+        gender: document.getElementById('citGender').value || undefined,
+        birth_date: document.getElementById('citDob').value || undefined,
+        national_id: document.getElementById('citNatId').value.trim() || undefined,
+      })
+    });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (!res.ok) throw new Error(data.detail || `خطأ في إنشاء الحساب (${res.status})`);
+    showSuccess('✓ تم إنشاء حسابك بنجاح! يمكنك الآن تسجيل الدخول.');
+    document.getElementById('citPassword').value = '';
+    // Auto-switch to login after 2 seconds
+    setTimeout(() => {
+      switchTab('login');
+      document.getElementById('loginEmail').value = document.getElementById('citEmail').value;
+    }, 2000);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'إنشاء الحساب';
+  }
+}
+
+// Redirect if already logged in
 if (sessionStorage.getItem('user')) window.location.href = '/';
 </script>
 </body>
