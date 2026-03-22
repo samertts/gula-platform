@@ -4,7 +4,8 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.auth import verify_password, create_token, create_refresh_token, build_token_payload
+from ..security.auth import verify_password, create_token, create_refresh_token, build_token_payload, blacklist_token
+from ..security.auth import decode_token, decode_refresh_token
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..security.session import warm_perm_version
 from ..services.audit_service import log_action
@@ -124,8 +125,27 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
 
 @router.post("/logout")
-def logout(response: Response):
-    """Clear authentication cookies (web clients)."""
+def logout(request: Request, response: Response):
+    """Clear authentication cookies and blacklist current tokens."""
+    # Blacklist access token JTI so it cannot be replayed (even if cookie is stolen)
+    access_token = request.cookies.get("access_token")
+    if access_token:
+        payload = decode_token(access_token)
+        if payload and payload.get("jti"):
+            remaining = int((payload["exp"] - __import__("time").time()) + 1)
+            if remaining > 0:
+                blacklist_token(payload["jti"], remaining)
+
+    # Blacklist refresh token JTI as well
+    refresh_token = request.cookies.get("refresh_token")
+    if refresh_token:
+        payload = decode_refresh_token(refresh_token)
+        if payload and payload.get("jti"):
+            remaining = int((payload["exp"] - __import__("time").time()) + 1)
+            if remaining > 0:
+                from ..config import REFRESH_TOKEN_EXPIRE_DAYS
+                blacklist_token(payload["jti"], min(remaining, REFRESH_TOKEN_EXPIRE_DAYS * 86400))
+
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/")
     return {"message": "Logged out successfully"}

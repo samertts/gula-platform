@@ -117,6 +117,7 @@ async function handleLogin(e) {
       res = await fetch(API + '/login', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           email: document.getElementById('loginEmail').value,
           password: document.getElementById('loginPassword').value
@@ -152,6 +153,7 @@ async function handleRegister(e) {
       res = await fetch(API + '/register', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           lab_name: document.getElementById('regLabName').value,
           city: document.getElementById('regCity').value,

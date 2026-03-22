@@ -549,6 +549,7 @@ class AnalyzeRequest(BaseModel):
 @router.post("/analyze")
 def analyze_results(
     data: AnalyzeRequest,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
 ):
     """
@@ -556,6 +557,8 @@ def analyze_results(
     Returns detected patterns (sepsis, DKA, renal failure, etc.)
     and a flag summary. Does NOT diagnose — flags for physician review.
     """
+    # Rate limit: 20 analyses per minute per user (CPU-heavy endpoint)
+    rate_limit_public(request, max_per_minute=20)
     from ..services.clinical_intelligence import analyze_results as _analyze, quick_flag_summary
 
     raw = [
