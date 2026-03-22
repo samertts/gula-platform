@@ -185,8 +185,374 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// ---- WORKFLOW PAGE (⚡ إدخال سريع) ----
+// Single workspace: patient search → test entry → WhatsApp share
+// Keyboard-first: Enter moves between fields
+let _wfPatient = null; // selected patient
+let _wfTests = [];     // [{name,val,unit,low,high}]
+let _wfPatientCache = [];
+
+async function pageWorkflow() {
+  $('page').innerHTML = `
+    <div class="wf-layout">
+      <!-- LEFT: Quick Patient List -->
+      <div class="wf-left">
+        <div class="wf-section-title">المرضى الأخيرون</div>
+        <div class="wf-search-wrap">
+          <input id="wfSearch" class="wf-search" placeholder="🔍 اسم أو هاتف..." autocomplete="off"
+            oninput="wfSearchPatients(this.value)" onkeydown="if(event.key==='Enter'){wfSearchPatients(this.value,true)}">
+        </div>
+        <div id="wfPatientList" class="wf-patient-list"><div class="spinner"></div></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="wfNewPatient()">+ مريض جديد</button>
+      </div>
+
+      <!-- CENTER: Entry Workspace -->
+      <div class="wf-center">
+        <div id="wfPatientBanner" class="wf-patient-banner wf-unselected">
+          <span>← اختر مريضاً من القائمة أو ابحث</span>
+        </div>
+        <div id="wfForm" class="wf-form" style="display:none">
+          <div class="wf-field-row">
+            <div class="field"><label>اسم الطبيب (اختياري)</label>
+              <input id="wfDoctor" class="wf-input" placeholder="د. أحمد...">
+            </div>
+          </div>
+          <div class="wf-tests-header">
+            <span class="wf-section-title">التحاليل</span>
+            <button class="btn btn-outline btn-sm" onclick="wfAddTest()">+ تحليل</button>
+          </div>
+          <div id="wfTests"></div>
+          <div id="wfTypeSuggest" class="wf-suggest" style="display:none"></div>
+          <div class="wf-actions">
+            <button class="btn btn-primary" onclick="wfSubmit()" id="wfSubmitBtn">
+              💾 حفظ وإنشاء الرابط
+            </button>
+            <button class="btn btn-outline" onclick="wfReset()">إعادة تعيين</button>
+          </div>
+        </div>
+        <div id="wfResult" class="wf-result-box" style="display:none"></div>
+      </div>
+
+      <!-- RIGHT: Recent Orders -->
+      <div class="wf-right">
+        <div class="wf-section-title">آخر الطلبات</div>
+        <div id="wfRecent" class="wf-recent-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+  `;
+  _wfPatient = null;
+  _wfTests = [];
+  _wfPatientCache = [];
+  wfLoadPatients();
+  wfLoadRecent();
+}
+
+async function wfLoadPatients(query = '') {
+  const el = $('wfPatientList');
+  try {
+    const path = query ? `/patients?search=${encodeURIComponent(query)}&limit=10` : `/patients?limit=10&skip=0`;
+    const d = await api(path);
+    const pts = d.patients || d;
+    _wfPatientCache = Array.isArray(pts) ? pts : [];
+    if (!_wfPatientCache.length) {
+      el.innerHTML = '<div class="wf-empty">لا توجد نتائج</div>'; return;
+    }
+    el.innerHTML = _wfPatientCache.map(p => `
+      <div class="wf-patient-item ${_wfPatient?.id === p.id ? 'active' : ''}"
+           onclick="wfSelectPatient(${parseInt(p.id)})">
+        <div class="wf-pt-name">${esc(p.name)}</div>
+        <div class="wf-pt-phone">${esc(p.phone || '')}</div>
+      </div>
+    `).join('');
+  } catch { el.innerHTML = '<div class="wf-empty">تعذر التحميل</div>'; }
+}
+
+let _wfSearchTimer;
+function wfSearchPatients(q, immediate = false) {
+  clearTimeout(_wfSearchTimer);
+  const delay = immediate ? 0 : 350;
+  _wfSearchTimer = setTimeout(() => wfLoadPatients(q.trim()), delay);
+}
+
+function wfSelectPatient(id) {
+  const p = _wfPatientCache.find(x => x.id === id);
+  if (!p) return;
+  _wfPatient = p;
+  // Update banner
+  $('wfPatientBanner').className = 'wf-patient-banner wf-selected';
+  $('wfPatientBanner').innerHTML = `
+    <div class="wf-pt-selected-name">👤 ${esc(p.name)}</div>
+    <div class="wf-pt-selected-meta">${esc(p.phone || '')} ${p.gender ? '· ' + esc(p.gender) : ''}</div>
+    <button class="wf-pt-change" onclick="_wfPatient=null;wfReset()">تغيير</button>
+  `;
+  $('wfForm').style.display = 'block';
+  $('wfResult').style.display = 'none';
+  // Highlight in list
+  document.querySelectorAll('.wf-patient-item').forEach(el => {
+    el.classList.toggle('active', el.onclick?.toString().includes(`(${id})`));
+  });
+  // Re-render patient list to show active
+  $('wfPatientList').querySelectorAll('.wf-patient-item').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('onclick')?.includes(`(${id})`));
+  });
+  if (!_wfTests.length) wfAddTest();
+  // Focus first test name
+  setTimeout(() => { const f = document.querySelector('.wf-tname'); if (f) f.focus(); }, 100);
+}
+
+async function wfLoadTypeSuggestions() {
+  try {
+    const d = await api('/test-types');
+    return Array.isArray(d) ? d : [];
+  } catch { return []; }
+}
+let _wfTypeCache = null;
+async function wfGetTypes() {
+  if (!_wfTypeCache) _wfTypeCache = await wfLoadTypeSuggestions();
+  return _wfTypeCache;
+}
+
+function wfAddTest() {
+  const idx = _wfTests.length;
+  _wfTests.push({ name: '', val: '', unit: '', low: '', high: '' });
+  const wrap = $('wfTests');
+  const row = document.createElement('div');
+  row.className = 'wf-test-row';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <div class="wf-test-fields">
+      <div class="field wf-f-name">
+        <label>اسم التحليل</label>
+        <input class="wf-input wf-tname" data-idx="${idx}" placeholder="Glucose..." required autocomplete="off"
+          oninput="wfTypeahead(this,${idx})"
+          onkeydown="wfNavKey(event,${idx},'name')">
+      </div>
+      <div class="field wf-f-val">
+        <label>القيمة</label>
+        <input class="wf-input wf-tval" data-idx="${idx}" placeholder="5.2" required
+          oninput="wfUpdateFlag(${idx})"
+          onkeydown="wfNavKey(event,${idx},'val')">
+      </div>
+      <div class="field wf-f-unit">
+        <label>الوحدة</label>
+        <input class="wf-input wf-tunit" data-idx="${idx}" placeholder="mmol/L"
+          onkeydown="wfNavKey(event,${idx},'unit')">
+      </div>
+      <div class="field wf-f-range">
+        <label>أدنى</label>
+        <input class="wf-input wf-tlow" data-idx="${idx}" type="number" step="any" placeholder="3.9"
+          onkeydown="wfNavKey(event,${idx},'low')">
+      </div>
+      <div class="field wf-f-range">
+        <label>أعلى</label>
+        <input class="wf-input wf-thigh" data-idx="${idx}" type="number" step="any" placeholder="6.1"
+          onkeydown="wfNavKey(event,${idx},'high')">
+      </div>
+      <div class="wf-flag" id="wfFlag${idx}"></div>
+    </div>
+    <button class="wf-del-btn" onclick="wfRemoveTest(${idx})" title="حذف">✕</button>
+  `;
+  wrap.appendChild(row);
+  // Focus name field of new row
+  setTimeout(() => row.querySelector('.wf-tname')?.focus(), 50);
+}
+
+function wfRemoveTest(idx) {
+  const row = $('wfTests').querySelector(`[data-idx="${idx}"]`);
+  if (row) row.remove();
+}
+
+function wfNavKey(e, idx, field) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const fields = ['name', 'val', 'unit', 'low', 'high'];
+  const i = fields.indexOf(field);
+  if (i < fields.length - 1) {
+    // Move to next field in same row
+    const selectors = { name: '.wf-tname', val: '.wf-tval', unit: '.wf-tunit', low: '.wf-tlow', high: '.wf-thigh' };
+    const row = $('wfTests').querySelector(`[data-idx="${idx}"]`);
+    row?.querySelector(selectors[fields[i + 1]])?.focus();
+  } else {
+    // Last field → add new row or focus submit
+    const nextRow = $('wfTests').querySelector(`[data-idx="${idx + 1}"]`);
+    if (nextRow) {
+      nextRow.querySelector('.wf-tname')?.focus();
+    } else {
+      wfAddTest();
+    }
+  }
+}
+
+async function wfTypeahead(input, idx) {
+  const q = input.value.trim().toLowerCase();
+  if (q.length < 2) { $('wfTypeSuggest').style.display = 'none'; return; }
+  const types = await wfGetTypes();
+  const matches = types.filter(t => t.name?.toLowerCase().includes(q) || t.name_ar?.includes(q)).slice(0, 6);
+  if (!matches.length) { $('wfTypeSuggest').style.display = 'none'; return; }
+  const sug = $('wfTypeSuggest');
+  sug.style.display = 'block';
+  sug.innerHTML = matches.map(t => `
+    <div class="wf-sug-item" onclick="wfApplyType(${idx},'${escAttr(t.name || '')}','${escAttr(t.unit || '')}',${t.normal_low || ''},${t.normal_high || ''})">
+      <span>${esc(t.name_ar || t.name)}</span>
+      <span class="wf-sug-unit">${esc(t.unit || '')} ${t.normal_low != null ? '(' + t.normal_low + '-' + t.normal_high + ')' : ''}</span>
+    </div>
+  `).join('');
+}
+
+function wfApplyType(idx, name, unit, low, high) {
+  const row = $('wfTests').querySelector(`[data-idx="${idx}"]`);
+  if (!row) return;
+  row.querySelector('.wf-tname').value = name;
+  row.querySelector('.wf-tunit').value = unit;
+  if (low)  row.querySelector('.wf-tlow').value  = low;
+  if (high) row.querySelector('.wf-thigh').value = high;
+  $('wfTypeSuggest').style.display = 'none';
+  row.querySelector('.wf-tval')?.focus();
+  wfUpdateFlag(idx);
+}
+
+function wfUpdateFlag(idx) {
+  const row = $('wfTests').querySelector(`[data-idx="${idx}"]`);
+  if (!row) return;
+  const val  = parseFloat(row.querySelector('.wf-tval')?.value);
+  const low  = parseFloat(row.querySelector('.wf-tlow')?.value);
+  const high = parseFloat(row.querySelector('.wf-thigh')?.value);
+  const flag = $(`wfFlag${idx}`);
+  if (!flag) return;
+  if (isNaN(val) || isNaN(low) || isNaN(high)) { flag.innerHTML = ''; return; }
+  if (val < low)  { flag.innerHTML = '<span class="wf-flag-low">▼ منخفض</span>'; return; }
+  if (val > high) { flag.innerHTML = '<span class="wf-flag-high">▲ مرتفع</span>'; return; }
+  flag.innerHTML = '<span class="wf-flag-ok">✓ طبيعي</span>';
+}
+
+async function wfSubmit() {
+  if (!_wfPatient) { toast('اختر مريضاً أولاً', 'error'); return; }
+  const rows = $('wfTests').querySelectorAll('.wf-test-row');
+  const results = [];
+  for (const row of rows) {
+    const name = row.querySelector('.wf-tname')?.value?.trim();
+    const val  = row.querySelector('.wf-tval')?.value?.trim();
+    if (!name || !val) continue;
+    results.push({
+      test_name: name,
+      value: val,
+      unit: row.querySelector('.wf-tunit')?.value?.trim() || undefined,
+      normal_range_low:  parseFloat(row.querySelector('.wf-tlow')?.value)  || undefined,
+      normal_range_high: parseFloat(row.querySelector('.wf-thigh')?.value) || undefined,
+    });
+  }
+  if (!results.length) { toast('أدخل تحليلاً واحداً على الأقل', 'error'); return; }
+  const btn = $('wfSubmitBtn');
+  btn.disabled = true; btn.textContent = '... جاري الحفظ';
+  try {
+    const order = await api('/results/orders', { method: 'POST', body: JSON.stringify({
+      patient_id: _wfPatient.id,
+      doctor_name: $('wfDoctor')?.value?.trim() || undefined,
+      results,
+    })});
+    // Build WhatsApp link from first result token
+    const firstToken = order.results?.[0]?.result_token || order.order_id;
+    const resultUrl = `${location.origin}/r/${firstToken || ''}`;
+    const waText = `نتائج تحاليل ${_wfPatient.name} جاهزة 🔬\n${resultUrl}`;
+    const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
+    $('wfResult').style.display = 'block';
+    $('wfResult').innerHTML = `
+      <div class="wf-success">
+        <div class="wf-success-icon">✓</div>
+        <div class="wf-success-title">تم الحفظ بنجاح!</div>
+        <div class="wf-success-patient">${esc(_wfPatient.name)}</div>
+        <div class="wf-result-actions">
+          <a href="${esc(waLink)}" target="_blank" rel="noopener" class="btn btn-wa">📤 واتساب</a>
+          <button class="btn btn-outline" onclick="navigator.clipboard.writeText('${escAttr(resultUrl)}');toast('تم النسخ')">نسخ الرابط</button>
+          <a href="/r/${escAttr(firstToken || '')}" target="_blank" rel="noopener" class="btn btn-outline">عرض النتيجة</a>
+        </div>
+        <div class="wf-result-link">${esc(resultUrl)}</div>
+      </div>
+    `;
+    $('wfForm').style.display = 'none';
+    wfLoadRecent();
+    toast('تم الحفظ — جاهز للإرسال عبر واتساب');
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '💾 حفظ وإنشاء الرابط';
+}
+
+function wfReset() {
+  _wfPatient = null;
+  _wfTests = [];
+  $('wfPatientBanner').className = 'wf-patient-banner wf-unselected';
+  $('wfPatientBanner').innerHTML = '<span>← اختر مريضاً من القائمة أو ابحث</span>';
+  $('wfForm').style.display = 'none';
+  $('wfResult').style.display = 'none';
+  $('wfTests').innerHTML = '';
+  $('wfTypeSuggest').style.display = 'none';
+  document.querySelectorAll('.wf-patient-item').forEach(el => el.classList.remove('active'));
+  $('wfSearch').value = '';
+  wfLoadPatients();
+}
+
+async function wfNewPatient() {
+  openModal('مريض جديد', `
+    <form onsubmit="wfSaveNewPatient(event)">
+      <div class="form-row">
+        <div class="field"><label>الاسم الكامل *</label><input id="wfNpName" required maxlength="200" autofocus></div>
+        <div class="field"><label>رقم الهاتف</label><input id="wfNpPhone" maxlength="20"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>الجنس</label>
+          <select id="wfNpGender"><option value="">غير محدد</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select>
+        </div>
+        <div class="field"><label>تاريخ الميلاد</label><input id="wfNpDob" type="date"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="wfNpBtn">إضافة</button>
+      </div>
+    </form>
+  `);
+}
+
+async function wfSaveNewPatient(e) {
+  e.preventDefault();
+  const btn = $('wfNpBtn');
+  btn.disabled = true;
+  try {
+    const p = await api('/patients', { method: 'POST', body: JSON.stringify({
+      name: $('wfNpName').value.trim(),
+      phone: $('wfNpPhone').value.trim() || undefined,
+      gender: $('wfNpGender').value || undefined,
+      date_of_birth: $('wfNpDob').value || undefined,
+    })});
+    closeModal();
+    _wfPatientCache.unshift(p);
+    toast('تم إضافة المريض');
+    wfSelectPatient(p.id);
+    wfLoadPatients();
+  } catch (err) { toast(err.message, 'error'); }
+  btn.disabled = false;
+}
+
+async function wfLoadRecent() {
+  const el = $('wfRecent');
+  if (!el) return;
+  try {
+    const d = await api('/results/orders?limit=15&skip=0');
+    const orders = d.orders || [];
+    if (!orders.length) { el.innerHTML = '<div class="wf-empty">لا توجد طلبات</div>'; return; }
+    el.innerHTML = orders.map(o => {
+      const firstToken = (o.results || [])[0]?.result_token;
+      return `
+        <div class="wf-recent-item" onclick="viewOrder(${parseInt(o.id)})">
+          <div class="wf-rec-name">${esc(o.patient_name || '-')}</div>
+          <div class="wf-rec-meta">${(o.results || []).length} تحليل · ${formatDate(o.created_at)}</div>
+          ${firstToken ? `<a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="wf-rec-link" onclick="event.stopPropagation()">📤</a>` : ''}
+        </div>
+      `;
+    }).join('');
+  } catch { el.innerHTML = '<div class="wf-empty">تعذر التحميل</div>'; }
+}
+
 // ---- Router ----
-const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, 'test-types': pageTestTypes, employees: pageEmployees, qc: pageQC, alerts: pageAlerts, lab: pageLab, profile: pageProfile, compliance: pageCompliance, admin: pageAdmin };
+const routes = { dashboard: pageDashboard, workflow: pageWorkflow, patients: pagePatients, orders: pageOrders, samples: pageSamples, 'test-types': pageTestTypes, employees: pageEmployees, qc: pageQC, alerts: pageAlerts, lab: pageLab, profile: pageProfile, compliance: pageCompliance, admin: pageAdmin };
 
 function navigate(page) {
   if (!routes[page]) page = 'dashboard';
