@@ -8,6 +8,8 @@ from typing import Optional, List
 from datetime import datetime, timezone
 from ..database import get_db
 from ..models.patient import Patient
+from ..domain.order_state import enforce_transition, assert_not_locked
+from ..core.events import events, ORDER_VALIDATED, ORDER_CANCELLED, ORDER_CREATED, RESULT_CRITICAL
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.lab_order import LabOrder
@@ -263,6 +265,27 @@ def create_order(
         import json as _json
         _cache.set(_cache_key, _json.dumps(response_body, default=str), ex=86400)
 
+    # Emit ORDER_CREATED event
+    events.emit(ORDER_CREATED, {
+        "order_id": order.id,
+        "patient_id": order.patient_id,
+        "lab_id": order.lab_id,
+        "created_by": current_user.id,
+        "result_count": len(data.results),
+    })
+
+    # Emit a RESULT_CRITICAL event for every critical value
+    for alert in critical_alerts:
+        events.emit(RESULT_CRITICAL, {
+            "order_id": order.id,
+            "patient_id": order.patient_id,
+            "patient_name": patient.full_name,
+            "patient_phone": patient.phone,
+            "test_name": alert["test_name"],
+            "value": alert["value"],
+            "lab_id": order.lab_id,
+        })
+
     return response_body
 
 
@@ -340,25 +363,41 @@ def validate_order(
 ):
     """Validate and lock an order.  Only admin/master_admin/doctor may do this.
     After validation the order is immutable — results cannot be deleted or edited.
+
+    Race-condition protection: uses an atomic UPDATE WHERE locked_at IS NULL
+    so that two simultaneous validation requests cannot both succeed.
     """
     if current_user.role not in _VALIDATE_ROLES:
         raise HTTPException(status_code=403, detail="Only admin or doctor can validate orders")
 
+    # Verify ownership/access first (uses existing RBAC-aware query)
     order = _base_order_query(current_user, db).filter(LabOrder.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if order.locked_at is not None:
-        raise HTTPException(status_code=409, detail="Order is already validated and locked")
-
     if not order.results:
         raise HTTPException(status_code=400, detail="Cannot validate an order with no results")
 
+    # State machine enforcement (raises 409 for invalid transitions)
+    enforce_transition(order.status, "validated")
+
+    # Atomic lock — UPDATE ... WHERE locked_at IS NULL prevents double-validation
     now = datetime.now(timezone.utc)
-    order.status = "validated"
-    order.validated_by = current_user.id
-    order.validated_at = now
-    order.locked_at = now
+    rows_updated = (
+        db.query(LabOrder)
+        .filter(LabOrder.id == order_id, LabOrder.locked_at.is_(None))
+        .update(
+            {
+                "status": "validated",
+                "validated_by": current_user.id,
+                "validated_at": now,
+                "locked_at": now,
+            },
+            synchronize_session="fetch",
+        )
+    )
+    if rows_updated == 0:
+        raise HTTPException(status_code=409, detail="Order is already validated and locked")
 
     log_action(
         db,
@@ -372,6 +411,15 @@ def validate_order(
     )
     db.commit()
     db.refresh(order)
+
+    # Emit event — handlers run synchronously but errors never abort the response
+    events.emit(ORDER_VALIDATED, {
+        "order_id": order.id,
+        "patient_id": order.patient_id,
+        "lab_id": order.lab_id,
+        "validated_by": current_user.id,
+    })
+
     return order_to_dict(order)
 
 
@@ -382,16 +430,13 @@ def cancel_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Cancel a pending order.  Cannot cancel validated/locked orders."""
+    """Cancel an order.  Validated (locked) orders cannot be cancelled."""
     order = _base_order_query(current_user, db).filter(LabOrder.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if order.locked_at is not None:
-        raise HTTPException(status_code=409, detail="Validated orders cannot be cancelled")
-
-    if order.status == "cancelled":
-        raise HTTPException(status_code=409, detail="Order is already cancelled")
+    # State machine enforcement
+    enforce_transition(order.status, "cancelled")
 
     order.status = "cancelled"
     log_action(
@@ -405,6 +450,13 @@ def cancel_order(
         ip_address=request.client.host if request.client else None,
     )
     db.commit()
+
+    events.emit(ORDER_CANCELLED, {
+        "order_id": order.id,
+        "patient_id": order.patient_id,
+        "cancelled_by": current_user.id,
+    })
+
     return {"message": "Order cancelled", "order_id": order_id}
 
 
