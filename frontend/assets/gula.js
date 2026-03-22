@@ -260,7 +260,7 @@ async function wfLoadPatients(query = '') {
     el.innerHTML = _wfPatientCache.map(p => `
       <div class="wf-patient-item ${_wfPatient?.id === p.id ? 'active' : ''}"
            onclick="wfSelectPatient(${parseInt(p.id)})">
-        <div class="wf-pt-name">${esc(p.name)}</div>
+        <div class="wf-pt-name">${esc(p.full_name || p.name)}</div>
         <div class="wf-pt-phone">${esc(p.phone || '')}</div>
       </div>
     `).join('');
@@ -281,7 +281,7 @@ function wfSelectPatient(id) {
   // Update banner
   $('wfPatientBanner').className = 'wf-patient-banner wf-selected';
   $('wfPatientBanner').innerHTML = `
-    <div class="wf-pt-selected-name">👤 ${esc(p.name)}</div>
+    <div class="wf-pt-selected-name">👤 ${esc(p.full_name || p.name)}</div>
     <div class="wf-pt-selected-meta">${esc(p.phone || '')} ${p.gender ? '· ' + esc(p.gender) : ''}</div>
     <button class="wf-pt-change" onclick="_wfPatient=null;wfReset()">تغيير</button>
   `;
@@ -453,14 +453,14 @@ async function wfSubmit() {
     // Build WhatsApp link from first result token
     const firstToken = order.results?.[0]?.result_token || order.order_id;
     const resultUrl = `${location.origin}/r/${firstToken || ''}`;
-    const waText = `نتائج تحاليل ${_wfPatient.name} جاهزة 🔬\n${resultUrl}`;
+    const waText = `نتائج تحاليل ${_wfPatient.full_name || _wfPatient.name} جاهزة 🔬\n${resultUrl}`;
     const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
     $('wfResult').style.display = 'block';
     $('wfResult').innerHTML = `
       <div class="wf-success">
         <div class="wf-success-icon">✓</div>
         <div class="wf-success-title">تم الحفظ بنجاح!</div>
-        <div class="wf-success-patient">${esc(_wfPatient.name)}</div>
+        <div class="wf-success-patient">${esc(_wfPatient.full_name || _wfPatient.name)}</div>
         <div class="wf-result-actions">
           <a href="${esc(waLink)}" target="_blank" rel="noopener" class="btn btn-wa">📤 واتساب</a>
           <button class="btn btn-outline" onclick="navigator.clipboard.writeText('${escAttr(resultUrl)}');toast('تم النسخ')">نسخ الرابط</button>
@@ -517,15 +517,15 @@ async function wfSaveNewPatient(e) {
   btn.disabled = true;
   try {
     const p = await api('/patients', { method: 'POST', body: JSON.stringify({
-      name: $('wfNpName').value.trim(),
+      full_name: $('wfNpName').value.trim(),
       phone: $('wfNpPhone').value.trim() || undefined,
       gender: $('wfNpGender').value || undefined,
-      date_of_birth: $('wfNpDob').value || undefined,
+      birth_date: $('wfNpDob').value || undefined,
     })});
     closeModal();
     _wfPatientCache.unshift(p);
     toast('تم إضافة المريض');
-    wfSelectPatient(p.id);
+    wfSelectPatient(parseInt(p.id));
     wfLoadPatients();
   } catch (err) { toast(err.message, 'error'); }
   btn.disabled = false;
@@ -884,7 +884,11 @@ async function viewPatient(id) {
 
 // ---- ORDERS & RESULTS PAGE ----
 let orderPage = 0;
+let _ordSearch = '';
+let _ordSearchTimer2;
+
 async function pageOrders() {
+  orderPage = 0; _ordSearch = '';
   $('page').innerHTML = `
     <div class="page-header">
       <div class="page-header-row">
@@ -892,28 +896,64 @@ async function pageOrders() {
         <button class="btn btn-primary" onclick="openNewOrder()">+ طلب جديد</button>
       </div>
     </div>
+    <div class="search-bar">
+      <input class="search-input" id="ordSearch" placeholder="بحث باسم المريض أو الطبيب..." oninput="ordDoSearch()">
+    </div>
     <div class="card"><div id="ordersTable"><div class="spinner"></div></div></div>
   `;
   loadOrders();
 }
 
+function ordDoSearch() {
+  clearTimeout(_ordSearchTimer2);
+  _ordSearchTimer2 = setTimeout(() => {
+    const el = $('ordSearch');
+    if (!el) return;
+    _ordSearch = el.value.trim();
+    orderPage = 0;
+    loadOrders();
+  }, 300);
+}
+
 async function loadOrders() {
   try {
-    const d = await api(`/results/orders?skip=${orderPage * PAGE_SIZE}&limit=${PAGE_SIZE}`);
+    let url = `/results/orders?skip=${orderPage * PAGE_SIZE}&limit=${PAGE_SIZE}`;
+    if (_ordSearch) url += `&search=${encodeURIComponent(_ordSearch)}`;
+    const d = await api(url);
     const el = $('ordersTable');
-    if (!d.orders.length) { el.innerHTML = '<div class="empty"><p>لا توجد طلبات</p></div>'; return; }
+    const orders = d.orders || [];
+    if (!orders.length) {
+      el.innerHTML = '<div class="empty"><p>لا توجد طلبات</p>' +
+        (_ordSearch ? `<button class="btn btn-outline" style="margin-top:12px" onclick="$('ordSearch').value='';_ordSearch='';loadOrders()">مسح البحث</button>` : '') +
+        '</div>';
+      return;
+    }
     el.innerHTML = `
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>المريض</th><th>الطبيب</th><th>التحاليل</th><th>التاريخ</th><th></th></tr></thead>
-        <tbody>${d.orders.map((o, i) => `<tr>
-          <td>${orderPage * PAGE_SIZE + i + 1}</td>
-          <td><strong>${esc(o.patient_name || '-')}</strong></td>
-          <td>${esc(o.doctor_name || '-')}</td>
-          <td><span class="badge badge-blue">${(o.results || []).length} تحليل</span></td>
-          <td>${formatDate(o.created_at)}</td>
-          <td><button class="btn btn-outline btn-sm" onclick="viewOrder(${parseInt(o.id)})">تفاصيل</button></td>
-        </tr>`).join('')}</tbody>
+        <thead><tr><th>#</th><th>المريض</th><th>الطبيب</th><th>التحاليل</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead>
+        <tbody>${orders.map((o, i) => {
+          const hasCritical = (o.results || []).some(r => {
+            const v = parseFloat(r.value);
+            const lo = parseFloat(r.normal_range_low);
+            const hi = parseFloat(r.normal_range_high);
+            return !isNaN(v) && !isNaN(lo) && !isNaN(hi) && (v < lo || v > hi);
+          });
+          return `<tr class="${hasCritical ? 'critical-row' : ''}">
+            <td>${orderPage * PAGE_SIZE + i + 1}</td>
+            <td><strong>${esc(o.patient_name || '-')}</strong></td>
+            <td>${esc(o.doctor_name || '-')}</td>
+            <td><span class="badge badge-blue">${(o.results || []).length} تحليل</span></td>
+            <td>${hasCritical ? '<span class="badge badge-red">حرج ▲</span>' : '<span class="badge badge-green">طبيعي</span>'}</td>
+            <td>${formatDate(o.created_at)}</td>
+            <td><button class="btn btn-outline btn-sm" onclick="viewOrder(${parseInt(o.id)})">تفاصيل</button></td>
+          </tr>`;
+        }).join('')}</tbody>
       </table></div>
+      <div class="pagination">
+        <span class="pagination-info">صفحة ${orderPage + 1}${d.total ? ' - إجمالي ' + d.total : ''}</span>
+        <button ${orderPage === 0 ? 'disabled' : ''} onclick="orderPage=Math.max(0,orderPage-1);loadOrders()">السابق</button>
+        <button ${orders.length < PAGE_SIZE ? 'disabled' : ''} onclick="orderPage++;loadOrders()">التالي</button>
+      </div>
     `;
   } catch (e) { $('ordersTable').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`; }
 }
@@ -921,23 +961,34 @@ async function loadOrders() {
 async function viewOrder(id) {
   try {
     const o = await api(`/results/orders/${id}`);
-    openModal(`طلب #${parseInt(o.id)}`, `
+    const firstToken = (o.results || []).find(r => r.result_token)?.result_token;
+    const waText = firstToken
+      ? `نتائج تحاليل ${o.patient_name} جاهزة 🔬\n${location.origin}/r/${firstToken}`
+      : '';
+    openModal(`طلب #${parseInt(o.id)} — ${esc(o.patient_name || '')}`, `
       <div class="kpi-row" style="margin-bottom:16px">
         <div class="kpi"><span class="kpi-val">${esc(o.patient_name || '-')}</span><span class="kpi-label">المريض</span></div>
         <div class="kpi"><span class="kpi-val">${esc(o.doctor_name || '-')}</span><span class="kpi-label">الطبيب</span></div>
         <div class="kpi"><span class="kpi-val">${formatDate(o.created_at)}</span><span class="kpi-label">التاريخ</span></div>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>التحليل</th><th>القيمة</th><th>الوحدة</th><th>المدى الطبيعي</th><th>الحالة</th><th>رابط</th></tr></thead>
+        <thead><tr><th>التحليل</th><th>القيمة</th><th>الوحدة</th><th>المدى الطبيعي</th><th>الحالة</th></tr></thead>
         <tbody>${(o.results || []).map(r => `<tr>
           <td>${esc(r.test_name)}</td>
           <td><strong>${esc(r.value || r.value_text || '-')}</strong></td>
           <td>${esc(r.unit || '')}</td>
-          <td>${esc(r.normal_range_low || '?')} - ${esc(r.normal_range_high || '?')}</td>
+          <td style="direction:ltr;text-align:right">${esc(r.normal_range_low ?? '?')} – ${esc(r.normal_range_high ?? '?')}</td>
           <td>${resultFlag(r.value, r.normal_range_low, r.normal_range_high)}</td>
-          <td>${r.result_token ? `<a href="/r/${escAttr(r.result_token)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">مشاركة</a>` : '-'}</td>
         </tr>`).join('')}</tbody>
       </table></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+        ${firstToken ? `
+          <a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🔗 عرض النتائج</a>
+          <a href="https://wa.me/?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener" class="btn btn-wa btn-sm">📤 واتساب</a>
+          <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${location.origin}/r/${escAttr(firstToken)}').then(()=>toast('تم نسخ الرابط'))">نسخ الرابط</button>
+        ` : ''}
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ طباعة</button>
+      </div>
     `);
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -1194,31 +1245,73 @@ async function doUpdateSample(barcode, status, rejectionReason) {
 
 // ---- LAB PAGE ----
 async function pageLab() {
-  try {
-    const lab = await api('/labs/me');
-    $('page').innerHTML = `
-      <div class="page-header"><h2>المختبر</h2><p>إعدادات ومعلومات المختبر</p></div>
-      <div class="card">
-        <form onsubmit="saveLab(event)">
-          <div class="form-row">
-            <div class="field"><label>اسم المختبر</label><input id="labNameF" value="${escAttr(lab.name || '')}" maxlength="200"></div>
-            <div class="field"><label>المدينة</label><input id="labCity" value="${escAttr(lab.city || '')}" maxlength="100"></div>
-          </div>
-          <div class="form-row">
-            <div class="field"><label>العنوان</label><input id="labAddress" value="${escAttr(lab.address || '')}" maxlength="300"></div>
-            <div class="field"><label>الهاتف</label><input id="labPhone" value="${escAttr(lab.phone || '')}" dir="ltr" maxlength="20"></div>
-          </div>
-          <div class="form-row">
-            <div class="field"><label>رقم الترخيص</label><input value="${escAttr(lab.license_number || '-')}" disabled></div>
-            <div class="field"><label>الحالة</label><input value="${lab.is_active ? 'نشط' : 'معطل'}" disabled></div>
-          </div>
-          <div style="margin-top:16px"><button type="submit" class="btn btn-primary" id="saveLabBtn">حفظ التعديلات</button></div>
-        </form>
+  $('page').innerHTML = `
+    <div class="page-header"><h2>المختبر</h2><p>إعدادات ومعلومات المختبر</p></div>
+    <div id="labStats" style="margin-bottom:16px"></div>
+    <div class="card" id="labForm"><div class="spinner"></div></div>
+  `;
+
+  // Load lab info and stats in parallel
+  const [lab, dash] = await Promise.all([
+    api('/labs/me').catch(() => null),
+    api('/dashboard').catch(() => null),
+  ]);
+
+  if (!lab) {
+    $('labForm').innerHTML = '<div class="empty"><p>تعذر تحميل بيانات المختبر</p></div>';
+    return;
+  }
+
+  // Stats section
+  if (dash) {
+    const s = dash.stats || dash;
+    $('labStats').innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-label">إجمالي المرضى</div>
+          <div class="stat-value">${parseInt(s.total_patients) || 0}</div>
+          <div class="stat-sub">مريض مسجل</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">الطلبات (30 يوم)</div>
+          <div class="stat-value">${parseInt(s.orders_this_month || s.total_orders) || 0}</div>
+          <div class="stat-sub">طلب تحليل</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-label">اليوم</div>
+          <div class="stat-value">${parseInt(s.orders_today || s.today_orders) || 0}</div>
+          <div class="stat-sub">طلب اليوم</div>
+        </div>
+        <div class="stat-card ${lab.is_active ? 'green' : 'red'}">
+          <div class="stat-label">حالة المختبر</div>
+          <div class="stat-value" style="font-size:1.3rem">${lab.is_active ? 'نشط ✓' : 'معطل ✗'}</div>
+          <div class="stat-sub">${esc(lab.city || '')}</div>
+        </div>
       </div>
     `;
-  } catch (e) {
-    $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`;
   }
+
+  $('labForm').innerHTML = `
+    <div class="card-title">معلومات المختبر</div>
+    <form onsubmit="saveLab(event)" style="margin-top:12px">
+      <div class="form-row">
+        <div class="field"><label>اسم المختبر</label><input id="labNameF" value="${escAttr(lab.name || '')}" maxlength="200"></div>
+        <div class="field"><label>المدينة</label><input id="labCity" value="${escAttr(lab.city || '')}" maxlength="100"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>العنوان</label><input id="labAddress" value="${escAttr(lab.address || '')}" maxlength="300"></div>
+        <div class="field"><label>الهاتف</label><input id="labPhone" value="${escAttr(lab.phone || '')}" dir="ltr" maxlength="20"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>رقم الترخيص</label><input value="${escAttr(lab.license_number || '-')}" disabled></div>
+        <div class="field"><label>الحالة</label><input value="${lab.is_active ? 'نشط' : 'معطل'}" disabled style="color:${lab.is_active ? 'var(--success)' : 'var(--danger)'}"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button type="submit" class="btn btn-primary" id="saveLabBtn">حفظ التعديلات</button>
+        <button type="button" class="btn btn-outline" onclick="pageLab()">↻ تحديث</button>
+      </div>
+    </form>
+  `;
 }
 
 async function saveLab(e) {
