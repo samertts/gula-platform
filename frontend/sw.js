@@ -1,5 +1,5 @@
-// GULA Platform Service Worker - Offline Support
-const CACHE_NAME = 'gula-v2';
+// GULA Platform Service Worker - Offline Support + Background Sync
+const CACHE_NAME = 'gula-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -64,5 +64,55 @@ self.addEventListener('fetch', e => {
 
       return cached || fetchPromise;
     })
+  );
+});
+
+// ── Background Sync ────────────────────────────────────────────────────────
+// When the browser regains connectivity it fires the 'sync' event.
+// We notify all open tabs to flush their IndexedDB offline queue.
+// Medical data queued while offline is replayed exactly once in order.
+self.addEventListener('sync', e => {
+  if (e.tag === 'gula-queue') {
+    e.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then(clients => {
+          clients.forEach(c => c.postMessage({ type: 'FLUSH_QUEUE' }));
+        })
+    );
+  }
+});
+
+// ── Push Notifications (critical results) ─────────────────────────────────
+// The backend can push a Web Push notification for critical lab results.
+// The SW shows it here so it works even when the tab is closed.
+self.addEventListener('push', e => {
+  if (!e.data) return;
+  let payload;
+  try { payload = e.data.json(); } catch { return; }
+
+  const title   = payload.title   || 'GULA — تنبيه';
+  const body    = payload.body    || '';
+  const icon    = payload.icon    || '/assets/icon-192.svg';
+  const badge   = '/assets/icon-192.svg';
+  const tag     = payload.tag     || 'gula-alert';
+  const data    = payload.data    || {};
+
+  e.waitUntil(
+    self.registration.showNotification(title, { body, icon, badge, tag, data,
+      dir: 'rtl', lang: 'ar', requireInteraction: payload.critical || false })
+  );
+});
+
+// Clicking a notification opens the relevant order page
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(clients => {
+        const existing = clients.find(c => c.url.includes(self.location.origin));
+        if (existing) { existing.focus(); existing.postMessage({ type: 'NAVIGATE', url }); }
+        else self.clients.openWindow(url);
+      })
   );
 });
