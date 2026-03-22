@@ -1,8 +1,17 @@
-"""Master Admin endpoints - platform-wide management."""
+"""Master Admin endpoints — platform-wide management.
+
+Access levels:
+  master_admin    100  — all endpoints
+  ministry_admin   90  — can manage province_admin and below
+  province_admin   80  — can manage admin and below within their province
+  admin            50  — can manage staff/doctor/technician within their lab
+"""
 import os
+import hmac
+import hashlib
 import logging
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional
@@ -18,22 +27,62 @@ from ..models.audit_log import AuditLog
 from ..security.dependencies import get_current_user, require_permission
 from ..security.auth import hash_password
 from ..security.session import bump_perm_version
+from ..security.rbac import (
+    VALID_ROLES, ROLE_LEVELS, can_manage_role, can_manage_user,
+    get_role_level,
+)
 from ..services.audit_service import log_action
 
 logger = logging.getLogger("gula.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
+# ── NID hashing ───────────────────────────────────────────────────────────────
+_NID_KEY = os.getenv("NID_HMAC_KEY", "gula_nid_default_key").encode()
+
+
+def _hash_nid(nid: str) -> str:
+    """HMAC-SHA256 of a national ID — never store raw NID."""
+    return hmac.new(_NID_KEY, nid.strip().encode(), hashlib.sha256).hexdigest()
+
+
+# ── Access control helpers ────────────────────────────────────────────────────
 
 def require_admin(current_user: LabUser = Depends(require_permission("system:admin"))):
-    """Only allow master_admin for platform-wide admin operations."""
+    """Require master_admin for platform-wide system operations."""
     return current_user
 
 
-# ===== PLATFORM STATS =====
+def require_manage_users(current_user: LabUser = Depends(require_permission("platform:manage_users"))):
+    """Require any role that has platform:manage_users permission."""
+    return current_user
+
+
+# ── Serialization helper ──────────────────────────────────────────────────────
+
+def _user_dict(u: LabUser, lab_name: str | None = None) -> dict:
+    return {
+        "id": u.id,
+        "name": u.name,
+        "email": u.email,
+        "role": u.role,
+        "role_level": get_role_level(u.role),
+        "lab_id": u.lab_id,
+        "lab_name": lab_name,
+        "province_id": u.province_id,
+        "is_active": u.is_active,
+        "created_at": u.created_at.isoformat() if u.created_at else None,
+        "created_by": u.created_by,
+    }
+
+
+# =============================================================================
+# PLATFORM STATS
+# =============================================================================
+
 @router.get("/stats")
 def platform_stats(admin: LabUser = Depends(require_admin), db: Session = Depends(get_db)):
-    """Platform-wide statistics."""
+    """Platform-wide statistics (master_admin only)."""
     return {
         "total_labs": db.query(func.count(Lab.id)).scalar() or 0,
         "active_labs": db.query(func.count(Lab.id)).filter(Lab.is_active == True).scalar() or 0,
@@ -41,30 +90,51 @@ def platform_stats(admin: LabUser = Depends(require_admin), db: Session = Depend
         "total_patients": db.query(func.count(Patient.id)).scalar() or 0,
         "total_orders": db.query(func.count(LabOrder.id)).scalar() or 0,
         "total_results": db.query(func.count(LabResult.id)).scalar() or 0,
+        "roles_breakdown": {
+            role: db.query(func.count(LabUser.id)).filter(LabUser.role == role).scalar() or 0
+            for role in VALID_ROLES
+        },
     }
 
 
-# ===== LAB MANAGEMENT =====
+# =============================================================================
+# LAB MANAGEMENT
+# =============================================================================
+
 @router.get("/labs")
 def list_all_labs(
-    admin: LabUser = Depends(require_admin),
+    actor: LabUser = Depends(require_manage_users),
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 50,
 ):
-    """List all labs on the platform."""
-    from sqlalchemy.orm import subqueryload
-    labs = db.query(Lab).order_by(Lab.created_at.desc()).offset(skip).limit(limit).all()
-    total = db.query(func.count(Lab.id)).scalar() or 0
+    """List labs. Province admins see only their province's labs."""
+    query = db.query(Lab)
+    if actor.role == "province_admin" and actor.province_id:
+        # Province admins can only see labs in their province via users
+        lab_ids_in_province = [
+            row[0] for row in
+            db.query(LabUser.lab_id)
+            .filter(LabUser.province_id == actor.province_id)
+            .distinct()
+            .all()
+        ]
+        query = query.filter(Lab.id.in_(lab_ids_in_province))
+    elif actor.role == "admin":
+        # Lab admins see only their own lab
+        query = query.filter(Lab.id == actor.lab_id)
 
-    # Batch query counts to avoid N+1
+    total = query.count()
+    labs = query.order_by(Lab.created_at.desc()).offset(skip).limit(limit).all()
     lab_ids = [l.id for l in labs]
+
     user_counts = dict(
         db.query(LabUser.lab_id, func.count(LabUser.id))
         .filter(LabUser.lab_id.in_(lab_ids))
         .group_by(LabUser.lab_id)
         .all()
     ) if lab_ids else {}
+
     patient_counts = dict(
         db.query(Patient.lab_id, func.count(Patient.id))
         .filter(Patient.lab_id.in_(lab_ids))
@@ -92,14 +162,28 @@ def list_all_labs(
 
 
 @router.put("/labs/{lab_id}/toggle")
-def toggle_lab(lab_id: int, admin: LabUser = Depends(require_admin), db: Session = Depends(get_db)):
-    """Activate or deactivate a lab."""
+def toggle_lab(
+    lab_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Activate or deactivate a lab (ministry_admin+ or province_admin for their province)."""
     lab = db.query(Lab).filter(Lab.id == lab_id).first()
     if not lab:
         raise HTTPException(status_code=404, detail="Lab not found")
+
+    # Province admin: only own province
+    if actor.role == "province_admin":
+        has_lab = db.query(LabUser).filter(
+            LabUser.lab_id == lab_id,
+            LabUser.province_id == actor.province_id,
+        ).first()
+        if not has_lab:
+            raise HTTPException(status_code=403, detail="Lab not in your province")
+
     lab.is_active = not lab.is_active
     log_action(db, action="toggle_lab", resource_type="lab", resource_id=lab.id,
-               user_id=admin.id, user_role=admin.role,
+               user_id=actor.id, user_role=actor.role,
                details=f"Lab {'activated' if lab.is_active else 'deactivated'}: {lab.name}")
     db.commit()
     return {"message": f"Lab {'activated' if lab.is_active else 'deactivated'}", "is_active": lab.is_active}
@@ -112,108 +196,324 @@ class CreateLabRequest(BaseModel):
     admin_email: str
     admin_password: str
     admin_name: str
+    province_id: Optional[int] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError("Lab name too short")
+        return v
+
+    @field_validator("admin_email")
+    @classmethod
+    def validate_email(cls, v):
+        import re
+        v = v.strip().lower()
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+            raise ValueError("Invalid email")
+        return v
 
 
 @router.post("/labs")
-def create_lab_admin(
+def create_lab(
     data: CreateLabRequest,
-    admin: LabUser = Depends(require_admin),
+    actor: LabUser = Depends(require_manage_users),
     db: Session = Depends(get_db),
 ):
     """Create a new lab with its admin user."""
-    name = data.name
-    city = data.city
-    phone = data.phone
-    admin_email = data.admin_email
-    admin_password = data.admin_password
-    admin_name = data.admin_name
-
-    if len(admin_password) < 8:
+    if len(data.admin_password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
-    if db.query(LabUser).filter(LabUser.email == admin_email).first():
+    if db.query(LabUser).filter(LabUser.email == data.admin_email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    lab = Lab(name=name, city=city, phone=phone)
+    province_id = data.province_id
+    # Province admin must assign to their own province
+    if actor.role == "province_admin":
+        province_id = actor.province_id
+
+    lab = Lab(name=data.name, city=data.city, phone=data.phone)
     db.add(lab)
     db.flush()
 
     lab_admin = LabUser(
         lab_id=lab.id,
-        name=admin_name,
-        email=admin_email,
-        password_hash=hash_password(admin_password),
+        name=data.admin_name,
+        email=data.admin_email,
+        password_hash=hash_password(data.admin_password),
         role="admin",
+        province_id=province_id,
+        created_by=actor.id,
     )
     db.add(lab_admin)
     log_action(db, action="create_lab", resource_type="lab", resource_id=lab.id,
-               user_id=admin.id, user_role=admin.role, details=f"Created lab: {name}")
+               user_id=actor.id, user_role=actor.role,
+               details=f"Created lab '{data.name}' with admin {data.admin_email}")
     db.commit()
-    return {"message": "Lab created", "lab_id": lab.id, "admin_email": admin_email}
+    return {"message": "Lab created", "lab_id": lab.id, "admin_email": data.admin_email}
 
 
-# ===== USER MANAGEMENT =====
+# =============================================================================
+# USER MANAGEMENT (Hierarchy-enforced)
+# =============================================================================
+
 @router.get("/users")
 def list_users(
-    admin: LabUser = Depends(require_admin),
+    actor: LabUser = Depends(require_manage_users),
     db: Session = Depends(get_db),
     role: Optional[str] = None,
+    lab_id: Optional[int] = None,
     skip: int = 0,
-    limit: int = 50,
+    limit: int = Query(default=50, le=200),
 ):
-    """List all users, optionally filtered by role."""
-    VALID_ROLES = {"admin", "staff", "technician", "master_admin"}
+    """List users the actor is authorised to see."""
+    actor_level = get_role_level(actor.role)
     query = db.query(LabUser)
+
+    # Each role sees only users below their level
+    query = query.filter(
+        # Can't see equals or above themselves in hierarchy
+        # We do this by filtering roles whose level < actor_level
+    )
+    # Simpler: exclude users at same or higher level
+    visible_roles = [r for r, lvl in ROLE_LEVELS.items() if lvl < actor_level]
+    if not visible_roles:
+        return {"total": 0, "users": []}
+    query = query.filter(LabUser.role.in_(visible_roles))
+
+    # Province admin — own province only
+    if actor.role == "province_admin" and actor.province_id:
+        query = query.filter(LabUser.province_id == actor.province_id)
+
+    # Lab admin — own lab only
+    if actor.role == "admin":
+        query = query.filter(LabUser.lab_id == actor.lab_id)
+
     if role:
         if role not in VALID_ROLES:
-            raise HTTPException(status_code=400, detail="Invalid role")
+            raise HTTPException(status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}")
+        if not can_manage_role(actor.role, role):
+            raise HTTPException(status_code=403, detail="Cannot view users of that role level")
         query = query.filter(LabUser.role == role)
+
+    if lab_id:
+        query = query.filter(LabUser.lab_id == lab_id)
+
     total = query.count()
     users = query.order_by(LabUser.created_at.desc()).offset(skip).limit(limit).all()
+
+    # Batch load lab names
+    lab_ids = {u.lab_id for u in users}
+    labs_map = {l.id: l.name for l in db.query(Lab).filter(Lab.id.in_(lab_ids)).all()} if lab_ids else {}
+
     return {
         "total": total,
-        "users": [
-            {
-                "id": u.id,
-                "name": u.name,
-                "email": u.email,
-                "role": u.role,
-                "lab_id": u.lab_id,
-                "is_active": u.is_active,
-                "created_at": u.created_at.isoformat() if u.created_at else None,
-            }
-            for u in users
-        ],
+        "users": [_user_dict(u, labs_map.get(u.lab_id)) for u in users],
     }
 
 
-@router.put("/users/{user_id}/toggle")
-def toggle_user(user_id: int, admin: LabUser = Depends(require_admin), db: Session = Depends(get_db)):
-    """Activate or deactivate a user."""
-    user = db.query(LabUser).filter(LabUser.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user.role == "master_admin":
-        raise HTTPException(status_code=403, detail="Cannot modify master admin")
-    user.is_active = not user.is_active
-    bump_perm_version(user, db, actor_id=admin.id, actor_role=admin.role, reason="toggle_user")
+class CreateUserRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str
+    lab_id: Optional[int] = None
+    province_id: Optional[int] = None
+    national_id: Optional[str] = None  # raw — will be hashed server-side
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        import re
+        v = v.strip().lower()
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+            raise ValueError("Invalid email")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError("Name too short")
+        return v
+
+
+@router.post("/users")
+def create_user(
+    data: CreateUserRequest,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Create a new user. Role must be strictly below the actor's level."""
+    # Hierarchy check
+    if data.role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}")
+    if not can_manage_role(actor.role, data.role):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Cannot create a user with role '{data.role}' — must be below your level ({actor.role})",
+        )
+
+    # Password validation
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if data.password.isdigit() or data.password.isalpha():
+        raise HTTPException(status_code=400, detail="Password must contain letters and numbers")
+
+    # Email uniqueness
+    if db.query(LabUser).filter(LabUser.email == data.email).first():
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    # Determine lab_id
+    target_lab_id = data.lab_id or actor.lab_id
+    if actor.role == "admin":
+        target_lab_id = actor.lab_id  # lab admin can only create in own lab
+
+    # Lab must exist
+    if not db.query(Lab).filter(Lab.id == target_lab_id, Lab.is_active == True).first():
+        raise HTTPException(status_code=404, detail="Lab not found or inactive")
+
+    # Determine province_id
+    target_province = data.province_id
+    if actor.role == "province_admin":
+        target_province = actor.province_id
+
+    # NID hashing
+    nid_hash = None
+    if data.national_id:
+        nid_hash = _hash_nid(data.national_id)
+        if db.query(LabUser).filter(LabUser.national_id_hash == nid_hash).first():
+            raise HTTPException(status_code=409, detail="National ID already registered")
+
+    new_user = LabUser(
+        lab_id=target_lab_id,
+        name=data.name,
+        email=data.email,
+        password_hash=hash_password(data.password),
+        role=data.role,
+        province_id=target_province,
+        national_id_hash=nid_hash,
+        created_by=actor.id,
+        is_active=True,
+    )
+    db.add(new_user)
+
+    log_action(db, action="create_user", resource_type="user", resource_id=None,
+               user_id=actor.id, user_role=actor.role,
+               details=f"Created user {data.email} with role '{data.role}' in lab {target_lab_id}")
     db.commit()
-    return {"message": f"User {'activated' if user.is_active else 'deactivated'}"}
+    db.refresh(new_user)
+
+    lab = db.query(Lab).filter(Lab.id == target_lab_id).first()
+    return {"message": "User created", "user": _user_dict(new_user, lab.name if lab else None)}
 
 
-# ===== AUDIT LOGS =====
+class ChangeRoleRequest(BaseModel):
+    role: str
+    province_id: Optional[int] = None
+
+
+@router.patch("/users/{user_id}/role")
+def change_user_role(
+    user_id: int,
+    data: ChangeRoleRequest,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Change a user's role. Both current and new role must be below actor's level."""
+    if data.role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}")
+
+    target = db.query(LabUser).filter(LabUser.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Cannot modify self
+    if target.id == actor.id:
+        raise HTTPException(status_code=403, detail="Cannot modify your own role")
+
+    # Hierarchy: can manage current role AND new role
+    if not can_manage_user(actor, target):
+        raise HTTPException(status_code=403, detail="Cannot modify a user at your level or above")
+    if not can_manage_role(actor.role, data.role):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Cannot assign role '{data.role}' — must be below your level",
+        )
+
+    old_role = target.role
+    target.role = data.role
+    if data.province_id is not None:
+        target.province_id = data.province_id
+
+    # Bump perm_version to invalidate all existing JWTs for this user
+    bump_perm_version(target, db, actor_id=actor.id, actor_role=actor.role,
+                      reason=f"role_change: {old_role} → {data.role}")
+
+    log_action(db, action="role_change", resource_type="user", resource_id=target.id,
+               user_id=actor.id, user_role=actor.role,
+               details=f"Changed role of {target.email}: {old_role} → {data.role}")
+    db.commit()
+    return {"message": "Role updated", "user_id": user_id, "old_role": old_role, "new_role": data.role}
+
+
+@router.put("/users/{user_id}/toggle")
+def toggle_user(
+    user_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Activate or deactivate a user (must be below actor's level)."""
+    target = db.query(LabUser).filter(LabUser.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == actor.id:
+        raise HTTPException(status_code=403, detail="Cannot deactivate yourself")
+    if not can_manage_user(actor, target):
+        raise HTTPException(status_code=403, detail="Cannot modify a user at your level or above")
+
+    target.is_active = not target.is_active
+    bump_perm_version(target, db, actor_id=actor.id, actor_role=actor.role,
+                      reason="toggle_user")
+    log_action(db, action="toggle_user", resource_type="user", resource_id=target.id,
+               user_id=actor.id, user_role=actor.role,
+               details=f"User {target.email} {'activated' if target.is_active else 'deactivated'}")
+    db.commit()
+    return {"message": f"User {'activated' if target.is_active else 'deactivated'}"}
+
+
+# =============================================================================
+# AUDIT LOGS
+# =============================================================================
+
 @router.get("/audit-logs")
 def get_audit_logs(
-    admin: LabUser = Depends(require_admin),
+    actor: LabUser = Depends(require_permission("audit:read")),
     db: Session = Depends(get_db),
     action: Optional[str] = None,
+    user_id: Optional[int] = None,
     skip: int = 0,
-    limit: int = 100,
+    limit: int = Query(default=100, le=500),
 ):
-    """View system audit logs."""
+    """View audit logs. Admins see only their lab's logs; higher roles see all."""
     query = db.query(AuditLog)
+
+    # Lab admins: only their users' actions
+    if actor.role == "admin":
+        lab_user_ids = [
+            row[0] for row in
+            db.query(LabUser.id).filter(LabUser.lab_id == actor.lab_id).all()
+        ]
+        query = query.filter(AuditLog.user_id.in_(lab_user_ids))
+
     if action:
         query = query.filter(AuditLog.action == action)
+    if user_id and get_role_level(actor.role) >= 80:  # province_admin+
+        query = query.filter(AuditLog.user_id == user_id)
+
     total = query.count()
     logs = query.order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all()
     return {
@@ -235,63 +535,85 @@ def get_audit_logs(
     }
 
 
-# ===== BOOTSTRAP =====
-def ensure_master_admin():
-    """Seed the master admin account on a brand-new database.
+# =============================================================================
+# BOOTSTRAP — Master Admin
+# =============================================================================
+
+def ensure_master_admin() -> None:
+    """Seed the MASTER_ADMIN account on a brand-new database.
+
+    Environment variables consumed:
+      GULA_ADMIN_EMAIL         — email for login (default: admin@gula-platform.org)
+      GULA_ADMIN_NAME          — display name
+      GULA_ADMIN_PASSWORD      — plaintext password (hashed at runtime)
+      GULA_ADMIN_PASSWORD_HASH — pre-hashed password (takes priority)
+      MASTER_ADMIN_NID         — national ID to associate (raw, hashed server-side)
 
     Rules:
     - Runs only when no master_admin row exists (fresh DB).
-    - Requires GULA_ADMIN_PASSWORD or GULA_ADMIN_PASSWORD_HASH to be set;
-      logs a clear error and skips if neither is provided — no random passwords.
-    - After first boot the DB is the sole source of truth. These env vars
-      can (and should) be cleared from .env once the admin is confirmed.
+    - Skips silently if password is not configured.
+    - If master_admin already exists AND MASTER_ADMIN_NID is set but not yet
+      linked, this function will link the NID to the existing account.
     """
     db = SessionLocal()
     try:
         existing = db.query(LabUser).filter(LabUser.role == "master_admin").first()
-        if existing:
-            logger.debug("Master admin already exists (id=%s) — bootstrap skipped", existing.id)
-            return
 
-        email = os.getenv("GULA_ADMIN_EMAIL", "admin@gula-platform.org")
-        name  = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
+        if not existing:
+            email = os.getenv("GULA_ADMIN_EMAIL", "admin@gula-platform.org")
+            name  = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
 
-        # Hash takes priority; fall back to plaintext; refuse to guess.
-        password_hash = os.getenv("GULA_ADMIN_PASSWORD_HASH", "").strip() or None
-        if password_hash:
-            logger.info("Bootstrap: using GULA_ADMIN_PASSWORD_HASH")
-        else:
-            plaintext = os.getenv("GULA_ADMIN_PASSWORD", "").strip() or None
-            if not plaintext:
-                logger.error(
-                    "Bootstrap SKIPPED: no master_admin in DB and neither "
-                    "GULA_ADMIN_PASSWORD nor GULA_ADMIN_PASSWORD_HASH is set. "
-                    "Set one in .env and restart, or run: "
-                    "docker exec gula-backend python /scripts/create_master_admin.py --force"
-                )
-                return
-            password_hash = hash_password(plaintext)
+            password_hash = os.getenv("GULA_ADMIN_PASSWORD_HASH", "").strip() or None
+            if not password_hash:
+                plaintext = os.getenv("GULA_ADMIN_PASSWORD", "").strip() or None
+                if not plaintext:
+                    logger.error(
+                        "Bootstrap SKIPPED: GULA_ADMIN_PASSWORD not set. "
+                        "Set it in .env and restart."
+                    )
+                    return
+                password_hash = hash_password(plaintext)
 
-        # Create a platform-level lab for admin if needed
-        platform_lab = db.query(Lab).filter(Lab.name == "GULA Platform").first()
-        if not platform_lab:
-            platform_lab = Lab(name="GULA Platform", city="Platform", is_active=True)
-            db.add(platform_lab)
+            platform_lab = db.query(Lab).filter(Lab.name == "GULA Platform").first()
+            if not platform_lab:
+                platform_lab = Lab(name="GULA Platform", city="Platform", is_active=True)
+                db.add(platform_lab)
+                db.flush()
+
+            existing = LabUser(
+                lab_id=platform_lab.id,
+                name=name,
+                email=email,
+                password_hash=password_hash,
+                role="master_admin",
+                is_active=True,
+            )
+            db.add(existing)
             db.flush()
+            logger.info("Bootstrap: master_admin created (%s, id=%d)", email, existing.id)
 
-        admin = LabUser(
-            lab_id=platform_lab.id,
-            name=name,
-            email=email,
-            password_hash=password_hash,
-            role="master_admin",
-            is_active=True,
-        )
-        db.add(admin)
+        # ── Link national ID if provided and not yet set ──────────────────────
+        nid_raw = os.getenv("MASTER_ADMIN_NID", "").strip()
+        if nid_raw and not existing.national_id_hash:
+            nid_hash = _hash_nid(nid_raw)
+            # Check no other user already has this hash (safety)
+            conflict = db.query(LabUser).filter(
+                LabUser.national_id_hash == nid_hash,
+                LabUser.id != existing.id,
+            ).first()
+            if conflict:
+                logger.error(
+                    "Bootstrap: MASTER_ADMIN_NID hash already belongs to user %d — skipping NID link",
+                    conflict.id,
+                )
+            else:
+                existing.national_id_hash = nid_hash
+                logger.info("Bootstrap: national_id linked to master_admin (id=%d)", existing.id)
+
         db.commit()
-        logger.info("Bootstrap: master admin created (%s)", email)
-    except Exception as e:
+
+    except Exception as exc:
         db.rollback()
-        logger.error("Bootstrap: failed to create master admin: %s", e)
+        logger.error("Bootstrap: failed — %s", exc)
     finally:
         db.close()
