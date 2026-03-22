@@ -3,6 +3,112 @@
    Lightweight SPA: Router, API, Pages, State
    ============================================================ */
 
+/* ── Offline Queue ─────────────────────────────────────────────────────────
+   Mutations (POST/PUT/DELETE) that fail because the device is offline are
+   stored in IndexedDB and replayed automatically when connectivity returns.
+   Medical data is NEVER dropped silently — it is either sent or queued.
+   ─────────────────────────────────────────────────────────────────────── */
+const _OQ = (() => {
+  const DB_NAME  = 'gula-offline-q';
+  const STORE    = 'ops';
+  let _db = null;
+
+  function open() {
+    if (_db) return Promise.resolve(_db);
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = e =>
+        e.target.result.createObjectStore(STORE, { autoIncrement: true });
+      r.onsuccess = e => { _db = e.target.result; res(_db); };
+      r.onerror   = rej;
+    });
+  }
+
+  async function push(path, opts) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).add({ path, opts: { ...opts, body: opts.body }, ts: Date.now() });
+      tx.oncomplete = res;
+      tx.onerror    = rej;
+    });
+  }
+
+  async function flush() {
+    const db   = await open();
+    const tx   = db.transaction(STORE, 'readwrite');
+    const st   = tx.objectStore(STORE);
+    const items = await new Promise(r => { const q = st.getAll();    q.onsuccess = () => r(q.result); });
+    const keys  = await new Promise(r => { const q = st.getAllKeys(); q.onsuccess = () => r(q.result); });
+    let synced = 0;
+    for (let i = 0; i < items.length; i++) {
+      try {
+        await api(items[i].path, items[i].opts);
+        const tx2 = db.transaction(STORE, 'readwrite');
+        tx2.objectStore(STORE).delete(keys[i]);
+        synced++;
+      } catch { /* keep in queue */ }
+    }
+    if (synced > 0 && typeof toast === 'function')
+      toast(`↑ تمت مزامنة ${synced} عملية محفوظة`, 'success');
+    return synced;
+  }
+
+  return { push, flush };
+})();
+
+/* ── Connectivity Banner ───────────────────────────────────────────────────
+   Shows a fixed bottom bar when offline; auto-flushes queue on reconnect.
+   Injected once after DOMContentLoaded so it works on every page.
+   ─────────────────────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  const bar = Object.assign(document.createElement('div'), { id: '_connBanner' });
+  bar.style.cssText = [
+    'position:fixed;bottom:0;inset-inline:0;z-index:9990',
+    'padding:9px 16px;font-size:.8rem;text-align:center',
+    'border-top:1px solid transparent',
+    'transition:transform .25s ease,opacity .25s ease',
+    'transform:translateY(100%);opacity:0;pointer-events:none',
+  ].join(';');
+  document.body.appendChild(bar);
+
+  function show(msg, bg, col, border) {
+    Object.assign(bar.style, {
+      background: bg, color: col, borderTopColor: border,
+      transform: 'translateY(0)', opacity: '1', pointerEvents: 'auto',
+    });
+    bar.textContent = msg;
+  }
+  function hide() {
+    bar.style.transform = 'translateY(100%)';
+    bar.style.opacity   = '0';
+  }
+
+  function goOffline() {
+    show('🔌 لا يوجد اتصال — التغييرات ستُحفظ وتُزامَن لاحقاً',
+      '#450a0a', '#fca5a5', '#dc2626');
+  }
+  function goOnline() {
+    show('↑ عاد الاتصال — جاري المزامنة…', '#022c22', '#6ee7b7', '#10b981');
+    _OQ.flush().finally(() => setTimeout(hide, 2500));
+    // Ask the service worker to sync too (Background Sync API)
+    if ('serviceWorker' in navigator && 'SyncManager' in window)
+      navigator.serviceWorker.ready
+        .then(sw => sw.sync.register('gula-queue'))
+        .catch(() => {});
+  }
+
+  window.addEventListener('offline', goOffline);
+  window.addEventListener('online',  goOnline);
+  if (!navigator.onLine) goOffline();
+
+  // Service-worker-initiated flush (when page was closed during offline)
+  if ('serviceWorker' in navigator)
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'FLUSH_QUEUE') _OQ.flush();
+    });
+});
+
 // ---- Constants ----
 const PAGE_SIZE = 50;
 
@@ -26,6 +132,14 @@ async function api(path, opts = {}) {
   const isGet = !opts.method || opts.method === 'GET';
   const maxRetries = isGet ? API_RETRY_DELAYS.length : 0;
 
+  // If device is offline and this is a mutation, queue and return a sentinel
+  if (!navigator.onLine && !isGet && !opts._isReplay) {
+    await _OQ.push(path, opts);
+    if (typeof toast === 'function')
+      toast('📥 حُفظت العملية — ستُرسل عند عودة الاتصال', 'info');
+    return { _queued: true };
+  }
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
@@ -35,6 +149,13 @@ async function api(path, opts = {}) {
       clearTimeout(timer);
     } catch (e) {
       clearTimeout(timer);
+      // Network error on a mutation → queue for later
+      if (!isGet && !opts._isReplay) {
+        await _OQ.push(path, opts);
+        if (typeof toast === 'function')
+          toast('📥 حُفظت العملية — ستُرسل عند عودة الاتصال', 'info');
+        return { _queued: true };
+      }
       if (e.name === 'AbortError') {
         if (attempt < maxRetries) { await _sleep(API_RETRY_DELAYS[attempt]); continue; }
         throw new Error('انتهت مهلة الاتصال - تحقق من الشبكة');
