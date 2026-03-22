@@ -1839,4 +1839,93 @@ window.addEventListener('hashchange', () => {
   navigate(page);
 });
 
+// ============================================================
+// OFFLINE SYNC ENGINE
+// Queue writes when offline, sync automatically when back online
+// ============================================================
+
+const OFFLINE_QUEUE_KEY = 'gula_offline_queue';
+
+function offlineEnqueue(item) {
+  const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+  queue.push({ ...item, ts: Date.now(), id: crypto.randomUUID() });
+  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  _updateConnectionBadge();
+}
+
+function offlineQueueSize() {
+  return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]').length;
+}
+
+async function offlineSync() {
+  if (!navigator.onLine) return;
+  const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+  if (!queue.length) return;
+
+  const failed = [];
+  for (const item of queue) {
+    try {
+      const { type, payload } = item;
+      if (type === 'result_patch') {
+        await api(`/results/${payload.result_id}`, {
+          method: 'PATCH', body: JSON.stringify(payload.data)
+        });
+      } else if (type === 'order_create') {
+        await api('/results/order', {
+          method: 'POST', body: JSON.stringify(payload)
+        });
+      }
+    } catch {
+      failed.push(item); // keep unsynced items
+    }
+  }
+
+  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(failed));
+  _updateConnectionBadge();
+  if (failed.length === 0 && queue.length > 0) {
+    _showToast(`تمت مزامنة ${queue.length} عملية`, 'success');
+  }
+}
+
+function _updateConnectionBadge() {
+  const badge = document.getElementById('_connBadge');
+  if (!badge) return;
+  const pending = offlineQueueSize();
+  if (!navigator.onLine) {
+    badge.textContent = '🔴 بدون إنترنت' + (pending ? ` (${pending} معلق)` : '');
+    badge.style.background = '#dc2626';
+  } else if (pending > 0) {
+    badge.textContent = `🟡 مزامنة... (${pending})`;
+    badge.style.background = '#d97706';
+  } else {
+    badge.textContent = '🟢 متصل';
+    badge.style.background = '#16a34a';
+  }
+}
+
+function _injectConnectionBadge() {
+  if (document.getElementById('_connBadge')) return;
+  const badge = document.createElement('div');
+  badge.id = '_connBadge';
+  badge.style.cssText = 'position:fixed;bottom:12px;left:12px;padding:4px 10px;border-radius:20px;color:#fff;font-size:12px;z-index:9999;transition:background .3s';
+  document.body.appendChild(badge);
+  _updateConnectionBadge();
+}
+
+function _showToast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = `position:fixed;bottom:48px;left:12px;padding:8px 16px;border-radius:8px;color:#fff;font-size:13px;z-index:9999;background:${type === 'success' ? '#16a34a' : '#2563eb'}`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// Auto-sync every 5 seconds + on reconnect
+setInterval(offlineSync, 5000);
+window.addEventListener('online', () => { _updateConnectionBadge(); offlineSync(); });
+window.addEventListener('offline', _updateConnectionBadge);
+
+// Inject badge after DOM ready
+document.addEventListener('DOMContentLoaded', _injectConnectionBadge);
+
 init();
