@@ -10,7 +10,7 @@ import os
 import hmac
 import hashlib
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -32,6 +32,7 @@ from ..security.rbac import (
     get_role_level,
 )
 from ..services.audit_service import log_action
+from ..security.rate_limit import rate_limit_admin
 
 logger = logging.getLogger("gula.admin")
 
@@ -343,10 +344,12 @@ class CreateUserRequest(BaseModel):
 
 @router.post("/users")
 def create_user(
+    request: Request,
     data: CreateUserRequest,
     actor: LabUser = Depends(require_manage_users),
     db: Session = Depends(get_db),
 ):
+    rate_limit_admin(request, actor.id)
     """Create a new user. Role must be strictly below the actor's level."""
     # Hierarchy check
     if data.role not in VALID_ROLES:
@@ -418,11 +421,13 @@ class ChangeRoleRequest(BaseModel):
 
 @router.patch("/users/{user_id}/role")
 def change_user_role(
+    request: Request,
     user_id: int,
     data: ChangeRoleRequest,
     actor: LabUser = Depends(require_manage_users),
     db: Session = Depends(get_db),
 ):
+    rate_limit_admin(request, actor.id)
     """Change a user's role. Both current and new role must be below actor's level."""
     if data.role not in VALID_ROLES:
         raise HTTPException(status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}")

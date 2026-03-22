@@ -11,6 +11,9 @@ class LabOrder(Base):
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
     doctor_name = Column(String(200), nullable=True)
+    # doctor_user_id links to a LabUser with role='doctor' — enables data isolation
+    # so doctors can only query orders associated with them.
+    doctor_user_id = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
     status = Column(String(20), default="pending", index=True)  # pending, completed, cancelled
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
