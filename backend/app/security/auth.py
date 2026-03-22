@@ -6,6 +6,21 @@ from ..config import (
     REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRE_DAYS,
 )
 
+# ── JWT Token Blacklist (revocation) ──────────────────────────────────────────
+# Uses Redis (or in-memory fallback) to store revoked JTIs.
+# TTL matches token lifetime so keys auto-expire and storage stays bounded.
+
+def blacklist_token(jti: str, ttl_seconds: int) -> None:
+    """Add a JTI to the revocation list until it would have expired anyway."""
+    from .redis_client import cache
+    cache.set(f"blacklist:jti:{jti}", "1", ex=ttl_seconds)
+
+
+def is_token_blacklisted(jti: str) -> bool:
+    """Return True if this JTI has been revoked (logout or forced expiry)."""
+    from .redis_client import cache
+    return cache.get(f"blacklist:jti:{jti}") is not None
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 

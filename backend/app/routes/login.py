@@ -4,9 +4,10 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.auth import verify_password, create_token, create_refresh_token, build_token_payload
+from ..security.auth import verify_password, create_token, create_refresh_token, build_token_payload, blacklist_token
+from ..security.auth import decode_token, decode_refresh_token
 from ..security.rate_limit import rate_limit_auth, get_client_ip
-from ..security.session import warm_perm_version
+from ..security.session import warm_perm_version, bump_perm_version
 from ..services.audit_service import log_action
 from ..config import IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
 
@@ -124,8 +125,53 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
 
 @router.post("/logout")
-def logout(response: Response):
-    """Clear authentication cookies (web clients)."""
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    """
+    Logout with two-layer revocation:
+    1. Redis JTI blacklist — fast, rejects this specific token within milliseconds
+    2. DB perm_version bump — survives Redis restart; invalidates ALL sessions for this user
+    """
+    import time as _time
+
+    user_id = None
+
+    # Layer 1: blacklist access token JTI in Redis
+    access_token = request.cookies.get("access_token")
+    if access_token:
+        payload = decode_token(access_token)
+        if payload:
+            user_id = payload.get("user_id")
+            jti = payload.get("jti")
+            if jti:
+                remaining = int((payload["exp"] - _time.time()) + 1)
+                if remaining > 0:
+                    blacklist_token(jti, remaining)
+
+    # Layer 1b: blacklist refresh token JTI in Redis
+    refresh_cookie = request.cookies.get("refresh_token")
+    if refresh_cookie:
+        rp = decode_refresh_token(refresh_cookie)
+        if rp and rp.get("jti"):
+            remaining = int((rp["exp"] - _time.time()) + 1)
+            if remaining > 0:
+                blacklist_token(rp["jti"], min(remaining, REFRESH_TOKEN_EXPIRE_DAYS * 86400))
+            if not user_id:
+                user_id = rp.get("user_id")
+
+    # Layer 2: bump perm_version in DB so ALL existing tokens become invalid
+    # This is the safety net if Redis is wiped — get_current_user will reject
+    # any token whose perm_ver no longer matches the DB value.
+    if user_id:
+        user = db.query(LabUser).filter(LabUser.id == user_id).first()
+        if user:
+            bump_perm_version(
+                user, db,
+                actor_id=user_id,
+                actor_role=user.role,
+                reason="logout",
+            )
+            db.commit()
+
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/")
     return {"message": "Logged out successfully"}

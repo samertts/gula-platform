@@ -67,7 +67,7 @@ limiter = RateLimiter()
 
 
 def rate_limit_public(request: Request, max_per_minute: int = 30):
-    """Rate limit for public endpoints (result links)."""
+    """Rate limit for public endpoints (result links) — keyed by IP."""
     client_ip = get_client_ip(request)
     if not limiter.check(f"public:{client_ip}", max_requests=max_per_minute, window_seconds=60):
         raise HTTPException(
@@ -76,11 +76,60 @@ def rate_limit_public(request: Request, max_per_minute: int = 30):
         )
 
 
+def rate_limit_user(request: Request, user_id: int, max_per_minute: int = 60):
+    """
+    Rate limit for authenticated endpoints — keyed by user_id (primary) + IP (secondary).
+
+    Two-key strategy:
+    - user:{id}  → prevents a single account from hammering even with rotating IPs
+    - ip:{addr}  → prevents a single IP from using many accounts to bypass per-user limit
+    Both must pass; the stricter one wins.
+    """
+    client_ip = get_client_ip(request)
+
+    # Per-user check (primary) — e.g. 60 req/min per account
+    if not limiter.check(f"user:{user_id}", max_requests=max_per_minute, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please slow down.",
+        )
+
+    # Per-IP check (secondary) — allows 3× the per-user limit across all users on that IP
+    ip_max = max_per_minute * 3
+    if not limiter.check(f"ip:{client_ip}", max_requests=ip_max, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests from this network.",
+        )
+
+
 def rate_limit_auth(request: Request, max_per_minute: int = 10):
-    """Rate limit for auth endpoints (login/register)."""
+    """Rate limit for auth endpoints (login/register) — keyed by IP."""
     client_ip = get_client_ip(request)
     if not limiter.check(f"auth:{client_ip}", max_requests=max_per_minute, window_seconds=60):
         raise HTTPException(
             status_code=429,
             detail="Too many login attempts. Please wait a moment.",
+        )
+
+
+def rate_limit_admin(request: Request, user_id: int, max_per_minute: int = 20):
+    """Strict rate limit for /admin/* endpoints — keyed by user_id + IP.
+
+    Admin actions are sensitive; a lower limit protects against:
+    - Brute-force role enumeration
+    - Bulk account manipulation scripts
+    - Compromised admin token abuse
+    """
+    client_ip = get_client_ip(request)
+    if not limiter.check(f"admin:user:{user_id}", max_requests=max_per_minute, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="Admin rate limit exceeded. Maximum 20 operations per minute.",
+        )
+    # Secondary: per-IP across all admin users (blocks scripted attacks from one IP)
+    if not limiter.check(f"admin:ip:{client_ip}", max_requests=60, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many admin requests from this network.",
         )
