@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.lab import Lab
-from .auth import decode_token
+from .auth import decode_token, is_token_blacklisted
 from .rbac import get_permissions_for_role
 from .session import get_perm_version
 
@@ -33,6 +33,11 @@ def get_current_user(
     payload = decode_token(raw_token)
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    # Reject revoked tokens (logout, forced expiry)
+    jti = payload.get("jti")
+    if jti and is_token_blacklisted(jti):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
 
     user_id = payload.get("user_id")
     if user_id is None:
