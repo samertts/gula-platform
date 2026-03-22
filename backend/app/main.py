@@ -242,6 +242,59 @@ app.include_router(national_identity.router)
 app.include_router(insurance.router)
 
 
+# ===== STARTUP: ENSURE MASTER ADMIN =====
+@app.on_event("startup")
+async def ensure_master_admin():
+    """Create or update master admin from GULA_ADMIN_EMAIL / GULA_ADMIN_PASSWORD env vars."""
+    email = os.getenv("GULA_ADMIN_EMAIL", "").strip()
+    name = os.getenv("GULA_ADMIN_NAME", "GULA Admin").strip()
+    password = os.getenv("GULA_ADMIN_PASSWORD", "").strip()
+    if not email or not password:
+        logger.info("GULA_ADMIN_EMAIL/PASSWORD not set — skipping admin auto-creation")
+        return
+    from .database import SessionLocal
+    from sqlalchemy import text
+    from passlib.context import CryptContext
+    pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    db = SessionLocal()
+    try:
+        # Ensure the platform lab exists
+        lab = db.execute(text("SELECT id FROM labs WHERE name = 'GULA Platform' LIMIT 1")).fetchone()
+        if not lab:
+            db.execute(text(
+                "INSERT INTO labs (name, city, is_active, created_at) "
+                "VALUES ('GULA Platform', 'Platform', true, now())"
+            ))
+            db.commit()
+            lab = db.execute(text("SELECT id FROM labs WHERE name = 'GULA Platform' LIMIT 1")).fetchone()
+        lab_id = lab.id
+        pw_hash = pwd_ctx.hash(password)
+        existing = db.execute(
+            text("SELECT id, email FROM lab_users WHERE role = 'master_admin' LIMIT 1")
+        ).fetchone()
+        if existing:
+            db.execute(
+                text("UPDATE lab_users SET email=:email, name=:name, password_hash=:pw, "
+                     "is_active=true, perm_version=COALESCE(perm_version,1)+1 WHERE id=:id"),
+                {"email": email, "name": name, "pw": pw_hash, "id": existing.id},
+            )
+            db.commit()
+            logger.info("Master admin updated → %s", email)
+        else:
+            db.execute(
+                text("INSERT INTO lab_users (lab_id, name, email, password_hash, role, is_active, created_at) "
+                     "VALUES (:lab_id, :name, :email, :pw, 'master_admin', true, now())"),
+                {"lab_id": lab_id, "name": name, "email": email, "pw": pw_hash},
+            )
+            db.commit()
+            logger.info("Master admin created → %s", email)
+    except Exception as exc:
+        db.rollback()
+        logger.error("Failed to ensure master admin: %s", exc)
+    finally:
+        db.close()
+
+
 # ===== STARTUP WARMUP =====
 @app.on_event("startup")
 async def warmup():
