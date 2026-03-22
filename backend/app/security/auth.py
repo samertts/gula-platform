@@ -35,9 +35,10 @@ def build_token_payload(user) -> dict:
 
 def create_token(data: dict) -> str:
     """Create a short-lived JWT access token (default: 30 minutes)."""
+    import uuid
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "type": "access", "jti": str(uuid.uuid4())})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
@@ -59,9 +60,10 @@ def decode_token(token: str) -> dict | None:
 
 def create_refresh_token(data: dict) -> str:
     """Create a long-lived JWT refresh token (default: 30 days)."""
+    import uuid
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({"exp": expire, "type": "refresh", "jti": str(uuid.uuid4())})
     return jwt.encode(to_encode, REFRESH_TOKEN_SECRET, algorithm=JWT_ALGORITHM)
 
 
