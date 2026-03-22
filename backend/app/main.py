@@ -204,10 +204,12 @@ from .routes import national_identity, insurance, device_results
 from .routes import qr, id_scan, admin, samples
 from .routes import quality_control, critical_alerts, batch
 from .routes import mobile, compliance
+from .routes import setup
 
 # Core routes
 app.include_router(login.router)
 app.include_router(register.router)
+app.include_router(setup.router)
 app.include_router(patients.router)
 app.include_router(results.router)
 app.include_router(dashboard.router)
