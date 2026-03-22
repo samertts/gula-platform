@@ -1,0 +1,151 @@
+#!/bin/bash
+# =============================================================================
+# GULA Platform — Safe Deploy Script
+# Usage: ./scripts/deploy.sh [--skip-backup] [--branch <name>]
+# =============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+LOG_FILE="${PROJECT_DIR}/logs/deploy.log"
+HEALTH_URL="${HEALTH_URL:-http://localhost:8080/health}"
+HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-60}"   # seconds to wait for health
+SKIP_BACKUP=false
+BRANCH=""
+LOCK_FILE="/tmp/gula_deploy.lock"
+
+# ── Parse args ────────────────────────────────────────────────────────────────
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-backup) SKIP_BACKUP=true ;;
+        --branch) BRANCH="$2"; shift ;;
+        *) echo "Unknown arg: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+mkdir -p "$(dirname "$LOG_FILE")"
+
+log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
+ok()   { log "✓ $*"; }
+fail() { log "✗ $*"; rm -f "$LOCK_FILE"; exit 1; }
+
+# ── Deploy lock (prevent concurrent runs) ────────────────────────────────────
+if [[ -f "$LOCK_FILE" ]]; then
+    echo "ERROR: Another deploy is in progress (lock: $LOCK_FILE). Aborting."
+    exit 1
+fi
+trap 'rm -f "$LOCK_FILE"' EXIT
+touch "$LOCK_FILE"
+
+log "========================================"
+log "GULA Deploy started (user=$(whoami))"
+log "========================================"
+
+cd "$PROJECT_DIR"
+
+# ── Step 1: Backup database before any change ─────────────────────────────────
+if [[ "$SKIP_BACKUP" == "false" ]]; then
+    log "Step 1/7: Backing up database..."
+    if bash scripts/backup.sh daily >> "$LOG_FILE" 2>&1; then
+        ok "Database backup complete"
+    else
+        fail "Backup failed — deploy aborted (use --skip-backup to override)"
+    fi
+else
+    log "Step 1/7: Backup skipped (--skip-backup)"
+fi
+
+# ── Step 2: Pull latest code ──────────────────────────────────────────────────
+log "Step 2/7: Pulling latest code..."
+if [[ -n "$BRANCH" ]]; then
+    git fetch origin "$BRANCH" || fail "git fetch failed"
+    git checkout "$BRANCH"     || fail "git checkout failed"
+fi
+git pull || fail "git pull failed"
+ok "Code updated — $(git log -1 --oneline)"
+
+# ── Step 3: Build images (fail fast — do not touch running containers) ────────
+log "Step 3/7: Building Docker images..."
+if docker compose build --pull 2>&1 | tee -a "$LOG_FILE"; then
+    ok "Build successful"
+else
+    fail "Build failed — running containers are untouched"
+fi
+
+# ── Step 4: Run database migrations ──────────────────────────────────────────
+log "Step 4/7: Running database migrations (alembic upgrade head)..."
+docker compose up -d postgres 2>&1 | tee -a "$LOG_FILE"
+
+# Wait for postgres to be genuinely ready (not just started)
+log "Waiting for postgres to accept connections..."
+for i in $(seq 1 30); do
+    if docker compose exec -T postgres pg_isready -q 2>/dev/null; then
+        ok "Postgres ready (attempt $i)"
+        break
+    fi
+    if [[ $i -eq 30 ]]; then
+        fail "Postgres did not become ready after 60s"
+    fi
+    sleep 2
+done
+
+if docker compose run --rm --no-deps gula-backend \
+        sh -c "cd /app && alembic upgrade head" 2>&1 | tee -a "$LOG_FILE"; then
+    ok "Migrations applied"
+else
+    fail "Migration failed — database is untouched, no containers started"
+fi
+
+# ── Step 5: Start / update containers ────────────────────────────────────────
+log "Step 5/7: Starting containers..."
+docker compose up -d --remove-orphans 2>&1 | tee -a "$LOG_FILE"
+ok "Containers started"
+
+# ── Step 6: Health check (wait up to HEALTH_TIMEOUT seconds) ─────────────────
+log "Step 6/7: Waiting for health check (timeout=${HEALTH_TIMEOUT}s)..."
+START=$SECONDS
+until curl -sf "$HEALTH_URL" > /dev/null 2>&1; do
+    if (( SECONDS - START >= HEALTH_TIMEOUT )); then
+        log "Health check timed out after ${HEALTH_TIMEOUT}s"
+        log "Container status:"
+        docker compose ps 2>&1 | tee -a "$LOG_FILE"
+        log "Recent backend logs:"
+        docker logs gula-backend --tail 30 2>&1 | tee -a "$LOG_FILE"
+        fail "Deploy FAILED — check logs above. Manual rollback: git revert HEAD && docker compose up -d --build"
+    fi
+    sleep 3
+done
+ok "Health check passed (${HEALTH_URL})"
+
+# ── Step 7: Recreate api-gateway + reload system nginx ────────────────────────
+log "Step 7/7: Applying nginx configs..."
+
+# Force-recreate api-gateway so it always boots with the current config from disk.
+# `nginx -s reload` can fail silently or miss volume changes; recreate is definitive.
+log "Recreating api-gateway container..."
+if docker compose up -d --force-recreate --no-deps api-gateway 2>&1 | tee -a "$LOG_FILE"; then
+    ok "api-gateway recreated with current config"
+else
+    fail "api-gateway recreate failed — check docker compose logs above"
+fi
+
+# System nginx — reload to pick up any changes to /etc/nginx/sites-available/
+if systemctl is-active --quiet nginx 2>/dev/null; then
+    nginx -t 2>&1 | tee -a "$LOG_FILE" \
+        && systemctl reload nginx \
+        && ok "System nginx reloaded" \
+        || log "WARN: system nginx config test failed — not reloading (old config still active)"
+else
+    log "INFO: system nginx not running, skipping reload"
+fi
+
+# ── Done ──────────────────────────────────────────────────────────────────────
+log "========================================"
+log "Deploy SUCCESSFUL"
+log "  Commit : $(git log -1 --oneline)"
+log "  Health : $HEALTH_URL"
+log "  Rollback command (if needed):"
+log "    git revert HEAD && docker compose up -d --build"
+log "========================================"

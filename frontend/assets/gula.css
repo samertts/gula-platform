@@ -369,3 +369,228 @@ tr:hover td { background: #ffffff05; }
   table { font-size: .8rem; }
   th, td { border: 1px solid #ccc; }
 }
+
+/* ============================================================
+   WORKFLOW SCREEN — ⚡ إدخال سريع
+   ============================================================ */
+
+/* Nav highlight */
+.nav-item-primary { color: var(--primary) !important; font-weight: 700; }
+.nav-item-primary:hover, .nav-item-primary.active {
+  background: var(--primary-bg) !important; color: var(--primary) !important;
+}
+
+/* 3-column layout */
+.wf-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 220px;
+  gap: 12px;
+  height: calc(100vh - 80px);
+  overflow: hidden;
+}
+.wf-left, .wf-right {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wf-center {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wf-section-title {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 4px;
+}
+
+/* Patient search */
+.wf-search-wrap { margin-bottom: 4px; }
+.wf-search {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: .85rem;
+  font-family: inherit;
+}
+.wf-search:focus { outline: none; border-color: var(--primary); }
+
+/* Patient list */
+.wf-patient-list { flex: 1; overflow-y: auto; }
+.wf-patient-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s;
+  margin-bottom: 2px;
+}
+.wf-patient-item:hover { background: var(--border); }
+.wf-patient-item.active { background: var(--primary-bg); border: 1px solid var(--primary)40; }
+.wf-pt-name { font-size: .88rem; font-weight: 600; }
+.wf-pt-phone { font-size: .76rem; color: var(--text-muted); }
+.wf-empty { color: var(--text-muted); font-size: .82rem; text-align: center; padding: 16px 0; }
+
+/* Patient banner */
+.wf-patient-banner {
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .88rem;
+}
+.wf-unselected {
+  background: var(--bg-input);
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+}
+.wf-selected {
+  background: var(--primary-bg);
+  border: 1px solid var(--primary)40;
+  flex-wrap: wrap;
+}
+.wf-pt-selected-name { font-weight: 700; color: var(--text); flex: 1; }
+.wf-pt-selected-meta { font-size: .78rem; color: var(--text-dim); }
+.wf-pt-change {
+  background: none; border: 1px solid var(--border);
+  color: var(--text-dim); border-radius: 6px;
+  padding: 2px 8px; cursor: pointer; font-size: .75rem;
+}
+
+/* Tests area */
+.wf-tests-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.wf-test-row {
+  display: flex; align-items: flex-end; gap: 6px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; margin-bottom: 6px;
+  transition: border-color .15s;
+}
+.wf-test-row:focus-within { border-color: var(--primary); }
+.wf-test-fields { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; align-items: flex-end; }
+.wf-f-name { flex: 2; min-width: 130px; }
+.wf-f-val  { flex: 1; min-width: 70px; }
+.wf-f-unit { flex: 1; min-width: 70px; }
+.wf-f-range{ flex: 1; min-width: 60px; }
+.wf-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: .85rem;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+.wf-input:focus { outline: none; border-color: var(--primary); }
+.wf-del-btn {
+  background: none; border: none; color: var(--danger);
+  cursor: pointer; font-size: 1rem; padding: 4px 6px;
+  border-radius: 6px; align-self: center;
+}
+.wf-del-btn:hover { background: var(--danger-bg); }
+
+/* Flag indicators */
+.wf-flag { min-width: 60px; text-align: center; font-size: .75rem; font-weight: 700; }
+.wf-flag-ok   { color: var(--success); }
+.wf-flag-low  { color: var(--warning); }
+.wf-flag-high { color: var(--danger); }
+
+/* Typeahead suggestions */
+.wf-suggest {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+.wf-sug-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .85rem;
+}
+.wf-sug-item:hover { background: var(--border); }
+.wf-sug-unit { color: var(--text-muted); font-size: .78rem; }
+
+/* Doctor field */
+.wf-field-row { display: flex; gap: 8px; }
+
+/* Actions */
+.wf-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+/* Success result box */
+.wf-result-box {
+  background: var(--success-bg);
+  border: 1px solid var(--success)40;
+  border-radius: 10px;
+  padding: 20px;
+}
+.wf-success { text-align: center; }
+.wf-success-icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--success); color: #000;
+  font-size: 1.4rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 10px;
+}
+.wf-success-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+.wf-success-patient { color: var(--text-dim); margin-bottom: 14px; }
+.wf-result-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
+.wf-result-link {
+  font-size: .75rem; color: var(--text-muted); word-break: break-all;
+  background: var(--bg-input); padding: 6px 10px; border-radius: 6px;
+}
+.btn-wa { background: #25d366; color: #fff; }
+.btn-wa:hover { background: #1da851; color: #fff; }
+
+/* Recent orders */
+.wf-recent-list { overflow-y: auto; flex: 1; }
+.wf-recent-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  transition: background .15s;
+}
+.wf-recent-item:hover { background: var(--border); }
+.wf-rec-name { font-size: .85rem; font-weight: 600; }
+.wf-rec-meta { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+.wf-rec-link {
+  position: absolute; top: 8px; left: 8px;
+  font-size: .9rem; text-decoration: none;
+  background: var(--primary-bg); border-radius: 6px; padding: 2px 6px;
+}
+
+/* Responsive: collapse to single column on small screens */
+@media (max-width: 900px) {
+  .wf-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+  .wf-left, .wf-right { max-height: 200px; }
+}

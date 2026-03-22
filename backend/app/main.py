@@ -24,7 +24,9 @@ logger = logging.getLogger("gula")
 # Import all models so they are registered with Base
 from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl
 
-# Create tables
+# Schema management: create_all is safe and idempotent (checkfirst=True by default).
+# It creates missing tables without touching existing data.
+# Production Alembic migrations can be added later; until then this is the safe path.
 Base.metadata.create_all(bind=engine)
 
 # ─── API Documentation ─────────────────────────────────────────────────────
@@ -263,13 +265,28 @@ def health():
 @app.get("/health/ready", tags=["system"])
 def readiness():
     """Kubernetes-style readiness probe - returns 503 if not ready to serve traffic."""
+    from .security.redis_client import cache
+
     db_ok = check_db_connection()
     if not db_ok:
         return JSONResponse(
             status_code=503,
             content={"status": "not_ready", "reason": "database_unavailable"},
         )
-    return {"status": "ready"}
+
+    redis_ok = True
+    try:
+        cache.set("_health", "1", ex=10)
+    except Exception:
+        redis_ok = False
+
+    if not redis_ok:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "reason": "redis_unavailable"},
+        )
+
+    return {"status": "ready", "database": "ok", "cache": "ok"}
 
 
 @app.get("/health/live", tags=["system"])
@@ -341,6 +358,7 @@ def on_startup():
     else:
         logger.info("Database connection verified")
 
+    _migrate_perm_version()
     _seed_test_types()
     _ensure_master_admin()
     logger.info("GULA Platform %s ready", APP_VERSION)
@@ -352,6 +370,27 @@ def on_shutdown():
     logger.info("GULA Platform shutting down gracefully...")
     engine.dispose()
     logger.info("Database connections closed")
+
+
+def _migrate_perm_version():
+    """Add perm_version column to lab_users if it does not exist (safe idempotent migration)."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            # Step 1: add the column if absent
+            conn.execute(text(
+                "ALTER TABLE lab_users "
+                "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
+            ))
+            # Step 2: back-fill any NULL values left by a partial previous migration
+            conn.execute(text(
+                "UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"
+            ))
+            conn.commit()
+        logger.info("perm_version column ensured on lab_users")
+    except Exception as exc:
+        logger.error("perm_version migration FAILED: %s — login will fail until resolved", exc)
+        raise  # re-raise so startup logs clearly show the error
 
 
 def _seed_test_types():

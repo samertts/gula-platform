@@ -11,6 +11,7 @@ Root Anchor System (external checkpoint):
   the entire audit_logs table and rebuilds the chain, the anchor file records
   what the hash WAS at each checkpoint — making the attack detectable.
 """
+import hmac
 import json
 import hashlib
 import os
@@ -26,10 +27,57 @@ logger = logging.getLogger("gula.audit")
 # Genesis hash for the first entry in the chain
 _GENESIS_HASH = "0" * 64
 
-# External anchor file path (outside the DB - survives DB reconstruction)
-# In production: mount a dedicated volume for this file
-_ANCHOR_FILE = Path(os.getenv("AUDIT_ANCHOR_FILE", "/app/data/audit_anchors.log"))
+# External anchor directory (outside the DB - survives DB reconstruction).
+# Monthly rotation: one file per calendar month, e.g. audit_anchors_2026-03.log
+# Old single-file path kept for backward compatibility during migration.
+_ANCHOR_DIR = Path(os.getenv("AUDIT_ANCHOR_DIR", "/app/data/anchors"))
 _ANCHOR_INTERVAL = 100  # Write anchor checkpoint every N entries
+
+
+def _current_anchor_file() -> Path:
+    """Return the anchor file path for the current calendar month."""
+    month_tag = datetime.now(timezone.utc).strftime("%Y-%m")
+    return _ANCHOR_DIR / f"audit_anchors_{month_tag}.log"
+
+
+def _all_anchor_files() -> list[Path]:
+    """Return all anchor files, newest first."""
+    if not _ANCHOR_DIR.exists():
+        return []
+    files = sorted(_ANCHOR_DIR.glob("audit_anchors_*.log"), reverse=True)
+    return list(files)
+
+# HMAC key for signing anchor lines — if someone edits the anchor file,
+# the HMAC signature will no longer match, making tampering detectable.
+# Falls back to a deterministic key if NID_HMAC_KEY is not set.
+#
+# Key rotation: increment ANCHOR_KEY_VERSION and set NID_HMAC_KEY to new value.
+# Old anchor lines tagged with "v{n}" are verified with the previous key
+# (supply NID_HMAC_KEY_PREV env var during transition window).
+# New anchors will carry the new version tag automatically.
+_ANCHOR_KEY_VERSION = int(os.getenv("ANCHOR_KEY_VERSION", "1"))
+_ANCHOR_HMAC_KEY = os.getenv("NID_HMAC_KEY", "gula-anchor-hmac-fallback").encode("utf-8")
+# Previous key for verifying legacy lines during a rotation window
+_ANCHOR_HMAC_KEY_PREV = os.getenv("NID_HMAC_KEY_PREV", "").encode("utf-8")
+
+_KEY_TAG = f"v{_ANCHOR_KEY_VERSION}"
+
+
+def _anchor_hmac(data: str, key: bytes | None = None) -> str:
+    """Compute HMAC-SHA256 of an anchor data string for tamper detection."""
+    k = key if key is not None else _ANCHOR_HMAC_KEY
+    return hmac.new(k, data.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _verify_anchor_hmac(data: str, expected_hmac: str) -> bool:
+    """Constant-time HMAC verification. Tries current key then previous key."""
+    # Try current key first
+    if hmac.compare_digest(_anchor_hmac(data, _ANCHOR_HMAC_KEY), expected_hmac):
+        return True
+    # Try previous key (rotation window)
+    if _ANCHOR_HMAC_KEY_PREV:
+        return hmac.compare_digest(_anchor_hmac(data, _ANCHOR_HMAC_KEY_PREV), expected_hmac)
+    return False
 
 
 def _compute_chain_hash(prev_hash: str, entry: AuditLog) -> str:
@@ -60,45 +108,95 @@ def _get_last_chain_hash(db: Session) -> str:
 
 
 def _write_anchor(entry_id: int, chain_hash: str) -> None:
-    """Append a hash anchor checkpoint to the external anchor file.
+    """Append a hash anchor checkpoint to the current month's anchor file.
 
-    The anchor file is append-only outside the database.
-    Format: ISO timestamp | entry_id | chain_hash
-    Even if the entire DB is deleted and rebuilt, this file proves
-    what the chain hash was at each checkpoint interval.
+    Monthly rotation keeps individual files small and manageable.
+    Format: vN|ISO_timestamp|entry_id|chain_hash|HMAC(vN|...|chain_hash)
     """
     try:
-        _ANCHOR_FILE.parent.mkdir(parents=True, exist_ok=True)
-        line = (
+        anchor_file = _current_anchor_file()
+        anchor_file.parent.mkdir(parents=True, exist_ok=True)
+        data = (
+            f"{_KEY_TAG}|"
             f"{datetime.now(timezone.utc).isoformat()}|"
             f"{entry_id}|"
-            f"{chain_hash}\n"
+            f"{chain_hash}"
         )
-        with open(_ANCHOR_FILE, "a", encoding="utf-8") as f:
-            f.write(line)
+        sig = _anchor_hmac(data)
+        with open(anchor_file, "a", encoding="utf-8") as f:
+            f.write(f"{data}|{sig}\n")
     except Exception as e:
-        # Don't fail audit logging if anchor write fails, but warn loudly
         logger.error("AUDIT ANCHOR WRITE FAILED (id=%s): %s", entry_id, e)
 
 
 def get_latest_anchor() -> dict | None:
-    """Read the most recent anchor from the external anchor file."""
+    """Read the most recent anchor from the monthly anchor files.
+
+    Scans all monthly files newest-first to find the last anchor.
+    Counts HMAC failures across all files for integrity reporting.
+    """
     try:
-        if not _ANCHOR_FILE.exists():
+        files = _all_anchor_files()
+        if not files:
             return None
-        with open(_ANCHOR_FILE, "r", encoding="utf-8") as f:
-            lines = [l.strip() for l in f.readlines() if l.strip()]
+
+        # Collect all lines across all monthly files (newest file first)
+        all_lines: list[str] = []
+        total_files = len(files)
+        for f_path in files:
+            with open(f_path, "r", encoding="utf-8") as f:
+                chunk = [l.strip() for l in f.readlines() if l.strip()]
+            all_lines = chunk + all_lines  # older lines first
+
+        lines = all_lines
         if not lines:
             return None
+
+        # Line formats supported (oldest → newest):
+        #   3-part:  timestamp|entry_id|chain_hash                        (legacy, no HMAC)
+        #   4-part:  timestamp|entry_id|chain_hash|hmac                   (HMAC, no version tag)
+        #   5-part:  vN|timestamp|entry_id|chain_hash|hmac                (versioned HMAC — current)
+
+        hmac_failures = 0
+        for raw_line in lines:
+            parts = raw_line.split("|")
+            if len(parts) == 5:
+                data_part = "|".join(parts[:4])
+                if not _verify_anchor_hmac(data_part, parts[4]):
+                    hmac_failures += 1
+            elif len(parts) == 4:
+                data_part = "|".join(parts[:3])
+                if not _verify_anchor_hmac(data_part, parts[3]):
+                    hmac_failures += 1
+            # 3-part lines are legacy — no HMAC to verify
+
         last = lines[-1].split("|")
-        if len(last) != 3:
+        if len(last) == 5:
+            hmac_ok = _verify_anchor_hmac("|".join(last[:4]), last[4])
+            key_version = last[0]
+            timestamp, entry_id_str, chain_hash = last[1], last[2], last[3]
+        elif len(last) == 4:
+            hmac_ok = _verify_anchor_hmac("|".join(last[:3]), last[3])
+            key_version = "v0-legacy"
+            timestamp, entry_id_str, chain_hash = last[0], last[1], last[2]
+        elif len(last) == 3:
+            hmac_ok = None  # legacy line — no HMAC to verify
+            key_version = "v0-legacy"
+            timestamp, entry_id_str, chain_hash = last[0], last[1], last[2]
+        else:
             return None
+
         return {
-            "timestamp": last[0],
-            "entry_id": int(last[1]),
-            "chain_hash": last[2],
+            "timestamp": timestamp,
+            "entry_id": int(entry_id_str),
+            "chain_hash": chain_hash,
             "total_anchors": len(lines),
-            "anchor_file": str(_ANCHOR_FILE),
+            "total_monthly_files": len(files),
+            "hmac_verified": hmac_ok,
+            "hmac_failures": hmac_failures,
+            "key_version": key_version,
+            "anchor_dir": str(_ANCHOR_DIR),
+            "current_file": str(_current_anchor_file().name),
         }
     except Exception as e:
         logger.warning("Could not read anchor file: %s", e)

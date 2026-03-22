@@ -12,8 +12,9 @@ from typing import Optional
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.lab import Lab
-from ..security.auth import decode_refresh_token, create_token, create_refresh_token
+from ..security.auth import decode_refresh_token, create_token, create_refresh_token, build_token_payload, verify_password, hash_password
 from ..security.dependencies import get_current_user
+from ..security.session import bump_perm_version, warm_perm_version, get_perm_version
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
 from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
@@ -76,17 +77,16 @@ def refresh_access_token(
         if not lab:
             raise HTTPException(status_code=403, detail="Laboratory account deactivated")
 
-    # Issue new tokens
-    new_access_token = create_token({
-        "user_id": user.id,
-        "lab_id": user.lab_id,
-        "role": user.role,
-    })
-    new_refresh_token = create_refresh_token({
-        "user_id": user.id,
-        "lab_id": user.lab_id,
-        "role": user.role,
-    })
+    # perm_version check — reject refresh tokens that pre-date a role change
+    token_perm_ver = int(payload.get("perm_ver", 1))
+    authoritative_ver = get_perm_version(user.id, user.perm_version or 1)
+    if token_perm_ver != authoritative_ver:
+        raise HTTPException(status_code=401, detail="Permissions updated — please log in again")
+
+    # Issue new tokens with fresh payload (picks up latest role + perm_version)
+    base_payload = build_token_payload(user)
+    new_access_token = create_token(base_payload)
+    new_refresh_token = create_refresh_token(base_payload)
 
     log_action(
         db,
@@ -107,7 +107,7 @@ def refresh_access_token(
     )
     response.set_cookie(
         key="refresh_token", value=new_refresh_token,
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400, path="/auth/refresh", **cookie_kwargs,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400, path="/", **cookie_kwargs,
     )
 
     return {
@@ -115,6 +115,36 @@ def refresh_access_token(
         "refresh_token": new_refresh_token,
         "token_type": "Bearer",
     }
+
+
+# ─── Change Password ─────────────────────────────────────────────────────────
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password", summary="Change current user password")
+def change_password(
+    data: ChangePasswordRequest,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Change the password for the currently authenticated user."""
+    if not verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="كلمة المرور الحالية غير صحيحة")
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل")
+    current_user.password_hash = hash_password(data.new_password)
+    # Invalidate all active sessions — user must log in again with new password
+    bump_perm_version(
+        current_user, db,
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        reason="password_change",
+    )
+    db.commit()
+    return {"message": "تم تغيير كلمة المرور بنجاح"}
 
 
 # ─── App Info ────────────────────────────────────────────────────────────────
