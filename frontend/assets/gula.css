@@ -594,3 +594,197 @@ tr:hover td { background: #ffffff05; }
   }
   .wf-left, .wf-right { max-height: 200px; }
 }
+
+/* ============================================================
+   EXTENDED STYLES — Dashboard, Admin, Charts, UX
+   ============================================================ */
+
+/* ---- Missing badge variants ---- */
+.badge-cyan { background: #22d3ee20; color: #22d3ee; }
+.badge-orange { background: #f97316 20; color: #f97316; }
+.badge-purple { background: #a855f720; color: #a855f7; }
+
+/* ---- Progress bar (used in charts) ---- */
+.progress-wrap { margin-bottom: 12px; }
+.progress-label { display: flex; justify-content: space-between; font-size: .78rem; color: var(--text-dim); margin-bottom: 4px; }
+.progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+.progress-fill.blue  { background: var(--primary); }
+.progress-fill.green { background: var(--success); }
+.progress-fill.red   { background: var(--danger); }
+.progress-fill.cyan  { background: var(--accent); }
+.progress-fill.yellow{ background: var(--warning); }
+
+/* ---- Donut ring (CSS only chart) ---- */
+.ring-chart {
+  display: flex; align-items: center; gap: 16px; margin-top: 8px;
+}
+.ring {
+  width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+  background: conic-gradient(var(--primary) var(--pct, 0%), var(--border) 0%);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.ring::after {
+  content: ''; position: absolute;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--bg-card);
+}
+.ring-val {
+  position: relative; z-index: 1; font-size: .85rem;
+  font-weight: 800; color: var(--text);
+}
+.ring-legend { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.ring-item { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--text-dim); }
+.ring-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ---- Trend arrow ---- */
+.trend-up   { color: var(--success); font-size: .78rem; }
+.trend-down { color: var(--danger);  font-size: .78rem; }
+.trend-flat { color: var(--text-muted); font-size: .78rem; }
+
+/* ---- Dashboard Quick Actions ---- */
+.quick-actions {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin-bottom: 24px;
+}
+.qa-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px 12px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); cursor: pointer; transition: all .2s;
+  text-decoration: none; color: var(--text);
+}
+.qa-btn:hover { border-color: var(--primary); background: var(--primary-bg); transform: translateY(-2px); }
+.qa-icon { font-size: 1.6rem; }
+.qa-label { font-size: .8rem; font-weight: 600; text-align: center; color: var(--text-dim); }
+.qa-btn:hover .qa-label { color: var(--primary); }
+
+/* ---- Info box ---- */
+.info-box {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 16px; border-radius: var(--radius-sm);
+  background: var(--primary-bg); border: 1px solid var(--primary)30;
+  font-size: .83rem; color: var(--text-dim); line-height: 1.5;
+}
+.info-box.warn { background: var(--warning-bg); border-color: var(--warning)30; }
+.info-box.success { background: var(--success-bg); border-color: var(--success)30; }
+
+/* ---- Section divider ---- */
+.section-title {
+  font-size: .78rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  margin: 20px 0 12px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---- Stat with icon ---- */
+.stat-with-icon {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.stat-icon { font-size: 1.8rem; flex-shrink: 0; }
+.stat-text .stat-n { font-size: 1.4rem; font-weight: 800; }
+.stat-text .stat-l { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ---- Timeline (audit / activity) ---- */
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.tl-item {
+  display: flex; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid #1e293b40; position: relative;
+}
+.tl-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  margin-top: 5px; background: var(--primary);
+}
+.tl-dot.success { background: var(--success); }
+.tl-dot.danger  { background: var(--danger); }
+.tl-dot.warning { background: var(--warning); }
+.tl-content { flex: 1; }
+.tl-title { font-size: .85rem; font-weight: 600; }
+.tl-sub { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ---- Patient card (search results) ---- */
+.patient-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; transition: all .15s; margin-bottom: 8px;
+}
+.patient-card:hover { border-color: var(--primary); background: var(--primary-bg); }
+.patient-card.selected { border-color: var(--primary); background: var(--primary-bg); }
+.pt-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff; font-size: .9rem; flex-shrink: 0;
+}
+.pt-info { flex: 1; }
+.pt-name { font-size: .88rem; font-weight: 600; }
+.pt-meta { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ---- Search with autocomplete ---- */
+.search-with-results { position: relative; }
+.search-dropdown {
+  position: absolute; top: calc(100% + 4px); right: 0; left: 0;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); z-index: 50; max-height: 220px; overflow-y: auto;
+}
+.sd-item {
+  padding: 10px 14px; cursor: pointer; font-size: .85rem;
+  border-bottom: 1px solid var(--border); transition: background .1s;
+}
+.sd-item:last-child { border-bottom: none; }
+.sd-item:hover { background: var(--primary-bg); }
+.sd-item strong { color: var(--primary); }
+
+/* ---- Status indicator strip ---- */
+.status-strip {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.ss-item {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  font-size: .75rem; font-weight: 600;
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+.ss-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* ---- Number input step ---- */
+.field input[type="number"] { text-align: left; direction: ltr; }
+
+/* ---- Responsive table scroll hint ---- */
+.table-hint {
+  font-size: .73rem; color: var(--text-muted); text-align: center;
+  padding: 4px 0 8px; display: none;
+}
+@media (max-width: 600px) { .table-hint { display: block; } }
+
+/* ---- Card hover effect ---- */
+.card-hover { transition: border-color .2s, transform .15s; }
+.card-hover:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+
+/* ---- Flex utilities ---- */
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-gap { display: flex; align-items: center; gap: 8px; }
+
+/* ---- Role color map ---- */
+.role-master_admin { color: #818cf8; }
+.role-admin { color: #34d399; }
+.role-doctor { color: #22d3ee; }
+.role-staff  { color: #94a3b8; }
+.role-citizen{ color: #64748b; }
+
+/* ---- Notification dot ---- */
+.notif-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--danger); position: absolute;
+  top: 6px; left: 10px;
+}
+
+/* ---- Welcome modal override (wider) ---- */
+.modal-box.wide { max-width: 520px; }
+
+/* ---- Print: hide interactive elements ---- */
+@media print {
+  .quick-actions, .admin-tabs, .filter-chip { display: none !important; }
+}
+
