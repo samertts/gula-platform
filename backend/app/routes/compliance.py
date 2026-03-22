@@ -11,12 +11,14 @@ Implements:
 - Compliance status reporting
 - HL7 FHIR-compatible patient resource (basic)
 """
+import json
 import logging
 import os
 import sys
 import time
 import hashlib
 import subprocess
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -759,7 +761,10 @@ def time_sync_status():
     """
     now_utc = datetime.now(timezone.utc)
 
-    # Check NTP sync status via timedatectl (Linux systemd)
+    # Maximum acceptable clock offset before raising a drift warning (2 seconds)
+    MAX_OFFSET_SECONDS = 2.0
+
+    # ─── NTP synchronized flag ────────────────────────────────────────────────
     ntp_status = "unknown"
     ntp_synchronized = None
     ntp_service = None
@@ -778,8 +783,53 @@ def time_sync_status():
     except (FileNotFoundError, subprocess.TimeoutExpired):
         ntp_status = "timedatectl_unavailable"
 
+    # ─── NTP offset (drift) via timedatectl timesync-status ──────────────────
+    # timedatectl timesync-status output contains a line like:
+    #   Offset: +359us    or    Offset: +1.234s
+    # We parse it and compare against MAX_OFFSET_SECONDS.
+    ntp_offset_us: int | None = None   # offset in microseconds
+    ntp_offset_str: str | None = None  # human-readable from timedatectl
+    drift_warning = False
+    try:
+        ts_result = subprocess.run(
+            ["timedatectl", "timesync-status", "--no-pager"],
+            capture_output=True, text=True, timeout=3
+        )
+        for line in ts_result.stdout.splitlines():
+            line_stripped = line.strip()
+            if line_stripped.startswith("Offset:"):
+                raw = line_stripped.split(":", 1)[1].strip()
+                ntp_offset_str = raw
+                # Parse magnitude: timedatectl uses µs/ms/s suffixes
+                import re
+                m = re.match(r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)", raw.replace("µs", "us"))
+                if m:
+                    val, unit = float(m.group(1)), m.group(2)
+                    if unit == "us":
+                        ntp_offset_us = int(val)
+                    elif unit == "ms":
+                        ntp_offset_us = int(val * 1_000)
+                    elif unit == "s":
+                        ntp_offset_us = int(val * 1_000_000)
+                    offset_abs_s = abs(ntp_offset_us) / 1_000_000
+                    drift_warning = offset_abs_s > MAX_OFFSET_SECONDS
+                break
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass  # timesync-status may not be available in containers
+
     # Compute Unix timestamp for auditor cross-reference
     unix_ts = int(time.time())
+
+    # Determine overall recommendation
+    if not ntp_synchronized:
+        recommendation = "ACTION REQUIRED: Run 'timedatectl set-ntp true' on the host"
+        audit_impact = "WARNING: Unsynchronized clock may affect audit log credibility"
+    elif drift_warning:
+        recommendation = f"WARNING: Clock drift {ntp_offset_str} exceeds {MAX_OFFSET_SECONDS}s threshold"
+        audit_impact = "DRIFT DETECTED: Large offset may affect audit log timestamp accuracy"
+    else:
+        recommendation = "PASS - NTP synchronized" + (f" (offset: {ntp_offset_str})" if ntp_offset_str else "")
+        audit_impact = "Audit log timestamps are reliable"
 
     return {
         "server_time_utc": now_utc.isoformat(),
@@ -788,15 +838,12 @@ def time_sync_status():
         "ntp_status": ntp_status,
         "ntp_synchronized": ntp_synchronized,
         "ntp_service_active": ntp_service,
-        "recommendation": (
-            "PASS - NTP synchronized" if ntp_synchronized
-            else "ACTION REQUIRED: Run 'timedatectl set-ntp true' on the host"
-        ),
-        "audit_impact": (
-            "Audit log timestamps are reliable"
-            if ntp_synchronized
-            else "WARNING: Unsynchronized clock may affect audit log credibility"
-        ),
+        "ntp_offset_us": ntp_offset_us,
+        "ntp_offset_human": ntp_offset_str,
+        "drift_warning": drift_warning,
+        "max_offset_seconds": MAX_OFFSET_SECONDS,
+        "recommendation": recommendation,
+        "audit_impact": audit_impact,
     }
 
 
@@ -851,8 +898,11 @@ def system_status(
         "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours'"
     )).scalar() or 0
 
-    # ─── Time sync ────────────────────────────────────────────────────────
+    # ─── Time sync (synchronized flag + drift check) ──────────────────────
+    _MAX_OFFSET_S = 2.0
     ntp_ok = None
+    ntp_drift_warning = False
+    ntp_offset_str = None
     try:
         result = subprocess.run(
             ["timedatectl", "show", "--no-pager", "--property=NTPSynchronized"],
@@ -861,6 +911,24 @@ def system_status(
         ntp_ok = "NTPSynchronized=yes" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired):
         ntp_ok = None
+    # Parse drift from timesync-status
+    try:
+        import re as _re
+        ts = subprocess.run(
+            ["timedatectl", "timesync-status", "--no-pager"],
+            capture_output=True, text=True, timeout=3
+        )
+        for line in ts.stdout.splitlines():
+            if line.strip().startswith("Offset:"):
+                ntp_offset_str = line.strip().split(":", 1)[1].strip()
+                m = _re.match(r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)", ntp_offset_str.replace("µs", "us"))
+                if m:
+                    v, u = float(m.group(1)), m.group(2)
+                    us = int(v) if u == "us" else int(v * 1_000) if u == "ms" else int(v * 1_000_000)
+                    ntp_drift_warning = abs(us) / 1_000_000 > _MAX_OFFSET_S
+                break
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
 
     def status_flag(ok, warning_msg="", pass_msg="PASS"):
         if ok is True:
@@ -868,6 +936,9 @@ def system_status(
         if ok is False:
             return {"status": "fail", "label": f"FAIL: {warning_msg}"}
         return {"status": "unknown", "label": "UNKNOWN"}
+
+    # ─── Restore test evidence ────────────────────────────────────────────
+    restore_test = _read_restore_test()
 
     return {
         "dashboard": "GULA System Status",
@@ -914,10 +985,13 @@ def system_status(
             "anchor_cross_check": chain_result.get("anchor_cross_check"),
             "time_sync": {
                 **status_flag(
-                    ntp_ok,
-                    "NTP not synchronized — audit timestamps may be unreliable",
-                    "PASS - NTP synchronized",
+                    None if ntp_ok is None else (ntp_ok and not ntp_drift_warning),
+                    "NTP not synchronized — audit timestamps may be unreliable"
+                    if not ntp_ok else f"Clock drift {ntp_offset_str} exceeds {_MAX_OFFSET_S}s",
+                    "PASS - NTP synchronized" + (f" (offset: {ntp_offset_str})" if ntp_offset_str else ""),
                 ),
+                "drift_warning": ntp_drift_warning,
+                "offset": ntp_offset_str,
             },
             "https": {
                 **status_flag(
@@ -935,17 +1009,26 @@ def system_status(
             "rbac": "PASS - 4 roles enforced",
             "secure_cookies": "PASS" if IS_PRODUCTION else "DEV - Secure=False in development",
             "docs_protected": "PASS" if IS_PRODUCTION else "DEV - /docs open in development",
+            "disaster_recovery": (
+                f"PASS - Last tested: {restore_test['tested_at_human']} ({restore_test['tested_ago']} ago, {restore_test['restore_seconds']}s)"
+                if restore_test and restore_test.get("status") == "PASS"
+                else "PENDING - Run scripts/restore-test.sh"
+            ),
             "cmc_registration": "PENDING - Register at cmc.iq",
             "iso_27001": "PENDING - Formal certification required",
             "pentest": "PENDING - Annual CREST-certified pentest required",
         },
 
+        "disaster_recovery": restore_test,
+
         "alerts": [
             msg for msg in [
                 "⚠ CRITICAL: NTP not synchronized" if ntp_ok is False else None,
+                f"⚠ HIGH: Clock drift {ntp_offset_str} exceeds {_MAX_OFFSET_S}s — audit timestamps unreliable" if ntp_drift_warning else None,
                 f"⚠ HIGH: {failed_24h} failed logins in last 24h" if failed_24h > 10 else None,
                 "⚠ HIGH: Audit chain integrity broken" if not chain_result["verified"] else None,
                 "⚠ MEDIUM: Anchor cross-check failed" if chain_result.get("anchor_cross_check") and not chain_result["anchor_cross_check"].get("match") else None,
+                "⚠ MEDIUM: Restore test result tampered" if restore_test and restore_test.get("signature_valid") is False else None,
                 "⚠ INFO: Running in development mode" if not IS_PRODUCTION else None,
             ] if msg
         ],
@@ -953,6 +1036,52 @@ def system_status(
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
+_RESTORE_RESULT_FILE = Path(os.getenv("RESTORE_RESULT_JSON", "/app/data/last_restore_test.json"))
+
+
+def _read_restore_test() -> dict | None:
+    """Read and HMAC-verify the last restore-test.sh result.
+
+    The script signs the payload with NID_HMAC_KEY. If the file has been
+    tampered with (e.g., someone manually changed "FAIL" → "PASS"), the
+    signature will not match and signature_valid=False is returned.
+    """
+    import hmac as _hmac
+    import hashlib as _hashlib
+    try:
+        if not _RESTORE_RESULT_FILE.exists():
+            return None
+        with open(_RESTORE_RESULT_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Verify HMAC: recompute over payload without the "signature" field
+        stored_sig = data.pop("signature", None)
+        if stored_sig:
+            hmac_key = os.getenv("NID_HMAC_KEY", "gula-anchor-hmac-fallback").encode()
+            # Canonical payload: compact JSON with sorted keys (matches shell output)
+            payload = json.dumps(data, separators=(",", ":"), ensure_ascii=False, sort_keys=False)
+            expected = _hmac.new(hmac_key, payload.encode("utf-8"), _hashlib.sha256).hexdigest()
+            data["signature_valid"] = _hmac.compare_digest(expected, stored_sig)
+            if not data["signature_valid"]:
+                logger.warning("Restore test JSON HMAC mismatch — possible tampering")
+        else:
+            data["signature_valid"] = None  # legacy file without signature
+
+        # Human "tested ago" label
+        tested_at = datetime.fromisoformat(data["tested_at"].replace("Z", "+00:00"))
+        delta_seconds = int((datetime.now(timezone.utc) - tested_at).total_seconds())
+        if delta_seconds < 3600:
+            ago = f"{delta_seconds // 60} دقيقة"
+        elif delta_seconds < 86400:
+            ago = f"{delta_seconds // 3600} ساعة"
+        else:
+            ago = f"{delta_seconds // 86400} يوم"
+        data["tested_ago"] = ago
+        return data
+    except Exception:
+        return None
+
 
 def _fhir_gender(gender: str | None) -> str:
     mapping = {"M": "male", "F": "female", "male": "male", "female": "female"}

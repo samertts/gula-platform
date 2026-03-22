@@ -185,8 +185,374 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// ---- WORKFLOW PAGE (⚡ إدخال سريع) ----
+// Single workspace: patient search → test entry → WhatsApp share
+// Keyboard-first: Enter moves between fields
+let _wfPatient = null; // selected patient
+let _wfTests = [];     // [{name,val,unit,low,high}]
+let _wfPatientCache = [];
+
+async function pageWorkflow() {
+  $('page').innerHTML = `
+    <div class="wf-layout">
+      <!-- LEFT: Quick Patient List -->
+      <div class="wf-left">
+        <div class="wf-section-title">المرضى الأخيرون</div>
+        <div class="wf-search-wrap">
+          <input id="wfSearch" class="wf-search" placeholder="🔍 اسم أو هاتف..." autocomplete="off"
+            oninput="wfSearchPatients(this.value)" onkeydown="if(event.key==='Enter'){wfSearchPatients(this.value,true)}">
+        </div>
+        <div id="wfPatientList" class="wf-patient-list"><div class="spinner"></div></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="wfNewPatient()">+ مريض جديد</button>
+      </div>
+
+      <!-- CENTER: Entry Workspace -->
+      <div class="wf-center">
+        <div id="wfPatientBanner" class="wf-patient-banner wf-unselected">
+          <span>← اختر مريضاً من القائمة أو ابحث</span>
+        </div>
+        <div id="wfForm" class="wf-form" style="display:none">
+          <div class="wf-field-row">
+            <div class="field"><label>اسم الطبيب (اختياري)</label>
+              <input id="wfDoctor" class="wf-input" placeholder="د. أحمد...">
+            </div>
+          </div>
+          <div class="wf-tests-header">
+            <span class="wf-section-title">التحاليل</span>
+            <button class="btn btn-outline btn-sm" onclick="wfAddTest()">+ تحليل</button>
+          </div>
+          <div id="wfTests"></div>
+          <div id="wfTypeSuggest" class="wf-suggest" style="display:none"></div>
+          <div class="wf-actions">
+            <button class="btn btn-primary" onclick="wfSubmit()" id="wfSubmitBtn">
+              💾 حفظ وإنشاء الرابط
+            </button>
+            <button class="btn btn-outline" onclick="wfReset()">إعادة تعيين</button>
+          </div>
+        </div>
+        <div id="wfResult" class="wf-result-box" style="display:none"></div>
+      </div>
+
+      <!-- RIGHT: Recent Orders -->
+      <div class="wf-right">
+        <div class="wf-section-title">آخر الطلبات</div>
+        <div id="wfRecent" class="wf-recent-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+  `;
+  _wfPatient = null;
+  _wfTests = [];
+  _wfPatientCache = [];
+  wfLoadPatients();
+  wfLoadRecent();
+}
+
+async function wfLoadPatients(query = '') {
+  const el = $('wfPatientList');
+  try {
+    const path = query ? `/patients?search=${encodeURIComponent(query)}&limit=10` : `/patients?limit=10&skip=0`;
+    const d = await api(path);
+    const pts = d.patients || d;
+    _wfPatientCache = Array.isArray(pts) ? pts : [];
+    if (!_wfPatientCache.length) {
+      el.innerHTML = '<div class="wf-empty">لا توجد نتائج</div>'; return;
+    }
+    el.innerHTML = _wfPatientCache.map(p => `
+      <div class="wf-patient-item ${_wfPatient?.id === p.id ? 'active' : ''}"
+           onclick="wfSelectPatient(${parseInt(p.id)})">
+        <div class="wf-pt-name">${esc(p.name)}</div>
+        <div class="wf-pt-phone">${esc(p.phone || '')}</div>
+      </div>
+    `).join('');
+  } catch { el.innerHTML = '<div class="wf-empty">تعذر التحميل</div>'; }
+}
+
+let _wfSearchTimer;
+function wfSearchPatients(q, immediate = false) {
+  clearTimeout(_wfSearchTimer);
+  const delay = immediate ? 0 : 350;
+  _wfSearchTimer = setTimeout(() => wfLoadPatients(q.trim()), delay);
+}
+
+function wfSelectPatient(id) {
+  const p = _wfPatientCache.find(x => x.id === id);
+  if (!p) return;
+  _wfPatient = p;
+  // Update banner
+  $('wfPatientBanner').className = 'wf-patient-banner wf-selected';
+  $('wfPatientBanner').innerHTML = `
+    <div class="wf-pt-selected-name">👤 ${esc(p.name)}</div>
+    <div class="wf-pt-selected-meta">${esc(p.phone || '')} ${p.gender ? '· ' + esc(p.gender) : ''}</div>
+    <button class="wf-pt-change" onclick="_wfPatient=null;wfReset()">تغيير</button>
+  `;
+  $('wfForm').style.display = 'block';
+  $('wfResult').style.display = 'none';
+  // Highlight in list
+  document.querySelectorAll('.wf-patient-item').forEach(el => {
+    el.classList.toggle('active', el.onclick?.toString().includes(`(${id})`));
+  });
+  // Re-render patient list to show active
+  $('wfPatientList').querySelectorAll('.wf-patient-item').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('onclick')?.includes(`(${id})`));
+  });
+  if (!_wfTests.length) wfAddTest();
+  // Focus first test name
+  setTimeout(() => { const f = document.querySelector('.wf-tname'); if (f) f.focus(); }, 100);
+}
+
+async function wfLoadTypeSuggestions() {
+  try {
+    const d = await api('/test-types');
+    return Array.isArray(d) ? d : [];
+  } catch { return []; }
+}
+let _wfTypeCache = null;
+async function wfGetTypes() {
+  if (!_wfTypeCache) _wfTypeCache = await wfLoadTypeSuggestions();
+  return _wfTypeCache;
+}
+
+function wfAddTest() {
+  const idx = _wfTests.length;
+  _wfTests.push({ name: '', val: '', unit: '', low: '', high: '' });
+  const wrap = $('wfTests');
+  const row = document.createElement('div');
+  row.className = 'wf-test-row';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <div class="wf-test-fields">
+      <div class="field wf-f-name">
+        <label>اسم التحليل</label>
+        <input class="wf-input wf-tname" data-idx="${idx}" placeholder="Glucose..." required autocomplete="off"
+          oninput="wfTypeahead(this,${idx})"
+          onkeydown="wfNavKey(event,${idx},'name')">
+      </div>
+      <div class="field wf-f-val">
+        <label>القيمة</label>
+        <input class="wf-input wf-tval" data-idx="${idx}" placeholder="5.2" required
+          oninput="wfUpdateFlag(${idx})"
+          onkeydown="wfNavKey(event,${idx},'val')">
+      </div>
+      <div class="field wf-f-unit">
+        <label>الوحدة</label>
+        <input class="wf-input wf-tunit" data-idx="${idx}" placeholder="mmol/L"
+          onkeydown="wfNavKey(event,${idx},'unit')">
+      </div>
+      <div class="field wf-f-range">
+        <label>أدنى</label>
+        <input class="wf-input wf-tlow" data-idx="${idx}" type="number" step="any" placeholder="3.9"
+          onkeydown="wfNavKey(event,${idx},'low')">
+      </div>
+      <div class="field wf-f-range">
+        <label>أعلى</label>
+        <input class="wf-input wf-thigh" data-idx="${idx}" type="number" step="any" placeholder="6.1"
+          onkeydown="wfNavKey(event,${idx},'high')">
+      </div>
+      <div class="wf-flag" id="wfFlag${idx}"></div>
+    </div>
+    <button class="wf-del-btn" onclick="wfRemoveTest(${idx})" title="حذف">✕</button>
+  `;
+  wrap.appendChild(row);
+  // Focus name field of new row
+  setTimeout(() => row.querySelector('.wf-tname')?.focus(), 50);
+}
+
+function wfRemoveTest(idx) {
+  const row = $('wfTests').querySelector(`[data-idx="${idx}"]`);
+  if (row) row.remove();
+}
+
+function wfNavKey(e, idx, field) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const fields = ['name', 'val', 'unit', 'low', 'high'];
+  const i = fields.indexOf(field);
+  if (i < fields.length - 1) {
+    // Move to next field in same row
+    const selectors = { name: '.wf-tname', val: '.wf-tval', unit: '.wf-tunit', low: '.wf-tlow', high: '.wf-thigh' };
+    const row = $('wfTests').querySelector(`[data-idx="${idx}"]`);
+    row?.querySelector(selectors[fields[i + 1]])?.focus();
+  } else {
+    // Last field → add new row or focus submit
+    const nextRow = $('wfTests').querySelector(`[data-idx="${idx + 1}"]`);
+    if (nextRow) {
+      nextRow.querySelector('.wf-tname')?.focus();
+    } else {
+      wfAddTest();
+    }
+  }
+}
+
+async function wfTypeahead(input, idx) {
+  const q = input.value.trim().toLowerCase();
+  if (q.length < 2) { $('wfTypeSuggest').style.display = 'none'; return; }
+  const types = await wfGetTypes();
+  const matches = types.filter(t => t.name?.toLowerCase().includes(q) || t.name_ar?.includes(q)).slice(0, 6);
+  if (!matches.length) { $('wfTypeSuggest').style.display = 'none'; return; }
+  const sug = $('wfTypeSuggest');
+  sug.style.display = 'block';
+  sug.innerHTML = matches.map(t => `
+    <div class="wf-sug-item" onclick="wfApplyType(${idx},'${escAttr(t.name || '')}','${escAttr(t.unit || '')}',${t.normal_low || ''},${t.normal_high || ''})">
+      <span>${esc(t.name_ar || t.name)}</span>
+      <span class="wf-sug-unit">${esc(t.unit || '')} ${t.normal_low != null ? '(' + t.normal_low + '-' + t.normal_high + ')' : ''}</span>
+    </div>
+  `).join('');
+}
+
+function wfApplyType(idx, name, unit, low, high) {
+  const row = $('wfTests').querySelector(`[data-idx="${idx}"]`);
+  if (!row) return;
+  row.querySelector('.wf-tname').value = name;
+  row.querySelector('.wf-tunit').value = unit;
+  if (low)  row.querySelector('.wf-tlow').value  = low;
+  if (high) row.querySelector('.wf-thigh').value = high;
+  $('wfTypeSuggest').style.display = 'none';
+  row.querySelector('.wf-tval')?.focus();
+  wfUpdateFlag(idx);
+}
+
+function wfUpdateFlag(idx) {
+  const row = $('wfTests').querySelector(`[data-idx="${idx}"]`);
+  if (!row) return;
+  const val  = parseFloat(row.querySelector('.wf-tval')?.value);
+  const low  = parseFloat(row.querySelector('.wf-tlow')?.value);
+  const high = parseFloat(row.querySelector('.wf-thigh')?.value);
+  const flag = $(`wfFlag${idx}`);
+  if (!flag) return;
+  if (isNaN(val) || isNaN(low) || isNaN(high)) { flag.innerHTML = ''; return; }
+  if (val < low)  { flag.innerHTML = '<span class="wf-flag-low">▼ منخفض</span>'; return; }
+  if (val > high) { flag.innerHTML = '<span class="wf-flag-high">▲ مرتفع</span>'; return; }
+  flag.innerHTML = '<span class="wf-flag-ok">✓ طبيعي</span>';
+}
+
+async function wfSubmit() {
+  if (!_wfPatient) { toast('اختر مريضاً أولاً', 'error'); return; }
+  const rows = $('wfTests').querySelectorAll('.wf-test-row');
+  const results = [];
+  for (const row of rows) {
+    const name = row.querySelector('.wf-tname')?.value?.trim();
+    const val  = row.querySelector('.wf-tval')?.value?.trim();
+    if (!name || !val) continue;
+    results.push({
+      test_name: name,
+      value: val,
+      unit: row.querySelector('.wf-tunit')?.value?.trim() || undefined,
+      normal_range_low:  parseFloat(row.querySelector('.wf-tlow')?.value)  || undefined,
+      normal_range_high: parseFloat(row.querySelector('.wf-thigh')?.value) || undefined,
+    });
+  }
+  if (!results.length) { toast('أدخل تحليلاً واحداً على الأقل', 'error'); return; }
+  const btn = $('wfSubmitBtn');
+  btn.disabled = true; btn.textContent = '... جاري الحفظ';
+  try {
+    const order = await api('/results/orders', { method: 'POST', body: JSON.stringify({
+      patient_id: _wfPatient.id,
+      doctor_name: $('wfDoctor')?.value?.trim() || undefined,
+      results,
+    })});
+    // Build WhatsApp link from first result token
+    const firstToken = order.results?.[0]?.result_token || order.order_id;
+    const resultUrl = `${location.origin}/r/${firstToken || ''}`;
+    const waText = `نتائج تحاليل ${_wfPatient.name} جاهزة 🔬\n${resultUrl}`;
+    const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
+    $('wfResult').style.display = 'block';
+    $('wfResult').innerHTML = `
+      <div class="wf-success">
+        <div class="wf-success-icon">✓</div>
+        <div class="wf-success-title">تم الحفظ بنجاح!</div>
+        <div class="wf-success-patient">${esc(_wfPatient.name)}</div>
+        <div class="wf-result-actions">
+          <a href="${esc(waLink)}" target="_blank" rel="noopener" class="btn btn-wa">📤 واتساب</a>
+          <button class="btn btn-outline" onclick="navigator.clipboard.writeText('${escAttr(resultUrl)}');toast('تم النسخ')">نسخ الرابط</button>
+          <a href="/r/${escAttr(firstToken || '')}" target="_blank" rel="noopener" class="btn btn-outline">عرض النتيجة</a>
+        </div>
+        <div class="wf-result-link">${esc(resultUrl)}</div>
+      </div>
+    `;
+    $('wfForm').style.display = 'none';
+    wfLoadRecent();
+    toast('تم الحفظ — جاهز للإرسال عبر واتساب');
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '💾 حفظ وإنشاء الرابط';
+}
+
+function wfReset() {
+  _wfPatient = null;
+  _wfTests = [];
+  $('wfPatientBanner').className = 'wf-patient-banner wf-unselected';
+  $('wfPatientBanner').innerHTML = '<span>← اختر مريضاً من القائمة أو ابحث</span>';
+  $('wfForm').style.display = 'none';
+  $('wfResult').style.display = 'none';
+  $('wfTests').innerHTML = '';
+  $('wfTypeSuggest').style.display = 'none';
+  document.querySelectorAll('.wf-patient-item').forEach(el => el.classList.remove('active'));
+  $('wfSearch').value = '';
+  wfLoadPatients();
+}
+
+async function wfNewPatient() {
+  openModal('مريض جديد', `
+    <form onsubmit="wfSaveNewPatient(event)">
+      <div class="form-row">
+        <div class="field"><label>الاسم الكامل *</label><input id="wfNpName" required maxlength="200" autofocus></div>
+        <div class="field"><label>رقم الهاتف</label><input id="wfNpPhone" maxlength="20"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>الجنس</label>
+          <select id="wfNpGender"><option value="">غير محدد</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select>
+        </div>
+        <div class="field"><label>تاريخ الميلاد</label><input id="wfNpDob" type="date"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="wfNpBtn">إضافة</button>
+      </div>
+    </form>
+  `);
+}
+
+async function wfSaveNewPatient(e) {
+  e.preventDefault();
+  const btn = $('wfNpBtn');
+  btn.disabled = true;
+  try {
+    const p = await api('/patients', { method: 'POST', body: JSON.stringify({
+      name: $('wfNpName').value.trim(),
+      phone: $('wfNpPhone').value.trim() || undefined,
+      gender: $('wfNpGender').value || undefined,
+      date_of_birth: $('wfNpDob').value || undefined,
+    })});
+    closeModal();
+    _wfPatientCache.unshift(p);
+    toast('تم إضافة المريض');
+    wfSelectPatient(p.id);
+    wfLoadPatients();
+  } catch (err) { toast(err.message, 'error'); }
+  btn.disabled = false;
+}
+
+async function wfLoadRecent() {
+  const el = $('wfRecent');
+  if (!el) return;
+  try {
+    const d = await api('/results/orders?limit=15&skip=0');
+    const orders = d.orders || [];
+    if (!orders.length) { el.innerHTML = '<div class="wf-empty">لا توجد طلبات</div>'; return; }
+    el.innerHTML = orders.map(o => {
+      const firstToken = (o.results || [])[0]?.result_token;
+      return `
+        <div class="wf-recent-item" onclick="viewOrder(${parseInt(o.id)})">
+          <div class="wf-rec-name">${esc(o.patient_name || '-')}</div>
+          <div class="wf-rec-meta">${(o.results || []).length} تحليل · ${formatDate(o.created_at)}</div>
+          ${firstToken ? `<a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="wf-rec-link" onclick="event.stopPropagation()">📤</a>` : ''}
+        </div>
+      `;
+    }).join('');
+  } catch { el.innerHTML = '<div class="wf-empty">تعذر التحميل</div>'; }
+}
+
 // ---- Router ----
-const routes = { dashboard: pageDashboard, patients: pagePatients, orders: pageOrders, samples: pageSamples, qc: pageQC, alerts: pageAlerts, lab: pageLab, admin: pageAdmin };
+const routes = { dashboard: pageDashboard, workflow: pageWorkflow, patients: pagePatients, orders: pageOrders, samples: pageSamples, 'test-types': pageTestTypes, employees: pageEmployees, qc: pageQC, alerts: pageAlerts, lab: pageLab, profile: pageProfile, compliance: pageCompliance, admin: pageAdmin };
 
 function navigate(page) {
   if (!routes[page]) page = 'dashboard';
@@ -896,6 +1262,554 @@ function filterAlerts(el, hours) {
   loadAlerts(hours);
 }
 
+// ---- COMPLIANCE & SECURITY PAGE ----
+async function pageCompliance() {
+  // Belt-and-suspenders: frontend role check (backend enforces this too via 403)
+  if (!G.user || (G.user.role !== 'admin' && G.user.role !== 'master_admin')) {
+    $('page').innerHTML = '<div class="empty"><p>ليس لديك صلاحية الوصول لهذه الصفحة</p></div>';
+    return;
+  }
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div>
+          <h2>الأمن والامتثال</h2>
+          <p>لوحة تدقيق ISO 27001 — حالة النظام الأمنية الشاملة</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="pageCompliance()">↻ تحديث</button>
+      </div>
+    </div>
+    <div id="complianceBody"><div class="spinner"></div></div>
+  `;
+  try {
+    const [status, timeSyncData] = await Promise.all([
+      api('/compliance/system-status'),
+      api('/compliance/time-sync').catch(() => null)
+    ]);
+
+    const svc = status.services || {};
+    const sec = status.security || {};
+    const data = status.data || {};
+    const checklist = status.compliance_checklist || {};
+    const alerts = status.alerts || [];
+
+    function badge(ok, passLabel = 'PASS', failLabel = 'FAIL') {
+      if (ok === true || ok === 'pass') return `<span class="badge badge-green">${passLabel}</span>`;
+      if (ok === false || ok === 'fail') return `<span class="badge badge-red">${failLabel}</span>`;
+      return `<span class="badge badge-gray">غير معروف</span>`;
+    }
+    function statusDot(s) {
+      const color = s === 'pass' ? 'var(--success)' : s === 'fail' ? 'var(--danger)' : 'var(--warning)';
+      return `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-left:6px"></span>`;
+    }
+    function checkItem(key, label) {
+      const val = checklist[key] || '';
+      const isPass = val.startsWith('PASS');
+      const isPending = val.startsWith('PENDING');
+      const color = isPass ? 'var(--success)' : isPending ? 'var(--warning)' : 'var(--text-dim)';
+      const icon = isPass ? '✓' : isPending ? '⏳' : '✗';
+      return `<tr>
+        <td style="color:${color};font-weight:600">${icon}</td>
+        <td>${label}</td>
+        <td style="color:${color};font-size:.8rem">${esc(val)}</td>
+      </tr>`;
+    }
+
+    $('complianceBody').innerHTML = `
+      ${alerts.length ? `
+      <div class="alert-banner" style="margin-bottom:16px">
+        <div class="alert-icon">!</div>
+        <div>
+          <strong>${alerts.length} تنبيه أمني</strong><br>
+          ${alerts.map(a => `<div style="font-size:.85rem;margin-top:4px">${esc(a)}</div>`).join('')}
+        </div>
+      </div>` : `
+      <div style="background:var(--success-bg);border:1px solid var(--success);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;color:var(--success)">
+        <strong>✓</strong> جميع الأنظمة تعمل بشكل طبيعي — لا تنبيهات أمنية
+      </div>`}
+
+      <div class="stats-grid">
+        <div class="stat-card ${svc.database?.status === 'pass' ? 'green' : 'red'}">
+          <div class="stat-label">قاعدة البيانات</div>
+          <div class="stat-value" style="font-size:1.4rem">${svc.database?.status === 'pass' ? '✓' : '✗'}</div>
+          <div class="stat-sub">${svc.database?.latency_ms ? `زمن الاستجابة: ${svc.database.latency_ms} ms` : 'غير متاح'}</div>
+        </div>
+        <div class="stat-card ${sec.audit_chain?.status === 'pass' ? 'green' : 'red'}">
+          <div class="stat-label">سلسلة التدقيق</div>
+          <div class="stat-value" style="font-size:1.4rem">${sec.audit_chain?.status === 'pass' ? '✓' : '✗'}</div>
+          <div class="stat-sub">${sec.audit_chain?.entries_checked || 0} سجل مُتحقق</div>
+        </div>
+        <div class="stat-card ${sec.audit_anchor?.status === 'pass' ? 'green' : 'yellow'}">
+          <div class="stat-label">نقطة الارتساء الخارجية</div>
+          <div class="stat-value" style="font-size:1.4rem">${sec.audit_anchor?.status === 'pass' ? '✓' : '⏳'}</div>
+          <div class="stat-sub">${sec.audit_anchor?.total_anchors || 0} نقطة تحقق</div>
+        </div>
+        <div class="stat-card ${sec.time_sync?.status === 'pass' ? 'green' : sec.time_sync?.status === 'fail' ? 'red' : 'yellow'}">
+          <div class="stat-label">مزامنة الوقت NTP</div>
+          <div class="stat-value" style="font-size:1.4rem">${sec.time_sync?.status === 'pass' ? '✓' : '?'}</div>
+          <div class="stat-sub">${timeSyncData?.ntp_status === 'synchronized' ? 'متزامن' : 'يحتاج تفعيل'}</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:16px">
+        <div class="card">
+          <div class="card-title">تفاصيل الأمان</div>
+          <table style="width:100%;font-size:.9rem;border-collapse:collapse">
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">إجمالي سجلات التدقيق</td>
+                <td style="padding:10px 0;text-align:left;font-weight:600">${data.total_audit_entries?.toLocaleString('ar') || 0}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">فشل تسجيل الدخول (24 ساعة)</td>
+                <td style="padding:10px 0;text-align:left;font-weight:600;color:${(data.failed_logins_24h || 0) > 10 ? 'var(--danger)' : 'var(--text)'}">${data.failed_logins_24h || 0}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">سلامة سلسلة الهاش</td>
+                <td style="padding:10px 0;text-align:left">${badge(sec.audit_chain?.status === 'pass', 'سليمة', 'مُخترقة')}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">آخر نقطة ارتساء</td>
+                <td style="padding:10px 0;text-align:left;font-size:.8rem">${sec.audit_anchor?.latest_anchor_id ? `سجل #${sec.audit_anchor.latest_anchor_id}` : 'لا توجد بعد'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 0;color:var(--text-dim)">وضع البيئة</td>
+                <td style="padding:10px 0;text-align:left">${badge(status.environment === 'production', 'إنتاج', 'تطوير')}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;color:var(--text-dim)">إصدار المنصة</td>
+                <td style="padding:10px 0;text-align:left;font-family:monospace">${esc(status.platform_version || '-')}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">قائمة الامتثال</div>
+          <table style="width:100%;font-size:.9rem;border-collapse:collapse">
+            <tbody>
+              ${checkItem('fhir_r4', 'HL7 FHIR R4 — بيانات المختبر')}
+              ${checkItem('dhis2_export', 'DHIS2 — تقارير وزارة الصحة')}
+              ${checkItem('audit_immutability', 'سجل التدقيق غير قابل للتعديل')}
+              ${checkItem('rbac', 'التحكم في الوصول RBAC')}
+              ${checkItem('secure_cookies', 'حماية الجلسات (httpOnly Cookies)')}
+              ${checkItem('docs_protected', 'حماية صفحة التوثيق /docs')}
+              ${checkItem('disaster_recovery', 'اختبار الاسترجاع (ISO 27001 A.17.1)')}
+              ${checkItem('cmc_registration', 'تسجيل هيئة الاتصالات CMC')}
+              ${checkItem('iso_27001', 'شهادة ISO 27001')}
+              ${checkItem('pentest', 'اختبار الاختراق السنوي')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      ${timeSyncData ? `
+      <div class="card" style="margin-top:16px;${timeSyncData.drift_warning ? 'border-color:var(--warning)' : ''}">
+        <div class="card-title">حالة وقت الخادم (NTP)</div>
+        ${timeSyncData.drift_warning ? `<div style="background:var(--warning-bg);border:1px solid var(--warning);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;font-size:.85rem;color:var(--warning)">⚠ DRIFT DETECTED — الانحراف ${esc(timeSyncData.ntp_offset_human || '')} يتجاوز الحد المسموح (${timeSyncData.max_offset_seconds}s)</div>` : ''}
+        <div class="kpi-row">
+          <div class="kpi"><span class="kpi-val" style="font-size:.95rem;font-family:monospace">${esc(timeSyncData.server_time_utc?.replace('T',' ').split('.')[0] || '-')} UTC</span><span class="kpi-label">وقت الخادم الحالي</span></div>
+          <div class="kpi"><span class="kpi-val" style="color:${timeSyncData.ntp_synchronized ? (timeSyncData.drift_warning ? 'var(--warning)' : 'var(--success)') : 'var(--danger)'}">${timeSyncData.ntp_synchronized ? (timeSyncData.drift_warning ? '⚠ متزامن (drift)' : '✓ متزامن') : '✗ غير متزامن'}</span><span class="kpi-label">حالة NTP</span></div>
+          ${timeSyncData.ntp_offset_human ? `<div class="kpi"><span class="kpi-val" style="font-family:monospace;color:${timeSyncData.drift_warning ? 'var(--warning)' : 'var(--success)'}">${esc(timeSyncData.ntp_offset_human)}</span><span class="kpi-label">الانحراف الحالي</span></div>` : ''}
+          <div class="kpi"><span class="kpi-val" style="font-size:.75rem;color:${timeSyncData.drift_warning ? 'var(--warning)' : timeSyncData.ntp_synchronized ? 'var(--success)' : 'var(--danger)'}">${esc(timeSyncData.audit_impact || '-')}</span><span class="kpi-label">أثر التدقيق</span></div>
+        </div>
+      </div>` : ''}
+
+      ${(() => {
+        const dr = status.disaster_recovery;
+        if (!dr) return `
+        <div class="card" style="margin-top:16px;border-color:var(--warning)">
+          <div class="card-title">اختبار الاسترجاع (ISO 27001 A.17.1)</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+            <span style="font-size:1.4rem">⏳</span>
+            <div>
+              <div style="font-weight:600;color:var(--warning)">لم يتم الاختبار بعد</div>
+              <div style="font-size:.85rem;color:var(--text-dim);margin-top:4px">شغّل: <code>./scripts/restore-test.sh</code> واحفظ النتيجة كدليل</div>
+            </div>
+          </div>
+        </div>`;
+        const isPass = dr.status === 'PASS';
+        return `
+        <div class="card" style="margin-top:16px;border-color:${isPass ? 'var(--success)' : 'var(--danger)'}">
+          <div class="card-title">اختبار الاسترجاع — دليل موثّق (ISO 27001 A.17.1)</div>
+          <div class="kpi-row">
+            <div class="kpi"><span class="kpi-val" style="color:${isPass ? 'var(--success)' : 'var(--danger)'}">${isPass ? '✓ PASS' : '✗ FAIL'}</span><span class="kpi-label">النتيجة</span></div>
+            <div class="kpi"><span class="kpi-val">${esc(dr.restore_seconds || '-')} ث</span><span class="kpi-label">وقت الاسترجاع</span></div>
+            <div class="kpi"><span class="kpi-val" style="font-size:.85rem">${esc(dr.tested_ago || '-')} مضى</span><span class="kpi-label">آخر اختبار</span></div>
+            <div class="kpi"><span class="kpi-val" style="font-size:.75rem;font-family:monospace">${esc(dr.backup_file || '-')}</span><span class="kpi-label">الملف المختبر</span></div>
+          </div>
+          <div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">اختُبر بواسطة: ${esc(dr.tested_by || '-')} — ${esc(dr.tested_at_human || '-')}</div>
+        </div>`;
+      })()}
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title" style="margin-bottom:12px">معلومات للمراجعين الحكوميين</div>
+        <div style="font-size:.85rem;color:var(--text-dim);line-height:1.8">
+          <div>🔗 FHIR DiagnosticReport: <code style="color:var(--accent)">/api/compliance/fhir/diagnostic-report/{id}</code></div>
+          <div>🔗 FHIR ServiceRequest: <code style="color:var(--accent)">/api/compliance/fhir/service-request/{id}</code></div>
+          <div>🔗 DHIS2 تصدير: <code style="color:var(--accent)">/api/compliance/dhis2/aggregate</code></div>
+          <div>🔗 سلامة سلسلة الهاش: <code style="color:var(--accent)">/api/compliance/audit-integrity</code></div>
+          <div style="margin-top:8px;color:var(--text-muted)">تقرير الأمان الكامل: <code>/api/compliance/security-report</code> — متاح للمراجعين المخولين فقط</div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    $('complianceBody').innerHTML = `<div class="empty"><p>تعذر تحميل بيانات الامتثال</p><button class="btn btn-outline" style="margin-top:12px" onclick="pageCompliance()">إعادة المحاولة</button></div>`;
+  }
+}
+
+
+// ---- TEST TYPES PAGE ----
+async function pageTestTypes() {
+  const canEdit = G.user?.role === 'admin' || G.user?.role === 'master_admin';
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div><h2>أنواع التحاليل</h2><p>قائمة التحاليل المعتمدة مع المدى الطبيعي</p></div>
+        ${canEdit ? '<button class="btn btn-primary" onclick="openAddTestType()">+ إضافة تحليل</button>' : ''}
+      </div>
+    </div>
+    <div class="search-bar">
+      <input class="search-input" id="ttSearch" placeholder="بحث باسم التحليل أو التصنيف..." oninput="searchTestTypes()">
+    </div>
+    <div class="card"><div id="ttTable"><div class="spinner"></div></div></div>
+  `;
+  loadTestTypes();
+}
+
+async function loadTestTypes(search = '') {
+  try {
+    const url = '/test-types' + (search ? '?search=' + encodeURIComponent(search) : '');
+    const d = await api(url);
+    const el = $('ttTable');
+    const types = Array.isArray(d) ? d : (d.test_types || d.items || []);
+    const canEdit = G.user?.role === 'admin' || G.user?.role === 'master_admin';
+    if (!types.length) {
+      el.innerHTML = '<div class="empty"><p>لا توجد تحاليل مسجلة</p></div>';
+      return;
+    }
+    const catLabel = { hematology: 'دموية', chemistry: 'كيمياء', microbiology: 'ميكروبيولوجيا', immunology: 'مناعة', urinalysis: 'بول', other: 'أخرى' };
+    el.innerHTML = `
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>اسم التحليل</th><th>الوحدة</th><th>أدنى</th><th>أعلى</th><th>التصنيف</th>${canEdit ? '<th></th>' : ''}</tr></thead>
+        <tbody>${types.map((t, i) => `<tr>
+          <td>${i + 1}</td>
+          <td><strong>${esc(t.name)}</strong></td>
+          <td><code style="color:var(--accent)">${esc(t.unit || '-')}</code></td>
+          <td>${t.normal_range_low != null ? esc(t.normal_range_low) : '-'}</td>
+          <td>${t.normal_range_high != null ? esc(t.normal_range_high) : '-'}</td>
+          <td>${t.category ? `<span class="badge badge-blue">${esc(catLabel[t.category] || t.category)}</span>` : '-'}</td>
+          ${canEdit ? `<td>
+            <button class="btn btn-outline btn-sm" onclick="openEditTestType(${parseInt(t.id)},'${escAttr(t.name)}','${escAttr(t.unit||'')}',${t.normal_range_low??''},'${escAttr(t.category||'')}',${t.normal_range_high??''})">تعديل</button>
+            <button class="btn btn-danger btn-sm" style="margin-right:4px" onclick="deleteTestType(${parseInt(t.id)})">حذف</button>
+          </td>` : ''}
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <div style="padding:12px 0;color:var(--text-muted);font-size:.8rem;text-align:center">${types.length} تحليل مسجل</div>
+    `;
+  } catch (e) {
+    $('ttTable').innerHTML = `<div class="empty"><p>تعذر تحميل قائمة التحاليل: ${esc(e.message)}</p></div>`;
+  }
+}
+
+let _ttSearchTimer;
+function searchTestTypes() {
+  clearTimeout(_ttSearchTimer);
+  const el = $('ttSearch');
+  if (!el) return;
+  _ttSearchTimer = setTimeout(() => loadTestTypes(el.value), 300);
+}
+
+function openAddTestType() {
+  openModal('إضافة تحليل جديد', `
+    <form onsubmit="saveTestType(event)">
+      <div class="form-row">
+        <div class="field"><label>اسم التحليل *</label><input id="ttName" required maxlength="100" placeholder="مثال: Hemoglobin"></div>
+        <div class="field"><label>الوحدة</label><input id="ttUnit" maxlength="20" placeholder="مثال: g/dL"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>أدنى حد طبيعي</label><input id="ttLow" type="number" step="any" min="0" placeholder="0.0"></div>
+        <div class="field"><label>أعلى حد طبيعي</label><input id="ttHigh" type="number" step="any" min="0" placeholder="0.0"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>التصنيف</label>
+          <select id="ttCat">
+            <option value="">-- اختر --</option>
+            <option value="hematology">دموية — Hematology</option>
+            <option value="chemistry">كيمياء — Chemistry</option>
+            <option value="microbiology">ميكروبيولوجيا — Microbiology</option>
+            <option value="immunology">مناعة — Immunology</option>
+            <option value="urinalysis">تحليل بول — Urinalysis</option>
+            <option value="other">أخرى</option>
+          </select>
+        </div>
+        <div class="field"><label>وصف (اختياري)</label><input id="ttDesc" maxlength="200"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveTTBtn">حفظ</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveTestType(e) {
+  e.preventDefault();
+  const btn = $('saveTTBtn');
+  btn.disabled = true;
+  try {
+    await api('/test-types', { method: 'POST', body: JSON.stringify({
+      name: $('ttName').value.trim(),
+      unit: $('ttUnit').value.trim() || undefined,
+      normal_range_low: $('ttLow').value !== '' ? parseFloat($('ttLow').value) : undefined,
+      normal_range_high: $('ttHigh').value !== '' ? parseFloat($('ttHigh').value) : undefined,
+      category: $('ttCat').value || undefined,
+      description: $('ttDesc').value.trim() || undefined,
+    }) });
+    closeModal(); toast('تم إضافة التحليل بنجاح'); loadTestTypes();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+function openEditTestType(id, name, unit, low, category, high) {
+  openModal('تعديل التحليل', `
+    <form onsubmit="updateTestType(event,${id})">
+      <div class="form-row">
+        <div class="field"><label>اسم التحليل *</label><input id="ettName" required value="${escAttr(name)}" maxlength="100"></div>
+        <div class="field"><label>الوحدة</label><input id="ettUnit" value="${escAttr(unit)}" maxlength="20"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>أدنى حد طبيعي</label><input id="ettLow" type="number" step="any" value="${low !== '' ? esc(low) : ''}"></div>
+        <div class="field"><label>أعلى حد طبيعي</label><input id="ettHigh" type="number" step="any" value="${high !== '' ? esc(high) : ''}"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="updateTTBtn">حفظ التعديل</button>
+      </div>
+    </form>
+  `);
+}
+
+async function updateTestType(e, id) {
+  e.preventDefault();
+  const btn = $('updateTTBtn');
+  btn.disabled = true;
+  try {
+    await api(`/test-types/${id}`, { method: 'PUT', body: JSON.stringify({
+      name: $('ettName').value.trim(),
+      unit: $('ettUnit').value.trim() || undefined,
+      normal_range_low: $('ettLow').value !== '' ? parseFloat($('ettLow').value) : undefined,
+      normal_range_high: $('ettHigh').value !== '' ? parseFloat($('ettHigh').value) : undefined,
+    }) });
+    closeModal(); toast('تم تحديث التحليل'); loadTestTypes();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+async function deleteTestType(id) {
+  confirmAction('حذف التحليل', 'هل أنت متأكد من حذف هذا التحليل؟ لا يمكن التراجع.', async () => {
+    try {
+      await api(`/test-types/${id}`, { method: 'DELETE' });
+      toast('تم حذف التحليل'); loadTestTypes();
+    } catch (e) { toast(e.message, 'error'); }
+  });
+}
+
+// ---- EMPLOYEES PAGE ----
+async function pageEmployees() {
+  if (G.user?.role !== 'admin' && G.user?.role !== 'master_admin') {
+    $('page').innerHTML = '<div class="empty"><p>ليس لديك صلاحية الوصول لهذه الصفحة</p></div>';
+    return;
+  }
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div><h2>الموظفون</h2><p>إدارة موظفي المختبر وصلاحياتهم</p></div>
+        <button class="btn btn-primary" onclick="openAddEmployee()">+ إضافة موظف</button>
+      </div>
+    </div>
+    <div class="card"><div id="empTable"><div class="spinner"></div></div></div>
+  `;
+  loadEmployees();
+}
+
+async function loadEmployees() {
+  try {
+    const d = await api('/labs/me/employees');
+    const el = $('empTable');
+    const employees = Array.isArray(d) ? d : (d.employees || d.users || []);
+    if (!employees.length) {
+      el.innerHTML = '<div class="empty"><p>لا يوجد موظفون مسجلون في هذا المختبر</p></div>';
+      return;
+    }
+    const roleLabel = { admin: 'مدير', staff: 'موظف', technician: 'تقني', master_admin: 'مدير عام' };
+    const roleBadge = { admin: 'badge-blue', staff: 'badge-gray', technician: 'badge-blue', master_admin: 'badge-blue' };
+    el.innerHTML = `
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>الحالة</th><th>تاريخ الإضافة</th><th></th></tr></thead>
+        <tbody>${employees.map((emp, i) => `<tr>
+          <td>${i + 1}</td>
+          <td><strong>${esc(emp.name || '-')}</strong></td>
+          <td dir="ltr" style="color:var(--text-dim)">${esc(emp.email || '-')}</td>
+          <td><span class="badge ${roleBadge[emp.role] || 'badge-gray'}">${esc(roleLabel[emp.role] || emp.role)}</span></td>
+          <td>${emp.is_active !== false ? '<span class="badge badge-green">نشط</span>' : '<span class="badge badge-red">معطل</span>'}</td>
+          <td>${formatDate(emp.created_at)}</td>
+          <td>
+            ${emp.id !== G.user?.id ? `<button class="btn btn-outline btn-sm" onclick="toggleEmployee(${parseInt(emp.id)},${emp.is_active !== false})">${emp.is_active !== false ? 'تعطيل' : 'تفعيل'}</button>` : '<span style="color:var(--text-muted);font-size:.8rem">أنت</span>'}
+          </td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <div style="padding:12px 0;color:var(--text-muted);font-size:.8rem;text-align:center">${employees.length} موظف مسجل</div>
+    `;
+  } catch (e) {
+    $('empTable').innerHTML = `<div class="empty"><p>تعذر تحميل قائمة الموظفين: ${esc(e.message)}</p></div>`;
+  }
+}
+
+function openAddEmployee() {
+  openModal('إضافة موظف جديد', `
+    <form onsubmit="saveEmployee(event)">
+      <div class="form-row">
+        <div class="field"><label>الاسم الكامل *</label><input id="empName" required maxlength="200" placeholder="الاسم الكامل"></div>
+        <div class="field"><label>البريد الإلكتروني *</label><input id="empEmail" type="email" required maxlength="100" placeholder="employee@lab.com"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>كلمة المرور *</label><input id="empPw" type="password" required minlength="8" placeholder="8 أحرف على الأقل (أحرف وأرقام)"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>الدور الوظيفي</label>
+          <select id="empRole">
+            <option value="staff">موظف — يدخل البيانات ويرى النتائج</option>
+            <option value="technician">تقني — تشغيل الأجهزة وإدخال النتائج</option>
+            <option value="admin">مدير — صلاحيات إدارية كاملة</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveEmpBtn">إضافة الموظف</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveEmployee(e) {
+  e.preventDefault();
+  const pw = $('empPw').value;
+  if (pw.length < 8 || !/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) {
+    toast('كلمة المرور يجب أن تكون 8 أحرف وتحتوي على أحرف وأرقام', 'error');
+    return;
+  }
+  const btn = $('saveEmpBtn');
+  btn.disabled = true;
+  try {
+    await api('/labs/me/employees', { method: 'POST', body: JSON.stringify({
+      name: $('empName').value.trim(),
+      email: $('empEmail').value.trim(),
+      password: pw,
+      role: $('empRole').value,
+    }) });
+    closeModal(); toast('تم إضافة الموظف بنجاح'); loadEmployees();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+async function toggleEmployee(id, isActive) {
+  confirmAction(
+    isActive ? 'تعطيل الموظف' : 'تفعيل الموظف',
+    isActive ? 'هل أنت متأكد من تعطيل هذا الموظف؟ لن يتمكن من تسجيل الدخول.' : 'هل تريد إعادة تفعيل حساب هذا الموظف؟',
+    async () => {
+      try {
+        await api(`/labs/me/employees/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: !isActive }) });
+
+        toast(isActive ? 'تم تعطيل الموظف' : 'تم تفعيل الموظف');
+        loadEmployees();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  );
+}
+
+// ---- PROFILE PAGE ----
+async function pageProfile() {
+  const u = G.user;
+  const roleLabel = u?.role === 'master_admin' ? 'مدير عام' : u?.role === 'admin' ? 'مدير مختبر' : 'موظف';
+  const roleColor = u?.role === 'master_admin' ? 'badge-blue' : u?.role === 'admin' ? 'badge-green' : 'badge-gray';
+  $('page').innerHTML = `
+    <div class="page-header"><h2>الملف الشخصي</h2><p>معلومات حسابك الشخصي</p></div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">معلومات الحساب</div>
+        <div style="display:flex;flex-direction:column;align-items:center;padding:20px 0;gap:12px">
+          <div class="user-avatar" style="width:64px;height:64px;font-size:1.6rem">${esc((u?.name || 'م')[0])}</div>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:700">${esc(u?.name || '-')}</div>
+            <div style="font-size:.85rem;color:var(--text-muted);margin-top:4px" dir="ltr">${esc(u?.email || '-')}</div>
+            <div style="margin-top:10px"><span class="badge ${roleColor}">${roleLabel}</span></div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px">
+          <table style="width:100%;font-size:.88rem;border-collapse:collapse">
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 0;color:var(--text-muted)">المعرف</td>
+              <td style="padding:10px 0;font-family:monospace;text-align:left">#${parseInt(u?.id || 0)}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 0;color:var(--text-muted)">رقم المختبر</td>
+              <td style="padding:10px 0;font-family:monospace;text-align:left">${u?.lab_id ? '#' + parseInt(u.lab_id) : 'مدير عام'}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;color:var(--text-muted)">الجلسة الحالية</td>
+              <td style="padding:10px 0;font-size:.8rem;text-align:left;color:var(--success)">نشطة ✓</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">تغيير كلمة المرور</div>
+        <form onsubmit="changePassword(event)" style="margin-top:8px">
+          <div class="field" style="margin-bottom:14px">
+            <label>كلمة المرور الحالية *</label>
+            <input type="password" id="cpCurrent" required autocomplete="current-password">
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label>كلمة المرور الجديدة *</label>
+            <input type="password" id="cpNew" required minlength="8" placeholder="8 أحرف على الأقل (أحرف وأرقام)" autocomplete="new-password">
+          </div>
+          <div class="field" style="margin-bottom:20px">
+            <label>تأكيد كلمة المرور الجديدة *</label>
+            <input type="password" id="cpConfirm" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary" id="cpBtn" style="width:100%">تغيير كلمة المرور</button>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+async function changePassword(e) {
+  e.preventDefault();
+  const newPw = $('cpNew').value;
+  const confirm = $('cpConfirm').value;
+  if (newPw !== confirm) { toast('كلمات المرور الجديدة غير متطابقة', 'error'); return; }
+  if (newPw.length < 8 || !/[a-zA-Z]/.test(newPw) || !/\d/.test(newPw)) {
+    toast('كلمة المرور يجب أن تكون 8 أحرف وتحتوي على أحرف وأرقام', 'error');
+    return;
+  }
+  const btn = $('cpBtn');
+  btn.disabled = true;
+  btn.textContent = 'جاري التغيير...';
+  try {
+    await api('/auth/change-password', { method: 'POST', body: JSON.stringify({
+      current_password: $('cpCurrent').value,
+      new_password: newPw,
+    }) });
+    toast('تم تغيير كلمة المرور بنجاح');
+    $('cpCurrent').value = ''; $('cpNew').value = ''; $('cpConfirm').value = '';
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+  btn.textContent = 'تغيير كلمة المرور';
+}
+
 // ---- Init ----
 function init() {
   if (!checkAuth()) return;
@@ -905,8 +1819,12 @@ function init() {
   $('userRole').textContent = G.user.role === 'master_admin' ? 'مدير عام' : G.user.role === 'admin' ? 'مدير مختبر' : 'موظف';
   $('userAvatar').textContent = (G.user.name || 'م')[0];
 
+  // Show compliance nav for admin and master_admin
+  if (G.user.role === 'admin' || G.user.role === 'master_admin') $('complianceNav').style.display = '';
   // Show admin nav for master_admin
   if (G.user.role === 'master_admin') $('adminNav').style.display = '';
+  // Show employees nav for admin and master_admin
+  if (G.user.role === 'admin' || G.user.role === 'master_admin') $('employeesNav').style.display = '';
 
   // Set lab name
   if (G.user.lab_name) $('labName').textContent = G.user.lab_name;

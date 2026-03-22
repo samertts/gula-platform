@@ -12,8 +12,9 @@ class LabUser(Base):
     name = Column(String(200), nullable=False)
     email = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(String(50), default="staff", index=True)  # admin, staff, technician
+    role = Column(String(50), default="staff", index=True)  # admin, staff, technician, master_admin
     is_active = Column(Boolean, default=True, index=True)
+    perm_version = Column(Integer, default=1, nullable=False)  # incremented on role change to invalidate old JWTs
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     lab = relationship("Lab", back_populates="users")

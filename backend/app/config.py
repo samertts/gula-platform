@@ -33,7 +33,13 @@ if not SECRET_KEY:
     logger.warning("SECRET_KEY not set - using random key. Sessions won't survive restarts.")
 
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8"))
+# JWT_EXPIRE_MINUTES is the primary setting (default: 30 min).
+# JWT_EXPIRE_HOURS is kept for backward compatibility; if both are set, MINUTES wins.
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "0"))
+if not JWT_EXPIRE_MINUTES:
+    _legacy_hours = int(os.getenv("JWT_EXPIRE_HOURS", "0"))
+    JWT_EXPIRE_MINUTES = _legacy_hours * 60 if _legacy_hours else 30
+JWT_EXPIRE_HOURS = JWT_EXPIRE_MINUTES // 60 or 1  # kept for cookie max_age calcs
 
 # ─── JWT Refresh Token ───────────────────────────────────────────────────────
 REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET", "")

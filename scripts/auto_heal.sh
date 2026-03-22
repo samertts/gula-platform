@@ -1,133 +1,151 @@
 #!/usr/bin/env bash
 # =============================================================================
-# GULA Platform - Self-Healing Script
-# Run via cron: */5 * * * * /home/samertts/gula-platform/scripts/auto_heal.sh >> /var/log/gula-heal.log 2>&1
+# GULA Platform — Self-Healing Watchdog
+#
+# Monitors system nginx AND Docker containers.
+# Runs every 5 minutes via cron:
+#   */5 * * * * /home/samertts/gula-platform/scripts/auto_heal.sh >> /var/log/gula-heal.log 2>&1
+#
+# ROOT CAUSE FIXES:
+#   - Now monitors system nginx (not just Docker)
+#   - Service list matches docker-compose.yml (MVP), not full.yml
+#   - nginx uses nginx-ensure.sh for smart config selection (HTTP/HTTPS)
 # =============================================================================
-set -euo pipefail
+set -uo pipefail
 
 PROJECT_DIR="${GULA_DIR:-/home/samertts/gula-platform}"
+COMPOSE_FILE="${PROJECT_DIR}/docker-compose.yml"
 MAX_RESTARTS_PER_HOUR=3
 RESTART_COUNT_FILE="/tmp/gula-restart-count"
+LOG_PREFIX="$(date '+%Y-%m-%d %H:%M:%S') [HEAL]"
 
-cd "$PROJECT_DIR"
+log()  { echo "${LOG_PREFIX} $*"; }
+ok()   { echo "${LOG_PREFIX} OK: $*"; }
+warn() { echo "${LOG_PREFIX} WARNING: $*"; }
+err()  { echo "${LOG_PREFIX} ERROR: $*"; }
 
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [HEAL] $*"
-}
+cd "$PROJECT_DIR" || { err "Cannot cd to $PROJECT_DIR"; exit 1; }
 
-COMPOSE_CMD=(docker compose)
-if ! "${COMPOSE_CMD[@]}" version >/dev/null 2>&1; then
-    COMPOSE_CMD=(docker-compose)
-fi
-
-COMPOSE_FILE="${GULA_COMPOSE_FILE:-}"
-if [ -z "$COMPOSE_FILE" ]; then
-    if [ -f "$PROJECT_DIR/docker-compose.full.yml" ]; then
-        COMPOSE_FILE="$PROJECT_DIR/docker-compose.full.yml"
-    elif [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
-        COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
-    else
-        log "ERROR: No compose file found"
-        exit 2
-    fi
-fi
-
-compose() {
-    "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" "$@"
-}
-
-# Reset restart counter every hour
+# ─── Restart counter (reset every hour) ──────────────────────────────────────
 if [ -f "$RESTART_COUNT_FILE" ]; then
     file_age=$(( $(date +%s) - $(stat -c %Y "$RESTART_COUNT_FILE" 2>/dev/null || echo 0) ))
-    if [ "$file_age" -gt 3600 ]; then
-        echo "0" > "$RESTART_COUNT_FILE"
-    fi
+    [ "$file_age" -gt 3600 ] && echo "0" > "$RESTART_COUNT_FILE"
 else
     echo "0" > "$RESTART_COUNT_FILE"
 fi
-
 restart_count=$(cat "$RESTART_COUNT_FILE" 2>/dev/null || echo 0)
 
-# Service names (docker compose service keys, not container names)
+can_restart() {
+    [ "$restart_count" -lt "$MAX_RESTARTS_PER_HOUR" ]
+}
+
+bump_restart() {
+    restart_count=$((restart_count + 1))
+    echo "$restart_count" > "$RESTART_COUNT_FILE"
+}
+
+# ─── 1. System nginx check (THE MISSING PIECE) ───────────────────────────────
+# nginx is the public-facing entry point. If it's down, site is unreachable
+# even if all Docker containers are perfectly healthy.
+if ! systemctl is-active --quiet nginx; then
+    warn "System nginx is DOWN"
+    if can_restart; then
+        # Use nginx-ensure.sh: picks HTTP or HTTPS config based on cert presence
+        if sudo bash "${PROJECT_DIR}/scripts/nginx-ensure.sh" 2>/dev/null; then
+            bump_restart
+            log "System nginx restarted (restart #${restart_count}/hour)"
+        else
+            err "nginx-ensure.sh failed — manual intervention needed"
+        fi
+    else
+        err "Max restarts reached — nginx still DOWN. Check: sudo systemctl status nginx"
+    fi
+else
+    ok "System nginx running"
+fi
+
+# ─── 2. Docker daemon check ───────────────────────────────────────────────────
+if ! systemctl is-active --quiet docker; then
+    warn "Docker daemon is DOWN"
+    if can_restart; then
+        systemctl start docker && sleep 3
+        bump_restart
+        log "Docker daemon started (restart #${restart_count}/hour)"
+    fi
+fi
+
+# ─── 3. Docker containers (MVP docker-compose.yml services) ──────────────────
+# These match docker-compose.yml exactly (NOT docker-compose.full.yml)
 CRITICAL_SERVICES=(
     "api-gateway"
     "gula-backend"
     "frontend"
-    "postgres-primary"
+    "postgres"
     "redis"
-    "pgbouncer"
 )
 
-NON_CRITICAL_SERVICES=(
-    "rabbitmq"
-    "lab-service"
-    "patient-service"
-    "order-service"
-    "result-service"
-    "sample-service"
-    "notification-service"
-)
-
-is_running() {
-    compose ps --status running --services 2>/dev/null | grep -qx "$1"
+compose_running() {
+    docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null | grep -qx "$1"
 }
 
-restart_service() {
-    local service=$1
-    if [ "$restart_count" -ge "$MAX_RESTARTS_PER_HOUR" ]; then
-        log "ERROR: Max restarts ($MAX_RESTARTS_PER_HOUR/hour) reached. Skipping restart of $service"
+restart_container() {
+    local svc="$1"
+    if ! can_restart; then
+        err "Max restarts ($MAX_RESTARTS_PER_HOUR/hour) reached — skipping restart of $svc"
         return 1
     fi
-
-    log "Restarting $service..."
-    compose restart "$service" 2>/dev/null || compose up -d "$service" 2>/dev/null || true
-    restart_count=$((restart_count + 1))
-    echo "$restart_count" > "$RESTART_COUNT_FILE"
-    log "Restarted $service (restart #$restart_count this hour)"
+    docker compose -f "$COMPOSE_FILE" restart "$svc" 2>/dev/null \
+        || docker compose -f "$COMPOSE_FILE" up -d "$svc" 2>/dev/null \
+        || true
+    bump_restart
+    log "Restarted $svc (restart #${restart_count}/hour)"
 }
 
-critical_down=0
-for service in "${CRITICAL_SERVICES[@]}"; do
-    if ! is_running "$service"; then
-        log "CRITICAL: $service is DOWN"
-        restart_service "$service" || true
-        critical_down=$((critical_down + 1))
+containers_down=0
+for svc in "${CRITICAL_SERVICES[@]}"; do
+    if ! compose_running "$svc"; then
+        warn "Container $svc is DOWN"
+        restart_container "$svc" || true
+        containers_down=$((containers_down + 1))
     fi
 done
 
-for service in "${NON_CRITICAL_SERVICES[@]}"; do
-    if ! is_running "$service"; then
-        log "WARNING: $service is down"
-        restart_service "$service" || true
+[ "$containers_down" -eq 0 ] && ok "All Docker containers running"
+
+# ─── 4. End-to-end health check ───────────────────────────────────────────────
+# Checks the full path: nginx → Docker api-gateway → backend
+sleep 2
+HTTP_CODE=$(curl -so /dev/null -w "%{http_code}" --max-time 8 "http://localhost/health" 2>/dev/null || echo "000")
+
+if [ "$HTTP_CODE" = "200" ]; then
+    ok "End-to-end health check passed (HTTP $HTTP_CODE)"
+elif [ "$HTTP_CODE" = "000" ]; then
+    err "End-to-end health check FAILED — site not responding"
+    # Only restart api-gateway if Docker containers look OK but site is down
+    # (handles the case where nginx is up but Docker gateway is stuck)
+    if systemctl is-active --quiet nginx && can_restart; then
+        warn "Attempting api-gateway restart..."
+        restart_container "api-gateway" || true
+        sleep 3
+        # Reload nginx after container restart (upstream IP may have changed)
+        sudo systemctl reload nginx 2>/dev/null || true
     fi
-done
-
-if command -v curl &>/dev/null; then
-    if ! curl -sf --max-time 5 "http://localhost/health" >/dev/null 2>&1; then
-        log "WARNING: API gateway health check failed"
-        if is_running "api-gateway"; then
-            restart_service "api-gateway" || true
-        fi
-    fi
+else
+    warn "End-to-end health check returned HTTP $HTTP_CODE (expected 200)"
 fi
 
-disk_usage=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-if [ "$disk_usage" -gt 90 ]; then
-    log "WARNING: Disk usage at ${disk_usage}%. Cleaning up..."
-    docker system prune -f --volumes 2>/dev/null || true
-    docker image prune -f 2>/dev/null || true
+# ─── 5. Disk space guard ──────────────────────────────────────────────────────
+disk_pct=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
+if [ "${disk_pct:-0}" -gt 90 ]; then
+    warn "Disk at ${disk_pct}% — pruning Docker..."
+    docker system prune -f 2>/dev/null | tail -1 || true
+    docker image prune -f 2>/dev/null | tail -1 || true
 fi
 
-mem_available=$(awk '/MemAvailable/ {print $2}' /proc/meminfo 2>/dev/null || echo 999999)
-if [ "$mem_available" -lt 256000 ]; then
-    log "WARNING: Low memory (${mem_available}KB available). Restarting non-critical services..."
-    for service in "${NON_CRITICAL_SERVICES[@]}"; do
-        if is_running "$service"; then
-            compose restart "$service" 2>/dev/null || true
-        fi
-    done
+# ─── 6. Memory guard ──────────────────────────────────────────────────────────
+mem_kb=$(awk '/MemAvailable/{print $2}' /proc/meminfo 2>/dev/null || echo 999999)
+if [ "${mem_kb:-999999}" -lt 200000 ]; then
+    warn "Low memory (${mem_kb}KB available) — check for leaks"
 fi
 
-if [ "$critical_down" -eq 0 ]; then
-    log "OK: All critical services running"
-fi
+log "Done (restarts this hour: ${restart_count}/${MAX_RESTARTS_PER_HOUR})"

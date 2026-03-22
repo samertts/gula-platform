@@ -15,8 +15,9 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.patient import Patient
 from ..models.audit_log import AuditLog
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..security.auth import hash_password
+from ..security.session import bump_perm_version
 from ..services.audit_service import log_action
 
 logger = logging.getLogger("gula.admin")
@@ -24,10 +25,8 @@ logger = logging.getLogger("gula.admin")
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-def require_admin(current_user: LabUser = Depends(get_current_user)):
+def require_admin(current_user: LabUser = Depends(require_permission("system:admin"))):
     """Only allow master_admin for platform-wide admin operations."""
-    if current_user.role != "master_admin":
-        raise HTTPException(status_code=403, detail="Master admin access required")
     return current_user
 
 
@@ -197,8 +196,7 @@ def toggle_user(user_id: int, admin: LabUser = Depends(require_admin), db: Sessi
     if user.role == "master_admin":
         raise HTTPException(status_code=403, detail="Cannot modify master admin")
     user.is_active = not user.is_active
-    log_action(db, action="toggle_user", resource_type="user", resource_id=user.id,
-               user_id=admin.id, user_role=admin.role)
+    bump_perm_version(user, db, actor_id=admin.id, actor_role=admin.role, reason="toggle_user")
     db.commit()
     return {"message": f"User {'activated' if user.is_active else 'deactivated'}"}
 
@@ -239,37 +237,42 @@ def get_audit_logs(
 
 # ===== BOOTSTRAP =====
 def ensure_master_admin():
-    """Create master admin on first startup if not exists."""
+    """Seed the master admin account on a brand-new database.
+
+    Rules:
+    - Runs only when no master_admin row exists (fresh DB).
+    - Requires GULA_ADMIN_PASSWORD or GULA_ADMIN_PASSWORD_HASH to be set;
+      logs a clear error and skips if neither is provided — no random passwords.
+    - After first boot the DB is the sole source of truth. These env vars
+      can (and should) be cleared from .env once the admin is confirmed.
+    """
     db = SessionLocal()
     try:
         existing = db.query(LabUser).filter(LabUser.role == "master_admin").first()
         if existing:
+            logger.debug("Master admin already exists (id=%s) — bootstrap skipped", existing.id)
             return
 
         email = os.getenv("GULA_ADMIN_EMAIL", "admin@gula-platform.org")
-        password = os.getenv("GULA_ADMIN_PASSWORD")
-        if not password:
-            import secrets
-            password = secrets.token_urlsafe(24)
-            # SECURITY: Output to stderr/Docker logs only - never write to filesystem
-            import sys
-            print(
-                f"\n{'='*60}\n"
-                f"[GULA FIRST-RUN] Master admin auto-created:\n"
-                f"  Email:    {email}\n"
-                f"  Password: {password}\n"
-                f"  ACTION:   Set GULA_ADMIN_PASSWORD in .env and restart\n"
-                f"{'='*60}\n",
-                file=sys.stderr,
-                flush=True,
-            )
-            logger.warning(
-                "GULA_ADMIN_PASSWORD not set. Temporary password printed to stderr. "
-                "Set GULA_ADMIN_PASSWORD in .env immediately."
-            )
-        name = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
+        name  = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
 
-        # Create a platform-level lab for admin
+        # Hash takes priority; fall back to plaintext; refuse to guess.
+        password_hash = os.getenv("GULA_ADMIN_PASSWORD_HASH", "").strip() or None
+        if password_hash:
+            logger.info("Bootstrap: using GULA_ADMIN_PASSWORD_HASH")
+        else:
+            plaintext = os.getenv("GULA_ADMIN_PASSWORD", "").strip() or None
+            if not plaintext:
+                logger.error(
+                    "Bootstrap SKIPPED: no master_admin in DB and neither "
+                    "GULA_ADMIN_PASSWORD nor GULA_ADMIN_PASSWORD_HASH is set. "
+                    "Set one in .env and restart, or run: "
+                    "docker exec gula-backend python /scripts/create_master_admin.py --force"
+                )
+                return
+            password_hash = hash_password(plaintext)
+
+        # Create a platform-level lab for admin if needed
         platform_lab = db.query(Lab).filter(Lab.name == "GULA Platform").first()
         if not platform_lab:
             platform_lab = Lab(name="GULA Platform", city="Platform", is_active=True)
@@ -280,15 +283,15 @@ def ensure_master_admin():
             lab_id=platform_lab.id,
             name=name,
             email=email,
-            password_hash=hash_password(password),
+            password_hash=password_hash,
             role="master_admin",
             is_active=True,
         )
         db.add(admin)
         db.commit()
-        logger.info(f"Master admin created: {email}")
+        logger.info("Bootstrap: master admin created (%s)", email)
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to create master admin: {e}")
+        logger.error("Bootstrap: failed to create master admin: %s", e)
     finally:
         db.close()
