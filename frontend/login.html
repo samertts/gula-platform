@@ -107,6 +107,13 @@ function showError(msg) {
   el.style.display = 'block';
 }
 
+async function _fetchWithTimeout(url, opts, ms = 12000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
+}
+
 async function handleLogin(e) {
   e.preventDefault();
   const btn = document.getElementById('loginBtn');
@@ -114,7 +121,7 @@ async function handleLogin(e) {
   try {
     let res;
     try {
-      res = await fetch(API + '/login', {
+      res = await _fetchWithTimeout(API + '/login', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         credentials: 'include',
@@ -123,14 +130,22 @@ async function handleLogin(e) {
           password: document.getElementById('loginPassword').value
         })
       });
-    } catch {
-      throw new Error('تعذّر الاتصال بالخادم — تحقق من الشبكة');
+    } catch (netErr) {
+      if (netErr.name === 'AbortError') {
+        throw new Error('انتهت مهلة الانتظار (12 ثانية) — الخادم لا يستجيب. أعد تشغيل الحاوية: docker compose restart');
+      }
+      throw new Error(navigator.onLine
+        ? 'تعذّر الاتصال بالخادم — الخادم قد يكون متوقفاً، تحقق: docker compose ps'
+        : 'لا يوجد اتصال بالإنترنت — تحقق من شبكتك');
     }
     let data;
     try { data = await res.json(); } catch { data = {}; }
-    if (!res.ok) throw new Error(data.detail || `خطأ ${res.status} — حاول مجدداً`);
-    // Token stored in httpOnly cookie by server (not accessible to JS - prevents XSS theft)
-    // Store only non-sensitive user metadata for UI display
+    if (res.status === 401) throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+    if (res.status === 403) throw new Error(data.detail || 'الحساب غير مفعّل — تواصل مع المسؤول');
+    if (res.status === 429) throw new Error('محاولات كثيرة — انتظر دقيقة ثم حاول');
+    if (res.status >= 500) throw new Error(`خطأ في الخادم (${res.status}) — تحقق: docker logs gula-backend`);
+    if (!res.ok) throw new Error(data.detail || `خطأ ${res.status}`);
+    if (!data.user) throw new Error('لم تصل بيانات المستخدم — تحقق من إعداد الخادم');
     sessionStorage.setItem('user', JSON.stringify(data.user));
     window.location.href = '/';
   } catch (err) {
