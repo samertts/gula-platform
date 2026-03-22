@@ -538,3 +538,83 @@ def get_patient_history(phone: str, request: Request, name: str = None, db: Sess
         "health_id": patient.health_id,
         "history": history,
     }
+
+
+# ─── Clinical Intelligence ────────────────────────────────────────────────────
+
+class AnalyzeRequest(BaseModel):
+    results: List[ResultItem]
+
+
+@router.post("/analyze")
+def analyze_results(
+    data: AnalyzeRequest,
+    current_user: LabUser = Depends(get_current_user),
+):
+    """
+    Analyze a batch of results for multi-test clinical patterns.
+    Returns detected patterns (sepsis, DKA, renal failure, etc.)
+    and a flag summary. Does NOT diagnose — flags for physician review.
+    """
+    from ..services.clinical_intelligence import analyze_results as _analyze, quick_flag_summary
+
+    raw = [
+        {
+            "test_name": r.test_name,
+            "value": r.value,
+            "normal_range_low": r.normal_range_low,
+            "normal_range_high": r.normal_range_high,
+        }
+        for r in data.results
+    ]
+
+    patterns = _analyze(raw)
+    summary = quick_flag_summary(raw)
+
+    return {
+        "patterns_detected": len(patterns),
+        "patterns": patterns,
+        "flag_summary": summary,
+        "has_critical_pattern": any(p["severity"] == "critical" for p in patterns),
+    }
+
+
+@router.get("/orders/{order_id}/intelligence")
+def analyze_order(
+    order_id: int,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Run clinical intelligence analysis on an existing order's results.
+    Useful for post-entry review.
+    """
+    from ..services.clinical_intelligence import analyze_results as _analyze, quick_flag_summary
+
+    order = db.query(LabOrder).filter(
+        LabOrder.id == order_id,
+        LabOrder.lab_id == current_user.lab_id,
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    raw = [
+        {
+            "test_name": r.test_name,
+            "value": r.value,
+            "normal_range_low": r.normal_range_low,
+            "normal_range_high": r.normal_range_high,
+        }
+        for r in order.results
+    ]
+
+    patterns = _analyze(raw)
+    summary = quick_flag_summary(raw)
+
+    return {
+        "order_id": order_id,
+        "patterns_detected": len(patterns),
+        "patterns": patterns,
+        "flag_summary": summary,
+        "has_critical_pattern": any(p["severity"] == "critical" for p in patterns),
+    }
