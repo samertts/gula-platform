@@ -1035,46 +1035,251 @@ async function pageAdmin() {
     $('page').innerHTML = '<div class="empty"><p>ليس لديك صلاحية الوصول لهذه الصفحة</p></div>';
     return;
   }
+  $('page').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-row">
+        <div><h2>إدارة المنصة</h2><p>لوحة تحكم المدير العام - صلاحيات كاملة</p></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="openCreateLab()">+ إضافة مختبر</button>
+          <button class="btn btn-primary" onclick="openCreateAdminUser()">+ إضافة مستخدم</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div id="adminStats"><div class="spinner"></div></div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;background:#0f172a;border-radius:10px;padding:4px;margin-top:16px;width:fit-content">
+      <div class="tab active" id="tabLabs" onclick="adminTab('labs')" style="padding:8px 20px;border-radius:8px;cursor:pointer;font-size:.9rem;color:#e2e8f0;background:#1e293b">المختبرات</div>
+      <div class="tab" id="tabUsers" onclick="adminTab('users')" style="padding:8px 20px;border-radius:8px;cursor:pointer;font-size:.9rem;color:#64748b">المستخدمون</div>
+      <div class="tab" id="tabAudit" onclick="adminTab('audit')" style="padding:8px 20px;border-radius:8px;cursor:pointer;font-size:.9rem;color:#64748b">سجل الأحداث</div>
+    </div>
+
+    <!-- Tab content -->
+    <div id="adminTabContent" style="margin-top:16px"><div class="spinner"></div></div>
+  `;
+  loadAdminStats();
+  loadAdminLabs();
+}
+
+async function loadAdminStats() {
   try {
     const stats = await api('/admin/stats');
-    const labs = await api('/admin/labs?limit=50');
-    $('page').innerHTML = `
-      <div class="page-header"><h2>إدارة المنصة</h2><p>لوحة تحكم المدير العام</p></div>
+    $('adminStats').innerHTML = `
       <div class="stats-grid">
-        <div class="stat-card blue"><div class="stat-label">المختبرات</div><div class="stat-value">${parseInt(stats.total_labs) || 0}</div></div>
-        <div class="stat-card green"><div class="stat-label">المستخدمون</div><div class="stat-value">${parseInt(stats.total_users) || 0}</div></div>
-        <div class="stat-card cyan"><div class="stat-label">المرضى</div><div class="stat-value">${parseInt(stats.total_patients) || 0}</div></div>
-        <div class="stat-card yellow"><div class="stat-label">النتائج</div><div class="stat-value">${parseInt(stats.total_results) || 0}</div></div>
+        <div class="stat-card blue"><div class="stat-label">المختبرات</div><div class="stat-value">${parseInt(stats.total_labs) || 0}</div><div class="stat-sub">إجمالي المختبرات</div></div>
+        <div class="stat-card green"><div class="stat-label">المستخدمون</div><div class="stat-value">${parseInt(stats.total_users) || 0}</div><div class="stat-sub">جميع الأدوار</div></div>
+        <div class="stat-card cyan"><div class="stat-label">المرضى</div><div class="stat-value">${parseInt(stats.total_patients) || 0}</div><div class="stat-sub">سجلات طبية</div></div>
+        <div class="stat-card yellow"><div class="stat-label">النتائج</div><div class="stat-value">${parseInt(stats.total_results) || 0}</div><div class="stat-sub">نتيجة تحليل</div></div>
       </div>
+    `;
+  } catch { $('adminStats').innerHTML = ''; }
+}
+
+let _adminTab = 'labs';
+function adminTab(tab) {
+  _adminTab = tab;
+  ['labs','users','audit'].forEach(t => {
+    const el = $('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (el) { el.style.background = t === tab ? '#1e293b' : ''; el.style.color = t === tab ? '#e2e8f0' : '#64748b'; }
+  });
+  if (tab === 'labs') loadAdminLabs();
+  else if (tab === 'users') loadAdminUsers();
+  else if (tab === 'audit') loadAdminAudit();
+}
+
+async function loadAdminLabs() {
+  const el = $('adminTabContent');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const d = await api('/admin/labs?limit=100');
+    const labs = d.labs || d;
+    if (!labs.length) { el.innerHTML = '<div class="card"><div class="empty"><p>لا توجد مختبرات مسجلة</p><button class="btn btn-primary" style="margin-top:12px" onclick="openCreateLab()">إضافة أول مختبر</button></div></div>'; return; }
+    el.innerHTML = `
       <div class="card">
-        <div class="card-title">المختبرات المسجلة</div>
+        <div class="card-title">المختبرات المسجلة (${labs.length})</div>
         <div class="table-wrap"><table>
-          <thead><tr><th>المختبر</th><th>المدينة</th><th>المستخدمون</th><th>المرضى</th><th>الحالة</th><th></th></tr></thead>
-          <tbody>${(labs.labs || labs).map(l => `<tr>
-            <td><strong>${esc(l.name)}</strong></td>
+          <thead><tr><th>#</th><th>المختبر</th><th>المدينة</th><th>المستخدمون</th><th>المرضى</th><th>الحالة</th><th></th></tr></thead>
+          <tbody>${labs.map((l, i) => `<tr>
+            <td>${i+1}</td>
+            <td><strong>${esc(l.name)}</strong>${l.license_number ? `<div style="font-size:.78rem;color:var(--text-muted)">${esc(l.license_number)}</div>` : ''}</td>
             <td>${esc(l.city || '-')}</td>
-            <td>${parseInt(l.user_count) || 0}</td>
-            <td>${parseInt(l.patient_count) || 0}</td>
+            <td style="text-align:center">${parseInt(l.user_count) || 0}</td>
+            <td style="text-align:center">${parseInt(l.patient_count) || 0}</td>
             <td>${l.is_active ? '<span class="badge badge-green">نشط</span>' : '<span class="badge badge-red">معطل</span>'}</td>
-            <td><button class="btn btn-outline btn-sm" onclick="toggleLab(${parseInt(l.id)})">${l.is_active ? 'تعطيل' : 'تفعيل'}</button></td>
+            <td><button class="btn btn-outline btn-sm" onclick="toggleLab(${parseInt(l.id)},${l.is_active})">${l.is_active ? 'تعطيل' : 'تفعيل'}</button></td>
           </tr>`).join('')}</tbody>
         </table></div>
       </div>
     `;
-  } catch (e) { $('page').innerHTML = `<div class="empty"><p>تعذر تحميل البيانات</p></div>`; }
+  } catch (e) { el.innerHTML = `<div class="empty"><p>تعذر تحميل المختبرات: ${esc(e.message)}</p></div>`; }
 }
 
-async function toggleLab(id) {
+async function loadAdminUsers() {
+  const el = $('adminTabContent');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const d = await api('/admin/users?limit=100');
+    const users = d.users || d;
+    const roleLabel = { master_admin: 'مدير عام', ministry_admin: 'وزارة', province_admin: 'محافظة', admin: 'مدير مختبر', doctor: 'طبيب', staff: 'موظف', technician: 'تقني', citizen: 'مواطن' };
+    const roleColor = { master_admin: 'badge-blue', ministry_admin: 'badge-blue', province_admin: 'badge-cyan', admin: 'badge-green', doctor: 'badge-cyan', staff: 'badge-gray', technician: 'badge-gray', citizen: 'badge-gray' };
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">جميع المستخدمين (${users.length || 0})</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>#</th><th>الاسم</th><th>البريد</th><th>الدور</th><th>المختبر</th><th>الحالة</th><th></th></tr></thead>
+          <tbody>${(users || []).map((u, i) => `<tr>
+            <td>${i+1}</td>
+            <td><strong>${esc(u.name || '-')}</strong></td>
+            <td dir="ltr" style="font-size:.82rem;color:var(--text-dim)">${esc(u.email || '-')}</td>
+            <td><span class="badge ${roleColor[u.role] || 'badge-gray'}">${esc(roleLabel[u.role] || u.role)}</span></td>
+            <td style="font-size:.82rem">${esc(u.lab_name || (u.lab_id ? '#'+u.lab_id : 'منصة'))}</td>
+            <td>${u.is_active !== false ? '<span class="badge badge-green">نشط</span>' : '<span class="badge badge-red">معطل</span>'}</td>
+            <td>${u.role !== 'master_admin' ? `<button class="btn btn-outline btn-sm" onclick="toggleAdminUser(${parseInt(u.id)},${u.is_active !== false})">${u.is_active !== false ? 'تعطيل' : 'تفعيل'}</button>` : '<span style="font-size:.78rem;color:var(--text-muted)">محمي</span>'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>
+    `;
+  } catch (e) { el.innerHTML = `<div class="empty"><p>تعذر تحميل المستخدمين: ${esc(e.message)}</p></div>`; }
+}
+
+async function loadAdminAudit() {
+  const el = $('adminTabContent');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const d = await api('/admin/audit-logs?limit=50');
+    const logs = d.logs || d;
+    if (!logs.length) { el.innerHTML = '<div class="card"><div class="empty"><p>لا توجد أحداث مسجلة بعد</p></div></div>'; return; }
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">سجل الأحداث (آخر 50)</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>الحدث</th><th>المستخدم</th><th>النوع</th><th>IP</th><th>التاريخ</th></tr></thead>
+          <tbody>${logs.map(l => `<tr>
+            <td><strong>${esc(l.action || '-')}</strong></td>
+            <td style="font-size:.82rem">${esc(l.user_id ? '#'+l.user_id : '-')}</td>
+            <td style="font-size:.82rem">${esc(l.resource_type || '-')}</td>
+            <td dir="ltr" style="font-size:.78rem;color:var(--text-muted)">${esc(l.ip_address || '-')}</td>
+            <td style="font-size:.8rem">${formatDate(l.created_at)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>
+    `;
+  } catch (e) { el.innerHTML = `<div class="empty"><p>تعذر تحميل السجل: ${esc(e.message)}</p></div>`; }
+}
+
+async function toggleLab(id, isActive) {
   confirmAction(
-    'تأكيد التغيير',
-    'هل أنت متأكد من تغيير حالة هذا المختبر؟ هذا سيؤثر على جميع مستخدمي المختبر.',
+    isActive ? 'تعطيل المختبر' : 'تفعيل المختبر',
+    isActive ? 'هل أنت متأكد؟ سيؤثر هذا على جميع مستخدمي المختبر ويمنعهم من تسجيل الدخول.' : 'هل تريد إعادة تفعيل هذا المختبر؟',
     async function() {
       try {
         await api(`/admin/labs/${id}/toggle`, { method: 'PUT' });
-        toast('تم تحديث حالة المختبر'); pageAdmin();
+        toast(isActive ? 'تم تعطيل المختبر' : 'تم تفعيل المختبر');
+        loadAdminLabs();
       } catch (e) { toast(e.message, 'error'); }
     }
   );
+}
+
+async function toggleAdminUser(id, isActive) {
+  confirmAction(
+    isActive ? 'تعطيل المستخدم' : 'تفعيل المستخدم',
+    isActive ? 'هل أنت متأكد من تعطيل هذا المستخدم؟' : 'هل تريد إعادة تفعيل هذا المستخدم؟',
+    async () => {
+      try {
+        await api(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: !isActive }) });
+        toast(isActive ? 'تم تعطيل المستخدم' : 'تم تفعيل المستخدم');
+        loadAdminUsers();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  );
+}
+
+function openCreateLab() {
+  openModal('إضافة مختبر جديد', `
+    <form onsubmit="saveNewLab(event)">
+      <div class="form-row">
+        <div class="field"><label>اسم المختبر *</label><input id="nlName" required maxlength="200" placeholder="مختبر الأمل"></div>
+        <div class="field"><label>المدينة *</label><input id="nlCity" required maxlength="100" placeholder="بغداد"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>العنوان</label><input id="nlAddress" maxlength="300" placeholder="الشارع والحي"></div>
+        <div class="field"><label>رقم الهاتف</label><input id="nlPhone" type="tel" placeholder="07xxxxxxxxx"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>رقم الترخيص</label><input id="nlLicense" maxlength="100" placeholder="LAB-2025-001"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveLabBtn">إنشاء المختبر</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveNewLab(e) {
+  e.preventDefault();
+  const btn = $('saveLabBtn'); btn.disabled = true;
+  try {
+    await api('/admin/labs', { method: 'POST', body: JSON.stringify({
+      name: $('nlName').value.trim(),
+      city: $('nlCity').value.trim(),
+      address: $('nlAddress').value.trim() || undefined,
+      phone: $('nlPhone').value.trim() || undefined,
+      license_number: $('nlLicense').value.trim() || undefined,
+    }) });
+    closeModal(); toast('تم إنشاء المختبر بنجاح'); loadAdminStats(); loadAdminLabs();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+function openCreateAdminUser() {
+  openModal('إضافة مستخدم جديد', `
+    <form onsubmit="saveAdminUser(event)">
+      <div class="form-row">
+        <div class="field"><label>الاسم الكامل *</label><input id="auName" required maxlength="200" placeholder="الاسم الكامل"></div>
+        <div class="field"><label>البريد الإلكتروني *</label><input id="auEmail" type="email" required maxlength="100" placeholder="user@lab.com"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>كلمة المرور *</label><input id="auPw" type="password" required minlength="8" placeholder="8 أحرف+أرقام على الأقل"></div>
+        <div class="field"><label>الدور الوظيفي *</label>
+          <select id="auRole">
+            <option value="admin">مدير مختبر</option>
+            <option value="staff">موظف</option>
+            <option value="technician">تقني مختبر</option>
+            <option value="doctor">طبيب</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field" style="grid-column:span 2"><label>معرّف المختبر (اختياري - رقم ID)</label><input id="auLabId" type="number" min="1" placeholder="مثال: 1 أو 2"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveAUBtn">إنشاء المستخدم</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveAdminUser(e) {
+  e.preventDefault();
+  const pw = $('auPw').value;
+  if (pw.length < 8) { toast('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'error'); return; }
+  const btn = $('saveAUBtn'); btn.disabled = true;
+  try {
+    await api('/admin/users', { method: 'POST', body: JSON.stringify({
+      name: $('auName').value.trim(),
+      email: $('auEmail').value.trim(),
+      password: pw,
+      role: $('auRole').value,
+      lab_id: $('auLabId').value ? parseInt($('auLabId').value) : undefined,
+    }) });
+    closeModal(); toast('تم إنشاء المستخدم بنجاح'); loadAdminStats(); loadAdminUsers();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false;
 }
 
 // ---- QC PAGE ----
@@ -1810,13 +2015,88 @@ async function changePassword(e) {
   btn.textContent = 'تغيير كلمة المرور';
 }
 
+// ---- Welcome / System-Check Dialog ----
+async function showWelcomeDialog() {
+  // Only show once per session
+  if (sessionStorage.getItem('_welcomed')) return;
+  sessionStorage.setItem('_welcomed', '1');
+
+  const u = G.user;
+  const roleLabel = u.role === 'master_admin' ? 'مدير عام' : u.role === 'admin' ? 'مدير مختبر' : u.role === 'doctor' ? 'طبيب' : 'موظف';
+  const greeting = arabicGreeting();
+
+  // Fetch system health in parallel
+  let health = {};
+  try {
+    health = await fetch('/health', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
+  } catch {}
+
+  const dbOk = health.database === 'connected';
+  const sysStatus = health.status === 'healthy' ? 'سليم' : 'يحتاج فحص';
+  const sysColor = health.status === 'healthy' ? '#10b981' : '#f59e0b';
+  const version = health.version || '—';
+
+  openModal(`${greeting}، ${esc(u.name || 'مستخدم')} 👋`, `
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- System Status -->
+      <div style="background:#0f172a;border-radius:12px;padding:16px;border:1px solid #1e293b">
+        <div style="font-size:.8rem;color:#64748b;margin-bottom:10px;font-weight:600;letter-spacing:.05em">حالة النظام</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${sysColor}"></div>
+            <span style="font-size:.85rem">النظام: <strong>${sysStatus}</strong></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${dbOk ? '#10b981' : '#ef4444'}"></div>
+            <span style="font-size:.85rem">قاعدة البيانات: <strong>${dbOk ? 'متصلة' : 'غير متصلة'}</strong></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:10px;height:10px;border-radius:50%;background:#10b981"></div>
+            <span style="font-size:.85rem">الحساب: <strong>${esc(roleLabel)}</strong></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;color:#64748b">
+            <span style="font-size:.8rem">الإصدار: <strong dir="ltr">${esc(version)}</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Info -->
+      <div style="display:flex;align-items:center;gap:14px;background:#0f172a;border-radius:12px;padding:14px;border:1px solid #1e293b">
+        <div class="user-avatar" style="width:52px;height:52px;font-size:1.4rem;flex-shrink:0">${esc((u.name || 'م')[0])}</div>
+        <div>
+          <div style="font-size:1rem;font-weight:700">${esc(u.name || 'مستخدم')}</div>
+          <div style="font-size:.82rem;color:#64748b;margin-top:2px" dir="ltr">${esc(u.email || '')}</div>
+          <div style="margin-top:6px"><span class="badge badge-blue">${esc(roleLabel)}</span></div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div>
+        <div style="font-size:.8rem;color:#64748b;margin-bottom:8px;font-weight:600">وصول سريع</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="closeModal();navigate('dashboard')">📊 لوحة التحكم</button>
+          <button class="btn btn-outline btn-sm" onclick="closeModal();navigate('workflow')">⚡ إدخال سريع</button>
+          <button class="btn btn-outline btn-sm" onclick="closeModal();navigate('patients')">👥 المرضى</button>
+          <button class="btn btn-outline btn-sm" onclick="closeModal();navigate('profile')">🔑 تغيير كلمة المرور</button>
+          ${u.role === 'master_admin' ? `<button class="btn btn-outline btn-sm" onclick="closeModal();navigate('admin')">⚙️ إدارة المنصة</button>` : ''}
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="closeModal()">ابدأ العمل →</button>
+      </div>
+    </div>
+  `);
+}
+
 // ---- Init ----
 function init() {
   if (!checkAuth()) return;
 
   // Set user info in sidebar
   $('userName').textContent = G.user.name || 'المستخدم';
-  $('userRole').textContent = G.user.role === 'master_admin' ? 'مدير عام' : G.user.role === 'admin' ? 'مدير مختبر' : 'موظف';
+  $('userRole').textContent = G.user.role === 'master_admin' ? 'مدير عام' : G.user.role === 'admin' ? 'مدير مختبر' : G.user.role === 'doctor' ? 'طبيب' : G.user.role === 'technician' ? 'تقني' : 'موظف';
   $('userAvatar').textContent = (G.user.name || 'م')[0];
 
   // Show compliance nav for admin and master_admin
@@ -1828,6 +2108,9 @@ function init() {
 
   // Set lab name
   if (G.user.lab_name) $('labName').textContent = G.user.lab_name;
+
+  // Show welcome dialog on first load of the session
+  setTimeout(showWelcomeDialog, 800);
 
   // Route
   const page = window.location.hash.replace('#', '') || 'dashboard';
