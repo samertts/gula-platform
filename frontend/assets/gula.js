@@ -1842,13 +1842,23 @@ window.addEventListener('hashchange', () => {
 // ============================================================
 // OFFLINE SYNC ENGINE
 // Queue writes when offline, sync automatically when back online
+// - Idempotency keys prevent duplicate submissions
+// - Queue sorted by timestamp (FIFO ordering)
+// - Exponential backoff: 2^attempt seconds (max 5 retries)
 // ============================================================
 
 const OFFLINE_QUEUE_KEY = 'gula_offline_queue';
+const OFFLINE_MAX_RETRIES = 5;
 
 function offlineEnqueue(item) {
   const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
-  queue.push({ ...item, ts: Date.now(), id: crypto.randomUUID() });
+  // id = idempotency key: stable UUID for this operation to prevent duplicates
+  const idempotencyKey = item.idempotency_key || crypto.randomUUID();
+  // Prevent double-enqueue of same operation
+  if (queue.some(q => q.idempotency_key === idempotencyKey)) return;
+  queue.push({ ...item, ts: Date.now(), idempotency_key: idempotencyKey, retries: 0 });
+  // Keep sorted by timestamp (FIFO — process oldest first)
+  queue.sort((a, b) => a.ts - b.ts);
   localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
   _updateConnectionBadge();
 }
@@ -1863,27 +1873,51 @@ async function offlineSync() {
   if (!queue.length) return;
 
   const failed = [];
+  let synced = 0;
   for (const item of queue) {
+    // Skip items in backoff window (2^retries seconds since last attempt)
+    const backoffMs = Math.pow(2, item.retries || 0) * 1000;
+    if (item.last_attempt && Date.now() - item.last_attempt < backoffMs) {
+      failed.push(item);
+      continue;
+    }
     try {
-      const { type, payload } = item;
+      const { type, payload, idempotency_key } = item;
+      // Always send Idempotency-Key header so server can deduplicate
+      const idempotencyHeader = { 'Idempotency-Key': idempotency_key };
       if (type === 'result_patch') {
         await api(`/results/${payload.result_id}`, {
-          method: 'PATCH', body: JSON.stringify(payload.data)
+          method: 'PATCH',
+          headers: idempotencyHeader,
+          body: JSON.stringify(payload.data)
         });
       } else if (type === 'order_create') {
         await api('/results/order', {
-          method: 'POST', body: JSON.stringify(payload)
+          method: 'POST',
+          headers: idempotencyHeader,
+          body: JSON.stringify(payload)
         });
       }
-    } catch {
-      failed.push(item); // keep unsynced items
+      synced++;
+    } catch (err) {
+      // 409 Conflict = already processed (idempotency hit) — drop silently
+      if (err?.message?.includes('409') || err?.message?.includes('مكرر')) {
+        synced++;
+        continue;
+      }
+      // Too many retries: drop permanently with error toast
+      if ((item.retries || 0) >= OFFLINE_MAX_RETRIES) {
+        _showToast(`فشلت مزامنة عملية بعد ${OFFLINE_MAX_RETRIES} محاولات`, 'error');
+        continue;
+      }
+      failed.push({ ...item, retries: (item.retries || 0) + 1, last_attempt: Date.now() });
     }
   }
 
   localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(failed));
   _updateConnectionBadge();
-  if (failed.length === 0 && queue.length > 0) {
-    _showToast(`تمت مزامنة ${queue.length} عملية`, 'success');
+  if (synced > 0) {
+    _showToast(`تمت مزامنة ${synced} عملية`, 'success');
   }
 }
 
