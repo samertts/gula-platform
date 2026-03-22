@@ -1,4 +1,5 @@
 import secrets
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -67,6 +68,7 @@ class ResultItem(BaseModel):
 class CreateOrderRequest(BaseModel):
     patient_id: int
     doctor_name: Optional[str] = None
+    doctor_user_id: Optional[int] = None  # link to a registered doctor account for data isolation
     results: List[ResultItem]
 
 
@@ -155,6 +157,7 @@ def create_order(
         patient_id=data.patient_id,
         lab_id=current_user.lab_id,
         doctor_name=data.doctor_name,
+        doctor_user_id=data.doctor_user_id,
         status="completed",
     )
     db.add(order)
@@ -257,6 +260,28 @@ def create_order(
     return response_body
 
 
+def _base_order_query(current_user: LabUser, db: Session):
+    """Return base LabOrder query scoped to the caller's access level.
+
+    - master_admin / ministry_admin / province_admin: all labs (for now just
+      their own lab; multi-lab overview is via /admin/ endpoints)
+    - admin / staff / lab_staff / technician: own lab only
+    - doctor: only orders explicitly linked to them via doctor_user_id
+    - citizen: no access (returns empty — citizens use public /r/<token> links)
+    """
+    base = db.query(LabOrder).options(
+        joinedload(LabOrder.patient), joinedload(LabOrder.results)
+    )
+    if current_user.role == "doctor":
+        # Data isolation: doctors see ONLY orders where they are the ordering physician
+        return base.filter(LabOrder.doctor_user_id == current_user.id)
+    if current_user.role == "citizen":
+        # Citizens use public share tokens, not this endpoint
+        return base.filter(sa.false())
+    # Lab staff, admin, higher: scoped to their lab
+    return base.filter(LabOrder.lab_id == current_user.lab_id)
+
+
 @router.get("/orders")
 def list_orders(
     skip: int = Query(0, ge=0),
@@ -264,13 +289,9 @@ def list_orders(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(LabOrder).filter(
-        LabOrder.lab_id == current_user.lab_id,
-    ).options(joinedload(LabOrder.patient), joinedload(LabOrder.results))
-
-    total = db.query(LabOrder).filter(LabOrder.lab_id == current_user.lab_id).count()
+    query = _base_order_query(current_user, db)
+    total = query.count()
     orders = query.order_by(LabOrder.created_at.desc()).offset(skip).limit(limit).all()
-
     return {
         "total": total,
         "orders": [order_to_dict(o) for o in orders],
@@ -283,10 +304,7 @@ def get_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    order = db.query(LabOrder).filter(
-        LabOrder.id == order_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).options(joinedload(LabOrder.patient), joinedload(LabOrder.results)).first()
+    order = _base_order_query(current_user, db).filter(LabOrder.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order_to_dict(order)

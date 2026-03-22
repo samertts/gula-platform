@@ -111,3 +111,25 @@ def rate_limit_auth(request: Request, max_per_minute: int = 10):
             status_code=429,
             detail="Too many login attempts. Please wait a moment.",
         )
+
+
+def rate_limit_admin(request: Request, user_id: int, max_per_minute: int = 20):
+    """Strict rate limit for /admin/* endpoints — keyed by user_id + IP.
+
+    Admin actions are sensitive; a lower limit protects against:
+    - Brute-force role enumeration
+    - Bulk account manipulation scripts
+    - Compromised admin token abuse
+    """
+    client_ip = get_client_ip(request)
+    if not limiter.check(f"admin:user:{user_id}", max_requests=max_per_minute, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="Admin rate limit exceeded. Maximum 20 operations per minute.",
+        )
+    # Secondary: per-IP across all admin users (blocks scripted attacks from one IP)
+    if not limiter.check(f"admin:ip:{client_ip}", max_requests=60, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many admin requests from this network.",
+        )
