@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gula
+
+bases:
+  - ../../base
+
+# Prod-specific overrides
+patchesStrategicMerge:
+  - patch-replicas.yaml
+  - patch-resources.yaml
+
+# Prod: use latest stable image
+images:
+  - name: ghcr.io/samertts/gula-platform/backend
+    newTag: latest
+
+# Prod ConfigMap overrides
+configMapGenerator:
+  - name: gula-config
+    behavior: merge
+    literals:
+      - ENV=production
+      - ENABLE_API_DOCS=false
+      - BASE_URL=https://gula-platform.org

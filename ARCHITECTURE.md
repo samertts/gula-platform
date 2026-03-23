@@ -101,8 +101,8 @@ Internet
 | 18 | Apache Kafka data pipeline | ✅ | `gula-kafka` + `gula-zookeeper` |
 | 19 | Multi-tier AI system | ✅ | Operational/Clinical/Population AI |
 | 20 | Backup system | ✅ | `scripts/backup.sh` |
-| 21 | Kubernetes readiness | 📋 | Architecture ready for k8s migration |
-| 22 | Blue-Green deployment | 📋 | Planned for CI/CD pipeline |
+| 21 | Kubernetes readiness | ✅ | `k8s/base/` + `k8s/overlays/dev` & `prod` (kustomize) — `make k8s-dev` / `make k8s-prod` |
+| 22 | Blue-Green deployment | ✅ | `.github/workflows/blue-green-deploy.yml` — auto-switch blue↔green on every main push |
 | 23 | Autonomous self-healing | ✅ | `gula-autonomous-manager` |
 
 ## Service Ports

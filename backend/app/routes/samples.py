@@ -11,6 +11,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services.audit_service import log_action
+from ..domain.order_state import assert_not_locked
 
 router = APIRouter(prefix="/samples", tags=["samples"])
 
@@ -47,6 +48,9 @@ def create_sample(
     ).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    # Block sample creation on locked (validated) orders
+    assert_not_locked(order)
 
     if data.sample_type not in VALID_SAMPLE_TYPES:
         raise HTTPException(status_code=400, detail="Invalid sample type")
@@ -119,6 +123,11 @@ def update_sample(
     ).first()
     if not sample:
         raise HTTPException(status_code=404, detail="Sample not found")
+
+    # Block status updates on locked orders
+    order = db.query(LabOrder).filter(LabOrder.id == sample.order_id).first()
+    if order:
+        assert_not_locked(order)
 
     if data.status:
         if data.status not in VALID_STATUSES:

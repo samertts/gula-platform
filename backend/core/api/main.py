@@ -12,8 +12,6 @@ from reportlab.pdfgen import canvas
 from workflow_engine.analyzer_router import route_test
 from workflow_engine.workflow_manager import start_workflow
 
-pass
-
 app = FastAPI(title="National Laboratory Platform")
 
 DB_HOST = "lab-postgres"

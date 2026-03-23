@@ -2,9 +2,13 @@ name: CI - Build, Test & Security Scan
 
 on:
   push:
-    branches: [main, develop]
+    branches: ["**"]
   pull_request:
     branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/gula-platform
 
 jobs:
   # ─── Backend Tests ──────────────────────────────────────────────────────────
@@ -117,10 +121,43 @@ jobs:
             echo "✓ No hardcoded secrets detected"
           fi
 
-  # ─── Docker Build Validation ───────────────────────────────────────────────
-  docker-build:
+  # ─── Build & Push Images to GHCR ──────────────────────────────────────────
+  build-and-push:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    needs: [backend-test]
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+          - service: svc-lab
+            context: ./services
+            dockerfile: ./services/lab/Dockerfile
+          - service: svc-order
+            context: ./services
+            dockerfile: ./services/order/Dockerfile
+          - service: svc-patient
+            context: ./services
+            dockerfile: ./services/patient/Dockerfile
+          - service: svc-result
+            context: ./services
+            dockerfile: ./services/result/Dockerfile
+          - service: svc-sample
+            context: ./services
+            dockerfile: ./services/sample/Dockerfile
+          - service: svc-notification
+            context: ./services
+            dockerfile: ./services/notification/Dockerfile
+          - service: svc-ai
+            context: ./services
+            dockerfile: ./services/ai/Dockerfile
 
     steps:
       - uses: actions/checkout@v4
@@ -128,20 +165,65 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build backend image
-        uses: docker/build-push-action@v5
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          context: ./backend
-          push: false
-          load: true
-          tags: gula-backend:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Scan backend image with Trivy
+      # Compute clean branch tag: replace '/' with '-', strip 'refs/heads/'
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            # Branch name (e.g. main, develop, feature-xyz)
+            type=ref,event=branch
+            # Short SHA (first 7 chars)
+            type=sha,prefix=,format=short
+            # 'latest' only on main
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            GIT_SHA=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
+
+      - name: Scan ${{ matrix.service }} image with Trivy
+        if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: gula-backend:ci
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.ref_name }}
           format: table
           severity: CRITICAL,HIGH
           exit-code: 0
+
+  # ─── Summary ──────────────────────────────────────────────────────────────
+  image-summary:
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Print published image tags
+        run: |
+          echo "## Docker Images Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Tag |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
+          for svc in backend svc-lab svc-order svc-patient svc-result svc-sample svc-notification svc-ai; do
+            echo "| $svc | \`ghcr.io/${{ github.repository_owner }}/gula-platform/${svc}:${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Short SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

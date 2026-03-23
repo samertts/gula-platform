@@ -4,6 +4,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_user import LabUser
+from ..models.user import User
 from ..security.auth import verify_password, create_token, create_refresh_token, build_token_payload, blacklist_token
 from ..security.auth import decode_token, decode_refresh_token
 from ..security.rate_limit import rate_limit_auth, get_client_ip
@@ -33,14 +34,23 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     client_ip = get_client_ip(request)
     email = data.email
 
-    # Lookup user (always verify password even if not found, to prevent timing attacks)
-    user = db.query(LabUser).filter(
+    # ── Try lab staff / admin first ────────────────────────────────────────────
+    lab_user = db.query(LabUser).filter(
         LabUser.email == email,
         LabUser.is_active == True,
     ).first()
 
+    # ── Fallback: citizen account ──────────────────────────────────────────────
+    citizen = None
+    if not lab_user:
+        citizen = db.query(User).filter(
+            User.email == email,
+            User.is_active == True,
+        ).first()
+
+    user = lab_user or citizen
+
     if not user or not verify_password(data.password, user.password_hash):
-        # Log failed login attempt for security monitoring
         log_action(
             db,
             action="login_failed",
@@ -53,30 +63,43 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         db.commit()
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    # Check if lab is active
-    from ..models.lab import Lab
-    lab = db.query(Lab).filter(Lab.id == user.lab_id, Lab.is_active == True).first()
-    if not lab and user.role != "master_admin":
-        log_action(
-            db,
-            action="login_denied",
-            resource_type="auth",
-            user_id=user.id,
-            user_role=user.role,
-            details="Login denied: laboratory deactivated",
-            ip_address=client_ip,
-        )
-        db.commit()
-        raise HTTPException(status_code=403, detail="Your laboratory account is deactivated")
+    # ── Lab-user: check lab is still active ───────────────────────────────────
+    lab = None
+    if lab_user:
+        from ..models.lab import Lab
+        lab = db.query(Lab).filter(Lab.id == lab_user.lab_id, Lab.is_active == True).first()
+        if not lab and lab_user.role != "master_admin":
+            log_action(
+                db,
+                action="login_denied",
+                resource_type="auth",
+                user_id=lab_user.id,
+                user_role=lab_user.role,
+                details="Login denied: laboratory deactivated",
+                ip_address=client_ip,
+            )
+            db.commit()
+            raise HTTPException(status_code=403, detail="Your laboratory account is deactivated")
 
-    # Warm Redis so the fast perm_version path is always a cache hit after login
-    warm_perm_version(user)
+        # Warm Redis perm_version cache (lab users only)
+        warm_perm_version(lab_user)
+        base_payload = build_token_payload(lab_user)
+        user_name = lab_user.name
+        lab_name = lab.name if lab else None
+    else:
+        # Citizen token payload (no perm_version needed)
+        base_payload = {
+            "user_id": citizen.id,
+            "lab_id": None,
+            "role": "citizen",
+            "perm_ver": 1,
+        }
+        user_name = citizen.full_name
+        lab_name = None
 
-    base_payload = build_token_payload(user)
     token = create_token(base_payload)
     refresh_token = create_refresh_token(base_payload)
 
-    # Audit log (don't log password in details)
     log_action(
         db,
         action="login",
@@ -88,7 +111,6 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     )
     db.commit()
 
-    # Set httpOnly cookies for web browser clients (prevents XSS token theft)
     cookie_kwargs = {
         "httponly": True,
         "samesite": "strict",
@@ -115,11 +137,11 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         "token_type": "Bearer",
         "user": {
             "id": user.id,
-            "name": user.name,
+            "name": user_name,
             "email": user.email,
             "role": user.role,
             "lab_id": user.lab_id,
-            "lab_name": lab.name if lab else None,
+            "lab_name": lab_name,
         },
     }
 
