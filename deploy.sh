@@ -47,18 +47,41 @@ fi
 log "Compose file: $COMPOSE_FILE | update_mode=$UPDATE_MODE | monitoring=$MONITORING"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1b. STOP SYSTEM NGINX IF RUNNING (it conflicts with Docker nginx on port 80)
+# 1b. CONFIGURE SYSTEM NGINX AS OUTER REVERSE PROXY
 # ─────────────────────────────────────────────────────────────────────────────
-# Docker api-gateway binds to host ports 80 and 443 directly.
-# System nginx (nginx/1.24.0 Ubuntu) on the same ports causes a 502.
-if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet nginx 2>/dev/null; then
-  warn() { printf '\033[1;33m[gula-deploy]\033[0m %s\n' "$*"; }
-  warn "System nginx is running and will conflict with Docker nginx on port 80/443."
-  warn "Stopping and disabling system nginx..."
-  sudo systemctl stop nginx 2>/dev/null || true
-  sudo systemctl disable nginx 2>/dev/null || true
-  ok "System nginx stopped and disabled."
-  log "Docker api-gateway will now own ports 80 and 443 directly."
+# Architecture:
+#   Internet → System nginx (port 80/443) → Docker api-gateway (127.0.0.1:8080)
+#
+# Docker api-gateway listens on 127.0.0.1:8080 only (NOT on public 80/443).
+# This avoids port conflicts with the Ubuntu system nginx (1.24.x).
+# System nginx handles SSL termination and certbot ACME challenges.
+
+warn() { printf '\033[1;33m[gula-deploy]\033[0m %s\n' "$*"; }
+
+_nginx_site="gula-platform"
+_nginx_conf="/etc/nginx/sites-available/${_nginx_site}"
+_nginx_enabled="/etc/nginx/sites-enabled/${_nginx_site}"
+_our_conf="$(pwd)/config/nginx/system/gula-platform-http.conf"
+
+if command -v nginx >/dev/null 2>&1; then
+  if [ ! -f "$_nginx_conf" ] || ! diff -q "$_our_conf" "$_nginx_conf" >/dev/null 2>&1; then
+    log "Installing/updating system nginx config → ${_nginx_conf}..."
+    sudo cp "$_our_conf" "$_nginx_conf" 2>/dev/null && \
+    sudo ln -sf "$_nginx_conf" "$_nginx_enabled" 2>/dev/null && \
+    sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+    if sudo nginx -t 2>/dev/null; then
+      sudo systemctl reload nginx 2>/dev/null || sudo systemctl restart nginx 2>/dev/null || true
+      ok "System nginx configured (proxies port 80 → Docker 127.0.0.1:8080)"
+    else
+      warn "nginx -t failed — system nginx config unchanged. Check /etc/nginx manually."
+    fi
+  else
+    log "System nginx config already up to date"
+    # Ensure nginx is running
+    sudo systemctl start nginx 2>/dev/null || true
+  fi
+else
+  warn "nginx not installed on host — Docker api-gateway is exposed directly (check firewall!)"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -95,6 +118,30 @@ ensure_var "REDIS_PASSWORD" "$REDIS_PASS"
 ensure_var "SECRET_KEY" "$(gen_secret)"
 ensure_var "ENCRYPTION_KEY" "$(gen_secret)"
 ensure_var "NID_HMAC_KEY" "$(gen_secret)"
+
+# ── Master Admin password (CRITICAL — must be set or admin account won't be created) ──
+# Generate a strong random password on first run, print it once to console.
+# Store it securely (password manager) — it is NOT shown again.
+if ! grep -q "^GULA_ADMIN_PASSWORD=" .env 2>/dev/null || \
+   grep -q "^GULA_ADMIN_PASSWORD=$" .env 2>/dev/null; then
+  _admin_pass="Gula@$(python3 -c 'import secrets,string; a=string.ascii_letters+string.digits; print(secrets.token_urlsafe(12))' 2>/dev/null)!"
+  # Remove any empty/blank line
+  sed -i '/^GULA_ADMIN_PASSWORD=$/d' .env 2>/dev/null || true
+  echo "GULA_ADMIN_PASSWORD=${_admin_pass}" >> .env
+  echo ""
+  echo "┌─────────────────────────────────────────────────────────────────────────────┐"
+  echo "│  🔑 MASTER ADMIN CREDENTIALS (save these — shown only once)                │"
+  echo "│                                                                             │"
+  echo "│  Email:    admin@gula-platform.org                                         │"
+  printf "│  Password: %-64s│\n" "${_admin_pass}"
+  echo "│                                                                             │"
+  echo "│  Login: https://gula-platform.org/login (or /docs for API)                 │"
+  echo "└─────────────────────────────────────────────────────────────────────────────┘"
+  echo ""
+fi
+ensure_var "GULA_ADMIN_EMAIL" "admin@gula-platform.org"
+ensure_var "GULA_ADMIN_NAME" "GULA Admin"
+ensure_var "GRAFANA_PASSWORD" "$(gen_secret)"
 
 # Read actual passwords from .env for dependent vars
 ACTUAL_PG_PASS=$(grep -oP '^POSTGRES_PASSWORD=\K.*' .env | head -1)
