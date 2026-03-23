@@ -3,11 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY requirements.txt .
-# Wheels are pre-downloaded to /tmp/wheels on the host and copied here
-# so the build works in environments without outbound internet access.
-COPY wheels/ /tmp/wheels/
-RUN pip install --no-cache-dir --no-index --find-links=/tmp/wheels -r requirements.txt \
- && rm -rf /tmp/wheels
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY migrations ./migrations

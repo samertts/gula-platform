@@ -1,2 +1,4 @@
-# Never commit wheels - rebuilt per deployment
-!wheels/
+__pycache__/
+*.pyc
+*.pyo
+.env
