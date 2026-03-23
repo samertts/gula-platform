@@ -5,10 +5,19 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (default: latest)"
+        required: false
+        default: "latest"
 
 concurrency:
   group: gula-production-deploy
   cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/gula-platform
 
 jobs:
   deploy:
@@ -18,6 +27,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # Resolve the image tag to deploy
+      - name: Resolve image tag
+        id: tag
+        run: |
+          # manual trigger may override the tag
+          INPUT_TAG="${{ github.event.inputs.image_tag }}"
+          if [ -n "$INPUT_TAG" ] && [ "$INPUT_TAG" != "latest" ]; then
+            TAG="$INPUT_TAG"
+          else
+            # Use short SHA of the commit being deployed
+            TAG="${GITHUB_SHA::7}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying image tag: $TAG"
 
       - name: Setup SSH
         env:
@@ -39,32 +63,38 @@ jobs:
           chmod 600 ~/.ssh/config
 
       - name: Deploy to server
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY: ${{ env.REGISTRY }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          ssh gula-server << 'DEPLOY_SCRIPT'
+          ssh gula-server << DEPLOY_SCRIPT
             set -euo pipefail
 
             REPO_DIR="/home/samertts/gula-platform"
-            cd "$REPO_DIR"
+            IMAGE_TAG="${IMAGE_TAG}"
+            IMAGE_PREFIX="${IMAGE_PREFIX}"
+            REGISTRY="${REGISTRY}"
+            REGISTRY_TOKEN="${GH_TOKEN}"
 
-            log() { printf '[deploy] %s\n' "$*"; }
+            cd "\$REPO_DIR"
+
+            log() { printf '[deploy] %s\n' "\$*"; }
 
             # Detect docker compose
             COMPOSE="docker compose"
-            if ! $COMPOSE version >/dev/null 2>&1; then
+            if ! \$COMPOSE version >/dev/null 2>&1; then
               COMPOSE="docker-compose"
             fi
-            if ! command -v docker >/dev/null 2>&1; then
-              log "ERROR: docker not found"
-              exit 2
-            fi
 
-            # Always use MVP compose file (full stack requires dedicated infrastructure)
             COMPOSE_FILE="docker-compose.yml"
-            if [ ! -f "$COMPOSE_FILE" ]; then
-              log "ERROR: docker-compose.yml not found"
-              exit 2
-            fi
-            log "Using compose file: $COMPOSE_FILE"
+            log "Using compose file: \$COMPOSE_FILE | image tag: \$IMAGE_TAG"
+
+            # ── Log in to GHCR so we can pull private images ──
+            echo "\$REGISTRY_TOKEN" | docker login "\$REGISTRY" -u "${REPO_OWNER}" --password-stdin
+            log "Logged in to GHCR"
 
             # Preserve .env before git reset
             if [ -f .env ]; then
@@ -72,8 +102,7 @@ jobs:
               log "Backed up .env"
             fi
 
-            # Store current commit for rollback
-            PREVIOUS_COMMIT="$(git rev-parse HEAD)"
+            PREVIOUS_COMMIT="\$(git rev-parse HEAD)"
 
             # Sync to latest main
             git fetch origin main
@@ -87,29 +116,22 @@ jobs:
               log "Restored .env"
             fi
 
-            # Create .env if it doesn't exist
-            if [ ! -f .env ]; then
-              log "No .env file found - creating one with generated secrets"
-              touch .env
-            fi
+            [ -f .env ] || touch .env
 
-            # Auto-generate ALL missing required variables
-            # gen_secret: URL-safe random string (for passwords)
-            # gen_fernet: valid 32-byte base64 key (required for ENCRYPTION_KEY)
+            # Auto-generate missing secrets
             gen_secret()  { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
             gen_fernet()  { python3 -c 'import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())'; }
 
             for var in POSTGRES_PASSWORD REDIS_PASSWORD SECRET_KEY NID_HMAC_KEY MINIO_SECRET_KEY; do
-              if ! grep -q "^${var}=" .env || grep -q "^${var}=CHANGE_ME" .env; then
-                sed -i "/^${var}=CHANGE_ME/d" .env 2>/dev/null || true
-                echo "${var}=$(gen_secret)" >> .env
-                log "Generated missing $var"
+              if ! grep -q "^\${var}=" .env || grep -q "^\${var}=CHANGE_ME" .env; then
+                sed -i "/^\${var}=CHANGE_ME/d" .env 2>/dev/null || true
+                echo "\${var}=\$(gen_secret)" >> .env
+                log "Generated missing \$var"
               fi
             done
-            # ENCRYPTION_KEY must be a valid Fernet key (32 bytes base64url)
             if ! grep -q "^ENCRYPTION_KEY=" .env || grep -q "^ENCRYPTION_KEY=CHANGE_ME" .env; then
               sed -i "/^ENCRYPTION_KEY=CHANGE_ME/d" .env 2>/dev/null || true
-              echo "ENCRYPTION_KEY=$(gen_fernet)" >> .env
+              echo "ENCRYPTION_KEY=\$(gen_fernet)" >> .env
               log "Generated valid Fernet ENCRYPTION_KEY"
             fi
 
@@ -117,37 +139,34 @@ jobs:
               echo "MINIO_ACCESS_KEY=gula_minio" >> .env
             fi
 
-            # Build dependent URLs from actual passwords
-            PG_PASS=$(grep -oP '^POSTGRES_PASSWORD=\K.*' .env | head -1)
-            REDIS_PASS=$(grep -oP '^REDIS_PASSWORD=\K.*' .env | head -1)
+            PG_PASS=\$(grep -oP '^POSTGRES_PASSWORD=\K.*' .env | head -1)
+            REDIS_PASS=\$(grep -oP '^REDIS_PASSWORD=\K.*' .env | head -1)
 
-            if ! grep -q "^DATABASE_URL=" .env; then
-              echo "DATABASE_URL=postgresql://postgres:${PG_PASS}@postgres:5432/labdb" >> .env
-            fi
-
-            if ! grep -q "^REDIS_URL=" .env; then
-              echo "REDIS_URL=redis://:${REDIS_PASS}@redis:6379" >> .env
-            fi
+            grep -q "^DATABASE_URL=" .env || echo "DATABASE_URL=postgresql://postgres:\${PG_PASS}@postgres:5432/labdb" >> .env
+            grep -q "^REDIS_URL=" .env   || echo "REDIS_URL=redis://:\${REDIS_PASS}@redis:6379" >> .env
 
             if ! grep -q "^RABBITMQ_URL=" .env; then
-              RABBIT_PASS=$(grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 || echo "changeme")
-              echo "RABBITMQ_URL=amqp://gula:${RABBIT_PASS}@rabbitmq:5672/gula" >> .env
+              RABBIT_PASS=\$(grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 || echo "changeme")
+              echo "RABBITMQ_URL=amqp://gula:\${RABBIT_PASS}@rabbitmq:5672/gula" >> .env
             fi
 
-            log "Variables set: $(grep -c '=' .env)"
+            # ── Inject pre-built image tag so compose uses GHCR images ──
+            sed -i '/^GULA_IMAGE_TAG=/d' .env
+            echo "GULA_IMAGE_TAG=\${IMAGE_TAG}" >> .env
+            sed -i '/^GULA_IMAGE_PREFIX=/d' .env
+            echo "GULA_IMAGE_PREFIX=\${IMAGE_PREFIX}" >> .env
 
-            # ── Configure system nginx to proxy to Docker (port 8080) ──
+            log "Variables set: \$(grep -c '=' .env)"
+
+            # ── Configure system nginx ──
             if command -v nginx >/dev/null 2>&1 && [ -d /etc/nginx/sites-available ]; then
               log "Configuring system nginx reverse proxy"
-
-              # Use HTTP-only config (simpler, works without SSL certs)
-              if [ -f "$REPO_DIR/config/nginx/system/gula-platform-http.conf" ]; then
-                sudo cp "$REPO_DIR/config/nginx/system/gula-platform-http.conf" \
+              if [ -f "\$REPO_DIR/config/nginx/system/gula-platform-http.conf" ]; then
+                sudo cp "\$REPO_DIR/config/nginx/system/gula-platform-http.conf" \
                   /etc/nginx/sites-available/gula-platform
                 sudo ln -sf /etc/nginx/sites-available/gula-platform \
                   /etc/nginx/sites-enabled/gula-platform
                 sudo rm -f /etc/nginx/sites-enabled/default
-
                 if sudo nginx -t 2>/dev/null; then
                   sudo systemctl reload nginx
                   log "System nginx configured and reloaded"
@@ -157,58 +176,53 @@ jobs:
               fi
             fi
 
-            # ── Clean stale containers from previous deployments ──
-            # Prevents "dependency failed: container X is unhealthy" errors
-            $COMPOSE -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
-            # Remove any ghost containers on the gula-net network
-            for stale in $(docker ps -a --filter "network=gula-net" --format '{{.Names}}' 2>/dev/null || true); do
-              if ! grep -q "container_name: $stale" "$COMPOSE_FILE" 2>/dev/null; then
-                log "Removing stale container: $stale"
-                docker rm -f "$stale" 2>/dev/null || true
+            # ── Clean stale containers ──
+            \$COMPOSE -f "\$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+            for stale in \$(docker ps -a --filter "network=gula-net" --format '{{.Names}}' 2>/dev/null || true); do
+              if ! grep -q "container_name: \$stale" "\$COMPOSE_FILE" 2>/dev/null; then
+                log "Removing stale container: \$stale"
+                docker rm -f "\$stale" 2>/dev/null || true
               fi
             done
             docker network prune -f 2>/dev/null || true
 
-            # ── Deploy Docker services ──
-            $COMPOSE -f "$COMPOSE_FILE" config >/dev/null
-            $COMPOSE -f "$COMPOSE_FILE" pull --ignore-pull-failures
-            $COMPOSE -f "$COMPOSE_FILE" up -d --build --remove-orphans
+            # ── Pull pre-built images from GHCR, then start ──
+            \$COMPOSE -f "\$COMPOSE_FILE" config >/dev/null
+            \$COMPOSE -f "\$COMPOSE_FILE" pull --ignore-pull-failures
+            \$COMPOSE -f "\$COMPOSE_FILE" up -d --remove-orphans
             docker image prune -f
 
             log "Waiting for services to become healthy..."
             sleep 15
 
-            # Show container status
-            $COMPOSE ps
+            \$COMPOSE ps
 
             # Health check with retry (up to 3 minutes)
             ok=0
-            for i in $(seq 1 36); do
-              # Check Docker api-gateway directly (port 8080)
+            for i in \$(seq 1 36); do
               if curl -fsS --max-time 5 http://127.0.0.1:8080/health >/dev/null 2>&1; then
                 ok=1
-                log "Health check passed on attempt $i"
+                log "Health check passed on attempt \$i"
                 break
               fi
               sleep 5
             done
 
-            if [ "$ok" -ne 1 ]; then
+            if [ "\$ok" -ne 1 ]; then
               log "Health check failed after 3 minutes"
-              log "Container status:"
-              $COMPOSE ps
+              \$COMPOSE ps
               log "Backend logs:"
-              $COMPOSE logs --tail=20 gula-backend 2>/dev/null || true
+              \$COMPOSE logs --tail=20 gula-backend 2>/dev/null || true
               log "API gateway logs:"
-              $COMPOSE logs --tail=20 api-gateway 2>/dev/null || true
+              \$COMPOSE logs --tail=20 api-gateway 2>/dev/null || true
 
-              log "Rolling back to $PREVIOUS_COMMIT"
-              git reset --hard "$PREVIOUS_COMMIT"
-              $COMPOSE up -d --build --remove-orphans
+              log "Rolling back to \$PREVIOUS_COMMIT"
+              git reset --hard "\$PREVIOUS_COMMIT"
+              \$COMPOSE up -d --remove-orphans
               exit 1
             fi
 
-            log "Deployment completed successfully"
+            log "Deployment completed successfully (image tag: \$IMAGE_TAG)"
           DEPLOY_SCRIPT
 
       - name: Health Check
@@ -227,8 +241,6 @@ jobs:
             sleep 15
           done
           echo "Health check failed after 8 attempts"
-
-          # Debug: show what the server sees
           ssh gula-server 'cd /home/samertts/gula-platform && docker compose ps 2>/dev/null || docker-compose ps' || true
           exit 1
 
@@ -243,3 +255,14 @@ jobs:
           else
             echo "WARNING: Unexpected health response"
           fi
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image tag | \`${{ steps.tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY

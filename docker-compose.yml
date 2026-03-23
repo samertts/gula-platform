@@ -78,7 +78,12 @@ services:
   # ---------------------------------------------------------------------------
 
   gula-backend:
-    build: ./backend
+    # Use pre-built image from GHCR when GULA_IMAGE_TAG is set (CI/CD deployments),
+    # otherwise fall back to building locally (developer machines).
+    image: "${GULA_IMAGE_PREFIX:-local}/backend:${GULA_IMAGE_TAG:-local}"
+    build:
+      context: ./backend
+      # build is ignored when 'image' resolves to an existing remote image pulled by compose pull
     container_name: gula-backend
     restart: always
     # SECURITY: Prevent privilege escalation inside container
