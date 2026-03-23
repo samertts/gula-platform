@@ -66,25 +66,30 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
     if existing:
         raise HTTPException(status_code=409, detail="Registration failed. Please use a different email.")
 
+    # Labs start INACTIVE — they must be approved by a platform admin before use.
+    # This is required for a medical platform: we cannot allow unverified labs to
+    # access patient data. Admin approves via PUT /admin/labs/{id}/activate.
     lab = Lab(
         name=data.lab_name,
         city=data.city,
         address=data.address,
         phone=data.phone,
+        is_active=False,
     )
     db.add(lab)
     db.flush()
 
+    # Lab admin user also starts inactive until the lab is approved.
     user = LabUser(
         lab_id=lab.id,
         name=data.admin_name,
         email=data.email,
         password_hash=hash_password(data.password),
         role="admin",
+        is_active=False,
     )
     db.add(user)
 
-    # Audit log (avoid logging PII like email in details)
     log_action(
         db,
         action="register",
@@ -92,7 +97,7 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
         resource_id=lab.id,
         user_id=user.id,
         user_role=user.role,
-        details=f"New lab registered: {data.lab_name} (lab_id={lab.id})",
+        details=f"New lab registration pending approval: {data.lab_name} (lab_id={lab.id})",
         ip_address=request.client.host if request.client else None,
     )
 
@@ -100,24 +105,12 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
     db.refresh(lab)
     db.refresh(user)
 
-    token = create_token({"user_id": user.id, "lab_id": lab.id, "role": user.role})
-
-    # Set httpOnly cookie for web browser clients
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        max_age=JWT_EXPIRE_MINUTES * 60,
-        path="/",
-        httponly=True,
-        samesite="strict",
-        secure=IS_PRODUCTION,
-    )
-
+    # No token issued — login will fail until admin activates the lab.
     return {
-        "message": "Lab registered successfully",
+        "message": "Registration submitted successfully. Your account will be activated after review.",
+        "message_ar": "تم تقديم طلب التسجيل بنجاح. سيتم تفعيل حسابك بعد المراجعة.",
         "lab_id": lab.id,
-        "user_id": user.id,
-        "token": token,
+        "status": "pending_approval",
     }
 
 
