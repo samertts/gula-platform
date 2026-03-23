@@ -1,0 +1,28 @@
+# Prod: full resource allocation + wider HPA range (5-8 replicas)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-backend
+  namespace: gula
+spec:
+  template:
+    spec:
+      containers:
+        - name: gula-backend
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "500m"
+            limits:
+              memory: "512Mi"
+              cpu: "2000m"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gula-backend-hpa
+  namespace: gula
+spec:
+  minReplicas: 5
+  maxReplicas: 8
