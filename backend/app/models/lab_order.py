@@ -3,6 +3,10 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from ..database import Base
 
+# Optimistic locking: increment `version` on every UPDATE.
+# If the version the caller saw no longer matches the DB, the update affects
+# 0 rows → caller receives HTTP 409 Conflict and must re-fetch.
+
 
 # Valid order status transitions (state machine):
 #   pending → completed  (results entered)
@@ -27,6 +31,9 @@ class LabOrder(Base):
     validated_by = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
     validated_at = Column(DateTime(timezone=True), nullable=True)
     locked_at = Column(DateTime(timezone=True), nullable=True)  # set == validated_at when finalized
+
+    # Optimistic locking — incremented on every mutation (see migration 0004)
+    version    = Column(Integer, nullable=False, default=1)
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 

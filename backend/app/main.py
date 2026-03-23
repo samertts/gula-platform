@@ -24,6 +24,7 @@ logger = logging.getLogger("gula")
 
 # Import all models so they are registered with Base
 from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl
+from .models.outbox import OutboxEvent  # register OutboxEvent with Base metadata
 
 # Schema management: create_all is safe and idempotent (checkfirst=True by default).
 # It creates missing tables without touching existing data.
@@ -303,6 +304,20 @@ async def ensure_master_admin():
 
 
 # ===== STARTUP WARMUP =====
+@app.on_event("startup")
+async def start_outbox_worker():
+    """Launch the Outbox Pattern background worker.
+
+    The worker polls outbox_events every 10 seconds and dispatches them
+    to the in-process EventBus.  Guarantees at-least-once event delivery
+    even after crashes or broker downtime.
+    """
+    import asyncio
+    from .services.outbox_service import OutboxWorker
+    asyncio.create_task(OutboxWorker.background_loop())
+    logger.info("Outbox worker started")
+
+
 @app.on_event("startup")
 async def warmup():
     """Pre-load hot-path modules so first real request is fast."""
