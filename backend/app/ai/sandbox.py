@@ -4,13 +4,13 @@ AI Sandbox — GULA Platform
 The only place where an approved AI suggestion can be executed.
 
 Safety contract:
-  - Only PendingApproval objects with status=APPROVED can enter.
-  - Every execution is fully audited before and after.
-  - The sandbox holds an explicit whitelist of allowed operations and their handlers.
-  - Any operation not in the whitelist is rejected at execution time,
-    even if it was somehow approved.
-  - No direct DB writes — the sandbox calls internal service functions that
-    enforce their own business rules (RBAC, state machine, etc.).
+  - Only PendingApproval with status=APPROVED may enter.
+  - Every execution is audited before and after.
+  - Explicit operation whitelist — anything not registered is rejected at
+    execution time, even if it was somehow approved.
+  - No direct DB writes — handlers call internal service functions that
+    enforce their own business rules.
+  - All output is marked display_only=True unless explicitly opted out.
 
 This is the airgap between the AI layer and the clinical core.
 """
@@ -20,13 +20,12 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from app.ai.approval import ApprovalStatus, PendingApproval, approval_store
 from app.ai.guardrails import AIGuardrailViolation
 
 logger = logging.getLogger("gula.ai.sandbox")
-
 
 # ─── Execution Result ─────────────────────────────────────────────────────────
 
@@ -43,89 +42,142 @@ class SandboxResult:
 
 # ─── Operation Registry ───────────────────────────────────────────────────────
 
-# Handlers registered via @AISandbox.register(operation_name)
-# Signature: (payload: dict) -> Any
 _REGISTRY: Dict[str, Callable[[Dict[str, Any]], Any]] = {}
 
 
 def _register(operation: str) -> Callable:
-    """Decorator: register a handler for a sandboxed operation."""
     def decorator(fn: Callable) -> Callable:
         _REGISTRY[operation] = fn
         return fn
     return decorator
 
 
-# ─── Built-in Handlers ────────────────────────────────────────────────────────
-# These are the ONLY operations the sandbox will execute.
-# All handlers are pure read/suggest operations — they never mutate clinical state.
+# ─── Handlers ─────────────────────────────────────────────────────────────────
+# All handlers are read-only. They never write to the database.
+# Output must always be treated as a suggestion for physician review.
 
 @_register("suggest_interpretation")
 def _suggest_interpretation(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Return a text interpretation suggestion for a lab result.
-    This is DISPLAY ONLY — the suggestion must be reviewed by a human.
+    Interpret a single lab result using the rules-based interpretation engine.
+    Delegates to app.services.interpretation — deterministic, no ML involved.
     """
-    test_name  = payload.get("test_name", "")
-    value      = payload.get("value")
-    unit       = payload.get("unit", "")
-    normal_low = payload.get("normal_low")
+    from app.services.interpretation import interpret_result, get_flag
+
+    test_name   = payload.get("test_name", "")
+    value       = payload.get("value")
+    unit        = payload.get("unit", "")
+    normal_low  = payload.get("normal_low")
     normal_high = payload.get("normal_high")
 
     if value is None:
-        return {"interpretation": "", "flag": "unknown", "display_only": True}
+        return {"interpretation": None, "flag": "unknown", "display_only": True}
 
-    flag = "normal"
-    if normal_low is not None and value < normal_low:
-        flag = "low"
-    elif normal_high is not None and value > normal_high:
-        flag = "high"
+    value = float(value)
+    interp = interpret_result(test_name, value, normal_low, normal_high)
+    flag   = get_flag(value, normal_low, normal_high, test_name)
 
     return {
-        "test_name":      test_name,
-        "value":          value,
-        "unit":           unit,
-        "flag":           flag,
-        "interpretation": f"{test_name}: {value} {unit} — {flag}",
-        "display_only":   True,
-        "requires_doctor_review": flag in ("low", "high"),
+        "test_name":           test_name,
+        "value":               value,
+        "unit":                unit,
+        "flag":                flag,
+        "status":              interp.get("status"),
+        "interpretation":      interp.get("interpretation"),
+        "interpretation_ar":   interp.get("interpretation_ar"),
+        "advice":              interp.get("advice"),
+        "advice_ar":           interp.get("advice_ar"),
+        "display_only":        True,
+        "requires_doctor_review": flag in ("H", "L", "critical"),
+    }
+
+
+@_register("analyze_order")
+def _analyze_order(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Run multi-test clinical pattern analysis on an order's results.
+    Uses the rules-based clinical_intelligence engine (deterministic, not ML).
+
+    Returns pattern alerts + per-result flag summary + individual interpretations.
+    Everything is display_only — no DB writes.
+    """
+    from app.services.clinical_intelligence import analyze_results, quick_flag_summary
+    from app.services.interpretation import interpret_result, get_flag
+
+    order_id    = payload.get("order_id")
+    result_list: List[dict] = payload.get("result_list", [])
+
+    # 1. Multi-test pattern analysis (sepsis, DKA, renal failure, etc.)
+    patterns = analyze_results(result_list)
+
+    # 2. Flag summary counts
+    flag_summary = quick_flag_summary(result_list)
+
+    # 3. Per-result interpretations
+    interpretations = []
+    for r in result_list:
+        value = r.get("value")
+        if value is None:
+            continue
+        value = float(value)
+        test_name   = r.get("test_name", "")
+        normal_low  = r.get("normal_range_low")
+        normal_high = r.get("normal_range_high")
+
+        interp = interpret_result(test_name, value, normal_low, normal_high)
+        flag   = get_flag(value, normal_low, normal_high, test_name)
+
+        interpretations.append({
+            "test_name":         test_name,
+            "value":             value,
+            "unit":              r.get("unit", ""),
+            "flag":              flag,
+            "status":            interp.get("status"),
+            "interpretation":    interp.get("interpretation"),
+            "interpretation_ar": interp.get("interpretation_ar"),
+            "advice":            interp.get("advice"),
+            "advice_ar":         interp.get("advice_ar"),
+        })
+
+    return {
+        "order_id":        order_id,
+        "patterns":        patterns,
+        "flag_summary":    flag_summary,
+        "interpretations": interpretations,
+        "display_only":    True,
+        "source":          "rules_based_engine",
     }
 
 
 @_register("summarize_history")
 def _summarize_history(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Produce a plain-text summary of patient history data.
-    DISPLAY ONLY — never stored without explicit doctor action.
-    """
+    """Plain-text summary of patient history (display only)."""
     order_count  = payload.get("order_count", 0)
     recent_tests = payload.get("recent_tests", [])
     return {
-        "summary":      f"Patient has {order_count} orders. Recent: {', '.join(recent_tests) or 'none'}",
+        "summary":      f"Patient has {order_count} orders. "
+                        f"Recent: {', '.join(recent_tests) or 'none'}",
         "display_only": True,
     }
 
 
 @_register("flag_anomaly")
 def _flag_anomaly(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Suggest flagging a result for human review.
-    Returns a flag recommendation — does NOT write anything.
-    """
+    """Suggest flagging a result for human review (does not write anything)."""
     return {
-        "flagged":      True,
-        "reason":       payload.get("reason", "AI detected anomaly"),
-        "display_only": False,   # this one requires approval to store
+        "flagged":                True,
+        "reason":                 payload.get("reason", "AI detected anomaly"),
+        "display_only":           False,
         "requires_doctor_review": True,
     }
 
 
 @_register("translate_report")
 def _translate_report(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Placeholder for report translation (ENRICHMENT only)."""
+    """Placeholder for bilingual report translation (ENRICHMENT only)."""
     return {
-        "translated": payload.get("text", ""),
-        "language":   payload.get("target_language", "ar"),
+        "translated":   payload.get("text", ""),
+        "language":     payload.get("target_language", "ar"),
         "display_only": True,
     }
 
@@ -134,28 +186,19 @@ def _translate_report(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 class AISandbox:
     """
-    Executes approved AI operations in an isolated context.
+    Executes approved AI operations in an isolated, audited context.
 
     Usage::
 
         result = AISandbox.execute(approval)
         if result.success:
-            return result.output
+            return result.output   # always display_only
     """
 
     @staticmethod
     def execute(approval: PendingApproval) -> SandboxResult:
-        """
-        Execute an approved suggestion.
-
-        Raises AIGuardrailViolation if:
-          - The approval is not in APPROVED status.
-          - The operation is not in the registry whitelist.
-        """
         start = time.monotonic()
         op    = approval.suggestion.operation
-
-        # ── Pre-execution safety checks ───────────────────────────────────────
 
         if not approval.is_executable:
             raise AIGuardrailViolation(
@@ -165,26 +208,22 @@ class AISandbox:
 
         if op not in _REGISTRY:
             raise AIGuardrailViolation(
-                f"Operation '{op}' is not registered in the AI sandbox. "
-                "Only explicitly whitelisted operations can be executed by AI."
+                f"Operation '{op}' is not in the AI sandbox whitelist. "
+                "Only explicitly registered operations can be executed."
             )
 
-        # ── Audit: record intent before execution ─────────────────────────────
         logger.info(
             "[AI_SANDBOX] executing id=%s operation=%s entity=%s/%s approved_by=%s",
-            approval.id,
-            op,
+            approval.id, op,
             approval.suggestion.entity_type or "—",
             approval.suggestion.entity_id or "—",
             approval.reviewed_by or "—",
         )
 
-        # ── Execute ───────────────────────────────────────────────────────────
-        handler = _REGISTRY[op]
         try:
-            output = handler(approval.suggestion.payload)
-            approval_store.mark_executed(approval.id)
+            output      = _REGISTRY[op](approval.suggestion.payload)
             duration_ms = (time.monotonic() - start) * 1000
+            approval_store.mark_executed(approval.id)
 
             logger.info(
                 "[AI_SANDBOX] completed id=%s operation=%s duration_ms=%.1f",
@@ -220,7 +259,7 @@ class AISandbox:
 
     @staticmethod
     def register(operation: str) -> Callable:
-        """Decorator to add a custom operation to the sandbox registry."""
+        """Decorator to add a custom operation to the sandbox whitelist."""
         return _register(operation)
 
     @staticmethod
