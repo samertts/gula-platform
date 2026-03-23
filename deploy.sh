@@ -40,6 +40,21 @@ fi
 log "Compose file: $COMPOSE_FILE"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 1b. STOP SYSTEM NGINX IF RUNNING (it conflicts with Docker nginx on port 80)
+# ─────────────────────────────────────────────────────────────────────────────
+# Docker api-gateway binds to host ports 80 and 443 directly.
+# System nginx (nginx/1.24.0 Ubuntu) on the same ports causes a 502.
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet nginx 2>/dev/null; then
+  warn() { printf '\033[1;33m[gula-deploy]\033[0m %s\n' "$*"; }
+  warn "System nginx is running and will conflict with Docker nginx on port 80/443."
+  warn "Stopping and disabling system nginx..."
+  sudo systemctl stop nginx 2>/dev/null || true
+  sudo systemctl disable nginx 2>/dev/null || true
+  ok "System nginx stopped and disabled."
+  log "Docker api-gateway will now own ports 80 and 443 directly."
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 2. ENSURE .env EXISTS WITH ALL REQUIRED VARIABLES
 # ─────────────────────────────────────────────────────────────────────────────
 gen_secret() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))' 2>/dev/null || openssl rand -base64 32 | tr -d '=/+' | head -c 43; }
