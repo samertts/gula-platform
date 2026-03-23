@@ -17,6 +17,8 @@
 set -euo pipefail
 
 REPO_DIR="${GULA_DIR:-/home/samertts/gula-platform}"
+MAINTENANCE_SRC="${REPO_DIR}/config/nginx/maintenance/maintenance.html"
+MAINTENANCE_DST="/var/www/gula-maintenance/maintenance.html"
 SITES_AVAIL="/etc/nginx/sites-available/gula-platform"
 SITES_ENABLED="/etc/nginx/sites-enabled/gula-platform"
 CERT_PATH="/etc/letsencrypt/live/gula-platform.org/fullchain.pem"
@@ -25,6 +27,12 @@ HTTP_CONF="${REPO_DIR}/config/nginx/system/gula-platform-http.conf"
 LOG="/var/log/gula-nginx-ensure.log"
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') [nginx-ensure] $*" | tee -a "$LOG"; }
+
+# ─── Install maintenance page (fallback when Docker is down) ─────────────────
+mkdir -p /var/www/gula-maintenance
+if [ -f "$MAINTENANCE_SRC" ]; then
+    cp "$MAINTENANCE_SRC" "$MAINTENANCE_DST"
+fi
 
 # ─── Pick the right config ───────────────────────────────────────────────────
 if [ -f "$CERT_PATH" ]; then
