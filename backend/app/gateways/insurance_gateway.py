@@ -1,39 +1,57 @@
 """
 Iraqi Health Insurance Gateway — Law No.22 of 2020
 ====================================================
-Wraps the (future) national health insurance API behind the ExternalGateway
-safe layer: circuit breaker, rate limiter, caching, validation, audit log.
+Trust level: NON_CRITICAL — insurance status affects billing, not clinical decisions.
 
-Current state: placeholder local validation.
-When the government API is ready, override _do_call to make the real HTTP call.
+Schema validation enforced: rejects any response that doesn't have the exact
+expected shape. Stale cache is flagged. Fallback includes requires_verification=True
+so the caller knows the data needs human confirmation.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from app.gateways.base import ExternalGateway
+from app.gateways.base import (
+    DataTrustLevel,
+    ExternalDataResult,
+    ExternalGateway,
+    FieldRule,
+    validate_schema,
+)
 
-# Singleton — one circuit breaker shared across all calls to this service
 _gateway: "InsuranceGateway | None" = None
 
 
 class InsuranceGateway(ExternalGateway):
     name                      = "insurance"
-    timeout                   = 8.0    # government APIs can be slow
-    max_retries               = 1      # one retry is enough for status checks
+    trust_level               = DataTrustLevel.NON_CRITICAL
+    timeout                   = 8.0
+    max_retries               = 1
     calls_per_minute          = 30
     circuit_failure_threshold = 3
-    circuit_recovery_timeout  = 120.0  # 2-minute cooldown
-    cache_ttl                 = 600.0  # insurance status valid for 10 min
+    circuit_recovery_timeout  = 120.0
+    cache_ttl                 = 600.0   # 10 min — insurance status is slow-changing
+    stale_threshold           = 300.0   # flag as stale after 5 min
+
+    # ── Schema: what the government API must return ───────────────────────────
+    _SCHEMA = [
+        FieldRule("insured",  bool, required=True),
+        FieldRule("source",   str,  required=True),
+    ]
+
+    def _validate_response(self, response: Any) -> None:
+        validate_schema(response, self._SCHEMA, context="insurance")
 
     def _do_call(self, action: str, **kwargs: Any) -> Any:
         insurance_id: str = kwargs.get("insurance_id", "")
 
-        # ── Placeholder: local format check ──────────────────────────────────
-        # Replace this block with an httpx call when the real API is available:
+        # ── Placeholder ───────────────────────────────────────────────────────
+        # Replace with real HTTP call when government API is available:
         #
-        #   return self._http("post", "https://nhi.gov.iq/api/verify", json={...})
+        #   return self._http("post", "https://nhi.gov.iq/api/verify",
+        #                     json={"id": insurance_id},
+        #                     headers={"X-API-Key": settings.INSURANCE_API_KEY})
         #
         if not insurance_id:
             return {"insured": False, "source": "local_validation"}
@@ -45,13 +63,6 @@ class InsuranceGateway(ExternalGateway):
             "source":   "local_validation",
         }
 
-    def _validate_response(self, response: Any) -> bool:
-        return (
-            isinstance(response, dict)
-            and "insured" in response
-            and isinstance(response["insured"], bool)
-        )
-
 
 def get_insurance_gateway() -> InsuranceGateway:
     global _gateway
@@ -60,19 +71,17 @@ def get_insurance_gateway() -> InsuranceGateway:
     return _gateway
 
 
-def check_insurance(insurance_id: str) -> dict:
+def check_insurance(insurance_id: str) -> ExternalDataResult:
     """
-    Public API — check insurance status for a given ID.
+    Check insurance status for a given ID.
 
-    Returns a dict with at least ``{"insured": bool}``.
-    Never raises — falls back to ``{"insured": False, "source": "fallback"}``
-    if the service is unavailable.
+    Returns ExternalDataResult. Callers must check ``requires_verification``
+    before using the result in billing logic.
     """
     gw = get_insurance_gateway()
-    cache_key = InsuranceGateway._make_cache_key("insurance", insurance_id=insurance_id)
     return gw.call(
         action="check_insurance",
-        cache_key=cache_key,
+        cache_key=InsuranceGateway._make_cache_key("insurance", insurance_id=insurance_id),
         fallback={"insured": False, "source": "fallback"},
         insurance_id=insurance_id,
     )
