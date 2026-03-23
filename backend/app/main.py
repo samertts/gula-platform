@@ -201,16 +201,26 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # ===== READINESS ENFORCEMENT MIDDLEWARE =====
-# Probe paths that must always be reachable (even before system is ready)
-_PROBE_PATHS = frozenset({"/health", "/health/ready", "/health/live"})
+# Explicit whitelist — paths that are ALWAYS reachable regardless of readiness.
+# Do NOT use startswith("/health") — that could be accidentally bypassed by
+# adding new /health-adjacent routes later.
+_ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset({
+    "/health",
+    "/health/ready",
+    "/health/live",
+})
 
 
 class ReadinessMiddleware(BaseHTTPMiddleware):
-    """Reject all non-probe requests with 503 until the startup guard passes."""
+    """Reject all non-whitelisted requests with 503 until startup guard passes.
+
+    Uses an explicit path whitelist (not prefix matching) so new routes
+    cannot accidentally bypass the readiness check.
+    """
 
     async def dispatch(self, request: Request, call_next):
         from .core.startup_guard import system_ready
-        if not system_ready and request.url.path not in _PROBE_PATHS:
+        if not system_ready and request.url.path not in _ALWAYS_ALLOWED_PATHS:
             return JSONResponse(
                 status_code=503,
                 content={
@@ -222,6 +232,13 @@ class ReadinessMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(ReadinessMiddleware)
+
+
+# ===== DEGRADED MODE MIDDLEWARE =====
+# Rejects write operations when DB circuit breaker opens (post-startup failure).
+# Works in conjunction with RecoveryWorker which probes and auto-heals.
+from .core.self_healing import DegradedModeMiddleware
+app.add_middleware(DegradedModeMiddleware)
 
 # ===== ROUTES =====
 from .routes import login, register, patients, results, dashboard, labs
@@ -277,17 +294,17 @@ app.include_router(ai_routes.router)
 
 # ===== STARTUP WARMUP =====
 @app.on_event("startup")
-async def start_outbox_worker():
-    """Launch the Outbox Pattern background worker.
-
-    The worker polls outbox_events every 10 seconds and dispatches them
-    to the in-process EventBus.  Guarantees at-least-once event delivery
-    even after crashes or broker downtime.
-    """
+async def start_background_workers():
+    """Launch background workers for outbox delivery and self-healing recovery."""
     import asyncio
     from .services.outbox_service import OutboxWorker
+    from .core.self_healing import RecoveryWorker
+
     asyncio.create_task(OutboxWorker.background_loop())
     logger.info("Outbox worker started")
+
+    asyncio.create_task(RecoveryWorker.background_loop())
+    logger.info("Recovery worker started")
 
 
 @app.on_event("startup")
@@ -313,19 +330,23 @@ async def warmup():
 @app.get("/health", tags=["system"])
 def health():
     """
-    Health check endpoint for load balancers and monitoring.
-    Returns system status and version information.
+    Liveness probe — always returns 200 if the process is alive.
+    Includes circuit breaker state and pool info for observability.
     """
+    from .core.self_healing import health as sys_health
+    from .core.startup_guard import system_ready
     db_ok = check_db_connection()
     pool = get_pool_status()
-    status = "healthy" if db_ok else "degraded"
     return {
-        "status": status,
+        "status": "healthy" if db_ok else "degraded",
         "platform": APP_NAME,
         "platform_ar": PLATFORM_NAME_AR,
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
+        "system_ready": system_ready,
         "database": "connected" if db_ok else "disconnected",
+        "degraded_mode": sys_health.degraded,
+        "circuits": sys_health.to_dict()["circuits"],
         "pool": pool,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
@@ -333,17 +354,22 @@ def health():
 
 @app.get("/health/ready", tags=["system"])
 def readiness():
-    """Readiness probe — returns 503 until the startup guard completes.
+    """Hybrid readiness probe — startup completed AND services still alive.
 
-    Used by the Docker healthcheck and the api-gateway depends_on condition.
-    Only returns 200 after validate_config, wait_for_db, check_migrations,
-    and seed_critical_data have all succeeded.
+    Returns 200 only when:
+      1. Startup guard completed successfully (all steps passed), AND
+      2. Database is currently reachable, AND
+      3. Redis cache is currently reachable.
+
+    If DB or Redis fail after startup, this probe turns 503 again — the
+    Docker healthcheck will detect it and trigger a container restart.
     """
-    from .core.startup_guard import system_ready
-    if not system_ready:
+    from .core.startup_guard import is_system_ready
+    ready, reason = is_system_ready()
+    if not ready:
         return JSONResponse(
             status_code=503,
-            content={"status": "not_ready", "reason": "startup_in_progress"},
+            content={"status": "not_ready", "reason": reason},
         )
     return {"status": "ready"}
 

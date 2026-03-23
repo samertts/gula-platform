@@ -1,18 +1,23 @@
 """
 Production Startup Guard — GULA Platform
 =========================================
-Fail-fast sequential validation chain that runs before the app accepts traffic.
+Fail-fast, atomic sequential validation chain that runs before the app
+accepts traffic.
 
-Sequence:
-  1. validate_config()     — secrets present and not weak
+Sequence (all-or-nothing):
+  1. validate_config()     — secrets present and not weak/default
   2. wait_for_db()         — DB reachable with exponential backoff
   3. check_migrations()    — alembic_version table has at least one row
   4. seed_critical_data()  — perm_version migration, test types, master admin
-  5. mark system ready     — set module-level flag consumed by readiness probe
 
-If any step fails the guard raises RuntimeError, uvicorn logs the traceback
-and the process exits with a non-zero code — the Docker healthcheck never
-turns green, so the api-gateway never receives traffic.
+Only if every step above passes does system_ready become True.
+A single failure keeps system_ready = False and crashes the process so the
+Docker healthcheck never turns green and the api-gateway receives no traffic.
+
+Hybrid Readiness (is_system_ready):
+  system_ready (startup completed) AND db_pool healthy AND redis alive.
+  This means the /health/ready probe stays red even after startup if the DB
+  or Redis later disconnects — triggering a container restart automatically.
 """
 import asyncio
 import logging
@@ -22,14 +27,43 @@ from typing import Optional
 logger = logging.getLogger("gula.startup")
 
 # ── Module-level readiness flag ───────────────────────────────────────────────
-# Set to True only after run_startup_guard() completes successfully.
-# Consumed by /health/ready endpoint and the ReadinessMiddleware in main.py.
+# Set to True only inside run_startup_guard() after every step passes.
+# Never set to True anywhere else.
 system_ready: bool = False
+
+
+# ─── Hybrid Readiness Check ──────────────────────────────────────────────────
+
+def is_system_ready() -> tuple[bool, str]:
+    """Return (ready: bool, reason: str).
+
+    Combines the startup-completed flag with live connectivity checks so
+    /health/ready stays accurate after startup (DB/Redis failures post-startup
+    will flip the probe back to 503 and trigger a container restart).
+    """
+    if not system_ready:
+        return False, "startup_in_progress"
+
+    # Live DB check
+    try:
+        from ..database import check_db_connection
+        if not check_db_connection():
+            return False, "database_unavailable"
+    except Exception:
+        return False, "database_error"
+
+    # Live Redis check
+    try:
+        from ..security.redis_client import cache as _redis
+        _redis.set("_readiness_probe", "1", ex=10)
+    except Exception:
+        return False, "redis_unavailable"
+
+    return True, "ok"
 
 
 # ─── Step 1: Config Validation ───────────────────────────────────────────────
 
-# Patterns that indicate a developer left in a placeholder / default value.
 _WEAK_PATTERNS = (
     "default", "change", "secret", "example", "test", "demo",
     "gula_default", "changeme", "password", "12345", "abcdef",
@@ -37,17 +71,12 @@ _WEAK_PATTERNS = (
 
 
 def _is_weak(value: str) -> bool:
-    """Return True if value looks like an insecure placeholder."""
     lower = value.lower()
     return any(pat in lower for pat in _WEAK_PATTERNS)
 
 
 def validate_config() -> None:
-    """Fail fast if any required secret is missing or dangerously weak.
-
-    Called synchronously at import-time by run_startup_guard so errors
-    are visible immediately in container logs.
-    """
+    """Fail fast if any required secret is missing or dangerously weak."""
     from ..config import SECRET_KEY, ENCRYPTION_KEY, NID_HMAC_KEY, IS_PRODUCTION
 
     errors: list[str] = []
@@ -56,8 +85,8 @@ def validate_config() -> None:
         errors.append("SECRET_KEY is not set")
     elif IS_PRODUCTION and _is_weak(SECRET_KEY):
         errors.append(
-            f"SECRET_KEY looks like a placeholder/default value "
-            f"(contains weak pattern). Set a strong random secret in .env."
+            "SECRET_KEY looks like a placeholder/default value. "
+            "Set a strong random secret: openssl rand -hex 64"
         )
 
     if not ENCRYPTION_KEY:
@@ -65,8 +94,8 @@ def validate_config() -> None:
             errors.append("ENCRYPTION_KEY is not set")
     elif IS_PRODUCTION and _is_weak(ENCRYPTION_KEY):
         errors.append(
-            "ENCRYPTION_KEY looks like a placeholder. "
-            "Generate with: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            "ENCRYPTION_KEY looks like a placeholder. Generate with: "
+            "python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
         )
 
     if not NID_HMAC_KEY:
@@ -76,7 +105,7 @@ def validate_config() -> None:
                 "Existing NID lookups will break if this changes between deployments."
             )
     elif IS_PRODUCTION and _is_weak(NID_HMAC_KEY):
-        errors.append("NID_HMAC_KEY looks like a placeholder. Set a stable random key in .env.")
+        errors.append("NID_HMAC_KEY looks like a placeholder. Set a stable random key.")
 
     if errors:
         for err in errors:
@@ -92,11 +121,7 @@ def validate_config() -> None:
 # ─── Step 2: DB Connectivity with Exponential Backoff ────────────────────────
 
 async def wait_for_db(max_retries: int = 5) -> None:
-    """Wait for the database to become reachable.
-
-    Retries with exponential backoff: 2, 4, 8, 16, 32 seconds.
-    Raises RuntimeError if DB is still unreachable after all retries.
-    """
+    """Wait for DB to become reachable. Raises RuntimeError after all retries."""
     from ..database import check_db_connection
 
     for attempt in range(max_retries):
@@ -120,32 +145,25 @@ async def wait_for_db(max_retries: int = 5) -> None:
 # ─── Step 3: Migration Check ─────────────────────────────────────────────────
 
 async def check_migrations() -> None:
-    """Verify that Alembic migrations have been applied.
-
-    We check for the existence of the alembic_version table and at least
-    one row.  A fresh DB with only create_all (no alembic) is still OK —
-    we only fail if the table exists but is empty (partial migration state).
-    """
+    """Verify Alembic migrations are not in a partial state."""
     from ..database import engine
     from sqlalchemy import text, inspect
 
     def _check() -> Optional[str]:
-        """Returns None if OK, or an error message string."""
         insp = inspect(engine)
         if not insp.has_table("alembic_version"):
-            # No alembic table — schema was built via create_all, which is
-            # acceptable for the current deployment model.
+            # Schema built via create_all — acceptable for current deployment model
             return None
         with engine.connect() as conn:
-            row = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).fetchone()
+            row = conn.execute(
+                text("SELECT version_num FROM alembic_version LIMIT 1")
+            ).fetchone()
             if row is None:
                 return "alembic_version table exists but is empty (incomplete migration)"
-            return None
+        return None
 
-    # Run the synchronous SQLAlchemy call in a thread pool
     loop = asyncio.get_event_loop()
     error = await loop.run_in_executor(None, _check)
-
     if error:
         raise RuntimeError(f"[STARTUP GUARD] Migration check failed: {error}")
 
@@ -155,11 +173,7 @@ async def check_migrations() -> None:
 # ─── Step 4: Seed Critical Data ──────────────────────────────────────────────
 
 async def seed_critical_data() -> None:
-    """Run idempotent seed operations required for the system to function.
-
-    Delegates to the existing functions in main.py to avoid duplication.
-    Each function is safe to call multiple times.
-    """
+    """Run idempotent seed operations. Safe to call multiple times."""
     from ..main import _migrate_perm_version, _seed_test_types, _ensure_master_admin
 
     loop = asyncio.get_event_loop()
@@ -176,41 +190,44 @@ async def seed_critical_data() -> None:
     logger.info("[STARTUP GUARD] Critical data seeded OK")
 
 
-# ─── Orchestrator ────────────────────────────────────────────────────────────
+# ─── Atomic Orchestrator ─────────────────────────────────────────────────────
 
 async def run_startup_guard() -> None:
-    """Run the full startup validation chain.
+    """Atomic startup validation chain.
 
-    Call this from the FastAPI @app.on_event("startup") handler.
-    On success, sets module-level `system_ready = True`.
-    On failure, raises RuntimeError which crashes the process.
+    system_ready is set to True ONLY if every single step succeeds.
+    Any exception keeps system_ready = False and re-raises — the process
+    will crash and the Docker healthcheck will never turn green.
+
+    There is no partial success: either everything passes or nothing does.
     """
     global system_ready
+
+    # Guard against double-initialisation (e.g. hot-reload in dev)
+    if system_ready:
+        logger.warning("[STARTUP GUARD] Already initialised — skipping")
+        return
 
     t0 = time.perf_counter()
     logger.info("[STARTUP GUARD] === Starting production startup validation ===")
 
     try:
-        # Step 1 — synchronous, must run first
-        validate_config()
+        validate_config()          # Step 1 — synchronous
+        await wait_for_db(max_retries=5)   # Step 2 — async retry
+        await check_migrations()           # Step 3 — migration state
+        await seed_critical_data()         # Step 4 — seed
 
-        # Step 2 — async with retry
-        await wait_for_db(max_retries=5)
-
-        # Step 3 — migration state
-        await check_migrations()
-
-        # Step 4 — seed
-        await seed_critical_data()
-
-    except Exception as exc:
+    except Exception:
         elapsed = (time.perf_counter() - t0) * 1000
-        logger.critical(
-            "[STARTUP GUARD] STARTUP FAILED after %.0fms: %s",
-            elapsed, exc,
+        # logger.exception captures full traceback automatically
+        logger.exception(
+            "[STARTUP GUARD] STARTUP FAILED after %.0fms — system_ready remains False",
+            elapsed,
         )
-        raise
+        # system_ready stays False — readiness probe keeps returning 503
+        raise  # crash the process so Docker restarts the container
 
+    # Atomic success: only reached if no exception above
     elapsed = (time.perf_counter() - t0) * 1000
     system_ready = True
     logger.info(

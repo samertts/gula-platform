@@ -85,7 +85,10 @@ services:
       context: ./backend
       # build is ignored when 'image' resolves to an existing remote image pulled by compose pull
     container_name: gula-backend
-    restart: always
+    # Crash-loop protection: restart on failure but stop after 5 attempts.
+    # If the startup guard raises (bad config, DB unreachable after retries),
+    # we do NOT want an infinite restart loop consuming resources.
+    restart: on-failure
     # SECURITY: Prevent privilege escalation inside container
     security_opt:
       - no-new-privileges:true
@@ -94,6 +97,11 @@ services:
         limits:
           memory: 384M
           cpus: "1.0"
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
     environment:
       ENV: ${ENV:-production}
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_default_pg_pass}@postgres:5432/labdb
