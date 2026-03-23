@@ -208,6 +208,7 @@ _ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset({
     "/health",
     "/health/ready",
     "/health/live",
+    "/health/status",  # diagnostic — always visible so you can see WHY startup failed
 })
 
 
@@ -378,6 +379,58 @@ def readiness():
 def liveness():
     """Kubernetes-style liveness probe - always returns 200 if process is alive."""
     return {"status": "alive", "version": APP_VERSION}
+
+
+@app.get("/health/status", tags=["system"])
+def health_status():
+    """
+    Full diagnostic status — shows exactly why the system is or isn't ready.
+    Useful for debugging startup failures without needing server access.
+    Always returns 200 — check 'ready' field for actual state.
+    """
+    from .core.startup_guard import system_ready, is_system_ready
+    from .core.self_healing import health as sys_health
+
+    # Individual component checks
+    db_ok = False
+    db_error = None
+    try:
+        db_ok = check_db_connection()
+    except Exception as e:
+        db_error = str(e)
+
+    redis_ok = False
+    redis_error = None
+    try:
+        from .security.redis_client import cache as _redis
+        _redis.set("_status_probe", "1", ex=10)
+        redis_ok = True
+    except Exception as e:
+        redis_error = str(e)
+
+    ready, reason = is_system_ready()
+    pool = get_pool_status()
+    sys_h = sys_health.to_dict()
+
+    return {
+        "ready": ready,
+        "reason": reason,
+        "system_ready_flag": system_ready,
+        "database": {
+            "connected": db_ok,
+            "error": db_error,
+            "pool": pool,
+        },
+        "redis": {
+            "connected": redis_ok,
+            "error": redis_error,
+        },
+        "circuits": sys_h.get("circuits", {}),
+        "degraded_mode": sys_h.get("degraded", False),
+        "version": APP_VERSION,
+        "environment": os.getenv("ENV", "production"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @app.get("/r/{token}/pdf")

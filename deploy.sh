@@ -285,11 +285,37 @@ log "Checking api-gateway..."
 sleep 3
 for i in $(seq 1 12); do
   if curl -fsS --max-time 5 http://127.0.0.1:8080/health >/dev/null 2>&1; then
-    ok "Platform is live!"
+    ok "Platform is live on http://127.0.0.1:8080"
     echo ""
     $COMPOSE -f "$COMPOSE_FILE" ps
     echo ""
-    ok "=== GULA PLATFORM DEPLOYED SUCCESSFULLY ==="
+
+    # Show detailed status from backend
+    STATUS=$(curl -s --max-time 5 http://127.0.0.1:8080/health/status 2>/dev/null || echo "{}")
+    if echo "$STATUS" | grep -q '"ready":true'; then
+      echo "  System:  ✅ READY"
+    else
+      REASON=$(echo "$STATUS" | grep -o '"reason":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+      echo "  System:  ⚠️  NOT READY — $REASON"
+      echo "  Debug:   curl http://127.0.0.1:8080/health/status"
+    fi
+
+    # Show admin credentials if generated this run
+    ADMIN_EMAIL=$(grep -oP '^GULA_ADMIN_EMAIL=\K.*' .env 2>/dev/null | head -1 || echo "admin@gula-platform.org")
+    echo ""
+    echo "┌─────────────────────────────────────────────────────────────────┐"
+    echo "│  GULA Platform deployed successfully                            │"
+    echo "│                                                                 │"
+    echo "│  Internal:  http://127.0.0.1:8080                              │"
+    echo "│  Public:    http://gula-platform.org  (via host nginx)         │"
+    echo "│  Admin:     $ADMIN_EMAIL                   │"
+    echo "│  Docs:      http://127.0.0.1:8080/docs  (if enabled)           │"
+    echo "│                                                                 │"
+    echo "│  Diagnostics: ./scripts/diagnose.sh                            │"
+    echo "│  Monitoring:  ./deploy.sh --monitoring                         │"
+    echo "│  Update:      ./deploy.sh --update   (zero-downtime)           │"
+    echo "└─────────────────────────────────────────────────────────────────┘"
+    echo ""
     exit 0
   fi
   sleep 5
