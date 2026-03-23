@@ -2,6 +2,7 @@ import os
 import time
 import uuid
 import logging
+from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -198,6 +199,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+
+# ===== READINESS ENFORCEMENT MIDDLEWARE =====
+# Probe paths that must always be reachable (even before system is ready)
+_PROBE_PATHS = frozenset({"/health", "/health/ready", "/health/live"})
+
+
+class ReadinessMiddleware(BaseHTTPMiddleware):
+    """Reject all non-probe requests with 503 until the startup guard passes."""
+
+    async def dispatch(self, request: Request, call_next):
+        from .core.startup_guard import system_ready
+        if not system_ready and request.url.path not in _PROBE_PATHS:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Service is starting up. Please retry in a moment.",
+                    "detail_ar": "الخدمة تبدأ التشغيل. يرجى المحاولة بعد لحظة.",
+                },
+            )
+        return await call_next(request)
+
+
+app.add_middleware(ReadinessMiddleware)
+
 # ===== ROUTES =====
 from .routes import login, register, patients, results, dashboard, labs
 from .routes import identity, notifications, ehr, security
@@ -302,35 +327,25 @@ def health():
         "environment": os.getenv("ENV", "production"),
         "database": "connected" if db_ok else "disconnected",
         "pool": pool,
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
 @app.get("/health/ready", tags=["system"])
 def readiness():
-    """Kubernetes-style readiness probe - returns 503 if not ready to serve traffic."""
-    from .security.redis_client import cache
+    """Readiness probe — returns 503 until the startup guard completes.
 
-    db_ok = check_db_connection()
-    if not db_ok:
+    Used by the Docker healthcheck and the api-gateway depends_on condition.
+    Only returns 200 after validate_config, wait_for_db, check_migrations,
+    and seed_critical_data have all succeeded.
+    """
+    from .core.startup_guard import system_ready
+    if not system_ready:
         return JSONResponse(
             status_code=503,
-            content={"status": "not_ready", "reason": "database_unavailable"},
+            content={"status": "not_ready", "reason": "startup_in_progress"},
         )
-
-    redis_ok = True
-    try:
-        cache.set("_health", "1", ex=10)
-    except Exception:
-        redis_ok = False
-
-    if not redis_ok:
-        return JSONResponse(
-            status_code=503,
-            content={"status": "not_ready", "reason": "redis_unavailable"},
-        )
-
-    return {"status": "ready", "database": "ok", "cache": "ok"}
+    return {"status": "ready"}
 
 
 @app.get("/health/live", tags=["system"])
@@ -392,20 +407,12 @@ def list_test_types():
 
 # ===== STARTUP & SHUTDOWN =====
 @app.on_event("startup")
-def on_startup():
-    """Bootstrap the system on first run."""
+async def on_startup():
+    """Run the production startup guard then mark the system ready."""
+    from .core.startup_guard import run_startup_guard
     logger.info("GULA Platform %s starting up...", APP_VERSION)
-
-    # Verify database connectivity before accepting requests
-    if not check_db_connection():
-        logger.error("DATABASE CONNECTION FAILED at startup!")
-    else:
-        logger.info("Database connection verified")
-
-    _migrate_perm_version()
-    _seed_test_types()
-    _ensure_master_admin()
-    logger.info("GULA Platform %s ready", APP_VERSION)
+    await run_startup_guard()
+    # system_ready flag is set to True inside run_startup_guard on success
 
 
 @app.on_event("shutdown")
