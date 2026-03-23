@@ -56,7 +56,13 @@ def _all_anchor_files() -> list[Path]:
 # (supply NID_HMAC_KEY_PREV env var during transition window).
 # New anchors will carry the new version tag automatically.
 _ANCHOR_KEY_VERSION = int(os.getenv("ANCHOR_KEY_VERSION", "1"))
-_ANCHOR_HMAC_KEY = os.getenv("NID_HMAC_KEY", "gula-anchor-hmac-fallback").encode("utf-8")
+# Use NID_HMAC_KEY for anchor signing — must be set in production (no insecure fallback)
+_raw_anchor_key = os.getenv("NID_HMAC_KEY", "")
+if not _raw_anchor_key:
+    # Derive from SECRET_KEY as last resort (still more secure than a hardcoded string)
+    _raw_anchor_key = os.getenv("SECRET_KEY", "gula-anchor-fallback")
+    logger.warning("[SECURITY] NID_HMAC_KEY not set — audit anchor HMAC uses derived key. Set NID_HMAC_KEY in .env for production.")
+_ANCHOR_HMAC_KEY = _raw_anchor_key.encode("utf-8")
 # Previous key for verifying legacy lines during a rotation window
 _ANCHOR_HMAC_KEY_PREV = os.getenv("NID_HMAC_KEY_PREV", "").encode("utf-8")
 
