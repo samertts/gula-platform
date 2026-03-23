@@ -132,9 +132,12 @@ services:
     networks:
       - gula-net
     # IMPORTANT: Use python for health check (available in image) instead of wget/curl.
-    # This avoids false-unhealthy state and upstream 502 when wget is not installed.
+    # Points to /health/ready (readiness probe) — only returns 200 after the
+    # startup guard completes: config validated, DB connected, migrations checked,
+    # critical data seeded.  This prevents api-gateway from routing traffic to
+    # a partially-initialised backend.
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=5)"]
       interval: 15s
       timeout: 10s
       retries: 5
