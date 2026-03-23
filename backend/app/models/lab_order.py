@@ -3,6 +3,17 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from ..database import Base
 
+# Optimistic locking: increment `version` on every UPDATE.
+# If the version the caller saw no longer matches the DB, the update affects
+# 0 rows → caller receives HTTP 409 Conflict and must re-fetch.
+
+
+# Valid order status transitions (state machine):
+#   pending → completed  (results entered)
+#   completed → validated (doctor/admin validates results — immutable after this)
+#   pending → cancelled
+ORDER_STATUSES = ("pending", "completed", "validated", "cancelled")
+
 
 class LabOrder(Base):
     __tablename__ = "lab_orders"
@@ -14,7 +25,16 @@ class LabOrder(Base):
     # doctor_user_id links to a LabUser with role='doctor' — enables data isolation
     # so doctors can only query orders associated with them.
     doctor_user_id = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
-    status = Column(String(20), default="pending", index=True)  # pending, completed, cancelled
+    status = Column(String(20), default="pending", index=True)  # see ORDER_STATUSES
+
+    # Validation / locking — added by migration 20250322_0003
+    validated_by = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    validated_at = Column(DateTime(timezone=True), nullable=True)
+    locked_at = Column(DateTime(timezone=True), nullable=True)  # set == validated_at when finalized
+
+    # Optimistic locking — incremented on every mutation (see migration 0004)
+    version    = Column(Integer, nullable=False, default=1)
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     patient = relationship("Patient", back_populates="orders")

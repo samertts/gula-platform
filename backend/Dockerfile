@@ -20,5 +20,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
     CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
 
-# Run DB migrations then start the server
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log"]
+# 1. Create base tables (idempotent — skipped if already exist)
+# 2. Run incremental migrations
+# 3. Start server
+CMD ["sh", "-c", "python3 -c 'from app.database import engine; from app.models import Base; Base.metadata.create_all(engine)' && alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log"]

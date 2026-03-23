@@ -1,0 +1,63 @@
+# Linkerd Service Mesh configuration for GULA Platform
+# Apply after: linkerd install | kubectl apply -f -
+#
+# Usage:
+#   make linkerd-install   (installs Linkerd CRDs + control plane)
+#   kubectl apply -f k8s/base/mesh/linkerd.yaml
+
+---
+# ServiceProfile for gula-backend — enables per-route metrics and retries
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: gula-backend.gula.svc.cluster.local
+  namespace: gula
+spec:
+  routes:
+    - name: "GET /health"
+      condition:
+        method: GET
+        pathRegex: /health
+      isRetryable: true
+      timeout: 3s
+
+    - name: "POST /api/login"
+      condition:
+        method: POST
+        pathRegex: /api/login
+      isRetryable: false
+      timeout: 10s
+
+    - name: "GET /api/.*"
+      condition:
+        method: GET
+        pathRegex: /api/.*
+      isRetryable: true
+      timeout: 15s
+      retryBudget:
+        retryRatio: 0.2
+        minRetriesPerSecond: 10
+        ttl: 10s
+
+    - name: "POST /api/.*"
+      condition:
+        method: POST
+        pathRegex: /api/.*
+      isRetryable: false
+      timeout: 30s
+
+---
+# TrafficSplit for Blue-Green: 100% to active slot by default.
+# Weights are patched by the blue-green deploy pipeline.
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: gula-backend-split
+  namespace: gula
+spec:
+  service: gula-backend-active
+  backends:
+    - service: gula-backend-blue
+      weight: 100
+    - service: gula-backend-green
+      weight: 0

@@ -1,0 +1,58 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gula-ingress
+  namespace: gula
+  labels:
+    app: gula-platform
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    # Rate limiting: 100 req/min per IP
+    nginx.ingress.kubernetes.io/limit-rpm: "100"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # TLS — cert-manager auto-provision
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - gula-platform.org
+        - www.gula-platform.org
+      secretName: gula-tls-cert
+  rules:
+    - host: gula-platform.org
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gula-backend-active
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gula-frontend
+                port:
+                  name: http
+    - host: www.gula-platform.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gula-frontend
+                port:
+                  name: http

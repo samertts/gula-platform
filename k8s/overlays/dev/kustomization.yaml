@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gula
+
+bases:
+  - ../../base
+
+namePrefix: ""
+nameSuffix: ""
+
+# Dev-specific overrides
+patchesStrategicMerge:
+  - patch-replicas.yaml
+  - patch-resources.yaml
+
+# Dev: use branch image tag from CI (or 'latest' fallback)
+images:
+  - name: ghcr.io/samertts/gula-platform/backend
+    newTag: develop
+
+# Dev ConfigMap overrides
+configMapGenerator:
+  - name: gula-config
+    behavior: merge
+    literals:
+      - ENV=development
+      - ENABLE_API_DOCS=true
+      - BASE_URL=http://dev.gula-platform.org

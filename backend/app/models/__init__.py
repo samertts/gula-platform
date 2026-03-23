@@ -9,6 +9,7 @@ from .lab_result import LabResult
 from .sample import Sample
 from .audit_log import AuditLog
 from .quality_control import QualityControl
+from .outbox import OutboxEvent
 
 __all__ = [
     "Base",
@@ -22,4 +23,5 @@ __all__ = [
     "Sample",
     "AuditLog",
     "QualityControl",
+    "OutboxEvent",
 ]

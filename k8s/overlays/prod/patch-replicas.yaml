@@ -1,0 +1,90 @@
+# Prod: HA replicas — HPA manages scale-out based on load
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-backend
+  namespace: gula
+spec:
+  replicas: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-frontend
+  namespace: gula
+spec:
+  replicas: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-api-gateway
+  namespace: gula
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: gula
+spec:
+  replicas: 1
+---
+# Microservices: 2 replicas baseline (HPA manages 2→6 based on CPU)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-lab
+  namespace: gula
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-patient
+  namespace: gula
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-order
+  namespace: gula
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-result
+  namespace: gula
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-sample
+  namespace: gula
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-notification
+  namespace: gula
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-ai
+  namespace: gula
+spec:
+  replicas: 1

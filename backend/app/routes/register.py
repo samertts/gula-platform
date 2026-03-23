@@ -1,9 +1,11 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
+from ..models.user import User
 from ..security.auth import hash_password, create_token
 from ..security.rate_limit import rate_limit_auth
 from ..services.audit_service import log_action
@@ -40,7 +42,6 @@ class LabRegisterRequest(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, v):
-        import re
         v = v.strip().lower()
         if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
             raise ValueError("Invalid email format")
@@ -117,4 +118,117 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
         "lab_id": lab.id,
         "user_id": user.id,
         "token": token,
+    }
+
+
+# ─── Citizen Self-Registration ────────────────────────────────────────────────
+
+class CitizenRegisterRequest(BaseModel):
+    full_name: str
+    phone: str
+    email: str = ""
+    password: str
+    gender: str = ""
+    birth_date: str = ""   # ISO date string YYYY-MM-DD
+    national_id: str = ""  # raw NID, hashed server-side
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("Full name must be between 2 and 200 characters")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v):
+        v = v.strip()
+        if not re.match(r"^\+?[0-9]{7,15}$", v):
+            raise ValueError("Invalid phone number")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        v = v.strip().lower()
+        if v and not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+            raise ValueError("Invalid email format")
+        if len(v) > 100:
+            raise ValueError("Email too long")
+        return v
+
+    @field_validator("national_id")
+    @classmethod
+    def validate_nid(cls, v):
+        v = v.strip()
+        if v and not re.match(r"^[0-9]{10,14}$", v):
+            raise ValueError("National ID must be 10–14 digits")
+        return v
+
+
+@router.post("/register/citizen")
+def register_citizen(data: CitizenRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    rate_limit_auth(request)
+
+    # Password validation
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if len(data.password) > 128:
+        raise HTTPException(status_code=400, detail="Password too long")
+
+    # Check for duplicate phone
+    existing_phone = db.query(User).filter(User.phone == data.phone).first()
+    if existing_phone:
+        raise HTTPException(status_code=400, detail="Phone number already registered")
+
+    # Check for duplicate email if provided
+    if data.email:
+        existing_email = db.query(User).filter(User.email == data.email).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Hash NID using HMAC-SHA256 for privacy
+    nid_hash = None
+    if data.national_id:
+        import hmac
+        import hashlib
+        import os
+        nid_key = os.getenv("NID_HMAC_KEY", "gula_nid_hmac_key_change_in_production").encode()
+        nid_hash = hmac.new(nid_key, data.national_id.encode(), hashlib.sha256).hexdigest()
+
+        # Check for duplicate NID
+        existing_nid = db.query(User).filter(User.national_id_hash == nid_hash).first()
+        if existing_nid:
+            raise HTTPException(status_code=400, detail="National ID already registered")
+
+    citizen = User(
+        email=data.email or None,
+        phone=data.phone,
+        password_hash=hash_password(data.password),
+        full_name=data.full_name,
+        role="citizen",
+        national_id_hash=nid_hash,
+        is_active=True,
+        is_verified=False,
+    )
+    db.add(citizen)
+    db.flush()
+
+    log_action(
+        db,
+        action="register",
+        resource_type="citizen",
+        resource_id=citizen.id,
+        user_id=citizen.id,
+        user_role="citizen",
+        details=f"Citizen self-registered (user_id={citizen.id})",
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+    db.refresh(citizen)
+
+    return {
+        "message": "Account created successfully",
+        "user_id": citizen.id,
     }

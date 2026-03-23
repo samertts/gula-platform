@@ -8,6 +8,8 @@ from typing import Optional, List
 from datetime import datetime, timezone
 from ..database import get_db
 from ..models.patient import Patient
+from ..domain.order_state import enforce_transition, assert_not_locked
+from ..core.events import events, ORDER_VALIDATED, ORDER_CANCELLED, ORDER_CREATED, RESULT_CRITICAL
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.lab_order import LabOrder
@@ -96,6 +98,8 @@ def result_to_dict(r: LabResult) -> dict:
 
 
 def order_to_dict(o: LabOrder, include_results: bool = True) -> dict:
+    # Aggregate is_critical from result flags (backend is authoritative)
+    is_critical = any(r.flag in ("critical", "H", "L") for r in o.results) if o.results else False
     d = {
         "id": o.id,
         "patient_id": o.patient_id,
@@ -103,6 +107,10 @@ def order_to_dict(o: LabOrder, include_results: bool = True) -> dict:
         "patient_phone": o.patient.phone if o.patient else None,
         "doctor_name": o.doctor_name,
         "status": o.status,
+        "is_critical": is_critical,
+        "locked": getattr(o, "locked_at", None) is not None,
+        "validated_by": getattr(o, "validated_by", None),
+        "validated_at": o.validated_at.isoformat() if getattr(o, "validated_at", None) else None,
         "created_at": o.created_at.isoformat() if o.created_at else None,
     }
     if include_results:
@@ -257,6 +265,27 @@ def create_order(
         import json as _json
         _cache.set(_cache_key, _json.dumps(response_body, default=str), ex=86400)
 
+    # Emit ORDER_CREATED event
+    events.emit(ORDER_CREATED, {
+        "order_id": order.id,
+        "patient_id": order.patient_id,
+        "lab_id": order.lab_id,
+        "created_by": current_user.id,
+        "result_count": len(data.results),
+    })
+
+    # Emit a RESULT_CRITICAL event for every critical value
+    for alert in critical_alerts:
+        events.emit(RESULT_CRITICAL, {
+            "order_id": order.id,
+            "patient_id": order.patient_id,
+            "patient_name": patient.full_name,
+            "patient_phone": patient.phone,
+            "test_name": alert["test_name"],
+            "value": alert["value"],
+            "lab_id": order.lab_id,
+        })
+
     return response_body
 
 
@@ -286,10 +315,20 @@ def _base_order_query(current_user: LabUser, db: Session):
 def list_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
+    search: Optional[str] = Query(None, max_length=200),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     query = _base_order_query(current_user, db)
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.join(LabOrder.patient).filter(
+            sa.or_(
+                Patient.full_name.ilike(term),
+                Patient.phone.ilike(term),
+                LabOrder.doctor_name.ilike(term),
+            )
+        )
     total = query.count()
     orders = query.order_by(LabOrder.created_at.desc()).offset(skip).limit(limit).all()
     return {
@@ -308,6 +347,117 @@ def get_order(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order_to_dict(order)
+
+
+# ===== ORDER STATE TRANSITIONS =====
+
+_VALIDATE_ROLES = {"admin", "master_admin", "doctor"}
+
+
+@router.post("/orders/{order_id}/validate")
+def validate_order(
+    order_id: int,
+    request: Request,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Validate and lock an order.  Only admin/master_admin/doctor may do this.
+    After validation the order is immutable — results cannot be deleted or edited.
+
+    Race-condition protection: uses an atomic UPDATE WHERE locked_at IS NULL
+    so that two simultaneous validation requests cannot both succeed.
+    """
+    if current_user.role not in _VALIDATE_ROLES:
+        raise HTTPException(status_code=403, detail="Only admin or doctor can validate orders")
+
+    # Verify ownership/access first (uses existing RBAC-aware query)
+    order = _base_order_query(current_user, db).filter(LabOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if not order.results:
+        raise HTTPException(status_code=400, detail="Cannot validate an order with no results")
+
+    # State machine enforcement (raises 409 for invalid transitions)
+    enforce_transition(order.status, "validated")
+
+    # Atomic lock — UPDATE ... WHERE locked_at IS NULL prevents double-validation
+    now = datetime.now(timezone.utc)
+    rows_updated = (
+        db.query(LabOrder)
+        .filter(LabOrder.id == order_id, LabOrder.locked_at.is_(None))
+        .update(
+            {
+                "status": "validated",
+                "validated_by": current_user.id,
+                "validated_at": now,
+                "locked_at": now,
+            },
+            synchronize_session="fetch",
+        )
+    )
+    if rows_updated == 0:
+        raise HTTPException(status_code=409, detail="Order is already validated and locked")
+
+    log_action(
+        db,
+        action="validate",
+        resource_type="lab_order",
+        resource_id=order.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Order validated and locked by {current_user.email}",
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+    db.refresh(order)
+
+    # Emit event — handlers run synchronously but errors never abort the response
+    events.emit(ORDER_VALIDATED, {
+        "order_id": order.id,
+        "patient_id": order.patient_id,
+        "lab_id": order.lab_id,
+        "validated_by": current_user.id,
+    })
+
+    return order_to_dict(order)
+
+
+@router.post("/orders/{order_id}/cancel")
+def cancel_order(
+    order_id: int,
+    request: Request,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cancel an order.  Validated (locked) orders cannot be cancelled."""
+    order = _base_order_query(current_user, db).filter(LabOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # State machine enforcement
+    enforce_transition(order.status, "cancelled")
+
+    order.status = "cancelled"
+    log_action(
+        db,
+        action="cancel",
+        resource_type="lab_order",
+        resource_id=order.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Order cancelled by {current_user.email}",
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+
+    events.emit(ORDER_CANCELLED, {
+        "order_id": order.id,
+        "patient_id": order.patient_id,
+        "cancelled_by": current_user.id,
+    })
+
+    return {"message": "Order cancelled", "order_id": order_id}
 
 
 # ===== PUBLIC RESULT PAGE (THE KILLER FEATURE) =====
