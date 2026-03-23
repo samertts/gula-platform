@@ -1,4 +1,4 @@
-# Dev: run 1 replica of each service to save resources
+# Dev: 1 replica per service to save resources
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -28,6 +28,62 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-lab
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-patient
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-order
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-result
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-sample
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-notification
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-ai
   namespace: gula
 spec:
   replicas: 1

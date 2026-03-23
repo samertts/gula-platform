@@ -26,3 +26,49 @@ metadata:
 spec:
   minReplicas: 5
   maxReplicas: 8
+---
+# Prod microservice HPA: wider range
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: svc-lab-hpa
+  namespace: gula
+spec:
+  minReplicas: 2
+  maxReplicas: 6
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: svc-patient-hpa
+  namespace: gula
+spec:
+  minReplicas: 2
+  maxReplicas: 6
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: svc-order-hpa
+  namespace: gula
+spec:
+  minReplicas: 2
+  maxReplicas: 6
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: svc-result-hpa
+  namespace: gula
+spec:
+  minReplicas: 2
+  maxReplicas: 6
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: svc-sample-hpa
+  namespace: gula
+spec:
+  minReplicas: 2
+  maxReplicas: 6

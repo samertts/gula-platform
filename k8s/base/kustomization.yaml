@@ -21,6 +21,12 @@ resources:
   - gateway/deployment.yaml
   - gateway/service.yaml
   - gateway/ingress.yaml
+  - rabbitmq/configmap.yaml
+  - rabbitmq/statefulset.yaml
+  - rabbitmq/service.yaml
+  - microservices/deployments.yaml
+  - microservices/services.yaml
+  - microservices/hpa.yaml
   - mesh/linkerd.yaml
 
 # Common labels applied to all resources

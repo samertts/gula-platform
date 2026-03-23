@@ -1,0 +1,128 @@
+# ClusterIP services for all 7 microservices
+# The gateway routes /lab/, /patients/, /orders/, /results/, /samples/, /notifications/ to these.
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-lab
+  namespace: gula
+  labels:
+    app: svc-lab
+    component: microservice
+spec:
+  type: ClusterIP
+  selector:
+    app: svc-lab
+  ports:
+    - port: 8001
+      targetPort: 8000
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-patient
+  namespace: gula
+  labels:
+    app: svc-patient
+    component: microservice
+spec:
+  type: ClusterIP
+  selector:
+    app: svc-patient
+  ports:
+    - port: 8002
+      targetPort: 8000
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-order
+  namespace: gula
+  labels:
+    app: svc-order
+    component: microservice
+spec:
+  type: ClusterIP
+  selector:
+    app: svc-order
+  ports:
+    - port: 8003
+      targetPort: 8000
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-result
+  namespace: gula
+  labels:
+    app: svc-result
+    component: microservice
+spec:
+  type: ClusterIP
+  selector:
+    app: svc-result
+  ports:
+    - port: 8004
+      targetPort: 8000
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-sample
+  namespace: gula
+  labels:
+    app: svc-sample
+    component: microservice
+spec:
+  type: ClusterIP
+  selector:
+    app: svc-sample
+  ports:
+    - port: 8005
+      targetPort: 8000
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-notification
+  namespace: gula
+  labels:
+    app: svc-notification
+    component: microservice
+spec:
+  type: ClusterIP
+  selector:
+    app: svc-notification
+  ports:
+    - port: 8006
+      targetPort: 8000
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-ai
+  namespace: gula
+  labels:
+    app: svc-ai
+    component: microservice
+spec:
+  type: ClusterIP
+  selector:
+    app: svc-ai
+  ports:
+    - port: 9000
+      targetPort: 9000
+      name: http
