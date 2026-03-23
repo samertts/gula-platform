@@ -74,7 +74,8 @@ _ABSOLUTELY_BLOCKED: set[str] = {
 
 # Operations AI may suggest (still require human approval)
 _SUGGESTABLE: set[str] = {
-    "suggest_interpretation",   # text interpretation of a result
+    "suggest_interpretation",   # text interpretation of a single result
+    "analyze_order",            # multi-test clinical pattern analysis (rules-based)
     "suggest_normal_range",     # proposed reference range update
     "flag_anomaly",             # flag for human review
     "suggest_reorder",          # suggest re-running a test
