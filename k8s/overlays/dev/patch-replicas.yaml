@@ -1,0 +1,33 @@
+# Dev: run 1 replica of each service to save resources
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-backend
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-frontend
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-api-gateway
+  namespace: gula
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: gula
+spec:
+  replicas: 1

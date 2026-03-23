@@ -1,0 +1,33 @@
+# Prod: 5-8 replicas for HA (HPA manages 5→8 based on load)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-backend
+  namespace: gula
+spec:
+  replicas: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-frontend
+  namespace: gula
+spec:
+  replicas: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-api-gateway
+  namespace: gula
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: gula
+spec:
+  replicas: 1
