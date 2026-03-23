@@ -17,6 +17,7 @@ from ..security.dependencies import get_current_user
 from ..security.session import bump_perm_version, warm_perm_version, get_perm_version
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
+import os
 from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
 
 logger = logging.getLogger("gula.mobile")
@@ -186,7 +187,7 @@ def get_app_info():
         },
         "support": {
             "email": "support@gula-platform.org",
-            "whatsapp": "+964XXXXXXXXX",  # Configure via env
+            "whatsapp": os.getenv("WHATSAPP_SUPPORT", ""),
         },
         "links": {
             "terms": "https://gula-platform.org/terms",
