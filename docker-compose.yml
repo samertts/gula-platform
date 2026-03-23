@@ -98,10 +98,13 @@ services:
       ENV: ${ENV:-production}
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_default_pg_pass}@postgres:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:-gula_default_redis_pass}@redis:6379
-      SECRET_KEY: ${SECRET_KEY:-gula_default_secret_key_change_in_production}
+      # SECURITY: No hardcoded fallback — SECRET_KEY must be set in .env
+      SECRET_KEY: ${SECRET_KEY:-}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=}
+      # SECURITY: No hardcoded fallback — ENCRYPTION_KEY must be set in .env
+      # Generate: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       NID_HMAC_KEY: ${NID_HMAC_KEY:-}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-8}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-30}
@@ -110,7 +113,8 @@ services:
       GULA_ADMIN_NAME: ${GULA_ADMIN_NAME:-GULA Admin}
       GULA_ADMIN_PASSWORD: ${GULA_ADMIN_PASSWORD:-}
       GULA_ADMIN_PASSWORD_HASH: ${GULA_ADMIN_PASSWORD_HASH:-}
-      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
+      # SECURITY: Disable API docs in production by default
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
       MAX_REQUEST_BODY_MB: ${MAX_REQUEST_BODY_MB:-10}
       FCM_SERVER_KEY: ${FCM_SERVER_KEY:-}
     volumes:
@@ -192,9 +196,9 @@ services:
       - ./logs/nginx:/var/log/nginx
     depends_on:
       gula-backend:
-        condition: service_started
+        condition: service_healthy
       frontend:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/health || exit 1"]
       interval: 15s

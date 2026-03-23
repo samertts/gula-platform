@@ -33,13 +33,15 @@ from ..security.rbac import (
 )
 from ..services.audit_service import log_action
 from ..security.rate_limit import rate_limit_admin
+from ..config import NID_HMAC_KEY
 
 logger = logging.getLogger("gula.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 # ── NID hashing ───────────────────────────────────────────────────────────────
-_NID_KEY = os.getenv("NID_HMAC_KEY", "gula_nid_default_key").encode()
+# Use the same key from config to ensure consistent hashes with the rest of the app
+_NID_KEY = NID_HMAC_KEY.encode()
 
 
 def _hash_nid(nid: str) -> str:
@@ -349,8 +351,8 @@ def create_user(
     actor: LabUser = Depends(require_manage_users),
     db: Session = Depends(get_db),
 ):
-    rate_limit_admin(request, actor.id)
     """Create a new user. Role must be strictly below the actor's level."""
+    rate_limit_admin(request, actor.id)
     # Hierarchy check
     if data.role not in VALID_ROLES:
         raise HTTPException(status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}")
