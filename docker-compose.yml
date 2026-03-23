@@ -196,9 +196,12 @@ services:
         limits:
           memory: 64M
           cpus: "0.25"
+    # IMPORTANT: System nginx (nginx/1.24.0 on Ubuntu host) handles ports 80/443
+    # and proxies to Docker at 127.0.0.1:8080.  Docker api-gateway must NOT bind
+    # to host port 80 or 443 — that would conflict with system nginx.
+    # System nginx config: config/nginx/system/gula-platform.conf
     ports:
-      - "80:80"
-      - "443:443"
+      - "127.0.0.1:8080:80"
     volumes:
       - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
