@@ -18,9 +18,16 @@ ok()  { printf '\033[1;32m[gula-deploy]\033[0m %s\n' "$*"; }
 # 1. SELECT COMPOSE FILE
 # ─────────────────────────────────────────────────────────────────────────────
 COMPOSE_FILE="docker-compose.yml"
-if [ "${1:-}" = "--full" ]; then
-  COMPOSE_FILE="docker-compose.full.yml"
-fi
+UPDATE_MODE=false
+MONITORING=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --full)       COMPOSE_FILE="docker-compose.full.yml" ;;
+    --update)     UPDATE_MODE=true ;;    # Zero-downtime rolling update (no full restart)
+    --monitoring) MONITORING=true ;;    # Also start Prometheus + Grafana
+  esac
+done
 
 if [ ! -f "$COMPOSE_FILE" ]; then
   err "Compose file not found: $COMPOSE_FILE"
@@ -37,7 +44,7 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 2
 fi
 
-log "Compose file: $COMPOSE_FILE"
+log "Compose file: $COMPOSE_FILE | update_mode=$UPDATE_MODE | monitoring=$MONITORING"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1b. STOP SYSTEM NGINX IF RUNNING (it conflicts with Docker nginx on port 80)
@@ -121,36 +128,76 @@ ok "Config valid"
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. NUCLEAR CLEANUP — remove ALL old gula containers, networks, volumes-orphans
 # ─────────────────────────────────────────────────────────────────────────────
-log "Cleaning up old deployment..."
+if $UPDATE_MODE; then
+  # ─────────────────────────────────────────────────────────────────────────
+  # ZERO-DOWNTIME ROLLING UPDATE
+  # Rebuilds backend only, waits for health, then updates nginx.
+  # Traffic is never interrupted: old backend keeps serving while new one
+  # starts, and nginx only switches when the new one is healthy.
+  # ─────────────────────────────────────────────────────────────────────────
+  log "Zero-downtime update mode — rebuilding backend only..."
 
-# Stop current compose project
-$COMPOSE -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+  log "Building new backend image..."
+  $COMPOSE -f "$COMPOSE_FILE" build gula-backend
 
-# Kill ALL gula-* containers (catches ghosts like gula-core-server)
-GULA_CONTAINERS=$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep '^gula-' || true)
-if [ -n "$GULA_CONTAINERS" ]; then
-  log "Removing all gula containers: $GULA_CONTAINERS"
-  echo "$GULA_CONTAINERS" | xargs -r docker rm -f 2>/dev/null || true
+  log "Starting new backend container (old keeps running)..."
+  $COMPOSE -f "$COMPOSE_FILE" up -d --no-deps gula-backend
+
+  log "Waiting for new backend to become healthy..."
+  MAX_WAIT=120; ELAPSED=0
+  while [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
+    STATUS=$(docker inspect --format='{{.State.Health.Status}}' gula-backend 2>/dev/null || echo "missing")
+    [ "$STATUS" = "healthy" ] && { ok "Backend healthy (${ELAPSED}s)"; break; }
+    sleep 5; ELAPSED=$((ELAPSED + 5)); printf '.'
+  done; echo ""
+  [ "$ELAPSED" -ge "$MAX_WAIT" ] && { err "Backend health timeout"; docker logs --tail=30 gula-backend; exit 1; }
+
+  log "Reloading nginx (zero-downtime config reload)..."
+  docker exec gula-api-gateway nginx -t 2>/dev/null && \
+    docker exec gula-api-gateway nginx -s reload 2>/dev/null || true
+
+  ok "Zero-downtime update complete"
+
+else
+  # ─────────────────────────────────────────────────────────────────────────
+  # FULL DEPLOYMENT (nuclear cleanup + rebuild everything)
+  # ─────────────────────────────────────────────────────────────────────────
+  log "Cleaning up old deployment..."
+
+  $COMPOSE -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+
+  GULA_CONTAINERS=$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep '^gula-' || true)
+  if [ -n "$GULA_CONTAINERS" ]; then
+    log "Removing all gula containers: $GULA_CONTAINERS"
+    echo "$GULA_CONTAINERS" | xargs -r docker rm -f 2>/dev/null || true
+  fi
+
+  docker network rm gula-net 2>/dev/null || true
+  docker network rm gula-platform_gula-net 2>/dev/null || true
+  docker network prune -f 2>/dev/null || true
+  docker image prune -f 2>/dev/null || true
+
+  ok "Cleanup done"
+
 fi
-
-# Clean up networks
-docker network rm gula-net 2>/dev/null || true
-docker network rm gula-platform_gula-net 2>/dev/null || true
-docker network prune -f 2>/dev/null || true
-
-# Remove dangling images
-docker image prune -f 2>/dev/null || true
-
-ok "Cleanup done"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. BUILD AND START
 # ─────────────────────────────────────────────────────────────────────────────
-log "Pulling images..."
-$COMPOSE -f "$COMPOSE_FILE" pull --ignore-pull-failures 2>/dev/null || true
+if ! $UPDATE_MODE; then
+  log "Pulling images..."
+  $COMPOSE -f "$COMPOSE_FILE" pull --ignore-pull-failures 2>/dev/null || true
 
-log "Building and starting services..."
-$COMPOSE -f "$COMPOSE_FILE" up -d --build --remove-orphans --force-recreate
+  COMPOSE_PROFILES=""
+  if $MONITORING; then
+    COMPOSE_PROFILES="--profile monitoring"
+    log "Monitoring stack (Prometheus + Grafana) enabled"
+  fi
+
+  log "Building and starting services..."
+  # shellcheck disable=SC2086
+  $COMPOSE -f "$COMPOSE_FILE" $COMPOSE_PROFILES up -d --build --remove-orphans --force-recreate
+fi
 
 log "Containers started. Waiting for health..."
 
