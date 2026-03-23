@@ -10,7 +10,7 @@ from ..security.auth import decode_token, decode_refresh_token
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..security.session import warm_perm_version, bump_perm_version
 from ..services.audit_service import log_action
-from ..config import IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
+from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 logger = logging.getLogger("gula.auth")
 
@@ -119,7 +119,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     response.set_cookie(
         key="access_token",
         value=token,
-        max_age=JWT_EXPIRE_HOURS * 3600,
+        max_age=JWT_EXPIRE_MINUTES * 60,
         path="/",
         **cookie_kwargs,
     )

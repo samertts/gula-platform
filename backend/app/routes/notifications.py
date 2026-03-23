@@ -1,6 +1,6 @@
 """Notification endpoints - WhatsApp and SMS result delivery."""
 import urllib.parse
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -12,6 +12,7 @@ from ..models.patient import Patient
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..security.rate_limit import rate_limit_user
 from ..config import BASE_URL
 
 router = APIRouter(prefix="/notify", tags=["notifications"])
@@ -31,11 +32,13 @@ class NotifyRequest(BaseModel):
 
 @router.post("/send")
 def send_result_notification(
+    request: Request,
     data: NotifyRequest,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Generate notification link to send results to patient."""
+    rate_limit_user(request, current_user.id, max_per_minute=20)
     order = db.query(LabOrder).filter(
         LabOrder.id == data.order_id,
         LabOrder.lab_id == current_user.lab_id,

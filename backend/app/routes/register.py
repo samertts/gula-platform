@@ -9,7 +9,7 @@ from ..models.user import User
 from ..security.auth import hash_password, create_token
 from ..security.rate_limit import rate_limit_auth
 from ..services.audit_service import log_action
-from ..config import IS_PRODUCTION, JWT_EXPIRE_HOURS
+from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY
 
 router = APIRouter(tags=["auth"])
 
@@ -64,7 +64,7 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
 
     existing = db.query(LabUser).filter(LabUser.email == data.email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=409, detail="Registration failed. Please use a different email.")
 
     lab = Lab(
         name=data.lab_name,
@@ -106,7 +106,7 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
     response.set_cookie(
         key="access_token",
         value=token,
-        max_age=JWT_EXPIRE_HOURS * 3600,
+        max_age=JWT_EXPIRE_MINUTES * 60,
         path="/",
         httponly=True,
         samesite="strict",
@@ -180,27 +180,25 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
     # Check for duplicate phone
     existing_phone = db.query(User).filter(User.phone == data.phone).first()
     if existing_phone:
-        raise HTTPException(status_code=400, detail="Phone number already registered")
+        raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
 
     # Check for duplicate email if provided
     if data.email:
         existing_email = db.query(User).filter(User.email == data.email).first()
         if existing_email:
-            raise HTTPException(status_code=400, detail="Email already registered")
+            raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
 
-    # Hash NID using HMAC-SHA256 for privacy
+    # Hash NID using HMAC-SHA256 for privacy — use the same key as the rest of the app
     nid_hash = None
     if data.national_id:
         import hmac
         import hashlib
-        import os
-        nid_key = os.getenv("NID_HMAC_KEY", "gula_nid_hmac_key_change_in_production").encode()
-        nid_hash = hmac.new(nid_key, data.national_id.encode(), hashlib.sha256).hexdigest()
+        nid_hash = hmac.new(NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256).hexdigest()
 
         # Check for duplicate NID
         existing_nid = db.query(User).filter(User.national_id_hash == nid_hash).first()
         if existing_nid:
-            raise HTTPException(status_code=400, detail="National ID already registered")
+            raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
 
     citizen = User(
         email=data.email or None,

@@ -1,15 +1,8 @@
+"""
+Audit logging — use services/audit_service.py directly.
 
-import datetime
+This module is kept for import compatibility only.
+"""
+from ..services.audit_service import log_action
 
-def log(action,user):
-
-    return {
-
-        "action":action,
-
-        "user":user,
-
-        "timestamp":datetime.datetime.utcnow()
-
-    }
-
+__all__ = ["log_action"]

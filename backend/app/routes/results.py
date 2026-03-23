@@ -2,7 +2,7 @@ import secrets
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 from datetime import datetime, timezone
@@ -72,6 +72,15 @@ class CreateOrderRequest(BaseModel):
     doctor_name: Optional[str] = None
     doctor_user_id: Optional[int] = None  # link to a registered doctor account for data isolation
     results: List[ResultItem]
+
+    @field_validator("doctor_name")
+    @classmethod
+    def validate_doctor_name(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) > 200:
+                raise ValueError("Doctor name must be at most 200 characters")
+        return v
 
 
 def result_to_dict(r: LabResult) -> dict:
@@ -603,8 +612,11 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
         _logger.exception("PDF generation failed for result %s", result.id)
         raise HTTPException(status_code=500, detail="Failed to generate PDF report")
 
-    patient_name = (patient.full_name if patient else "result").replace(" ", "_")
-    filename = f"GULA_Report_{patient_name}.pdf"
+    import re as _re
+    raw_name = patient.full_name if patient else "result"
+    # Strip all non-alphanumeric/space characters to prevent path traversal and header injection
+    safe_name = _re.sub(r"[^\w\s-]", "", raw_name).strip().replace(" ", "_")[:50] or "result"
+    filename = f"GULA_Report_{safe_name}.pdf"
 
     log_action(db, action="download_pdf", resource_type="lab_result",
                resource_id=result.id,
