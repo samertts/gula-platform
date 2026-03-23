@@ -205,6 +205,7 @@ from .routes import qr, id_scan, admin, samples
 from .routes import quality_control, critical_alerts, batch
 from .routes import mobile, compliance
 from .routes import setup, metrics
+from .routes import ai as ai_routes
 
 # Core routes
 app.include_router(login.router)
@@ -243,6 +244,9 @@ app.include_router(compliance.router)
 # Legacy routes (kept for API compatibility)
 app.include_router(national_identity.router)
 app.include_router(insurance.router)
+
+# AI Safety Layer
+app.include_router(ai_routes.router)
 
 
 # ===== STARTUP: ENSURE MASTER ADMIN =====
