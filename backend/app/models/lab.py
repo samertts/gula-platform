@@ -10,6 +10,10 @@ class Lab(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
     license_number = Column(String(100), unique=True, nullable=True)
+    # Type: "private" | "government" | "hospital" | "clinic"
+    lab_type = Column(String(50), nullable=True, index=True)
+    director_name = Column(String(200), nullable=True)  # مدير / مسؤول المختبر
+    website = Column(String(300), nullable=True)
     city = Column(String(100))
     address = Column(String(500))
     phone = Column(String(20))

@@ -24,10 +24,17 @@ _ALLOWED_STAFF_ROLES = frozenset({
 
 
 class LabRegisterRequest(BaseModel):
+    # Identity
     lab_name: str
+    license_number: str = ""           # رقم الترخيص الصحي
+    lab_type: str = "private"          # private | government | hospital | clinic
+    director_name: str = ""            # اسم المدير / المسؤول
+    # Location
     city: str = ""
     address: str = ""
     phone: str = ""
+    website: str = ""
+    # Admin account
     admin_name: str
     email: str
     password: str
@@ -40,12 +47,20 @@ class LabRegisterRequest(BaseModel):
             raise ValueError("Lab name must be between 2 and 200 characters")
         return v
 
-    @field_validator("admin_name")
+    @field_validator("lab_type")
     @classmethod
-    def validate_admin_name(cls, v):
+    def validate_lab_type(cls, v):
+        allowed = {"private", "government", "hospital", "clinic"}
+        if v and v not in allowed:
+            raise ValueError(f"lab_type must be one of: {', '.join(sorted(allowed))}")
+        return v
+
+    @field_validator("admin_name", "director_name")
+    @classmethod
+    def validate_name(cls, v):
         v = v.strip()
-        if len(v) < 2 or len(v) > 200:
-            raise ValueError("Admin name must be between 2 and 200 characters")
+        if v and (len(v) < 2 or len(v) > 200):
+            raise ValueError("Name must be between 2 and 200 characters")
         return v
 
     @field_validator("email")
@@ -80,6 +95,10 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
     # access patient data. Admin approves via PUT /admin/labs/{id}/activate.
     lab = Lab(
         name=data.lab_name,
+        license_number=data.license_number or None,
+        lab_type=data.lab_type or "private",
+        director_name=data.director_name or None,
+        website=data.website or None,
         city=data.city,
         address=data.address,
         phone=data.phone,
@@ -339,4 +358,168 @@ def register_staff(
         "user_id": staff.id,
         "role": staff.role,
         "lab_id": staff.lab_id,
+    }
+
+
+# ─── Doctor Self-Registration ─────────────────────────────────────────────────
+# Independent doctors (not yet affiliated with a lab) register publicly.
+# Account starts active (can log in) but is_verified=False until approved
+# by a ministry/province admin. Verified doctors can be linked to labs later.
+
+class DoctorRegisterRequest(BaseModel):
+    full_name: str
+    email: str
+    phone: str
+    password: str
+    license_number: str        # رقم الإجازة الطبية — required
+    specialty: str = ""        # التخصص
+    workplace: str = ""        # جهة العمل الحالية (مستشفى / عيادة)
+    national_id: str = ""      # الرقم الوطني — hashed, optional
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("Full name must be 2-200 characters")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        v = v.strip().lower()
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+            raise ValueError("Invalid email format")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v):
+        v = v.strip()
+        if not re.match(r"^\+?[0-9]{7,15}$", v):
+            raise ValueError("Invalid phone number")
+        return v
+
+    @field_validator("license_number")
+    @classmethod
+    def validate_license(cls, v):
+        v = v.strip()
+        if len(v) < 3 or len(v) > 100:
+            raise ValueError("License number must be 3-100 characters")
+        return v
+
+    @field_validator("national_id")
+    @classmethod
+    def validate_nid(cls, v):
+        v = v.strip()
+        if v and not re.match(r"^[0-9]{10,14}$", v):
+            raise ValueError("National ID must be 10-14 digits")
+        return v
+
+
+@router.post("/register/doctor")
+def register_doctor(
+    data: DoctorRegisterRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Doctor self-registration (no auth required).
+
+    Creates a User with role='doctor', is_active=True, is_verified=False.
+    A ministry or province admin must verify the account before the doctor
+    can access sensitive endpoints. The doctor's medical license number is
+    stored in plain text (public document) while the national ID is hashed.
+    """
+    rate_limit_auth(request)
+
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if len(data.password) > 128:
+        raise HTTPException(status_code=400, detail="Password too long")
+
+    # Duplicate email check
+    if db.query(User).filter(User.email == data.email).first():
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Email already registered",
+                "message_ar": "البريد الإلكتروني مسجل مسبقاً",
+            },
+        )
+
+    # Duplicate phone check
+    if db.query(User).filter(User.phone == data.phone).first():
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Phone number already registered",
+                "message_ar": "رقم الهاتف مسجل مسبقاً",
+            },
+        )
+
+    # Duplicate license number check
+    if db.query(User).filter(
+        User.license_number == data.license_number,
+        User.role == "doctor",
+    ).first():
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "A doctor with this license number is already registered",
+                "message_ar": "طبيب بهذا الرقم الطبي مسجل مسبقاً",
+            },
+        )
+
+    # Hash national ID if provided
+    nid_hash = None
+    if data.national_id:
+        import hmac
+        import hashlib
+        nid_hash = hmac.new(NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256).hexdigest()
+        if db.query(User).filter(User.national_id_hash == nid_hash).first():
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "National ID already registered",
+                    "message_ar": "الرقم الوطني مسجل مسبقاً",
+                },
+            )
+
+    doctor = User(
+        full_name=data.full_name,
+        email=data.email,
+        phone=data.phone,
+        password_hash=hash_password(data.password),
+        role="doctor",
+        license_number=data.license_number,
+        specialty=data.specialty or None,
+        national_id_hash=nid_hash,
+        is_active=True,      # can log in immediately
+        is_verified=False,   # full access after admin approval
+    )
+    db.add(doctor)
+    db.flush()
+
+    log_action(
+        db,
+        action="register",
+        resource_type="doctor",
+        resource_id=doctor.id,
+        user_id=doctor.id,
+        user_role="doctor",
+        details=(
+            f"Doctor registered: {data.full_name} | license={data.license_number} "
+            f"| specialty={data.specialty} | workplace={data.workplace}"
+        ),
+        ip_address=get_client_ip(request),
+    )
+
+    db.commit()
+    db.refresh(doctor)
+
+    return {
+        "message": "Registration submitted. Your account will be activated after license verification.",
+        "message_ar": "تم تقديم طلب التسجيل. سيتم تفعيل حسابك بعد التحقق من الإجازة الطبية.",
+        "user_id": doctor.id,
+        "status": "pending_verification",
     }
