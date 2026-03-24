@@ -48,4 +48,4 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
 CMD ["sh", "-c", \
     "python3 -c 'from app.database import engine; from app.models import Base; Base.metadata.create_all(engine)' && \
      alembic upgrade head && \
-     exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log"]
+     exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log --loop uvloop --http httptools"]
