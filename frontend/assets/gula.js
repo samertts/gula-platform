@@ -224,6 +224,13 @@ function toast(msg, type = 'success') {
 }
 
 let _modalFocusTimer;
+/**
+ * Open the modal dialog.
+ * @param {string} title  - Plain text title (inserted via textContent — safe).
+ * @param {string} html   - Trusted HTML body.  MUST only contain pre-escaped
+ *                          user data (use esc()/escAttr() before inserting).
+ *                          Never pass raw API strings directly as `html`.
+ */
 function openModal(title, html) {
   clearTimeout(_modalFocusTimer);
   $('modalTitle').textContent = title;
@@ -231,6 +238,11 @@ function openModal(title, html) {
   $('modal').style.display = 'flex';
   const firstInput = $('modalBody').querySelector('input,select,textarea');
   if (firstInput) _modalFocusTimer = setTimeout(() => { if (document.contains(firstInput)) firstInput.focus(); }, 50);
+}
+
+/** Safe variant: both title and body are treated as plain text — no XSS risk. */
+function openModalText(title, message) {
+  openModal(title, '<p>' + esc(message) + '</p>');
 }
 
 function closeModal() { clearTimeout(_modalFocusTimer); $('modal').style.display = 'none'; }

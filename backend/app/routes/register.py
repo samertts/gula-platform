@@ -1,6 +1,7 @@
 import re
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab import Lab
@@ -232,7 +233,12 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
         is_verified=False,
     )
     db.add(citizen)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # DB UNIQUE constraints catch concurrent duplicate registrations (TOCTOU).
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
 
     log_action(
         db,
