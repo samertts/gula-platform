@@ -222,12 +222,26 @@ if [ ! -f /swapfile ]; then
   mkswap /swapfile
   swapon /swapfile
   echo '/swapfile none swap sw 0 0' >> /etc/fstab
-  sysctl vm.swappiness=10
-  echo 'vm.swappiness=10' >> /etc/sysctl.conf
   ok "Swap created (2GB)"
 else
   ok "Swap already configured"
 fi
+
+# ── 10b. Kernel / OS performance tuning ───────────────────────────────────────
+# Apply GULA-specific sysctl and ulimit overrides for high-throughput operation.
+# These settings raise fd limits, tune TCP buffers and TIME_WAIT recycling,
+# reduce swappiness, and generally match nginx + Docker + PostgreSQL workloads.
+log "Applying kernel tuning (sysctl + limits)..."
+
+# sysctl — takes effect immediately and persists across reboots via /etc/sysctl.d/
+cp "${REPO_DIR}/config/system/99-gula-sysctl.conf" /etc/sysctl.d/99-gula.conf
+sysctl --system --pattern "fs.file-max|net.core|net.ipv4.tcp|vm.swappiness|vm.dirty" > /dev/null 2>&1 || \
+  sysctl -p /etc/sysctl.d/99-gula.conf > /dev/null 2>&1 || true
+ok "sysctl applied (/etc/sysctl.d/99-gula.conf)"
+
+# ulimits — take effect for new sessions / service restarts
+cp "${REPO_DIR}/config/system/gula-limits.conf" /etc/security/limits.d/99-gula.conf
+ok "ulimits applied (/etc/security/limits.d/99-gula.conf)"
 
 # ── 11. Nginx systemd override: Restart=always ───────────────────────────────
 # By default systemd stops retrying nginx after consecutive failures.

@@ -1,42 +1,53 @@
 import logging
+import os
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from .config import DATABASE_URL, IS_PRODUCTION
 
 logger = logging.getLogger("gula.database")
 
-# Production-tuned connection pool
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,         # Verify connections before use
-    pool_size=20,               # Base connections (up from 10)
-    max_overflow=40,            # Burst capacity (up from 20)
-    pool_timeout=15,            # Fail fast if pool exhausted (down from 30)
-    pool_recycle=1800,          # Recycle every 30 min (prevent stale)
-    connect_args={"connect_timeout": 5},  # Faster failure detection (down from 10)
-    echo=False,                 # No SQL logging in production
+# ── Connection Pool Sizing ────────────────────────────────────────────────────
+# PostgreSQL default max_connections = 100.
+# We run --workers 2, so each worker gets its own pool.
+# Total DB connections = workers × (pool_size + max_overflow).
+# Keep total well under 100 to leave room for superuser + monitoring connections.
+#
+# Formula used: 2 workers × (5 base + 15 overflow) = 40 total.
+# Configurable via env vars for larger deployments.
+_WORKERS       = int(os.getenv("WEB_CONCURRENCY", "2"))
+_POOL_SIZE     = max(2, int(os.getenv("DB_POOL_SIZE",    "5")))   # per worker
+_MAX_OVERFLOW  = max(0, int(os.getenv("DB_MAX_OVERFLOW", "15")))  # per worker
+_POOL_TIMEOUT  = int(os.getenv("DB_POOL_TIMEOUT",  "10"))
+_POOL_RECYCLE  = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+_STMT_TIMEOUT  = os.getenv("DB_STMT_TIMEOUT", "30s")
+
+logger.debug(
+    "DB pool config: %d workers × (%d base + %d overflow) = %d max connections",
+    _WORKERS, _POOL_SIZE, _MAX_OVERFLOW, _WORKERS * (_POOL_SIZE + _MAX_OVERFLOW),
 )
 
-# Set statement timeout to prevent runaway queries (30 seconds)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,             # Drop and replace stale connections silently
+    pool_size=_POOL_SIZE,
+    max_overflow=_MAX_OVERFLOW,
+    pool_timeout=_POOL_TIMEOUT,     # Raise TimeoutError if pool exhausted
+    pool_recycle=_POOL_RECYCLE,     # Prevent 8-hour idle disconnect (Postgres)
+    connect_args={"connect_timeout": 5},
+    echo=False,
+)
+
+# Set statement timeout + work_mem per connection (PostgreSQL only)
 @event.listens_for(engine, "connect")
-def set_pg_timeout(dbapi_conn, connection_record):
+def set_pg_session_config(dbapi_conn, connection_record):
     try:
         cursor = dbapi_conn.cursor()
-        cursor.execute("SET statement_timeout = '30s'")
+        cursor.execute(f"SET statement_timeout = '{_STMT_TIMEOUT}'")
+        cursor.execute("SET work_mem = '16MB'")  # Limit sort/hash memory per query
+        cursor.execute("SET idle_in_transaction_session_timeout = '60s'")
         cursor.close()
     except Exception:
-        pass  # Non-fatal - some DBs don't support this
-
-
-# Pool event logging for monitoring
-@event.listens_for(engine, "checkout")
-def receive_checkout(dbapi_conn, connection_record, connection_proxy):
-    logger.debug("Connection checked out from pool")
-
-
-@event.listens_for(engine, "checkin")
-def receive_checkin(dbapi_conn, connection_record):
-    logger.debug("Connection returned to pool")
+        pass  # Non-fatal — SQLite / non-Postgres
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

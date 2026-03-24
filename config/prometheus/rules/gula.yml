@@ -1,0 +1,208 @@
+groups:
+  # ===========================================================================
+  # SERVICE AVAILABILITY
+  # ===========================================================================
+  - name: gula_availability
+    interval: 30s
+    rules:
+
+      # Backend completely unreachable for >1 minute
+      - alert: BackendDown
+        expr: up{job="gula-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "GULA backend is DOWN"
+          description: "gula-backend has been unreachable for more than 1 minute. Patients cannot access results."
+
+      # Backend returning errors (5xx > 5% of requests over 2 min)
+      - alert: BackendHighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="gula-backend", status=~"5.."}[2m])
+            /
+            rate(http_requests_total{job="gula-backend"}[2m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "GULA backend high error rate ({{ $value | humanizePercentage }})"
+          description: "More than 5% of requests are returning 5xx errors."
+
+      # Database unavailable (readiness probe failing)
+      - alert: DatabaseDown
+        expr: gula_db_connected == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "PostgreSQL database is DOWN"
+          description: "The GULA backend cannot reach the database. All write operations are blocked."
+
+      # Redis unavailable
+      - alert: RedisDown
+        expr: gula_redis_connected == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: cache
+        annotations:
+          summary: "Redis cache is DOWN"
+          description: "Redis is unreachable. JWT blacklist and rate limiting are degraded."
+
+  # ===========================================================================
+  # PERFORMANCE
+  # ===========================================================================
+  - name: gula_performance
+    interval: 60s
+    rules:
+
+      # Response time degradation (p95 > 3 seconds)
+      - alert: SlowResponses
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="gula-backend"}[5m])
+          ) > 3
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "GULA backend p95 latency > 3s"
+          description: "95th percentile response time is {{ $value }}s. Users are experiencing slow load times."
+
+      # Very high response time (p95 > 10s = system overloaded)
+      - alert: CriticalSlowResponses
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="gula-backend"}[5m])
+          ) > 10
+        for: 2m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "GULA backend critically slow (p95 > 10s)"
+          description: "System may be overloaded or experiencing a memory/CPU issue."
+
+  # ===========================================================================
+  # INFRASTRUCTURE
+  # ===========================================================================
+  - name: gula_infrastructure
+    interval: 60s
+    rules:
+
+      # Disk almost full (>85%)
+      - alert: DiskSpaceWarning
+        expr: |
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: host
+        annotations:
+          summary: "Disk usage above 85% on {{ $labels.instance }}"
+          description: "Current usage: {{ $value | humanizePercentage }}. Run backup cleanup before disk fills."
+
+      # Disk critical (>95%) — imminent data loss risk
+      - alert: DiskSpaceCritical
+        expr: |
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) > 0.95
+        for: 1m
+        labels:
+          severity: critical
+          service: host
+        annotations:
+          summary: "CRITICAL: Disk almost full on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value | humanizePercentage }}. Database writes may fail immediately."
+
+      # High memory usage (>90%)
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          service: host
+        annotations:
+          summary: "Memory usage above 90%"
+          description: "Available memory is critically low. OOM killer may terminate containers."
+
+      # High CPU (>80% for 10 min)
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: host
+        annotations:
+          summary: "CPU usage above 80% for 10 minutes"
+          description: "Sustained high CPU may indicate a processing spike or runaway process."
+
+  # ===========================================================================
+  # SECURITY
+  # ===========================================================================
+  - name: gula_security
+    interval: 60s
+    rules:
+
+      # Spike in 401/403 (brute force or credential stuffing attempt)
+      - alert: AuthFailureSpike
+        expr: |
+          rate(http_requests_total{job="gula-backend", status=~"40[13]"}[5m]) > 10
+        for: 3m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "More than 10 auth failures/second over 3 minutes. Possible brute-force attack."
+
+      # Rate limit spike (429s) — DDoS/abuse pattern
+      - alert: RateLimitSpike
+        expr: |
+          rate(http_requests_total{job="gula-backend", status="429"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "Rate limit spike detected"
+          description: "Unusual number of 429 responses. Review nginx access logs for attacking IPs."
+
+  # ===========================================================================
+  # DATABASE HEALTH
+  # ===========================================================================
+  - name: gula_database
+    interval: 60s
+    rules:
+
+      # PostgreSQL connection pool near capacity
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          pg_stat_activity_count{datname="labdb"} > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "PostgreSQL connection pool nearly exhausted"
+          description: "{{ $value }} active connections. Max is typically 100. Check for connection leaks."
+
+      # Slow queries (>5s) appearing
+      - alert: SlowDatabaseQueries
+        expr: |
+          pg_stat_activity_max_tx_duration{datname="labdb"} > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Slow PostgreSQL queries detected"
+          description: "Queries running longer than 5 seconds detected in labdb."

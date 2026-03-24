@@ -23,6 +23,18 @@ if not DATABASE_URL:
         sys.exit(1)
     DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/gula"
 
+# ─── Weak-secret detection helper ────────────────────────────────────────────
+_WEAK_PATTERNS = (
+    "default", "change", "secret", "example", "test", "demo",
+    "gula_default", "changeme", "password", "12345", "abcdef",
+)
+
+
+def _is_weak_secret(value: str) -> bool:
+    lower = value.lower()
+    return any(pat in lower for pat in _WEAK_PATTERNS)
+
+
 # ─── JWT Access Token ────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 if not SECRET_KEY:
@@ -31,6 +43,13 @@ if not SECRET_KEY:
         sys.exit(1)
     SECRET_KEY = secrets.token_urlsafe(64)
     logger.warning("SECRET_KEY not set - using random key. Sessions won't survive restarts.")
+elif IS_PRODUCTION and _is_weak_secret(SECRET_KEY):
+    print(
+        "[GULA FATAL] SECRET_KEY contains a weak/default pattern. "
+        "Set a strong random value in .env (e.g. `openssl rand -hex 64`).",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 JWT_ALGORITHM = "HS256"
 # JWT_EXPIRE_MINUTES is the primary setting (default: 30 min).
@@ -58,6 +77,13 @@ if not ENCRYPTION_KEY:
         print("[GULA FATAL] ENCRYPTION_KEY must be set in production.", file=sys.stderr)
         sys.exit(1)
     logger.warning("ENCRYPTION_KEY not set. Set it in .env for production.")
+elif IS_PRODUCTION and _is_weak_secret(ENCRYPTION_KEY):
+    print(
+        "[GULA FATAL] ENCRYPTION_KEY contains a weak/default pattern. "
+        "Generate with: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 # ─── National ID HMAC ────────────────────────────────────────────────────────
 # Must NOT change in production or existing lookups will break

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date as date_type
 from ..database import Base
 import enum
 
@@ -17,6 +17,11 @@ class Patient(Base):
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
     health_id = Column(String(20), unique=True, nullable=True, index=True)
     national_id_hash = Column(String(255), nullable=True, index=True)
+    # Family ID hash — links all family members by their civil registry family number.
+    # Stored as HMAC-SHA256 (prefix "fam:") so the raw number is never persisted.
+    family_id_hash = Column(String(255), nullable=True, index=True)
+    # Guardian — links a minor to their parent/guardian patient record.
+    guardian_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True)
     full_name = Column(String(200), nullable=False)
     phone = Column(String(20), nullable=False, index=True)
     birth_date = Column(Date, nullable=True)
@@ -26,3 +31,16 @@ class Patient(Base):
 
     lab = relationship("Lab", back_populates="patients")
     orders = relationship("LabOrder", back_populates="patient", cascade="all, delete-orphan")
+    # Guardian relationship — a patient can have many dependents (children)
+    dependents = relationship("Patient", foreign_keys=[guardian_id], backref="guardian", lazy="dynamic")
+
+    @property
+    def is_minor(self) -> bool:
+        """True if the patient is under 18 years old based on birth_date."""
+        if not self.birth_date:
+            return False
+        today = date_type.today()
+        age = today.year - self.birth_date.year - (
+            (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+        )
+        return age < 18

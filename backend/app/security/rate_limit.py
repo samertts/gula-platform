@@ -1,31 +1,60 @@
 """
 In-memory rate limiter for GULA Platform.
-For production, use Redis-based rate limiting.
+
+Rate limiter is in-process (per-worker) — not shared across uvicorn workers.
+For strict cross-worker limiting use Redis. In-process is acceptable for
+small deployments: effective limit is (configured_limit × worker_count).
+
+The important fix here is IP extraction: the backend sits behind Docker nginx,
+so request.client.host is always the nginx container IP (172.x.x.x), not the
+real user IP. We use X-Real-IP (set by nginx) when the direct connection
+originates from any RFC-1918 private address.
 """
 
+import ipaddress
 import time
 from collections import defaultdict
 from fastapi import Request, HTTPException
 
 
-# Trusted proxy CIDRs (Docker, localhost, common cloud providers)
-TRUSTED_PROXIES = {"127.0.0.1", "::1", "172.17.0.1", "10.0.0.1"}
+def _is_private_ip(ip: str) -> bool:
+    """Return True for RFC-1918 / loopback / Docker addresses."""
+    try:
+        return ipaddress.ip_address(ip).is_private
+    except ValueError:
+        return False
 
 
 def get_client_ip(request: Request) -> str:
-    """Extract real client IP, respecting X-Forwarded-For behind trusted proxies."""
-    client_ip = request.client.host if request.client else "unknown"
+    """Extract real client IP.
 
-    # Only trust X-Forwarded-For from known proxies
-    if client_ip in TRUSTED_PROXIES:
-        forwarded = request.headers.get("X-Forwarded-For", "")
+    Priority (in order):
+      1. X-Real-IP header   — set by nginx with $remote_addr (the actual client)
+      2. X-Forwarded-For    — first entry (leftmost) when behind a private proxy
+      3. request.client.host — direct connection IP (fallback)
+
+    We trust these headers only when the direct connection is from a private
+    address (Docker network, loopback) — i.e. only our own nginx can set them.
+    External clients connecting directly cannot spoof them.
+    """
+    direct_ip = request.client.host if request.client else "unknown"
+
+    # Only trust injected headers when the direct connection is from our nginx
+    # (private address = Docker network, localhost)
+    if _is_private_ip(direct_ip):
+        # X-Real-IP is the most reliable — nginx sets it from $remote_addr
+        real_ip = request.headers.get("X-Real-IP", "").strip()
+        if real_ip:
+            return real_ip
+
+        # Fallback: X-Forwarded-For (first entry = original client)
+        forwarded = request.headers.get("X-Forwarded-For", "").strip()
         if forwarded:
-            # Take the first (leftmost) IP — the original client
-            real_ip = forwarded.split(",")[0].strip()
-            if real_ip:
-                return real_ip
+            first_ip = forwarded.split(",")[0].strip()
+            if first_ip:
+                return first_ip
 
-    return client_ip
+    return direct_ip
 
 
 class RateLimiter:

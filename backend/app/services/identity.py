@@ -143,3 +143,17 @@ def hash_national_id(national_id: str) -> str:
     if not cleaned:
         return ""
     return hmac.new(NID_HMAC_KEY.encode(), cleaned.encode(), hashlib.sha256).hexdigest()
+
+
+def hash_family_id(family_id: str) -> str:
+    """Hash a civil-registry family number for secure storage.
+
+    Uses the same HMAC key as national IDs but prefixes the input with "fam:"
+    to prevent hash collisions with national IDs that share the same digit sequence.
+    """
+    import hmac
+    from ..config import NID_HMAC_KEY
+    cleaned = re.sub(r"[^\d]", "", family_id)
+    if not cleaned:
+        return ""
+    return hmac.new(NID_HMAC_KEY.encode(), f"fam:{cleaned}".encode(), hashlib.sha256).hexdigest()
