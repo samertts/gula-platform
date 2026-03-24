@@ -264,6 +264,164 @@ def list_pending_labs(
     return {"total": total, "pending_labs": result}
 
 
+# Update pending labs response to include new lab profile fields
+@router.get("/labs/{lab_id}")
+def get_lab_detail(
+    lab_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Get full lab detail including new profile fields."""
+    lab = db.query(Lab).filter(Lab.id == lab_id).first()
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab not found")
+
+    admin_user = db.query(LabUser).filter(
+        LabUser.lab_id == lab.id, LabUser.role == "admin"
+    ).first()
+    staff_count = db.query(func.count(LabUser.id)).filter(LabUser.lab_id == lab.id).scalar() or 0
+    patient_count = db.query(func.count(Patient.id)).filter(Patient.lab_id == lab.id).scalar() or 0
+
+    return {
+        "id": lab.id,
+        "name": lab.name,
+        "license_number": lab.license_number,
+        "lab_type": lab.lab_type,
+        "director_name": lab.director_name,
+        "website": lab.website,
+        "city": lab.city,
+        "address": lab.address,
+        "phone": lab.phone,
+        "is_active": lab.is_active,
+        "created_at": lab.created_at.isoformat() if lab.created_at else None,
+        "admin_email": admin_user.email if admin_user else None,
+        "admin_name": admin_user.name if admin_user else None,
+        "staff_count": staff_count,
+        "patient_count": patient_count,
+    }
+
+
+# =============================================================================
+# DOCTOR MANAGEMENT
+# =============================================================================
+
+@router.get("/doctors")
+def list_doctors(
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+    is_verified: Optional[bool] = None,
+    skip: int = 0,
+    limit: int = Query(default=50, le=200),
+):
+    """List doctor accounts. ministry_admin and above.
+
+    Pass is_verified=false to see doctors pending approval.
+    """
+    if actor.role not in ("master_admin", "ministry_admin", "province_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    query = db.query(User).filter(User.role == "doctor")
+    if is_verified is not None:
+        query = query.filter(User.is_verified == is_verified)
+
+    total = query.count()
+    doctors = query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+
+    return {
+        "total": total,
+        "doctors": [
+            {
+                "id": d.id,
+                "full_name": d.full_name,
+                "email": d.email,
+                "phone": d.phone,
+                "license_number": d.license_number,
+                "specialty": d.specialty,
+                "is_active": d.is_active,
+                "is_verified": d.is_verified,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+            }
+            for d in doctors
+        ],
+    }
+
+
+@router.put("/doctors/{doctor_id}/approve")
+def approve_doctor(
+    doctor_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Approve and verify a doctor registration.
+
+    Sets is_verified=True and is_active=True so the doctor gains full
+    API access. Only ministry_admin and above may approve.
+    """
+    if actor.role not in ("master_admin", "ministry_admin", "province_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    doctor = db.query(User).filter(User.id == doctor_id, User.role == "doctor").first()
+    if not doctor:
+        raise HTTPException(
+            status_code=404,
+            detail={"message": "Doctor not found", "message_ar": "الطبيب غير موجود"},
+        )
+    if doctor.is_verified:
+        return {
+            "message": "Doctor is already verified",
+            "message_ar": "الطبيب موثق مسبقاً",
+            "doctor_id": doctor_id,
+        }
+
+    doctor.is_verified = True
+    doctor.is_active = True
+    log_action(
+        db,
+        action="approve_doctor",
+        resource_type="doctor",
+        resource_id=doctor.id,
+        user_id=actor.id,
+        user_role=actor.role,
+        details=f"Doctor approved: {doctor.full_name} | license={doctor.license_number}",
+    )
+    db.commit()
+    return {
+        "message": "Doctor approved and verified",
+        "message_ar": "تم اعتماد الطبيب بنجاح",
+        "doctor_id": doctor_id,
+        "is_verified": True,
+    }
+
+
+@router.put("/doctors/{doctor_id}/revoke")
+def revoke_doctor(
+    doctor_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Revoke a doctor's verification (e.g. expired license)."""
+    if actor.role not in ("master_admin", "ministry_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    doctor = db.query(User).filter(User.id == doctor_id, User.role == "doctor").first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    doctor.is_verified = False
+    log_action(
+        db, action="revoke_doctor", resource_type="doctor", resource_id=doctor.id,
+        user_id=actor.id, user_role=actor.role,
+        details=f"Doctor verification revoked: {doctor.full_name} | license={doctor.license_number}",
+    )
+    db.commit()
+    return {
+        "message": "Doctor verification revoked",
+        "message_ar": "تم إلغاء اعتماد الطبيب",
+        "doctor_id": doctor_id,
+        "is_verified": False,
+    }
+
+
 # =============================================================================
 # CITIZEN MANAGEMENT
 # =============================================================================
