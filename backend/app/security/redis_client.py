@@ -56,6 +56,12 @@ class _MemoryStore:
             self._data[key] = (str(new_val), expire_at)
             return new_val
 
+    def expire(self, key: str, seconds: int) -> None:
+        with self._lock:
+            entry = self._data.get(key)
+            if entry is not None:
+                self._data[key] = (entry[0], time.monotonic() + seconds)
+
 
 # ── Redis wrapper ─────────────────────────────────────────────────────────────
 
@@ -83,6 +89,9 @@ class _RedisWrapper:
 
     def incr(self, key: str) -> int:
         return self._client.incr(key)
+
+    def expire(self, key: str, seconds: int) -> None:
+        self._client.expire(key, seconds)
 
 
 # ── Public singleton ──────────────────────────────────────────────────────────
