@@ -88,6 +88,8 @@ fi
 # 2. ENSURE .env EXISTS WITH ALL REQUIRED VARIABLES
 # ─────────────────────────────────────────────────────────────────────────────
 gen_secret() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))' 2>/dev/null || openssl rand -base64 32 | tr -d '=/+' | head -c 43; }
+# Fernet keys must be exactly 32 random bytes, URL-safe base64 encoded (44 chars with padding)
+gen_fernet_key() { python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())' 2>/dev/null || python3 -c 'import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())'; }
 
 if [ ! -f .env ]; then
   if [ -f .env.example ]; then
@@ -116,7 +118,7 @@ REDIS_PASS="$(gen_secret)"
 ensure_var "POSTGRES_PASSWORD" "$PG_PASS"
 ensure_var "REDIS_PASSWORD" "$REDIS_PASS"
 ensure_var "SECRET_KEY" "$(gen_secret)"
-ensure_var "ENCRYPTION_KEY" "$(gen_secret)"
+ensure_var "ENCRYPTION_KEY" "$(gen_fernet_key)"
 ensure_var "NID_HMAC_KEY" "$(gen_secret)"
 
 # ── Master Admin password (CRITICAL — must be set or admin account won't be created) ──
