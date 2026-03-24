@@ -77,8 +77,9 @@ if ! id "$DEPLOY_USER" &>/dev/null; then
   useradd -m -s /bin/bash "$DEPLOY_USER"
   usermod -aG docker "$DEPLOY_USER"
   usermod -aG sudo "$DEPLOY_USER"
-  # Allow sudo without password for specific commands needed by deploy
-  echo "${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx, /bin/nginx, /usr/sbin/nginx, /bin/cp, /bin/ln, /bin/rm, /usr/bin/certbot" \
+  # Allow sudo without password only for the exact nginx/certbot commands needed
+  # Note: /bin/cp, /bin/ln, /bin/rm intentionally excluded — too broad
+  echo "${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx, /bin/systemctl status nginx, /usr/sbin/nginx -t, /usr/bin/certbot renew, /usr/bin/certbot certonly" \
     > /etc/sudoers.d/gula-deploy
   chmod 440 /etc/sudoers.d/gula-deploy
   ok "User $DEPLOY_USER created"
