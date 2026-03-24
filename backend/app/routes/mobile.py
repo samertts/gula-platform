@@ -84,21 +84,25 @@ def refresh_access_token(
     if token_perm_ver != authoritative_ver:
         raise HTTPException(status_code=401, detail="Permissions updated — please log in again")
 
-    # ── Refresh token rotation: blacklist the OLD refresh token immediately ──
+    # Issue new tokens FIRST, then blacklist the old one.
+    # This ordering prevents a lost-response scenario where the client retries
+    # with the old token and finds it already revoked, forcing a full re-login.
+    # A short grace period (30 s) allows in-flight retries to succeed.
+    base_payload = build_token_payload(user)
+    new_access_token = create_token(base_payload)
+    new_refresh_token = create_refresh_token(base_payload)
+
+    # ── Refresh token rotation: blacklist the OLD refresh token ──
     # Prevents reuse attacks: if this token is stolen, using it here
     # invalidates it for everyone — including the attacker.
     from ..security.auth import blacklist_token as _blacklist
     import time as _time
+    _GRACE_SECONDS = 30  # allow network retries without forcing re-login
     old_jti = payload.get("jti")
     if old_jti:
-        remaining = int((payload["exp"] - _time.time()) + 1)
+        remaining = int((payload["exp"] - _time.time()) + _GRACE_SECONDS)
         if remaining > 0:
             _blacklist(old_jti, min(remaining, REFRESH_TOKEN_EXPIRE_DAYS * 86400))
-
-    # Issue new tokens with fresh payload (picks up latest role + perm_version)
-    base_payload = build_token_payload(user)
-    new_access_token = create_token(base_payload)
-    new_refresh_token = create_refresh_token(base_payload)
 
     log_action(
         db,

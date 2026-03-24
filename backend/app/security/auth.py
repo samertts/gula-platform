@@ -23,6 +23,10 @@ def is_token_blacklisted(jti: str) -> bool:
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Pre-computed dummy hash used to ensure constant-time comparison when a login
+# email does not match any user, preventing user-enumeration via timing attacks.
+_DUMMY_HASH: str = pwd_context.hash("__gula_dummy_password_not_a_real_account__")
+
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
