@@ -97,6 +97,16 @@ def validate_config() -> None:
             "ENCRYPTION_KEY looks like a placeholder. Generate with: "
             "python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
         )
+    elif IS_PRODUCTION:
+        # Validate it's actually a Fernet-compatible key (32 bytes, base64url, 44 chars)
+        try:
+            from cryptography.fernet import Fernet as _Fernet
+            _Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
+        except Exception:
+            errors.append(
+                "ENCRYPTION_KEY is not a valid Fernet key (must be 44 base64url chars). "
+                "Run: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            )
 
     if not NID_HMAC_KEY:
         if IS_PRODUCTION:
