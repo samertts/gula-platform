@@ -37,5 +37,10 @@ class LabResult(Base):
     expires_at = Column(DateTime(timezone=True), default=default_expiry)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    # Version of the clinical engine that last evaluated this result.
+    # Populated when evaluate_result() / evaluate_order() is called after save.
+    # NULL on results created before the clinical engine was introduced.
+    clinical_engine_version = Column(String(20), nullable=True)
+
     order = relationship("LabOrder", back_populates="results")
     test_type = relationship("TestType")
