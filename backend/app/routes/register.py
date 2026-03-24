@@ -7,11 +7,20 @@ from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.user import User
 from ..security.auth import hash_password, create_token
+from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
 from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY
 
 router = APIRouter(tags=["auth"])
+
+# Roles that a lab admin is permitted to create for their own lab.
+_ALLOWED_STAFF_ROLES = frozenset({
+    "technician",  # مختبري — enters and validates results
+    "doctor",      # طبيب مشرف — reviews and authorises results
+    "receptionist",  # موظف استقبال — registers patients and orders
+    "staff",       # generic staff member
+})
 
 
 class LabRegisterRequest(BaseModel):
@@ -222,4 +231,112 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
     return {
         "message": "Account created successfully",
         "user_id": citizen.id,
+    }
+
+
+# ─── Lab Staff Registration ───────────────────────────────────────────────────
+# Lab admins add technicians, doctors, and receptionists to their own lab.
+# No separate approval flow — the admin's lab must already be active.
+
+class StaffRegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str = "technician"  # technician | doctor | receptionist | staff
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("Name must be between 2 and 200 characters")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        v = v.strip().lower()
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+            raise ValueError("Invalid email format")
+        if len(v) > 100:
+            raise ValueError("Email too long")
+        return v
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v):
+        if v not in _ALLOWED_STAFF_ROLES:
+            raise ValueError(f"Role must be one of: {', '.join(sorted(_ALLOWED_STAFF_ROLES))}")
+        return v
+
+
+@router.post("/register/staff")
+def register_staff(
+    data: StaffRegisterRequest,
+    request: Request,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Lab admin adds a new staff member to their lab.
+
+    Only users with role 'admin' may call this endpoint.
+    The new account is immediately active — no approval required since the
+    lab admin is already verified.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Only lab administrators can register new staff",
+                "message_ar": "فقط مدير المختبر يمكنه تسجيل موظفين جدد",
+            },
+        )
+
+    # Password strength
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if len(data.password) > 128:
+        raise HTTPException(status_code=400, detail="Password too long")
+
+    if db.query(LabUser).filter(LabUser.email == data.email).first():
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Email already registered",
+                "message_ar": "البريد الإلكتروني مسجل مسبقاً",
+            },
+        )
+
+    staff = LabUser(
+        lab_id=current_user.lab_id,
+        name=data.name,
+        email=data.email,
+        password_hash=hash_password(data.password),
+        role=data.role,
+        is_active=True,
+        created_by=current_user.id,
+    )
+    db.add(staff)
+    db.flush()
+
+    log_action(
+        db,
+        action="register",
+        resource_type="lab_user",
+        resource_id=staff.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Staff registered: {data.name} <{data.email}> role={data.role} lab_id={current_user.lab_id}",
+        ip_address=get_client_ip(request),
+    )
+
+    db.commit()
+    db.refresh(staff)
+
+    return {
+        "message": "Staff member registered successfully",
+        "message_ar": "تم تسجيل الموظف بنجاح",
+        "user_id": staff.id,
+        "role": staff.role,
+        "lab_id": staff.lab_id,
     }
