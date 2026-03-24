@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
@@ -11,7 +12,7 @@ from ..security.auth import decode_token, decode_refresh_token
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..security.session import warm_perm_version, bump_perm_version
 from ..services.audit_service import log_action
-from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
+from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, NID_HMAC_KEY
 
 logger = logging.getLogger("gula.auth")
 
@@ -58,7 +59,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             resource_type="auth",
             user_id=user.id if user else None,
             user_role=user.role if user else None,
-            details=f"Failed login attempt for email_sha256: {hashlib.sha256(email.encode()).hexdigest()[:16]}",
+            details=f"Failed login for email_hmac: {hmac.new(NID_HMAC_KEY.encode(), email.encode(), hashlib.sha256).hexdigest()[:16]}",
             ip_address=client_ip,
         )
         db.commit()
