@@ -246,12 +246,32 @@ app.add_middleware(DegradedModeMiddleware)
 # ===== CONCURRENCY LIMIT (BACKPRESSURE) MIDDLEWARE =====
 # Sheds load when too many requests are simultaneously in-flight.
 # Each uvicorn worker has its own counter (per-process, not shared across workers).
-# Health-check paths are always exempt so Docker probes are never shed.
+# Health-check paths AND clinical write paths are always exempt so patient care
+# operations can never be shed even under extreme load.
 _MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT_REQUESTS", "200"))
+
+# Clinical write operations that must NEVER be rejected by the backpressure limiter.
+# These paths modify patient records or results — blocking them risks patient harm.
+_CRITICAL_PATH_PREFIXES: tuple = (
+    "/results",       # entering / updating lab results
+    "/orders",        # creating orders, adding results, validating
+    "/samples",       # sample lifecycle (collection, processing)
+    "/critical-alerts",  # critical value notifications
+)
+
+
+def _is_critical_write(method: str, path: str) -> bool:
+    return method in ("POST", "PUT", "PATCH") and any(
+        path.startswith(p) for p in _CRITICAL_PATH_PREFIXES
+    )
 
 
 class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
-    """Return 503 immediately when the server is already handling too many requests."""
+    """Return 503 immediately when the server is already handling too many requests.
+
+    Clinical write operations (results, orders, samples, critical alerts) are
+    always allowed through regardless of the current load level.
+    """
     _active: int = 0
 
     def __init__(self, app, max_concurrent: int = _MAX_CONCURRENT):
@@ -259,7 +279,11 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
         self._max = max_concurrent
 
     async def dispatch(self, request: Request, call_next):
+        # Health checks — always allowed
         if request.url.path in _ALWAYS_ALLOWED_PATHS:
+            return await call_next(request)
+        # Critical clinical writes — always allowed (patient safety)
+        if _is_critical_write(request.method, request.url.path):
             return await call_next(request)
         if ConcurrencyLimitMiddleware._active >= self._max:
             return JSONResponse(

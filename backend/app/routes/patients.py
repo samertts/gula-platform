@@ -102,6 +102,10 @@ class PatientCreate(BaseModel):
             return cleaned
         return v
 
+    # Guardian — ID of the parent/guardian patient record.
+    # Strongly recommended when birth_date indicates the patient is under 18.
+    guardian_id: Optional[int] = None
+
 
 class PatientUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -141,6 +145,8 @@ def patient_to_dict(p: Patient) -> dict:
         "gender": p.gender,
         "email": p.email,
         "health_id": p.health_id,
+        "is_minor": p.is_minor,
+        "guardian_id": p.guardian_id,
         "has_national_id": bool(p.national_id_hash),
         "has_family_id": bool(p.family_id_hash),
         "created_at": p.created_at.isoformat() if p.created_at else None,
@@ -240,6 +246,18 @@ def create_patient(
                 "matches": sorted(duplicates, key=lambda x: x["score"], reverse=True),
             })
 
+    # Validate guardian exists in the same lab if provided
+    if data.guardian_id is not None:
+        guardian = db.query(Patient).filter(
+            Patient.id == data.guardian_id,
+            Patient.lab_id == current_user.lab_id,
+        ).first()
+        if not guardian:
+            raise HTTPException(status_code=404, detail={
+                "message": "Guardian patient not found in this lab",
+                "message_ar": "لم يتم العثور على ولي الأمر في هذا المختبر",
+            })
+
     health_id = f"GULA-{secrets.token_hex(4).upper()}"
 
     patient = Patient(
@@ -252,6 +270,7 @@ def create_patient(
         health_id=health_id,
         national_id_hash=nid_hash,
         family_id_hash=fid_hash,
+        guardian_id=data.guardian_id,
     )
     db.add(patient)
     db.commit()
@@ -314,6 +333,36 @@ def get_family_members(
     return {
         "family_member_count": len(result),
         "members": result,
+    }
+
+
+@router.get("/{patient_id}/children")
+def get_patient_children(
+    patient_id: int,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return all minor patients (children) whose guardian is this patient.
+
+    Allows lab staff to view the full paediatric history of a guardian's
+    dependents from a single screen.
+    """
+    guardian = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.lab_id == current_user.lab_id,
+    ).first()
+    if not guardian:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    children = db.query(Patient).filter(
+        Patient.guardian_id == patient_id,
+        Patient.lab_id == current_user.lab_id,
+    ).order_by(Patient.birth_date).all()
+
+    return {
+        "guardian": patient_to_dict(guardian),
+        "children_count": len(children),
+        "children": [patient_to_dict(c) for c in children],
     }
 
 
