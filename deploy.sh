@@ -167,6 +167,13 @@ log "Environment: $(grep -c '=' .env) variables loaded"
 # 3. VALIDATE COMPOSE CONFIG (catches errors BEFORE destroying running containers)
 # ─────────────────────────────────────────────────────────────────────────────
 log "Validating compose configuration..."
+# Guard: reject files that still contain git merge conflict markers.
+# These make the YAML parser crash with an unhelpful "could not find expected ':'" error.
+if grep -qE "^(<{7}|={7}|>{7}) " "$COMPOSE_FILE" 2>/dev/null; then
+  err "MERGE CONFLICT MARKERS detected in $COMPOSE_FILE — run emergency-recover.sh to fix"
+  grep -nE "^(<{7}|={7}|>{7}) " "$COMPOSE_FILE" | head -5
+  exit 1
+fi
 if ! $COMPOSE -f "$COMPOSE_FILE" config >/dev/null 2>&1; then
   err "Compose config validation failed! Check .env and $COMPOSE_FILE"
   $COMPOSE -f "$COMPOSE_FILE" config 2>&1 | tail -5
