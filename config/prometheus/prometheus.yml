@@ -1,113 +1,85 @@
 # =============================================================================
-# GULA PLATFORM - Prometheus Configuration
-# Executive Order 14: Comprehensive Monitoring
+# GULA PLATFORM - Prometheus Configuration (MVP)
+# Scrapes the actual services running in docker-compose.yml
+# Full-stack services (commented out) used with docker-compose.full.yml
 # =============================================================================
 
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  scrape_timeout: 10s
   external_labels:
     cluster: 'gula-platform'
     environment: 'production'
 
-# Alerting rules
+# Alert rules
 rule_files:
   - "/etc/prometheus/rules/*.yml"
 
-# Alertmanager
+# Alertmanager (configure ALERTMANAGER_URL in .env to enable)
 alerting:
   alertmanagers:
     - static_configs:
         - targets: []
 
 scrape_configs:
-  # Prometheus itself
+  # Prometheus self-monitoring
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  # PostgreSQL metrics (requires postgres_exporter sidecar - not yet deployed)
-  # - job_name: 'postgres-primary'
-  #   static_configs:
-  #     - targets: ['postgres-primary:9187']
-  #   metrics_path: /metrics
-
-  # Redis metrics (requires redis_exporter sidecar - not yet deployed)
-  # - job_name: 'redis'
-  #   static_configs:
-  #     - targets: ['redis:9121']
-
-  # RabbitMQ metrics via built-in Prometheus plugin
-  - job_name: 'rabbitmq'
-    static_configs:
-      - targets: ['rabbitmq:15692']
+  # ─── MVP Backend ────────────────────────────────────────────────────────────
+  - job_name: 'gula-backend'
     metrics_path: /metrics
-
-  # Lab Service
-  - job_name: 'lab-service'
     static_configs:
-      - targets: ['lab-service:8000']
-    metrics_path: /metrics
+      - targets: ['gula-backend:8000']
+    # Relabel to expose useful labels from /metrics endpoint
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'python_.*|process_.*'
+        action: drop  # Drop noisy Python/process metrics to save storage
 
-  # Patient Service
-  - job_name: 'patient-service'
-    static_configs:
-      - targets: ['patient-service:8000']
-    metrics_path: /metrics
-
-  # Order Service
-  - job_name: 'order-service'
-    static_configs:
-      - targets: ['order-service:8000']
-    metrics_path: /metrics
-
-  # Result Service
-  - job_name: 'result-service'
-    static_configs:
-      - targets: ['result-service:8000']
-    metrics_path: /metrics
-
-  # Sample Service
-  - job_name: 'sample-service'
-    static_configs:
-      - targets: ['sample-service:8000']
-    metrics_path: /metrics
-
-  # AI Service
-  - job_name: 'ai-service'
-    static_configs:
-      - targets: ['ai-service:9000']
-    metrics_path: /metrics
-
-  # Autonomous Manager
-  - job_name: 'autonomous-manager'
-    static_configs:
-      - targets: ['autonomous-manager:8000']
-    metrics_path: /metrics
-
-  # Nginx API Gateway (requires nginx_exporter sidecar - not yet deployed)
-  # - job_name: 'nginx'
-  #   static_configs:
-  #     - targets: ['api-gateway:9113']
-
-  # Kafka
-  - job_name: 'kafka'
-    static_configs:
-      - targets: ['kafka:9101']
-
-  # ClickHouse (built-in metrics endpoint)
-  - job_name: 'clickhouse'
-    static_configs:
-      - targets: ['clickhouse:8123']
-    metrics_path: /metrics
-
-  # MinIO
-  - job_name: 'minio'
-    metrics_path: /minio/v2/metrics/cluster
-    static_configs:
-      - targets: ['minio:9000']
-
-  # Node Exporter (host metrics)
-  - job_name: 'node'
+  # ─── Infrastructure ──────────────────────────────────────────────────────────
+  # Node Exporter: host CPU, memory, disk, network
+  # Start with: docker run -d --name=node-exporter --pid=host --network=gula-net
+  #   -v /:/host:ro,rslave prom/node-exporter --path.rootfs=/host
+  - job_name: 'node-exporter'
     static_configs:
       - targets: ['node-exporter:9100']
+
+  # PostgreSQL metrics (postgres_exporter sidecar)
+  # Enable in .env: ENABLE_PG_EXPORTER=true
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    # Will fail silently if not running — that is OK
+    honor_labels: true
+
+  # Redis metrics (redis_exporter sidecar)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    honor_labels: true
+
+  # Nginx metrics (nginx-exporter, reads stub_status)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+    honor_labels: true
+
+  # ─── Full-stack services (docker-compose.full.yml only) ───────────────────
+  # Uncomment when running the full stack
+  # - job_name: 'rabbitmq'
+  #   static_configs:
+  #     - targets: ['rabbitmq:15692']
+  #   metrics_path: /metrics
+
+  # - job_name: 'clickhouse'
+  #   static_configs:
+  #     - targets: ['clickhouse:8123']
+  #   metrics_path: /metrics
+
+  # - job_name: 'minio'
+  #   metrics_path: /minio/v2/metrics/cluster
+  #   static_configs:
+  #     - targets: ['minio:9000']

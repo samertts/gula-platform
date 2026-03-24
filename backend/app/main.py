@@ -2,10 +2,11 @@ import os
 import time
 import uuid
 import logging
+from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine, check_db_connection, get_pool_status
@@ -43,6 +44,7 @@ if not IS_PRODUCTION or ENABLE_API_DOCS:
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
+    default_response_class=ORJSONResponse,
     description=(
         "**GULA** - منصة غولا الصحية الذكية للمختبرات\n\n"
         "Smart Health Platform for Medical Laboratories in Iraq.\n\n"
@@ -198,6 +200,110 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+
+# ===== READINESS ENFORCEMENT MIDDLEWARE =====
+# Explicit whitelist — paths that are ALWAYS reachable regardless of readiness.
+# Do NOT use startswith("/health") — that could be accidentally bypassed by
+# adding new /health-adjacent routes later.
+_ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset({
+    "/health",
+    "/health/ready",
+    "/health/live",
+    "/health/status",  # diagnostic — always visible so you can see WHY startup failed
+})
+
+
+class ReadinessMiddleware(BaseHTTPMiddleware):
+    """Reject all non-whitelisted requests with 503 until startup guard passes.
+
+    Uses an explicit path whitelist (not prefix matching) so new routes
+    cannot accidentally bypass the readiness check.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        from .core.startup_guard import system_ready
+        if not system_ready and request.url.path not in _ALWAYS_ALLOWED_PATHS:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Service is starting up. Please retry in a moment.",
+                    "detail_ar": "الخدمة تبدأ التشغيل. يرجى المحاولة بعد لحظة.",
+                },
+            )
+        return await call_next(request)
+
+
+app.add_middleware(ReadinessMiddleware)
+
+
+# ===== DEGRADED MODE MIDDLEWARE =====
+# Rejects write operations when DB circuit breaker opens (post-startup failure).
+# Works in conjunction with RecoveryWorker which probes and auto-heals.
+from .core.self_healing import DegradedModeMiddleware
+app.add_middleware(DegradedModeMiddleware)
+
+
+# ===== CONCURRENCY LIMIT (BACKPRESSURE) MIDDLEWARE =====
+# Sheds load when too many requests are simultaneously in-flight.
+# Each uvicorn worker has its own counter (per-process, not shared across workers).
+# Health-check paths AND clinical write paths are always exempt so patient care
+# operations can never be shed even under extreme load.
+_MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT_REQUESTS", "200"))
+
+# Clinical write operations that must NEVER be rejected by the backpressure limiter.
+# These paths modify patient records or results — blocking them risks patient harm.
+_CRITICAL_PATH_PREFIXES: tuple = (
+    "/results",       # entering / updating lab results
+    "/orders",        # creating orders, adding results, validating
+    "/samples",       # sample lifecycle (collection, processing)
+    "/critical-alerts",  # critical value notifications
+)
+
+
+def _is_critical_write(method: str, path: str) -> bool:
+    return method in ("POST", "PUT", "PATCH") and any(
+        path.startswith(p) for p in _CRITICAL_PATH_PREFIXES
+    )
+
+
+class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
+    """Return 503 immediately when the server is already handling too many requests.
+
+    Clinical write operations (results, orders, samples, critical alerts) are
+    always allowed through regardless of the current load level.
+    """
+    _active: int = 0
+
+    def __init__(self, app, max_concurrent: int = _MAX_CONCURRENT):
+        super().__init__(app)
+        self._max = max_concurrent
+
+    async def dispatch(self, request: Request, call_next):
+        # Health checks — always allowed
+        if request.url.path in _ALWAYS_ALLOWED_PATHS:
+            return await call_next(request)
+        # Critical clinical writes — always allowed (patient safety)
+        if _is_critical_write(request.method, request.url.path):
+            return await call_next(request)
+        if ConcurrencyLimitMiddleware._active >= self._max:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Server busy — try again shortly",
+                    "detail_ar": "الخادم مشغول — حاول مرة أخرى بعد لحظة",
+                    "retry_after": 5,
+                },
+                headers={"Retry-After": "5"},
+            )
+        ConcurrencyLimitMiddleware._active += 1
+        try:
+            return await call_next(request)
+        finally:
+            ConcurrencyLimitMiddleware._active -= 1
+
+
+app.add_middleware(ConcurrencyLimitMiddleware)
+
 # ===== ROUTES =====
 from .routes import login, register, patients, results, dashboard, labs
 from .routes import identity, notifications, ehr, security
@@ -252,17 +358,17 @@ app.include_router(ai_routes.router)
 
 # ===== STARTUP WARMUP =====
 @app.on_event("startup")
-async def start_outbox_worker():
-    """Launch the Outbox Pattern background worker.
-
-    The worker polls outbox_events every 10 seconds and dispatches them
-    to the in-process EventBus.  Guarantees at-least-once event delivery
-    even after crashes or broker downtime.
-    """
+async def start_background_workers():
+    """Launch background workers for outbox delivery and self-healing recovery."""
     import asyncio
     from .services.outbox_service import OutboxWorker
+    from .core.self_healing import RecoveryWorker
+
     asyncio.create_task(OutboxWorker.background_loop())
     logger.info("Outbox worker started")
+
+    asyncio.create_task(RecoveryWorker.background_loop())
+    logger.info("Recovery worker started")
 
 
 @app.on_event("startup")
@@ -288,49 +394,48 @@ async def warmup():
 @app.get("/health", tags=["system"])
 def health():
     """
-    Health check endpoint for load balancers and monitoring.
-    Returns system status and version information.
+    Liveness probe — always returns 200 if the process is alive.
+    Includes circuit breaker state and pool info for observability.
     """
+    from .core.self_healing import health as sys_health
+    from .core.startup_guard import system_ready
     db_ok = check_db_connection()
     pool = get_pool_status()
-    status = "healthy" if db_ok else "degraded"
     return {
-        "status": status,
+        "status": "healthy" if db_ok else "degraded",
         "platform": APP_NAME,
         "platform_ar": PLATFORM_NAME_AR,
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
+        "system_ready": system_ready,
         "database": "connected" if db_ok else "disconnected",
+        "degraded_mode": sys_health.degraded,
+        "circuits": sys_health.to_dict()["circuits"],
         "pool": pool,
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
 @app.get("/health/ready", tags=["system"])
 def readiness():
-    """Kubernetes-style readiness probe - returns 503 if not ready to serve traffic."""
-    from .security.redis_client import cache
+    """Hybrid readiness probe — startup completed AND services still alive.
 
-    db_ok = check_db_connection()
-    if not db_ok:
+    Returns 200 only when:
+      1. Startup guard completed successfully (all steps passed), AND
+      2. Database is currently reachable, AND
+      3. Redis cache is currently reachable.
+
+    If DB or Redis fail after startup, this probe turns 503 again — the
+    Docker healthcheck will detect it and trigger a container restart.
+    """
+    from .core.startup_guard import is_system_ready
+    ready, reason = is_system_ready()
+    if not ready:
         return JSONResponse(
             status_code=503,
-            content={"status": "not_ready", "reason": "database_unavailable"},
+            content={"status": "not_ready", "reason": reason},
         )
-
-    redis_ok = True
-    try:
-        cache.set("_health", "1", ex=10)
-    except Exception:
-        redis_ok = False
-
-    if not redis_ok:
-        return JSONResponse(
-            status_code=503,
-            content={"status": "not_ready", "reason": "redis_unavailable"},
-        )
-
-    return {"status": "ready", "database": "ok", "cache": "ok"}
+    return {"status": "ready"}
 
 
 @app.get("/health/live", tags=["system"])
@@ -339,16 +444,57 @@ def liveness():
     return {"status": "alive", "version": APP_VERSION}
 
 
-@app.get("/r/{token}/pdf")
-def serve_result_pdf_redirect(token: str, request: Request):
-    """Direct PDF download for result."""
-    from .routes.results import download_result_pdf
-    from .database import SessionLocal
-    db = SessionLocal()
+@app.get("/health/status", tags=["system"])
+def health_status():
+    """
+    Full diagnostic status — shows exactly why the system is or isn't ready.
+    Useful for debugging startup failures without needing server access.
+    Always returns 200 — check 'ready' field for actual state.
+    """
+    from .core.startup_guard import system_ready, is_system_ready
+    from .core.self_healing import health as sys_health
+
+    # Individual component checks
+    db_ok = False
+    db_error = None
     try:
-        return download_result_pdf(token, request, db)
-    finally:
-        db.close()
+        db_ok = check_db_connection()
+    except Exception as e:
+        db_error = str(e)
+
+    redis_ok = False
+    redis_error = None
+    try:
+        from .security.redis_client import cache as _redis
+        _redis.set("_status_probe", "1", ex=10)
+        redis_ok = True
+    except Exception as e:
+        redis_error = str(e)
+
+    ready, reason = is_system_ready()
+    pool = get_pool_status()
+    sys_h = sys_health.to_dict()
+
+    return {
+        "ready": ready,
+        "reason": reason,
+        "system_ready_flag": system_ready,
+        "database": {
+            "connected": db_ok,
+            "error": db_error,
+            "pool": pool,
+        },
+        "redis": {
+            "connected": redis_ok,
+            "error": redis_error,
+        },
+        "circuits": sys_h.get("circuits", {}),
+        "degraded_mode": sys_h.get("degraded", False),
+        "version": APP_VERSION,
+        "environment": os.getenv("ENV", "production"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
 
 
 # ===== PUBLIC ENDPOINTS =====
@@ -392,20 +538,12 @@ def list_test_types():
 
 # ===== STARTUP & SHUTDOWN =====
 @app.on_event("startup")
-def on_startup():
-    """Bootstrap the system on first run."""
+async def on_startup():
+    """Run the production startup guard then mark the system ready."""
+    from .core.startup_guard import run_startup_guard
     logger.info("GULA Platform %s starting up...", APP_VERSION)
-
-    # Verify database connectivity before accepting requests
-    if not check_db_connection():
-        logger.error("DATABASE CONNECTION FAILED at startup!")
-    else:
-        logger.info("Database connection verified")
-
-    _migrate_perm_version()
-    _seed_test_types()
-    _ensure_master_admin()
-    logger.info("GULA Platform %s ready", APP_VERSION)
+    await run_startup_guard()
+    # system_ready flag is set to True inside run_startup_guard on success
 
 
 @app.on_event("shutdown")
