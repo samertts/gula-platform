@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine, check_db_connection, get_pool_status
@@ -44,6 +44,7 @@ if not IS_PRODUCTION or ENABLE_API_DOCS:
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
+    default_response_class=ORJSONResponse,
     description=(
         "**GULA** - منصة غولا الصحية الذكية للمختبرات\n\n"
         "Smart Health Platform for Medical Laboratories in Iraq.\n\n"
@@ -240,6 +241,44 @@ app.add_middleware(ReadinessMiddleware)
 # Works in conjunction with RecoveryWorker which probes and auto-heals.
 from .core.self_healing import DegradedModeMiddleware
 app.add_middleware(DegradedModeMiddleware)
+
+
+# ===== CONCURRENCY LIMIT (BACKPRESSURE) MIDDLEWARE =====
+# Sheds load when too many requests are simultaneously in-flight.
+# Each uvicorn worker has its own counter (per-process, not shared across workers).
+# Health-check paths are always exempt so Docker probes are never shed.
+_MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT_REQUESTS", "200"))
+
+
+class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
+    """Return 503 immediately when the server is already handling too many requests."""
+    _active: int = 0
+
+    def __init__(self, app, max_concurrent: int = _MAX_CONCURRENT):
+        super().__init__(app)
+        self._max = max_concurrent
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path in _ALWAYS_ALLOWED_PATHS:
+            return await call_next(request)
+        if ConcurrencyLimitMiddleware._active >= self._max:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Server busy — try again shortly",
+                    "detail_ar": "الخادم مشغول — حاول مرة أخرى بعد لحظة",
+                    "retry_after": 5,
+                },
+                headers={"Retry-After": "5"},
+            )
+        ConcurrencyLimitMiddleware._active += 1
+        try:
+            return await call_next(request)
+        finally:
+            ConcurrencyLimitMiddleware._active -= 1
+
+
+app.add_middleware(ConcurrencyLimitMiddleware)
 
 # ===== ROUTES =====
 from .routes import login, register, patients, results, dashboard, labs

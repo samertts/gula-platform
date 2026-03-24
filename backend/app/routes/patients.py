@@ -8,7 +8,7 @@ from ..models.patient import Patient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
-from ..services.identity import normalize_name, match_score, hash_national_id
+from ..services.identity import normalize_name, match_score, hash_national_id, hash_family_id
 from ..services.audit_service import log_action
 
 router = APIRouter(prefix="/patients", tags=["patients"])
@@ -21,6 +21,7 @@ class PatientCreate(BaseModel):
     gender: Optional[str] = None
     email: Optional[str] = None
     national_id: Optional[str] = None  # will be hashed before storage
+    family_id: Optional[str] = None    # civil registry family number — hashed before storage
     force_create: bool = False  # skip duplicate check
 
     @field_validator("full_name")
@@ -90,6 +91,17 @@ class PatientCreate(BaseModel):
             return cleaned
         return v
 
+    @field_validator("family_id")
+    @classmethod
+    def validate_family_id(cls, v):
+        if v:
+            import re
+            cleaned = re.sub(r"\s", "", v)
+            if not re.match(r"^\d{1,15}$", cleaned):
+                raise ValueError("Family ID must be 1-15 digits")
+            return cleaned
+        return v
+
 
 class PatientUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -97,6 +109,7 @@ class PatientUpdate(BaseModel):
     birth_date: Optional[str] = None
     gender: Optional[str] = None
     email: Optional[str] = None
+    family_id: Optional[str] = None  # set/update civil registry family number
 
     @field_validator("full_name")
     @classmethod
@@ -105,6 +118,17 @@ class PatientUpdate(BaseModel):
             v = v.strip()
             if len(v) < 2 or len(v) > 200:
                 raise ValueError("Name must be between 2 and 200 characters")
+        return v
+
+    @field_validator("family_id")
+    @classmethod
+    def validate_family_id(cls, v):
+        if v is not None and v != "":
+            import re
+            cleaned = re.sub(r"\s", "", v)
+            if not re.match(r"^\d{1,15}$", cleaned):
+                raise ValueError("Family ID must be 1-15 digits")
+            return cleaned
         return v
 
 
@@ -117,6 +141,8 @@ def patient_to_dict(p: Patient) -> dict:
         "gender": p.gender,
         "email": p.email,
         "health_id": p.health_id,
+        "has_national_id": bool(p.national_id_hash),
+        "has_family_id": bool(p.family_id_hash),
         "created_at": p.created_at.isoformat() if p.created_at else None,
     }
 
@@ -152,8 +178,9 @@ def create_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Hash national ID if provided
+    # Hash national ID and family ID if provided
     nid_hash = hash_national_id(data.national_id) if data.national_id else None
+    fid_hash = hash_family_id(data.family_id) if data.family_id else None
 
     # Duplicate detection (unless force_create is True)
     if not data.force_create:
@@ -224,12 +251,70 @@ def create_patient(
         email=data.email,
         health_id=health_id,
         national_id_hash=nid_hash,
+        family_id_hash=fid_hash,
     )
     db.add(patient)
     db.commit()
     db.refresh(patient)
 
     return {"message": "Patient created", "patient": patient_to_dict(patient)}
+
+
+@router.get("/family/{family_id}")
+def get_family_members(
+    family_id: str,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return all patients sharing the same civil-registry family number.
+
+    The family_id is hashed before lookup — the raw number is never stored.
+    Useful for viewing a patient's family health history side by side.
+    """
+    import re
+    cleaned = re.sub(r"\s", "", family_id)
+    if not re.match(r"^\d{1,15}$", cleaned):
+        raise HTTPException(status_code=400, detail="Family ID must be 1-15 digits")
+
+    fid_hash = hash_family_id(cleaned)
+
+    members = db.query(Patient).filter(
+        Patient.family_id_hash == fid_hash,
+        Patient.lab_id == current_user.lab_id,
+    ).order_by(Patient.birth_date).all()
+
+    if not members:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "No patients found with this family ID in your lab",
+                "message_ar": "لا يوجد مرضى مسجلون بهذا الرقم العائلي في مختبرك",
+            },
+        )
+
+    # Attach order count + last visit for each member — single extra query
+    from ..models.lab_order import LabOrder
+    from sqlalchemy import func
+
+    order_stats = dict(
+        db.query(LabOrder.patient_id, func.count(LabOrder.id), func.max(LabOrder.created_at))
+        .filter(LabOrder.patient_id.in_([m.id for m in members]))
+        .group_by(LabOrder.patient_id)
+        .all()
+    )
+
+    result = []
+    for m in members:
+        stats = order_stats.get(m.id)
+        member_dict = patient_to_dict(m)
+        member_dict["order_count"] = stats[0] if stats else 0
+        member_dict["last_visit"] = stats[1].isoformat() if stats and stats[1] else None
+        result.append(member_dict)
+
+    return {
+        "family_member_count": len(result),
+        "members": result,
+    }
 
 
 @router.get("/{patient_id}")
@@ -264,7 +349,11 @@ def update_patient(
 
     changed_fields = list(data.model_dump(exclude_unset=True).keys())
     for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(patient, field, value)
+        if field == "family_id":
+            # Convert raw family ID to hash before storing
+            patient.family_id_hash = hash_family_id(value) if value else None
+        else:
+            setattr(patient, field, value)
 
     log_action(
         db,

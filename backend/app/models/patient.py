@@ -17,6 +17,9 @@ class Patient(Base):
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
     health_id = Column(String(20), unique=True, nullable=True, index=True)
     national_id_hash = Column(String(255), nullable=True, index=True)
+    # Family ID hash — links all family members by their civil registry family number.
+    # Stored as HMAC-SHA256 (prefix "fam:") so the raw number is never persisted.
+    family_id_hash = Column(String(255), nullable=True, index=True)
     full_name = Column(String(200), nullable=False)
     phone = Column(String(20), nullable=False, index=True)
     birth_date = Column(Date, nullable=True)
