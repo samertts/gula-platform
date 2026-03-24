@@ -10,6 +10,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..security.rate_limit import get_client_ip
 from ..services.interpretation import get_flag
 from ..services.audit_service import log_action
 from ..config import BASE_URL
@@ -114,7 +115,7 @@ def create_batch_orders(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Batch created {len(created_orders)} orders with {sum(o['results_count'] for o in created_orders)} results",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     db.commit()

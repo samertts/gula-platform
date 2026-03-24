@@ -433,17 +433,6 @@ def health_status():
     }
 
 
-@app.get("/r/{token}/pdf")
-def serve_result_pdf_redirect(token: str, request: Request):
-    """Direct PDF download for result."""
-    from .routes.results import download_result_pdf
-    from .database import SessionLocal
-    db = SessionLocal()
-    try:
-        return download_result_pdf(token, request, db)
-    finally:
-        db.close()
-
 
 # ===== PUBLIC ENDPOINTS =====
 _test_types_cache: dict = {"data": None, "at": 0.0}
