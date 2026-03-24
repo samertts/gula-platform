@@ -1,20 +1,35 @@
 """
 Epidemiology Service — GULA Platform
 ======================================
-Outbreak detection using incidence-rate thresholds rather than a raw
-record count.  A raw count of >1000 is meaningless — a busy lab with
-1 001 routine CBC results is not an outbreak.
+Outbreak detection with two complementary algorithms:
 
-Algorithm (simple, deterministic, auditable):
-  1. Count results for a specific test within a rolling time window.
-  2. Compare against the baseline (expected results per day × window days).
-  3. If observed / expected >= threshold ratio → alert.
+1. **Incidence-rate ratio** (always available)
+   Fast, requires only current window data.
+   Alert when observed_abnormal / expected >= alert_ratio.
 
-Returns a dict so callers can decide how to display the result.
+2. **Z-score** (when historical baseline data is supplied)
+   More robust: accounts for natural variance in the baseline period.
+   Alert when z = (observed - mean) / std >= z_threshold.
+   Falls back to ratio method if std == 0 or history is too short.
+
+Neither algorithm accounts for seasonality or population size — this service
+is an early-warning flag, not a definitive epidemiological analysis.
 """
 from __future__ import annotations
 
+import math
 from typing import Sequence
+
+
+_ABNORMAL_FLAGS = {"H", "L", "critical", "high", "low"}
+
+
+def _count_abnormal(records: Sequence[dict], test_code: str) -> int:
+    return sum(
+        1 for r in records
+        if (not test_code or str(r.get("test_code", "")).lower() == test_code.lower())
+        and str(r.get("flag", "")).strip() in _ABNORMAL_FLAGS
+    )
 
 
 def detect_outbreak(
@@ -24,65 +39,117 @@ def detect_outbreak(
     window_days: int = 7,
     baseline_per_day: float = 10.0,
     alert_ratio: float = 3.0,
+    history: Sequence[float] | None = None,
+    z_threshold: float = 2.5,
 ) -> dict:
-    """Detect a possible disease outbreak from a sequence of result records.
+    """Detect a possible disease outbreak.
 
     Args:
-        results:          Iterable of result dicts.  Each dict must contain at
-                          least ``{"test_code": str, "flag": str}``.
-        test_code:        Filter to a specific test code.  Empty string = all.
-        window_days:      Rolling window length in days (used to derive expected
-                          count from ``baseline_per_day``).
-        baseline_per_day: Expected number of *flagged* results per day under
-                          normal conditions.
-        alert_ratio:      Raise alert when observed / expected >= this ratio.
+        results:          Current-window result dicts ({"test_code", "flag"}).
+        test_code:        Filter to one test code; "" = all tests.
+        window_days:      Length of the current observation window in days.
+        baseline_per_day: Expected abnormal results per day (ratio method).
+        alert_ratio:      Ratio method alert threshold (observed / expected).
+        history:          Optional list of per-day abnormal counts from prior
+                          windows.  When supplied and long enough (≥ 7 days),
+                          the z-score method is used as primary signal.
+        z_threshold:      Z-score alert threshold (default 2.5 ≈ p < 0.006).
 
     Returns:
         dict with keys:
-          - ``status``: "alert" | "normal"
-          - ``observed``: int — count of abnormal results in window
-          - ``expected``: float — baseline count for the window
-          - ``ratio``: float — observed / expected (or 0 if expected == 0)
-          - ``message``: str — human-readable summary
+          status          — "alert" | "warning" | "normal" | "insufficient_data"
+          observed        — int
+          expected        — float (ratio method)
+          ratio           — float
+          z_score         — float | None
+          method          — "z_score" | "ratio"
+          message         — human-readable English summary
     """
     if not results:
         return {
-            "status": "normal",
+            "status":   "normal",
             "observed": 0,
             "expected": baseline_per_day * window_days,
-            "ratio": 0.0,
-            "message": "No data provided.",
+            "ratio":    0.0,
+            "z_score":  None,
+            "method":   "ratio",
+            "message":  "No data provided.",
         }
 
-    abnormal_flags = {"H", "L", "critical", "high", "low"}
-
-    observed = sum(
-        1 for r in results
-        if (not test_code or str(r.get("test_code", "")).lower() == test_code.lower())
-        and str(r.get("flag", "")).strip() in abnormal_flags
-    )
-
+    observed = _count_abnormal(results, test_code)
     expected = baseline_per_day * window_days
-    ratio = (observed / expected) if expected > 0 else 0.0
+    ratio    = round(observed / expected, 2) if expected > 0 else 0.0
 
+    # ── Z-score path ───────────────────────────────────────────────────────────
+    z_score: float | None = None
+    method = "ratio"
+
+    if history and len(history) >= 7:
+        n    = len(history)
+        mean = sum(history) / n
+        std  = math.sqrt(sum((x - mean) ** 2 for x in history) / n)
+
+        if std > 0:
+            z_score = round((observed - mean) / std, 2)
+            method  = "z_score"
+
+            if z_score >= z_threshold:
+                status = "alert"
+                msg = (
+                    f"Outbreak alert (z-score): {observed} abnormal results, "
+                    f"z={z_score:.1f} (threshold {z_threshold}). "
+                    f"Baseline mean={mean:.1f}, std={std:.1f}. "
+                    "Epidemiological review recommended."
+                )
+            elif z_score >= z_threshold * 0.7:
+                status = "warning"
+                msg = (
+                    f"Elevated signal (z-score): {observed} abnormal results, "
+                    f"z={z_score:.1f}. Monitor closely."
+                )
+            else:
+                status = "normal"
+                msg = (
+                    f"No outbreak signal (z-score): {observed} abnormal results, "
+                    f"z={z_score:.1f}."
+                )
+            return {
+                "status":   status,
+                "observed": observed,
+                "expected": round(mean, 2),
+                "ratio":    ratio,
+                "z_score":  z_score,
+                "method":   method,
+                "message":  msg,
+            }
+
+    # ── Ratio path (fallback / primary when no history) ────────────────────────
     if ratio >= alert_ratio:
         status = "alert"
-        message = (
-            f"Possible outbreak detected: {observed} abnormal results "
-            f"in {window_days}-day window (expected ~{expected:.0f}, "
+        msg = (
+            f"Outbreak alert (ratio): {observed} abnormal results in "
+            f"{window_days}-day window (expected ~{expected:.0f}, "
             f"ratio {ratio:.1f}×). Epidemiological review recommended."
+        )
+    elif ratio >= alert_ratio * 0.6:
+        status = "warning"
+        msg = (
+            f"Elevated signal (ratio): {observed} abnormal results, "
+            f"ratio {ratio:.1f}×. Monitor closely."
         )
     else:
         status = "normal"
-        message = (
-            f"No outbreak signal: {observed} abnormal results "
-            f"in {window_days}-day window (ratio {ratio:.1f}×)."
+        msg = (
+            f"No outbreak signal: {observed} abnormal results in "
+            f"{window_days}-day window (ratio {ratio:.1f}×)."
         )
 
     return {
-        "status": status,
+        "status":   status,
         "observed": observed,
         "expected": expected,
-        "ratio": round(ratio, 2),
-        "message": message,
+        "ratio":    ratio,
+        "z_score":  z_score,
+        "method":   method,
+        "message":  msg,
     }

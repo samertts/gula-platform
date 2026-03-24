@@ -52,8 +52,9 @@ def send_result_notification(
 
     lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
 
-    # Fetch all results in a single query — avoids issuing two separate DB round-trips
-    all_results = db.query(LabResult).filter(LabResult.order_id == order.id).all()
+    # Fetch results (capped at 100 — a single order should never have more).
+    # Avoids loading an unbounded number of rows into memory.
+    all_results = db.query(LabResult).filter(LabResult.order_id == order.id).limit(100).all()
     if not all_results:
         raise HTTPException(status_code=400, detail="Order has no results")
 

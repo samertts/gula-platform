@@ -40,6 +40,9 @@ logger = logging.getLogger("gula.compliance")
 router = APIRouter(prefix="/compliance", tags=["government compliance"])
 
 
+_COMPLIANCE_ROLES = {"admin", "master_admin", "province_admin", "lab_admin"}
+
+
 @router.get("/info", summary="System information for government audit")
 def system_info(current_user: LabUser = Depends(get_current_user)):
     """
@@ -47,12 +50,20 @@ def system_info(current_user: LabUser = Depends(get_current_user)):
     المعلومات الكاملة للنظام للتحقق من الامتثال الحكومي.
 
     For use by:
-    - Ministry of Health IT inspectors
+    - Ministry of Health IT inspectors (admin role required)
     - National Data Center (NIC) testers
     - Security auditors
 
-    Requires authentication to prevent unauthenticated reconnaissance.
+    Requires admin-level role — regular staff cannot access system architecture details.
     """
+    if current_user.role not in _COMPLIANCE_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Access restricted to administrators",
+                "message_ar": "هذه الصفحة مخصصة للمسؤولين فقط",
+            },
+        )
     return {
         "platform": {
             "name": APP_NAME,
