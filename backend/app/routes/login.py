@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
@@ -57,7 +58,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             resource_type="auth",
             user_id=user.id if user else None,
             user_role=user.role if user else None,
-            details=f"Failed login attempt for email: {email}",
+            details=f"Failed login attempt for email_sha256: {hashlib.sha256(email.encode()).hexdigest()[:16]}",
             ip_address=client_ip,
         )
         db.commit()

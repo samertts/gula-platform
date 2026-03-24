@@ -24,7 +24,7 @@ class LabResult(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("lab_orders.id", ondelete="CASCADE"), nullable=False, index=True)
-    test_type_id = Column(Integer, ForeignKey("test_types.id"), nullable=True)
+    test_type_id = Column(Integer, ForeignKey("test_types.id", ondelete="SET NULL"), nullable=True)
     test_name = Column(String(200), nullable=False)
     value = Column(Float, nullable=True)
     value_text = Column(String(200), nullable=True)  # for non-numeric results

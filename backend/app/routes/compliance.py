@@ -41,7 +41,7 @@ router = APIRouter(prefix="/compliance", tags=["government compliance"])
 
 
 @router.get("/info", summary="System information for government audit")
-def system_info():
+def system_info(current_user: LabUser = Depends(get_current_user)):
     """
     Returns comprehensive system information for government compliance verification.
     المعلومات الكاملة للنظام للتحقق من الامتثال الحكومي.
@@ -50,6 +50,8 @@ def system_info():
     - Ministry of Health IT inspectors
     - National Data Center (NIC) testers
     - Security auditors
+
+    Requires authentication to prevent unauthenticated reconnaissance.
     """
     return {
         "platform": {
