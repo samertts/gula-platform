@@ -52,13 +52,15 @@ def send_result_notification(
 
     lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
 
-    # Get first result token for the link
-    result = db.query(LabResult).filter(LabResult.order_id == order.id).first()
-    if not result:
+    # Fetch results (capped at 100 — a single order should never have more).
+    # Avoids loading an unbounded number of rows into memory.
+    all_results = db.query(LabResult).filter(LabResult.order_id == order.id).limit(100).all()
+    if not all_results:
         raise HTTPException(status_code=400, detail="Order has no results")
 
+    result = all_results[0]
     result_url = f"{BASE_URL}/r/{result.token}"
-    results_count = db.query(LabResult).filter(LabResult.order_id == order.id).count()
+    results_count = len(all_results)
 
     # Build phone number
     phone_clean = patient.phone.replace("+", "").replace("-", "").replace(" ", "")

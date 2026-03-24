@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Enum
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from datetime import datetime, timezone, date as date_type
 from ..database import Base
 import enum
@@ -32,7 +32,12 @@ class Patient(Base):
     lab = relationship("Lab", back_populates="patients")
     orders = relationship("LabOrder", back_populates="patient", cascade="all, delete-orphan")
     # Guardian relationship — a patient can have many dependents (children)
-    dependents = relationship("Patient", foreign_keys=[guardian_id], backref="guardian", lazy="dynamic")
+    dependents = relationship(
+        "Patient",
+        foreign_keys=[guardian_id],
+        backref=backref("guardian", remote_side=[id]),
+        lazy="dynamic",
+    )
 
     @property
     def is_minor(self) -> bool:

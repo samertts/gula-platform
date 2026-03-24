@@ -1,20 +1,19 @@
 """
-In-memory rate limiter for GULA Platform.
+Rate limiter for GULA Platform.
 
-Rate limiter is in-process (per-worker) — not shared across uvicorn workers.
-For strict cross-worker limiting use Redis. In-process is acceptable for
-small deployments: effective limit is (configured_limit × worker_count).
+Uses Redis (via the shared `cache` singleton) when available — shared across
+all uvicorn workers so the effective limit is exactly what's configured.
+Falls back to the in-memory store in development (single-process).
 
-The important fix here is IP extraction: the backend sits behind Docker nginx,
-so request.client.host is always the nginx container IP (172.x.x.x), not the
-real user IP. We use X-Real-IP (set by nginx) when the direct connection
-originates from any RFC-1918 private address.
+Fixed-window algorithm: requests are counted per (key, time-bucket) pair.
+A bucket rolls over every `window_seconds` seconds.
 """
 
 import ipaddress
+import math
 import time
-from collections import defaultdict
 from fastapi import Request, HTTPException
+from .redis_client import cache
 
 
 def _is_private_ip(ip: str) -> bool:
@@ -57,48 +56,27 @@ def get_client_ip(request: Request) -> str:
     return direct_ip
 
 
-class RateLimiter:
-    def __init__(self):
-        self._requests: dict[str, list[float]] = defaultdict(list)
-        self._last_cleanup = time.time()
-        self._cleanup_interval = 300  # Clean stale keys every 5 minutes
+def _check(key: str, max_requests: int, window_seconds: int) -> bool:
+    """Fixed-window rate check using the shared cache (Redis or in-memory).
 
-    def check(self, key: str, max_requests: int = 60, window_seconds: int = 60) -> bool:
-        """Check if request is allowed. Returns True if allowed."""
-        now = time.time()
-        cutoff = now - window_seconds
+    Returns True if the request is allowed, False if limit is exceeded.
+    The key is scoped to the current time bucket so the window resets cleanly.
+    """
+    bucket = math.floor(time.time() / window_seconds)
+    full_key = f"rl:{key}:{bucket}"
 
-        # Periodic global cleanup to prevent memory leak from abandoned keys
-        if now - self._last_cleanup > self._cleanup_interval:
-            self._cleanup(now, window_seconds)
+    count = cache.incr(full_key)
+    if count == 1:
+        # First request in this window — set expiry so the key auto-expires
+        cache.expire(full_key, window_seconds * 2)
 
-        # Clean old entries for this key
-        self._requests[key] = [t for t in self._requests[key] if t > cutoff]
-
-        if len(self._requests[key]) >= max_requests:
-            return False
-
-        self._requests[key].append(now)
-        return True
-
-    def _cleanup(self, now: float, default_window: int = 60):
-        """Remove stale keys that have no recent requests."""
-        self._last_cleanup = now
-        cutoff = now - default_window * 2
-        stale_keys = [k for k, v in self._requests.items() if not v or v[-1] < cutoff]
-        for k in stale_keys:
-            del self._requests[k]
-
-
-# Global instance (in-memory only - resets on restart, not shared across processes)
-# For production multi-process deployments, use Redis-based rate limiting
-limiter = RateLimiter()
+    return count <= max_requests
 
 
 def rate_limit_public(request: Request, max_per_minute: int = 30):
     """Rate limit for public endpoints (result links) — keyed by IP."""
     client_ip = get_client_ip(request)
-    if not limiter.check(f"public:{client_ip}", max_requests=max_per_minute, window_seconds=60):
+    if not _check(f"public:{client_ip}", max_requests=max_per_minute, window_seconds=60):
         raise HTTPException(
             status_code=429,
             detail="Too many requests. Please try again later.",
@@ -117,7 +95,7 @@ def rate_limit_user(request: Request, user_id: int, max_per_minute: int = 60):
     client_ip = get_client_ip(request)
 
     # Per-user check (primary) — e.g. 60 req/min per account
-    if not limiter.check(f"user:{user_id}", max_requests=max_per_minute, window_seconds=60):
+    if not _check(f"user:{user_id}", max_requests=max_per_minute, window_seconds=60):
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded. Please slow down.",
@@ -125,7 +103,7 @@ def rate_limit_user(request: Request, user_id: int, max_per_minute: int = 60):
 
     # Per-IP check (secondary) — allows 3× the per-user limit across all users on that IP
     ip_max = max_per_minute * 3
-    if not limiter.check(f"ip:{client_ip}", max_requests=ip_max, window_seconds=60):
+    if not _check(f"ip:{client_ip}", max_requests=ip_max, window_seconds=60):
         raise HTTPException(
             status_code=429,
             detail="Too many requests from this network.",
@@ -135,7 +113,7 @@ def rate_limit_user(request: Request, user_id: int, max_per_minute: int = 60):
 def rate_limit_auth(request: Request, max_per_minute: int = 10):
     """Rate limit for auth endpoints (login/register) — keyed by IP."""
     client_ip = get_client_ip(request)
-    if not limiter.check(f"auth:{client_ip}", max_requests=max_per_minute, window_seconds=60):
+    if not _check(f"auth:{client_ip}", max_requests=max_per_minute, window_seconds=60):
         raise HTTPException(
             status_code=429,
             detail="Too many login attempts. Please wait a moment.",
@@ -151,13 +129,13 @@ def rate_limit_admin(request: Request, user_id: int, max_per_minute: int = 20):
     - Compromised admin token abuse
     """
     client_ip = get_client_ip(request)
-    if not limiter.check(f"admin:user:{user_id}", max_requests=max_per_minute, window_seconds=60):
+    if not _check(f"admin:user:{user_id}", max_requests=max_per_minute, window_seconds=60):
         raise HTTPException(
             status_code=429,
             detail="Admin rate limit exceeded. Maximum 20 operations per minute.",
         )
     # Secondary: per-IP across all admin users (blocks scripted attacks from one IP)
-    if not limiter.check(f"admin:ip:{client_ip}", max_requests=60, window_seconds=60):
+    if not _check(f"admin:ip:{client_ip}", max_requests=60, window_seconds=60):
         raise HTTPException(
             status_code=429,
             detail="Too many admin requests from this network.",
