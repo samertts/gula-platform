@@ -37,14 +37,19 @@ system_ready: bool = False
 def is_system_ready() -> tuple[bool, str]:
     """Return (ready: bool, reason: str).
 
-    Combines the startup-completed flag with live connectivity checks so
-    /health/ready stays accurate after startup (DB/Redis failures post-startup
-    will flip the probe back to 503 and trigger a container restart).
+    Readiness tiers:
+      CRITICAL  — PostgreSQL.  If DB is down, all requests return 503.
+      OPTIONAL  — Redis.       If Redis is down after startup, the system
+                               continues in degraded mode (in-memory fallback).
+                               Login, reads, and writes keep working; only
+                               cross-process session invalidation is weakened.
+
+    This prevents a Redis hiccup from taking the entire platform offline.
     """
     if not system_ready:
         return False, "startup_in_progress"
 
-    # Live DB check
+    # ── CRITICAL: Database ────────────────────────────────────────────────────
     try:
         from ..database import check_db_connection
         if not check_db_connection():
@@ -52,12 +57,20 @@ def is_system_ready() -> tuple[bool, str]:
     except Exception:
         return False, "database_error"
 
-    # Live Redis check
+    # ── OPTIONAL: Redis (runtime failure → degraded, not 503) ─────────────────
+    # Redis is mandatory at startup (redis_client.py exits if unreachable).
+    # Post-startup failures are tolerated: in-memory fallback takes over
+    # automatically for rate-limiting and perm_version checks.
     try:
         from ..security.redis_client import cache as _redis
         _redis.set("_readiness_probe", "1", ex=10)
     except Exception:
-        return False, "redis_unavailable"
+        logger.warning(
+            "[READINESS] Redis unreachable — system continues in degraded mode "
+            "(in-memory fallback active; cross-process invalidation weakened)"
+        )
+        # Return ready=True with a warning reason instead of blocking all traffic
+        return True, "degraded_redis"
 
     return True, "ok"
 
