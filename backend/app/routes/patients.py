@@ -7,6 +7,7 @@ from ..database import get_db
 from ..models.patient import Patient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..security.rate_limit import get_client_ip
 from ..services.identity import normalize_name, match_score, hash_national_id
 from ..services.audit_service import log_action
 
@@ -273,7 +274,7 @@ def update_patient(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Updated fields: {', '.join(changed_fields)}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     db.commit()

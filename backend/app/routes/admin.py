@@ -442,12 +442,7 @@ def list_users(
     actor_level = get_role_level(actor.role)
     query = db.query(LabUser)
 
-    # Each role sees only users below their level
-    query = query.filter(
-        # Can't see equals or above themselves in hierarchy
-        # We do this by filtering roles whose level < actor_level
-    )
-    # Simpler: exclude users at same or higher level
+    # Each role sees only users strictly below their level in the hierarchy
     visible_roles = [r for r, lvl in ROLE_LEVELS.items() if lvl < actor_level]
     if not visible_roles:
         return {"total": 0, "users": []}

@@ -16,7 +16,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
 from ..models.test_type import TestType
 from ..security.dependencies import get_current_user
-from ..security.rate_limit import rate_limit_public, rate_limit_user
+from ..security.rate_limit import rate_limit_public, rate_limit_user, get_client_ip
 from ..services.interpretation import interpret_result, get_flag
 from ..services.audit_service import log_action
 from ..routes.critical_alerts import check_critical
@@ -216,7 +216,7 @@ def create_order(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Created order with {len(data.results)} results for patient {patient.full_name}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     db.commit()
@@ -416,7 +416,7 @@ def validate_order(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Order validated and locked by {current_user.email}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
     db.commit()
     db.refresh(order)
@@ -456,7 +456,7 @@ def cancel_order(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Order cancelled by {current_user.email}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
     db.commit()
 
@@ -471,7 +471,7 @@ def cancel_order(
 
 # ===== PUBLIC RESULT PAGE (THE KILLER FEATURE) =====
 
-@router.get("/api/r/{token}")
+@router.get("/r/{token}")
 def get_public_result(token: str, request: Request, db: Session = Depends(get_db)):
     """Public result page - accessible without authentication. Rate limited."""
     # Rate limit public access
@@ -526,7 +526,7 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
         resource_type="lab_result",
         resource_id=result.id,
         details=f"Public result viewed for patient {patient.full_name if patient else 'unknown'}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
     db.commit()
 
@@ -553,7 +553,7 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
 
 # ===== PDF DOWNLOAD =====
 
-@router.get("/api/r/{token}/pdf")
+@router.get("/r/{token}/pdf")
 def download_result_pdf(token: str, request: Request, db: Session = Depends(get_db)):
     """Download result as a professional PDF report with QR code."""
     from ..services.pdf_report import generate_result_pdf
@@ -621,7 +621,7 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
     log_action(db, action="download_pdf", resource_type="lab_result",
                resource_id=result.id,
                details=f"PDF downloaded for patient {patient.full_name if patient else 'unknown'}",
-               ip_address=request.client.host if request.client else None)
+               ip_address=get_client_ip(request))
     db.commit()
 
     return Response(

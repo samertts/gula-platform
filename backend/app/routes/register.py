@@ -7,7 +7,7 @@ from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.user import User
 from ..security.auth import hash_password, create_token
-from ..security.rate_limit import rate_limit_auth
+from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
 from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY
 
@@ -98,7 +98,7 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
         user_id=user.id,
         user_role=user.role,
         details=f"New lab registration pending approval: {data.lab_name} (lab_id={lab.id})",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     db.commit()
@@ -214,7 +214,7 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
         user_id=citizen.id,
         user_role="citizen",
         details=f"Citizen self-registered (user_id={citizen.id})",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
     db.commit()
     db.refresh(citizen)
