@@ -55,7 +55,7 @@ def evaluate_westgard(measured: float, expected: float, sd: float) -> dict:
     return {"status": "pass", "violation": None}
 
 
-@router.post("")
+@router.post("", status_code=201)
 def submit_qc(
     data: QCSubmit,
     current_user: LabUser = Depends(get_current_user),
@@ -94,7 +94,7 @@ def submit_qc(
     }
 
 
-@router.post("/batch")
+@router.post("/batch", status_code=201)
 def submit_qc_batch(
     data: QCBatchSubmit,
     current_user: LabUser = Depends(get_current_user),

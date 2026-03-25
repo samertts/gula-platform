@@ -224,6 +224,13 @@ function toast(msg, type = 'success') {
 }
 
 let _modalFocusTimer;
+/**
+ * Open the modal dialog.
+ * @param {string} title  - Plain text title (inserted via textContent — safe).
+ * @param {string} html   - Trusted HTML body.  MUST only contain pre-escaped
+ *                          user data (use esc()/escAttr() before inserting).
+ *                          Never pass raw API strings directly as `html`.
+ */
 function openModal(title, html) {
   clearTimeout(_modalFocusTimer);
   $('modalTitle').textContent = title;
@@ -231,6 +238,11 @@ function openModal(title, html) {
   $('modal').style.display = 'flex';
   const firstInput = $('modalBody').querySelector('input,select,textarea');
   if (firstInput) _modalFocusTimer = setTimeout(() => { if (document.contains(firstInput)) firstInput.focus(); }, 50);
+}
+
+/** Safe variant: both title and body are treated as plain text — no XSS risk. */
+function openModalText(title, message) {
+  openModal(title, '<p>' + esc(message) + '</p>');
 }
 
 function closeModal() { clearTimeout(_modalFocusTimer); $('modal').style.display = 'none'; }
@@ -2744,5 +2756,63 @@ window.addEventListener('offline', _updateConnectionBadge);
 
 // Inject badge after DOM ready
 document.addEventListener('DOMContentLoaded', _injectConnectionBadge);
+
+// ── Global Error Boundaries ─────────────────────────────────────────────────
+// Catch unhandled promise rejections (e.g. network errors in async functions)
+// so they never silently fail or expose stack traces to the user.
+window.addEventListener('unhandledrejection', (event) => {
+  event.preventDefault(); // suppress browser default "Unhandled promise rejection" console.error
+  const reason = event.reason;
+  // 401 → session expired: redirect to login
+  if (reason && reason.status === 401) {
+    if (!window.location.pathname.includes('login')) {
+      _showToast('انتهت جلستك. يرجى تسجيل الدخول مجدداً.', 'info');
+      setTimeout(() => { window.location.href = '/login.html'; }, 1500);
+    }
+    return;
+  }
+  // 503 → server maintenance
+  if (reason && reason.status === 503) {
+    _showToast('الخادم في وضع الصيانة. يرجى المحاولة بعد قليل.', 'info');
+    return;
+  }
+  // 429 → rate limit
+  if (reason && reason.status === 429) {
+    _showToast('طلبات كثيرة. يرجى الانتظار لحظة.', 'info');
+    return;
+  }
+  // Generic unhandled error (log to console, show toast in production)
+  console.error('[GULA] Unhandled rejection:', reason);
+  if (reason && reason.message && reason.message !== 'Failed to fetch') {
+    _showToast('حدث خطأ غير متوقع. يرجى تحديث الصفحة.', 'error');
+  }
+});
+
+// Catch synchronous script errors (e.g. ReferenceError in event handlers)
+window.addEventListener('error', (event) => {
+  if (event.filename && event.filename.includes('gula.js')) {
+    console.error('[GULA] Script error:', event.message, 'at', event.lineno);
+  }
+});
+
+// ── Service Worker Registration ─────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(reg => {
+        // Listen for updates — notify user to refresh for new version
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              _showToast('تحديث جديد متاح. يرجى تحديث الصفحة (F5).', 'info');
+            }
+          });
+        });
+      })
+      .catch(() => { /* SW registration failure is non-fatal */ });
+  });
+}
 
 init();

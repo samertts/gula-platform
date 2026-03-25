@@ -264,7 +264,12 @@ def get_fhir_observations(
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Order not found")
 
-    results = db.query(LabResult).filter(LabResult.order_id == order_id).all()
+    results = (
+        db.query(LabResult)
+        .join(LabOrder, LabResult.order_id == LabOrder.id)
+        .filter(LabResult.order_id == order_id, LabOrder.lab_id == current_user.lab_id)
+        .all()
+    )
     patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
 
     observations = []
@@ -359,7 +364,12 @@ def get_fhir_diagnostic_report(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    results = db.query(LabResult).filter(LabResult.order_id == order_id).all()
+    results = (
+        db.query(LabResult)
+        .join(LabOrder, LabResult.order_id == LabOrder.id)
+        .filter(LabResult.order_id == order_id, LabOrder.lab_id == current_user.lab_id)
+        .all()
+    )
     patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
     lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
 
@@ -463,7 +473,12 @@ def get_fhir_service_request(
         raise HTTPException(status_code=404, detail="Order not found")
 
     patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
-    results = db.query(LabResult).filter(LabResult.order_id == order_id).all()
+    results = (
+        db.query(LabResult)
+        .join(LabOrder, LabResult.order_id == LabOrder.id)
+        .filter(LabResult.order_id == order_id, LabOrder.lab_id == current_user.lab_id)
+        .all()
+    )
 
     intent_map = {"pending": "original-order", "completed": "original-order", "cancelled": "original-order"}
 
