@@ -12,32 +12,37 @@ services:
   # ---------------------------------------------------------------------------
 
   postgres:
-    image: postgres:14-alpine
+    image: postgres:16-alpine
     container_name: gula-postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       POSTGRES_DB: labdb
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=en_US.UTF-8"
+      # Tune shared memory for PostgreSQL inside Docker
+      POSTGRES_SHARED_BUFFERS: ${PG_SHARED_BUFFERS:-256MB}
     # SECURITY: No external ports - only accessible via internal network
     expose:
       - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./config/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./config/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     networks:
       - gula-net
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "1.0"
+          memory: 768M
+          cpus: "1.5"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d labdb"]
-      interval: 15s
+      interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 10
+      start_period: 20s
 
   # ---------------------------------------------------------------------------
   # CACHE
@@ -85,22 +90,23 @@ services:
       context: ./backend
       # build is ignored when 'image' resolves to an existing remote image pulled by compose pull
     container_name: gula-backend
-    # Crash-loop protection: restart on failure but stop after 5 attempts.
-    # If the startup guard raises (bad config, DB unreachable after retries),
-    # we do NOT want an infinite restart loop consuming resources.
-    restart: on-failure
+    # always: restart after any exit (crash, OOM, deliberate stop).
+    # The startup guard handles bad config / missing secrets gracefully — it exits
+    # with a clear error message so the logs show WHY it failed.  Docker will
+    # restart with exponential back-off (5s, 10s, 20s… up to 300s).
+    restart: always
     # SECURITY: Prevent privilege escalation inside container
     security_opt:
       - no-new-privileges:true
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "1.0"
+          memory: 768M
+          cpus: "2.0"
       restart_policy:
-        condition: on-failure
+        condition: any
         delay: 5s
-        max_attempts: 5
+        max_attempts: 0       # unlimited — systemd-managed servers handle this
         window: 120s
     environment:
       ENV: ${ENV:-production}
@@ -125,6 +131,24 @@ services:
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
       MAX_REQUEST_BODY_MB: ${MAX_REQUEST_BODY_MB:-10}
       FCM_SERVER_KEY: ${FCM_SERVER_KEY:-}
+      APNS_KEY: ${APNS_KEY:-}
+      DEVICE_HMAC_KEY: ${DEVICE_HMAC_KEY:-}
+      ALLOWED_DEVICE_IDS: ${ALLOWED_DEVICE_IDS:-}
+      # Concurrency: number of uvicorn workers.  Default 4 (2× CPU cores on 2-core VPS).
+      # Each worker is a full Python process with its own DB pool.
+      # Total DB connections = WEB_CONCURRENCY × (DB_POOL_SIZE + DB_MAX_OVERFLOW)
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-3}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-7}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-10}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
+      # Concurrency throttle: max simultaneous write requests in-flight per worker
+      MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT_REQUESTS:-50}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    volumes:
+      # Audit anchor file: persisted outside DB for tamper detection
+      # Mount as named volume so it survives container rebuilds
+      - audit-anchors:/app/data
     # SECURITY: No external ports - only accessible via api-gateway
     expose:
       - "8000"
