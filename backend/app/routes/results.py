@@ -170,6 +170,19 @@ def create_order(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    # Validate that the referenced doctor belongs to this lab and has doctor role
+    if data.doctor_user_id is not None:
+        doctor = db.query(LabUser).filter(
+            LabUser.id == data.doctor_user_id,
+            LabUser.lab_id == current_user.lab_id,
+            LabUser.role == "doctor",
+        ).first()
+        if not doctor:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid doctor_user_id: user not found, wrong lab, or not a doctor",
+            )
+
     order = LabOrder(
         patient_id=data.patient_id,
         lab_id=current_user.lab_id,

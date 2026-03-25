@@ -7,7 +7,7 @@ from typing import Optional
 from ..database import get_db
 from ..models.patient import Patient
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..services.identity import hash_national_id
 
 router = APIRouter(prefix="/identity", tags=["identity"])
@@ -59,7 +59,7 @@ def link_national_id(
 @router.get("/lookup")
 def lookup_by_national_id(
     national_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Look up a patient by national ID (within the current lab)."""

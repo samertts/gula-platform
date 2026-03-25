@@ -93,6 +93,10 @@ def decode_refresh_token(token: str) -> dict | None:
         )
         if payload.get("type") != "refresh":
             return None
+        # Check revocation: refresh tokens can be blacklisted on logout
+        jti = payload.get("jti")
+        if jti and is_token_blacklisted(jti):
+            return None
         return payload
     except JWTError:
         return None
