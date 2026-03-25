@@ -1,6 +1,7 @@
 import re
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab import Lab
@@ -74,7 +75,7 @@ class LabRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register")
+@router.post("/register", status_code=201)
 def register_lab(data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
 
@@ -188,7 +189,7 @@ class CitizenRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register/citizen")
+@router.post("/register/citizen", status_code=201)
 def register_citizen(data: CitizenRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
 
@@ -232,7 +233,12 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
         is_verified=False,
     )
     db.add(citizen)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # DB UNIQUE constraints catch concurrent duplicate registrations (TOCTOU).
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
 
     log_action(
         db,
@@ -289,7 +295,7 @@ class StaffRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register/staff")
+@router.post("/register/staff", status_code=201)
 def register_staff(
     data: StaffRegisterRequest,
     request: Request,
@@ -417,7 +423,7 @@ class DoctorRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register/doctor")
+@router.post("/register/doctor", status_code=201)
 def register_doctor(
     data: DoctorRegisterRequest,
     request: Request,

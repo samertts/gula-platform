@@ -36,7 +36,7 @@ VALID_SAMPLE_TYPES = ["blood", "urine", "stool", "swab", "serum", "plasma", "csf
 VALID_STATUSES = ["collected", "received", "processing", "analyzed", "rejected"]
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_sample(
     data: SampleCreate,
     current_user: LabUser = Depends(get_current_user),

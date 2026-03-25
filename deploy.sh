@@ -225,7 +225,8 @@ else
   GULA_CONTAINERS=$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep '^gula-' || true)
   if [ -n "$GULA_CONTAINERS" ]; then
     log "Removing all gula containers: $GULA_CONTAINERS"
-    echo "$GULA_CONTAINERS" | xargs -r docker rm -f 2>/dev/null || true
+    # Use -I {} to avoid word-splitting on container names with spaces/special chars
+    echo "$GULA_CONTAINERS" | xargs -r -I {} docker rm -f {} 2>/dev/null || true
   fi
 
   docker network rm gula-net 2>/dev/null || true
