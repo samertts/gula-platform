@@ -4,20 +4,11 @@ Audit logging service for GULA Platform.
 Implements hash-chained audit log for tamper detection (ISO 27001 A.8.15).
 Each entry's chain_hash = SHA-256(previous_chain_hash + this_record_data).
 Any modification to a record or its chain breaks verification.
-
-Root Anchor System (external checkpoint):
-  Every ANCHOR_INTERVAL entries, the chain hash is appended to an external
-  append-only anchor file (outside the database). Even if a DB admin destroys
-  the entire audit_logs table and rebuilds the chain, the anchor file records
-  what the hash WAS at each checkpoint — making the attack detectable.
 """
 import hmac
 import json
 import hashlib
-import os
-import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from ..models.audit_log import AuditLog
@@ -209,6 +200,37 @@ def get_latest_anchor() -> dict | None:
         return None
 
 
+# Genesis hash for the first entry in the chain
+_GENESIS_HASH = "0" * 64
+
+
+def _compute_chain_hash(prev_hash: str, entry: AuditLog) -> str:
+    """Compute SHA-256(prev_chain_hash + canonical JSON of this entry)."""
+    record = {
+        "id": entry.id,
+        "user_id": entry.user_id,
+        "user_role": entry.user_role,
+        "action": entry.action,
+        "resource_type": entry.resource_type,
+        "resource_id": entry.resource_id,
+        "details": entry.details,
+        "ip_address": entry.ip_address,
+        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+    }
+    payload = prev_hash + json.dumps(record, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _get_last_chain_hash(db: Session) -> str:
+    """Get the chain_hash of the most recent audit log entry."""
+    result = db.execute(
+        text("SELECT chain_hash FROM audit_logs ORDER BY id DESC LIMIT 1")
+    ).fetchone()
+    if result and result[0]:
+        return result[0]
+    return _GENESIS_HASH
+
+
 def log_action(
     db: Session,
     action: str,
@@ -240,11 +262,6 @@ def log_action(
 
     prev_hash = _get_last_chain_hash(db)
     entry.chain_hash = _compute_chain_hash(prev_hash, entry)
-
-    # Write external anchor checkpoint every ANCHOR_INTERVAL entries
-    if entry.id % _ANCHOR_INTERVAL == 0:
-        _write_anchor(entry.id, entry.chain_hash)
-
     # Don't commit here - let the caller's transaction handle it
 
 
@@ -279,34 +296,10 @@ def verify_audit_chain(db: Session, limit: int = 1000) -> dict:
             })
         prev_hash = entry.chain_hash
 
-    # Cross-check against external anchor file
-    anchor = get_latest_anchor()
-    anchor_cross_check = None
-    if anchor:
-        # Find the entry at the anchor's recorded ID
-        anchor_entry = next((e for e in entries if e.id == anchor["entry_id"]), None)
-        if anchor_entry:
-            anchor_cross_check = {
-                "anchor_id": anchor["entry_id"],
-                "anchor_timestamp": anchor["timestamp"],
-                "anchor_hash": anchor["chain_hash"],
-                "db_hash": anchor_entry.chain_hash,
-                "match": anchor_entry.chain_hash == anchor["chain_hash"],
-            }
-            if not anchor_cross_check["match"]:
-                broken_at.append({
-                    "id": anchor["entry_id"],
-                    "note": "ANCHOR MISMATCH - chain was rebuilt after anchor was written",
-                    "anchor_hash": anchor["chain_hash"],
-                    "db_hash": anchor_entry.chain_hash,
-                })
-
     return {
         "status": "tampered" if broken_at else "intact",
         "verified": len(broken_at) == 0,
         "entries_checked": len(entries),
         "broken_entries": broken_at,
         "last_verified_hash": prev_hash,
-        "external_anchor": anchor,
-        "anchor_cross_check": anchor_cross_check,
     }

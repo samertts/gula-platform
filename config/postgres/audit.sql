@@ -104,6 +104,42 @@ CREATE TRIGGER users_audit
     FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
 
 -- =============================================================================
+-- AUDIT LOG IMMUTABILITY (Government compliance / ISO 27001 A.8.15)
+-- Audit records must never be modified or deleted after creation.
+-- This implements a database-level enforcement rule as a security control.
+-- =============================================================================
+
+-- Immutability trigger: raises exception on any UPDATE or DELETE attempt
+CREATE OR REPLACE FUNCTION prevent_audit_modification()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION
+        'SECURITY: Audit log records are immutable. Attempted % on audit_logs at %',
+        TG_OP, CURRENT_TIMESTAMP
+        USING ERRCODE = 'restrict_violation';
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply to audit_log table (PostgreSQL schema)
+CREATE TRIGGER audit_log_immutable
+    BEFORE UPDATE OR DELETE ON audit_log
+    FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+
+-- Apply to audit_logs table (SQLAlchemy ORM table name)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_name = 'audit_logs' AND table_schema = 'public') THEN
+        -- Drop if already exists to allow re-running init
+        DROP TRIGGER IF EXISTS audit_logs_immutable ON audit_logs;
+        CREATE TRIGGER audit_logs_immutable
+            BEFORE UPDATE OR DELETE ON audit_logs
+            FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+    END IF;
+END $$;
+
+-- =============================================================================
 -- CIRCUIT BREAKER STATE TABLE (Executive Order 7)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS circuit_breaker_state (

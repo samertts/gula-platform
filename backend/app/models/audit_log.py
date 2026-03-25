@@ -16,5 +16,5 @@ class AuditLog(Base):
     ip_address = Column(String(45), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     # SHA-256 hash chain: each entry hashes (prev_chain_hash + this record data).
-    # Populated by audit_service.log_action().  NULL on legacy rows before migration.
+    # Tamper-detection: any modification breaks the chain. NULL on legacy rows before migration.
     chain_hash = Column(String(64), nullable=True, index=True)

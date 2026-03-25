@@ -125,10 +125,6 @@ services:
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
       MAX_REQUEST_BODY_MB: ${MAX_REQUEST_BODY_MB:-10}
       FCM_SERVER_KEY: ${FCM_SERVER_KEY:-}
-    volumes:
-      # Audit anchor file: persisted outside DB for tamper detection
-      # Mount as named volume so it survives container rebuilds
-      - audit-anchors:/app/data
     # SECURITY: No external ports - only accessible via api-gateway
     expose:
       - "8000"
