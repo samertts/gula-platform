@@ -12,7 +12,7 @@ must be authenticated.
 """
 import time
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import text
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -104,5 +104,5 @@ def get_metrics(
             "pending":         pending_count,
         },
         "scope":      "platform" if current_user.role in _WIDE_ROLES else "lab",
-        "timestamp":  datetime.utcnow().isoformat() + "Z",
+        "timestamp":  datetime.now(timezone.utc).isoformat(),
     }

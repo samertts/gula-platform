@@ -10,6 +10,7 @@ from ..models.sample import Sample
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..security.rate_limit import get_client_ip
 from ..services.audit_service import log_action
 from ..domain.order_state import assert_not_locked
 
@@ -153,7 +154,7 @@ def update_sample(
         user_role=current_user.role,
         details=f"Sample {barcode} status: {data.status or 'unchanged'}"
                 + (f" reason: {data.rejection_reason}" if data.status == "rejected" else ""),
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     db.commit()
