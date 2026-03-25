@@ -37,7 +37,7 @@ class BatchOrderRequest(BaseModel):
     orders: List[BatchOrderItem]
 
 
-@router.post("/orders")
+@router.post("/orders", status_code=201)
 def create_batch_orders(
     data: BatchOrderRequest,
     request: Request,

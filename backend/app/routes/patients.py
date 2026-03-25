@@ -178,7 +178,7 @@ def list_patients(
     }
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_patient(
     data: PatientCreate,
     current_user: LabUser = Depends(get_current_user),

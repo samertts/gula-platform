@@ -253,7 +253,7 @@ class DeviceTokenRequest(BaseModel):
         return v
 
 
-@mobile_router.post("/register-device", summary="Register device for push notifications")
+@mobile_router.post("/register-device", status_code=201, summary="Register device for push notifications")
 def register_device(
     data: DeviceTokenRequest,
     current_user: LabUser = Depends(get_current_user),
