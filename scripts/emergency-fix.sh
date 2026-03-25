@@ -78,8 +78,10 @@ info "--- STEP 1: Pull latest code ---"
 if [ -d "$REPO_DIR/.git" ]; then
     cd "$REPO_DIR"
     sudo -u "$DEPLOY_USER" git fetch origin 2>&1 | tee -a "$LOG" || true
-    sudo -u "$DEPLOY_USER" git pull origin claude/server-image-branching-iyurJ 2>&1 | tee -a "$LOG" \
-        && ok "Code updated" \
+    BRANCH=$(sudo -u "$DEPLOY_USER" git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+    info "Current branch: $BRANCH"
+    sudo -u "$DEPLOY_USER" git pull origin "$BRANCH" 2>&1 | tee -a "$LOG" \
+        && ok "Code updated to: $(git log -1 --oneline)" \
         || { info "git pull failed — continuing with existing code"; }
 else
     fail "Repo not found at $REPO_DIR — clone it first"
@@ -88,6 +90,14 @@ fi
 
 # Make scripts executable
 chmod +x "${REPO_DIR}/scripts/"*.sh 2>/dev/null || true
+
+# Install maintenance page (shown when Docker is booting)
+mkdir -p /var/www/gula-maintenance
+MAINT_SRC="${REPO_DIR}/config/nginx/maintenance/maintenance.html"
+[ -f "$MAINT_SRC" ] \
+    && cp "$MAINT_SRC" /var/www/gula-maintenance/maintenance.html \
+    && ok "Maintenance page installed → /var/www/gula-maintenance/" \
+    || true
 
 # ─── STEP 2: Install HTTP-only nginx config (needed by nginx-ensure.sh) ───────
 info "--- STEP 2: Ensure nginx configs exist ---"
@@ -200,19 +210,36 @@ systemctl daemon-reload
 ok "systemd drop-in installed: nginx will auto-restart + use nginx-ensure.sh"
 
 # ─── STEP 5: Docker containers ───────────────────────────────────────────────
-info "--- STEP 5: Check/start Docker containers ---"
-if systemctl is-active --quiet docker; then
-    cd "$REPO_DIR"
-    DOCKER_COMPOSE_CMD="docker compose"
-    $DOCKER_COMPOSE_CMD -f docker-compose.yml up -d 2>&1 | tee -a "$LOG" \
-        && ok "Docker containers started" \
-        || fail "docker compose failed — check logs with: docker compose logs"
-else
+info "--- STEP 5: Restart Docker containers (applying new port mapping 8080:80) ---"
+if ! systemctl is-active --quiet docker; then
     fail "Docker daemon is down — starting..."
     systemctl start docker && sleep 5
-    cd "$REPO_DIR"
-    docker compose -f docker-compose.yml up -d 2>&1 | tee -a "$LOG" || true
 fi
+
+cd "$REPO_DIR"
+
+# IMPORTANT: must do down → up to apply new port bindings (8080:80)
+# A simple 'up -d' does NOT change already-running container port mappings
+info "Stopping old containers (to apply updated port mapping)..."
+docker compose -f docker-compose.yml down --remove-orphans 2>&1 | tee -a "$LOG" || true
+sleep 2
+
+info "Starting containers with updated config..."
+docker compose -f docker-compose.yml up -d 2>&1 | tee -a "$LOG" \
+    && ok "Docker containers started (api-gateway → 0.0.0.0:8080)" \
+    || fail "docker compose up failed — check: docker compose logs"
+
+# Wait up to 45s for backend to start
+info "Waiting for backend health (max 45s)..."
+for i in $(seq 1 15); do
+    STATUS=$(docker inspect --format='{{.State.Health.Status}}' gula-backend 2>/dev/null || echo "missing")
+    if [ "$STATUS" = "healthy" ]; then
+        ok "Backend healthy after $((i * 3))s"
+        break
+    fi
+    [ $i -eq 15 ] && info "Backend still starting (check later: docker logs gula-backend --tail=30)"
+    sleep 3
+done
 
 # ─── STEP 6: Cron watchdog ───────────────────────────────────────────────────
 info "--- STEP 6: Install cron watchdog ---"
