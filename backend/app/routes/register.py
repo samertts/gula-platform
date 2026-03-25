@@ -75,7 +75,7 @@ class LabRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register")
+@router.post("/register", status_code=201)
 def register_lab(data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
 
@@ -189,7 +189,7 @@ class CitizenRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register/citizen")
+@router.post("/register/citizen", status_code=201)
 def register_citizen(data: CitizenRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
 
@@ -295,7 +295,7 @@ class StaffRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register/staff")
+@router.post("/register/staff", status_code=201)
 def register_staff(
     data: StaffRegisterRequest,
     request: Request,
@@ -423,7 +423,7 @@ class DoctorRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register/doctor")
+@router.post("/register/doctor", status_code=201)
 def register_doctor(
     data: DoctorRegisterRequest,
     request: Request,

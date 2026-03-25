@@ -144,7 +144,7 @@ def list_test_profiles():
     }
 
 
-@router.post("/orders")
+@router.post("/orders", status_code=201)
 def create_order(
     data: CreateOrderRequest,
     request: Request,
