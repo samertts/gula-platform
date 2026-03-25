@@ -17,7 +17,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gula_default_pg_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       POSTGRES_DB: labdb
     # SECURITY: No external ports - only accessible via internal network
     expose:
@@ -52,7 +52,7 @@ services:
         --appendonly yes
         --maxmemory 128mb
         --maxmemory-policy volatile-lru
-        --requirepass ${REDIS_PASSWORD:-gula_default_redis_pass}
+        --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
         --save 900 1
         --save 300 10
     # SECURITY: No external ports - only accessible via internal network
@@ -68,7 +68,7 @@ services:
           memory: 192M
           cpus: "0.5"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-gula_default_redis_pass} ping"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -104,8 +104,8 @@ services:
         window: 120s
     environment:
       ENV: ${ENV:-production}
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-gula_default_pg_pass}@postgres:5432/labdb
-      REDIS_URL: redis://:${REDIS_PASSWORD:-gula_default_redis_pass}@redis:6379
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/labdb
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       # SECURITY: No hardcoded fallback — SECRET_KEY must be set in .env
       SECRET_KEY: ${SECRET_KEY:-}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-}
