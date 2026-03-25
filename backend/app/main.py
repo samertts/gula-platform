@@ -313,6 +313,7 @@ from .routes import quality_control, critical_alerts, batch
 from .routes import mobile, compliance
 from .routes import setup, metrics
 from .routes import ai as ai_routes
+from .routes import optimizer as optimizer_routes
 
 # Core routes
 app.include_router(login.router)
@@ -354,6 +355,9 @@ app.include_router(insurance.router)
 
 # AI Safety Layer
 app.include_router(ai_routes.router)
+
+# AI System Optimizer (admin-only, read-only performance monitoring)
+app.include_router(optimizer_routes.router)
 
 
 # ===== STARTUP WARMUP =====
