@@ -19,8 +19,12 @@ cd "$PROJECT_DIR"
 
 log "GULA Platform — Starting up..."
 
-# ── 1. Ensure logs directory exists ──────────────────────────────────────────
+# ── 1. Ensure directories exist ───────────────────────────────────────────────
 mkdir -p logs/nginx
+# Install maintenance page (served by system nginx when Docker is down)
+mkdir -p /var/www/gula-maintenance
+cp "${PROJECT_DIR}/config/nginx/maintenance/maintenance.html" \
+   /var/www/gula-maintenance/maintenance.html 2>/dev/null || true
 
 # ── 2. Check Docker is running ───────────────────────────────────────────────
 if ! docker info > /dev/null 2>&1; then

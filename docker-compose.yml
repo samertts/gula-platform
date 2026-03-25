@@ -202,7 +202,7 @@ services:
     #            sudo ln -sf /etc/nginx/sites-available/gula-platform /etc/nginx/sites-enabled/gula-platform
     #            sudo nginx -t && sudo systemctl reload nginx
     ports:
-      - "127.0.0.1:8080:80"
+      - "8080:80"
     volumes:
       - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
