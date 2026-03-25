@@ -144,7 +144,7 @@ def list_test_profiles():
     }
 
 
-@router.post("/orders")
+@router.post("/orders", status_code=201)
 def create_order(
     data: CreateOrderRequest,
     request: Request,
@@ -713,26 +713,50 @@ def get_patient_history_by_id(
 @router.get("/history/{phone}")
 def get_patient_history(phone: str, request: Request, name: str = None, db: Session = Depends(get_db)):
     """Get patient test history by phone number (public, rate limited).
-    Requires 'name' query param matching full patient name as verification."""
+    Requires 'name' query param matching full patient name as verification.
+
+    Multi-tenant isolation: the phone number may belong to Patient records in
+    multiple labs (each lab keeps its own patient roster).  We aggregate results
+    across ALL labs where the phone+name pair matches, so the citizen sees their
+    complete history regardless of which lab they visited.  Only the patient's
+    own results are returned — no cross-patient data is possible.
+    """
     rate_limit_public(request, max_per_minute=5)
 
     # Use generic error to prevent enumeration
     generic_error = "Patient not found or name verification failed"
 
-    patient = db.query(Patient).filter(Patient.phone == phone).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail=generic_error)
-
-    # Full name verification (case-insensitive, stripped)
     if not name or len(name) < 4:
         raise HTTPException(status_code=400, detail="Please provide the full patient name (?name=...)")
-    import hmac
-    if not hmac.compare_digest(patient.full_name.strip().lower(), name.strip().lower()):
+
+    # Collect ALL patient records with this phone across all labs
+    all_patients = db.query(Patient).filter(Patient.phone == phone).all()
+    if not all_patients:
+        raise HTTPException(status_code=404, detail=generic_error)
+
+    import hmac as _hmac
+    # Verify name matches at least one patient record (constant-time per record)
+    name_lower = name.strip().lower()
+    matched_patients = [
+        p for p in all_patients
+        if _hmac.compare_digest(p.full_name.strip().lower(), name_lower)
+    ]
+    if not matched_patients:
         raise HTTPException(status_code=403, detail=generic_error)
 
-    orders = db.query(LabOrder).filter(
-        LabOrder.patient_id == patient.id,
-    ).options(joinedload(LabOrder.results)).order_by(LabOrder.created_at.desc()).limit(20).all()
+    # Use the canonical patient record for response metadata
+    canonical = matched_patients[0]
+    patient_ids = [p.id for p in matched_patients]
+
+    # Fetch orders for all matched patient records (all labs)
+    orders = (
+        db.query(LabOrder)
+        .filter(LabOrder.patient_id.in_(patient_ids))
+        .options(joinedload(LabOrder.results))
+        .order_by(LabOrder.created_at.desc())
+        .limit(20)
+        .all()
+    )
 
     history = []
     for order in orders:
@@ -746,8 +770,8 @@ def get_patient_history(phone: str, request: Request, name: str = None, db: Sess
             })
 
     return {
-        "patient_name": patient.full_name,
-        "health_id": patient.health_id,
+        "patient_name": canonical.full_name,
+        "health_id": canonical.health_id,
         "history": history,
     }
 

@@ -45,7 +45,19 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
 #   1. create_all  — idempotent table creation (safe on fresh DB)
 #   2. alembic     — incremental schema migrations
 #   3. uvicorn     — application server (startup_guard validates config/DB/seeds)
+#
+# WEB_CONCURRENCY: number of uvicorn workers (default 4).
+#   Total DB connections = WEB_CONCURRENCY × (DB_POOL_SIZE + DB_MAX_OVERFLOW)
+#   Keep WEB_CONCURRENCY × 10 ≤ 100 (PG max_connections) → max 10 workers.
 CMD ["sh", "-c", \
     "python3 -c 'from app.database import engine; from app.models import Base; Base.metadata.create_all(engine)' && \
      alembic upgrade head && \
-     exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log --loop uvloop --http httptools"]
+     exec uvicorn app.main:app \
+       --host 0.0.0.0 \
+       --port 8000 \
+       --workers ${WEB_CONCURRENCY:-4} \
+       --no-access-log \
+       --loop uvloop \
+       --http httptools \
+       --timeout-keep-alive 65 \
+       --backlog 2048"]

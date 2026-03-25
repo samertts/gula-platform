@@ -52,7 +52,14 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
     user = lab_user or citizen
 
-    if not user or not verify_password(data.password, user.password_hash):
+    # Always call verify_password to prevent user-enumeration via timing.
+    # When user is None we verify against a dummy hash (constant time).
+    from ..security.auth import _DUMMY_HASH  # defined alongside pwd_context
+    password_ok = verify_password(
+        data.password,
+        user.password_hash if user else _DUMMY_HASH,
+    )
+    if not user or not password_ok:
         log_action(
             db,
             action="login_failed",

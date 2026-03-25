@@ -114,7 +114,7 @@ def list_my_employees(
     }
 
 
-@router.post("/me/employees")
+@router.post("/me/employees", status_code=201)
 def create_employee(
     data: CreateEmployeeRequest,
     current_user: LabUser = Depends(get_current_user),

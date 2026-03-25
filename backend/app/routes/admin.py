@@ -544,7 +544,7 @@ class CreateLabRequest(BaseModel):
         return v
 
 
-@router.post("/labs")
+@router.post("/labs", status_code=201)
 def create_lab(
     data: CreateLabRequest,
     actor: LabUser = Depends(require_manage_users),
@@ -664,7 +664,7 @@ class CreateUserRequest(BaseModel):
         return v
 
 
-@router.post("/users")
+@router.post("/users", status_code=201)
 def create_user(
     request: Request,
     data: CreateUserRequest,
