@@ -21,6 +21,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies for bilingual Arabic/English PDF reports
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
+    fonts-noto-core \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy installed packages from builder (no build tools, no pip cache in final layer)
 COPY --from=builder /install /usr/local
 
@@ -32,7 +38,7 @@ COPY alembic.ini .
 # Pre-compile application code to .pyc (faster cold start; skip errors silently)
 RUN python -m compileall -q app/ 2>/dev/null || true
 
-# Drop root: run as unprivileged user
+# SECURITY: Drop root — run as unprivileged user
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 

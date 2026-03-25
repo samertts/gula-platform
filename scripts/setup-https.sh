@@ -1,82 +1,64 @@
 #!/bin/bash
 # =============================================================================
-# GULA Platform - HTTPS / TLS Setup Script
-# Obtains Let's Encrypt certificate and hardens TLS configuration.
+# GULA Platform - HTTPS/TLS Setup Script
+# Sets up Let's Encrypt certificate via Certbot + configures nginx
 #
-# What this does:
-#   1. Install certbot (if not present)
-#   2. Obtain/renew certificate via webroot challenge
-#   3. Copy certs to config/ssl/
-#   4. Write a hardened nginx TLS config (TLS 1.3 preferred, strong ciphers,
-#      OCSP stapling, HSTS, no session tickets)
-#   5. Reload nginx in Docker
-#   6. Print cron auto-renewal command
+# Usage:
+#   chmod +x scripts/setup-https.sh
+#   sudo ./scripts/setup-https.sh gula-platform.org
 #
-# Usage: sudo ./scripts/setup-https.sh <domain> [email]
-# Example: sudo ./scripts/setup-https.sh lab.example.iq admin@example.iq
+# Prerequisites:
+#   - Domain DNS pointing to this server
+#   - Port 80 open for ACME challenge
+#   - Docker Compose stack running (api-gateway must be up)
 # =============================================================================
 
 set -euo pipefail
 
-DOMAIN="${1:?Usage: $0 <domain> [email]}"
-EMAIL="${2:-webmaster@${DOMAIN}}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLATFORM_DIR="$(dirname "${SCRIPT_DIR}")"
-SSL_DIR="${PLATFORM_DIR}/config/ssl"
-NGINX_CONF_DIR="${PLATFORM_DIR}/config/nginx/conf.d"
-CERTBOT_WEBROOT="${PLATFORM_DIR}/certbot-webroot"
-NGINX_CONTAINER="${NGINX_CONTAINER:-gula-api-gateway}"
+DOMAIN="${1:-}"
+EMAIL="${2:-admin@gula-platform.org}"
+COMPOSE_FILE="docker-compose.yml"
 
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
-err() { echo "[ERROR] $*" >&2; exit 1; }
-
-# ─── 1. Install certbot ───────────────────────────────────────────────────────
-if ! command -v certbot &>/dev/null; then
-    log "Installing certbot..."
-    if command -v apt-get &>/dev/null; then
-        apt-get update -qq && apt-get install -y certbot
-    elif command -v yum &>/dev/null; then
-        yum install -y certbot
-    else
-        err "Cannot install certbot: unsupported package manager. Install manually."
-    fi
+if [ -z "$DOMAIN" ]; then
+    echo "Usage: $0 <domain> [email]"
+    echo "Example: $0 gula-platform.org admin@gula-platform.org"
+    exit 1
 fi
-log "certbot $(certbot --version 2>&1 | head -1)"
 
-# ─── 2. Prepare directories ───────────────────────────────────────────────────
-mkdir -p "${SSL_DIR}" "${CERTBOT_WEBROOT}" "${NGINX_CONF_DIR}"
+echo "=================================================="
+echo "  GULA HTTPS Setup for: $DOMAIN"
+echo "=================================================="
 
-# ─── 3. Obtain / renew certificate ───────────────────────────────────────────
-log "Requesting certificate for ${DOMAIN}..."
+# ─── Step 1: Install Certbot ──────────────────────────────────────────────────
+if ! command -v certbot &>/dev/null; then
+    echo "Installing certbot..."
+    apt-get update -qq
+    apt-get install -y --no-install-recommends certbot
+fi
+
+# ─── Step 2: Obtain certificate (webroot method via running nginx) ────────────
+# The certbot-webroot volume is already mounted in docker-compose.yml
+# api-gateway serves /.well-known/acme-challenge/ from that volume
+
+echo "Requesting certificate for $DOMAIN..."
 certbot certonly \
     --webroot \
-    --webroot-path "${CERTBOT_WEBROOT}" \
-    --domain "${DOMAIN}" \
-    --email "${EMAIL}" \
+    --webroot-path /var/lib/docker/volumes/$(basename "$(pwd)")_certbot-webroot/_data \
+    --email "$EMAIL" \
     --agree-tos \
-    --non-interactive \
-    --keep-until-expiring \
-    --quiet
+    --no-eff-email \
+    --domain "$DOMAIN" \
+    --non-interactive
 
-CERT_DIR="/etc/letsencrypt/live/${DOMAIN}"
-[[ -f "${CERT_DIR}/fullchain.pem" ]] || err "Certificate not found at ${CERT_DIR}"
+# ─── Step 3: Copy certs to the config/ssl directory ──────────────────────────
+mkdir -p config/ssl
+cp /etc/letsencrypt/live/"$DOMAIN"/fullchain.pem config/ssl/fullchain.pem
+cp /etc/letsencrypt/live/"$DOMAIN"/privkey.pem   config/ssl/privkey.pem
+chmod 600 config/ssl/privkey.pem
+echo "Certificates copied to config/ssl/"
 
-# ─── 4. Copy certs to config/ssl/ ────────────────────────────────────────────
-log "Copying certificates to ${SSL_DIR}..."
-cp "${CERT_DIR}/fullchain.pem" "${SSL_DIR}/fullchain.pem"
-cp "${CERT_DIR}/privkey.pem"   "${SSL_DIR}/privkey.pem"
-chmod 600 "${SSL_DIR}/privkey.pem"
-chmod 644 "${SSL_DIR}/fullchain.pem"
-
-# ─── 5. Generate DH parameters if not present ────────────────────────────────
-if [[ ! -f "${SSL_DIR}/dhparam.pem" ]]; then
-    log "Generating 2048-bit DH parameters (takes ~30s)..."
-    openssl dhparam -out "${SSL_DIR}/dhparam.pem" 2048 2>/dev/null
-    log "DH parameters written."
-fi
-
-# ─── 6. Write hardened TLS nginx config ──────────────────────────────────────
-cat > "${NGINX_CONF_DIR}/ssl.conf" << EOF
+# ─── Step 4: Enable HTTPS nginx config ───────────────────────────────────────
+cat > config/nginx/conf.d/ssl.conf << EOF
 # =============================================================================
 # GULA Platform - Hardened TLS Configuration
 # Generated by scripts/setup-https.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -284,33 +266,62 @@ server {
         root /var/www/certbot;
     }
 
+    # Redirect everything else to HTTPS
     location / {
         return 301 https://\$host\$request_uri;
     }
 }
+
+# HTTPS server
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name $DOMAIN;
+
+    # ─── TLS Configuration ─────────────────────────────────────────────────
+    ssl_certificate     /etc/nginx/ssl/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+
+    # TLS 1.3 only (TLS 1.2 as minimum for legacy compatibility)
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Strong cipher suites (TLS 1.3 ciphers + TLS 1.2 fallback)
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers off;
+
+    # SSL session cache (performance)
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;  # Disable for perfect forward secrecy
+
+    # OCSP stapling (faster cert validation for clients)
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver 8.8.8.8 8.8.4.4 valid=300s;
+    resolver_timeout 5s;
+
+    # ─── HSTS (HTTP Strict Transport Security) ─────────────────────────────
+    # Tells browsers to ONLY connect via HTTPS for 1 year
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+    # ─── Include all existing API routes ───────────────────────────────────
+    include /etc/nginx/conf.d/api.conf;
+}
 EOF
 
-log "Nginx TLS config written to ${NGINX_CONF_DIR}/ssl.conf"
+echo "HTTPS nginx config written to config/nginx/conf.d/ssl.conf"
 
-# ─── 7. Reload nginx in Docker ────────────────────────────────────────────────
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${NGINX_CONTAINER}$"; then
-    log "Reloading nginx (container: ${NGINX_CONTAINER})..."
-    docker exec "${NGINX_CONTAINER}" nginx -t && docker exec "${NGINX_CONTAINER}" nginx -s reload
-    log "Nginx reloaded successfully."
-else
-    log "WARNING: nginx container '${NGINX_CONTAINER}' not running — reload skipped."
-    log "Run manually: docker compose up -d api-gateway"
-fi
+# ─── Step 5: Reload nginx ─────────────────────────────────────────────────────
+echo "Reloading nginx..."
+docker compose -f "$COMPOSE_FILE" exec api-gateway nginx -s reload
 
-# ─── 8. Print auto-renewal cron ───────────────────────────────────────────────
-log ""
-log "============================================================"
-log "HTTPS setup complete for ${DOMAIN}"
-log "Certificate expires: $(openssl x509 -enddate -noout -in "${SSL_DIR}/fullchain.pem" | cut -d= -f2)"
-log ""
-log "Add auto-renewal to crontab (crontab -e):"
-log "  0 3 * * * certbot renew --quiet --webroot --webroot-path ${CERTBOT_WEBROOT} && \\"
-log "            cp /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ${SSL_DIR}/fullchain.pem && \\"
-log "            cp /etc/letsencrypt/live/${DOMAIN}/privkey.pem ${SSL_DIR}/privkey.pem && \\"
-log "            docker exec ${NGINX_CONTAINER} nginx -s reload"
-log "============================================================"
+echo ""
+echo "=================================================="
+echo "  ✓ HTTPS enabled for https://$DOMAIN"
+echo "=================================================="
+echo ""
+echo "IMPORTANT: Cookies are now Secure=True (httpOnly + Secure + SameSite=Strict)"
+echo ""
+echo "Auto-renewal cron (run as root):"
+echo "  0 3 * * * certbot renew --quiet && cp /etc/letsencrypt/live/$DOMAIN/*.pem $(pwd)/config/ssl/ && docker compose -f $(pwd)/$COMPOSE_FILE exec api-gateway nginx -s reload"
+echo ""

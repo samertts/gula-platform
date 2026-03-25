@@ -15,7 +15,6 @@ import json
 import logging
 import os
 import sys
-import time
 import hashlib
 import subprocess
 from pathlib import Path
@@ -32,7 +31,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.audit_log import AuditLog
 from ..security.dependencies import get_current_user, get_current_lab
-from ..services.audit_service import verify_audit_chain, get_latest_anchor
+from ..services.audit_service import verify_audit_chain
 from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION
 
 logger = logging.getLogger("gula.compliance")
@@ -73,11 +72,13 @@ def system_info(current_user: LabUser = Depends(get_current_user)):
             "type_ar": "نظام معلومات المختبرات الطبية",
         },
         "standards_compliance": {
-            "hl7_fhir": "Partial - Patient and Observation resources",
-            "iso_27001": "Security controls implemented",
+            "hl7_fhir_r4": "Implemented - Patient, Observation, DiagnosticReport, ServiceRequest resources",
+            "dhis2": "Aggregate export endpoint available at /compliance/dhis2/aggregate",
+            "iso_27001": "Security controls implemented (ISMS in progress)",
             "owasp_api_security": "OWASP API Security Top 10 addressed",
-            "arabic_language": "Full Arabic UI and bilingual error messages",
+            "arabic_language": "Full Arabic RTL UI and bilingual error messages",
             "data_residency": "All data stored locally - no external transfers",
+            "api_versioning": "URL-path versioning supported: /api/v1/ (current stable)",
         },
         "security_features": [
             "JWT Bearer Token authentication (HS256)",
@@ -105,11 +106,25 @@ def system_info(current_user: LabUser = Depends(get_current_user)):
         },
         "api_info": {
             "type": "RESTful JSON API",
-            "authentication": "Bearer JWT Token",
+            "authentication": "Bearer JWT Token (mobile) / httpOnly Cookie (web)",
             "documentation": "/docs (Swagger UI) and /redoc (ReDoc)",
-            "versioning": "Semantic versioning (current: v" + APP_VERSION + ")",
+            "versioning": "URL-path versioning: /api/v1/ | Platform version: " + APP_VERSION,
             "mobile_support": "Android and iOS via /auth/refresh and /mobile/*",
+            "fhir_endpoints": [
+                "/compliance/fhir/patient/{id}",
+                "/compliance/fhir/observation/{order_id}",
+                "/compliance/fhir/diagnostic-report/{order_id}",
+                "/compliance/fhir/service-request/{order_id}",
+            ],
+            "moh_integration": "/compliance/dhis2/aggregate (DHIS2 aggregate export)",
             "languages": ["Arabic (ar)", "English (en)"],
+        },
+        "government_contacts": {
+            "cmc": "cmc.iq - Communications and Media Commission (platform registration)",
+            "ndc": "ndc.egov.iq - National Data Center (government cloud hosting)",
+            "moh": "moh.gov.iq - Ministry of Health (health platform approval)",
+            "kimadia": "kimadia.gov.iq - State Company for lab product registration",
+            "cosqc": "cosqc.gov.iq - ISO certification authority",
         },
         "contact": {
             "technical": "tech@gula-platform.org",
@@ -1094,6 +1109,16 @@ def _read_restore_test() -> dict | None:
         return data
     except Exception:
         return None
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _build_conclusion(results) -> str | None:
+    """Summarize abnormal findings for DiagnosticReport conclusion field."""
+    abnormal = [r.test_name for r in results if r.flag in ("high", "low", "critical_high", "critical_low")]
+    if not abnormal:
+        return None
+    return f"Abnormal values found in: {', '.join(abnormal)}"
 
 
 def _fhir_gender(gender: str | None) -> str:
