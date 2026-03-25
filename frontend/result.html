@@ -87,7 +87,7 @@ function isSafeUrl(url) {
 async function loadResult() {
   if (!token || !/^[A-Za-z0-9_-]+$/.test(token)) { showError('رابط غير صالح'); return; }
   try {
-    const res = await fetch('/api/results/api/r/' + encodeURIComponent(token));
+    const res = await fetch('/api/r/' + encodeURIComponent(token));
     if (res.status === 410) { showExpired(); return; }
     if (!res.ok) throw new Error('خطأ في الخادم');
     const data = await res.json();
@@ -146,7 +146,7 @@ function renderResult(d) {
     <div class="qr"><img src="/api/qr/${safeToken}" alt="QR" onerror="this.style.display='none'"></div>
     <div class="actions">
       ${d.whatsapp_link && isSafeUrl(d.whatsapp_link) ? `<a href="${esc(d.whatsapp_link)}" target="_blank" rel="noopener" class="btn btn-wa">مشاركة واتساب</a>` : ''}
-      <a href="/api/results/api/r/${safeToken}/pdf" target="_blank" rel="noopener" class="btn btn-pdf">تحميل PDF</a>
+      <a href="/api/r/${safeToken}/pdf" target="_blank" rel="noopener" class="btn btn-pdf">تحميل PDF</a>
       <button class="btn btn-copy" onclick="navigator.clipboard.writeText(window.location.href);this.textContent='تم النسخ!'">نسخ الرابط</button>
       <button class="btn btn-copy" onclick="window.print()">طباعة</button>
     </div>

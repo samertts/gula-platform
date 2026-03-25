@@ -52,7 +52,7 @@ def _constraint_exists(table: str, name: str) -> bool:
     row = bind.execute(
         text(
             "SELECT 1 FROM pg_constraint "
-            "WHERE conname = :name AND conrelid = :table::regclass"
+            "WHERE conname = :name AND conrelid = to_regclass(:table)"
         ),
         {"name": name, "table": table},
     ).fetchone()
@@ -66,7 +66,7 @@ def _trigger_exists(trigger: str, table: str) -> bool:
     row = bind.execute(
         text(
             "SELECT 1 FROM pg_trigger "
-            "WHERE tgname = :t AND tgrelid = :table::regclass"
+            "WHERE tgname = :t AND tgrelid = to_regclass(:table)"
         ),
         {"t": trigger, "table": table},
     ).fetchone()

@@ -2,7 +2,7 @@ import secrets
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 from datetime import datetime, timezone
@@ -16,7 +16,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
 from ..models.test_type import TestType
 from ..security.dependencies import get_current_user
-from ..security.rate_limit import rate_limit_public, rate_limit_user
+from ..security.rate_limit import rate_limit_public, rate_limit_user, get_client_ip
 from ..services.interpretation import interpret_result, get_flag
 from ..services.audit_service import log_action
 from ..routes.critical_alerts import check_critical
@@ -72,6 +72,15 @@ class CreateOrderRequest(BaseModel):
     doctor_name: Optional[str] = None
     doctor_user_id: Optional[int] = None  # link to a registered doctor account for data isolation
     results: List[ResultItem]
+
+    @field_validator("doctor_name")
+    @classmethod
+    def validate_doctor_name(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) > 200:
+                raise ValueError("Doctor name must be at most 200 characters")
+        return v
 
 
 def result_to_dict(r: LabResult) -> dict:
@@ -161,6 +170,19 @@ def create_order(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    # Validate that the referenced doctor belongs to this lab and has doctor role
+    if data.doctor_user_id is not None:
+        doctor = db.query(LabUser).filter(
+            LabUser.id == data.doctor_user_id,
+            LabUser.lab_id == current_user.lab_id,
+            LabUser.role == "doctor",
+        ).first()
+        if not doctor:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid doctor_user_id: user not found, wrong lab, or not a doctor",
+            )
+
     order = LabOrder(
         patient_id=data.patient_id,
         lab_id=current_user.lab_id,
@@ -207,7 +229,7 @@ def create_order(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Created order with {len(data.results)} results for patient {patient.full_name}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     db.commit()
@@ -407,7 +429,7 @@ def validate_order(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Order validated and locked by {current_user.email}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
     db.commit()
     db.refresh(order)
@@ -447,7 +469,7 @@ def cancel_order(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Order cancelled by {current_user.email}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
     db.commit()
 
@@ -462,7 +484,7 @@ def cancel_order(
 
 # ===== PUBLIC RESULT PAGE (THE KILLER FEATURE) =====
 
-@router.get("/api/r/{token}")
+@router.get("/r/{token}")
 def get_public_result(token: str, request: Request, db: Session = Depends(get_db)):
     """Public result page - accessible without authentication. Rate limited."""
     # Rate limit public access
@@ -517,7 +539,7 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
         resource_type="lab_result",
         resource_id=result.id,
         details=f"Public result viewed for patient {patient.full_name if patient else 'unknown'}",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
     db.commit()
 
@@ -544,7 +566,7 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
 
 # ===== PDF DOWNLOAD =====
 
-@router.get("/api/r/{token}/pdf")
+@router.get("/r/{token}/pdf")
 def download_result_pdf(token: str, request: Request, db: Session = Depends(get_db)):
     """Download result as a professional PDF report with QR code."""
     from ..services.pdf_report import generate_result_pdf
@@ -603,13 +625,16 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
         _logger.exception("PDF generation failed for result %s", result.id)
         raise HTTPException(status_code=500, detail="Failed to generate PDF report")
 
-    patient_name = (patient.full_name if patient else "result").replace(" ", "_")
-    filename = f"GULA_Report_{patient_name}.pdf"
+    import re as _re
+    raw_name = patient.full_name if patient else "result"
+    # Strip all non-alphanumeric/space characters to prevent path traversal and header injection
+    safe_name = _re.sub(r"[^\w\s-]", "", raw_name).strip().replace(" ", "_")[:50] or "result"
+    filename = f"GULA_Report_{safe_name}.pdf"
 
     log_action(db, action="download_pdf", resource_type="lab_result",
                resource_id=result.id,
                details=f"PDF downloaded for patient {patient.full_name if patient else 'unknown'}",
-               ip_address=request.client.host if request.client else None)
+               ip_address=get_client_ip(request))
     db.commit()
 
     return Response(

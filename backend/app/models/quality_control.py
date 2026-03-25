@@ -29,4 +29,6 @@ class QualityControl(Base):
     performed_by = Column(String(200), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    lab = relationship("Lab")
+    # passive_deletes=True lets the DB-level CASCADE (ondelete="CASCADE" on the
+    # FK above) handle deletion without SQLAlchemy loading records into memory.
+    lab = relationship("Lab", passive_deletes=True)

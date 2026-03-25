@@ -17,6 +17,17 @@ class LabUpdate(BaseModel):
     city: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
+    license_number: Optional[str] = None
+    lab_type: Optional[str] = None      # private | government | hospital | clinic
+    director_name: Optional[str] = None
+    website: Optional[str] = None
+
+    @field_validator("lab_type")
+    @classmethod
+    def validate_lab_type(cls, v):
+        if v is not None and v not in ("private", "government", "hospital", "clinic"):
+            raise ValueError("lab_type must be private, government, hospital, or clinic")
+        return v
 
 
 @router.get("/me")
@@ -32,6 +43,9 @@ def get_my_lab(
         "id": lab.id,
         "name": lab.name,
         "license_number": lab.license_number,
+        "lab_type": lab.lab_type,
+        "director_name": lab.director_name,
+        "website": lab.website,
         "city": lab.city,
         "address": lab.address,
         "phone": lab.phone,
@@ -180,7 +194,8 @@ def update_my_lab(
         raise HTTPException(status_code=404, detail="Lab not found")
 
     # Explicit field assignment (whitelist) instead of dynamic setattr
-    allowed_fields = {"name", "city", "address", "phone"}
+    allowed_fields = {"name", "city", "address", "phone", "license_number",
+                      "lab_type", "director_name", "website"}
     for field, value in data.model_dump(exclude_unset=True).items():
         if field in allowed_fields:
             if value is not None and isinstance(value, str):
@@ -193,7 +208,12 @@ def update_my_lab(
     return {"message": "Lab updated", "lab": {
         "id": lab.id,
         "name": lab.name,
+        "license_number": lab.license_number,
+        "lab_type": lab.lab_type,
+        "director_name": lab.director_name,
+        "website": lab.website,
         "city": lab.city,
         "address": lab.address,
         "phone": lab.phone,
+        "is_active": lab.is_active,
     }}

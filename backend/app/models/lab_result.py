@@ -24,7 +24,7 @@ class LabResult(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("lab_orders.id", ondelete="CASCADE"), nullable=False, index=True)
-    test_type_id = Column(Integer, ForeignKey("test_types.id"), nullable=True)
+    test_type_id = Column(Integer, ForeignKey("test_types.id", ondelete="SET NULL"), nullable=True)
     test_name = Column(String(200), nullable=False)
     value = Column(Float, nullable=True)
     value_text = Column(String(200), nullable=True)  # for non-numeric results
@@ -36,6 +36,11 @@ class LabResult(Base):
     token_hash = Column(String(64), unique=True, nullable=True, index=True)
     expires_at = Column(DateTime(timezone=True), default=default_expiry)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # Version of the clinical engine that last evaluated this result.
+    # Populated when evaluate_result() / evaluate_order() is called after save.
+    # NULL on results created before the clinical engine was introduced.
+    clinical_engine_version = Column(String(20), nullable=True)
 
     order = relationship("LabOrder", back_populates="results")
     test_type = relationship("TestType")

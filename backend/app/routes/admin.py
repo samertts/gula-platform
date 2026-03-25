@@ -18,6 +18,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from ..database import get_db, SessionLocal
+from ..models.user import User
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.lab_order import LabOrder
@@ -33,13 +34,15 @@ from ..security.rbac import (
 )
 from ..services.audit_service import log_action
 from ..security.rate_limit import rate_limit_admin
+from ..config import NID_HMAC_KEY
 
 logger = logging.getLogger("gula.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 # ── NID hashing ───────────────────────────────────────────────────────────────
-_NID_KEY = os.getenv("NID_HMAC_KEY", "gula_nid_default_key").encode()
+# Use the same key from config to ensure consistent hashes with the rest of the app
+_NID_KEY = NID_HMAC_KEY.encode()
 
 
 def _hash_nid(nid: str) -> str:
@@ -190,6 +193,330 @@ def toggle_lab(
     return {"message": f"Lab {'activated' if lab.is_active else 'deactivated'}", "is_active": lab.is_active}
 
 
+@router.put("/labs/{lab_id}/activate")
+def activate_lab(
+    lab_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Approve and activate a pending lab registration (and its admin user).
+    Explicit activate-only endpoint — safer than toggle for the approval workflow.
+    """
+    lab = db.query(Lab).filter(Lab.id == lab_id).first()
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab not found")
+    if lab.is_active:
+        return {"message": "Lab is already active", "lab_id": lab_id, "is_active": True}
+
+    lab.is_active = True
+
+    # Also activate the lab's admin user(s) so they can log in
+    db.query(LabUser).filter(
+        LabUser.lab_id == lab_id,
+        LabUser.role == "admin",
+    ).update({"is_active": True})
+
+    log_action(db, action="activate_lab", resource_type="lab", resource_id=lab.id,
+               user_id=actor.id, user_role=actor.role,
+               details=f"Lab approved and activated: {lab.name}")
+    db.commit()
+    return {"message": "Lab activated successfully", "lab_id": lab_id, "is_active": True}
+
+
+@router.get("/labs/pending")
+def list_pending_labs(
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = Query(default=50, le=200),
+):
+    """List labs pending activation (registered but not yet approved)."""
+    query = db.query(Lab).filter(Lab.is_active == False)
+
+    if actor.role == "province_admin" and actor.province_id:
+        lab_ids_in_province = [
+            row[0] for row in
+            db.query(LabUser.lab_id)
+            .filter(LabUser.province_id == actor.province_id)
+            .distinct()
+            .all()
+        ]
+        query = query.filter(Lab.id.in_(lab_ids_in_province))
+
+    total = query.count()
+    labs = query.order_by(Lab.created_at.desc()).offset(skip).limit(limit).all()
+
+    result = []
+    for lab in labs:
+        admin_user = db.query(LabUser).filter(
+            LabUser.lab_id == lab.id, LabUser.role == "admin"
+        ).first()
+        result.append({
+            "id": lab.id,
+            "name": lab.name,
+            "city": lab.city,
+            "phone": lab.phone,
+            "created_at": lab.created_at.isoformat() if lab.created_at else None,
+            "admin_email": admin_user.email if admin_user else None,
+            "admin_name": admin_user.name if admin_user else None,
+        })
+
+    return {"total": total, "pending_labs": result}
+
+
+# Update pending labs response to include new lab profile fields
+@router.get("/labs/{lab_id}")
+def get_lab_detail(
+    lab_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Get full lab detail including new profile fields."""
+    lab = db.query(Lab).filter(Lab.id == lab_id).first()
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab not found")
+
+    admin_user = db.query(LabUser).filter(
+        LabUser.lab_id == lab.id, LabUser.role == "admin"
+    ).first()
+    staff_count = db.query(func.count(LabUser.id)).filter(LabUser.lab_id == lab.id).scalar() or 0
+    patient_count = db.query(func.count(Patient.id)).filter(Patient.lab_id == lab.id).scalar() or 0
+
+    return {
+        "id": lab.id,
+        "name": lab.name,
+        "license_number": lab.license_number,
+        "lab_type": lab.lab_type,
+        "director_name": lab.director_name,
+        "website": lab.website,
+        "city": lab.city,
+        "address": lab.address,
+        "phone": lab.phone,
+        "is_active": lab.is_active,
+        "created_at": lab.created_at.isoformat() if lab.created_at else None,
+        "admin_email": admin_user.email if admin_user else None,
+        "admin_name": admin_user.name if admin_user else None,
+        "staff_count": staff_count,
+        "patient_count": patient_count,
+    }
+
+
+# =============================================================================
+# DOCTOR MANAGEMENT
+# =============================================================================
+
+@router.get("/doctors")
+def list_doctors(
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+    is_verified: Optional[bool] = None,
+    skip: int = 0,
+    limit: int = Query(default=50, le=200),
+):
+    """List doctor accounts. ministry_admin and above.
+
+    Pass is_verified=false to see doctors pending approval.
+    """
+    if actor.role not in ("master_admin", "ministry_admin", "province_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    query = db.query(User).filter(User.role == "doctor")
+    if is_verified is not None:
+        query = query.filter(User.is_verified == is_verified)
+
+    total = query.count()
+    doctors = query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+
+    return {
+        "total": total,
+        "doctors": [
+            {
+                "id": d.id,
+                "full_name": d.full_name,
+                "email": d.email,
+                "phone": d.phone,
+                "license_number": d.license_number,
+                "specialty": d.specialty,
+                "is_active": d.is_active,
+                "is_verified": d.is_verified,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+            }
+            for d in doctors
+        ],
+    }
+
+
+@router.put("/doctors/{doctor_id}/approve")
+def approve_doctor(
+    doctor_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Approve and verify a doctor registration.
+
+    Sets is_verified=True and is_active=True so the doctor gains full
+    API access. Only ministry_admin and above may approve.
+    """
+    if actor.role not in ("master_admin", "ministry_admin", "province_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    doctor = db.query(User).filter(User.id == doctor_id, User.role == "doctor").first()
+    if not doctor:
+        raise HTTPException(
+            status_code=404,
+            detail={"message": "Doctor not found", "message_ar": "الطبيب غير موجود"},
+        )
+    if doctor.is_verified:
+        return {
+            "message": "Doctor is already verified",
+            "message_ar": "الطبيب موثق مسبقاً",
+            "doctor_id": doctor_id,
+        }
+
+    doctor.is_verified = True
+    doctor.is_active = True
+    log_action(
+        db,
+        action="approve_doctor",
+        resource_type="doctor",
+        resource_id=doctor.id,
+        user_id=actor.id,
+        user_role=actor.role,
+        details=f"Doctor approved: {doctor.full_name} | license={doctor.license_number}",
+    )
+    db.commit()
+    return {
+        "message": "Doctor approved and verified",
+        "message_ar": "تم اعتماد الطبيب بنجاح",
+        "doctor_id": doctor_id,
+        "is_verified": True,
+    }
+
+
+@router.put("/doctors/{doctor_id}/revoke")
+def revoke_doctor(
+    doctor_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Revoke a doctor's verification (e.g. expired license)."""
+    if actor.role not in ("master_admin", "ministry_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    doctor = db.query(User).filter(User.id == doctor_id, User.role == "doctor").first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    doctor.is_verified = False
+    log_action(
+        db, action="revoke_doctor", resource_type="doctor", resource_id=doctor.id,
+        user_id=actor.id, user_role=actor.role,
+        details=f"Doctor verification revoked: {doctor.full_name} | license={doctor.license_number}",
+    )
+    db.commit()
+    return {
+        "message": "Doctor verification revoked",
+        "message_ar": "تم إلغاء اعتماد الطبيب",
+        "doctor_id": doctor_id,
+        "is_verified": False,
+    }
+
+
+# =============================================================================
+# CITIZEN MANAGEMENT
+# =============================================================================
+
+@router.get("/citizens")
+def list_citizens(
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+    is_active: Optional[bool] = None,
+    is_verified: Optional[bool] = None,
+    skip: int = 0,
+    limit: int = Query(default=50, le=200),
+):
+    """List citizen accounts. ministry_admin+ only."""
+    if actor.role not in ("master_admin", "ministry_admin", "province_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    query = db.query(User).filter(User.role == "citizen")
+    if is_active is not None:
+        query = query.filter(User.is_active == is_active)
+    if is_verified is not None:
+        query = query.filter(User.is_verified == is_verified)
+
+    total = query.count()
+    citizens = query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+
+    return {
+        "total": total,
+        "citizens": [
+            {
+                "id": c.id,
+                "full_name": c.full_name,
+                "phone": c.phone,
+                "email": c.email,
+                "is_active": c.is_active,
+                "is_verified": c.is_verified,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            }
+            for c in citizens
+        ],
+    }
+
+
+@router.put("/citizens/{citizen_id}/toggle")
+def toggle_citizen(
+    citizen_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Activate or deactivate a citizen account. ministry_admin+ only."""
+    if actor.role not in ("master_admin", "ministry_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    citizen = db.query(User).filter(User.id == citizen_id, User.role == "citizen").first()
+    if not citizen:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+
+    citizen.is_active = not citizen.is_active
+    log_action(db, action="toggle_citizen", resource_type="citizen", resource_id=citizen.id,
+               user_id=actor.id, user_role=actor.role,
+               details=f"Citizen {'activated' if citizen.is_active else 'deactivated'}: user_id={citizen.id}")
+    db.commit()
+    return {
+        "message": f"Citizen {'activated' if citizen.is_active else 'deactivated'}",
+        "citizen_id": citizen_id,
+        "is_active": citizen.is_active,
+    }
+
+
+@router.put("/citizens/{citizen_id}/verify")
+def verify_citizen(
+    citizen_id: int,
+    actor: LabUser = Depends(require_manage_users),
+    db: Session = Depends(get_db),
+):
+    """Mark a citizen account as verified (identity confirmed). ministry_admin+ only."""
+    if actor.role not in ("master_admin", "ministry_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    citizen = db.query(User).filter(User.id == citizen_id, User.role == "citizen").first()
+    if not citizen:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+
+    if citizen.is_verified:
+        return {"message": "Citizen is already verified", "citizen_id": citizen_id}
+
+    citizen.is_verified = True
+    citizen.is_active = True  # Verified citizens are always active
+    log_action(db, action="verify_citizen", resource_type="citizen", resource_id=citizen.id,
+               user_id=actor.id, user_role=actor.role,
+               details=f"Citizen identity verified: user_id={citizen.id}")
+    db.commit()
+    return {"message": "Citizen verified successfully", "citizen_id": citizen_id, "is_verified": True}
+
+
 class CreateLabRequest(BaseModel):
     name: str
     city: str = ""
@@ -273,12 +600,7 @@ def list_users(
     actor_level = get_role_level(actor.role)
     query = db.query(LabUser)
 
-    # Each role sees only users below their level
-    query = query.filter(
-        # Can't see equals or above themselves in hierarchy
-        # We do this by filtering roles whose level < actor_level
-    )
-    # Simpler: exclude users at same or higher level
+    # Each role sees only users strictly below their level in the hierarchy
     visible_roles = [r for r, lvl in ROLE_LEVELS.items() if lvl < actor_level]
     if not visible_roles:
         return {"total": 0, "users": []}
@@ -349,8 +671,8 @@ def create_user(
     actor: LabUser = Depends(require_manage_users),
     db: Session = Depends(get_db),
 ):
-    rate_limit_admin(request, actor.id)
     """Create a new user. Role must be strictly below the actor's level."""
+    rate_limit_admin(request, actor.id)
     # Hierarchy check
     if data.role not in VALID_ROLES:
         raise HTTPException(status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}")
