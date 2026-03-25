@@ -134,26 +134,15 @@ PostgreSQL
 Docker
 """
 
+    try:
+        return ask_deepseek(prompt)
+    except Exception:
+        return {"error": "AI service unavailable"}
 
-@app.post("/agent")
-def ai_agent(task: str):
 
-    prompt = f"""
-You are an expert AI software engineer working on a national medical laboratory platform.
-
-Project stack:
-FastAPI
-PostgreSQL
-Docker
-Redis
-
-Your job is to help build or improve the system.
-
-Task:
-{task}
-
-Respond with clear structured instructions or code.
-"""
+# -----------------------------
+# CBC Analyzer
+# -----------------------------
 
 
 @app.post("/analyze-cbc")
@@ -172,6 +161,11 @@ Explain if values are normal or abnormal and possible causes.
 """
 
     return ask_deepseek(prompt)
+
+
+# -----------------------------
+# AI Agent
+# -----------------------------
 
 
 @app.post("/agent")
@@ -193,8 +187,7 @@ Task:
 Respond with structured steps and code when needed.
 """
 
-    # استخدم DeepSeek إن كان المفتاح موجودًا
     try:
         return ask_deepseek(prompt)
-    except:
+    except Exception:
         return {"error": "AI service unavailable"}
