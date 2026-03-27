@@ -32,11 +32,7 @@ services:
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     networks:
       - gula-net
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-          cpus: "1.5"
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d labdb"]
       interval: 10s
@@ -67,11 +63,7 @@ services:
       - redis-data:/data
     networks:
       - gula-net
-    deploy:
-      resources:
-        limits:
-          memory: 192M
-          cpus: "0.5"
+
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
       interval: 15s
@@ -98,16 +90,7 @@ services:
     # SECURITY: Prevent privilege escalation inside container
     security_opt:
       - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-          cpus: "2.0"
-      restart_policy:
-        condition: any
-        delay: 10s
-        max_attempts: 5       # Limit restart attempts to prevent infinite loops
-        window: 120s
+
     environment:
       ENV: ${ENV:-production}
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/labdb
@@ -181,11 +164,7 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-          cpus: "0.25"
+
     # SECURITY: No external ports - only accessible via api-gateway
     expose:
       - "80"
@@ -211,11 +190,7 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-          cpus: "0.25"
+
     # Architecture: Internet → Host nginx (80/443) → Docker api-gateway (127.0.0.1:8080)
     # Host nginx handles SSL termination and certbot ACME challenges.
     # To enable: sudo cp config/nginx/system/gula-platform-http.conf /etc/nginx/sites-available/gula-platform
@@ -257,11 +232,7 @@ services:
     profiles: ["monitoring"]
     security_opt:
       - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: "0.5"
+
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -292,11 +263,7 @@ services:
     profiles: ["monitoring"]
     security_opt:
       - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 192M
-          cpus: "0.25"
+
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-changeme_grafana}
       GF_SECURITY_ADMIN_USER: admin
