@@ -238,16 +238,24 @@ async def run_startup_guard() -> None:
         validate_config()          # Step 1 — synchronous
         await wait_for_db(max_retries=5)   # Step 2 — async retry
         await check_migrations()           # Step 3 — migration state
-        await seed_critical_data()         # Step 4 — seed
+
+        # Step 4 — seed critical data. This step is now made more resilient.
+        # If seeding fails, we log the error but allow the system to become ready.
+        # This prevents a full crash if, for example, a new test type fails to seed
+        # but the core application can still function.
+        try:
+            await seed_critical_data()
+        except Exception as e:
+            logger.error("[STARTUP GUARD] Critical data seeding FAILED: %s. System will start in potentially degraded state.", e)
 
     except Exception:
         elapsed = (time.perf_counter() - t0) * 1000
-        # logger.exception captures full traceback automatically
         logger.exception(
-            "[STARTUP GUARD] STARTUP FAILED after %.0fms — system_ready remains False",
+            "[STARTUP GUARD] CRITICAL STARTUP FAILED after %.0fms — system_ready remains False",
             elapsed,
         )
-        # system_ready stays False — readiness probe keeps returning 503
+        # If any critical step (config, DB, migrations) fails, we still crash.
+        # This ensures core integrity. The readiness probe will keep returning 503.
         raise  # crash the process so Docker restarts the container
 
     # Atomic success: only reached if no exception above
