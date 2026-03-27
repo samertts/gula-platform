@@ -105,8 +105,8 @@ services:
           cpus: "2.0"
       restart_policy:
         condition: any
-        delay: 5s
-        max_attempts: 0       # unlimited — systemd-managed servers handle this
+        delay: 10s
+        max_attempts: 5       # Limit restart attempts to prevent infinite loops
         window: 120s
     environment:
       ENV: ${ENV:-production}

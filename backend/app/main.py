@@ -70,15 +70,27 @@ app = FastAPI(
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
     request_id = getattr(request.state, "request_id", "unknown")
-    logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": "Something went wrong. Please try again.",
-            "detail_ar": "حدث خطأ. يرجى المحاولة مرة أخرى.",
-            "request_id": request_id,
-        },
-    )
+    if IS_PRODUCTION:
+        logger.error("[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "An unexpected error occurred. Please try again later.",
+                "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
+                "request_id": request_id,
+            },
+        )
+    else:
+        # In development, log full exception and return more details
+        logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": str(exc),
+                "detail_ar": "حدث خطأ: " + str(exc),
+                "request_id": request_id,
+            },
+        )
 
 
 # ===== REQUEST BODY SIZE LIMIT =====

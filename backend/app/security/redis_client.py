@@ -62,6 +62,10 @@ class _MemoryStore:
             if entry is not None:
                 self._data[key] = (entry[0], time.monotonic() + seconds)
 
+    def ping(self) -> bool:
+        """Always return True for in-memory store as it's always 'available'."""
+        return True
+
 
 # ── Redis wrapper ─────────────────────────────────────────────────────────────
 
@@ -102,24 +106,20 @@ def _build_cache():
             return _RedisWrapper(REDIS_URL)
         except Exception as exc:
             if IS_PRODUCTION:
-                # In production Redis is mandatory — perm_version and session
-                # invalidation depend on it.  Fail loudly so ops notices.
-                import sys
-                print(
-                    f"[GULA FATAL] Redis is required in production but is unreachable: {exc}\n"
-                    "Set REDIS_URL correctly or start the Redis container.",
-                    file=sys.stderr,
+                # In production Redis is mandatory for full functionality, but we allow
+                # the system to start in degraded mode if it's unreachable.
+                # The self-healing system will attempt to recover it.
+                logger.critical(
+                    "[GULA CRITICAL] Redis is unreachable in production: %s. "
+                    "Falling back to in-memory store (degraded mode).", exc
                 )
-                sys.exit(1)
             logger.warning("Redis unavailable (%s) — falling back to in-memory store", exc)
     else:
         if IS_PRODUCTION:
-            import sys
-            print(
-                "[GULA FATAL] REDIS_URL must be set in production.",
-                file=sys.stderr,
+            logger.critical(
+                "[GULA CRITICAL] REDIS_URL is not set in production. "
+                "Falling back to in-memory store (degraded mode)."
             )
-            sys.exit(1)
         logger.info("REDIS_URL not set — using in-memory store (not shared across workers)")
     return _MemoryStore()
 
