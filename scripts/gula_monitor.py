@@ -27,6 +27,12 @@ def get_backend_metrics():
         logger.error(f"Failed to fetch backend metrics: {e}")
         return None
 
+def send_alert(message: str, severity: str = "WARNING"):
+    """Sends an alert (placeholder for Telegram/Email/Slack)."""
+    logger.warning(f"ALERT [{severity}]: {message}")
+    # In a real implementation, this would call a webhook or send an email
+    # Example: requests.post(TELEGRAM_WEBHOOK, json={"text": f"[{severity}] {message}"})
+
 def generate_daily_report():
     """Generates a daily system status report."""
     report = {
@@ -46,17 +52,19 @@ def generate_daily_report():
             report["system_status"] = "UP"
         else:
             report["system_status"] = "DEGRADED"
+            send_alert(f"System is DEGRADED: DB={metrics['db']['ok']}, Redis={metrics['redis']['ok']}", "CRITICAL")
 
-        # Example: Detect slow operations (threshold 200ms for ping)
+        # Detect slow operations (threshold 200ms for ping)
         if metrics["db"]["ping_ms"] > 200:
             report["slow_operations"].append("Database ping is slow")
+            send_alert(f"Slow Database: {metrics['db']['ping_ms']}ms", "WARNING")
         if metrics["redis"]["ping_ms"] > 200:
             report["slow_operations"].append("Redis ping is slow")
+            send_alert(f"Slow Redis: {metrics['redis']['ping_ms']}ms", "WARNING")
 
-    # Placeholder for actual error detection from logs
-    # In a real scenario, this would parse actual log files
-    if report["system_status"] == "DEGRADED":
-        report["errors_detected"].append("DB or Redis is not healthy")
+        # Check for high memory usage (if metrics provide it)
+        # if metrics.get("memory_usage_percent", 0) > 90:
+        #     send_alert("High Memory Usage detected", "CRITICAL")
 
     # Save report
     os.makedirs(os.path.dirname(MONITORING_REPORT_PATH), exist_ok=True)
