@@ -56,12 +56,18 @@ def get_client_ip(request: Request) -> str:
     return direct_ip
 
 
-def _check(key: str, max_requests: int, window_seconds: int) -> bool:
+def _check(key: str, max_requests: int, window_seconds: int, request: Request = None) -> bool:
     """Fixed-window rate check using the shared cache (Redis or in-memory).
 
     Returns True if the request is allowed, False if limit is exceeded.
     The key is scoped to the current time bucket so the window resets cleanly.
     """
+    # Check if IP is already blocked in Redis (dynamic firewall)
+    if request:
+        client_ip = get_client_ip(request)
+        if cache.get(f"block:{client_ip}"):
+            return False
+
     bucket = math.floor(time.time() / window_seconds)
     full_key = f"rl:{key}:{bucket}"
 
@@ -70,13 +76,21 @@ def _check(key: str, max_requests: int, window_seconds: int) -> bool:
         # First request in this window — set expiry so the key auto-expires
         cache.expire(full_key, window_seconds * 2)
 
-    return count <= max_requests
+    if count > max_requests:
+        # If it's an IP-based key and limit is exceeded significantly, block the IP
+        if key.startswith(("ip:", "public:", "auth:")) and count > max_requests * 5:
+            client_ip = get_client_ip(request) if request else key.split(":")[-1]
+            # Block for 1 hour
+            cache.set(f"block:{client_ip}", "1", expire=3600)
+        return False
+
+    return True
 
 
 def rate_limit_public(request: Request, max_per_minute: int = 30):
     """Rate limit for public endpoints (result links) — keyed by IP."""
     client_ip = get_client_ip(request)
-    if not _check(f"public:{client_ip}", max_requests=max_per_minute, window_seconds=60):
+    if not _check(f"public:{client_ip}", max_requests=max_per_minute, window_seconds=60, request=request):
         raise HTTPException(
             status_code=429,
             detail="Too many requests. Please try again later.",
@@ -95,7 +109,7 @@ def rate_limit_user(request: Request, user_id: int, max_per_minute: int = 60):
     client_ip = get_client_ip(request)
 
     # Per-user check (primary) — e.g. 60 req/min per account
-    if not _check(f"user:{user_id}", max_requests=max_per_minute, window_seconds=60):
+    if not _check(f"user:{user_id}", max_requests=max_per_minute, window_seconds=60, request=request):
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded. Please slow down.",
@@ -103,7 +117,7 @@ def rate_limit_user(request: Request, user_id: int, max_per_minute: int = 60):
 
     # Per-IP check (secondary) — allows 3× the per-user limit across all users on that IP
     ip_max = max_per_minute * 3
-    if not _check(f"ip:{client_ip}", max_requests=ip_max, window_seconds=60):
+    if not _check(f"ip:{client_ip}", max_requests=ip_max, window_seconds=60, request=request):
         raise HTTPException(
             status_code=429,
             detail="Too many requests from this network.",
@@ -113,7 +127,7 @@ def rate_limit_user(request: Request, user_id: int, max_per_minute: int = 60):
 def rate_limit_auth(request: Request, max_per_minute: int = 10):
     """Rate limit for auth endpoints (login/register) — keyed by IP."""
     client_ip = get_client_ip(request)
-    if not _check(f"auth:{client_ip}", max_requests=max_per_minute, window_seconds=60):
+    if not _check(f"auth:{client_ip}", max_requests=max_per_minute, window_seconds=60, request=request):
         raise HTTPException(
             status_code=429,
             detail="Too many login attempts. Please wait a moment.",
@@ -129,13 +143,13 @@ def rate_limit_admin(request: Request, user_id: int, max_per_minute: int = 20):
     - Compromised admin token abuse
     """
     client_ip = get_client_ip(request)
-    if not _check(f"admin:user:{user_id}", max_requests=max_per_minute, window_seconds=60):
+    if not _check(f"admin:user:{user_id}", max_requests=max_per_minute, window_seconds=60, request=request):
         raise HTTPException(
             status_code=429,
             detail="Admin rate limit exceeded. Maximum 20 operations per minute.",
         )
     # Secondary: per-IP across all admin users (blocks scripted attacks from one IP)
-    if not _check(f"admin:ip:{client_ip}", max_requests=60, window_seconds=60):
+    if not _check(f"admin:ip:{client_ip}", max_requests=60, window_seconds=60, request=request):
         raise HTTPException(
             status_code=429,
             detail="Too many admin requests from this network.",
