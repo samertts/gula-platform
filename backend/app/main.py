@@ -70,16 +70,29 @@ app = FastAPI(
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
     request_id = getattr(request.state, "request_id", "unknown")
-    if IS_PRODUCTION:
-        logger.error("[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "detail": "An unexpected error occurred. Please try again later.",
-                "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
-                "request_id": request_id,
-            },
-        )
+        if IS_PRODUCTION:
+            from .core.startup_guard import is_system_ready
+            ready, reason = is_system_ready()
+            if not ready:
+                logger.error("[%s] Unhandled exception during unready state: %s %s (Reason: %s)", request_id, request.method, request.url.path, reason)
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": f"Service Unavailable: System not ready. Reason: {reason}",
+                        "detail_ar": f"الخدمة غير متاحة: النظام غير جاهز. السبب: {reason}",
+                        "request_id": request_id,
+                    },
+                )
+            else:
+                logger.error("[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path)
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "detail": "An unexpected error occurred. Please try again later.",
+                        "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
+                        "request_id": request_id,
+                    },
+                )
     else:
         # In development, log full exception and return more details
         logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
