@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 import os
 import logging
@@ -12,56 +13,103 @@ logging.basicConfig(
 )
 logger = logging.getLogger("gula.autofix")
 
-CONTAINER_NAME = "gula-backend"
+BACKEND_CONTAINER = "gula-backend"
+DB_CONTAINER = "gula-postgres"
+DB_ERROR_PATTERNS = [
+    "psycopg2.OperationalError",
+    "Connection refused",
+    "database_unavailable",
+    "Database not ready",
+    "Database unreachable",
+]
 
-def is_container_healthy(container_name: str) -> bool:
-    """Checks if a Docker container is running and healthy."""
+def _run_docker_command(command: list[str]) -> tuple[bool, str]:
+    """Runs a Docker command and returns (success, output)."""
     try:
-        # Use docker inspect to get container health status
         result = subprocess.run(
-            ["docker", "inspect", "--format", "{{.State.Health.Status}}", container_name],
-            capture_output=True, text=True, check=True
+            command, capture_output=True, text=True, check=True, timeout=30
         )
-        status = result.stdout.strip()
-        return status == "healthy"
-    except subprocess.CalledProcessError as e:
-        logger.warning(f"Could not inspect container {container_name}: {e.stderr.strip()}")
-        # If inspect fails, assume it's not healthy or doesn't exist
-        return False
+        return True, result.stdout.strip()
     except FileNotFoundError:
         logger.error("Docker command not found. Is Docker installed and in PATH?")
-        return False
+        return False, "Docker not found"
+    except subprocess.TimeoutExpired:
+        logger.error(f"Docker command timed out: {' '.join(command)}")
+        return False, "Command timed out"
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"Docker command failed: {' '.join(command)}\nError: {e.stderr.strip()}")
+        return False, e.stderr.strip()
+
+def get_container_health(container_name: str) -> str:
+    """Returns the health status of a container (e.g., 'healthy', 'unhealthy', 'starting')."""
+    success, status = _run_docker_command(
+        ["docker", "inspect", "--format", "{{.State.Health.Status}}", container_name]
+    )
+    return status if success else "unknown"
+
+def get_container_logs(container_name: str, tail: int = 100) -> str:
+    """Fetches the last N lines of logs from a container."""
+    success, logs = _run_docker_command(
+        ["docker", "logs", "--tail", str(tail), container_name]
+    )
+    return logs if success else ""
 
 def restart_container(container_name: str) -> bool:
     """Restarts a Docker container."""
     logger.info(f"Attempting to restart container: {container_name}")
-    try:
-        subprocess.run(
-            ["docker", "restart", container_name],
-            capture_output=True, text=True, check=True
-        )
-        logger.info(f"Successfully restarted container: {container_name}")
-        return True
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to restart container {container_name}: {e.stderr.strip()}")
-        return False
+    success, _ = _run_docker_command(["docker", "restart", container_name])
+    if success:
+        logger.info(f"Successfully issued restart command for container: {container_name}")
+    return success
 
-def auto_heal_backend():
-    """Checks backend health and attempts to auto-heal if necessary."""
-    logger.info(f"Checking health of {CONTAINER_NAME}...")
-    if not is_container_healthy(CONTAINER_NAME):
-        logger.warning(f"Container {CONTAINER_NAME} is not healthy. Initiating restart...")
-        if restart_container(CONTAINER_NAME):
-            # Give it some time to start up and become healthy
-            time.sleep(30) 
-            if is_container_healthy(CONTAINER_NAME):
-                logger.info(f"Container {CONTAINER_NAME} is now healthy after restart.")
+def analyze_logs_for_db_errors(logs: str) -> bool:
+    """Checks if logs contain known database connection error patterns."""
+    for pattern in DB_ERROR_PATTERNS:
+        if pattern in logs:
+            logger.warning(f"Detected database error pattern in logs: '{pattern}'")
+            return True
+    return False
+
+def auto_heal_system():
+    """The main self-healing orchestration logic."""
+    logger.info(f"Starting self-healing check for {BACKEND_CONTAINER}...")
+    backend_health = get_container_health(BACKEND_CONTAINER)
+
+    if backend_health == "healthy":
+        logger.info(f"System is healthy. No action needed.")
+        return
+
+    logger.warning(f"Backend container '{BACKEND_CONTAINER}' is not healthy (status: {backend_health}). Analyzing logs...")
+    logs = get_container_logs(BACKEND_CONTAINER)
+
+    if analyze_logs_for_db_errors(logs):
+        logger.error("Root Cause Analysis: Database connection failure detected. Attempting to heal the database.")
+        db_health = get_container_health(DB_CONTAINER)
+        logger.info(f"Current database container '{DB_CONTAINER}' health: {db_health}")
+
+        if restart_container(DB_CONTAINER):
+            logger.info("Waiting for database to stabilize after restart (60 seconds)...")
+            time.sleep(60)
+            db_health_after_restart = get_container_health(DB_CONTAINER)
+            if db_health_after_restart == "healthy":
+                logger.info("Database is now healthy. Proceeding to restart the backend.")
+                restart_container(BACKEND_CONTAINER)
             else:
-                logger.error(f"Container {CONTAINER_NAME} is still unhealthy after restart. Manual intervention may be required.")
+                logger.critical(f"Database '{DB_CONTAINER}' failed to become healthy after restart. Manual intervention required.")
         else:
-            logger.error(f"Failed to restart {CONTAINER_NAME}. Manual intervention may be required.")
+            logger.critical(f"Failed to issue restart command for database '{DB_CONTAINER}'. Manual intervention required.")
     else:
-        logger.info(f"Container {CONTAINER_NAME} is healthy.")
+        logger.warning("No specific database errors found in recent logs. Performing a standard restart of the backend.")
+        restart_container(BACKEND_CONTAINER)
+
+    # Final check after healing attempts
+    logger.info("Waiting 30 seconds for backend to stabilize after healing actions...")
+    time.sleep(30)
+    final_health = get_container_health(BACKEND_CONTAINER)
+    if final_health == "healthy":
+        logger.info(f"SUCCESS: System has been auto-healed. '{BACKEND_CONTAINER}' is now healthy.")
+    else:
+        logger.error(f"FAILURE: System could not be auto-healed. '{BACKEND_CONTAINER}' is still unhealthy (status: {final_health}).")
 
 if __name__ == "__main__":
-    auto_heal_backend()
+    auto_heal_system()

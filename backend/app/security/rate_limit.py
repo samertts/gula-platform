@@ -10,10 +10,14 @@ A bucket rolls over every `window_seconds` seconds.
 """
 
 import ipaddress
+import os
 import math
 import time
+import logging
 from fastapi import Request, HTTPException
 from .redis_client import cache
+
+logger = logging.getLogger("gula.rate_limit")
 
 
 def _is_private_ip(ip: str) -> bool:
@@ -80,8 +84,10 @@ def _check(key: str, max_requests: int, window_seconds: int, request: Request = 
         # If it's an IP-based key and limit is exceeded significantly, block the IP
         if key.startswith(("ip:", "public:", "auth:")) and count > max_requests * 5:
             client_ip = get_client_ip(request) if request else key.split(":")[-1]
-            # Block for 1 hour
-            cache.set(f"block:{client_ip}", "1", expire=3600)
+            # Block for configurable duration (default 1 hour)
+            block_duration = int(os.getenv("RATE_LIMIT_BLOCK_DURATION_SECONDS", "3600"))
+            cache.set(f"block:{client_ip}", "1", expire=block_duration)
+            logger.warning(f"IP {client_ip} blocked for {block_duration} seconds due to excessive rate limit violations.")
         return False
 
     return True

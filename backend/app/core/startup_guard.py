@@ -143,14 +143,15 @@ def validate_config() -> None:
 
 # ─── Step 2: DB Connectivity with Exponential Backoff ────────────────────────
 
-async def wait_for_db(max_retries: int = 5) -> None:
+async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
     """Wait for DB to become reachable. Raises RuntimeError after all retries."""
     from ..database import check_db_connection
 
+    await asyncio.sleep(initial_delay) # Initial delay to give DB time to start
     for attempt in range(max_retries):
         if check_db_connection():
             logger.info("[STARTUP GUARD] Database connection OK (attempt %d)", attempt + 1)
-            return
+            return True
 
         wait_sec = 2 ** attempt
         logger.warning(
@@ -159,10 +160,11 @@ async def wait_for_db(max_retries: int = 5) -> None:
         )
         await asyncio.sleep(wait_sec)
 
-    raise RuntimeError(
-        f"Database unreachable after {max_retries} attempts. "
-        "Check DATABASE_URL and PostgreSQL container status."
+    logger.critical(
+        f"[STARTUP GUARD] Database unreachable after {max_retries} attempts. "
+        "Check DATABASE_URL and PostgreSQL container status. Backend will start in unready state."
     )
+    return False
 
 
 # ─── Step 3: Migration Check ─────────────────────────────────────────────────
@@ -236,8 +238,18 @@ async def run_startup_guard() -> None:
 
     try:
         validate_config()          # Step 1 — synchronous
-        await wait_for_db(max_retries=5)   # Step 2 — async retry
+        db_connected = await wait_for_db(max_retries=15, initial_delay=10)   # Step 2 — async retry with extended resilience
+        if not db_connected:
+            # If DB is not connected after retries, the system will start in an unready state.
+            # The global exception handler will return 503 for all requests.
+            logger.critical("[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state.")
+            # Do not exit early. Allow the process to continue, but system_ready will remain False.
+            # The global exception handler will then return 503 for all requests.
+            pass
         await check_migrations()           # Step 3 — migration state
+
+        # If all critical steps (config, DB, migrations) pass, then the system is ready.
+        # The seed_critical_data step is now more resilient and won't prevent system_ready from being True.
 
         # Step 4 — seed critical data. This step is now made more resilient.
         # If seeding fails, we log the error but allow the system to become ready.
@@ -256,7 +268,11 @@ async def run_startup_guard() -> None:
         )
         # If any critical step (config, DB, migrations) fails, we still crash.
         # This ensures core integrity. The readiness probe will keep returning 503.
-        raise  # crash the process so Docker restarts the container
+        # If any critical step (config, DB, migrations) fails, we do NOT crash the process.
+        # Instead, we keep system_ready = False. The readiness probe will keep returning 503.
+        # This allows the container to stay alive and potentially recover if the external dependency (DB) comes back.
+        # The global exception handler in main.py will handle requests by returning 503.
+        pass # Do not re-raise, allow the process to continue in an unready state
 
     # Atomic success: only reached if no exception above
     elapsed = (time.perf_counter() - t0) * 1000
