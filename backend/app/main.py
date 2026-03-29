@@ -661,11 +661,10 @@ def health_deep():
     from .routes.metrics import _START as _proc_start
     uptime_s = int(_t.time() - _proc_start)
 
-    # ── 7. Active concurrent requests (from middleware counter) ───────────────
+    # ── 7. Active concurrent requests (from ConcurrencyLimitMiddleware) ─────────
     active_requests = 0
     try:
-        from .main import _active_requests  # noqa: F401  (may not exist)
-        active_requests = _active_requests
+        active_requests = ConcurrencyLimitMiddleware._active
     except Exception:
         pass
 
