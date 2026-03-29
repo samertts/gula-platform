@@ -35,8 +35,10 @@ COPY app ./app
 COPY migrations ./migrations
 COPY alembic.ini .
 
-# Pre-compile application code to .pyc (faster cold start; skip errors silently)
-RUN python -m compileall -q app/ 2>/dev/null || true
+# Pre-compile application code to .pyc — FAIL BUILD on syntax error.
+# This is the last line of defence: if a SyntaxError slips past CI,
+# the Docker build itself will refuse to produce a runnable image.
+RUN python -m compileall app/
 
 # SECURITY: Drop root — run as unprivileged user
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app

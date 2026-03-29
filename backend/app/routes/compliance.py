@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import sys
+import time
 import hashlib
 import subprocess
 from pathlib import Path
@@ -31,7 +32,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.audit_log import AuditLog
 from ..security.dependencies import get_current_user, get_current_lab
-from ..services.audit_service import verify_audit_chain
+from ..services.audit_service import verify_audit_chain, get_latest_anchor
 from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION
 
 logger = logging.getLogger("gula.compliance")
