@@ -39,14 +39,12 @@ from ..database import get_db
 from ..models.user import User
 from ..models.patient import Patient
 from ..models.lab_order import LabOrder
-from ..models.lab_result import LabResult
 from ..models.lab import Lab
 from ..security.auth import (
     verify_password, create_token, create_refresh_token,
-    build_token_payload as _build_lab_payload,
     blacklist_token, decode_token, decode_refresh_token,
 )
-from ..security.rate_limit import rate_limit_auth, rate_limit_public
+from ..security.rate_limit import rate_limit_auth
 from ..services.audit_service import log_action
 from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, NID_HMAC_KEY
 
@@ -282,7 +280,6 @@ def citizen_results(
     # Flatten to individual results
     all_results = []
     for order in orders:
-        patient = next((p for p in patients if p.id == order.patient_id), None)
         lab_name = lab_map.get(order.lab_id, "مختبر")
         for r in order.results:
             all_results.append({
