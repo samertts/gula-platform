@@ -236,6 +236,7 @@ async def run_startup_guard() -> None:
     t0 = time.perf_counter()
     logger.info("[STARTUP GUARD] === Starting production startup validation ===")
 
+    critical_ok = False
     try:
         validate_config()          # Step 1 — synchronous
         db_connected = await wait_for_db(max_retries=15, initial_delay=10)   # Step 2 — async retry with extended resilience
@@ -245,7 +246,7 @@ async def run_startup_guard() -> None:
             logger.critical("[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state.")
             # Do not exit early. Allow the process to continue, but system_ready will remain False.
             # The global exception handler will then return 503 for all requests.
-            pass
+            return
         await check_migrations()           # Step 3 — migration state
 
         # If all critical steps (config, DB, migrations) pass, then the system is ready.
@@ -259,6 +260,7 @@ async def run_startup_guard() -> None:
             await seed_critical_data()
         except Exception as e:
             logger.error("[STARTUP GUARD] Critical data seeding FAILED: %s. System will start in potentially degraded state.", e)
+        critical_ok = True
 
     except Exception:
         elapsed = (time.perf_counter() - t0) * 1000
@@ -272,9 +274,12 @@ async def run_startup_guard() -> None:
         # Instead, we keep system_ready = False. The readiness probe will keep returning 503.
         # This allows the container to stay alive and potentially recover if the external dependency (DB) comes back.
         # The global exception handler in main.py will handle requests by returning 503.
-        pass # Do not re-raise, allow the process to continue in an unready state
+        return # Do not re-raise, allow the process to continue in an unready state
 
-    # Atomic success: only reached if no exception above
+    if not critical_ok:
+        return
+
+    # Atomic success: only reached if all critical steps above passed
     elapsed = (time.perf_counter() - t0) * 1000
     system_ready = True
     logger.info(

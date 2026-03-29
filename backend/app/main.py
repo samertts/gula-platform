@@ -41,10 +41,6 @@ if not IS_PRODUCTION or ENABLE_API_DOCS:
     _docs_url = "/docs"
     _redoc_url = "/redoc"
 
-from alembic.config import Config
-from alembic import command
-from .core.startup_guard import wait_for_db, check_migrations
-
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
@@ -68,88 +64,45 @@ app = FastAPI(
     },
 )
 
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Application startup event triggered.")
-    # Wait for DB to be ready with retries
-    db_ready = await wait_for_db()
-    if not db_ready:
-        logger.critical("Database not available after multiple retries. Application will start in degraded mode.")
-        # Allow app to start, but is_system_ready will return False
-        return
-
-    # Perform database migrations
-    try:
-        logger.info("Running Alembic migrations...")
-        alembic_cfg = Config("alembic.ini")
-        alembic_cfg.set_main_option("script_location", "migrations")
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Alembic migrations completed.")
-    except Exception as e:
-        logger.critical(f"Failed to run Alembic migrations: {e}")
-        # If migrations fail, the system is not truly ready
-        from .core.startup_guard import set_system_ready
-        set_system_ready(False, f"Migrations failed: {e}")
-        return
-
-    # Create tables for any new models not yet in migrations (idempotent)
-    try:
-        logger.info("Ensuring all database tables exist...")
-        Base.metadata.create_all(bind=engine)
-        logger.info("All database tables ensured.")
-    except Exception as e:
-        logger.critical(f"Failed to create missing tables: {e}")
-        from .core.startup_guard import set_system_ready
-        set_system_ready(False, f"Table creation failed: {e}")
-        return
-
-    # Check if critical data seeding is needed (if any)
-    # This part should be handled by startup_guard.py if it's part of readiness
-    # For now, just ensure system is marked ready if all above passed
-    from .core.startup_guard import set_system_ready
-    set_system_ready(True, "System fully operational.")
-    logger.info("Application startup complete. System is ready.")
-
-
 # ===== GLOBAL ERROR HANDLER =====
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
     request_id = getattr(request.state, "request_id", "unknown")
-        from .core.startup_guard import is_system_ready
-        ready, reason = is_system_ready()
+    from .core.startup_guard import is_system_ready
+    ready, reason = is_system_ready()
 
-        if not ready and IS_PRODUCTION:
-            logger.error("[%s] Unhandled exception during unready state: %s %s (Reason: %s)", request_id, request.method, request.url.path, reason)
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "detail": f"Service Unavailable: System not ready. Reason: {reason}",
-                    "detail_ar": f"الخدمة غير متاحة: النظام غير جاهز. السبب: {reason}",
-                    "request_id": request_id,
-                },
-            )
-        elif IS_PRODUCTION:
-            logger.error("[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path)
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "detail": "An unexpected error occurred. Please try again later.",
-                    "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
-                    "request_id": request_id,
-                },
-            )
-        else:
-            # In development, log full exception and return more details
-            logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "detail": str(exc),
-                    "detail_ar": "حدث خطأ: " + str(exc),
-                    "request_id": request_id,
-                },
-            )
+    if not ready and IS_PRODUCTION:
+        logger.error("[%s] Unhandled exception during unready state: %s %s (Reason: %s)", request_id, request.method, request.url.path, reason)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": f"Service Unavailable: System not ready. Reason: {reason}",
+                "detail_ar": f"الخدمة غير متاحة: النظام غير جاهز. السبب: {reason}",
+                "request_id": request_id,
+            },
+        )
+    elif IS_PRODUCTION:
+        logger.error("[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "An unexpected error occurred. Please try again later.",
+                "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
+                "request_id": request_id,
+            },
+        )
+    else:
+        # In development, log full exception and return more details
+        logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": str(exc),
+                "detail_ar": "حدث خطأ: " + str(exc),
+                "request_id": request_id,
+            },
+        )
 
 
 # ===== REQUEST BODY SIZE LIMIT =====
