@@ -505,14 +505,19 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
             detail="This result link has expired. Please contact your laboratory.",
         )
 
-    order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
+    # Use eager loading to fetch order, patient, lab, and all results in a single query
+    order = db.query(LabOrder).options(
+        joinedload(LabOrder.patient),
+        joinedload(LabOrder.lab),
+        joinedload(LabOrder.results)
+    ).filter(LabOrder.id == result.order_id).first()
+
     if not order:
         raise HTTPException(status_code=404, detail="Result not found")
-    patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
-    lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
 
-    # Get all results for this order
-    all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
+    patient = order.patient
+    lab = order.lab
+    all_results = order.results
 
     results_with_interpretation = []
     for r in all_results:
@@ -583,12 +588,19 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
     if result.expires_at and result.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=410, detail="Result link has expired")
 
-    order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
+    # Use eager loading to fetch order, patient, lab, and all results in a single query
+    order = db.query(LabOrder).options(
+        joinedload(LabOrder.patient),
+        joinedload(LabOrder.lab),
+        joinedload(LabOrder.results)
+    ).filter(LabOrder.id == result.order_id).first()
+
     if not order:
         raise HTTPException(status_code=404, detail="Result not found")
-    patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
-    lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
-    all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
+
+    patient = order.patient
+    lab = order.lab
+    all_results = order.results
 
     results_data = []
     for r in all_results:

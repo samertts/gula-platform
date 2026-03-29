@@ -77,17 +77,24 @@ def get_metrics(
 
     today_start = datetime.combine(date.today(), datetime.min.time())
 
-    q = db.query(LabOrder)
+    # Fetch all relevant orders in a single query to avoid N+1 issues
     if current_user.role not in _WIDE_ROLES:
-        q = q.filter(LabOrder.lab_id == current_user.lab_id)
+        all_orders = db.query(LabOrder).filter(LabOrder.lab_id == current_user.lab_id).all()
+    else:
+        all_orders = db.query(LabOrder).all()
 
-    orders_total     = q.count()
-    orders_today     = q.filter(LabOrder.created_at   >= today_start).count()
-    validated_today  = q.filter(
-        LabOrder.status == "validated",
-        LabOrder.validated_at >= today_start,
-    ).count()
-    pending_count    = q.filter(LabOrder.status == "pending").count()
+    orders_total = len(all_orders)
+    orders_today = 0
+    validated_today = 0
+    pending_count = 0
+
+    for order in all_orders:
+        if order.created_at and order.created_at >= today_start:
+            orders_today += 1
+        if order.status == "validated" and order.validated_at and order.validated_at >= today_start:
+            validated_today += 1
+        if order.status == "pending":
+            pending_count += 1
 
     uptime_s = int(time.time() - _START)
 

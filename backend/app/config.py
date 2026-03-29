@@ -91,6 +91,9 @@ elif IS_PRODUCTION and _is_weak_secret(ENCRYPTION_KEY):
 # Must NOT change in production or existing lookups will break
 NID_HMAC_KEY = os.getenv("NID_HMAC_KEY", "")
 if not NID_HMAC_KEY:
+    if IS_PRODUCTION:
+        print("[GULA FATAL] NID_HMAC_KEY must be set in production.", file=sys.stderr)
+        sys.exit(1)
     NID_HMAC_KEY = ENCRYPTION_KEY or SECRET_KEY
     logger.warning("NID_HMAC_KEY not set. Set a stable key in .env for production.")
 
@@ -108,6 +111,11 @@ RATE_LIMIT_PUBLIC = int(os.getenv("RATE_LIMIT_PUBLIC", "30"))
 
 # ─── Redis (optional - for production rate limiting) ─────────────────────────
 REDIS_URL = os.getenv("REDIS_URL", "")
+if not REDIS_URL:
+    if IS_PRODUCTION:
+        print("[GULA FATAL] REDIS_URL must be set in production.", file=sys.stderr)
+        sys.exit(1)
+    logger.warning("REDIS_URL not set. Redis caching and rate limiting will be disabled.")
 
 # ─── Mobile / Notifications ─────────────────────────────────────────────────
 FCM_SERVER_KEY = os.getenv("FCM_SERVER_KEY", "")  # Firebase Cloud Messaging

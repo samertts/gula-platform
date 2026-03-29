@@ -164,10 +164,13 @@ def list_patients(
     query = db.query(Patient).filter(Patient.lab_id == current_user.lab_id)
 
     if search:
-        query = query.filter(
-            (Patient.full_name.ilike(f"%{search}%")) |
-            (Patient.phone.ilike(f"%{search}%"))
-        )
+        # Optimization: If search looks like a phone number, use exact or prefix match to leverage index
+        import re
+        if re.match(r"^\+?\d+$", search):
+            query = query.filter(Patient.phone.startswith(search))
+        else:
+            # For names, use prefix search if possible, or ilike if necessary
+            query = query.filter(Patient.full_name.ilike(f"%{search}%"))
 
     total = query.count()
     patients = query.order_by(Patient.created_at.desc()).offset(skip).limit(limit).all()
@@ -204,10 +207,10 @@ def create_patient(
                 })
 
         # OPTIMIZED: Pre-filter by phone (exact match) first - O(1) indexed lookup
-        phone_digits = data.phone.replace("+", "").replace("-", "").replace(" ", "")[-10:]
+        # Use startswith or exact match to leverage the index on phone column
         phone_matches = db.query(Patient).filter(
             Patient.lab_id == current_user.lab_id,
-            Patient.phone.contains(phone_digits),
+            Patient.phone == data.phone,
         ).limit(10).all()
 
         duplicates = []

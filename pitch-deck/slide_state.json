@@ -1,0 +1,252 @@
+{
+  "project_info": {
+    "title": "GULA Platform",
+    "created": 1774760223.8493104,
+    "last_updated": 1774760258.131765,
+    "total_slides": 20
+  },
+  "slides": [
+    {
+      "id": "slide_01_title",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "slide_02_problem",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "slide_03_opportunity",
+      "state": "edit_pending",
+      "pageNum": 3
+    },
+    {
+      "id": "slide_04_solution",
+      "state": "edit_pending",
+      "pageNum": 4
+    },
+    {
+      "id": "slide_05_competitive",
+      "state": "edit_pending",
+      "pageNum": 5
+    },
+    {
+      "id": "slide_06_business_model",
+      "state": "edit_pending",
+      "pageNum": 6
+    },
+    {
+      "id": "slide_07_traction",
+      "state": "edit_pending",
+      "pageNum": 7
+    },
+    {
+      "id": "slide_08_go_to_market",
+      "state": "edit_pending",
+      "pageNum": 8
+    },
+    {
+      "id": "slide_09_financials",
+      "state": "edit_pending",
+      "pageNum": 9
+    },
+    {
+      "id": "slide_10_use_of_funds",
+      "state": "edit_pending",
+      "pageNum": 10
+    },
+    {
+      "id": "slide_11_team",
+      "state": "edit_pending",
+      "pageNum": 11
+    },
+    {
+      "id": "slide_12_milestones",
+      "state": "edit_pending",
+      "pageNum": 12
+    },
+    {
+      "id": "slide_13_why_now",
+      "state": "edit_pending",
+      "pageNum": 13
+    },
+    {
+      "id": "slide_14_risk_mitigation",
+      "state": "edit_pending",
+      "pageNum": 14
+    },
+    {
+      "id": "slide_15_cta",
+      "state": "edit_pending",
+      "pageNum": 15
+    },
+    {
+      "id": "slide_16_appendix_metrics",
+      "state": "edit_pending",
+      "pageNum": 16
+    },
+    {
+      "id": "slide_17_appendix_tech",
+      "state": "edit_pending",
+      "pageNum": 17
+    },
+    {
+      "id": "slide_18_appendix_competitive",
+      "state": "edit_pending",
+      "pageNum": 18
+    },
+    {
+      "id": "slide_19_appendix_timeline",
+      "state": "edit_pending",
+      "pageNum": 19
+    },
+    {
+      "id": "slide_20_thank_you",
+      "state": "edit_pending",
+      "pageNum": 20
+    }
+  ],
+  "outline": [
+    {
+      "id": "slide_01_title",
+      "title": "GULA Platform",
+      "summary": "Title slide introducing GULA Platform as a revolutionary healthcare laboratory management system transforming medical labs across Iraq, MENA, and the world.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_02_problem",
+      "title": "The Problem",
+      "summary": "Healthcare labs face critical challenges including outdated systems, security vulnerabilities, inefficient workflows, and lack of local Arabic solutions. 70% of Iraqi labs still use manual systems.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_03_opportunity",
+      "title": "The Opportunity",
+      "summary": "Massive untapped market: Iraq (48M citizens, 1,200 labs), MENA ($23.4B market growing 8-12% annually), Global ($2.64B LIMS market growing 12.68% CAGR).",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_04_solution",
+      "title": "Our Solution - GULA",
+      "summary": "Comprehensive platform with complete patient management, sample tracking, intelligent analysis, professional reporting, advanced billing, audit logs, and 24/7 Arabic support with military-grade encryption.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_05_competitive",
+      "title": "Why GULA Wins",
+      "summary": "Competitive advantages: 10x cheaper than global solutions, full Arabic interface, local government integration, military-grade security, 24/7 local support, and excellent user experience.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_06_business_model",
+      "title": "Business Model",
+      "summary": "Scalable SaaS with tiered pricing ($100-$10K+/month), multiple revenue streams (subscriptions 70%, services 15%, support 10%, analytics 5%), strong unit economics with 4-6 month payback.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_07_traction",
+      "title": "Market Traction",
+      "summary": "Early validation: 44 unit tests (100% passing), 17 database tables, production-grade security, 99.99% uptime in testing, 50+ inquiries from Iraqi labs, government interest.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_08_go_to_market",
+      "title": "Go-to-Market Strategy",
+      "summary": "Phased expansion: Phase 1 Iraq (50 labs, $300K), Phase 2 MENA (300 labs, $2.88M), Phase 3 Global (1,000+ labs, $14.4M+) with direct sales, partnerships, and distributors.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_09_financials",
+      "title": "Financial Projections",
+      "summary": "5-year growth: Year 1 $300K, Year 2 $2.88M, Year 3 $14.4M, Year 4 $54M, Year 5 $108M+ with profitability from Year 2 onwards and margins reaching 88% by Year 5.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_10_use_of_funds",
+      "title": "Use of Funds",
+      "summary": "Seed round $500K-$1M allocation: Engineering $200K (40%), Infrastructure $100K, Sales & Marketing $150K (30%), Team & Operations $150K (30%), Reserve $100K.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_11_team",
+      "title": "Our Team",
+      "summary": "Experienced leadership: CEO with 10+ years healthcare tech, CTO with 8+ years engineering, VP Sales with 5+ years B2B healthcare, VP Marketing with 5+ years digital health expertise.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_12_milestones",
+      "title": "Funding & Milestones",
+      "summary": "Clear path to Series A: Seed achieves 300 customers and $300K MRR by Q4 2026, Series A triggers at 300+ customers with proven product-market fit, Series B at 1,000+ customers and $1M+ MRR.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_13_why_now",
+      "title": "Why Now?",
+      "summary": "Perfect timing: Iraqi government digitalization, WHO digital health push, post-COVID telemedicine adoption, regional VC funding surge, healthcare tech valuations increasing, no dominant local competitor.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_14_risk_mitigation",
+      "title": "Risk Mitigation",
+      "summary": "Addressed key risks: Market risk through customer validation, Technology risk with experienced team, Regulatory risk with compliance-first approach, Competition risk through local advantage and innovation.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_15_cta",
+      "title": "Call to Action",
+      "summary": "Seeking $500K-$1M seed investment from strategic investors with healthcare/MENA expertise. Offering equity stake, advisory board seat, first-mover advantage, and 10-15x return potential.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_16_appendix_metrics",
+      "title": "Key Metrics (Appendix)",
+      "summary": "Market size TAM $23.4B, SAM $5B, SOM $500M. Unit economics: ARPU $1,200, CAC $2,000, LTV $36,000, Payback 4-6 months, Gross Margin 75%+, NRR 110%+.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_17_appendix_tech",
+      "title": "Technology Stack (Appendix)",
+      "summary": "Enterprise-grade: React 19 + Tailwind frontend, Express + tRPC backend, MySQL 8 + Redis, AES-256-GCM encryption, JWT/OAuth auth, Docker + Kubernetes, AWS/GCP cloud-native, 99.99% SLA.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_18_appendix_competitive",
+      "title": "Competitive Analysis (Appendix)",
+      "summary": "Global competitors (Cerner, Epic, Athena) are expensive and not localized. No regional competitors with full feature set. GULA is 10x cheaper, Arabic-first, locally integrated, faster to implement.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_19_appendix_timeline",
+      "title": "Implementation Timeline (Appendix)",
+      "summary": "From funding to launch: Months 1-2 team expansion, Months 3 finalization and audits, Months 4-5 beta launch, Month 6 official launch, Months 7-12 scale to 300 customers and MENA expansion.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_20_thank_you",
+      "title": "Thank You",
+      "summary": "Closing slide with contact information, website, social media, and call to action for questions and next steps in the investment process.",
+      "image_plan": "Use a suitable image if needed",
+      "slide_template_key": ""
+    }
+  ]
+}
