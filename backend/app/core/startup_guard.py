@@ -28,8 +28,19 @@ logger = logging.getLogger("gula.startup")
 
 # ── Module-level readiness flag ───────────────────────────────────────────────
 # Set to True only inside run_startup_guard() after every step passes.
-# Never set to True anywhere else.
 system_ready: bool = False
+_readiness_reason: str = "startup_in_progress"
+
+
+def set_system_ready(ready: bool, reason: str = "ok") -> None:
+    """Explicitly set the system readiness state (used by external startup handlers)."""
+    global system_ready, _readiness_reason
+    system_ready = ready
+    _readiness_reason = reason
+    if ready:
+        logger.info("[STARTUP GUARD] System marked READY: %s", reason)
+    else:
+        logger.warning("[STARTUP GUARD] System marked NOT READY: %s", reason)
 
 
 # ─── Hybrid Readiness Check ──────────────────────────────────────────────────
@@ -198,21 +209,96 @@ async def check_migrations() -> None:
 # ─── Step 4: Seed Critical Data ──────────────────────────────────────────────
 
 async def seed_critical_data() -> None:
-    """Run idempotent seed operations. Safe to call multiple times."""
-    from ..main import _migrate_perm_version, _seed_test_types, _ensure_master_admin
+    """Run idempotent seed operations. Safe to call multiple times.
 
+    Functions are imported from their own modules to avoid circular imports
+    with main.py.
+    """
     loop = asyncio.get_event_loop()
 
     logger.info("[STARTUP GUARD] Running perm_version migration...")
-    await loop.run_in_executor(None, _migrate_perm_version)
+    await loop.run_in_executor(None, _run_perm_version_migration)
 
     logger.info("[STARTUP GUARD] Seeding test types catalog...")
-    await loop.run_in_executor(None, _seed_test_types)
+    await loop.run_in_executor(None, _run_seed_test_types)
 
     logger.info("[STARTUP GUARD] Ensuring master admin exists...")
-    await loop.run_in_executor(None, _ensure_master_admin)
+    await loop.run_in_executor(None, _run_ensure_master_admin)
+
+    logger.info("[STARTUP GUARD] Seeding default lab subscriptions...")
+    await loop.run_in_executor(None, _run_seed_default_subscriptions)
 
     logger.info("[STARTUP GUARD] Critical data seeded OK")
+
+
+def _run_perm_version_migration() -> None:
+    """Add perm_version column to lab_users — no circular import."""
+    from ..database import engine
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text(
+            "ALTER TABLE lab_users "
+            "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
+        ))
+        conn.execute(text(
+            "UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"
+        ))
+        conn.commit()
+    logger.info("[STARTUP GUARD] perm_version column ensured")
+
+
+def _run_seed_test_types() -> None:
+    """Seed test types catalog if empty."""
+    from ..database import SessionLocal
+    from ..models.test_type import TestType
+    db = SessionLocal()
+    try:
+        if db.query(TestType.id).first() is not None:
+            return
+        test_types = [
+            TestType(test_code="glucose",      test_name="Glucose (Fasting)",     test_name_ar="السكر (صائم)",             category="Chemistry",    unit="mg/dL",      normal_range_low=70,   normal_range_high=100),
+            TestType(test_code="hemoglobin",   test_name="Hemoglobin",            test_name_ar="الهيموغلوبين",             category="CBC",          unit="g/dL",       normal_range_low=12,   normal_range_high=17),
+            TestType(test_code="wbc",          test_name="White Blood Cells",     test_name_ar="كريات الدم البيضاء",       category="CBC",          unit="×10³/µL",    normal_range_low=4.0,  normal_range_high=11.0),
+            TestType(test_code="platelets",    test_name="Platelets",             test_name_ar="الصفائح الدموية",          category="CBC",          unit="×10³/µL",    normal_range_low=150,  normal_range_high=400),
+            TestType(test_code="creatinine",   test_name="Creatinine",            test_name_ar="الكرياتينين",              category="Kidney",       unit="mg/dL",      normal_range_low=0.6,  normal_range_high=1.3),
+            TestType(test_code="urea",         test_name="Urea (BUN)",            test_name_ar="اليوريا",                  category="Kidney",       unit="mg/dL",      normal_range_low=15,   normal_range_high=45),
+            TestType(test_code="cholesterol",  test_name="Total Cholesterol",     test_name_ar="الكوليسترول الكلي",        category="Lipid",        unit="mg/dL",      normal_range_low=0,    normal_range_high=200),
+            TestType(test_code="triglycerides",test_name="Triglycerides",         test_name_ar="الدهون الثلاثية",          category="Lipid",        unit="mg/dL",      normal_range_low=0,    normal_range_high=150),
+            TestType(test_code="alt",          test_name="ALT (SGPT)",            test_name_ar="إنزيم الكبد ALT",          category="Liver",        unit="U/L",        normal_range_low=0,    normal_range_high=40),
+            TestType(test_code="ast",          test_name="AST (SGOT)",            test_name_ar="إنزيم الكبد AST",          category="Liver",        unit="U/L",        normal_range_low=0,    normal_range_high=40),
+            TestType(test_code="tsh",          test_name="TSH",                   test_name_ar="هرمون الغدة الدرقية",       category="Thyroid",      unit="mIU/L",      normal_range_low=0.4,  normal_range_high=4.5),
+            TestType(test_code="potassium",    test_name="Potassium",             test_name_ar="البوتاسيوم",               category="Electrolytes", unit="mEq/L",      normal_range_low=3.5,  normal_range_high=5.0),
+            TestType(test_code="sodium",       test_name="Sodium",                test_name_ar="الصوديوم",                 category="Electrolytes", unit="mEq/L",      normal_range_low=135,  normal_range_high=145),
+            TestType(test_code="hba1c",        test_name="HbA1c",                 test_name_ar="السكر التراكمي",           category="Diabetes",     unit="%",          normal_range_low=0,    normal_range_high=5.7),
+            TestType(test_code="vitamin_d",    test_name="Vitamin D",             test_name_ar="فيتامين د",                category="Vitamins",     unit="ng/mL",      normal_range_low=20,   normal_range_high=100),
+            TestType(test_code="rbc",          test_name="Red Blood Cells",       test_name_ar="كريات الدم الحمراء",       category="CBC",          unit="×10⁶/µL",    normal_range_low=4.0,  normal_range_high=6.0),
+            TestType(test_code="mcv",          test_name="MCV",                   test_name_ar="حجم الكرية الوسطي",        category="CBC",          unit="fL",         normal_range_low=80,   normal_range_high=100),
+            TestType(test_code="ldl",          test_name="LDL Cholesterol",       test_name_ar="الكوليسترول الضار",        category="Lipid",        unit="mg/dL",      normal_range_low=0,    normal_range_high=130),
+            TestType(test_code="hdl",          test_name="HDL Cholesterol",       test_name_ar="الكوليسترول النافع",       category="Lipid",        unit="mg/dL",      normal_range_low=40,   normal_range_high=100),
+            TestType(test_code="uric_acid",    test_name="Uric Acid",             test_name_ar="حمض اليوريك",              category="Kidney",       unit="mg/dL",      normal_range_low=2.5,  normal_range_high=7.0),
+        ]
+        db.add_all(test_types)
+        db.commit()
+        logger.info("[STARTUP GUARD] Seeded %d test types", len(test_types))
+    finally:
+        db.close()
+
+
+def _run_ensure_master_admin() -> None:
+    """Create master admin on first startup if not exists."""
+    from ..routes.admin import ensure_master_admin
+    ensure_master_admin()
+
+
+def _run_seed_default_subscriptions() -> None:
+    """Ensure every active lab has a LabSubscription row — idempotent."""
+    from ..database import SessionLocal
+    from ..routes.tiers import seed_default_subscriptions
+    db = SessionLocal()
+    try:
+        seed_default_subscriptions(db)
+    finally:
+        db.close()
 
 
 # ─── Atomic Orchestrator ─────────────────────────────────────────────────────

@@ -20,6 +20,7 @@ class Lab(Base):
     is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    users = relationship("LabUser", back_populates="lab", cascade="all, delete-orphan")
-    patients = relationship("Patient", back_populates="lab", cascade="all, delete-orphan")
-    orders = relationship("LabOrder", back_populates="lab", cascade="all, delete-orphan")
+    users        = relationship("LabUser", back_populates="lab", cascade="all, delete-orphan")
+    patients     = relationship("Patient", back_populates="lab", cascade="all, delete-orphan")
+    orders       = relationship("LabOrder", back_populates="lab", cascade="all, delete-orphan")
+    subscription = relationship("LabSubscription", back_populates="lab", uselist=False, cascade="all, delete-orphan")
