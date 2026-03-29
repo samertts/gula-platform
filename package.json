@@ -58,7 +58,6 @@
     "@types/react-dom": "^18.2.18",
     "@types/uuid": "^9.0.7",
     "@types/cors": "^2.8.17",
-    "@types/uuid": "^9.0.7",
     "@types/compression": "^1.7.5",
     "@types/lodash": "^4.14.202",
     "typescript": "^5.3.3",
@@ -85,8 +84,6 @@
     "@vitest/coverage-v8": "^1.0.4",
     "@types/jest": "^29.5.11",
     "vitest-mock-extended": "^1.3.2",
-    "@testing-library/jest-dom": "^6.1.5",
-    "@types/lodash": "^4.14.202",
     "@types/node": "^20.10.6"
   },
   "engines": {
@@ -103,5 +100,11 @@
     "mena"
   ],
   "author": "GULA Platform Team",
-  "license": "PROPRIETARY"
+  "license": "PROPRIETARY",
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.27.4",
+      "minimatch": "9.0.3"
+    }
+  }
 }
