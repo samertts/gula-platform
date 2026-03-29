@@ -9,7 +9,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .database import Base, engine, check_db_connection, get_pool_status
+from .database import Base, engine, check_db_connection, get_pool_status  # noqa: F401
 from .config import (
     APP_NAME, APP_VERSION, IS_PRODUCTION, ENABLE_API_DOCS,
     MAX_REQUEST_BODY_MB, PLATFORM_NAME_AR,
@@ -23,9 +23,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("gula")
 
-# Import all models so they are registered with Base
-from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl
-from .models.outbox import OutboxEvent  # register OutboxEvent with Base metadata
+# Import all models so they are registered with Base.metadata (needed for create_all + alembic)
+from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl  # noqa: F401
+from .models.outbox import OutboxEvent  # noqa: F401  register OutboxEvent with Base metadata
 
 # Schema management: create_all is safe and idempotent (checkfirst=True by default).
 # It creates missing tables without touching existing data.
@@ -381,7 +381,7 @@ from .routes import ai as ai_routes
 from .routes import optimizer as optimizer_routes
 from .routes import tiers as tiers_routes
 from .routes import citizen_portal as citizen_portal_routes
-from .models.subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag  # register with Base
+from .models.subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag  # noqa: F401  register with Base
 
 # Core routes
 app.include_router(login.router)
@@ -591,7 +591,6 @@ def health_deep():
     import time as _t
 
     t_start = _t.perf_counter()
-    result: dict = {}
 
     # ── 1. Database latency ──────────────────────────────────────────────────
     db_ok, db_ms, db_err = False, -1.0, None
@@ -624,7 +623,6 @@ def health_deep():
     queue_backlog, queue_err = 0, None
     try:
         from .database import SessionLocal
-        from .models.outbox import OutboxEvent
         _db2 = SessionLocal()
         try:
             queue_backlog = _db2.query(OutboxEvent).filter(
@@ -731,7 +729,6 @@ def list_test_types():
         return cache["data"]
 
     from .database import SessionLocal
-    from .models.test_type import TestType
     db = SessionLocal()
     try:
         types = db.query(TestType).order_by(TestType.category, TestType.test_name).all()
@@ -797,7 +794,6 @@ def _migrate_perm_version():
 def _seed_test_types():
     """Seed test types catalog if empty (fast: single COUNT check)."""
     from .database import SessionLocal
-    from .models.test_type import TestType
 
     db = SessionLocal()
     try:

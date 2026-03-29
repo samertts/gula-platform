@@ -39,6 +39,14 @@ jobs:
           echo "✓ Syntax OK"
 
       - name: NameError / missing-import scan
+        env:
+          ENV: test
+          DATABASE_URL: "postgresql://x:x@localhost/x"
+          SECRET_KEY: "ci-scan-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          REFRESH_TOKEN_SECRET: "ci-scan-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
         run: |
           python3 - <<'PYEOF'
           import sys, importlib.util, pathlib, unittest.mock as mock
@@ -70,17 +78,24 @@ jobs:
           for p in sorted(pathlib.Path('app').rglob('*.py')):
               if '__pycache__' in str(p): continue
               mname = str(p).replace('/','_').replace('.py','')
+              mod = None
               try:
                   spec = importlib.util.spec_from_file_location(mname, p)
                   mod  = importlib.util.module_from_spec(spec)
+                  sys.modules[mname] = mod   # register so @dataclass can find module
                   spec.loader.exec_module(mod)
               except (NameError, AttributeError) as e:
                   errors.append(f'  {p}: {type(e).__name__}: {e}')
+              except SystemExit as e:
+                  errors.append(f'  {p}: SystemExit({e.code}) — module calls sys.exit at import time')
               except Exception:
                   pass
+              finally:
+                  if mod is None and mname in sys.modules:
+                      del sys.modules[mname]
 
           if errors:
-              print('FAIL — module-level NameError/AttributeError:')
+              print('FAIL — module-level NameError/AttributeError/SystemExit:')
               for err in errors: print(err)
               sys.exit(1)
           else:
