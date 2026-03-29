@@ -70,8 +70,19 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       الإدارة
     </a>
+    <a href="#tiers" class="nav-item" data-page="tiers" id="tiersNav">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      الاشتراك
+    </a>
   </nav>
   <div class="sidebar-footer">
+    <div id="tierBadge" style="padding:6px 12px;margin-bottom:6px;display:none">
+      <a href="#tiers" onclick="navigate('tiers')" style="display:flex;align-items:center;gap:6px;text-decoration:none;font-size:.72rem;font-weight:700;color:var(--text-muted);transition:color .2s" id="tierBadgeLink">
+        <span id="tierBadgeIcon">🌱</span>
+        <span id="tierBadgeLabel">المبتدئ</span>
+        <span style="margin-right:auto;font-size:.65rem;opacity:.6">← ترقية</span>
+      </a>
+    </div>
     <a href="#profile" class="user-info" id="userInfo" style="text-decoration:none;cursor:pointer" title="الملف الشخصي">
       <div class="user-avatar" id="userAvatar">م</div>
       <div class="user-details">
