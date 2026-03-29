@@ -11,8 +11,92 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/gula-platform
 
 jobs:
+  # ─── Fast Syntax Gate (runs in < 30s, blocks everything else) ──────────────
+  syntax-gate:
+    name: Python Syntax + NameError Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -q -r requirements.txt
+
+      - name: Syntax check — all Python files
+        run: |
+          echo "Checking syntax..."
+          find app migrations -name '*.py' | sort | xargs python3 -m py_compile
+          echo "✓ Syntax OK"
+
+      - name: NameError / missing-import scan
+        run: |
+          python3 - <<'PYEOF'
+          import sys, importlib.util, pathlib, unittest.mock as mock
+
+          STUBS = [
+              'sqlalchemy','sqlalchemy.orm','sqlalchemy.orm.session',
+              'sqlalchemy.exc','sqlalchemy.ext','sqlalchemy.ext.declarative',
+              'redis','jose','jose.jwt','jose.exceptions',
+              'passlib','passlib.context','passlib.hash',
+              'cryptography','cryptography.fernet','cryptography.hazmat',
+              'cryptography.hazmat.primitives','cryptography.hazmat.primitives.hashes',
+              'qrcode','PIL','PIL.Image',
+              'reportlab','reportlab.lib','reportlab.lib.pagesizes',
+              'reportlab.lib.styles','reportlab.lib.units',
+              'reportlab.platypus','reportlab.pdfgen',
+              'arabic_reshaper','bidi','bidi.algorithm',
+              'httpx','psycopg2','psycopg2.extras',
+              'fastapi','fastapi.middleware','fastapi.middleware.cors',
+              'fastapi.middleware.gzip','fastapi.responses',
+              'starlette','starlette.middleware','starlette.middleware.base',
+              'starlette.requests','starlette.responses','starlette.types',
+              'pydantic','pydantic_settings','pydantic.functional_validators',
+              'uvicorn','orjson','alembic','alembic.config',
+          ]
+          for m in STUBS:
+              sys.modules[m] = mock.MagicMock()
+
+          errors = []
+          for p in sorted(pathlib.Path('app').rglob('*.py')):
+              if '__pycache__' in str(p): continue
+              mname = str(p).replace('/','_').replace('.py','')
+              try:
+                  spec = importlib.util.spec_from_file_location(mname, p)
+                  mod  = importlib.util.module_from_spec(spec)
+                  spec.loader.exec_module(mod)
+              except (NameError, AttributeError) as e:
+                  errors.append(f'  {p}: {type(e).__name__}: {e}')
+              except Exception:
+                  pass
+
+          if errors:
+              print('FAIL — module-level NameError/AttributeError:')
+              for err in errors: print(err)
+              sys.exit(1)
+          else:
+              total = sum(1 for _ in pathlib.Path('app').rglob('*.py'))
+              print(f'✓ No NameError/AttributeError ({total} modules scanned)')
+          PYEOF
+
+      - name: Flake8 — undefined names (F821) + syntax errors (E9)
+        run: |
+          pip install -q flake8
+          flake8 app --select=E9,F821 --max-line-length=200 --statistics
+          echo "✓ No undefined names or syntax errors"
+
   # ─── Backend Tests ──────────────────────────────────────────────────────────
   backend-test:
+    needs: [syntax-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -128,7 +212,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [backend-test]
+    needs: [syntax-gate, backend-test]
     permissions:
       contents: read
       packages: write
