@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>GULA — بوابة المريض</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;
+  --primary:#2563eb;--accent:#3b82f6;
+  --text:#f1f5f9;--text-muted:#94a3b8;--text-dim:#475569;
+  --border:#1e2d45;--green:#16a34a;--red:#dc2626;--yellow:#d97706;
+  --radius:14px;--radius-sm:10px;
+  --shadow:0 4px 24px rgba(0,0,0,.4);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* Top bar */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-logo{display:flex;align-items:center;gap:10px}
+.topbar-icon{width:36px;height:36px;background:linear-gradient(145deg,#1a3a8f,#2563eb);border-radius:9px;display:flex;align-items:center;justify-content:center}
+.topbar-icon svg{width:20px;height:20px;fill:#fff}
+.topbar-name{font-size:1.15rem;font-weight:800;color:var(--text);letter-spacing:-.02em}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.btn-sm{padding:7px 14px;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);transition:all .18s;font-family:inherit}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* Content */
+.wrap{max-width:720px;margin:0 auto;padding:24px 16px 60px}
+.hero{text-align:center;padding:32px 0 24px}
+.hero-avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin:0 auto 16px}
+.hero h2{font-size:1.5rem;font-weight:700;margin-bottom:6px}
+.hero p{color:var(--text-muted);font-size:.88rem}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.card-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:16px}
+
+/* Result rows */
+.result-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.result-row:last-child{border-bottom:none}
+.result-name{font-size:.9rem;font-weight:600}
+.result-meta{font-size:.75rem;color:var(--text-muted);margin-top:3px}
+.result-value{text-align:left;font-size:.9rem;font-weight:700;font-family:monospace;direction:ltr}
+.result-status{font-size:.72rem;padding:3px 8px;border-radius:20px;font-weight:600;margin-top:3px;display:inline-block}
+.status-normal{background:rgba(22,163,74,.15);color:#4ade80}
+.status-abnormal{background:rgba(220,38,38,.15);color:#f87171}
+.status-pending{background:rgba(217,119,6,.15);color:#fbbf24}
+.status-critical{background:rgba(220,38,38,.25);color:#f87171;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;background:var(--surface2);border-radius:var(--radius-sm);padding:4px;margin-bottom:20px}
+.tab{flex:1;padding:8px;text-align:center;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--text-muted);transition:all .18s;border:none;background:none;font-family:inherit}
+.tab.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.4)}
+
+/* Empty state */
+.empty{text-align:center;padding:40px 20px;color:var(--text-muted)}
+.empty-icon{font-size:3rem;margin-bottom:12px;opacity:.5}
+.empty p{font-size:.88rem}
+
+/* Search */
+.search-box{display:flex;gap:8px;margin-bottom:16px}
+.search-input{flex:1;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:.88rem;font-family:inherit;outline:none;transition:border .18s}
+.search-input:focus{border-color:var(--accent)}
+.search-input::placeholder{color:var(--text-dim)}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:.72rem;font-weight:700}
+.badge-blue{background:rgba(37,99,235,.15);color:#60a5fa}
+.badge-green{background:rgba(22,163,74,.15);color:#4ade80}
+.badge-yellow{background:rgba(217,119,6,.15);color:#fbbf24}
+
+/* Order card */
+.order-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px}
+.order-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.order-id{font-size:.78rem;font-family:monospace;color:var(--text-muted)}
+.order-date{font-size:.75rem;color:var(--text-dim)}
+.order-tests{font-size:.82rem;color:var(--text-muted);margin-top:4px}
+
+/* Spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:32px;height:32px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin .7s linear infinite;margin:40px auto}
+
+/* QR code placeholder */
+.qr-box{background:var(--surface2);border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center}
+.qr-box p{font-size:.82rem;color:var(--text-muted);margin-top:8px}
+
+/* Demand signal */
+.demand-form{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-top:12px}
+.demand-label{font-size:.82rem;color:var(--text-muted);margin-bottom:10px}
+.tier-chips{display:flex;gap:8px;flex-wrap:wrap}
+.tier-chip{padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);cursor:pointer;font-size:.8rem;font-weight:600;color:var(--text-muted);background:none;font-family:inherit;transition:all .18s}
+.tier-chip:hover,.tier-chip.selected{border-color:var(--accent);color:var(--accent);background:rgba(37,99,235,.1)}
+.demand-textarea{width:100%;margin-top:10px;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical;min-height:70px;outline:none}
+.demand-textarea:focus{border-color:var(--accent)}
+
+/* Toast */
+.toast-container{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{padding:10px 20px;border-radius:20px;font-size:.85rem;font-weight:600;color:#fff;box-shadow:var(--shadow);pointer-events:none}
+.toast-success{background:#16a34a}
+.toast-error{background:#dc2626}
+.toast-info{background:#2563eb}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="topbar-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.25 3.75 10.15 9 11.35C17.25 21.15 21 16.25 21 11V5l-9-4z"/></svg>
+    </div>
+    <span class="topbar-name">GULA</span>
+  </div>
+  <div class="topbar-actions">
+    <span id="greetingBadge" style="font-size:.78rem;color:var(--text-muted)"></span>
+    <button class="btn-sm btn-primary" onclick="doLogout()">خروج</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-avatar" id="heroAvatar">م</div>
+    <h2 id="heroName">أهلاً بك</h2>
+    <p id="heroSub">بوابتك الشخصية لمتابعة نتائج التحاليل</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('results',this)">نتائج التحاليل</button>
+    <button class="tab" onclick="switchTab('orders',this)">الطلبات</button>
+    <button class="tab" onclick="switchTab('demand',this)">طلب ترقية</button>
+  </div>
+
+  <!-- Results tab -->
+  <div id="tabResults">
+    <div class="search-box">
+      <input type="text" class="search-input" id="searchInput" placeholder="ابحث عن تحليل…" oninput="filterResults()">
+    </div>
+    <div class="card">
+      <div class="card-title">آخر نتائج التحاليل</div>
+      <div id="resultsList"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Orders tab -->
+  <div id="tabOrders" style="display:none">
+    <div class="card">
+      <div class="card-title">الطلبات السابقة</div>
+      <div id="ordersList"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Demand tab -->
+  <div id="tabDemand" style="display:none">
+    <div class="card">
+      <div class="card-title">طلب ترقية المختبر</div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px;line-height:1.6">
+        إذا كنت ترغب في الحصول على خدمات أفضل من مختبرك (مثل التقارير المتقدمة أو الذكاء الاصطناعي)،
+        يمكنك إرسال طلب دعم ترقية للباقة — سيتم مراجعته من إدارة المنصة.
+      </p>
+      <div class="demand-form">
+        <div class="demand-label">اختر الباقة التي تريدها للمختبر:</div>
+        <div class="tier-chips">
+          <button class="tier-chip" data-tier="growth" onclick="selectTier(this)">🚀 النمو</button>
+          <button class="tier-chip" data-tier="enterprise" onclick="selectTier(this)">🏢 المؤسسي</button>
+        </div>
+        <textarea class="demand-textarea" id="demandReason" placeholder="لماذا تعتقد أن مختبرك يحتاج هذه الباقة؟ (اختياري)"></textarea>
+        <div style="margin-top:10px;display:flex;justify-content:flex-end">
+          <button class="btn-sm btn-primary" onclick="submitDemand()" style="padding:9px 20px;font-size:.85rem">إرسال الطلب</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:4px">
+      <div class="card-title">حول باقات المختبر</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:.78rem;text-align:center">
+        <div style="background:var(--surface2);border-radius:8px;padding:12px">
+          <div style="font-size:1.4rem;margin-bottom:6px">🌱</div>
+          <div style="font-weight:700;margin-bottom:4px">المبتدئ</div>
+          <div style="color:var(--text-muted)">500 مريض<br>5 موظفين<br>مجاني</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px;border:1px solid rgba(37,99,235,.3)">
+          <div style="font-size:1.4rem;margin-bottom:6px">🚀</div>
+          <div style="font-weight:700;margin-bottom:4px;color:#60a5fa">النمو</div>
+          <div style="color:var(--text-muted)">2000 مريض<br>20 موظف<br>$49/شهر</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px;border:1px solid rgba(124,58,237,.3)">
+          <div style="font-size:1.4rem;margin-bottom:6px">🏢</div>
+          <div style="font-weight:700;margin-bottom:4px;color:#a78bfa">المؤسسي</div>
+          <div style="color:var(--text-muted)">غير محدود<br>ذكاء اصطناعي<br>حسب الاتفاق</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+'use strict';
+const API = '/api';
+let citizen = null;
+let allResults = [];
+let selectedTierDemand = null;
+
+function showToast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function doLogout() {
+  fetch(API + '/citizen/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+  sessionStorage.removeItem('citizen');
+  window.location.replace('/citizen/login.html');
+}
+
+function switchTab(tab, btn) {
+  ['tabResults', 'tabOrders', 'tabDemand'].forEach(id => {
+    document.getElementById(id).style.display = id === 'tab' + cap(tab) ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+function cap(s) { return s[0].toUpperCase() + s.slice(1); }
+
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function statusBadge(status, value, low, high) {
+  if (status === 'pending' || status === 'processing') return '<span class="result-status status-pending">معلق</span>';
+  if (status === 'critical') return '<span class="result-status status-critical">حرج</span>';
+  if (status === 'abnormal') return '<span class="result-status status-abnormal">غير طبيعي</span>';
+  // Try to auto-detect if numeric value is out of range
+  if (value !== null && value !== undefined && low !== null && high !== null) {
+    const v = parseFloat(value), l = parseFloat(low), h = parseFloat(high);
+    if (!isNaN(v) && !isNaN(l) && !isNaN(h)) {
+      if (v < l || v > h) return '<span class="result-status status-abnormal">خارج النطاق</span>';
+    }
+  }
+  return '<span class="result-status status-normal">طبيعي</span>';
+}
+
+async function apiFetch(path, opts = {}) {
+  const r = await fetch(API + path, { credentials: 'include', ...opts });
+  if (r.status === 401) { doLogout(); return null; }
+  if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.detail || 'خطأ ' + r.status); }
+  return r.json().catch(() => null);
+}
+
+async function loadResults() {
+  const el = document.getElementById('resultsList');
+  try {
+    const data = await apiFetch('/citizen/results');
+    allResults = data?.results || data || [];
+    renderResults(allResults);
+  } catch (e) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><p>${escHtml(e.message)}</p></div>`;
+  }
+}
+
+function renderResults(items) {
+  const el = document.getElementById('resultsList');
+  if (!items.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🔬</div><p>لا توجد نتائج بعد</p></div>';
+    return;
+  }
+  el.innerHTML = items.map(r => `
+    <div class="result-row">
+      <div>
+        <div class="result-name">${escHtml(r.test_name || r.name || 'تحليل')}</div>
+        <div class="result-meta">${escHtml(r.lab_name || '')} ${r.collected_at ? '• ' + r.collected_at.slice(0,10) : ''}</div>
+        ${statusBadge(r.status, r.value, r.reference_low, r.reference_high)}
+      </div>
+      <div style="text-align:left">
+        <div class="result-value" dir="ltr">${escHtml(r.value ?? '—')} <small style="font-weight:400;color:var(--text-muted)">${escHtml(r.unit || '')}</small></div>
+        ${r.reference_low != null && r.reference_high != null
+          ? `<div style="font-size:.7rem;color:var(--text-dim);direction:ltr">${r.reference_low} – ${r.reference_high}</div>`
+          : ''}
+        ${r.result_token ? `<a href="/r/${escHtml(r.result_token)}" target="_blank" rel="noopener" style="font-size:.72rem;color:var(--accent);text-decoration:none;display:block;margin-top:4px">📄 عرض PDF</a>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function filterResults() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!q) { renderResults(allResults); return; }
+  renderResults(allResults.filter(r => (r.test_name || r.name || '').toLowerCase().includes(q)));
+}
+
+async function loadOrders() {
+  const el = document.getElementById('ordersList');
+  try {
+    const data = await apiFetch('/citizen/orders');
+    const orders = data?.orders || data || [];
+    if (!orders.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>لا توجد طلبات مسجلة</p></div>';
+      return;
+    }
+    el.innerHTML = orders.map(o => {
+      const stBadge = o.status === 'completed' ? 'badge-green' : o.status === 'processing' ? 'badge-yellow' : 'badge-blue';
+      const stLabel = { completed: 'مكتمل', processing: 'قيد التنفيذ', pending: 'معلق', cancelled: 'ملغي' }[o.status] || o.status;
+      return `
+      <div class="order-card">
+        <div class="order-header">
+          <span class="order-id">#${escHtml(String(o.id || o.order_number || ''))}</span>
+          <span class="badge ${stBadge}">${stLabel}</span>
+        </div>
+        <div class="order-date">${o.created_at ? o.created_at.slice(0,10) : '-'}</div>
+        <div class="order-tests">${escHtml(o.tests?.map(t => t.name || t).join(' • ') || o.test_names || '')}</div>
+        ${o.result_pdf_url ? `<a href="${escHtml(o.result_pdf_url)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;font-size:.78rem;color:var(--accent);text-decoration:none">📄 تنزيل النتائج</a>` : ''}
+      </div>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><p>${escHtml(e.message)}</p></div>`;
+  }
+}
+
+function selectTier(btn) {
+  document.querySelectorAll('.tier-chip').forEach(c => c.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedTierDemand = btn.dataset.tier;
+}
+
+async function submitDemand() {
+  if (!selectedTierDemand) { showToast('يرجى اختيار الباقة أولاً', 'error'); return; }
+  const reason = document.getElementById('demandReason').value.trim();
+  try {
+    await apiFetch('/tiers/upgrade-demand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_tier: selectedTierDemand, reason }),
+    });
+    showToast('تم إرسال طلبك بنجاح — شكراً لمشاركتك', 'success');
+    document.getElementById('demandReason').value = '';
+    document.querySelectorAll('.tier-chip').forEach(c => c.classList.remove('selected'));
+    selectedTierDemand = null;
+  } catch (e) {
+    showToast('خطأ: ' + e.message, 'error');
+  }
+}
+
+function init() {
+  const raw = sessionStorage.getItem('citizen');
+  if (!raw) { window.location.replace('/citizen/login.html'); return; }
+  try { citizen = JSON.parse(raw); } catch { window.location.replace('/citizen/login.html'); return; }
+
+  const name = citizen.name || citizen.full_name || 'مريض';
+  document.getElementById('heroAvatar').textContent = name[0];
+  document.getElementById('heroName').textContent = 'أهلاً، ' + name;
+
+  const h = new Date().getHours();
+  const greeting = h < 12 ? 'صباح الخير' : h < 17 ? 'مساء الخير' : 'مساء النور';
+  document.getElementById('greetingBadge').textContent = greeting;
+
+  loadResults();
+  loadOrders();
+}
+
+// Tab click handlers also load data lazily
+document.querySelectorAll('.tab').forEach((tab, i) => {
+  tab._loaded = i === 0; // results loaded on init
+});
+
+init();
+</script>
+</body>
+</html>
