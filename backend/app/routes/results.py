@@ -548,7 +548,7 @@ def get_public_result(token: str, request: Request, db: Session = Depends(get_db
     )
     db.commit()
 
-    share_text = f"Lab results - GULA Platform"
+    share_text = "Lab results - GULA Platform"
     whatsapp_link = f"https://wa.me/?text={share_text}%20{BASE_URL}/r/{token}"
 
     return {
@@ -633,7 +633,7 @@ def download_result_pdf(token: str, request: Request, db: Session = Depends(get_
     _logger = logging.getLogger("gula.results")
     try:
         pdf_bytes = generate_result_pdf(data, result_url)
-    except Exception as e:
+    except Exception:  # noqa: BLE001
         _logger.exception("PDF generation failed for result %s", result.id)
         raise HTTPException(status_code=500, detail="Failed to generate PDF report")
 

@@ -481,7 +481,7 @@ def get_fhir_service_request(
         .all()
     )
 
-    intent_map = {"pending": "original-order", "completed": "original-order", "cancelled": "original-order"}
+
 
     service_request = {
         "resourceType": "ServiceRequest",
