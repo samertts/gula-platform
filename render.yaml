@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: gula-platform-backend
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gula-platform-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: gula-platform-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://gula-platform.org,https://www.gula-platform.org
+      - key: LOG_LEVEL
+        value: info
+
+  - type: redis
+    name: gula-platform-redis
+    plan: free
+    ipAllowList: []
+
+  - type: pserv
+    name: gula-platform-db
+    runtime: mysql
+    plan: free
+    mysqlVersion: "8.0"
+    ipAllowList: []
+    envVars:
+      - key: MYSQL_ROOT_PASSWORD
+        generateValue: true
+      - key: MYSQL_DATABASE
+        value: gula_platform
+      - key: MYSQL_USER
+        value: gula_user
+      - key: MYSQL_PASSWORD
+        generateValue: true
+
+databases:
+  - name: gula-platform-db
+    databaseName: gula_platform
+    user: gula_user
+    plan: free
