@@ -1,613 +1,374 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="GULA - منصة المختبرات الطبية الذكية">
-<meta name="theme-color" content="#0f172a">
-<link rel="manifest" href="/manifest.json">
-<title>GULA — دخول</title>
+<meta name="theme-color" content="#1e3a8a">
+<title>GULA Laboratory — Secure Access</title>
 <style>
-:root{
-  --bg:#0f172a;
-  --surface:#1e293b;
-  --surface2:#0f172a;
-  --border:#334155;
-  --border-focus:#6366f1;
-  --text:#f1f5f9;
-  --text-muted:#94a3b8;
-  --text-dim:#64748b;
-  --primary:#6366f1;
-  --primary-hover:#818cf8;
-  --cyan:#22d3ee;
-  --green:#10b981;
-  --red:#ef4444;
-  --amber:#f59e0b;
-  --radius:12px;
-  --radius-sm:8px;
-  --shadow:0 25px 60px rgba(0,0,0,.5);
-}
-
 *{margin:0;padding:0;box-sizing:border-box}
-
+:root{
+  --primary:#1e3a8a;
+  --primary-hover:#1e40af;
+  --blue-light:#dbeafe;
+  --text:#0f172a;
+  --text-muted:#64748b;
+  --border:#e2e8f0;
+  --input-bg:#f8fafc;
+  --radius:12px;
+  --shadow:0 20px 60px rgba(30,58,138,.12),0 4px 16px rgba(0,0,0,.06);
+}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:16px;
-  /* subtle animated mesh */
-  background-image:
-    radial-gradient(ellipse 80% 50% at 20% 40%,rgba(99,102,241,.08),transparent),
-    radial-gradient(ellipse 60% 40% at 80% 60%,rgba(34,211,238,.06),transparent);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:24px;
+  background:linear-gradient(145deg,#f0f5ff 0%,#e8f0fe 40%,#f0f9ff 100%);
 }
-
-/* ── Layout ─────────────────────────────── */
-.wrap{width:100%;max-width:420px}
-
-/* ── Logo ───────────────────────────────── */
-.logo{text-align:center;margin-bottom:24px}
-.logo-mark{
-  display:inline-flex;align-items:center;gap:10px;
-  font-size:2rem;font-weight:900;letter-spacing:-.03em;
-  background:linear-gradient(135deg,#6366f1 0%,#22d3ee 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  background-clip:text;
+/* Logo area */
+.brand{text-align:center;margin-bottom:24px}
+.brand-icon{
+  width:72px;height:72px;border-radius:18px;
+  background:#fff;box-shadow:0 4px 20px rgba(30,58,138,.15);
+  display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;
 }
-.logo-icon{
-  width:40px;height:40px;
-  background:linear-gradient(135deg,#6366f1,#22d3ee);
-  border-radius:10px;
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
-}
-.logo-icon svg{width:22px;height:22px;fill:#fff}
-.logo-sub{color:var(--text-dim);font-size:.82rem;margin-top:6px}
-
-/* ── Status bar ─────────────────────────── */
-#statusBar{
-  display:flex;align-items:center;gap:8px;
-  padding:8px 12px;border-radius:var(--radius-sm);
-  font-size:.78rem;margin-bottom:12px;
-  background:rgba(30,41,59,.6);border:1px solid var(--border);
-  transition:all .3s;
-}
-#statusBar.ok{border-color:#10b98140;background:rgba(16,185,129,.08)}
-#statusBar.err{border-color:#ef444440;background:rgba(239,68,68,.08)}
-#statusBar.loading{border-color:var(--border)}
-.status-dot{
-  width:7px;height:7px;border-radius:50%;flex-shrink:0;
-  background:var(--text-dim);
-}
-#statusBar.ok .status-dot{background:var(--green);box-shadow:0 0 6px var(--green)}
-#statusBar.err .status-dot{background:var(--red);box-shadow:0 0 6px var(--red)}
-#statusBar.loading .status-dot{background:var(--amber);animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-
-/* ── First-run notice ───────────────────── */
-#firstRunNotice{
-  display:none;
-  background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(34,211,238,.08));
-  border:1px solid rgba(99,102,241,.4);
-  border-radius:var(--radius-sm);padding:14px 16px;
-  margin-bottom:14px;font-size:.83rem;line-height:1.6;
-  color:#c7d2fe;
-}
-#firstRunNotice strong{color:#a5b4fc;display:block;margin-bottom:4px;font-size:.88rem}
-
-/* ── Card ───────────────────────────────── */
+.brand-icon svg{width:38px;height:38px}
+.brand-name{font-size:1.6rem;font-weight:800;color:var(--text);letter-spacing:-.02em}
+.brand-sub{font-size:.75rem;letter-spacing:.12em;color:var(--text-muted);text-transform:uppercase;margin-top:3px}
+/* Card */
 .card{
-  background:rgba(30,41,59,.7);
-  backdrop-filter:blur(20px);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:24px;
+  background:#fff;border-radius:20px;padding:36px;width:100%;max-width:420px;
   box-shadow:var(--shadow);
 }
-
-/* ── Tabs ───────────────────────────────── */
-.tabs{
-  display:flex;gap:4px;
-  background:var(--surface2);
-  border-radius:var(--radius-sm);
-  padding:4px;margin-bottom:22px;
+/* Card header */
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.card-title{font-size:1.2rem;font-weight:700;color:var(--primary)}
+.lang-btns{display:flex;gap:4px}
+.lang-btn{
+  padding:4px 10px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;font-size:.78rem;font-weight:600;color:var(--text-muted);
+  cursor:pointer;transition:all .15s;
 }
+.lang-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.lang-btn:hover:not(.active){background:var(--blue-light);color:var(--primary);border-color:var(--primary)}
+/* Tabs */
+.tabs{display:grid;grid-template-columns:1fr 1fr;margin-bottom:24px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
 .tab{
-  flex:1;padding:8px 4px;text-align:center;
-  border-radius:6px;cursor:pointer;
-  font-size:.78rem;color:var(--text-dim);
-  transition:all .18s;border:none;background:none;
-  font-family:inherit;white-space:nowrap;
+  padding:10px;text-align:center;font-size:.82rem;font-weight:700;
+  letter-spacing:.06em;cursor:pointer;transition:all .2s;
+  color:var(--text-muted);background:#fff;border:none;
 }
-.tab:hover{color:var(--text-muted)}
-.tab.active{
-  background:var(--surface);
-  color:var(--text);font-weight:600;
-  box-shadow:0 1px 4px rgba(0,0,0,.3);
+.tab.active{background:var(--primary);color:#fff}
+.tab:not(.active):hover{background:var(--blue-light);color:var(--primary)}
+/* Fields */
+.field{margin-bottom:18px}
+.field-label{
+  display:block;font-size:.72rem;font-weight:700;letter-spacing:.08em;
+  color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;
 }
-
-/* ── Forms ──────────────────────────────── */
-.form-section{display:none}
-.form-section.active{display:block}
-
-.field{margin-bottom:14px}
-.field label{
-  display:block;font-size:.78rem;
-  color:var(--text-muted);margin-bottom:5px;font-weight:500;
-}
-.field input,.field select{
-  width:100%;padding:10px 14px;
-  background:var(--surface2);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  color:var(--text);font-size:.88rem;
-  transition:border .18s,box-shadow .18s;
+.field-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.forgot{font-size:.76rem;color:var(--primary);text-decoration:none;font-weight:600}
+.forgot:hover{text-decoration:underline}
+.input-wrap{position:relative}
+.input-wrap input{
+  width:100%;padding:12px 44px 12px 14px;border-radius:10px;
+  border:1.5px solid var(--border);background:var(--input-bg);
+  font-size:.95rem;color:var(--text);outline:none;transition:border .2s;
   font-family:inherit;
 }
-.field input::placeholder{color:var(--text-dim)}
-.field input:focus,.field select:focus{
-  outline:none;
-  border-color:var(--border-focus);
-  box-shadow:0 0 0 3px rgba(99,102,241,.15);
+.input-wrap input:focus{border-color:var(--primary);background:#fff}
+.input-wrap input::placeholder{color:#b0bec5}
+.input-icon{
+  position:absolute;right:13px;top:50%;transform:translateY(-50%);
+  color:#b0bec5;display:flex;align-items:center;
 }
-.field select{cursor:pointer;appearance:none}
-.field select option{background:var(--surface)}
-
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:380px){.row2{grid-template-columns:1fr}}
-
-/* password input wrapper */
-.pw-wrap{position:relative}
-.pw-wrap input{padding-left:40px}
-.pw-eye{
-  position:absolute;left:12px;top:50%;transform:translateY(-50%);
-  background:none;border:none;cursor:pointer;color:var(--text-dim);
-  padding:2px;line-height:1;font-size:1rem;
+.input-icon svg{width:18px;height:18px}
+/* Toggle password */
+.toggle-pwd{
+  position:absolute;right:13px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:#b0bec5;display:flex;align-items:center;
+  padding:0;
 }
-.pw-eye:hover{color:var(--text-muted)}
-
-/* strength bar */
-.pw-bar{height:3px;border-radius:2px;margin-top:5px;background:var(--border);transition:all .3s}
-.pw-bar.weak{background:var(--red);width:30%}
-.pw-bar.mid{background:var(--amber);width:65%}
-.pw-bar.strong{background:var(--green);width:100%}
-.pw-hint{font-size:.72rem;color:var(--text-dim);margin-top:3px}
-
-/* ── Buttons ────────────────────────────── */
-.btn{
-  width:100%;padding:12px;border:none;
-  border-radius:var(--radius-sm);
-  font-size:.9rem;font-weight:600;cursor:pointer;
-  transition:all .18s;font-family:inherit;
-  display:flex;align-items:center;justify-content:center;gap:8px;
+.toggle-pwd:hover{color:var(--text-muted)}
+/* Button */
+.btn-primary{
+  width:100%;padding:14px;border-radius:10px;border:none;
+  background:var(--primary);color:#fff;font-size:.95rem;font-weight:700;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+  letter-spacing:.01em;
 }
-.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important;box-shadow:none!important}
-.btn-primary{background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff}
-.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.35)}
-.btn-teal{background:linear-gradient(135deg,#0891b2,#22d3ee);color:#fff}
-.btn-teal:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(34,211,238,.3)}
-.btn-green{background:linear-gradient(135deg,#059669,#34d399);color:#fff}
-.btn-green:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(52,211,153,.3)}
-.btn-ghost{
-  background:transparent;color:var(--text-muted);
-  border:1px solid var(--border);margin-top:8px;
-}
-.btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.04)}
-
-/* ── Alerts ─────────────────────────────── */
-.alert{
-  padding:10px 14px;border-radius:var(--radius-sm);
-  font-size:.82rem;margin-bottom:14px;line-height:1.5;
-  display:none;
-}
-.alert-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);color:#fca5a5}
-.alert-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.35);color:#6ee7b7;text-align:center}
-
-/* ── Footer note ─────────────────────────── */
-.foot{font-size:.73rem;color:var(--text-dim);text-align:center;margin-top:10px;line-height:1.5}
-.foot a,.foot span[data-tab]{color:var(--primary-hover);cursor:pointer;text-decoration:none}
-.foot a:hover,.foot span[data-tab]:hover{text-decoration:underline}
-
-/* ── Divider ─────────────────────────────── */
-.divider{
-  display:flex;align-items:center;gap:10px;
-  color:var(--text-dim);font-size:.75rem;margin:16px 0;
-}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
-
-/* ── Spinner ─────────────────────────────── */
+.btn-primary:hover{background:var(--primary-hover);transform:translateY(-1px);box-shadow:0 4px 16px rgba(30,58,138,.3)}
+.btn-primary:active{transform:none}
+.btn-primary:disabled{opacity:.7;cursor:not-allowed;transform:none}
+/* Spinner */
+.spinner{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.spinner{
-  width:16px;height:16px;border-radius:50%;flex-shrink:0;
-  border:2px solid rgba(255,255,255,.3);
-  border-top-color:#fff;
-  animation:spin .7s linear infinite;
+/* Divider */
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--text-muted);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+/* Biometric */
+.biometric{display:flex;flex-direction:column;align-items:center;gap:8px}
+.bio-btn{
+  width:60px;height:60px;border-radius:50%;border:1.5px solid var(--border);
+  background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.06);
 }
+.bio-btn:hover{border-color:var(--primary);box-shadow:0 4px 16px rgba(30,58,138,.15)}
+.bio-btn svg{width:28px;height:28px;color:var(--text-muted)}
+.bio-label{font-size:.72rem;letter-spacing:.08em;color:var(--text-muted);font-weight:600;text-transform:uppercase}
+/* Footer */
+.card-footer{text-align:center;margin-top:24px;font-size:.84rem;color:var(--text-muted)}
+.card-footer a{color:var(--primary);font-weight:700;text-decoration:none}
+.card-footer a:hover{text-decoration:underline}
+.footer-links{display:flex;justify-content:center;gap:16px;margin-top:24px}
+.footer-links a{font-size:.72rem;letter-spacing:.06em;color:var(--text-muted);text-decoration:none;text-transform:uppercase;font-weight:600}
+.footer-links a:hover{color:var(--primary)}
+/* Error */
+.error-msg{
+  background:#fef2f2;border:1px solid #fecaca;color:#dc2626;
+  border-radius:8px;padding:10px 14px;font-size:.84rem;margin-bottom:16px;display:none;
+}
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;
+  font-size:.88rem;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:999;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:480px){.card{padding:24px}.brand-icon{width:60px;height:60px}}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- Logo -->
-  <div class="logo">
-    <div class="logo-mark">
-      <div class="logo-icon">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 2v6.5L6.5 11 9 13.5V22h6v-8.5L17.5 11 15 8.5V2H9zm4 2v5.09l2.5 2.41L13 13.91V20h-2v-6.09L8.5 11.5 11 9.09V4h2z"/>
-        </svg>
-      </div>
-      GULA
+<div class="brand">
+  <div class="brand-icon">
+    <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="38" height="38" rx="10" fill="#1e3a8a"/>
+      <path d="M12 8h8l2 6-4 4 2 4H10l2-4-4-4 4-6z" fill="#93c5fd" opacity=".7"/>
+      <path d="M14 10h4l1.5 4.5-3 3 1.5 3h-7l1.5-3-3-3L14 10z" fill="#fff"/>
+      <circle cx="27" cy="24" r="6" fill="none" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="31.2" y1="28.2" x2="34" y2="31" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="brand-name">GULA Laboratory</div>
+  <div class="brand-sub">Clinical Precision</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <span class="card-title">Secure Access</span>
+    <div class="lang-btns">
+      <button class="lang-btn active" onclick="setLang('en',this)">EN</button>
+      <button class="lang-btn" onclick="setLang('ar',this)">AR</button>
+      <button class="lang-btn" onclick="setLang('ku',this)">KU</button>
     </div>
-    <div class="logo-sub">منصة المختبرات الطبية الذكية</div>
   </div>
 
-  <!-- Backend status bar -->
-  <div id="statusBar" class="loading">
-    <div class="status-dot"></div>
-    <span id="statusText">جاري الاتصال بالخادم…</span>
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('nid',this)" id="tab-nid" data-label-en="NATIONAL ID" data-label-ar="الهوية الوطنية" data-label-ku="ناسنامەی نیشتمانی">NATIONAL ID</button>
+    <button class="tab" onclick="setTab('emp',this)" id="tab-emp" data-label-en="EMPLOYEE ID" data-label-ar="هوية الموظف" data-label-ku="ناسنامەی کارمەند">EMPLOYEE ID</button>
   </div>
 
-  <!-- First-run notice (shown automatically if no users exist) -->
-  <div id="firstRunNotice">
-    <strong>مرحباً بك في GULA !</strong>
-    هذه أول تشغيل للمنصة. سجّل مختبرك أدناه لإنشاء الحساب الأول وبدء الاستخدام.
-  </div>
+  <div id="errorMsg" class="error-msg"></div>
 
-  <!-- Card -->
-  <div class="card">
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('login')">تسجيل الدخول</button>
-      <button class="tab" onclick="switchTab('register')">تسجيل مختبر</button>
-      <button class="tab" onclick="switchTab('citizen')">حساب مواطن</button>
+  <form id="loginForm" onsubmit="doLogin(event)">
+    <div class="field">
+      <label class="field-label" id="label-id" data-en="IDENTIFICATION NUMBER" data-ar="رقم الهوية" data-ku="ژمارەی ناسنامە">IDENTIFICATION NUMBER</label>
+      <div class="input-wrap">
+        <input type="text" id="loginId" placeholder="Enter your ID number" required autocomplete="username" inputmode="numeric">
+        <span class="input-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        </span>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-row">
+        <label class="field-label" id="label-pwd" data-en="SECURITY PASSWORD" data-ar="كلمة المرور" data-ku="وشەی نهێنی">SECURITY PASSWORD</label>
+        <a href="#" class="forgot" id="label-forgot" data-en="FORGOT?" data-ar="نسيت؟" data-ku="بیرت چووە؟">FORGOT?</a>
+      </div>
+      <div class="input-wrap">
+        <input type="password" id="loginPwd" placeholder="••••••••" required autocomplete="current-password">
+        <button type="button" class="toggle-pwd" onclick="togglePwd()">
+          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
     </div>
 
-    <div id="alertError" class="alert alert-error"></div>
-    <div id="alertSuccess" class="alert alert-success"></div>
+    <button type="submit" class="btn-primary" id="loginBtn">
+      <span id="loginBtnText" data-en="Authorize Access →" data-ar="تسجيل الدخول ←" data-ku="دەستپێکردن ←">Authorize Access →</span>
+      <span class="spinner" id="loginSpinner" style="display:none"></span>
+    </button>
+  </form>
 
-    <!-- ══════════════════════════════════════
-         TAB 1 — LOGIN
-    ══════════════════════════════════════ -->
-    <form id="fLogin" class="form-section active" onsubmit="doLogin(event)">
-      <div class="field">
-        <label>البريد الإلكتروني</label>
-        <input type="email" id="lEmail" required autocomplete="email"
-               placeholder="example@lab.com" dir="ltr">
-      </div>
-      <div class="field">
-        <label>كلمة المرور</label>
-        <div class="pw-wrap">
-          <input type="password" id="lPass" required autocomplete="current-password"
-                 placeholder="••••••••">
-          <button type="button" class="pw-eye" onclick="togglePw('lPass',this)" tabindex="-1">👁</button>
-        </div>
-      </div>
-      <button type="submit" class="btn btn-primary" id="btnLogin">
-        <span>دخول إلى المنصة</span>
-      </button>
-      <div class="foot" style="margin-top:14px">
-        مستخدم جديد؟
-        <span data-tab="register" onclick="switchTab('register')">سجّل مختبرك</span>
-        أو
-        <span data-tab="citizen" onclick="switchTab('citizen')">أنشئ حساب مواطن</span>
-      </div>
-    </form>
+  <div class="divider" id="label-or" data-en="OR AUTHENTICATE WITH" data-ar="أو المصادقة عبر" data-ku="یان بە ئەوەی">OR AUTHENTICATE WITH</div>
 
-    <!-- ══════════════════════════════════════
-         TAB 2 — LAB REGISTRATION
-    ══════════════════════════════════════ -->
-    <form id="fRegister" class="form-section" onsubmit="doRegister(event)">
-      <div class="field">
-        <label>اسم المختبر <span style="color:var(--red)">*</span></label>
-        <input type="text" id="rLabName" required maxlength="200" placeholder="مختبر الأمل الطبي">
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label>المدينة <span style="color:var(--red)">*</span></label>
-          <input type="text" id="rCity" required maxlength="100" placeholder="بغداد">
-        </div>
-        <div class="field">
-          <label>رقم الهاتف</label>
-          <input type="tel" id="rPhone" placeholder="07xxxxxxxxx" dir="ltr" maxlength="20">
-        </div>
-      </div>
-      <div class="field">
-        <label>اسم المسؤول <span style="color:var(--red)">*</span></label>
-        <input type="text" id="rAdminName" required maxlength="200" placeholder="الاسم الكامل">
-      </div>
-      <div class="field">
-        <label>البريد الإلكتروني <span style="color:var(--red)">*</span></label>
-        <input type="email" id="rEmail" required maxlength="100" placeholder="admin@lab.com" dir="ltr">
-      </div>
-      <div class="field">
-        <label>كلمة المرور <span style="color:var(--red)">*</span></label>
-        <div class="pw-wrap">
-          <input type="password" id="rPass" required minlength="8"
-                 placeholder="8 أحرف وأرقام على الأقل"
-                 oninput="strength(this,'rBar','rHint')">
-          <button type="button" class="pw-eye" onclick="togglePw('rPass',this)" tabindex="-1">👁</button>
-        </div>
-        <div class="pw-bar" id="rBar"></div>
-        <div class="pw-hint" id="rHint">يجب أن تحتوي على حروف وأرقام</div>
-      </div>
-      <button type="submit" class="btn btn-teal" id="btnReg">
-        <span>تسجيل المختبر</span>
-      </button>
-      <div class="foot">بالتسجيل توافق على شروط الاستخدام وسياسة الخصوصية</div>
-    </form>
+  <div class="biometric">
+    <button class="bio-btn" onclick="bioLogin()" title="Biometric Login">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" color="var(--text-muted)">
+        <path d="M12 2C9.8 2 7.8 2.9 6.3 4.3"/>
+        <path d="M17.7 4.3C19.2 5.8 20 7.8 20 10c0 4.4-2.2 8.3-5.5 10.7"/>
+        <path d="M6 10c0-3.3 2.7-6 6-6s6 2.7 6 6c0 2.7-.9 5.2-2.5 7"/>
+        <path d="M8.5 10c0-1.9 1.6-3.5 3.5-3.5s3.5 1.6 3.5 3.5c0 1.7-.5 3.3-1.5 4.6"/>
+        <path d="M12 10v.01"/>
+        <path d="M9.5 13.5c.5 1.5 1.4 2.8 2.5 3.8"/>
+      </svg>
+    </button>
+    <span class="bio-label" id="label-bio" data-en="BIOMETRIC LOGIN" data-ar="الدخول البيومتري" data-ku="چوونەژوورەوەی بیومەتریک">BIOMETRIC LOGIN</span>
+  </div>
+</div>
 
-    <!-- ══════════════════════════════════════
-         TAB 3 — CITIZEN ACCOUNT
-    ══════════════════════════════════════ -->
-    <form id="fCitizen" class="form-section" onsubmit="doCitizen(event)">
-      <p style="font-size:.8rem;color:var(--text-dim);margin-bottom:14px;line-height:1.6">
-        أنشئ حسابك الشخصي لمتابعة نتائج تحاليلك الطبية بشكل آمن وسري.
-      </p>
-      <div class="row2">
-        <div class="field">
-          <label>الاسم الكامل <span style="color:var(--red)">*</span></label>
-          <input type="text" id="cName" required maxlength="200" placeholder="الاسم الكامل">
-        </div>
-        <div class="field">
-          <label>رقم الهاتف <span style="color:var(--red)">*</span></label>
-          <input type="tel" id="cPhone" required placeholder="07xxxxxxxxx" dir="ltr">
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label>الجنس</label>
-          <select id="cGender">
-            <option value="">اختر</option>
-            <option value="male">ذكر</option>
-            <option value="female">أنثى</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>تاريخ الميلاد</label>
-          <input type="date" id="cDob" max="">
-        </div>
-      </div>
-      <div class="field">
-        <label>البريد الإلكتروني <span style="color:var(--red)">*</span></label>
-        <input type="email" id="cEmail" required maxlength="100"
-               placeholder="your@email.com" dir="ltr">
-      </div>
-      <div class="field">
-        <label>كلمة المرور <span style="color:var(--red)">*</span></label>
-        <div class="pw-wrap">
-          <input type="password" id="cPass" required minlength="8"
-                 placeholder="8 أحرف وأرقام على الأقل"
-                 oninput="strength(this,'cBar','cHint')">
-          <button type="button" class="pw-eye" onclick="togglePw('cPass',this)" tabindex="-1">👁</button>
-        </div>
-        <div class="pw-bar" id="cBar"></div>
-        <div class="pw-hint" id="cHint">يجب أن تحتوي على حروف وأرقام</div>
-      </div>
-      <div class="field">
-        <label>الرقم الوطني <span style="color:var(--text-dim)">(اختياري)</span></label>
-        <input type="text" id="cNatId" maxlength="20"
-               placeholder="رقم مكون من 12 خانة" dir="ltr" inputmode="numeric">
-      </div>
-      <button type="submit" class="btn btn-green" id="btnCit">
-        <span>إنشاء الحساب</span>
-      </button>
-      <div class="foot">بياناتك الطبية محمية بالتشفير ولا تُشارك مع أي جهة</div>
-    </form>
+<div class="card-footer">
+  <span id="label-no-account" data-en="Don't have a clinical profile?" data-ar="لا تملك ملفاً سريرياً؟" data-ku="پرۆفایلی کلینیکیت نییە؟">Don't have a clinical profile?</span>
+  <a href="/register.html" id="label-create" data-en="Create Account" data-ar="إنشاء حساب" data-ku="هەژمار دروست بکە"> Create Account</a>
+</div>
 
-  </div><!-- /card -->
-</div><!-- /wrap -->
+<div class="footer-links">
+  <a href="#" data-en="SUPPORT" data-ar="الدعم" data-ku="پشتیوانی" class="flink">SUPPORT</a>
+  <a href="#" data-en="PRIVACY POLICY" data-ar="سياسة الخصوصية" data-ku="سیاسەتی نهێنی" class="flink">PRIVACY POLICY</a>
+  <a href="#" data-en="LEGAL NOTICE" data-ar="الإشعار القانوني" data-ku="ئاگادارکردنەوەی یاساییr" class="flink">LEGAL NOTICE</a>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
-'use strict';
-const API = '/api';
+const LABELS = {
+  en:{tab_nid:'NATIONAL ID',tab_emp:'EMPLOYEE ID',id:'IDENTIFICATION NUMBER',pwd:'SECURITY PASSWORD',forgot:'FORGOT?',or:'OR AUTHENTICATE WITH',bio:'BIOMETRIC LOGIN',btn:'Authorize Access →',no_account:"Don't have a clinical profile?",create:'Create Account',support:'SUPPORT',privacy:'PRIVACY POLICY',legal:'LEGAL NOTICE',placeholder_id:'Enter your ID number',placeholder_pwd:'••••••••'},
+  ar:{tab_nid:'الهوية الوطنية',tab_emp:'هوية الموظف',id:'رقم الهوية',pwd:'كلمة المرور',forgot:'نسيت؟',or:'أو المصادقة عبر',bio:'الدخول البيومتري',btn:'دخول ←',no_account:'لا تملك ملفاً سريرياً؟',create:'إنشاء حساب',support:'الدعم',privacy:'سياسة الخصوصية',legal:'الإشعار القانوني',placeholder_id:'أدخل رقم هويتك',placeholder_pwd:'كلمة المرور'},
+  ku:{tab_nid:'ناسنامەی نیشتمانی',tab_emp:'ناسنامەی کارمەند',id:'ژمارەی ناسنامە',pwd:'وشەی نهێنی',forgot:'بیرت چووە؟',or:'یان بە',bio:'چوونەژوورەوەی بیومەتریک',btn:'دەستپێکردن ←',no_account:'پرۆفایلی کلینیکیت نییە؟',create:'هەژمار دروست بکە',support:'پشتیوانی',privacy:'سیاسەتی نهێنی',legal:'ئاگادارکردنەوەی یاسایی',placeholder_id:'ژمارەی ناسنامەت بنووسە',placeholder_pwd:'••••••••'}
+};
 
-// ── Redirect if already authenticated ──────────────────────────────────────
-if (sessionStorage.getItem('user')) { window.location.replace('/'); }
+let currentLang='en', currentTab='nid', pwdVisible=false;
 
-// ── Set DOB max ─────────────────────────────────────────────────────────────
-document.getElementById('cDob').max = new Date().toISOString().split('T')[0];
+function setLang(lang,btn){
+  currentLang=lang;
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const L=LABELS[lang];
+  document.getElementById('tab-nid').textContent=L.tab_nid;
+  document.getElementById('tab-emp').textContent=L.tab_emp;
+  document.getElementById('label-id').textContent=L.id;
+  document.getElementById('label-pwd').textContent=L.pwd;
+  document.getElementById('label-forgot').textContent=L.forgot;
+  document.getElementById('label-or').childNodes[1].textContent=L.or;
+  document.getElementById('label-bio').textContent=L.bio;
+  document.getElementById('loginBtnText').textContent=L.btn;
+  document.getElementById('label-no-account').textContent=L.no_account;
+  document.getElementById('label-create').textContent=' '+L.create;
+  document.getElementById('loginId').placeholder=L.placeholder_id;
+  document.getElementById('loginPwd').placeholder=L.placeholder_pwd;
+  document.documentElement.lang=lang;
+  document.documentElement.dir=lang==='ar'||lang==='ku'?'rtl':'ltr';
+}
 
-// ── Backend status + first-run detection ────────────────────────────────────
-(async () => {
-  const bar  = document.getElementById('statusBar');
-  const txt  = document.getElementById('statusText');
-  const note = document.getElementById('firstRunNotice');
-  try {
-    // health check
-    const hRes = await fetch(API + '/health', { signal: AbortSignal.timeout(6000) });
-    if (!hRes.ok) throw new Error('health_fail');
-    txt.textContent = 'الخادم يعمل بشكل طبيعي';
-    bar.className = 'ok';
+function setTab(tab,btn){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
 
-    // first-run check
-    const sRes = await fetch(API + '/setup/status', { signal: AbortSignal.timeout(4000) });
-    if (sRes.ok) {
-      const s = await sRes.json();
-      if (s.needs_setup) {
-        note.style.display = 'block';
-        switchTab('register');
+function togglePwd(){
+  pwdVisible=!pwdVisible;
+  const inp=document.getElementById('loginPwd');
+  inp.type=pwdVisible?'text':'password';
+  document.getElementById('eyeIcon').innerHTML=pwdVisible
+    ?'<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+    :'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+}
+
+function showError(msg){
+  const el=document.getElementById('errorMsg');
+  el.textContent=msg;el.style.display='block';
+}
+function hideError(){document.getElementById('errorMsg').style.display='none'}
+
+function showToast(msg,ms=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),ms);
+}
+
+async function doLogin(e){
+  e.preventDefault();
+  hideError();
+  const id=document.getElementById('loginId').value.trim();
+  const pwd=document.getElementById('loginPwd').value;
+  if(!id||!pwd)return showError('Please enter your ID and password.');
+
+  const btn=document.getElementById('loginBtn');
+  const txt=document.getElementById('loginBtnText');
+  const spn=document.getElementById('loginSpinner');
+  btn.disabled=true;txt.style.display='none';spn.style.display='inline-block';
+
+  try{
+    // Determine email based on tab type
+    const loginPayload=currentTab==='emp'
+      ?{email:id,password:pwd}
+      :{national_id:id,password:pwd,email:id};
+
+    const res=await fetch('/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(loginPayload),
+      credentials:'include'
+    });
+
+    if(res.ok){
+      const data=await res.json();
+      sessionStorage.setItem('user',JSON.stringify({
+        name:data.name||data.full_name||'User',
+        role:data.role||'staff',
+        lab_id:data.lab_id,
+        lab_name:data.lab_name||'GULA Laboratory'
+      }));
+      // Route based on role
+      const role=(data.role||'').toLowerCase();
+      if(role==='citizen'||role==='patient'){
+        window.location.href='/portal.html#citizen';
+      } else if(role==='doctor'){
+        window.location.href='/portal.html#doctor';
+      } else {
+        window.location.href='/portal.html#technician';
       }
+    } else {
+      const err=await res.json().catch(()=>({}));
+      showError(err.detail||'Invalid credentials. Please try again.');
     }
-  } catch {
-    txt.textContent = 'تعذّر الاتصال بالخادم — تأكد من تشغيل docker compose';
-    bar.className = 'err';
+  } catch(ex){
+    // Try fallback to existing login endpoint
+    try{
+      const res2=await fetch('/login',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email:id,password:pwd}),
+        credentials:'include'
+      });
+      if(res2.ok){
+        const data=await res2.json();
+        sessionStorage.setItem('user',JSON.stringify({
+          name:data.name||'User',
+          role:data.role||'staff',
+          lab_id:data.lab_id,
+          lab_name:data.lab_name||'GULA Laboratory'
+        }));
+        window.location.href='/portal.html';
+      } else {
+        showError('Connection error. Please check your network and try again.');
+      }
+    } catch(ex2){
+      showError('Connection error. Please check your network and try again.');
+    }
+  } finally{
+    btn.disabled=false;txt.style.display='inline';spn.style.display='none';
   }
-})();
-
-// ── Tab switching ────────────────────────────────────────────────────────────
-function switchTab(name) {
-  const map = { login:0, register:1, citizen:2 };
-  document.querySelectorAll('.tab').forEach((t,i) =>
-    t.classList.toggle('active', i === map[name]));
-  ['fLogin','fRegister','fCitizen'].forEach((id,i) =>
-    document.getElementById(id).classList.toggle('active', i === map[name]));
-  clearAlerts();
 }
 
-// ── Alerts ───────────────────────────────────────────────────────────────────
-function showErr(msg) {
-  const el = document.getElementById('alertError');
-  el.textContent = msg; el.style.display = 'block';
-  document.getElementById('alertSuccess').style.display = 'none';
-}
-function showOk(msg) {
-  const el = document.getElementById('alertSuccess');
-  el.textContent = msg; el.style.display = 'block';
-  document.getElementById('alertError').style.display = 'none';
-}
-function clearAlerts() {
-  document.getElementById('alertError').style.display = 'none';
-  document.getElementById('alertSuccess').style.display = 'none';
+function bioLogin(){
+  showToast('Biometric authentication is not available on this device.');
 }
 
-// ── Password visibility toggle ───────────────────────────────────────────────
-function togglePw(id, btn) {
-  const inp = document.getElementById(id);
-  const show = inp.type === 'password';
-  inp.type = show ? 'text' : 'password';
-  btn.textContent = show ? '🙈' : '👁';
-}
-
-// ── Password strength ────────────────────────────────────────────────────────
-function strength(inp, barId, hintId) {
-  const v = inp.value;
-  const bar = document.getElementById(barId);
-  const hint = document.getElementById(hintId);
-  if (!v) { bar.className = 'pw-bar'; hint.textContent = 'يجب أن تحتوي على حروف وأرقام'; return; }
-  const hasL = /[a-zA-Z]/.test(v), hasN = /\d/.test(v), hasSym = /[^a-zA-Z0-9]/.test(v);
-  if (v.length < 8 || !hasL || !hasN)  { bar.className = 'pw-bar weak'; hint.textContent = 'ضعيفة'; }
-  else if (v.length >= 12 && hasSym)    { bar.className = 'pw-bar strong'; hint.textContent = '✓ قوية جداً'; }
-  else                                   { bar.className = 'pw-bar mid'; hint.textContent = 'متوسطة — أضف رموزاً'; }
-}
-
-// ── Fetch with timeout ───────────────────────────────────────────────────────
-async function apiFetch(url, body, ms = 12000) {
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(ms),
-  });
-  const data = await r.json().catch(() => ({}));
-  return { ok: r.ok, status: r.status, data };
-}
-
-// ── Busy state helpers ───────────────────────────────────────────────────────
-function setBusy(btnId, label) {
-  const btn = document.getElementById(btnId);
-  btn.disabled = true;
-  btn.innerHTML = `<div class="spinner"></div><span>${label}</span>`;
-  return () => { btn.disabled = false; btn.innerHTML = `<span>${btn.dataset.label || label}</span>`; };
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// LOGIN
-// ══════════════════════════════════════════════════════════════════════════════
-async function doLogin(e) {
-  e.preventDefault(); clearAlerts();
-  const done = setBusy('btnLogin', 'جاري التحقق…');
-  document.getElementById('btnLogin').dataset.label = 'دخول إلى المنصة';
-  try {
-    const { ok, status, data } = await apiFetch(API + '/login', {
-      email:    document.getElementById('lEmail').value.trim(),
-      password: document.getElementById('lPass').value,
-    });
-    if (status === 401) throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-    if (status === 403) throw new Error(data.detail || 'الحساب غير مفعّل — تواصل مع المسؤول');
-    if (status === 429) throw new Error('محاولات كثيرة — انتظر دقيقة ثم أعد المحاولة');
-    if (status >= 500)  throw new Error('خطأ في الخادم — تحقق من سجلات docker');
-    if (!ok)            throw new Error(data.detail || `خطأ ${status}`);
-    if (!data.user)     throw new Error('لم تصل بيانات المستخدم من الخادم');
-
-    sessionStorage.setItem('user', JSON.stringify(data.user));
-    window.location.replace('/');
-  } catch (err) {
-    showErr(err.name === 'TimeoutError'
-      ? 'انتهت مهلة الانتظار — الخادم لا يستجيب'
-      : err.message);
-  } finally { done(); }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// LAB REGISTRATION
-// ══════════════════════════════════════════════════════════════════════════════
-async function doRegister(e) {
-  e.preventDefault(); clearAlerts();
-  const pw = document.getElementById('rPass').value;
-  if (pw.length < 8)                          { showErr('كلمة المرور قصيرة جداً (8 أحرف على الأقل)'); return; }
-  if (!/[a-zA-Z]/.test(pw)||!/\d/.test(pw)) { showErr('كلمة المرور يجب أن تحتوي على حرف ورقم'); return; }
-
-  const done = setBusy('btnReg', 'جاري التسجيل…');
-  document.getElementById('btnReg').dataset.label = 'تسجيل المختبر';
-  try {
-    const { ok, status, data } = await apiFetch(API + '/register', {
-      lab_name:   document.getElementById('rLabName').value.trim(),
-      city:       document.getElementById('rCity').value.trim(),
-      admin_name: document.getElementById('rAdminName').value.trim(),
-      email:      document.getElementById('rEmail').value.trim(),
-      password:   pw,
-      phone:      document.getElementById('rPhone').value.trim() || undefined,
-      address:    '',
-    });
-    if (status === 400 && data.detail?.includes('already'))
-      throw new Error('البريد الإلكتروني مسجّل مسبقاً — سجّل دخولك أو استخدم بريداً آخر');
-    if (!ok) throw new Error(data.detail || `خطأ ${status}`);
-
-    sessionStorage.setItem('user', JSON.stringify({
-      id:     data.user_id,
-      name:   document.getElementById('rAdminName').value.trim(),
-      email:  document.getElementById('rEmail').value.trim(),
-      role:   'admin',
-      lab_id: data.lab_id,
-    }));
-    window.location.replace('/');
-  } catch (err) {
-    showErr(err.name === 'TimeoutError' ? 'انتهت مهلة الانتظار' : err.message);
-  } finally { done(); }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// CITIZEN REGISTRATION
-// ══════════════════════════════════════════════════════════════════════════════
-async function doCitizen(e) {
-  e.preventDefault(); clearAlerts();
-  const pw    = document.getElementById('cPass').value;
-  const phone = document.getElementById('cPhone').value.trim().replace(/[\s\-]/g,'');
-
-  if (pw.length < 8)                          { showErr('كلمة المرور قصيرة جداً'); return; }
-  if (!/[a-zA-Z]/.test(pw)||!/\d/.test(pw)) { showErr('كلمة المرور يجب أن تحتوي على حرف ورقم'); return; }
-  if (!/^(07\d{9}|9647\d{9}|\+9647\d{9})$/.test(phone))
-    { showErr('صيغة رقم الهاتف غير صحيحة — مثال: 07xxxxxxxxx'); return; }
-
-  const done = setBusy('btnCit', 'جاري الإنشاء…');
-  document.getElementById('btnCit').dataset.label = 'إنشاء الحساب';
-  try {
-    const { ok, status, data } = await apiFetch(API + '/register/citizen', {
-      full_name:   document.getElementById('cName').value.trim(),
-      phone,
-      email:       document.getElementById('cEmail').value.trim(),
-      password:    pw,
-      gender:      document.getElementById('cGender').value || undefined,
-      birth_date:  document.getElementById('cDob').value || undefined,
-      national_id: document.getElementById('cNatId').value.trim() || undefined,
-    });
-    if (!ok) throw new Error(data.detail || `خطأ ${status}`);
-
-    showOk('✓ تم إنشاء حسابك بنجاح! سيتم تحويلك لتسجيل الدخول…');
-    document.getElementById('cPass').value = '';
-    setTimeout(() => {
-      switchTab('login');
-      document.getElementById('lEmail').value = document.getElementById('cEmail').value;
-    }, 2000);
-  } catch (err) {
-    showErr(err.name === 'TimeoutError' ? 'انتهت مهلة الانتظار' : err.message);
-  } finally { done(); }
-}
+// Check if already logged in
+const u=sessionStorage.getItem('user');
+if(u){try{const d=JSON.parse(u);if(d&&d.role)window.location.href='/portal.html';}catch(e){}}
 </script>
 </body>
 </html>
