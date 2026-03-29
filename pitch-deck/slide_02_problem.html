@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Problem - GULA Pitch Deck</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #F8FAFC;
+        }
+
+        .slide-container {
+            width: 1280px;
+            min-height: 720px;
+            background: #F8FAFC;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header section */
+        .header-section {
+            padding-top: 60px;
+            padding-left: 100px;
+            padding-right: 100px;
+            flex: 0 0 auto;
+        }
+
+        .section-title {
+            font-size: 64px;
+            font-weight: 800;
+            color: #1E293B;
+            margin-bottom: 10px;
+        }
+
+        .section-subtitle {
+            font-size: 28px;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        /* Body section */
+        .body-section {
+            flex: 1;
+            padding: 60px 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .problem-item {
+            background: #FFFFFF;
+            border-left: 4px solid #2563EB;
+            padding: 30px;
+            border-radius: 4px;
+        }
+
+        .problem-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .problem-item p {
+            font-size: 18px;
+            font-weight: 500;
+            color: #1E293B;
+            line-height: 1.5;
+        }
+
+        .market-gap {
+            background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+            color: #FFFFFF;
+            padding: 30px;
+            border-radius: 4px;
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+        .market-gap strong {
+            font-weight: 700;
+        }
+
+        /* Decorative line */
+        .decoration-line {
+            position: absolute;
+            height: 3px;
+            background: #F59E0B;
+            top: 140px;
+            right: 100px;
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="decoration-line"></div>
+
+        <div class="header-section">
+            <h2 class="section-title">The Problem</h2>
+            <p class="section-subtitle">Healthcare Labs Face Critical Challenges</p>
+        </div>
+
+        <div class="body-section">
+            <div class="problem-grid">
+                <div class="problem-item">
+                    <div class="problem-icon">📊</div>
+                    <p>70% of Iraqi labs still use manual or outdated systems</p>
+                </div>
+                <div class="problem-item">
+                    <div class="problem-icon">🔒</div>
+                    <p>Security vulnerabilities and data loss risks</p>
+                </div>
+                <div class="problem-item">
+                    <div class="problem-icon">⏱️</div>
+                    <p>Inefficient workflows causing delays and errors</p>
+                </div>
+                <div class="problem-item">
+                    <div class="problem-icon">🌍</div>
+                    <p>Lack of local, Arabic-language solutions</p>
+                </div>
+            </div>
+
+            <div class="market-gap">
+                <strong>Market Gap:</strong> $23.4B healthcare digital market with no dominant local player
+            </div>
+        </div>
+    </div>
+</body>
+</html>
