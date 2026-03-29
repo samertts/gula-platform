@@ -41,10 +41,6 @@ if not IS_PRODUCTION or ENABLE_API_DOCS:
     _docs_url = "/docs"
     _redoc_url = "/redoc"
 
-from alembic.config import Config
-from alembic import command
-from .core.startup_guard import wait_for_db, check_migrations
-
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
@@ -68,88 +64,46 @@ app = FastAPI(
     },
 )
 
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Application startup event triggered.")
-    # Wait for DB to be ready with retries
-    db_ready = await wait_for_db()
-    if not db_ready:
-        logger.critical("Database not available after multiple retries. Application will start in degraded mode.")
-        # Allow app to start, but is_system_ready will return False
-        return
-
-    # Perform database migrations
-    try:
-        logger.info("Running Alembic migrations...")
-        alembic_cfg = Config("alembic.ini")
-        alembic_cfg.set_main_option("script_location", "migrations")
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Alembic migrations completed.")
-    except Exception as e:
-        logger.critical(f"Failed to run Alembic migrations: {e}")
-        # If migrations fail, the system is not truly ready
-        from .core.startup_guard import set_system_ready
-        set_system_ready(False, f"Migrations failed: {e}")
-        return
-
-    # Create tables for any new models not yet in migrations (idempotent)
-    try:
-        logger.info("Ensuring all database tables exist...")
-        Base.metadata.create_all(bind=engine)
-        logger.info("All database tables ensured.")
-    except Exception as e:
-        logger.critical(f"Failed to create missing tables: {e}")
-        from .core.startup_guard import set_system_ready
-        set_system_ready(False, f"Table creation failed: {e}")
-        return
-
-    # Check if critical data seeding is needed (if any)
-    # This part should be handled by startup_guard.py if it's part of readiness
-    # For now, just ensure system is marked ready if all above passed
-    from .core.startup_guard import set_system_ready
-    set_system_ready(True, "System fully operational.")
-    logger.info("Application startup complete. System is ready.")
-
 
 # ===== GLOBAL ERROR HANDLER =====
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
     request_id = getattr(request.state, "request_id", "unknown")
-        from .core.startup_guard import is_system_ready
-        ready, reason = is_system_ready()
+    from .core.startup_guard import is_system_ready
+    ready, reason = is_system_ready()
 
-        if not ready and IS_PRODUCTION:
-            logger.error("[%s] Unhandled exception during unready state: %s %s (Reason: %s)", request_id, request.method, request.url.path, reason)
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "detail": f"Service Unavailable: System not ready. Reason: {reason}",
-                    "detail_ar": f"الخدمة غير متاحة: النظام غير جاهز. السبب: {reason}",
-                    "request_id": request_id,
-                },
-            )
-        elif IS_PRODUCTION:
-            logger.error("[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path)
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "detail": "An unexpected error occurred. Please try again later.",
-                    "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
-                    "request_id": request_id,
-                },
-            )
-        else:
-            # In development, log full exception and return more details
-            logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "detail": str(exc),
-                    "detail_ar": "حدث خطأ: " + str(exc),
-                    "request_id": request_id,
-                },
-            )
+    if not ready and IS_PRODUCTION:
+        logger.error("[%s] Unhandled exception during unready state: %s %s (Reason: %s)", request_id, request.method, request.url.path, reason)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": f"Service Unavailable: System not ready. Reason: {reason}",
+                "detail_ar": f"الخدمة غير متاحة: النظام غير جاهز. السبب: {reason}",
+                "request_id": request_id,
+            },
+        )
+    elif IS_PRODUCTION:
+        logger.error("[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "An unexpected error occurred. Please try again later.",
+                "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
+                "request_id": request_id,
+            },
+        )
+    else:
+        # In development, log full exception and return more details
+        logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": str(exc),
+                "detail_ar": "حدث خطأ: " + str(exc),
+                "request_id": request_id,
+            },
+        )
 
 
 # ===== REQUEST BODY SIZE LIMIT =====
@@ -320,6 +274,7 @@ _ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset({
     "/health/ready",
     "/health/live",
     "/health/status",  # diagnostic — always visible so you can see WHY startup failed
+    "/health/deep",   # deep diagnostics — always accessible for monitoring
 })
 
 
@@ -424,6 +379,9 @@ from .routes import mobile, compliance
 from .routes import setup, metrics
 from .routes import ai as ai_routes
 from .routes import optimizer as optimizer_routes
+from .routes import tiers as tiers_routes
+from .routes import citizen_portal as citizen_portal_routes
+from .models.subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag  # register with Base
 
 # Core routes
 app.include_router(login.router)
@@ -458,6 +416,12 @@ app.include_router(mobile.router)
 
 # Government compliance routes
 app.include_router(compliance.router)
+
+# Subscription tier management
+app.include_router(tiers_routes.router)
+
+# Citizen / patient portal
+app.include_router(citizen_portal_routes.router)
 
 # Legacy routes (kept for API compatibility)
 app.include_router(national_identity.router)
@@ -606,6 +570,147 @@ def health_status():
         "degraded_mode": sys_h.get("degraded", False),
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/health/deep", tags=["system"])
+def health_deep():
+    """
+    Deep diagnostic endpoint — comprehensive latency + queue + memory snapshot.
+    Designed for monitoring dashboards and alerting (Prometheus, Grafana, etc.).
+
+    Returns overall health grade:
+      GREEN   — all components healthy, latencies normal
+      YELLOW  — degraded performance, some components slow
+      RED     — one or more critical components failing
+
+    Always returns HTTP 200 — check 'grade' field for actual state.
+    Accessible without authentication (all values are non-sensitive metrics).
+    """
+    import time as _t
+
+    t_start = _t.perf_counter()
+    result: dict = {}
+
+    # ── 1. Database latency ──────────────────────────────────────────────────
+    db_ok, db_ms, db_err = False, -1.0, None
+    try:
+        from .database import SessionLocal
+        from sqlalchemy import text as _text
+        _db = SessionLocal()
+        try:
+            t0 = _t.perf_counter()
+            _db.execute(_text("SELECT 1"))
+            db_ms = round((_t.perf_counter() - t0) * 1000, 1)
+            db_ok = True
+        finally:
+            _db.close()
+    except Exception as e:
+        db_err = str(e)[:120]
+
+    # ── 2. Redis latency ─────────────────────────────────────────────────────
+    red_ok, red_ms, red_err = False, -1.0, None
+    try:
+        from .security.redis_client import cache as _r
+        t0 = _t.perf_counter()
+        _r.ping()
+        red_ms = round((_t.perf_counter() - t0) * 1000, 1)
+        red_ok = True
+    except Exception as e:
+        red_err = str(e)[:80]
+
+    # ── 3. Queue backlog (OutboxEvent undelivered rows) ──────────────────────
+    queue_backlog, queue_err = 0, None
+    try:
+        from .database import SessionLocal
+        from .models.outbox import OutboxEvent
+        _db2 = SessionLocal()
+        try:
+            queue_backlog = _db2.query(OutboxEvent).filter(
+                OutboxEvent.delivered_at.is_(None)
+            ).count()
+        finally:
+            _db2.close()
+    except Exception as e:
+        queue_err = str(e)[:80]
+
+    # ── 4. Memory RSS ────────────────────────────────────────────────────────
+    rss_mb = 0.0
+    try:
+        with open("/proc/self/status") as _f:
+            for line in _f:
+                if line.startswith("VmRSS:"):
+                    rss_mb = round(int(line.split()[1]) / 1024, 1)
+                    break
+    except OSError:
+        pass
+
+    # ── 5. Circuit breaker state ─────────────────────────────────────────────
+    circuits = {}
+    degraded = False
+    try:
+        from .core.self_healing import health as _sh
+        sh = _sh.to_dict()
+        circuits = sh.get("circuits", {})
+        degraded = sh.get("degraded", False)
+    except Exception:
+        pass
+
+    # ── 6. Uptime ────────────────────────────────────────────────────────────
+    from .routes.metrics import _START as _proc_start
+    uptime_s = int(_t.time() - _proc_start)
+
+    # ── 7. Active concurrent requests (from ConcurrencyLimitMiddleware) ─────────
+    active_requests = 0
+    try:
+        active_requests = ConcurrencyLimitMiddleware._active
+    except Exception:
+        pass
+
+    # ── 8. Determine health grade ─────────────────────────────────────────────
+    issues = []
+    if not db_ok:
+        issues.append("database_down")
+    elif db_ms > 200:
+        issues.append("database_slow")
+    if not red_ok:
+        issues.append("redis_down")
+    elif red_ms > 50:
+        issues.append("redis_slow")
+    if queue_backlog > 100:
+        issues.append("queue_backlog_high")
+    if rss_mb > 800:
+        issues.append("memory_high")
+    if degraded:
+        issues.append("degraded_mode")
+    if any("down" in i for i in issues):
+        grade = "RED"
+    elif issues:
+        grade = "YELLOW"
+    else:
+        grade = "GREEN"
+
+    total_ms = round((_t.perf_counter() - t_start) * 1000, 1)
+
+    return {
+        "grade": grade,
+        "issues": issues,
+        "components": {
+            "database": {"ok": db_ok, "latency_ms": db_ms, "error": db_err},
+            "redis":    {"ok": red_ok, "latency_ms": red_ms, "error": red_err},
+            "queue":    {"backlog": queue_backlog, "error": queue_err},
+        },
+        "process": {
+            "memory_rss_mb": rss_mb,
+            "uptime_s": uptime_s,
+            "uptime_h": round(uptime_s / 3600, 2),
+            "active_requests": active_requests,
+            "degraded_mode": degraded,
+        },
+        "circuits": circuits,
+        "check_duration_ms": total_ms,
+        "version": APP_VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
