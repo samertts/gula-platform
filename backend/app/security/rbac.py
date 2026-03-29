@@ -202,3 +202,89 @@ def require_role(*allowed_roles):
         return current_user
 
     return checker
+
+
+# ── ABAC: Attribute-Based Access Control ──────────────────────────────────────
+
+def require_own_lab(current_user, resource_lab_id: int) -> None:
+    """
+    Enforce lab isolation: a user can only access resources in their own lab,
+    unless they are a platform-level admin (master_admin, ministry_admin, province_admin).
+
+    Usage in routes:
+        require_own_lab(current_user, patient.lab_id)
+    """
+    from fastapi import HTTPException
+
+    platform_roles = {"master_admin", "ministry_admin", "province_admin"}
+    if current_user.role in platform_roles:
+        # Province admins: additional province check handled separately
+        return
+
+    if getattr(current_user, "lab_id", None) != resource_lab_id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "cross_lab_access_denied",
+                "message": "You do not have permission to access resources in another laboratory.",
+                "message_ar": "لا تملك صلاحية الوصول إلى موارد مختبر آخر.",
+            },
+        )
+
+
+def require_feature_for_lab(feature: str, lab_id: int, db) -> None:
+    """
+    Combined ABAC + tier check.
+    Raises 403 if lab does not have access to feature.
+    Wraps feature_flags.require_feature for convenience.
+
+    Usage:
+        require_feature_for_lab("ai_interpretation", current_user.lab_id, db)
+    """
+    from ..core.feature_flags import require_feature
+    require_feature(feature, lab_id, db)
+
+
+def assert_lab_within_limit(limit_field: str, current_count: int, lab_id: int, db) -> None:
+    """
+    Check resource limits defined in the lab's subscription.
+    Raises 402 (Payment Required) if limit is exceeded.
+
+    limit_field: 'max_patients' | 'max_staff' | 'max_orders_per_day' etc.
+    """
+    from fastapi import HTTPException
+    from ..models.subscription import LabSubscription
+
+    sub = db.query(LabSubscription).filter(
+        LabSubscription.lab_id == lab_id,
+        LabSubscription.is_active == True,
+    ).first()
+
+    if sub is None:
+        # No subscription row → default starter limits
+        from ..core.feature_flags import get_tier_limits
+        limits = get_tier_limits("starter")
+    else:
+        limits = {
+            "max_patients":        sub.max_patients,
+            "max_staff":           sub.max_staff,
+            "max_branches":        sub.max_branches,
+            "max_orders_per_day":  sub.max_orders_per_day,
+            "max_ai_calls_per_day":sub.max_ai_calls_per_day,
+        }
+
+    limit_value = limits.get(limit_field, 0)
+    if limit_value > 0 and current_count >= limit_value:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "subscription_limit_reached",
+                "limit_field": limit_field,
+                "limit_value": limit_value,
+                "current_count": current_count,
+                "message": f"You have reached the limit of {limit_value} for {limit_field}.",
+                "message_ar": f"لقد وصلت إلى الحد الأقصى ({limit_value}) لـ {limit_field}.",
+                "upgrade_hint": "Upgrade your subscription to increase limits.",
+                "upgrade_hint_ar": "قم بترقية اشتراكك لرفع الحدود.",
+            },
+        )
