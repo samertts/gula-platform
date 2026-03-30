@@ -8,7 +8,8 @@
 .PHONY: help up down restart ps logs logs-backend logs-db logs-redis \
         health health-deep status backup restore \
         lint test ci monitoring monitoring-down \
-        db-shell redis-cli shell secrets-gen
+        db-shell redis-cli shell secrets-gen \
+        scenario-test integrity-test metrics-token
 
 BACKEND_URL ?= http://localhost:8080
 
@@ -40,10 +41,13 @@ help:
 	@echo "    make redis-cli    redis-cli shell inside redis container"
 	@echo ""
 	@echo "  ── Development ───────────────────────────────────────────────────"
-	@echo "    make lint         Run pyflakes + flake8 on backend code"
-	@echo "    make test         Run backend pytest suite"
-	@echo "    make ci           Run the full CI pipeline locally"
-	@echo "    make secrets-gen  Generate strong random secrets (.env)"
+	@echo "    make lint              Run pyflakes + flake8 on backend code"
+	@echo "    make test              Run backend pytest suite"
+	@echo "    make ci                Run the full CI pipeline locally"
+	@echo "    make secrets-gen       Generate strong random secrets (.env)"
+	@echo "    make scenario-test     Real end-to-end scenario load test"
+	@echo "    make integrity-test    Concurrent validation integrity test"
+	@echo "    make metrics-token     Write METRICS_BEARER_TOKEN → token file"
 	@echo ""
 	@echo "  ── Monitoring (optional profile) ─────────────────────────────────"
 	@echo "    make monitoring       Start Prometheus + Grafana"
@@ -164,6 +168,17 @@ chaos:
 
 chaos-%:
 	@bash tests/chaos/chaos_test.sh $*
+
+scenario-test:
+	@echo "=== Real Scenario Load Test ==="
+	python3 tests/load/scenario_test.py --url $(BACKEND_URL) --users ${USERS:-10} --rounds ${ROUNDS:-1}
+
+integrity-test:
+	@echo "=== Concurrent Order Validation Integrity Test ==="
+	python3 tests/integration/integrity_test.py --url $(BACKEND_URL) --workers ${WORKERS:-100}
+
+metrics-token:
+	@source .env && bash scripts/generate-metrics-token.sh
 
 ci: lint
 	@echo "=== Syntax gate ==="
