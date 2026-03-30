@@ -204,7 +204,7 @@ jobs:
         with:
           dockerfile: backend/Dockerfile
           failure-threshold: error
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Scan for secrets with Gitleaks
         uses: gitleaks/gitleaks-action@v2
