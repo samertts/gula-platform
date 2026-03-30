@@ -15,11 +15,11 @@ from .config import (
     MAX_REQUEST_BODY_MB, PLATFORM_NAME_AR,
 )
 
-# Configure structured logging
-logging.basicConfig(
-    level=logging.WARNING if IS_PRODUCTION else logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+# Configure structured JSON logging (production) or text logging (dev)
+from .core.logging_config import configure_logging, bind_log_context, get_request_id
+configure_logging(
+    is_production=IS_PRODUCTION,
+    log_level="WARNING" if IS_PRODUCTION else "INFO",
 )
 logger = logging.getLogger("gula")
 
@@ -131,10 +131,12 @@ app.add_middleware(MaxBodySizeMiddleware, max_size_mb=MAX_REQUEST_BODY_MB)
 
 # ===== REQUEST ID MIDDLEWARE =====
 class RequestIDMiddleware(BaseHTTPMiddleware):
-    """Assign a unique ID to every request for tracing."""
+    """Assign a unique ID to every request for tracing and bind it to the log context."""
     async def dispatch(self, request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
+        # Bind to structured logging context so every log line carries request_id
+        bind_log_context(request_id=request_id)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
@@ -434,6 +436,78 @@ app.include_router(ai_routes.router)
 app.include_router(optimizer_routes.router)
 
 
+# ===== HEALTH ALERT WATCHDOG =====
+async def _health_alert_loop():
+    """Background coroutine: check /health/deep every 60s and fire webhook on RED grade.
+
+    Set ALERT_WEBHOOK_URL in .env to enable (Telegram, Discord, Slack, or any HTTP sink).
+    The webhook receives a POST with a JSON body describing the issue.
+    Alert fires once when grade transitions to RED and again when it recovers to GREEN.
+    """
+    import asyncio, os
+    _INTERVAL   = int(os.getenv("HEALTH_ALERT_INTERVAL_SECONDS", "60"))
+    _WEBHOOK    = os.getenv("ALERT_WEBHOOK_URL", "")
+    _PREV_GRADE = "GREEN"
+
+    await asyncio.sleep(30)   # Let startup complete before first check
+
+    while True:
+        try:
+            # Build a mini deep-health snapshot without making an HTTP request
+            from .core.self_healing import health as _sh
+            from .security.redis_client import cache as _r
+            from .database import check_db_connection as _db_check
+            import time as _t
+
+            db_ok  = _db_check()
+            red_ok = False
+            try:
+                _r.ping()
+                red_ok = True
+            except Exception:
+                pass
+
+            sh_dict  = _sh.to_dict()
+            degraded = sh_dict.get("degraded", False)
+
+            issues = []
+            if not db_ok:   issues.append("database_down")
+            if not red_ok:  issues.append("redis_down")
+            if degraded:    issues.append("degraded_mode")
+
+            grade = "RED" if any("down" in i for i in issues) else (
+                    "YELLOW" if issues else "GREEN")
+
+            # Only send alert on state transition
+            if grade != _PREV_GRADE and _WEBHOOK:
+                import httpx, json as _json
+                emoji   = "🔴" if grade == "RED" else ("🟡" if grade == "YELLOW" else "✅")
+                payload = {
+                    "text": (
+                        f"{emoji} *GULA Platform Health* — Grade changed: "
+                        f"`{_PREV_GRADE}` → `{grade}`\n"
+                        f"Issues: {', '.join(issues) or 'none'}\n"
+                        f"Time: {__import__('datetime').datetime.utcnow().isoformat()}Z"
+                    ),
+                    "grade": grade,
+                    "issues": issues,
+                    "prev_grade": _PREV_GRADE,
+                }
+                try:
+                    async with httpx.AsyncClient(timeout=10) as _c:
+                        await _c.post(_WEBHOOK, json=payload)
+                    logger.info("Health alert sent: %s → %s (issues=%s)", _PREV_GRADE, grade, issues)
+                except Exception as _e:
+                    logger.warning("Health alert webhook failed: %s", _e)
+
+            _PREV_GRADE = grade
+
+        except Exception as e:
+            logger.debug("Health alert loop error: %s", e)
+
+        await asyncio.sleep(_INTERVAL)
+
+
 # ===== STARTUP WARMUP =====
 @app.on_event("startup")
 async def start_background_workers():
@@ -447,6 +521,9 @@ async def start_background_workers():
 
     asyncio.create_task(RecoveryWorker.background_loop())
     logger.info("Recovery worker started")
+
+    asyncio.create_task(_health_alert_loop())
+    logger.info("Health alert watchdog started")
 
 
 @app.on_event("startup")

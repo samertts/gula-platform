@@ -71,7 +71,6 @@ def extract_text_ocr(image_bytes: bytes) -> str:
         processed = preprocess_image(image_bytes)
 
         if processed is not None:
-            import cv2
             # Convert OpenCV image to PIL
             pil_img = Image.fromarray(processed)
         else:
