@@ -9,7 +9,8 @@
         health health-deep status backup restore \
         lint test ci monitoring monitoring-down \
         db-shell redis-cli shell secrets-gen \
-        scenario-test integrity-test metrics-token
+        scenario-test integrity-test metrics-token \
+        self-audit self-audit-fix scale scale-down
 
 BACKEND_URL ?= http://localhost:8080
 
@@ -48,6 +49,9 @@ help:
 	@echo "    make scenario-test     Real end-to-end scenario load test"
 	@echo "    make integrity-test    Concurrent validation integrity test"
 	@echo "    make metrics-token     Write METRICS_BEARER_TOKEN → token file"
+	@echo "    make self-audit        AI self-audit (report only)"
+	@echo "    make self-audit-fix    AI self-audit + auto-apply safe fixes"
+	@echo "    make scale             Scale to REPLICAS=N backend instances"
 	@echo ""
 	@echo "  ── Monitoring (optional profile) ─────────────────────────────────"
 	@echo "    make monitoring       Start Prometheus + Grafana"
@@ -179,6 +183,22 @@ integrity-test:
 
 metrics-token:
 	@source .env && bash scripts/generate-metrics-token.sh
+
+self-audit:
+	@echo "=== AI Self-Audit (report only) ==="
+	python3 scripts/self_audit_agent.py --report-only
+
+self-audit-fix:
+	@echo "=== AI Self-Audit with Auto-Fix ==="
+	python3 scripts/self_audit_agent.py --fix
+
+scale:
+	@echo "=== Scaling to ${REPLICAS:-3} backend instances ==="
+	docker compose -f docker-compose.yml -f docker-compose.scale.yml up -d --scale gula-backend=${REPLICAS:-3}
+	@echo "✓ HAProxy stats → http://localhost:8404/stats"
+
+scale-down:
+	docker compose -f docker-compose.yml -f docker-compose.scale.yml down
 
 ci: lint
 	@echo "=== Syntax gate ==="
