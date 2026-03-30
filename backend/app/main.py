@@ -258,7 +258,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "form-action 'self'; "
             "frame-ancestors 'none'"
         )
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        # Health probes are scraped by Prometheus every 15s — a short public
+        # cache reduces backend pressure without hiding state changes.
+        if request.method == "GET" and request.url.path in _ALWAYS_ALLOWED_PATHS:
+            response.headers["Cache-Control"] = "public, max-age=10, stale-while-revalidate=5"
+        else:
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         if IS_PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
@@ -584,6 +589,81 @@ async def _health_alert_loop():
         await _aio.sleep(sleep_s)
 
 
+# ===== ADAPTIVE CONCURRENCY =====
+async def _adaptive_concurrency_loop():
+    """Dynamically tighten the concurrency cap when the DB is under stress.
+
+    Logic:
+    - Poll DB latency every 30s.
+    - 2 consecutive slow readings (>300ms): halve _max to shed non-critical load.
+    - 3 consecutive fast readings (<150ms): restore original _max.
+
+    Prevents a slow DB from cascading into a full request pile-up:
+    fewer in-flight requests → shorter queue → DB recovers faster.
+    """
+    import asyncio as _aio
+    from .database import check_db_connection as _db_check
+    import time as _t
+    import gc as _gc
+
+    _orig        = _MAX_CONCURRENT
+    _slow_streak = 0
+    _fast_streak = 0
+    _SLOW_MS     = 300
+    _FAST_MS     = 150
+    _SLOW_TRIG   = 2
+    _FAST_TRIG   = 3
+    _POLL        = 30
+
+    await _aio.sleep(45)   # let startup complete
+
+    while True:
+        try:
+            t0    = _t.perf_counter()
+            _db_check()
+            db_ms = (_t.perf_counter() - t0) * 1000
+
+            if db_ms > _SLOW_MS:
+                _slow_streak += 1
+                _fast_streak  = 0
+            elif db_ms < _FAST_MS:
+                _fast_streak += 1
+                _slow_streak  = max(0, _slow_streak - 1)
+            else:
+                _slow_streak = max(0, _slow_streak - 1)
+                _fast_streak = max(0, _fast_streak - 1)
+
+            # Tighten when DB is consistently slow
+            if _slow_streak >= _SLOW_TRIG:
+                new_max = max(10, _orig // 2)
+                if new_max != _orig:
+                    logger.warning(
+                        "Adaptive concurrency: DB slow %.0fms ×%d → cap %d→%d",
+                        db_ms, _slow_streak, _orig, new_max,
+                    )
+                    for obj in _gc.get_objects():
+                        if isinstance(obj, ConcurrencyLimitMiddleware):
+                            obj._max = new_max
+                    _orig = new_max
+
+            # Restore when DB recovers
+            elif _fast_streak >= _FAST_TRIG and _orig < _MAX_CONCURRENT:
+                logger.info(
+                    "Adaptive concurrency: DB recovered %.0fms ×%d → restore to %d",
+                    db_ms, _fast_streak, _MAX_CONCURRENT,
+                )
+                for obj in _gc.get_objects():
+                    if isinstance(obj, ConcurrencyLimitMiddleware):
+                        obj._max = _MAX_CONCURRENT
+                _orig        = _MAX_CONCURRENT
+                _fast_streak = 0
+
+        except Exception as exc:
+            logger.debug("Adaptive concurrency check error: %s", exc)
+
+        await _aio.sleep(_POLL)
+
+
 # ===== STARTUP WARMUP =====
 @app.on_event("startup")
 async def start_background_workers():
@@ -600,6 +680,9 @@ async def start_background_workers():
 
     asyncio.create_task(_health_alert_loop())
     logger.info("Health alert watchdog started")
+
+    asyncio.create_task(_adaptive_concurrency_loop())
+    logger.info("Adaptive concurrency monitor started")
 
 
 @app.on_event("startup")
