@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Enum, Index
 from sqlalchemy.orm import relationship, backref
 from datetime import datetime, timezone, date as date_type
 from ..database import Base
@@ -12,6 +12,12 @@ class Gender(str, enum.Enum):
 
 class Patient(Base):
     __tablename__ = "patients"
+    # Composite indexes for multi-tenant queries (lab_id partitions all lookups)
+    __table_args__ = (
+        Index("ix_patients_lab_id", "lab_id"),
+        Index("ix_patients_lab_phone", "lab_id", "phone"),
+        Index("ix_patients_lab_nid", "lab_id", "national_id_hash"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
