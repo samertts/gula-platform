@@ -153,10 +153,18 @@ class OutboxWorker:
         """
         Asyncio task: poll outbox every _POLL_SECS seconds.
         Launched from FastAPI lifespan startup.
+
+        Also runs automatic dead-event cleanup once every 24 hours so that
+        permanently-failed events (MAX_ATTEMPTS exhausted) don't accumulate
+        indefinitely in the database.
         """
         from app.database import SessionLocal
+        import time as _t
 
         logger.info("[OUTBOX] Worker started (poll_interval=%ds)", _POLL_SECS)
+        _last_purge = _t.monotonic()
+        _PURGE_INTERVAL = 86_400  # 24 hours
+
         while True:
             await asyncio.sleep(_POLL_SECS)
             db = SessionLocal()
@@ -164,6 +172,17 @@ class OutboxWorker:
                 summary = OutboxWorker.run_once(db)
                 if summary["processed"] or summary["failed"]:
                     logger.info("[OUTBOX] cycle summary: %s", summary)
+
+                # Periodic purge of old done/failed events
+                if _t.monotonic() - _last_purge >= _PURGE_INTERVAL:
+                    try:
+                        purged = purge_old_events(db, days=30)
+                        if purged:
+                            logger.info("[OUTBOX] Auto-purged %d old events", purged)
+                    except Exception as purge_exc:
+                        logger.warning("[OUTBOX] Purge failed: %s", purge_exc)
+                    _last_purge = _t.monotonic()
+
             except Exception as exc:
                 logger.error("[OUTBOX] Worker cycle error: %s", exc)
             finally:

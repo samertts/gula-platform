@@ -143,10 +143,15 @@ def citizen_login(
             User.is_active == True,
         ).first()
     else:
-        # Phone lookup (normalize leading zeros)
-        phone = identifier.lstrip("+").lstrip("0")
+        # Phone lookup — normalize to digits-only, then exact match.
+        # Using LIKE with user input allows SQL wildcard injection (%/_).
+        # Exact match after normalization is secure and equally flexible.
+        phone_digits = "".join(c for c in identifier if c.isdigit())
+        # Try both the full digits string and the version without leading country prefix
+        # (e.g., stored as "07001234567" and lookup as "7001234567" after stripping 0)
+        phone_short  = phone_digits.lstrip("0") if phone_digits else ""
         citizen = db.query(User).filter(
-            User.phone.like(f"%{phone}"),
+            User.phone.in_([phone_digits, phone_short]) if phone_short else User.phone == phone_digits,
             User.role == "citizen",
             User.is_active == True,
         ).first()

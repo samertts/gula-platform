@@ -324,43 +324,41 @@ async def run_startup_guard() -> None:
 
     try:
         validate_config()          # Step 1 — synchronous
-        db_connected = await wait_for_db(max_retries=15, initial_delay=10)   # Step 2 — async retry with extended resilience
+
+        db_connected = await wait_for_db(max_retries=15, initial_delay=10)  # Step 2
         if not db_connected:
-            # If DB is not connected after retries, the system will start in an unready state.
-            # The global exception handler will return 503 for all requests.
-            logger.critical("[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state.")
-            # Do not exit early. Allow the process to continue, but system_ready will remain False.
-            # The global exception handler will then return 503 for all requests.
-            pass
-        await check_migrations()           # Step 3 — migration state
+            # DB unreachable after all retries — keep system_ready=False so the
+            # readiness probe keeps returning 503. DO NOT fall through to set True.
+            logger.critical(
+                "[STARTUP GUARD] Database not available after all retries. "
+                "system_ready stays False — readiness probe will return 503."
+            )
+            return  # ← critical: do not reach system_ready = True below
 
-        # If all critical steps (config, DB, migrations) pass, then the system is ready.
-        # The seed_critical_data step is now more resilient and won't prevent system_ready from being True.
+        await check_migrations()   # Step 3 — requires working DB connection
 
-        # Step 4 — seed critical data. This step is now made more resilient.
-        # If seeding fails, we log the error but allow the system to become ready.
-        # This prevents a full crash if, for example, a new test type fails to seed
-        # but the core application can still function.
+        # Step 4 — seed critical data (non-fatal: log and continue if seeding fails,
+        # the core app can run with missing optional data).
         try:
             await seed_critical_data()
         except Exception as e:
-            logger.error("[STARTUP GUARD] Critical data seeding FAILED: %s. System will start in potentially degraded state.", e)
+            logger.error(
+                "[STARTUP GUARD] Critical data seeding FAILED: %s. "
+                "System starting in potentially degraded state.", e,
+            )
 
     except Exception:
         elapsed = (time.perf_counter() - t0) * 1000
         logger.exception(
-            "[STARTUP GUARD] CRITICAL STARTUP FAILED after %.0fms — system_ready remains False",
+            "[STARTUP GUARD] CRITICAL STARTUP FAILED after %.0fms — "
+            "system_ready remains False. Container stays alive for health probes.",
             elapsed,
         )
-        # If any critical step (config, DB, migrations) fails, we still crash.
-        # This ensures core integrity. The readiness probe will keep returning 503.
-        # If any critical step (config, DB, migrations) fails, we do NOT crash the process.
-        # Instead, we keep system_ready = False. The readiness probe will keep returning 503.
-        # This allows the container to stay alive and potentially recover if the external dependency (DB) comes back.
-        # The global exception handler in main.py will handle requests by returning 503.
-        pass # Do not re-raise, allow the process to continue in an unready state
+        # Do not re-raise: keep process alive so Docker healthcheck can see 503
+        # and restart with exponential back-off.  system_ready stays False.
+        return  # ← critical: do not reach system_ready = True below
 
-    # Atomic success: only reached if no exception above
+    # Only reached when ALL critical steps succeeded.
     elapsed = (time.perf_counter() - t0) * 1000
     system_ready = True
     logger.info(

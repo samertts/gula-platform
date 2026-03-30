@@ -684,6 +684,10 @@ async def start_background_workers():
     asyncio.create_task(_adaptive_concurrency_loop())
     logger.info("Adaptive concurrency monitor started")
 
+    from .core.auto_repair import auto_repair as _auto_repair
+    asyncio.create_task(_auto_repair.run())
+    logger.info("Auto-repair engine started")
+
 
 @app.on_event("startup")
 async def warmup():
@@ -946,6 +950,7 @@ def health_deep():
         "check_duration_ms": total_ms,
         "version": APP_VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "auto_repair": (lambda: __import__("app.core.auto_repair", fromlist=["auto_repair"]).auto_repair.stats())(),
     }
 
 
