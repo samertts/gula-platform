@@ -155,6 +155,21 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     except Exception:
         stats = {}
 
+    # Outbox queue backlog (undelivered async events)
+    queue_backlog = 0
+    try:
+        from ..models.outbox import OutboxEvent  # noqa: F811
+        from ..database import SessionLocal
+        _db2 = SessionLocal()
+        try:
+            queue_backlog = _db2.query(OutboxEvent).filter(
+                OutboxEvent.delivered_at.is_(None)
+            ).count()
+        finally:
+            _db2.close()
+    except Exception:
+        pass
+
     lines = [
         "# HELP gula_up Platform is operational (1=up, 0=down)",
         "# TYPE gula_up gauge",
@@ -194,6 +209,10 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
         "",
         "# HELP gula_active_requests Concurrent requests being processed",
         "# TYPE gula_active_requests gauge",
+        "",
+        "# HELP gula_queue_backlog Outbox events pending delivery",
+        "# TYPE gula_queue_backlog gauge",
+        f"gula_queue_backlog {queue_backlog}",
     ]
 
     try:

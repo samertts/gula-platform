@@ -438,74 +438,150 @@ app.include_router(optimizer_routes.router)
 
 # ===== HEALTH ALERT WATCHDOG =====
 async def _health_alert_loop():
-    """Background coroutine: check /health/deep every 60s and fire webhook on RED grade.
+    """Background coroutine: comprehensive health monitoring with thresholds.
 
-    Set ALERT_WEBHOOK_URL in .env to enable (Telegram, Discord, Slack, or any HTTP sink).
-    The webhook receives a POST with a JSON body describing the issue.
-    Alert fires once when grade transitions to RED and again when it recovers to GREEN.
+    Checks every HEALTH_ALERT_INTERVAL_SECONDS (default 60s).
+    When grade is RED, retries every 10s for fast recovery detection.
+    Fires webhook on EVERY grade change (GREEN↔YELLOW↔RED) + periodic RED reminder.
+
+    Thresholds:
+      RED    — DB down OR Redis down
+      YELLOW — DB slow (>200ms) OR Redis slow (>50ms) OR memory >600MB
+               OR queue backlog >100 OR degraded mode
+      GREEN  — all clear
+
+    Set ALERT_WEBHOOK_URL in .env (Telegram, Discord, Slack, or any HTTP POST sink).
     """
-    import asyncio, os
-    _INTERVAL   = int(os.getenv("HEALTH_ALERT_INTERVAL_SECONDS", "60"))
-    _WEBHOOK    = os.getenv("ALERT_WEBHOOK_URL", "")
-    _PREV_GRADE = "GREEN"
+    import asyncio as _aio
+    import os
+    import time as _t
 
-    await asyncio.sleep(30)   # Let startup complete before first check
+    _INTERVAL      = int(os.getenv("HEALTH_ALERT_INTERVAL_SECONDS", "60"))
+    _RETRY_FAST    = 10          # seconds between checks when in RED state
+    _REMIND_SECS   = 300         # re-alert every 5 min if still RED
+    _WEBHOOK       = os.getenv("ALERT_WEBHOOK_URL", "")
+
+    _PREV_GRADE    = "GREEN"
+    _RED_SINCE     = 0.0         # monotonic timestamp when RED started
+    _LAST_ALERT    = 0.0         # monotonic timestamp of last webhook send
+
+    await _aio.sleep(30)         # Let startup complete before first check
 
     while True:
         try:
-            # Build a mini deep-health snapshot without making an HTTP request
             from .core.self_healing import health as _sh
             from .security.redis_client import cache as _r
             from .database import check_db_connection as _db_check
-            import time as _t
 
+            # ── Component checks ──────────────────────────────────────────
+            t0     = _t.perf_counter()
             db_ok  = _db_check()
-            red_ok = False
+            db_ms  = round((_t.perf_counter() - t0) * 1000, 1)
+
+            red_ok, red_ms = False, -1.0
             try:
+                t0 = _t.perf_counter()
                 _r.ping()
+                red_ms = round((_t.perf_counter() - t0) * 1000, 1)
                 red_ok = True
             except Exception:
                 pass
 
-            sh_dict  = _sh.to_dict()
-            degraded = sh_dict.get("degraded", False)
+            rss_mb = 0.0
+            try:
+                with open("/proc/self/status") as _f:
+                    for line in _f:
+                        if line.startswith("VmRSS:"):
+                            rss_mb = round(int(line.split()[1]) / 1024, 1)
+                            break
+            except OSError:
+                pass
 
+            sh_dict    = _sh.to_dict()
+            degraded   = sh_dict.get("degraded", False)
+
+            queue_backlog = 0
+            try:
+                from .database import SessionLocal as _SL
+                from .models.outbox import OutboxEvent as _OE  # noqa: F811
+                _db2 = _SL()
+                try:
+                    queue_backlog = _db2.query(_OE).filter(
+                        _OE.delivered_at.is_(None)
+                    ).count()
+                finally:
+                    _db2.close()
+            except Exception:
+                pass
+
+            # ── Grade determination ───────────────────────────────────────
             issues = []
-            if not db_ok:   issues.append("database_down")
-            if not red_ok:  issues.append("redis_down")
-            if degraded:    issues.append("degraded_mode")
+            if not db_ok:             issues.append("database_down")
+            if not red_ok:            issues.append("redis_down")
+            if db_ok and db_ms > 200: issues.append(f"database_slow_{db_ms}ms")
+            if red_ok and red_ms > 50:issues.append(f"redis_slow_{red_ms}ms")
+            if rss_mb > 600:          issues.append(f"memory_high_{rss_mb}MB")
+            if queue_backlog > 100:   issues.append(f"queue_backlog_{queue_backlog}")
+            if degraded:              issues.append("degraded_mode")
 
-            grade = "RED" if any("down" in i for i in issues) else (
-                    "YELLOW" if issues else "GREEN")
+            critical = [i for i in issues if "down" in i]
+            grade = "RED" if critical else ("YELLOW" if issues else "GREEN")
 
-            # Only send alert on state transition
-            if grade != _PREV_GRADE and _WEBHOOK:
-                import httpx, json as _json
-                emoji   = "🔴" if grade == "RED" else ("🟡" if grade == "YELLOW" else "✅")
+            # ── Track RED duration ────────────────────────────────────────
+            now_mono = _t.monotonic()
+            if grade == "RED" and _PREV_GRADE != "RED":
+                _RED_SINCE = now_mono
+            elif grade != "RED":
+                _RED_SINCE = 0.0
+
+            # ── Alert logic: transition OR periodic RED reminder ──────────
+            transition    = grade != _PREV_GRADE
+            red_reminder  = (grade == "RED" and
+                             (now_mono - _LAST_ALERT) >= _REMIND_SECS and
+                             _RED_SINCE > 0)
+            should_alert  = (transition or red_reminder) and _WEBHOOK
+
+            if should_alert:
+                import httpx as _hx
+                from datetime import datetime, timezone
+                emoji = "🔴" if grade == "RED" else ("🟡" if grade == "YELLOW" else "✅")
+                red_dur = ""
+                if grade == "RED" and _RED_SINCE > 0:
+                    red_dur = f" ({int(now_mono - _RED_SINCE)}s in RED)"
                 payload = {
                     "text": (
-                        f"{emoji} *GULA Platform Health* — Grade changed: "
-                        f"`{_PREV_GRADE}` → `{grade}`\n"
+                        f"{emoji} *GULA Platform* — `{_PREV_GRADE}` → `{grade}`{red_dur}\n"
                         f"Issues: {', '.join(issues) or 'none'}\n"
-                        f"Time: {__import__('datetime').datetime.utcnow().isoformat()}Z"
+                        f"DB: {db_ms}ms  Redis: {red_ms}ms  "
+                        f"Mem: {rss_mb}MB  Queue: {queue_backlog}\n"
+                        f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
                     ),
                     "grade": grade,
-                    "issues": issues,
                     "prev_grade": _PREV_GRADE,
+                    "issues": issues,
+                    "metrics": {
+                        "db_ms": db_ms,
+                        "redis_ms": red_ms,
+                        "memory_mb": rss_mb,
+                        "queue_backlog": queue_backlog,
+                    },
                 }
                 try:
-                    async with httpx.AsyncClient(timeout=10) as _c:
+                    async with _hx.AsyncClient(timeout=10) as _c:
                         await _c.post(_WEBHOOK, json=payload)
-                    logger.info("Health alert sent: %s → %s (issues=%s)", _PREV_GRADE, grade, issues)
+                    _LAST_ALERT = now_mono
+                    logger.info("Health alert sent: %s → %s issues=%s", _PREV_GRADE, grade, issues)
                 except Exception as _e:
                     logger.warning("Health alert webhook failed: %s", _e)
 
             _PREV_GRADE = grade
 
-        except Exception as e:
-            logger.debug("Health alert loop error: %s", e)
+        except Exception as exc:
+            logger.debug("Health watchdog error: %s", exc)
 
-        await asyncio.sleep(_INTERVAL)
+        # Faster retry when system is degraded, normal interval when healthy
+        sleep_s = _RETRY_FAST if _PREV_GRADE == "RED" else _INTERVAL
+        await _aio.sleep(sleep_s)
 
 
 # ===== STARTUP WARMUP =====

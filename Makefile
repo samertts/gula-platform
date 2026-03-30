@@ -159,6 +159,12 @@ lint:
 test:
 	cd backend && python -m pytest tests/ -v 2>&1 || echo "No tests yet — add tests/test_*.py"
 
+chaos:
+	@bash tests/chaos/chaos_test.sh all
+
+chaos-%:
+	@bash tests/chaos/chaos_test.sh $*
+
 ci: lint
 	@echo "=== Syntax gate ==="
 	cd backend && python -m py_compile app/main.py && echo "✓ Syntax OK"
