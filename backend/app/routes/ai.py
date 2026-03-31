@@ -326,36 +326,112 @@ def list_operations():
 # Rate-limited by nginx (api_limit zone).
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _build_interpret_prompt(results_data: list[dict]) -> str:
-    lines: list[str] = []
+_SEVERITY_NORMAL   = "طبيعي"
+_SEVERITY_WARNING  = "تنبيه"
+_SEVERITY_CRITICAL = "حرج"
+
+# Deviation ratio thresholds (fraction of the normal range width beyond the limit)
+_WARN_RATIO     = 0.25   # >25% of range width outside limit → تنبيه
+_CRITICAL_RATIO = 0.75   # >75% of range width outside limit → حرج
+
+
+def _classify_severity(val_raw, low_raw, high_raw) -> str:
+    """Return severity string for one result.  Falls back to تنبيه when range is missing."""
+    try:
+        vf   = float(val_raw)
+        lf   = float(low_raw)
+        hf   = float(high_raw)
+        span = hf - lf
+        if lf <= vf <= hf:
+            return _SEVERITY_NORMAL
+        deviation = (lf - vf) if vf < lf else (vf - hf)
+        ratio = deviation / span if span > 0 else 1.0
+        return _SEVERITY_CRITICAL if ratio >= _CRITICAL_RATIO else _SEVERITY_WARNING
+    except (TypeError, ValueError):
+        pass
+    # Value outside range but no numeric range → warn
+    return _SEVERITY_WARNING
+
+
+def _compute_severities(results_data: list[dict]) -> list[dict]:
+    """Return per-result severity enriched records."""
+    enriched = []
     for r in results_data:
-        name  = r.get("test_name", "")
-        val   = r.get("value") if r.get("value") is not None else r.get("value_text", "-")
-        unit  = r.get("unit", "")
+        val   = r.get("value") if r.get("value") is not None else r.get("value_text")
         low   = r.get("normal_range_low")
         high  = r.get("normal_range_high")
-        status = ""
-        try:
-            vf = float(val)
-            if low is not None and high is not None:
-                status = "(طبيعي)" if float(low) <= vf <= float(high) else (
-                    "(منخفض)" if vf < float(low) else "(مرتفع)"
-                )
-        except (TypeError, ValueError):
-            pass
-        range_part = f" — المدى الطبيعي: {low}–{high} {unit}" if (low is not None and high is not None) else f" {unit}"
-        lines.append(f"• {name}: {val} {unit} {status}{range_part}")
+        if val is None:
+            sev = _SEVERITY_NORMAL
+        elif low is not None and high is not None:
+            sev = _classify_severity(val, low, high)
+        else:
+            sev = _SEVERITY_NORMAL
+        enriched.append({**r, "severity": sev})
+    return enriched
+
+
+def _overall_severity(enriched: list[dict]) -> str:
+    sevs = {r["severity"] for r in enriched}
+    if _SEVERITY_CRITICAL in sevs:
+        return _SEVERITY_CRITICAL
+    if _SEVERITY_WARNING in sevs:
+        return _SEVERITY_WARNING
+    return _SEVERITY_NORMAL
+
+
+def _build_interpret_prompt(results_data: list[dict]) -> str:
+    """
+    Build a strict structured prompt that:
+    1. Annotates each test with its severity tier
+    2. Enforces numbered-list output format (one sentence per test)
+    3. Forbids diagnosis, drug names, disease names, and speculation
+    4. Requires a critical-alert line when حرج results exist
+    5. Hard-caps at 200 words and mandates the disclaimer as the LAST line
+    """
+    enriched = _compute_severities(results_data)
+    has_critical = any(r["severity"] == _SEVERITY_CRITICAL for r in enriched)
+
+    lines: list[str] = []
+    for r in enriched:
+        name  = r.get("test_name", "")
+        val   = r.get("value") if r.get("value") is not None else r.get("value_text", "-")
+        unit  = r.get("unit", "") or ""
+        low   = r.get("normal_range_low")
+        high  = r.get("normal_range_high")
+        sev   = r["severity"]
+        range_str = f"المدى الطبيعي: {low}–{high} {unit}".strip() if (low is not None and high is not None) else unit
+        lines.append(f"[{sev}] {name}: {val} {unit} — {range_str}")
+
+    critical_instruction = (
+        "\n- يوجد نتيجة واحدة أو أكثر مصنّفة [حرج]. "
+        "ابدأ الرد بسطر تنبيه واضح: «⚠️ تنبيه: بعض النتائج تستوجب مراجعة طبية فورية.»"
+        if has_critical else ""
+    )
 
     return (
-        "أنت مساعد طبي. اشرح نتائج التحاليل التالية للمريض بأسلوب بسيط وواضح:\n\n"
+        "أنت مساعد توعوي طبي. مهمتك شرح نتائج التحاليل للمريض بأسلوب بسيط.\n\n"
+        "النتائج:\n"
         + "\n".join(lines)
-        + "\n\nتعليمات:\n"
-        "- اكتب بالعربية فقط\n"
-        "- جملة واحدة مختصرة لكل تحليل (طبيعي أو غير طبيعي وسببه المحتمل)\n"
-        "- لا تذكر تشخيصاً أو دواءً محدداً\n"
-        "- الرد لا يتجاوز 150 كلمة\n"
-        "- انهِ بـ: «هذا الشرح للتوعية فقط ولا يُغني عن استشارة الطبيب.»"
+        + "\n\n"
+        "قواعد صارمة — لا استثناء:\n"
+        "1. اكتب بالعربية حصراً.\n"
+        "2. اكتب جملة واحدة مرقّمة لكل تحليل (1. … 2. … إلخ).\n"
+        "3. في كل جملة: اذكر اسم التحليل + هل هو طبيعي أو خارج المدى + توضيح بسيط لما يعنيه ذلك.\n"
+        "4. محظور تماماً: ذكر أي دواء، أي مرض بالاسم، أي تشخيص، أي توصية علاجية.\n"
+        "5. محظور تماماً: استخدام عبارات مثل «ربما»، «قد يكون»، «يُحتمل» خارج السياق الطبي المباشر.\n"
+        "6. لا تخترع معلومات غير موجودة في البيانات أعلاه.\n"
+        "7. الرد لا يتجاوز 200 كلمة.\n"
+        + critical_instruction
+        + "\n8. آخر سطر حرفياً: «هذا الشرح للتوعية فقط ولا يُغني عن استشارة الطبيب.»\n"
+        "\nابدأ الآن:"
     )
+
+
+async def _call_ai_provider(prompt: str) -> str:
+    """Call the configured AI provider, retrying the fallback once on failure."""
+    if _AI_PROVIDER == "gemini":
+        return await _call_gemini_flash(prompt)
+    return await _call_groq_llama(prompt)
 
 
 async def _call_gemini_flash(prompt: str) -> str:
@@ -442,13 +518,23 @@ async def interpret_result_public(token: str) -> JSONResponse:
     if not results_data:
         raise HTTPException(status_code=404, detail="لا توجد نتائج للتفسير")
 
+    # ── Compute severity before hitting AI ───────────────────────────────────
+    enriched      = _compute_severities(results_data)
+    overall_sev   = _overall_severity(enriched)
+    critical_flags = [
+        r["test_name"]
+        for r in enriched
+        if r["severity"] == _SEVERITY_CRITICAL
+    ]
+    results_severity = [
+        {"test": r["test_name"], "severity": r["severity"]}
+        for r in enriched
+    ]
+
     # ── Call free AI provider ─────────────────────────────────────────────────
     prompt = _build_interpret_prompt(results_data)
     try:
-        if _AI_PROVIDER == "gemini":
-            text = await _call_gemini_flash(prompt)
-        else:
-            text = await _call_groq_llama(prompt)
+        text = await _call_ai_provider(prompt)
     except HTTPException:
         raise
     except httpx.HTTPStatusError as exc:
@@ -458,5 +544,26 @@ async def interpret_result_public(token: str) -> JSONResponse:
         logger.error("AI interpret error: %s", exc)
         raise HTTPException(status_code=503, detail="تعذر الحصول على التفسير حالياً. حاول لاحقاً.")
 
-    logger.info("AI interpreted token=%.8s... provider=%s tests=%d", token, _AI_PROVIDER, len(results_data))
-    return JSONResponse({"interpretation": text, "provider": _AI_PROVIDER})
+    # Safety gate: strip any stray diagnostic phrases the model might slip in
+    _FORBIDDEN_PHRASES = ["تشخيص:", "العلاج:", "الدواء:", "يُنصح بتناول", "جرعة"]
+    for phrase in _FORBIDDEN_PHRASES:
+        if phrase in text:
+            logger.warning("AI response contained forbidden phrase '%s' — stripped", phrase)
+            text = text.replace(phrase, "")
+
+    # Ensure disclaimer is present (model sometimes omits it)
+    _DISCLAIMER = "هذا الشرح للتوعية فقط ولا يُغني عن استشارة الطبيب."
+    if _DISCLAIMER not in text:
+        text = text.rstrip() + "\n" + _DISCLAIMER
+
+    logger.info(
+        "AI interpreted token=%.8s... provider=%s tests=%d severity=%s critical=%d",
+        token, _AI_PROVIDER, len(results_data), overall_sev, len(critical_flags),
+    )
+    return JSONResponse({
+        "interpretation":   text,
+        "provider":         _AI_PROVIDER,
+        "severity":         overall_sev,
+        "critical_flags":   critical_flags,
+        "results_severity": results_severity,
+    })
