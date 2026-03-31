@@ -251,6 +251,13 @@ class RepairEngine:
             self._repair_redis_reconnect()
             self._mark_triggered("redis_reconnect")
 
+        # ── Persist sliding window to Redis (survives container restarts) ────
+        try:
+            from ..database import persist_db_window_to_redis
+            persist_db_window_to_redis()
+        except Exception:
+            pass
+
         # ── Log summary when things are bad ────────────────────────────────
         if db_ms > _DB_LATENCY_WARN or redis_ms > _REDIS_LATENCY_WARN or rss_mb > _MEMORY_WARN_MB:
             logger.warning(

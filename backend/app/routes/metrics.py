@@ -317,11 +317,16 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
 
     try:
         from ..core.kill_switch import is_kill_switch_active
+        from ..core.self_healing import health as _sh
         lines += [
             "",
             "# HELP gula_kill_switch_active Kill switch state (1=active, 0=inactive)",
             "# TYPE gula_kill_switch_active gauge",
             f"gula_kill_switch_active {1 if is_kill_switch_active() else 0}",
+            "",
+            "# HELP gula_degradation_level Current degradation level (0=NONE 1=L1 2=L2 3=L3)",
+            "# TYPE gula_degradation_level gauge",
+            f"gula_degradation_level {_sh.degradation_level.value}",
         ]
     except Exception:
         pass

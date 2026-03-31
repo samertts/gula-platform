@@ -67,6 +67,11 @@ def get_current_user(
                 detail="Your laboratory account is deactivated",
             )
 
+    # ── Correlation context — propagate user/lab for DB error logging ─────────
+    from ..database import _user_id_var, _lab_id_var
+    _user_id_var.set(user.id)
+    _lab_id_var.set(user.lab_id)
+
     return user
 
 

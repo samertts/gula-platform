@@ -701,6 +701,11 @@ async def start_background_workers():
     asyncio.create_task(_auto_repair.run())
     logger.info("Auto-repair engine started")
 
+    # ── Restore sliding window from Redis (DB error history survives restarts) ─
+    from .database import restore_db_window_from_redis
+    restore_db_window_from_redis()
+    logger.info("DB sliding window restored from Redis")
+
 
 @app.on_event("startup")
 async def warmup():
@@ -742,7 +747,8 @@ def health():
         "system_ready": system_ready,
         "database": db_status,          # "ok" | "refused" | "auth_failed" | "timeout" | "error"
         "database_detail": db_detail,   # human-readable reason for failures
-        "degraded_mode": sys_health.degraded,
+        "degraded_mode":      sys_health.degraded,
+        "degradation_level":  sys_health.degradation_level.name,
         "circuits": sys_health.to_dict()["circuits"],
         "pool": pool,
         "timestamp": datetime.now(timezone.utc).isoformat(),

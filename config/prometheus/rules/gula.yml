@@ -368,3 +368,29 @@ groups:
           description: |
             The platform kill switch is active. No auto-repair, scaling, or AI actions
             will execute. To deactivate: POST /admin/kill-switch/deactivate
+
+      - alert: DegradationL2ReadOnly
+        expr: gula_degradation_level == 2
+        for: 0m
+        labels:
+          severity: warning
+          service: degradation
+        annotations:
+          summary: "🟡 System L2_READ_ONLY — writes blocked (DB circuit open)"
+          description: |
+            DB circuit breaker opened after sustained connection-refused errors.
+            Write endpoints return 503. GET requests still pass.
+            Recovery: DB will be probed every 10s; circuit closes automatically.
+
+      - alert: DegradationL3CriticalOnly
+        expr: gula_degradation_level == 3
+        for: 0m
+        labels:
+          severity: critical
+          service: degradation
+        annotations:
+          summary: "🔴 System L3_CRITICAL_ONLY — DB storm, only essential paths reachable"
+          description: |
+            50+ DB connection-refused errors in 5 minutes. Only /health, /auth/login,
+            /admin/kill-switch/deactivate, and /metrics/prom are reachable.
+            Immediate action required: check postgres container and network.

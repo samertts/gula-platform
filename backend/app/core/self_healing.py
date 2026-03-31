@@ -7,7 +7,7 @@ Components:
   1. CircuitBreaker      — tracks consecutive failures per service, opens/closes
                            circuit to prevent cascade failures
   2. SystemHealth        — shared health state, thread-safe
-  3. DegradedModeMiddleware — routes degraded requests to read-only fallback
+  3. DegradedModeMiddleware — routes degraded requests per degradation level
   4. RecoveryWorker      — background coroutine that probes failed services
                            and resets circuit breakers when they recover
 
@@ -16,11 +16,11 @@ Circuit Breaker States:
   OPEN    → failure threshold exceeded (requests rejected immediately)
   HALF_OPEN → recovery probe in progress (one test request allowed through)
 
-Degraded Mode:
-  When DB circuit opens, the system enters read-only/degraded mode:
-    - GET requests: served from cache where possible
-    - POST/PUT/DELETE: rejected with 503 + Retry-After header
-    - Health/probe paths: always pass through
+Degradation Levels (escalating severity):
+  NONE           → all operations pass (normal)
+  L1_CACHE_HEAVY → writes pass with warning; reads prefer cache
+  L2_READ_ONLY   → POST/PUT/DELETE/PATCH rejected (DB circuit opened)
+  L3_CRITICAL_ONLY → only health + auth + kill-switch paths pass (DB storm)
 """
 import asyncio
 import logging
@@ -134,10 +134,29 @@ class CircuitBreaker:
             }
 
 
+# ─── Degradation Level ────────────────────────────────────────────────────────
+
+class DegradationLevel(Enum):
+    """Ordered severity levels for graceful degradation.
+
+    The system escalates through levels as conditions worsen and
+    de-escalates back to NONE when all circuits recover.
+
+    NONE           → normal; all requests pass
+    L1_CACHE_HEAVY → writes allowed but warned; cache preferred for reads
+    L2_READ_ONLY   → write mutations rejected; reads pass (DB circuit opened)
+    L3_CRITICAL_ONLY → only a small set of critical paths pass (DB storm)
+    """
+    NONE            = 0
+    L1_CACHE_HEAVY  = 1
+    L2_READ_ONLY    = 2
+    L3_CRITICAL_ONLY = 3
+
+
 # ─── Shared System Health State ──────────────────────────────────────────────
 
 class SystemHealth:
-    """Singleton that holds circuit breakers and degraded-mode flag."""
+    """Singleton that holds circuit breakers and degradation level."""
 
     _instance: Optional["SystemHealth"] = None
     _lock = threading.Lock()
@@ -161,43 +180,65 @@ class SystemHealth:
             failure_threshold=5,
             recovery_timeout=20.0,
         )
-        self._degraded = False
+        self._degradation_level = DegradationLevel.NONE
         self._lock = threading.Lock()
 
+    # ── Backward-compat bool property ────────────────────────────────────────
     @property
     def degraded(self) -> bool:
+        """True when any degradation level is active (compat with existing code)."""
         with self._lock:
-            return self._degraded
+            return self._degradation_level != DegradationLevel.NONE
 
-    def enter_degraded_mode(self, reason: str) -> None:
+    @property
+    def degradation_level(self) -> DegradationLevel:
         with self._lock:
-            if not self._degraded:
-                logger.error(
-                    "[SELF-HEALING] Entering DEGRADED MODE: %s", reason
-                )
-                self._degraded = True
+            return self._degradation_level
+
+    def enter_degraded_mode(
+        self,
+        reason: str,
+        level: DegradationLevel = DegradationLevel.L2_READ_ONLY,
+    ) -> None:
+        """Escalate degradation level.  Never downgrades during an active incident."""
+        with self._lock:
+            current = self._degradation_level
+            if level.value <= current.value:
+                return  # already at equal or worse level
+            self._degradation_level = level
+            logger.error(
+                "[SELF-HEALING] Degradation %s → %s: %s",
+                current.name, level.name, reason,
+            )
 
     def exit_degraded_mode(self) -> None:
+        """Reset to NONE.  Called when all circuits recover."""
         with self._lock:
-            if self._degraded:
-                logger.info("[SELF-HEALING] Exiting degraded mode — all systems restored")
-                self._degraded = False
+            if self._degradation_level != DegradationLevel.NONE:
+                logger.info(
+                    "[SELF-HEALING] Degradation %s → NONE — all systems restored",
+                    self._degradation_level.name,
+                )
+                self._degradation_level = DegradationLevel.NONE
 
     def update_degraded_state(self) -> None:
-        """Recompute degraded flag from circuit breaker states."""
+        """Recompute degradation level from circuit breaker states."""
         db_open = self.db_circuit.is_open()
         if db_open:
-            self.enter_degraded_mode("DB circuit open")
+            self.enter_degraded_mode("DB circuit open", DegradationLevel.L2_READ_ONLY)
         else:
             # Only exit degraded mode if all circuits are closed
             if not self.redis_circuit.is_open():
                 self.exit_degraded_mode()
 
     def to_dict(self) -> dict:
+        lv = self.degradation_level
         return {
-            "degraded_mode": self.degraded,
+            "degraded_mode":      self.degraded,
+            "degradation_level":  lv.name,
+            "degradation_value":  lv.value,
             "circuits": {
-                "db": self.db_circuit.to_dict(),
+                "db":    self.db_circuit.to_dict(),
                 "redis": self.redis_circuit.to_dict(),
             },
         }
@@ -243,47 +284,100 @@ def checked_redis_connection() -> bool:
 
 # ─── Degraded Mode Middleware ─────────────────────────────────────────────────
 
-# Paths that are ALWAYS allowed regardless of degraded mode
+# Paths that bypass ALL degradation checks (healthz + liveness always reachable)
 _ALWAYS_ALLOWED: frozenset[str] = frozenset({
     "/health",
     "/health/ready",
     "/health/live",
 })
 
-# HTTP methods that are safe in degraded mode (read-only)
+# Paths allowed even in L3_CRITICAL_ONLY — the minimum viable platform surface
+_CRITICAL_PATHS: frozenset[str] = frozenset({
+    "/health",
+    "/health/ready",
+    "/health/live",
+    "/health/status",
+    "/auth/login",
+    "/auth/refresh",
+    "/admin/kill-switch/deactivate",  # operator must always be able to recover
+    "/metrics/prom",                  # Prometheus scraping must continue
+})
+
+# HTTP methods that are safe in L2 read-only mode
 _SAFE_METHODS: frozenset[str] = frozenset({"GET", "HEAD", "OPTIONS"})
+
+# Degradation level → human-readable message sent to callers
+_LEVEL_MESSAGES: dict[DegradationLevel, tuple[str, str]] = {
+    DegradationLevel.L2_READ_ONLY: (
+        "System is in read-only mode (database unavailable). "
+        "Write operations are temporarily suspended.",
+        "النظام في وضع القراءة فقط (قاعدة البيانات غير متاحة). "
+        "عمليات الكتابة معلّقة مؤقتاً.",
+    ),
+    DegradationLevel.L3_CRITICAL_ONLY: (
+        "System is under critical load (database storm). "
+        "Only essential endpoints are reachable.",
+        "النظام تحت ضغط حرج (عاصفة قاعدة البيانات). "
+        "المسارات الحيوية فقط متاحة.",
+    ),
+}
 
 
 class DegradedModeMiddleware(BaseHTTPMiddleware):
-    """Reject write operations when the system is in degraded mode.
+    """Apply request filtering based on the current degradation level.
 
-    In degraded mode (DB circuit open):
-      - GET requests pass through (may serve cached data)
-      - POST/PUT/DELETE/PATCH are rejected with 503 + Retry-After header
-      - Health probes always pass
+    L1_CACHE_HEAVY  → pass all; headers added for downstream cache preference
+    L2_READ_ONLY    → block POST/PUT/DELETE/PATCH; GET passes
+    L3_CRITICAL_ONLY → block everything except _CRITICAL_PATHS
     """
 
     async def dispatch(self, request: Request, call_next):
         if request.url.path in _ALWAYS_ALLOWED:
             return await call_next(request)
 
-        if health.degraded and request.method not in _SAFE_METHODS:
-            return JSONResponse(
-                status_code=503,
-                headers={"Retry-After": "30"},
-                content={
-                    "detail": (
-                        "System is in degraded mode (database unavailable). "
-                        "Write operations are temporarily suspended."
-                    ),
-                    "detail_ar": (
-                        "النظام في وضع مخفّض (قاعدة البيانات غير متاحة). "
-                        "عمليات الكتابة معلّقة مؤقتاً."
-                    ),
-                    "degraded": True,
-                    "retry_after_seconds": 30,
-                },
-            )
+        level = health.degradation_level
+
+        if level == DegradationLevel.NONE:
+            return await call_next(request)
+
+        if level == DegradationLevel.L1_CACHE_HEAVY:
+            # Pass through — cache-preference is handled at the route level.
+            # Add a response header so clients know the system is under pressure.
+            response = await call_next(request)
+            response.headers["X-Degradation-Level"] = "L1_CACHE_HEAVY"
+            return response
+
+        if level == DegradationLevel.L2_READ_ONLY:
+            if request.method not in _SAFE_METHODS:
+                msg, msg_ar = _LEVEL_MESSAGES[DegradationLevel.L2_READ_ONLY]
+                return JSONResponse(
+                    status_code=503,
+                    headers={"Retry-After": "30", "X-Degradation-Level": "L2_READ_ONLY"},
+                    content={
+                        "detail":               msg,
+                        "detail_ar":            msg_ar,
+                        "degraded":             True,
+                        "degradation_level":    "L2_READ_ONLY",
+                        "retry_after_seconds":  30,
+                    },
+                )
+            return await call_next(request)
+
+        if level == DegradationLevel.L3_CRITICAL_ONLY:
+            if request.url.path not in _CRITICAL_PATHS:
+                msg, msg_ar = _LEVEL_MESSAGES[DegradationLevel.L3_CRITICAL_ONLY]
+                return JSONResponse(
+                    status_code=503,
+                    headers={"Retry-After": "60", "X-Degradation-Level": "L3_CRITICAL_ONLY"},
+                    content={
+                        "detail":               msg,
+                        "detail_ar":            msg_ar,
+                        "degraded":             True,
+                        "degradation_level":    "L3_CRITICAL_ONLY",
+                        "retry_after_seconds":  60,
+                    },
+                )
+            return await call_next(request)
 
         return await call_next(request)
 
