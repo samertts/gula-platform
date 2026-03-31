@@ -1,4 +1,5 @@
 import os
+import asyncio
 import time
 import uuid
 import logging
@@ -22,6 +23,30 @@ configure_logging(
     log_level="WARNING" if IS_PRODUCTION else "INFO",
 )
 logger = logging.getLogger("gula")
+
+# ── Optional Sentry error tracking ─────────────────────────────────────────
+# Activates only when SENTRY_DSN is set in the environment.
+_SENTRY_DSN = os.getenv("SENTRY_DSN")
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            environment=os.getenv("ENVIRONMENT", "production"),
+            release=os.getenv("APP_VERSION", "unknown"),
+            integrations=[
+                FastApiIntegration(),
+                SqlalchemyIntegration(),
+                LoggingIntegration(level=logging.ERROR, event_level=logging.ERROR),
+            ],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0.05")),
+        )
+        logger.info("Sentry error tracking initialized (env=%s)", os.getenv("ENVIRONMENT", "production"))
+    except ImportError:
+        logger.warning("SENTRY_DSN set but sentry-sdk not installed; skipping")
 
 # Import all models so they are registered with Base.metadata (needed for create_all + alembic)
 from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl  # noqa: F401
@@ -678,27 +703,39 @@ async def _adaptive_concurrency_loop():
 
 
 # ===== STARTUP WARMUP =====
+
+# Tracks all background tasks so shutdown can cancel them cleanly.
+_bg_tasks: set = set()
+
+
+def _spawn(coro) -> "asyncio.Task":
+    """Create a tracked background task that is auto-cancelled on shutdown."""
+    task = asyncio.create_task(coro)
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
+    return task
+
+
 @app.on_event("startup")
 async def start_background_workers():
     """Launch background workers for outbox delivery and self-healing recovery."""
-    import asyncio
     from .services.outbox_service import OutboxWorker
     from .core.self_healing import RecoveryWorker
 
-    asyncio.create_task(OutboxWorker.background_loop())
+    _spawn(OutboxWorker.background_loop())
     logger.info("Outbox worker started")
 
-    asyncio.create_task(RecoveryWorker.background_loop())
+    _spawn(RecoveryWorker.background_loop())
     logger.info("Recovery worker started")
 
-    asyncio.create_task(_health_alert_loop())
+    _spawn(_health_alert_loop())
     logger.info("Health alert watchdog started")
 
-    asyncio.create_task(_adaptive_concurrency_loop())
+    _spawn(_adaptive_concurrency_loop())
     logger.info("Adaptive concurrency monitor started")
 
     from .core.auto_repair import auto_repair as _auto_repair
-    asyncio.create_task(_auto_repair.run())
+    _spawn(_auto_repair.run())
     logger.info("Auto-repair engine started")
 
     # ── Restore sliding window from Redis (DB error history survives restarts) ─
@@ -1025,9 +1062,14 @@ async def on_startup():
 
 
 @app.on_event("shutdown")
-def on_shutdown():
-    """Graceful shutdown - close database connections."""
-    logger.info("GULA Platform shutting down gracefully...")
+async def on_shutdown():
+    """Graceful shutdown — cancel background tasks then release DB connections."""
+    logger.info("GULA Platform shutting down — cancelling %d background task(s)...", len(_bg_tasks))
+    for task in list(_bg_tasks):
+        task.cancel()
+    if _bg_tasks:
+        await asyncio.gather(*list(_bg_tasks), return_exceptions=True)
+    logger.info("All background tasks stopped")
     engine.dispose()
     logger.info("Database connections closed")
 
