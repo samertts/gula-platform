@@ -323,15 +323,13 @@ async function doLogin(e){
       // Route based on role
       const role=(data.role||'').toLowerCase();
       if(role==='citizen'||role==='patient'){
-        window.location.href='/portal.html#citizen';
-      } else if(role==='doctor'){
-        window.location.href='/portal.html#doctor';
+        window.location.href='/citizen/index.html';
       } else {
-        window.location.href='/portal.html#technician';
+        window.location.href='/';
       }
     } else {
       const err=await res.json().catch(()=>({}));
-      showError(err.detail||'Invalid credentials. Please try again.');
+      showError(err.detail_ar||err.detail||'بيانات الدخول غير صحيحة. حاول مجدداً.');
     }
   } catch(ex){
     // Try fallback to existing login endpoint
@@ -350,12 +348,12 @@ async function doLogin(e){
           lab_id:data.lab_id,
           lab_name:data.lab_name||'GULA Laboratory'
         }));
-        window.location.href='/portal.html';
+        window.location.href='/';
       } else {
-        showError('Connection error. Please check your network and try again.');
+        showError('خطأ في الاتصال. تحقق من الشبكة وحاول مجدداً.');
       }
     } catch(ex2){
-      showError('Connection error. Please check your network and try again.');
+      showError('خطأ في الاتصال. تحقق من الشبكة وحاول مجدداً.');
     }
   } finally{
     btn.disabled=false;txt.style.display='inline';spn.style.display='none';

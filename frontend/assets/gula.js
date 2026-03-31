@@ -2507,7 +2507,7 @@ async function showWelcomeDialog() {
     health = await fetch('/health', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
   } catch {}
 
-  const dbOk = health.database === 'connected';
+  const dbOk = health.database === 'ok' || health.database === 'connected';
   const sysStatus = health.status === 'healthy' ? 'سليم' : 'يحتاج فحص';
   const sysColor = health.status === 'healthy' ? '#10b981' : '#f59e0b';
   const version = health.version || '—';
