@@ -161,8 +161,12 @@ _DB_ACTION_MAP: dict[str, str] = {
 }
 
 # ── Circuit escalation thresholds ────────────────────────────────────────────
-_CIRCUIT_OPEN_THRESHOLD    = int(os.getenv("DB_CIRCUIT_OPEN_THRESHOLD",    "20"))  # refused in 5min
-_SYSTEM_DEGRADE_THRESHOLD  = int(os.getenv("DB_SYSTEM_DEGRADE_THRESHOLD",  "50"))  # refused in 5min
+# refused storm (TCP-level: postgres not reachable)
+_CIRCUIT_OPEN_THRESHOLD   = int(os.getenv("DB_CIRCUIT_OPEN_THRESHOLD",   "20"))  # refused/5min → L2
+_SYSTEM_DEGRADE_THRESHOLD = int(os.getenv("DB_SYSTEM_DEGRADE_THRESHOLD", "50"))  # refused/5min → L3
+# timeout storm (network delay / DB overloaded — TEST 6 / TEST 10 scenario)
+_TIMEOUT_L1_THRESHOLD     = int(os.getenv("DB_TIMEOUT_L1_THRESHOLD",      "5"))  # timeouts/5min → L1
+_TIMEOUT_L2_THRESHOLD     = int(os.getenv("DB_TIMEOUT_L2_THRESHOLD",     "15"))  # timeouts/5min → L2
 
 # ── Connection Pool Sizing ────────────────────────────────────────────────────
 # PostgreSQL default max_connections = 100.
@@ -306,7 +310,7 @@ def check_db_connection_detail() -> tuple[str, str]:
             },
         )
 
-        # ── Circuit escalation — open circuit on sustained refused storm ──────
+        # ── Escalation: refused storm (TEST 1 / TEST 10) ─────────────────────
         if status == "refused":
             refused_5m = db_window.count("refused", window_s=300)
             if refused_5m >= _SYSTEM_DEGRADE_THRESHOLD:
@@ -314,27 +318,55 @@ def check_db_connection_detail() -> tuple[str, str]:
             elif refused_5m >= _CIRCUIT_OPEN_THRESHOLD:
                 _trigger_circuit_open(refused_5m)
 
+        # ── Escalation: timeout storm (TEST 6 — slow death via tc/iptables) ──
+        elif status == "timeout":
+            timeout_5m = db_window.count("timeout", window_s=300)
+            if timeout_5m >= _TIMEOUT_L2_THRESHOLD:
+                # Sustained timeouts → treat same as refused storm → L2
+                _trigger_circuit_open(timeout_5m)
+            elif timeout_5m >= _TIMEOUT_L1_THRESHOLD:
+                # Early warning: DB is slow but alive → L1 (writes still pass)
+                _trigger_slow_db(timeout_5m)
+
         return status, detail
 
 
-def _trigger_circuit_open(refused_count: int) -> None:
-    """Force-open the DB circuit breaker + enter L2_READ_ONLY when refused storm hits threshold."""
+def _trigger_slow_db(timeout_count: int) -> None:
+    """Enter L1_CACHE_HEAVY when DB is reachable but slow (TEST 6 — high latency)."""
+    try:
+        from .core.self_healing import health, DegradationLevel
+        health.enter_degraded_mode(
+            f"DB timeouts {timeout_count}/5min (threshold={_TIMEOUT_L1_THRESHOLD}) "
+            "— DB alive but slow, preferring cache",
+            level=DegradationLevel.L1_CACHE_HEAVY,
+        )
+        logger.warning(
+            "[DB] L1_CACHE_HEAVY — %d timeout errors in 5min. "
+            "Reads prefer cache; writes still pass with warning.",
+            timeout_count,
+        )
+    except Exception as exc:
+        logger.error("[DB] _trigger_slow_db failed (non-fatal): %s", exc)
+
+
+def _trigger_circuit_open(refused_or_timeout_count: int) -> None:
+    """Force-open the DB circuit breaker + enter L2_READ_ONLY on sustained error storm."""
     try:
         from .core.self_healing import health, CircuitState, DegradationLevel
         if health.db_circuit.state != CircuitState.OPEN:
             for _ in range(health.db_circuit.failure_threshold):
                 health.db_circuit.record_failure()
             logger.error(
-                "[DB] Circuit OPENED after %d refused errors in 5min (threshold=%d)",
-                refused_count, _CIRCUIT_OPEN_THRESHOLD,
+                "[DB] Circuit OPENED after %d errors in 5min (threshold=%d)",
+                refused_or_timeout_count, _CIRCUIT_OPEN_THRESHOLD,
             )
         # Escalate to L2: writes blocked, reads still pass
         health.enter_degraded_mode(
-            f"DB circuit opened — {refused_count} refused errors in 5min",
+            f"DB circuit opened — {refused_or_timeout_count} errors in 5min",
             level=DegradationLevel.L2_READ_ONLY,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.error("[DB] _trigger_circuit_open failed (non-fatal): %s", exc)
 
 
 def _trigger_system_degradation(refused_count: int) -> None:
@@ -351,8 +383,8 @@ def _trigger_system_degradation(refused_count: int) -> None:
             "Only health/auth/kill-switch endpoints reachable.",
             refused_count,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.error("[DB] _trigger_system_degradation failed (non-fatal): %s", exc)
 
 
 def restore_db_window_from_redis() -> None:

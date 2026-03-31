@@ -239,12 +239,30 @@ class RepairEngine:
             self._mark_triggered("memory_gc")
 
         # ── DB slow / circuit open ──────────────────────────────────────────
+        from ..core.self_healing import health as _sh, DegradationLevel as _DL
         if db_ms > 9000 and self._can_trigger("circuit_probe"):
             self._repair_circuit_breaker()
             self._mark_triggered("circuit_probe")
         elif db_ms > _DB_LATENCY_WARN * 3 and self._can_trigger("pool_recycle"):
             self._repair_connection_pool()
             self._mark_triggered("pool_recycle")
+
+        # ── Latency-based degradation (TEST 6 / TEST 11 hysteresis) ─────────
+        # Hysteresis prevents flapping: enter L1 at WARN, exit only at WARN*0.7.
+        # This means: slow→fast→slow cycles don't oscillate unless latency
+        # truly stays low for a full poll cycle.
+        _L1_ENTER_THRESHOLD = _DB_LATENCY_WARN           # e.g. 300ms
+        _L1_EXIT_THRESHOLD  = int(_DB_LATENCY_WARN * 0.7) # e.g. 210ms (lower to avoid flap)
+        if db_ms > _L1_ENTER_THRESHOLD and _sh.degradation_level == _DL.NONE:
+            _sh.enter_degraded_mode(
+                f"High DB latency: {db_ms:.0f}ms > {_L1_ENTER_THRESHOLD}ms — cache preferred",
+                level=_DL.L1_CACHE_HEAVY,
+            )
+            logger.warning("[AUTO-REPAIR] Entered L1_CACHE_HEAVY — DB latency %.0fms", db_ms)
+        elif db_ms <= _L1_EXIT_THRESHOLD and _sh.degradation_level == _DL.L1_CACHE_HEAVY:
+            _sh.exit_degraded_mode()
+            logger.info("[AUTO-REPAIR] DB latency recovered (%.0fms < %dms) — back to NONE",
+                        db_ms, _L1_EXIT_THRESHOLD)
 
         # ── Redis down ──────────────────────────────────────────────────────
         if redis_ms > 9000 and self._can_trigger("redis_reconnect"):
