@@ -232,6 +232,36 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     except Exception:
         lines.append("gula_active_requests 0")
 
+    # ── Per-error-type DB counters ────────────────────────────────────────────
+    # Exposes cumulative counts so Prometheus can track error trends and trigger
+    # differentiated alerts:
+    #   auth_failed > 0 → CRITICAL (misconfiguration, never self-heals)
+    #   refused > N     → WARNING  (postgres down or network issue)
+    #   timeout > N     → WARNING  (DB overloaded)
+    try:
+        from ..database import get_db_error_counts
+        ec = get_db_error_counts()
+        lines += [
+            "",
+            "# HELP gula_db_refused_total Cumulative DB 'connection refused' errors",
+            "# TYPE gula_db_refused_total counter",
+            f"gula_db_refused_total {ec.get('refused', 0)}",
+            "",
+            "# HELP gula_db_auth_failed_total Cumulative DB authentication failures (wrong password / pg_hba.conf)",
+            "# TYPE gula_db_auth_failed_total counter",
+            f"gula_db_auth_failed_total {ec.get('auth_failed', 0)}",
+            "",
+            "# HELP gula_db_timeout_total Cumulative DB connection timeouts",
+            "# TYPE gula_db_timeout_total counter",
+            f"gula_db_timeout_total {ec.get('timeout', 0)}",
+            "",
+            "# HELP gula_db_error_total Cumulative DB unknown/other errors",
+            "# TYPE gula_db_error_total counter",
+            f"gula_db_error_total {ec.get('error', 0)}",
+        ]
+    except Exception:
+        pass
+
     # ── Control Layer metrics ────────────────────────────────────────────────
     try:
         from ..core.policy_engine import policy_engine

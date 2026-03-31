@@ -1,10 +1,37 @@
 import logging
 import os
+import threading
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from .config import DATABASE_URL, IS_PRODUCTION
 
 logger = logging.getLogger("gula.database")
+
+# ── Per-error-type counters (thread-safe, process-lifetime) ──────────────────
+_counter_lock = threading.Lock()
+_db_error_counts: dict[str, int] = {
+    "refused":    0,
+    "auth_failed": 0,
+    "timeout":    0,
+    "error":      0,
+}
+
+def get_db_error_counts() -> dict[str, int]:
+    """Return a snapshot of cumulative DB error counts by type."""
+    with _counter_lock:
+        return dict(_db_error_counts)
+
+# ── Error → Action mapping ────────────────────────────────────────────────────
+# Defines what the caller should do for each error type.
+# "retry"              → transient, keep trying
+# "retry_with_backoff" → transient but may be overloaded, use backoff
+# "stop_and_alert"     → permanent misconfiguration, retrying is useless
+_DB_ACTION_MAP: dict[str, str] = {
+    "refused":    "retry",
+    "timeout":    "retry_with_backoff",
+    "auth_failed": "stop_and_alert",
+    "error":      "retry_with_backoff",
+}
 
 # ── Connection Pool Sizing ────────────────────────────────────────────────────
 # PostgreSQL default max_connections = 100.
@@ -103,18 +130,31 @@ def check_db_connection_detail() -> tuple[str, str]:
         msg = str(exc).lower()
 
         if "connection refused" in msg or "could not connect" in msg:
-            return "refused", f"TCP connection refused to {host}:{port} — postgres not listening or wrong host"
+            status = "refused"
+            detail = f"TCP connection refused to {host}:{port} — postgres not listening or wrong host"
+        elif "password authentication failed" in msg or "authentication failed" in msg:
+            status = "auth_failed"
+            detail = f"authentication rejected by {host}:{port} — check POSTGRES_PASSWORD"
+        elif "no pg_hba.conf entry" in msg:
+            status = "auth_failed"
+            detail = f"pg_hba.conf rejected connection from this host — check pg_hba.conf subnet"
+        elif "timeout" in msg or "timed out" in msg:
+            status = "timeout"
+            detail = f"connection to {host}:{port} timed out"
+        else:
+            status = "error"
+            detail = f"{host}:{port} — {str(exc)[:120]}"
 
-        if "password authentication failed" in msg or "authentication failed" in msg:
-            return "auth_failed", f"authentication rejected by {host}:{port} — check POSTGRES_PASSWORD"
+        with _counter_lock:
+            _db_error_counts[status] = _db_error_counts.get(status, 0) + 1
 
-        if "no pg_hba.conf entry" in msg:
-            return "auth_failed", f"pg_hba.conf rejected connection from this host — check pg_hba.conf subnet"
-
-        if "timeout" in msg or "timed out" in msg:
-            return "timeout", f"connection to {host}:{port} timed out"
-
-        return "error", f"{host}:{port} — {str(exc)[:120]}"
+        action = _DB_ACTION_MAP.get(status, "retry")
+        logger.error(
+            "[DB] connection %s — action=%s — %s",
+            status, action, detail,
+            extra={"db_host": host, "db_port": port, "db_status": status, "action": action},
+        )
+        return status, detail
 
 
 def get_pool_status() -> dict:

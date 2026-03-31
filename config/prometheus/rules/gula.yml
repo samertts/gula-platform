@@ -224,3 +224,99 @@ groups:
         annotations:
           summary: "🔴 Postgres connections critical {{ $value }}/100"
           description: "Near-full connection pool. New connections will be rejected."
+
+  # ===========================================================================
+  # DB CONNECTION ERROR TYPE ALERTS
+  # These fire on per-error-type counters from /metrics/prom.
+  # auth_failed is CRITICAL immediately — it is a misconfiguration that will
+  # NEVER self-heal and requires operator action.
+  # refused / timeout fire after a sustained period (transient is OK).
+  # ===========================================================================
+  - name: gula_db_error_types
+    interval: 30s
+    rules:
+
+      - alert: DatabaseAuthFailed
+        expr: increase(gula_db_auth_failed_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: database
+          action: stop_and_alert
+        annotations:
+          summary: "🔴 DB authentication failure — IMMEDIATE action required"
+          description: |
+            PostgreSQL rejected authentication. This is a permanent misconfiguration —
+            retries will never succeed. Fix POSTGRES_PASSWORD or pg_hba.conf and redeploy.
+            The backend will NOT become healthy until this is resolved.
+
+      - alert: DatabaseConnectionRefused
+        expr: increase(gula_db_refused_total[10m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+          action: retry
+        annotations:
+          summary: "🟡 DB connection refused {{ $value }} times in 10min"
+          description: |
+            Backend cannot reach PostgreSQL (TCP refused). Possible causes:
+            listen_addresses misconfiguration, postgres container restart, or
+            network issue. Check: docker-compose ps && docker-compose logs postgres
+
+      - alert: DatabaseConnectionRefusedCritical
+        expr: increase(gula_db_refused_total[10m]) > 20
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+          action: retry
+        annotations:
+          summary: "🔴 DB connection refused {{ $value }} times — system degraded"
+          description: |
+            High rate of TCP-refused DB connections. Backend is running in degraded
+            mode. All write operations are failing. Check postgres container health.
+
+      - alert: DatabaseTimeout
+        expr: increase(gula_db_timeout_total[10m]) > 3
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+          action: retry_with_backoff
+        annotations:
+          summary: "🟡 DB connection timeouts {{ $value }} in 10min"
+          description: |
+            DB connections are timing out. PostgreSQL may be overloaded or the
+            network is congested. Check pg_stat_activity and system load.
+
+  # ===========================================================================
+  # POLICY / CONTROL LAYER ALERTS
+  # ===========================================================================
+  - name: gula_control_layer
+    interval: 60s
+    rules:
+
+      - alert: PolicyBlockSpike
+        expr: increase(gula_policy_block_total[15m]) > 10
+        for: 0m
+        labels:
+          severity: warning
+          service: control_layer
+        annotations:
+          summary: "🟡 {{ $value }} autonomous actions blocked in 15min"
+          description: |
+            The policy engine is blocking many autonomous actions. This may indicate
+            a repair loop or misconfigured automation. Check /admin/control-layer/stats
+
+      - alert: KillSwitchActive
+        expr: gula_kill_switch_active == 1
+        for: 0m
+        labels:
+          severity: critical
+          service: control_layer
+        annotations:
+          summary: "🔴 Kill switch ACTIVE — all autonomous actions halted"
+          description: |
+            The platform kill switch is active. No auto-repair, scaling, or AI actions
+            will execute. To deactivate: POST /admin/kill-switch/deactivate

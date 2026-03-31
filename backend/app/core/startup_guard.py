@@ -162,7 +162,7 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
     - "auth_failed"         → permanent, stop immediately (retrying won't help)
     - "ok"                  → success, return True
     """
-    from ..database import check_db_connection_detail
+    from ..database import check_db_connection_detail, _DB_ACTION_MAP
     import os
 
     db_url = os.getenv("DATABASE_URL", "")
@@ -183,15 +183,16 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
             )
             return True
 
-        if status == "auth_failed":
-            # Wrong password or pg_hba.conf rejection — retrying will never help.
+        action = _DB_ACTION_MAP.get(status, "retry")
+        if action == "stop_and_alert":
+            # Permanent misconfiguration — retrying will never help.
             logger.critical(
-                "[STARTUP GUARD] Database authentication FAILED — stopping retries. "
-                "Fix POSTGRES_PASSWORD or pg_hba.conf and redeploy. Detail: %s", detail,
+                "[STARTUP GUARD] DB %s — action=stop_and_alert — stopping all retries. "
+                "Fix credentials/pg_hba.conf and redeploy. Detail: %s", status, detail,
             )
             return False
 
-        # Transient error (refused / timeout / unknown) — keep retrying
+        # Transient (retry / retry_with_backoff) — keep going
         wait_sec = min(2 ** attempt, 30)
         logger.warning(
             "[STARTUP GUARD] DB not ready (attempt %d/%d, status=%s) — %s — retrying in %ds",
