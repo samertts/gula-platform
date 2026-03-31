@@ -47,6 +47,14 @@ BACKEND_DIR = REPO_ROOT / "backend"
 MODEL       = os.getenv("GULA_AUDIT_MODEL", "claude-sonnet-4-6")
 AUTO_FIX    = os.getenv("GULA_AUTO_FIX", "false").lower() == "true"
 INTERVAL    = int(os.getenv("GULA_AUDIT_INTERVAL", "3600"))
+_ENV        = os.getenv("ENV", "production")
+
+# Production safety: auto-fix is NEVER allowed in production.
+# Operators must set ENV=development and GULA_AUTO_FIX=true explicitly.
+if _ENV == "production" and AUTO_FIX:
+    print("[SELF-AUDIT] WARNING: GULA_AUTO_FIX=true is not allowed in production. "
+          "Forcing report-only mode.", file=sys.stderr)
+    AUTO_FIX = False
 
 # Max chars of context to send to Claude (to stay within token limits)
 _MAX_DIFF_CHARS   = 8_000
@@ -333,7 +341,11 @@ def run_audit(auto_fix: bool = False) -> AuditResult:
     result.summary          = data.get("summary", "")
     result.production_ready = data.get("production_ready", False)
 
-    # Auto-fix if enabled and there are safe fixes
+    # Auto-fix if enabled and there are safe fixes — gate on kill switch + policy
+    if auto_fix and _ENV == "production":
+        print("  [SELF-AUDIT] Auto-fix suppressed: ENV=production (report-only mode)")
+        auto_fix = False
+
     if auto_fix and result.auto_fixable:
         print(f"  Applying {len(result.auto_fixable)} auto-fix(es)...")
         applied = _apply_auto_fixes(result.auto_fixable)

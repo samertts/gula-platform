@@ -10,7 +10,8 @@
         lint test ci monitoring monitoring-down \
         db-shell redis-cli shell secrets-gen \
         scenario-test integrity-test metrics-token \
-        self-audit self-audit-fix scale scale-down
+        self-audit self-audit-fix scale scale-down \
+        manage kill-switch-on kill-switch-off control-stats
 
 BACKEND_URL ?= http://localhost:8080
 
@@ -199,6 +200,23 @@ scale:
 
 scale-down:
 	docker compose -f docker-compose.yml -f docker-compose.scale.yml down
+
+manage:
+	@bash scripts/digitalocean-manage.sh $(filter-out $@,$(MAKECMDGOALS))
+
+kill-switch-on:
+	@echo "=== Activating kill switch ==="
+	bash scripts/digitalocean-manage.sh kill-switch on
+
+kill-switch-off:
+	@echo "=== Deactivating kill switch ==="
+	bash scripts/digitalocean-manage.sh kill-switch off
+
+control-stats:
+	@echo "=== Control Layer stats ==="
+	curl -sf -b "access_token=$$(grep GULA_ADMIN_TOKEN .env 2>/dev/null | cut -d= -f2)" \
+	    http://localhost:8080/admin/control-layer/stats | python3 -m json.tool 2>/dev/null \
+	    || echo "(Requires master_admin auth — use the API directly)"
 
 ci: lint
 	@echo "=== Syntax gate ==="

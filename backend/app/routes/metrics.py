@@ -221,5 +221,45 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     except Exception:
         lines.append("gula_active_requests 0")
 
+    # ── Control Layer metrics ────────────────────────────────────────────────
+    try:
+        from ..core.policy_engine import policy_engine
+        ps = policy_engine.stats()
+        lines += [
+            "",
+            "# HELP gula_policy_block_total Total autonomous actions blocked by policy",
+            "# TYPE gula_policy_block_total counter",
+            f"gula_policy_block_total {ps['blocked_total']}",
+            "",
+            "# HELP gula_policy_allow_total Total autonomous actions permitted by policy",
+            "# TYPE gula_policy_allow_total counter",
+            f"gula_policy_allow_total {ps['allowed_total']}",
+        ]
+    except Exception:
+        pass
+
+    try:
+        from ..core.auto_repair import auto_repair
+        total_repairs = sum(v["triggered"] for v in auto_repair.stats().values())
+        lines += [
+            "",
+            "# HELP gula_auto_repair_total Total autonomous repair actions triggered",
+            "# TYPE gula_auto_repair_total counter",
+            f"gula_auto_repair_total {total_repairs}",
+        ]
+    except Exception:
+        pass
+
+    try:
+        from ..core.kill_switch import is_kill_switch_active
+        lines += [
+            "",
+            "# HELP gula_kill_switch_active Kill switch state (1=active, 0=inactive)",
+            "# TYPE gula_kill_switch_active gauge",
+            f"gula_kill_switch_active {1 if is_kill_switch_active() else 0}",
+        ]
+    except Exception:
+        pass
+
     lines.append("")
     return PlainTextResponse("\n".join(lines) + "\n", media_type=_PROM_CONTENT_TYPE)
