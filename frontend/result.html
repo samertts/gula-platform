@@ -29,6 +29,8 @@ td{padding:10px;border-bottom:1px solid #1e293b40}
 .btn-wa{background:#25d366;color:#fff}
 .btn-pdf{background:#818cf8;color:#fff}
 .btn-copy{background:transparent;border:1px solid #1e293b;color:#94a3b8}
+.btn-ai{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff}
+.btn-ai:disabled{opacity:.6;cursor:not-allowed}
 .disclaimer{text-align:center;font-size:.72rem;color:#475569;margin-top:24px;line-height:1.6}
 .qr{text-align:center;margin:16px 0}
 .qr img{width:120px;height:120px;border-radius:8px;background:#fff;padding:4px}
@@ -149,9 +151,46 @@ function renderResult(d) {
       <a href="/api/r/${safeToken}/pdf" target="_blank" rel="noopener" class="btn btn-pdf">تحميل PDF</a>
       <button class="btn btn-copy" onclick="navigator.clipboard.writeText(window.location.href);this.textContent='تم النسخ!'">نسخ الرابط</button>
       <button class="btn btn-copy" onclick="window.print()">طباعة</button>
+      <button class="btn btn-ai" id="aiBtn" onclick="loadAI('${safeToken}')">🤖 تفسير ذكي</button>
+    </div>
+    <div id="aiSection" style="display:none;margin-top:16px;padding:16px;background:#1a2744;border-radius:10px;border:1px solid #3b82f640">
+      <div style="font-size:.78rem;color:#60a5fa;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+        🤖 تفسير بالذكاء الاصطناعي
+        <span style="font-size:.68rem;color:#475569;margin-right:auto">للتوعية فقط — ليس تشخيصاً طبياً</span>
+      </div>
+      <div id="aiText" style="font-size:.88rem;line-height:1.9;color:#e2e8f0;white-space:pre-wrap"></div>
     </div>
     <div class="disclaimer">${esc(d.disclaimer || 'هذه النتائج للاطلاع فقط ولا تغني عن استشارة الطبيب')}</div>
   `;
+}
+
+async function loadAI(tok) {
+  const btn = document.getElementById('aiBtn');
+  const sec = document.getElementById('aiSection');
+  const txt = document.getElementById('aiText');
+  if (!btn || !sec || !txt) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ جاري التفسير...';
+  sec.style.display = 'block';
+  txt.textContent = '';
+
+  try {
+    const res = await fetch('/api/ai/interpret/' + encodeURIComponent(tok));
+    const data = await res.json();
+    if (!res.ok) {
+      txt.textContent = data.detail || 'تعذر الحصول على التفسير حالياً.';
+      btn.textContent = '🤖 تفسير ذكي';
+      btn.disabled = false;
+      return;
+    }
+    txt.textContent = data.interpretation || '';
+    btn.textContent = '✓ تم التفسير';
+  } catch {
+    txt.textContent = 'تعذر الاتصال. تحقق من الشبكة وحاول مجدداً.';
+    btn.textContent = '🤖 تفسير ذكي';
+    btn.disabled = false;
+  }
 }
 
 loadResult();

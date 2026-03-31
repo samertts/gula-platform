@@ -17,24 +17,48 @@ Routes:
   POST /api/ai/execute/{id}             — run in sandbox (doctor+)
   POST /api/ai/analyze-order/{order_id} — analyze all results in an order (doctor+)
   GET  /api/ai/operations               — list whitelisted sandbox ops
+
+  GET  /api/ai/interpret/{token}        — plain-Arabic explanation for patients (public)
 """
 
 from __future__ import annotations
 
+import logging
+import os
+import re
 import time
+from datetime import datetime, timezone
+from hashlib import sha256
 from typing import Any, Dict, Optional
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.ai.approval import approval_store
 from app.ai.guardrails import AIGuardrailViolation, ai_suggest
 from app.ai.sandbox import AISandbox
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
 from app.security.dependencies import get_current_user
+
+logger = logging.getLogger("gula.ai")
+
+# ── Free AI provider config ───────────────────────────────────────────────────
+_GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
+_GROQ_KEY   = os.getenv("GROQ_API_KEY", "")
+_AI_PROVIDER = os.getenv(
+    "AI_PROVIDER",
+    "gemini" if _GEMINI_KEY else "groq" if _GROQ_KEY else "none",
+)
+_GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    "gemini-2.0-flash:generateContent?key={key}"
+)
+_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 router = APIRouter(prefix="/api/ai", tags=["AI Safety Layer"])
 
@@ -294,3 +318,145 @@ def list_operations():
         "whitelisted_operations": AISandbox.registered_operations(),
         "note": "Only these operations can be executed by AI after human approval.",
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PUBLIC — Patient-facing result interpretation
+# No authentication required.  The result_token itself is the proof of access.
+# Rate-limited by nginx (api_limit zone).
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _build_interpret_prompt(results_data: list[dict]) -> str:
+    lines: list[str] = []
+    for r in results_data:
+        name  = r.get("test_name", "")
+        val   = r.get("value") if r.get("value") is not None else r.get("value_text", "-")
+        unit  = r.get("unit", "")
+        low   = r.get("normal_range_low")
+        high  = r.get("normal_range_high")
+        status = ""
+        try:
+            vf = float(val)
+            if low is not None and high is not None:
+                status = "(طبيعي)" if float(low) <= vf <= float(high) else (
+                    "(منخفض)" if vf < float(low) else "(مرتفع)"
+                )
+        except (TypeError, ValueError):
+            pass
+        range_part = f" — المدى الطبيعي: {low}–{high} {unit}" if (low is not None and high is not None) else f" {unit}"
+        lines.append(f"• {name}: {val} {unit} {status}{range_part}")
+
+    return (
+        "أنت مساعد طبي. اشرح نتائج التحاليل التالية للمريض بأسلوب بسيط وواضح:\n\n"
+        + "\n".join(lines)
+        + "\n\nتعليمات:\n"
+        "- اكتب بالعربية فقط\n"
+        "- جملة واحدة مختصرة لكل تحليل (طبيعي أو غير طبيعي وسببه المحتمل)\n"
+        "- لا تذكر تشخيصاً أو دواءً محدداً\n"
+        "- الرد لا يتجاوز 150 كلمة\n"
+        "- انهِ بـ: «هذا الشرح للتوعية فقط ولا يُغني عن استشارة الطبيب.»"
+    )
+
+
+async def _call_gemini_flash(prompt: str) -> str:
+    url = _GEMINI_URL.format(key=_GEMINI_KEY)
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 500},
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(url, json=payload)
+        r.raise_for_status()
+    return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+
+async def _call_groq_llama(prompt: str) -> str:
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": 500,
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(
+            _GROQ_URL, json=payload,
+            headers={"Authorization": f"Bearer {_GROQ_KEY}"},
+        )
+        r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"].strip()
+
+
+@router.get(
+    "/interpret/{token}",
+    summary="تفسير نتائج التحليل للمريض (عام)",
+    response_class=JSONResponse,
+    tags=["AI Public"],
+)
+async def interpret_result_public(token: str) -> JSONResponse:
+    """
+    Return a plain-Arabic AI explanation of the lab results identified by
+    *token*.  Public endpoint — no login required.
+
+    Returns 503 when no AI provider is configured (set GEMINI_API_KEY or
+    GROQ_API_KEY in the environment to enable).
+    """
+    if _AI_PROVIDER == "none":
+        raise HTTPException(
+            status_code=503,
+            detail="تفسير الذكاء الاصطناعي غير مفعل حالياً.",
+        )
+
+    if not token or not re.match(r"^[A-Za-z0-9_-]{10,}$", token):
+        raise HTTPException(status_code=400, detail="رمز النتيجة غير صالح")
+
+    # ── Load results from DB (same auth model as /api/r/{token}) ─────────────
+    token_hash = sha256(token.encode()).hexdigest()
+    db: Session = SessionLocal()
+    try:
+        result = (
+            db.query(LabResult).filter(LabResult.token_hash == token_hash).first()
+            or db.query(LabResult).filter(LabResult.token == token).first()
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="نتيجة التحليل غير موجودة")
+        if result.expires_at and result.expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=410, detail="انتهت صلاحية رابط النتيجة")
+
+        all_results = db.query(LabResult).filter(
+            LabResult.order_id == result.order_id
+        ).all()
+        results_data = [
+            {
+                "test_name":         r.test_name,
+                "value":             r.value,
+                "value_text":        getattr(r, "value_text", None),
+                "unit":              r.unit,
+                "normal_range_low":  r.normal_range_low,
+                "normal_range_high": r.normal_range_high,
+            }
+            for r in all_results
+        ]
+    finally:
+        db.close()
+
+    if not results_data:
+        raise HTTPException(status_code=404, detail="لا توجد نتائج للتفسير")
+
+    # ── Call free AI provider ─────────────────────────────────────────────────
+    prompt = _build_interpret_prompt(results_data)
+    try:
+        if _AI_PROVIDER == "gemini":
+            text = await _call_gemini_flash(prompt)
+        else:
+            text = await _call_groq_llama(prompt)
+    except HTTPException:
+        raise
+    except httpx.HTTPStatusError as exc:
+        logger.warning("AI provider %s: HTTP %s", _AI_PROVIDER, exc.response.status_code)
+        raise HTTPException(status_code=503, detail="تعذر الحصول على التفسير حالياً. حاول لاحقاً.")
+    except Exception as exc:
+        logger.error("AI interpret error: %s", exc)
+        raise HTTPException(status_code=503, detail="تعذر الحصول على التفسير حالياً. حاول لاحقاً.")
+
+    logger.info("AI interpreted token=%.8s... provider=%s tests=%d", token, _AI_PROVIDER, len(results_data))
+    return JSONResponse({"interpretation": text, "provider": _AI_PROVIDER})
