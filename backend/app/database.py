@@ -322,7 +322,7 @@ def _trigger_circuit_open(refused_count: int) -> None:
     try:
         from .core.self_healing import health, CircuitState, DegradationLevel
         if health.db_circuit.state != CircuitState.OPEN:
-            for _ in range(health.db_circuit._failure_threshold):
+            for _ in range(health.db_circuit.failure_threshold):
                 health.db_circuit.record_failure()
             logger.error(
                 "[DB] Circuit OPENED after %d refused errors in 5min (threshold=%d)",
