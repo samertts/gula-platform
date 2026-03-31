@@ -262,6 +262,30 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     except Exception:
         pass
 
+    # ── Sliding Window DB rates (5-minute) ───────────────────────────────────
+    # These gauges capture the *rate* of DB events in the last 5 minutes,
+    # enabling ratio-based Prometheus alerts that ignore ancient history.
+    try:
+        from ..database import get_db_window_snapshot
+        win = get_db_window_snapshot(window_s=300)
+        total_events = max(win["ok"] + win["refused"] + win["timeout"], 1)
+        lines += [
+            "",
+            "# HELP gula_db_refused_rate_5m DB 'refused' events per minute (5min window)",
+            "# TYPE gula_db_refused_rate_5m gauge",
+            f"gula_db_refused_rate_5m {win['refused_per_min']}",
+            "",
+            "# HELP gula_db_timeout_rate_5m DB timeout events per minute (5min window)",
+            "# TYPE gula_db_timeout_rate_5m gauge",
+            f"gula_db_timeout_rate_5m {win['timeout_per_min']}",
+            "",
+            "# HELP gula_db_error_ratio_5m Fraction of DB checks that failed in last 5min (0–1)",
+            "# TYPE gula_db_error_ratio_5m gauge",
+            f"gula_db_error_ratio_5m {round((win['refused'] + win['timeout']) / total_events, 4)}",
+        ]
+    except Exception:
+        pass
+
     # ── Control Layer metrics ────────────────────────────────────────────────
     try:
         from ..core.policy_engine import policy_engine
