@@ -360,14 +360,20 @@ tr:hover td { background: #ffffff05; }
 
 /* ---- Print styles ---- */
 @media print {
-  .sidebar, .mobile-header, .modal-overlay, .toast, .btn, .search-bar, .toolbar { display: none !important; }
-  .content { margin: 0 !important; padding: 10px !important; }
+  .sidebar, .mobile-header, .toast, .btn, .search-bar, .toolbar { display: none !important; }
+  /* Show modal content when printing from the order view modal */
+  .modal-overlay { position: static !important; background: none !important; padding: 0 !important; display: block !important; }
+  .modal-box { box-shadow: none !important; border: none !important; max-width: 100% !important; width: 100% !important; }
+  .modal-header .modal-close { display: none !important; }
+  .content { margin: 0 !important; padding: 0 !important; display: none !important; }
   body { background: #fff; color: #000; }
   .card { border: 1px solid #ccc; box-shadow: none; background: #fff; }
   .stat-card { border: 1px solid #ccc; background: #fff; }
   .stat-value, .stat-label, .stat-sub { color: #000; }
   table { font-size: .8rem; }
   th, td { border: 1px solid #ccc; }
+  .kpi-val, .kpi-label { color: #000 !important; }
+  .badge { border: 1px solid #999; padding: 2px 6px; border-radius: 4px; }
 }
 
 /* ============================================================
