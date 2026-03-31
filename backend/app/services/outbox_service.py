@@ -158,8 +158,24 @@ class OutboxWorker:
         permanently-failed events (MAX_ATTEMPTS exhausted) don't accumulate
         indefinitely in the database.
         """
-        from app.database import SessionLocal
+        from app.database import SessionLocal, engine
+        from sqlalchemy import inspect as _inspect
         import time as _t
+
+        # Guard: verify the outbox_events table exists before entering the loop.
+        # If alembic hasn't been applied the table won't exist and every cycle
+        # would log a noisy ProgrammingError. Abort early with a clear message.
+        try:
+            if not _inspect(engine).has_table("outbox_events"):
+                logger.error(
+                    "[OUTBOX] outbox_events table does not exist — "
+                    "alembic upgrade head must run before starting the outbox worker. "
+                    "Worker will not start."
+                )
+                return
+        except Exception as exc:
+            logger.error("[OUTBOX] Could not verify outbox_events table: %s — worker aborted", exc)
+            return
 
         logger.info("[OUTBOX] Worker started (poll_interval=%ds)", _POLL_SECS)
         _last_purge = _t.monotonic()

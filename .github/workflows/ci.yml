@@ -223,10 +223,86 @@ jobs:
             echo "✓ No insecure /tmp writes found"
           fi
 
+  # ─── Migration Gate ────────────────────────────────────────────────────────
+  # Runs alembic upgrade head on a completely fresh (empty) database.
+  # Blocks merge if any migration is broken, missing, or leaves required tables absent.
+  migration-check:
+    name: Alembic Migration Gate
+    needs: [syntax-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: migtest
+          POSTGRES_DB: labdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -q -r requirements.txt
+
+      - name: Run alembic upgrade head on empty database
+        env:
+          DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+        run: |
+          echo "Running alembic upgrade head on fresh empty DB..."
+          alembic upgrade head
+          echo "✓ alembic upgrade head succeeded"
+
+      - name: Verify required tables exist after migrations
+        env:
+          DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+        run: |
+          python3 - <<'PYEOF'
+          import psycopg2, sys
+          REQUIRED = ["labs","lab_users","patients","lab_orders","lab_results","outbox_events","audit_logs","alembic_version"]
+          conn = psycopg2.connect("postgresql://postgres:migtest@localhost:5432/labdb")
+          cur  = conn.cursor()
+          missing = []
+          for t in REQUIRED:
+              cur.execute("SELECT to_regclass(%s)", (f"public.{t}",))
+              if cur.fetchone()[0] is None:
+                  missing.append(t)
+          conn.close()
+          if missing:
+              print(f"FAIL — required tables missing after alembic upgrade head: {missing}")
+              sys.exit(1)
+          print(f"✓ All {len(REQUIRED)} required tables present")
+          PYEOF
+
+      - name: Verify alembic downgrade -1 works (migration is reversible)
+        env:
+          DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+        run: |
+          alembic downgrade -1
+          alembic upgrade head
+          echo "✓ Downgrade -1 + upgrade head round-trip OK"
+
   # ─── Runtime Smoke Test ───────────────────────────────────────────────────
   smoke-test:
     name: Runtime Smoke Test
-    needs: [syntax-gate]
+    needs: [syntax-gate, migration-check]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -322,7 +398,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [syntax-gate, smoke-test, backend-test]
+    needs: [syntax-gate, migration-check, smoke-test, backend-test]
     permissions:
       contents: read
       packages: write

@@ -210,30 +210,68 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
 
 # ─── Step 3: Migration Check ─────────────────────────────────────────────────
 
+# Tables that MUST exist for the app to function. If any are missing, migrations
+# have not been applied and the app must not start.
+_REQUIRED_TABLES = [
+    "labs",
+    "lab_users",
+    "patients",
+    "lab_orders",
+    "lab_results",
+    "outbox_events",
+    "audit_logs",
+]
+
+
 async def check_migrations() -> None:
-    """Verify Alembic migrations are not in a partial state."""
+    """Verify Alembic migrations have been applied and all required tables exist.
+
+    Fails fast with a clear message if:
+    - alembic_version table is absent (migrations never ran)
+    - alembic_version is empty (migration ran but didn't complete)
+    - Any required table is missing
+    """
     from ..database import engine
     from sqlalchemy import text, inspect
 
     def _check() -> Optional[str]:
         insp = inspect(engine)
+
+        # Gate 1: alembic_version must exist — if it doesn't, `alembic upgrade head`
+        # was never run. Accepting a missing table here was the original bug.
         if not insp.has_table("alembic_version"):
-            # Schema built via create_all — acceptable for current deployment model
-            return None
+            return (
+                "alembic_version table not found — migrations have never been applied. "
+                "Run: alembic upgrade head"
+            )
+
+        # Gate 2: version row must be present (incomplete migration aborted mid-run)
         with engine.connect() as conn:
             row = conn.execute(
                 text("SELECT version_num FROM alembic_version LIMIT 1")
             ).fetchone()
             if row is None:
-                return "alembic_version table exists but is empty (incomplete migration)"
+                return (
+                    "alembic_version table exists but is empty — migration aborted mid-run. "
+                    "Run: alembic upgrade head"
+                )
+
+        # Gate 3: every required table must exist
+        missing = [t for t in _REQUIRED_TABLES if not insp.has_table(t)]
+        if missing:
+            return (
+                f"Required tables missing after migrations: {missing}. "
+                "Run: alembic upgrade head"
+            )
+
         return None
 
     loop = asyncio.get_event_loop()
     error = await loop.run_in_executor(None, _check)
     if error:
-        raise RuntimeError(f"[STARTUP GUARD] Migration check failed: {error}")
+        raise RuntimeError(f"[STARTUP GUARD] Migration check FAILED: {error}")
 
-    logger.info("[STARTUP GUARD] Migration check passed")
+    logger.info("[STARTUP GUARD] Migration check passed — all required tables present")
 
 
 # ─── Step 4: Seed Critical Data ──────────────────────────────────────────────
@@ -241,30 +279,49 @@ async def check_migrations() -> None:
 async def seed_critical_data() -> None:
     """Run idempotent seed operations. Safe to call multiple times.
 
-    Functions are imported from their own modules to avoid circular imports
-    with main.py.
+    perm_version migration is FATAL — if lab_users doesn't exist, alembic
+    hasn't been applied and we must not start.
+
+    Catalog / admin / subscription seeds are NON-FATAL — missing optional
+    data doesn't block traffic; it is logged and the app continues.
     """
     loop = asyncio.get_event_loop()
 
+    # ── FATAL: must succeed ───────────────────────────────────────────────────
     logger.info("[STARTUP GUARD] Running perm_version migration...")
     await loop.run_in_executor(None, _run_perm_version_migration)
+    # ↑ raises RuntimeError if lab_users missing — propagates to run_startup_guard
 
-    logger.info("[STARTUP GUARD] Seeding test types catalog...")
-    await loop.run_in_executor(None, _run_seed_test_types)
-
-    logger.info("[STARTUP GUARD] Ensuring master admin exists...")
-    await loop.run_in_executor(None, _run_ensure_master_admin)
-
-    logger.info("[STARTUP GUARD] Seeding default lab subscriptions...")
-    await loop.run_in_executor(None, _run_seed_default_subscriptions)
+    # ── NON-FATAL: catalog / admin / subscriptions ────────────────────────────
+    for name, fn in [
+        ("test types catalog",      _run_seed_test_types),
+        ("master admin",            _run_ensure_master_admin),
+        ("default subscriptions",   _run_seed_default_subscriptions),
+    ]:
+        try:
+            logger.info("[STARTUP GUARD] Seeding %s...", name)
+            await loop.run_in_executor(None, fn)
+        except Exception as exc:
+            logger.error(
+                "[STARTUP GUARD] Seeding %s FAILED (non-fatal): %s", name, exc
+            )
 
     logger.info("[STARTUP GUARD] Critical data seeded OK")
 
 
 def _run_perm_version_migration() -> None:
-    """Add perm_version column to lab_users — no circular import."""
+    """Add perm_version column to lab_users — no circular import.
+
+    Raises RuntimeError if lab_users doesn't exist so the caller can treat it
+    as a fatal misconfiguration (migrations not applied) rather than swallowing it.
+    """
     from ..database import engine
-    from sqlalchemy import text
+    from sqlalchemy import text, inspect
+    insp = inspect(engine)
+    if not insp.has_table("lab_users"):
+        raise RuntimeError(
+            "lab_users table does not exist — alembic upgrade head must run before seeding"
+        )
     with engine.connect() as conn:
         conn.execute(text(
             "ALTER TABLE lab_users "
@@ -367,15 +424,10 @@ async def run_startup_guard() -> None:
 
         await check_migrations()   # Step 3 — requires working DB connection
 
-        # Step 4 — seed critical data (non-fatal: log and continue if seeding fails,
-        # the core app can run with missing optional data).
-        try:
-            await seed_critical_data()
-        except Exception as e:
-            logger.error(
-                "[STARTUP GUARD] Critical data seeding FAILED: %s. "
-                "System starting in potentially degraded state.", e,
-            )
+        # Step 4 — seed critical data.
+        # perm_version migration is fatal (missing table = alembic didn't run).
+        # Catalog / admin / subscription seeds are non-fatal (optional data).
+        await seed_critical_data()
 
     except Exception:
         elapsed = (time.perf_counter() - t0) * 1000
