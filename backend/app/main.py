@@ -717,16 +717,18 @@ def health():
     """
     from .core.self_healing import health as sys_health
     from .core.startup_guard import system_ready
-    db_ok = check_db_connection()
+    from .database import check_db_connection_detail
+    db_status, db_detail = check_db_connection_detail()
     pool = get_pool_status()
     return {
-        "status": "healthy" if db_ok else "degraded",
+        "status": "healthy" if db_status == "ok" else "degraded",
         "platform": APP_NAME,
         "platform_ar": PLATFORM_NAME_AR,
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
         "system_ready": system_ready,
-        "database": "connected" if db_ok else "disconnected",
+        "database": db_status,          # "ok" | "refused" | "auth_failed" | "timeout" | "error"
+        "database_detail": db_detail,   # human-readable reason for failures
         "degraded_mode": sys_health.degraded,
         "circuits": sys_health.to_dict()["circuits"],
         "pool": pool,

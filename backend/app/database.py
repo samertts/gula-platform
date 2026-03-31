@@ -69,12 +69,52 @@ def get_db():
 
 def check_db_connection() -> bool:
     """Lightweight database connectivity check."""
+    return check_db_connection_detail()[0] == "ok"
+
+
+def check_db_connection_detail() -> tuple[str, str]:
+    """
+    Detailed connectivity check — returns (status, message).
+
+    status values:
+      "ok"          — connected and query succeeded
+      "refused"     — TCP connection refused (postgres not listening / wrong host)
+      "auth_failed" — connected but authentication rejected (wrong password)
+      "timeout"     — connection timed out
+      "error"       — other / unknown error
+
+    Callers can use this to distinguish transient (refused/timeout) from
+    permanent (auth_failed) errors and skip retrying the latter.
+    """
+    import os
+    from urllib.parse import urlparse
+
+    db_url = os.getenv("DATABASE_URL", "")
+    parsed = urlparse(db_url)
+    host = parsed.hostname or "unknown"
+    port = parsed.port or 5432
+
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return True
-    except Exception:
-        return False
+        return "ok", f"connected to {host}:{port}"
+
+    except Exception as exc:
+        msg = str(exc).lower()
+
+        if "connection refused" in msg or "could not connect" in msg:
+            return "refused", f"TCP connection refused to {host}:{port} — postgres not listening or wrong host"
+
+        if "password authentication failed" in msg or "authentication failed" in msg:
+            return "auth_failed", f"authentication rejected by {host}:{port} — check POSTGRES_PASSWORD"
+
+        if "no pg_hba.conf entry" in msg:
+            return "auth_failed", f"pg_hba.conf rejected connection from this host — check pg_hba.conf subnet"
+
+        if "timeout" in msg or "timed out" in msg:
+            return "timeout", f"connection to {host}:{port} timed out"
+
+        return "error", f"{host}:{port} — {str(exc)[:120]}"
 
 
 def get_pool_status() -> dict:
