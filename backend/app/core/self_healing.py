@@ -222,14 +222,27 @@ class SystemHealth:
                 self._degradation_level = DegradationLevel.NONE
 
     def update_degraded_state(self) -> None:
-        """Recompute degradation level from circuit breaker states."""
-        db_open = self.db_circuit.is_open()
+        """Recompute degradation level from circuit breaker states.
+
+        Priority (highest wins):
+          DB open    → L2_READ_ONLY  (writes blocked)
+          Redis open → L1_CACHE_HEAVY (cache unavailable; DB still serves reads)
+          All closed → exit to NONE (unless already at L2/L3 via explicit trigger)
+        """
+        db_open    = self.db_circuit.is_open()
+        redis_open = self.redis_circuit.is_open()
+
         if db_open:
             self.enter_degraded_mode("DB circuit open", DegradationLevel.L2_READ_ONLY)
+        elif redis_open:
+            # DB alive but Redis down → cache unavailable → L1 (writes still pass)
+            self.enter_degraded_mode("Redis circuit open — cache unavailable",
+                                     DegradationLevel.L1_CACHE_HEAVY)
         else:
-            # Only exit degraded mode if all circuits are closed
-            if not self.redis_circuit.is_open():
-                self.exit_degraded_mode()
+            # All circuits closed — this means the RecoveryWorker confirmed that
+            # DB and Redis are both reachable again.  Exit from any level back to NONE.
+            # (L2/L3 are entered when circuits open; they exit when circuits close here.)
+            self.exit_degraded_mode()
 
     def to_dict(self) -> dict:
         lv = self.degradation_level
