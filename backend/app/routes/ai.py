@@ -41,8 +41,10 @@ from app.ai.approval import approval_store
 from app.ai.guardrails import AIGuardrailViolation, ai_suggest
 from app.ai.sandbox import AISandbox
 from app.database import get_db, SessionLocal
+from app.models.audit_log import AuditLog
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
+from app.models.patient import Patient
 from app.security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.ai")
@@ -326,17 +328,64 @@ def list_operations():
 # Rate-limited by nginx (api_limit zone).
 # ══════════════════════════════════════════════════════════════════════════════
 
+import json
+
 _SEVERITY_NORMAL   = "طبيعي"
 _SEVERITY_WARNING  = "تنبيه"
 _SEVERITY_CRITICAL = "حرج"
 
-# Deviation ratio thresholds (fraction of the normal range width beyond the limit)
-_WARN_RATIO     = 0.25   # >25% of range width outside limit → تنبيه
-_CRITICAL_RATIO = 0.75   # >75% of range width outside limit → حرج
+# ── Clinical Weighting Table ──────────────────────────────────────────────────
+# Tests where even small deviations carry high clinical risk get a weight > 1.
+# The critical threshold is divided by this weight, so a 2.0-weight test
+# triggers حرج at half the deviation ratio of a normal test.
+#
+# Format: lowercase substring match → weight
+_TEST_WEIGHTS: dict[str, float] = {
+    # Electrolytes — narrow therapeutic window, arrhythmia risk
+    "potassium": 2.5, "k+": 2.5,
+    "sodium": 2.0, "na+": 2.0,
+    "calcium": 2.0, "ca2+": 2.0,
+    "magnesium": 1.8,
+    # Acid-base
+    "ph": 2.5, "bicarbonate": 2.0, "hco3": 2.0,
+    # Cardiac markers
+    "troponin": 2.5, "bnp": 2.5, "nt-probnp": 2.5, "ck-mb": 2.0,
+    # Glucose / Diabetes
+    "glucose": 2.0, "blood sugar": 2.0, "سكر": 2.0, "hba1c": 1.8,
+    # Coagulation
+    "inr": 2.0, "pt": 1.8, "ptt": 1.8, "aptt": 1.8,
+    # Renal
+    "creatinine": 1.8, "كرياتينين": 1.8, "egfr": 2.0, "gfr": 2.0,
+    "urea": 1.5, "bun": 1.5,
+    # Hematology
+    "hemoglobin": 1.5, "hgb": 1.5, "هيموغلوبين": 1.5,
+    "platelets": 1.8, "plt": 1.8, "صفائح": 1.8, "wbc": 1.5,
+    # Thyroid
+    "tsh": 1.5, "t3": 1.3, "t4": 1.3,
+    # Liver
+    "alt": 1.3, "ast": 1.3, "bilirubin": 1.4, "albumin": 1.5,
+}
+
+# Baseline deviation ratio thresholds (before weight adjustment)
+_BASE_WARN_RATIO     = 0.25
+_BASE_CRITICAL_RATIO = 0.75
 
 
-def _classify_severity(val_raw, low_raw, high_raw) -> str:
-    """Return severity string for one result.  Falls back to تنبيه when range is missing."""
+def _get_test_weight(test_name: str) -> float:
+    """Return clinical weight for a test name via substring match. Default 1.0."""
+    name_lower = (test_name or "").lower()
+    best = 1.0
+    for key, w in _TEST_WEIGHTS.items():
+        if key in name_lower:
+            best = max(best, w)
+    return best
+
+
+def _classify_severity(val_raw, low_raw, high_raw, weight: float = 1.0) -> str:
+    """
+    Return طبيعي / تنبيه / حرج for a single result.
+    Clinical weight lowers the critical threshold proportionally.
+    """
     try:
         vf   = float(val_raw)
         lf   = float(low_raw)
@@ -346,27 +395,28 @@ def _classify_severity(val_raw, low_raw, high_raw) -> str:
             return _SEVERITY_NORMAL
         deviation = (lf - vf) if vf < lf else (vf - hf)
         ratio = deviation / span if span > 0 else 1.0
-        return _SEVERITY_CRITICAL if ratio >= _CRITICAL_RATIO else _SEVERITY_WARNING
+        critical_threshold = _BASE_CRITICAL_RATIO / max(weight, 1.0)
+        return _SEVERITY_CRITICAL if ratio >= critical_threshold else _SEVERITY_WARNING
     except (TypeError, ValueError):
         pass
-    # Value outside range but no numeric range → warn
     return _SEVERITY_WARNING
 
 
 def _compute_severities(results_data: list[dict]) -> list[dict]:
-    """Return per-result severity enriched records."""
+    """Return per-result severity enriched records including clinical weight."""
     enriched = []
     for r in results_data:
-        val   = r.get("value") if r.get("value") is not None else r.get("value_text")
-        low   = r.get("normal_range_low")
-        high  = r.get("normal_range_high")
+        val    = r.get("value") if r.get("value") is not None else r.get("value_text")
+        low    = r.get("normal_range_low")
+        high   = r.get("normal_range_high")
+        weight = _get_test_weight(r.get("test_name", ""))
         if val is None:
             sev = _SEVERITY_NORMAL
         elif low is not None and high is not None:
-            sev = _classify_severity(val, low, high)
+            sev = _classify_severity(val, low, high, weight)
         else:
             sev = _SEVERITY_NORMAL
-        enriched.append({**r, "severity": sev})
+        enriched.append({**r, "severity": sev, "weight": weight})
     return enriched
 
 
@@ -379,56 +429,132 @@ def _overall_severity(enriched: list[dict]) -> str:
     return _SEVERITY_NORMAL
 
 
-def _build_interpret_prompt(results_data: list[dict]) -> str:
+def _action_guidance(overall_sev: str) -> dict:
+    """Return a clear action instruction for the patient — no diagnosis, urgency only."""
+    if overall_sev == _SEVERITY_CRITICAL:
+        return {
+            "ar":           "⚠️ راجع الطبيب فوراً — لا تتأخر في التواصل مع مزودك الصحي.",
+            "urgency":      "immediate",
+            "within_hours": 24,
+        }
+    if overall_sev == _SEVERITY_WARNING:
+        return {
+            "ar":           "📅 راجع طبيبك خلال أسبوع لمناقشة هذه النتائج.",
+            "urgency":      "soon",
+            "within_hours": 168,
+        }
+    return {
+        "ar":           "✅ جميع نتائجك ضمن الحدود الطبيعية. استمر في المتابعة الدورية.",
+        "urgency":      "routine",
+        "within_hours": None,
+    }
+
+
+def _emit_critical_alert(
+    db: Session,
+    order_id: int,
+    critical_tests: list[str],
+    token_prefix: str,
+) -> None:
+    """
+    Write a critical-result alert to audit_logs so lab staff can track it.
+    Non-fatal — any failure is logged and swallowed.
+    """
+    if not critical_tests:
+        return
+    try:
+        entry = AuditLog(
+            user_id=None,
+            user_role="system:ai",
+            action="critical_result_alert",
+            resource_type="lab_order",
+            resource_id=order_id,
+            details=json.dumps({
+                "critical_tests": critical_tests,
+                "token_prefix":   token_prefix,
+                "source":         "ai_interpret",
+            }, ensure_ascii=False),
+        )
+        db.add(entry)
+        db.commit()
+    except Exception as exc:
+        logger.error("[AI] Failed to write critical_result_alert audit entry: %s", exc)
+
+
+def _build_interpret_prompt(
+    results_data: list[dict],
+    patient_context: Optional[dict] = None,
+) -> str:
     """
     Build a strict structured prompt that:
-    1. Annotates each test with its severity tier
-    2. Enforces numbered-list output format (one sentence per test)
-    3. Forbids diagnosis, drug names, disease names, and speculation
-    4. Requires a critical-alert line when حرج results exist
-    5. Hard-caps at 200 words and mandates the disclaimer as the LAST line
+    1. Includes patient age/gender for context-aware interpretation
+    2. Annotates each test with severity + clinical weight
+    3. Enforces numbered-list output format, one sentence per test
+    4. Provides action guidance tier (immediate / soon / routine) to anchor output
+    5. Forbids: diagnosis, drug names, disease names by name, speculation
+    6. Requires critical-alert opening line when حرج results exist
+    7. Hard-caps at 220 words; disclaimer must be the final line
     """
-    enriched = _compute_severities(results_data)
+    enriched     = _compute_severities(results_data)
     has_critical = any(r["severity"] == _SEVERITY_CRITICAL for r in enriched)
+    overall_sev  = _overall_severity(enriched)
+    action       = _action_guidance(overall_sev)
 
-    lines: list[str] = []
+    # ── Patient context block ─────────────────────────────────────────────────
+    ctx_lines: list[str] = []
+    if patient_context:
+        if patient_context.get("age"):
+            ctx_lines.append(f"عمر المريض: {patient_context['age']} سنة")
+        if patient_context.get("gender"):
+            gender_ar = "ذكر" if patient_context["gender"].upper() == "M" else "أنثى"
+            ctx_lines.append(f"الجنس: {gender_ar}")
+    context_block = ("سياق المريض:\n" + "\n".join(ctx_lines) + "\n\n") if ctx_lines else ""
+
+    # ── Results block ─────────────────────────────────────────────────────────
+    result_lines: list[str] = []
     for r in enriched:
-        name  = r.get("test_name", "")
-        val   = r.get("value") if r.get("value") is not None else r.get("value_text", "-")
-        unit  = r.get("unit", "") or ""
-        low   = r.get("normal_range_low")
-        high  = r.get("normal_range_high")
-        sev   = r["severity"]
-        range_str = f"المدى الطبيعي: {low}–{high} {unit}".strip() if (low is not None and high is not None) else unit
-        lines.append(f"[{sev}] {name}: {val} {unit} — {range_str}")
+        name      = r.get("test_name", "")
+        val       = r.get("value") if r.get("value") is not None else r.get("value_text", "-")
+        unit      = r.get("unit", "") or ""
+        low       = r.get("normal_range_low")
+        high      = r.get("normal_range_high")
+        sev       = r["severity"]
+        range_str = (
+            f"المدى الطبيعي: {low}–{high} {unit}".strip()
+            if (low is not None and high is not None) else unit
+        )
+        result_lines.append(f"[{sev}] {name}: {val} {unit} — {range_str}")
 
-    critical_instruction = (
-        "\n- يوجد نتيجة واحدة أو أكثر مصنّفة [حرج]. "
-        "ابدأ الرد بسطر تنبيه واضح: «⚠️ تنبيه: بعض النتائج تستوجب مراجعة طبية فورية.»"
+    # ── Dynamic instructions ──────────────────────────────────────────────────
+    critical_rule = (
+        "\n- ابدأ الرد بسطر: «⚠️ تنبيه: بعض النتائج تستوجب مراجعة طبية فورية.»"
         if has_critical else ""
     )
+    action_rule = f"\n- أنهِ الرد بهذه الجملة حرفياً — التوجيه: «{action['ar']}»"
 
     return (
-        "أنت مساعد توعوي طبي. مهمتك شرح نتائج التحاليل للمريض بأسلوب بسيط.\n\n"
-        "النتائج:\n"
-        + "\n".join(lines)
+        "أنت مساعد توعوي طبي. مهمتك شرح نتائج التحاليل للمريض بأسلوب بسيط ومفهوم.\n\n"
+        + context_block
+        + "النتائج:\n"
+        + "\n".join(result_lines)
         + "\n\n"
         "قواعد صارمة — لا استثناء:\n"
         "1. اكتب بالعربية حصراً.\n"
         "2. اكتب جملة واحدة مرقّمة لكل تحليل (1. … 2. … إلخ).\n"
-        "3. في كل جملة: اذكر اسم التحليل + هل هو طبيعي أو خارج المدى + توضيح بسيط لما يعنيه ذلك.\n"
-        "4. محظور تماماً: ذكر أي دواء، أي مرض بالاسم، أي تشخيص، أي توصية علاجية.\n"
-        "5. محظور تماماً: استخدام عبارات مثل «ربما»، «قد يكون»، «يُحتمل» خارج السياق الطبي المباشر.\n"
-        "6. لا تخترع معلومات غير موجودة في البيانات أعلاه.\n"
-        "7. الرد لا يتجاوز 200 كلمة.\n"
-        + critical_instruction
+        "3. في كل جملة: اسم التحليل + هل هو طبيعي أو خارج المدى + توضيح بسيط لما يعنيه.\n"
+        "4. محظور تماماً: ذكر أي دواء بالاسم، أي مرض بالاسم، أي تشخيص، أي توصية علاجية.\n"
+        "5. محظور تماماً: اختلاق معلومات غير موجودة في البيانات.\n"
+        "6. لا تستخدم «ربما» أو «قد» إلا لتوصيف الشعور وليس للتشخيص.\n"
+        "7. الرد لا يتجاوز 220 كلمة."
+        + critical_rule
+        + action_rule
         + "\n8. آخر سطر حرفياً: «هذا الشرح للتوعية فقط ولا يُغني عن استشارة الطبيب.»\n"
         "\nابدأ الآن:"
     )
 
 
 async def _call_ai_provider(prompt: str) -> str:
-    """Call the configured AI provider, retrying the fallback once on failure."""
+    """Call the configured AI provider."""
     if _AI_PROVIDER == "gemini":
         return await _call_gemini_flash(prompt)
     return await _call_groq_llama(prompt)
@@ -485,9 +611,11 @@ async def interpret_result_public(token: str) -> JSONResponse:
     if not token or not re.match(r"^[A-Za-z0-9_-]{10,}$", token):
         raise HTTPException(status_code=400, detail="رمز النتيجة غير صالح")
 
-    # ── Load results from DB (same auth model as /api/r/{token}) ─────────────
+    # ── Load results + patient context from DB ────────────────────────────────
     token_hash = sha256(token.encode()).hexdigest()
     db: Session = SessionLocal()
+    patient_context: Optional[dict] = None
+    order_id_for_alert: int = 0
     try:
         result = (
             db.query(LabResult).filter(LabResult.token_hash == token_hash).first()
@@ -498,6 +626,7 @@ async def interpret_result_public(token: str) -> JSONResponse:
         if result.expires_at and result.expires_at < datetime.now(timezone.utc):
             raise HTTPException(status_code=410, detail="انتهت صلاحية رابط النتيجة")
 
+        order_id_for_alert = result.order_id
         all_results = db.query(LabResult).filter(
             LabResult.order_id == result.order_id
         ).all()
@@ -512,6 +641,22 @@ async def interpret_result_public(token: str) -> JSONResponse:
             }
             for r in all_results
         ]
+
+        # Load patient age/gender for context-aware prompt
+        order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
+        if order and order.patient_id:
+            patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
+            if patient:
+                age = None
+                if patient.birth_date:
+                    today = datetime.now(timezone.utc).date()
+                    age = today.year - patient.birth_date.year - (
+                        (today.month, today.day) < (patient.birth_date.month, patient.birth_date.day)
+                    )
+                patient_context = {
+                    "age":    age,
+                    "gender": patient.gender,
+                }
     finally:
         db.close()
 
@@ -519,20 +664,22 @@ async def interpret_result_public(token: str) -> JSONResponse:
         raise HTTPException(status_code=404, detail="لا توجد نتائج للتفسير")
 
     # ── Compute severity before hitting AI ───────────────────────────────────
-    enriched      = _compute_severities(results_data)
-    overall_sev   = _overall_severity(enriched)
-    critical_flags = [
-        r["test_name"]
-        for r in enriched
-        if r["severity"] == _SEVERITY_CRITICAL
-    ]
-    results_severity = [
-        {"test": r["test_name"], "severity": r["severity"]}
-        for r in enriched
-    ]
+    enriched         = _compute_severities(results_data)
+    overall_sev      = _overall_severity(enriched)
+    critical_flags   = [r["test_name"] for r in enriched if r["severity"] == _SEVERITY_CRITICAL]
+    results_severity = [{"test": r["test_name"], "severity": r["severity"]} for r in enriched]
+    action           = _action_guidance(overall_sev)
+
+    # ── Write critical alert to audit log (non-fatal, async-safe) ────────────
+    if critical_flags:
+        db2: Session = SessionLocal()
+        try:
+            _emit_critical_alert(db2, order_id_for_alert, critical_flags, token[:8])
+        finally:
+            db2.close()
 
     # ── Call free AI provider ─────────────────────────────────────────────────
-    prompt = _build_interpret_prompt(results_data)
+    prompt = _build_interpret_prompt(results_data, patient_context=patient_context)
     try:
         text = await _call_ai_provider(prompt)
     except HTTPException:
@@ -566,4 +713,5 @@ async def interpret_result_public(token: str) -> JSONResponse:
         "severity":         overall_sev,
         "critical_flags":   critical_flags,
         "results_severity": results_severity,
+        "action_guidance":  action,
     })
