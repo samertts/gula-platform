@@ -25,6 +25,17 @@ from typing import Callable
 
 logger = logging.getLogger("gula.auto_repair")
 
+# Control-layer imports — lazy to avoid circular imports at module load time
+def _guard_repair(name: str) -> bool:
+    """Return False (and log) if policy blocks this repair action."""
+    try:
+        from app.core.decision_guard import guard_repair, PolicyViolation
+        guard_repair(name)
+        return True
+    except Exception as exc:
+        logger.warning("[AUTO-REPAIR] Blocked by policy: %s — %s", name, exc)
+        return False
+
 # ─── Thresholds (all tunable via env) ────────────────────────────────────────
 _MEMORY_WARN_MB    = int(os.getenv("REPAIR_MEMORY_WARN_MB",    "600"))
 _MEMORY_CRITICAL_MB= int(os.getenv("REPAIR_MEMORY_CRITICAL_MB","900"))
@@ -88,6 +99,8 @@ class RepairEngine:
 
     def _repair_memory_pressure(self, rss_mb: float) -> bool:
         """Force GC and clear internal caches when memory is high."""
+        if not _guard_repair("memory_gc"):
+            return False
         try:
             # 1. Force full garbage collection
             collected = gc.collect(2)
@@ -107,6 +120,8 @@ class RepairEngine:
 
     def _repair_circuit_breaker(self) -> bool:
         """If circuit breaker is stuck open, force a probe."""
+        if not _guard_repair("circuit_probe"):
+            return False
         try:
             from app.core.self_healing import health, CircuitState
             if health.db_circuit.state == CircuitState.OPEN:
@@ -122,6 +137,8 @@ class RepairEngine:
 
     def _repair_connection_pool(self) -> bool:
         """Recycle stale DB connections."""
+        if not _guard_repair("pool_recycle"):
+            return False
         try:
             from app.database import engine
             engine.dispose(close=False)
@@ -133,6 +150,8 @@ class RepairEngine:
 
     def _repair_redis_reconnect(self) -> bool:
         """Force Redis client to reconnect."""
+        if not _guard_repair("redis_reconnect"):
+            return False
         try:
             from app.security.redis_client import cache
             cache.ping()
