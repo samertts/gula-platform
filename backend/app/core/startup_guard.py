@@ -155,26 +155,54 @@ def validate_config() -> None:
 # ─── Step 2: DB Connectivity with Exponential Backoff ────────────────────────
 
 async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
-    """Wait for DB to become reachable. Raises RuntimeError after all retries."""
-    from ..database import check_db_connection
+    """
+    Wait for DB to become reachable with smart per-error-type retry logic.
 
-    await asyncio.sleep(initial_delay) # Initial delay to give DB time to start
+    - "refused" / "timeout" → transient, keep retrying (postgres still starting)
+    - "auth_failed"         → permanent, stop immediately (retrying won't help)
+    - "ok"                  → success, return True
+    """
+    from ..database import check_db_connection_detail
+    import os
+
+    db_url = os.getenv("DATABASE_URL", "")
+    from urllib.parse import urlparse
+    parsed = urlparse(db_url)
+    host = parsed.hostname or "unknown"
+    port = parsed.port or 5432
+
+    await asyncio.sleep(initial_delay)
+
     for attempt in range(max_retries):
-        if check_db_connection():
-            logger.info("[STARTUP GUARD] Database connection OK (attempt %d)", attempt + 1)
+        status, detail = check_db_connection_detail()
+
+        if status == "ok":
+            logger.info(
+                "[STARTUP GUARD] Database connection OK (attempt %d) — %s",
+                attempt + 1, detail,
+            )
             return True
 
-        # Cap backoff at 30s to avoid waiting 2048s+ on attempt 11+
+        if status == "auth_failed":
+            # Wrong password or pg_hba.conf rejection — retrying will never help.
+            logger.critical(
+                "[STARTUP GUARD] Database authentication FAILED — stopping retries. "
+                "Fix POSTGRES_PASSWORD or pg_hba.conf and redeploy. Detail: %s", detail,
+            )
+            return False
+
+        # Transient error (refused / timeout / unknown) — keep retrying
         wait_sec = min(2 ** attempt, 30)
         logger.warning(
-            "[STARTUP GUARD] Database not ready (attempt %d/%d) — retrying in %ds",
-            attempt + 1, max_retries, wait_sec,
+            "[STARTUP GUARD] DB not ready (attempt %d/%d, status=%s) — %s — retrying in %ds",
+            attempt + 1, max_retries, status, detail, wait_sec,
         )
         await asyncio.sleep(wait_sec)
 
     logger.critical(
-        f"[STARTUP GUARD] Database unreachable after {max_retries} attempts. "
-        "Check DATABASE_URL and PostgreSQL container status. Backend will start in unready state."
+        "[STARTUP GUARD] Database unreachable after %d attempts (host=%s:%s). "
+        "Check DATABASE_URL and PostgreSQL container status.",
+        max_retries, host, port,
     )
     return False
 

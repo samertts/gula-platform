@@ -48,6 +48,17 @@ def _ping_db(db: Session) -> tuple[bool, float]:
         return False, -1.0
 
 
+def _ping_db_detail() -> tuple[str, float]:
+    """Return (status, latency_ms) using the detailed connection check.
+    status: 'ok' | 'refused' | 'auth_failed' | 'timeout' | 'error'
+    """
+    from ..database import check_db_connection_detail
+    t0 = time.perf_counter()
+    status, _ = check_db_connection_detail()
+    ms = round((time.perf_counter() - t0) * 1000, 1)
+    return status, (ms if status == "ok" else -1.0)
+
+
 def _ping_redis() -> tuple[bool, float]:
     try:
         from ..security.redis_client import cache
@@ -104,8 +115,8 @@ def get_metrics(
     - master_admin / ministry_admin / province_admin: platform-wide numbers
     - Everyone else: scoped to their lab_id
     """
-    db_ok, db_ms   = _ping_db(db)
-    red_ok, red_ms = _ping_redis()
+    db_status, db_ms = _ping_db_detail()
+    red_ok, red_ms   = _ping_redis()
 
     is_wide = current_user.role in _WIDE_ROLES
     stats = _order_stats(db, lab_id=None if is_wide else current_user.lab_id)
@@ -115,7 +126,7 @@ def get_metrics(
         "uptime_s":   uptime_s,
         "uptime_h":   round(uptime_s / 3600, 2),
         "memory_mb":  _rss_mb(),
-        "db":         {"ok": db_ok,  "ping_ms": db_ms},
+        "db":         {"status": db_status, "ok": db_status == "ok", "ping_ms": db_ms},
         "redis":      {"ok": red_ok, "ping_ms": red_ms},
         "stats":      stats,
         "scope":      "platform" if is_wide else "lab",
