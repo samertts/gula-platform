@@ -366,7 +366,7 @@ function bioLogin(){
 
 // Check if already logged in
 const u=sessionStorage.getItem('user');
-if(u){try{const d=JSON.parse(u);if(d&&d.role)window.location.href='/portal.html';}catch(e){}}
+if(u){try{const d=JSON.parse(u);if(d&&d.role){const r=d.role.toLowerCase();window.location.href=(r==='citizen'||r==='patient')?'/citizen/index.html':'/';}}catch(e){}}
 </script>
 </body>
 </html>
