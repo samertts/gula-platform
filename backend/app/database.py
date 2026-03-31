@@ -11,9 +11,13 @@ from .config import DATABASE_URL, IS_PRODUCTION
 logger = logging.getLogger("gula.database")
 
 # ── Request correlation context ───────────────────────────────────────────────
-# Set by middleware on each request so DB errors carry request_id + endpoint.
-_request_id_var:  contextvars.ContextVar[str] = contextvars.ContextVar("request_id",  default="")
-_endpoint_var:    contextvars.ContextVar[str] = contextvars.ContextVar("endpoint",    default="")
+# Set by middleware / auth dependency so every DB error log carries full context:
+#   request_id + endpoint   ← set by RequestIDMiddleware
+#   user_id + lab_id        ← set by get_current_user dependency (authenticated routes)
+_request_id_var: contextvars.ContextVar[str]       = contextvars.ContextVar("request_id", default="")
+_endpoint_var:   contextvars.ContextVar[str]       = contextvars.ContextVar("endpoint",   default="")
+_user_id_var:    contextvars.ContextVar[int | None] = contextvars.ContextVar("user_id",   default=None)
+_lab_id_var:     contextvars.ContextVar[int | None] = contextvars.ContextVar("lab_id",    default=None)
 
 # ── Sliding window event tracker ─────────────────────────────────────────────
 
@@ -46,6 +50,66 @@ class _SlidingWindow:
         """Return events per minute for the given type over the last window."""
         n = self.count(event_type, window_s)
         return round(n / (window_s / 60), 2)
+
+    # ── Redis persistence ─────────────────────────────────────────────────────
+
+    def persist_to_redis(
+        self,
+        redis_client,
+        key: str = "gula:db_window:events",
+    ) -> None:
+        """Serialize recent events (wall-clock times) to Redis.
+
+        Uses wall-clock timestamps so events survive process restarts —
+        monotonic clock resets to 0 on each new process.
+        """
+        import json
+        wall_now  = time.time()
+        mono_now  = time.monotonic()
+        offset    = wall_now - mono_now          # monotonic → wall-clock
+        cutoff    = mono_now - self._max_age
+        with self._lock:
+            payload = json.dumps([
+                (ts + offset, etype)
+                for ts, etype in self._events
+                if ts >= cutoff
+            ])
+        try:
+            redis_client.set(key, payload, ex=self._max_age + 60)
+        except Exception:
+            pass  # best-effort — never raise from persistence code
+
+    def restore_from_redis(
+        self,
+        redis_client,
+        key: str = "gula:db_window:events",
+    ) -> None:
+        """Load previously persisted events from Redis on startup.
+
+        Converts stored wall-clock timestamps back to monotonic for
+        internal use.  Silently no-ops if Redis is empty or unavailable.
+        """
+        import json
+        wall_now = time.time()
+        mono_now = time.monotonic()
+        offset   = mono_now - wall_now           # wall-clock → monotonic
+        cutoff   = mono_now - self._max_age
+        try:
+            raw = redis_client.get(key)
+            if raw is None:
+                return
+            events = json.loads(raw)
+            restored = 0
+            with self._lock:
+                for wall_ts, etype in events:
+                    mono_ts = wall_ts + offset
+                    if mono_ts >= cutoff:
+                        self._events.append((mono_ts, etype))
+                        restored += 1
+            if restored:
+                logger.info("[DB] Sliding window: restored %d events from Redis", restored)
+        except Exception as exc:
+            logger.warning("[DB] Could not restore sliding window from Redis: %s", exc)
 
     def snapshot(self, window_s: int = 300) -> dict[str, int]:
         """Return counts for all event types in the last window_s seconds."""
@@ -219,9 +283,13 @@ def check_db_connection_detail() -> tuple[str, str]:
         db_window.record(status)
         action = _DB_ACTION_MAP.get(status, "retry")
 
-        # ── Correlation context (request_id + endpoint from middleware) ───────
+        # ── Full correlation context ──────────────────────────────────────────
+        # Gathered from ContextVars — propagated by middleware (request_id,
+        # endpoint) and by get_current_user dependency (user_id, lab_id).
         req_id   = _request_id_var.get("")
         endpoint = _endpoint_var.get("")
+        user_id  = _user_id_var.get(None)
+        lab_id   = _lab_id_var.get(None)
 
         logger.error(
             "[DB] connection %s — action=%s — %s",
@@ -233,6 +301,8 @@ def check_db_connection_detail() -> tuple[str, str]:
                 "action":     action,
                 "request_id": req_id  or None,
                 "endpoint":   endpoint or None,
+                "user_id":    user_id,
+                "lab_id":     lab_id,
             },
         )
 
@@ -248,9 +318,9 @@ def check_db_connection_detail() -> tuple[str, str]:
 
 
 def _trigger_circuit_open(refused_count: int) -> None:
-    """Force-open the DB circuit breaker when refused storm crosses threshold."""
+    """Force-open the DB circuit breaker + enter L2_READ_ONLY when refused storm hits threshold."""
     try:
-        from .core.self_healing import health, CircuitState
+        from .core.self_healing import health, CircuitState, DegradationLevel
         if health.db_circuit.state != CircuitState.OPEN:
             for _ in range(health.db_circuit._failure_threshold):
                 health.db_circuit.record_failure()
@@ -258,25 +328,53 @@ def _trigger_circuit_open(refused_count: int) -> None:
                 "[DB] Circuit OPENED after %d refused errors in 5min (threshold=%d)",
                 refused_count, _CIRCUIT_OPEN_THRESHOLD,
             )
+        # Escalate to L2: writes blocked, reads still pass
+        health.enter_degraded_mode(
+            f"DB circuit opened — {refused_count} refused errors in 5min",
+            level=DegradationLevel.L2_READ_ONLY,
+        )
     except Exception:
         pass
 
 
 def _trigger_system_degradation(refused_count: int) -> None:
-    """Enter system degraded mode when DB is continuously unreachable."""
+    """Escalate to L3_CRITICAL_ONLY when DB is continuously unreachable (storm)."""
     try:
-        from .core.self_healing import health
+        from .core.self_healing import health, DegradationLevel
         health.enter_degraded_mode(
             f"DB refused {refused_count} times in 5min (threshold={_SYSTEM_DEGRADE_THRESHOLD}) "
-            "— switching to read-only/cache mode"
+            "— critical-only mode active",
+            level=DegradationLevel.L3_CRITICAL_ONLY,
         )
         logger.critical(
-            "[DB] SYSTEM DEGRADED — %d refused errors in 5min. "
-            "Write endpoints will return 503. Read-only mode active.",
+            "[DB] L3_CRITICAL_ONLY — %d refused errors in 5min. "
+            "Only health/auth/kill-switch endpoints reachable.",
             refused_count,
         )
     except Exception:
         pass
+
+
+def restore_db_window_from_redis() -> None:
+    """Called once at startup — rehydrates the sliding window from Redis
+    so circuit escalation thresholds aren't reset on every container restart.
+    """
+    try:
+        from .security.redis_client import cache
+        db_window.restore_from_redis(cache)
+    except Exception as exc:
+        logger.warning("[DB] Sliding window restore skipped: %s", exc)
+
+
+def persist_db_window_to_redis() -> None:
+    """Snapshot the current sliding window to Redis.
+    Called by the auto-repair engine periodically (every poll cycle).
+    """
+    try:
+        from .security.redis_client import cache
+        db_window.persist_to_redis(cache)
+    except Exception as exc:
+        logger.warning("[DB] Sliding window persist skipped: %s", exc)
 
 
 def get_pool_status() -> dict:
