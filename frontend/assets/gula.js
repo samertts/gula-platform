@@ -1136,10 +1136,8 @@ async function viewOrder(id) {
           <a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🔗 عرض النتائج</a>
           <a href="https://wa.me/?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener" class="btn btn-wa btn-sm">📤 واتساب</a>
           <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${location.origin}/r/${escAttr(firstToken)}').then(()=>toast('تم نسخ الرابط'))">نسخ الرابط</button>
+          <a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🖨️ طباعة / PDF</a>
         ` : ''}
-        ${firstToken
-          ? `<a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🖨️ طباعة / PDF</a>`
-          : `<button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ طباعة</button>`}
         ${canValidate ? `<button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="validateOrder(${parseInt(o.id)})">✓ اعتماد وقفل</button>` : ''}
       </div>
     `);
