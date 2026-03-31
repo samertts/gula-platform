@@ -230,7 +230,7 @@ class TestTriggerCircuitOpen:
         with patch("app.core.self_healing.health", mock_health):
             from app.core.self_healing import CircuitState
             mock_health.db_circuit.state = CircuitState.CLOSED
-            mock_health.db_circuit._failure_threshold = 3
+            mock_health.db_circuit.failure_threshold = 3
             _trigger_circuit_open(25)
             # Should have called record_failure 3 times (== _failure_threshold)
             assert mock_health.db_circuit.record_failure.call_count == 3
