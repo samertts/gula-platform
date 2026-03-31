@@ -131,13 +131,26 @@ app.add_middleware(MaxBodySizeMiddleware, max_size_mb=MAX_REQUEST_BODY_MB)
 
 # ===== REQUEST ID MIDDLEWARE =====
 class RequestIDMiddleware(BaseHTTPMiddleware):
-    """Assign a unique ID to every request for tracing and bind it to the log context."""
+    """Assign a unique ID to every request for tracing and bind it to the log context.
+
+    Also sets DB correlation context vars so any DB failure during this request
+    is automatically tagged with request_id + endpoint in the structured log.
+    """
     async def dispatch(self, request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
-        # Bind to structured logging context so every log line carries request_id
         bind_log_context(request_id=request_id)
-        response = await call_next(request)
+
+        # Inject into DB correlation context vars (read by check_db_connection_detail)
+        from .database import _request_id_var, _endpoint_var
+        rid_token = _request_id_var.set(request_id)
+        ep_token  = _endpoint_var.set(request.url.path)
+        try:
+            response = await call_next(request)
+        finally:
+            _request_id_var.reset(rid_token)
+            _endpoint_var.reset(ep_token)
+
         response.headers["X-Request-ID"] = request_id
         return response
 

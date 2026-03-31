@@ -22,6 +22,10 @@ groups:
         expr: |
           clamp_max(gula_orders_pending / clamp_min(gula_orders_total, 1), 1)
 
+      # DB error ratio — fraction of health checks that failed in last 5min
+      - record: slo:gula_db_error_ratio
+        expr: gula_db_error_ratio_5m
+
   # ===========================================================================
   # SERVICE AVAILABILITY (uses actual /metrics/prom metric names)
   # ===========================================================================
@@ -289,6 +293,50 @@ groups:
           description: |
             DB connections are timing out. PostgreSQL may be overloaded or the
             network is congested. Check pg_stat_activity and system load.
+
+      # ── Ratio-based alerts (sliding-window gauges from /metrics/prom) ────────
+      # These fire based on the *fraction* of DB checks failing, not raw counts.
+      # They're immune to stale history — the window resets every 5 minutes.
+
+      - alert: DatabaseErrorRatioHigh
+        expr: gula_db_error_ratio_5m > 0.25
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+          action: retry
+        annotations:
+          summary: "🟡 DB error ratio {{ $value | humanizePercentage }} in last 5min"
+          description: |
+            More than 25% of DB health checks failed in the last 5 minutes.
+            Transient blips are normal; sustained >25% indicates a real outage.
+
+      - alert: DatabaseErrorRatioCritical
+        expr: gula_db_error_ratio_5m > 0.75
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+          action: retry_with_backoff
+        annotations:
+          summary: "🔴 DB error ratio {{ $value | humanizePercentage }} — system degraded"
+          description: |
+            Over 75% of DB health checks failed in the last 5 minutes.
+            Backend is likely running in degraded/read-only mode.
+            Check: docker-compose ps && docker-compose logs postgres
+
+      - alert: DatabaseRefusedRateHigh
+        expr: gula_db_refused_rate_5m > 6
+        for: 1m
+        labels:
+          severity: warning
+          service: database
+          action: retry
+        annotations:
+          summary: "🟡 DB refused {{ $value }}/min — circuit may open"
+          description: |
+            Connection-refused rate exceeds 6/min. If sustained, the circuit
+            breaker will open automatically at 20 events/5min.
 
   # ===========================================================================
   # POLICY / CONTROL LAYER ALERTS

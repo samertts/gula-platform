@@ -1,11 +1,65 @@
+import collections
+import contextvars
 import logging
 import os
 import threading
+import time
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from .config import DATABASE_URL, IS_PRODUCTION
 
 logger = logging.getLogger("gula.database")
+
+# ── Request correlation context ───────────────────────────────────────────────
+# Set by middleware on each request so DB errors carry request_id + endpoint.
+_request_id_var:  contextvars.ContextVar[str] = contextvars.ContextVar("request_id",  default="")
+_endpoint_var:    contextvars.ContextVar[str] = contextvars.ContextVar("endpoint",    default="")
+
+# ── Sliding window event tracker ─────────────────────────────────────────────
+
+class _SlidingWindow:
+    """Thread-safe circular buffer of (timestamp, event_type) entries.
+
+    Allows querying how many events of a given type occurred in the last
+    N seconds — distinguishes a brief burst from a sustained outage.
+    """
+    def __init__(self, max_age_s: int = 300, max_size: int = 1000):
+        self._lock      = threading.Lock()
+        self._events: collections.deque = collections.deque()
+        self._max_age   = max_age_s
+        self._max_size  = max_size
+
+    def record(self, event_type: str) -> None:
+        now = time.monotonic()
+        with self._lock:
+            self._events.append((now, event_type))
+            if len(self._events) > self._max_size:
+                self._events.popleft()
+
+    def count(self, event_type: str, window_s: int | None = None) -> int:
+        """Count events of a given type in the last window_s seconds."""
+        cutoff = time.monotonic() - (window_s or self._max_age)
+        with self._lock:
+            return sum(1 for ts, t in self._events if ts >= cutoff and t == event_type)
+
+    def rate_per_minute(self, event_type: str, window_s: int = 300) -> float:
+        """Return events per minute for the given type over the last window."""
+        n = self.count(event_type, window_s)
+        return round(n / (window_s / 60), 2)
+
+    def snapshot(self, window_s: int = 300) -> dict[str, int]:
+        """Return counts for all event types in the last window_s seconds."""
+        cutoff = time.monotonic() - window_s
+        counts: dict[str, int] = {}
+        with self._lock:
+            for ts, t in self._events:
+                if ts >= cutoff:
+                    counts[t] = counts.get(t, 0) + 1
+        return counts
+
+
+# Singleton sliding window for DB connection events (5-minute window)
+db_window = _SlidingWindow(max_age_s=300)
 
 # ── Per-error-type counters (thread-safe, process-lifetime) ──────────────────
 _counter_lock = threading.Lock()
@@ -21,17 +75,30 @@ def get_db_error_counts() -> dict[str, int]:
     with _counter_lock:
         return dict(_db_error_counts)
 
+def get_db_window_snapshot(window_s: int = 300) -> dict:
+    """Return sliding-window stats for the last window_s seconds."""
+    snap = db_window.snapshot(window_s)
+    return {
+        "window_s":         window_s,
+        "refused":          snap.get("refused",    0),
+        "auth_failed":      snap.get("auth_failed", 0),
+        "timeout":          snap.get("timeout",    0),
+        "ok":               snap.get("ok",         0),
+        "refused_per_min":  db_window.rate_per_minute("refused",   window_s),
+        "timeout_per_min":  db_window.rate_per_minute("timeout",   window_s),
+    }
+
 # ── Error → Action mapping ────────────────────────────────────────────────────
-# Defines what the caller should do for each error type.
-# "retry"              → transient, keep trying
-# "retry_with_backoff" → transient but may be overloaded, use backoff
-# "stop_and_alert"     → permanent misconfiguration, retrying is useless
 _DB_ACTION_MAP: dict[str, str] = {
-    "refused":    "retry",
-    "timeout":    "retry_with_backoff",
+    "refused":     "retry",
+    "timeout":     "retry_with_backoff",
     "auth_failed": "stop_and_alert",
-    "error":      "retry_with_backoff",
+    "error":       "retry_with_backoff",
 }
+
+# ── Circuit escalation thresholds ────────────────────────────────────────────
+_CIRCUIT_OPEN_THRESHOLD    = int(os.getenv("DB_CIRCUIT_OPEN_THRESHOLD",    "20"))  # refused in 5min
+_SYSTEM_DEGRADE_THRESHOLD  = int(os.getenv("DB_SYSTEM_DEGRADE_THRESHOLD",  "50"))  # refused in 5min
 
 # ── Connection Pool Sizing ────────────────────────────────────────────────────
 # PostgreSQL default max_connections = 100.
@@ -124,6 +191,7 @@ def check_db_connection_detail() -> tuple[str, str]:
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
+        db_window.record("ok")
         return "ok", f"connected to {host}:{port}"
 
     except Exception as exc:
@@ -148,13 +216,67 @@ def check_db_connection_detail() -> tuple[str, str]:
         with _counter_lock:
             _db_error_counts[status] = _db_error_counts.get(status, 0) + 1
 
+        db_window.record(status)
         action = _DB_ACTION_MAP.get(status, "retry")
+
+        # ── Correlation context (request_id + endpoint from middleware) ───────
+        req_id   = _request_id_var.get("")
+        endpoint = _endpoint_var.get("")
+
         logger.error(
             "[DB] connection %s — action=%s — %s",
             status, action, detail,
-            extra={"db_host": host, "db_port": port, "db_status": status, "action": action},
+            extra={
+                "db_host":    host,
+                "db_port":    port,
+                "db_status":  status,
+                "action":     action,
+                "request_id": req_id  or None,
+                "endpoint":   endpoint or None,
+            },
         )
+
+        # ── Circuit escalation — open circuit on sustained refused storm ──────
+        if status == "refused":
+            refused_5m = db_window.count("refused", window_s=300)
+            if refused_5m >= _SYSTEM_DEGRADE_THRESHOLD:
+                _trigger_system_degradation(refused_5m)
+            elif refused_5m >= _CIRCUIT_OPEN_THRESHOLD:
+                _trigger_circuit_open(refused_5m)
+
         return status, detail
+
+
+def _trigger_circuit_open(refused_count: int) -> None:
+    """Force-open the DB circuit breaker when refused storm crosses threshold."""
+    try:
+        from .core.self_healing import health, CircuitState
+        if health.db_circuit.state != CircuitState.OPEN:
+            for _ in range(health.db_circuit._failure_threshold):
+                health.db_circuit.record_failure()
+            logger.error(
+                "[DB] Circuit OPENED after %d refused errors in 5min (threshold=%d)",
+                refused_count, _CIRCUIT_OPEN_THRESHOLD,
+            )
+    except Exception:
+        pass
+
+
+def _trigger_system_degradation(refused_count: int) -> None:
+    """Enter system degraded mode when DB is continuously unreachable."""
+    try:
+        from .core.self_healing import health
+        health.enter_degraded_mode(
+            f"DB refused {refused_count} times in 5min (threshold={_SYSTEM_DEGRADE_THRESHOLD}) "
+            "— switching to read-only/cache mode"
+        )
+        logger.critical(
+            "[DB] SYSTEM DEGRADED — %d refused errors in 5min. "
+            "Write endpoints will return 503. Read-only mode active.",
+            refused_count,
+        )
+    except Exception:
+        pass
 
 
 def get_pool_status() -> dict:
