@@ -164,7 +164,8 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
             logger.info("[STARTUP GUARD] Database connection OK (attempt %d)", attempt + 1)
             return True
 
-        wait_sec = 2 ** attempt
+        # Cap backoff at 30s to avoid waiting 2048s+ on attempt 11+
+        wait_sec = min(2 ** attempt, 30)
         logger.warning(
             "[STARTUP GUARD] Database not ready (attempt %d/%d) — retrying in %ds",
             attempt + 1, max_retries, wait_sec,
