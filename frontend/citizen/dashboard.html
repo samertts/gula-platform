@@ -224,6 +224,34 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   display:inline-flex;align-items:center;gap:4px;margin-top:3px;
 }
 
+/* ── Status banner (decision-first) ─────────────────────────────────────── */
+.status-banner{
+  display:none;border-radius:var(--radius-sm);padding:16px 18px;
+  margin-bottom:20px;
+}
+.status-banner-inner{display:flex;align-items:center;gap:12px}
+.status-banner-icon{font-size:1.6rem;flex-shrink:0;line-height:1}
+.status-banner-text{}
+.status-banner-verdict{font-size:1.05rem;font-weight:800;line-height:1.3;margin-bottom:3px}
+.status-banner-action{font-size:.84rem;font-weight:500;opacity:.85}
+.banner-ok  {background:var(--green-bg); border:1px solid rgba(74,222,128,.25); color:#bbf7d0}
+.banner-warn{background:rgba(217,119,6,.1); border:1px solid rgba(251,191,36,.3); color:#fde68a}
+.banner-crit{background:var(--red-bg);  border:1px solid rgba(248,113,113,.3);  color:#fecaca}
+
+/* ── Next-step footer ────────────────────────────────────────────────────── */
+.next-step{
+  display:none;margin-top:24px;padding:16px 18px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+}
+.next-step-title{font-size:.78rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--text-dim);margin-bottom:10px}
+.next-step-row{display:flex;align-items:center;gap:10px;font-size:.88rem;color:var(--text-sub);padding:6px 0}
+.next-step-row+.next-step-row{border-top:1px solid var(--border)}
+.next-step-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.nsd-ok  {background:var(--green-fg)}
+.nsd-warn{background:var(--amber-fg)}
+.nsd-crit{background:var(--red-fg)}
+
 /* ── Emotional message ───────────────────────────────────────────────────── */
 .r-emotion{
   font-size:.83rem;padding:9px 12px;border-radius:8px;margin-bottom:12px;
@@ -278,6 +306,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div class="greeting-sub" id="gSub">يسعدنا أن نقدم لك نتائج تحاليلك بشكل واضح</div>
   </div>
 
+  <!-- Decision status banner (most prominent element) -->
+  <div class="status-banner" id="statusBanner">
+    <div class="status-banner-inner">
+      <div class="status-banner-icon" id="bannerIcon"></div>
+      <div class="status-banner-text">
+        <div class="status-banner-verdict" id="bannerVerdict"></div>
+        <div class="status-banner-action" id="bannerAction"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Summary chips -->
   <div class="summary" id="summaryStrip" style="display:none">
     <div class="sum-chip sum-normal">
@@ -297,6 +336,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <!-- Results -->
   <div class="section-label">نتائج آخر تحاليل</div>
   <div id="resultArea"></div>
+
+  <!-- Next-step footer -->
+  <div class="next-step" id="nextStep">
+    <div class="next-step-title">📍 ماذا تفعل الآن؟</div>
+    <div id="nextStepRows"></div>
+  </div>
 
   <!-- History -->
   <button class="history-toggle" id="historyBtn" style="display:none" onclick="toggleHistory()">
@@ -347,14 +392,26 @@ const SEV_LABEL={'normal':'طبيعي','abnormal':'خارج المدى','warning
 const SEV_BADGE={'normal':'badge-normal','abnormal':'badge-warning','warning':'badge-warning','critical':'badge-critical','pending':'badge-warning'};
 const SEV_DOT  ={'normal':'dot-normal','abnormal':'dot-warning','warning':'dot-warning','critical':'dot-critical','pending':'dot-warning'};
 
-/* Emotional reassurance text — reduces patient anxiety */
+/* Decision-first sentences — patient reads a clear action, not vague reassurance */
 const SEV_EMOTION={
-  normal:   {cls:'emo-ok',  msg:'✅ هذه النتيجة ضمن الحدود الطبيعية — لا داعي للقلق.'},
-  abnormal: {cls:'emo-warn',msg:'لا داعي للقلق — هذه النتيجة تحتاج فقط لمتابعة بسيطة مع طبيبك.'},
-  warning:  {cls:'emo-warn',msg:'لا داعي للقلق — هذه النتيجة تحتاج لمناقشتها مع طبيبك في أقرب وقت.'},
-  critical: {cls:'emo-crit',msg:'هذه النتيجة تستوجب مراجعة طبيبك — يُنصح بالتواصل معه قريباً، ولا مبرر للهلع.'},
+  normal:   {cls:'emo-ok',  msg:'✅ وضعك طبيعي — لا تحتاج أي إجراء حالياً.'},
+  abnormal: {cls:'emo-warn',msg:'📋 خارج المدى الطبيعي قليلاً — ناقش هذه النتيجة مع طبيبك في زيارتك القادمة.'},
+  warning:  {cls:'emo-warn',msg:'📅 هذه النتيجة تحتاج متابعة — راجع طبيبك خلال أسبوع.'},
+  critical: {cls:'emo-crit',msg:'🚨 راجع طبيبك اليوم — هذه النتيجة تحتاج اهتماماً سريعاً، لكن لا مبرر للهلع.'},
   pending:  {cls:'emo-warn',msg:'⏳ نتيجتك قيد التجهيز — ستظهر هنا بمجرد اكتمالها.'},
 };
+
+/* ── AI localStorage cache (2-hour TTL) ─────────────────────────────────── */
+const AI_CACHE_TTL=7200000;
+function _aiKey(tok){return'gula_ai_'+tok.slice(0,20)}
+function aiLocalGet(tok){
+  try{const r=localStorage.getItem(_aiKey(tok));if(!r)return null;
+    const{ts,d}=JSON.parse(r);return(Date.now()-ts<AI_CACHE_TTL)?d:null;
+  }catch{return null;}
+}
+function aiLocalSet(tok,data){
+  try{localStorage.setItem(_aiKey(tok),JSON.stringify({ts:Date.now(),d:data}));}catch{}
+}
 
 /* ── Deviation bar ─────────────────────────────────────────────────────── */
 function deviationBar(value,low,high){
@@ -410,23 +467,31 @@ function renderEmpty(){
 }
 
 /* ── AI explanation (per card) ─────────────────────────────────────────── */
-async function explainResult(token, cardId){
-  if(aiCache[token]){ showAI(cardId, aiCache[token]); return; }
+async function explainResult(token, cardId, silent=false){
+  // Check in-memory cache first, then localStorage
+  const cached=aiCache[token]||aiLocalGet(token);
+  if(cached){aiCache[token]=cached;showAI(cardId,cached);return;}
+
   const btn=document.getElementById('exBtn_'+cardId);
   const box=document.getElementById('aiBox_'+cardId);
   const txt=document.getElementById('aiTxt_'+cardId);
-  if(!btn||!box||!txt)return;
-  btn.disabled=true;btn.textContent='⏳ جاري الشرح…';
-  box.style.display='block';txt.textContent='';
+  if(!box||!txt)return;
+  if(btn){btn.disabled=true;btn.textContent='⏳ جاري الشرح…';}
+  box.style.display='block';txt.textContent=silent?'⏳ جاري الشرح التلقائي…':'';
   try{
     const r=await fetch(API+'/ai/interpret/'+encodeURIComponent(token));
     const d=await r.json();
-    if(!r.ok){txt.textContent=d.detail||'تعذر الحصول على الشرح.';btn.textContent='اشرح لي النتيجة';btn.disabled=false;return;}
+    if(!r.ok){
+      txt.textContent=d.detail||'تعذر الحصول على الشرح.';
+      if(btn){btn.textContent='اشرح لي النتيجة';btn.disabled=false;}
+      return;
+    }
     aiCache[token]=d;
+    aiLocalSet(token,d);
     showAI(cardId,d);
   }catch{
     txt.textContent='تعذر الاتصال. تحقق من الشبكة وحاول مجدداً.';
-    btn.textContent='اشرح لي النتيجة';btn.disabled=false;
+    if(btn){btn.textContent='اشرح لي النتيجة';btn.disabled=false;}
   }
 }
 
@@ -466,11 +531,18 @@ function renderResults(results){
   if(!results.length){area.innerHTML=renderEmpty();return;}
 
   let nNorm=0,nWarn=0,nCrit=0;
+  let firstAutoAI=null; // {token, cid} — worst non-normal result for auto-AI
   const html=results.map((r,i)=>{
     const sev=sevFrom(r.value,r.reference_low??r.normal_range_low,r.reference_high??r.normal_range_high);
     if(sev==='normal')nNorm++;else if(sev==='critical')nCrit++;else nWarn++;
     const cid='rc'+i;
     const token=r.result_token||r.token||'';
+    // Track worst non-normal for auto-AI: prefer critical over warning
+    if(token.length>=10 && sev!=='normal' && sev!=='pending'){
+      if(!firstAutoAI || (sev==='critical' && firstAutoAI.sev!=='critical')){
+        firstAutoAI={token,cid,sev};
+      }
+    }
     const val=r.value!=null?r.value:'—';
     const unit=r.unit||'';
     const low=r.reference_low??r.normal_range_low;
@@ -538,6 +610,58 @@ function renderResults(results){
   document.getElementById('sumWarning').textContent=nWarn;
   document.getElementById('sumCritical').textContent=nCrit;
   document.getElementById('summaryStrip').style.display='flex';
+
+  // ── Status banner (decision-first) ──────────────────────────────────────
+  const banner=document.getElementById('statusBanner');
+  const bannerIcon=document.getElementById('bannerIcon');
+  const bannerVerdict=document.getElementById('bannerVerdict');
+  const bannerAction=document.getElementById('bannerAction');
+  if(banner&&bannerVerdict&&bannerAction){
+    banner.className='status-banner';
+    if(nCrit>0){
+      banner.classList.add('banner-crit');
+      bannerIcon.textContent='🔴';
+      bannerVerdict.textContent='بعض نتائجك تحتاج مراجعة طبية';
+      bannerAction.textContent='يُنصح بالتواصل مع طبيبك اليوم — لا تتأخر.';
+    }else if(nWarn>0){
+      banner.classList.add('banner-warn');
+      bannerIcon.textContent='🟡';
+      bannerVerdict.textContent='بعض نتائجك تحتاج متابعة';
+      bannerAction.textContent='راجع طبيبك خلال أسبوع — لا داعي للقلق.';
+    }else{
+      banner.classList.add('banner-ok');
+      bannerIcon.textContent='🟢';
+      bannerVerdict.textContent='كل نتائجك طبيعية — ممتاز!';
+      bannerAction.textContent='لا تحتاج أي إجراء حالياً. استمر في نمط حياتك الصحي.';
+    }
+    banner.style.display='block';
+  }
+
+  // ── Next-step footer ────────────────────────────────────────────────────
+  const nextStep=document.getElementById('nextStep');
+  const nextRows=document.getElementById('nextStepRows');
+  if(nextStep&&nextRows){
+    const rows=[];
+    if(nCrit>0) rows.push({dot:'nsd-crit',txt:'نتائج حرجة: تواصل مع طبيبك اليوم أو اتصل بالمختبر مباشرة.'});
+    if(nWarn>0) rows.push({dot:'nsd-warn',txt:'نتائج تحتاج متابعة: احجز موعداً مع طبيبك خلال أسبوع.'});
+    if(nNorm>0) rows.push({dot:'nsd-ok',  txt:'نتائج طبيعية: استمر في فحوصاتك الدورية.'});
+    if(rows.length){
+      nextRows.innerHTML=rows.map(r=>`
+        <div class="next-step-row">
+          <span class="next-step-dot ${r.dot}"></span>
+          <span>${r.txt}</span>
+        </div>`).join('');
+      nextStep.style.display='block';
+    }
+  }
+
+  // ── Auto AI: fire for the worst non-normal result (silent) ──────────────
+  // Finds first critical, or first warning if no critical, and explains it
+  // automatically so the patient doesn't have to press any button.
+  const autoTarget=firstAutoAI;
+  if(autoTarget){
+    setTimeout(()=>explainResult(autoTarget.token,autoTarget.cid,true),600);
+  }
 }
 
 /* ── Copy link helper ──────────────────────────────────────────────────── */
