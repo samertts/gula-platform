@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from sqlalchemy import inspect
 
 revision = "20250322_0001"
-down_revision = None   # first migration; create_all handles base schema
+down_revision = "20250322_0000"
 branch_labels = None
 depends_on = None
 
