@@ -48,6 +48,17 @@ def _ping_db(db: Session) -> tuple[bool, float]:
         return False, -1.0
 
 
+def _ping_db_detail() -> tuple[str, float]:
+    """Return (status, latency_ms) using the detailed connection check.
+    status: 'ok' | 'refused' | 'auth_failed' | 'timeout' | 'error'
+    """
+    from ..database import check_db_connection_detail
+    t0 = time.perf_counter()
+    status, _ = check_db_connection_detail()
+    ms = round((time.perf_counter() - t0) * 1000, 1)
+    return status, (ms if status == "ok" else -1.0)
+
+
 def _ping_redis() -> tuple[bool, float]:
     try:
         from ..security.redis_client import cache
@@ -104,8 +115,8 @@ def get_metrics(
     - master_admin / ministry_admin / province_admin: platform-wide numbers
     - Everyone else: scoped to their lab_id
     """
-    db_ok, db_ms   = _ping_db(db)
-    red_ok, red_ms = _ping_redis()
+    db_status, db_ms = _ping_db_detail()
+    red_ok, red_ms   = _ping_redis()
 
     is_wide = current_user.role in _WIDE_ROLES
     stats = _order_stats(db, lab_id=None if is_wide else current_user.lab_id)
@@ -115,7 +126,7 @@ def get_metrics(
         "uptime_s":   uptime_s,
         "uptime_h":   round(uptime_s / 3600, 2),
         "memory_mb":  _rss_mb(),
-        "db":         {"ok": db_ok,  "ping_ms": db_ms},
+        "db":         {"status": db_status, "ok": db_status == "ok", "ping_ms": db_ms},
         "redis":      {"ok": red_ok, "ping_ms": red_ms},
         "stats":      stats,
         "scope":      "platform" if is_wide else "lab",
@@ -220,6 +231,105 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
         lines.append(f"gula_active_requests {ConcurrencyLimitMiddleware._active}")
     except Exception:
         lines.append("gula_active_requests 0")
+
+    # ── Per-error-type DB counters ────────────────────────────────────────────
+    # Exposes cumulative counts so Prometheus can track error trends and trigger
+    # differentiated alerts:
+    #   auth_failed > 0 → CRITICAL (misconfiguration, never self-heals)
+    #   refused > N     → WARNING  (postgres down or network issue)
+    #   timeout > N     → WARNING  (DB overloaded)
+    try:
+        from ..database import get_db_error_counts
+        ec = get_db_error_counts()
+        lines += [
+            "",
+            "# HELP gula_db_refused_total Cumulative DB 'connection refused' errors",
+            "# TYPE gula_db_refused_total counter",
+            f"gula_db_refused_total {ec.get('refused', 0)}",
+            "",
+            "# HELP gula_db_auth_failed_total Cumulative DB authentication failures (wrong password / pg_hba.conf)",
+            "# TYPE gula_db_auth_failed_total counter",
+            f"gula_db_auth_failed_total {ec.get('auth_failed', 0)}",
+            "",
+            "# HELP gula_db_timeout_total Cumulative DB connection timeouts",
+            "# TYPE gula_db_timeout_total counter",
+            f"gula_db_timeout_total {ec.get('timeout', 0)}",
+            "",
+            "# HELP gula_db_error_total Cumulative DB unknown/other errors",
+            "# TYPE gula_db_error_total counter",
+            f"gula_db_error_total {ec.get('error', 0)}",
+        ]
+    except Exception:
+        pass
+
+    # ── Sliding Window DB rates (5-minute) ───────────────────────────────────
+    # These gauges capture the *rate* of DB events in the last 5 minutes,
+    # enabling ratio-based Prometheus alerts that ignore ancient history.
+    try:
+        from ..database import get_db_window_snapshot
+        win = get_db_window_snapshot(window_s=300)
+        total_events = max(win["ok"] + win["refused"] + win["timeout"], 1)
+        lines += [
+            "",
+            "# HELP gula_db_refused_rate_5m DB 'refused' events per minute (5min window)",
+            "# TYPE gula_db_refused_rate_5m gauge",
+            f"gula_db_refused_rate_5m {win['refused_per_min']}",
+            "",
+            "# HELP gula_db_timeout_rate_5m DB timeout events per minute (5min window)",
+            "# TYPE gula_db_timeout_rate_5m gauge",
+            f"gula_db_timeout_rate_5m {win['timeout_per_min']}",
+            "",
+            "# HELP gula_db_error_ratio_5m Fraction of DB checks that failed in last 5min (0–1)",
+            "# TYPE gula_db_error_ratio_5m gauge",
+            f"gula_db_error_ratio_5m {round((win['refused'] + win['timeout']) / total_events, 4)}",
+        ]
+    except Exception:
+        pass
+
+    # ── Control Layer metrics ────────────────────────────────────────────────
+    try:
+        from ..core.policy_engine import policy_engine
+        ps = policy_engine.stats()
+        lines += [
+            "",
+            "# HELP gula_policy_block_total Total autonomous actions blocked by policy",
+            "# TYPE gula_policy_block_total counter",
+            f"gula_policy_block_total {ps['blocked_total']}",
+            "",
+            "# HELP gula_policy_allow_total Total autonomous actions permitted by policy",
+            "# TYPE gula_policy_allow_total counter",
+            f"gula_policy_allow_total {ps['allowed_total']}",
+        ]
+    except Exception:
+        pass
+
+    try:
+        from ..core.auto_repair import auto_repair
+        total_repairs = sum(v["triggered"] for v in auto_repair.stats().values())
+        lines += [
+            "",
+            "# HELP gula_auto_repair_total Total autonomous repair actions triggered",
+            "# TYPE gula_auto_repair_total counter",
+            f"gula_auto_repair_total {total_repairs}",
+        ]
+    except Exception:
+        pass
+
+    try:
+        from ..core.kill_switch import is_kill_switch_active
+        from ..core.self_healing import health as _sh
+        lines += [
+            "",
+            "# HELP gula_kill_switch_active Kill switch state (1=active, 0=inactive)",
+            "# TYPE gula_kill_switch_active gauge",
+            f"gula_kill_switch_active {1 if is_kill_switch_active() else 0}",
+            "",
+            "# HELP gula_degradation_level Current degradation level (0=NONE 1=L1 2=L2 3=L3)",
+            "# TYPE gula_degradation_level gauge",
+            f"gula_degradation_level {_sh.degradation_level.value}",
+        ]
+    except Exception:
+        pass
 
     lines.append("")
     return PlainTextResponse("\n".join(lines) + "\n", media_type=_PROM_CONTENT_TYPE)

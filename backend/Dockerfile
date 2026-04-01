@@ -57,4 +57,4 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
 # WEB_CONCURRENCY: number of uvicorn workers (default 4).
 #   Total DB connections = WEB_CONCURRENCY × (DB_POOL_SIZE + DB_MAX_OVERFLOW)
 #   Keep WEB_CONCURRENCY × 10 ≤ 100 (PG max_connections) → max 10 workers.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-4} --no-access-log --loop uvloop --http httptools --timeout-keep-alive 65 --backlog 2048"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-4} --no-access-log --loop uvloop --http httptools --timeout-keep-alive 65 --backlog 2048"]

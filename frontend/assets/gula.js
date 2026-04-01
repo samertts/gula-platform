@@ -1009,7 +1009,7 @@ async function viewPatient(id) {
         </table></div>
       ` : '<div class="empty"><p>لا توجد نتائج سابقة</p></div>'}
       <div style="margin-top:16px">
-        <button class="btn btn-primary btn-sm" onclick="closeModal();newOrderForPatient(${parseInt(p.id)})">+ طلب تحليل جديد</button>
+        <button class="btn btn-primary btn-sm" onclick="closeModal();newOrderForPatient(${parseInt(p.id)},'${escAttr(p.full_name)}')">+ طلب تحليل جديد</button>
       </div>
     `);
   } catch (e) { toast(e.message, 'error'); }
@@ -1136,8 +1136,8 @@ async function viewOrder(id) {
           <a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🔗 عرض النتائج</a>
           <a href="https://wa.me/?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener" class="btn btn-wa btn-sm">📤 واتساب</a>
           <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${location.origin}/r/${escAttr(firstToken)}').then(()=>toast('تم نسخ الرابط'))">نسخ الرابط</button>
+          <a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🖨️ طباعة / PDF</a>
         ` : ''}
-        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ طباعة</button>
         ${canValidate ? `<button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="validateOrder(${parseInt(o.id)})">✓ اعتماد وقفل</button>` : ''}
       </div>
     `);
@@ -1237,13 +1237,13 @@ function selectOrderPatient(id, name, phone) {
   $('ordPatientBadge').innerHTML = `<span style="color:var(--success)">✓ ${esc(name)}</span> <span dir="ltr" style="color:var(--text-muted)">${esc(phone)}</span>`;
 }
 
-function newOrderForPatient(id) {
+function newOrderForPatient(id, name) {
   openNewOrder();
-  // Pre-fill patient id — name will just show as "تم الاختيار"
   _ordSelectedPatient = id;
   $('ordPatientId').value = id;
-  $('ordPatientBadge').innerHTML = `<span style="color:var(--success)">✓ مريض #${id}</span>`;
-  $('ordPatientSearch').value = 'مريض #' + id;
+  const label = name || ('مريض #' + id);
+  $('ordPatientBadge').innerHTML = `<span style="color:var(--success)">✓ ${esc(label)}</span>`;
+  $('ordPatientSearch').value = label;
 }
 
 let _ttCache = null;
@@ -2507,7 +2507,7 @@ async function showWelcomeDialog() {
     health = await fetch('/health', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
   } catch {}
 
-  const dbOk = health.database === 'connected';
+  const dbOk = health.database === 'ok' || health.database === 'connected';
   const sysStatus = health.status === 'healthy' ? 'سليم' : 'يحتاج فحص';
   const sysColor = health.status === 'healthy' ? '#10b981' : '#f59e0b';
   const version = health.version || '—';
