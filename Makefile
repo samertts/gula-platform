@@ -8,7 +8,10 @@
 .PHONY: help up down restart ps logs logs-backend logs-db logs-redis \
         health health-deep status backup restore \
         lint test ci monitoring monitoring-down \
-        db-shell redis-cli shell secrets-gen
+        db-shell redis-cli shell secrets-gen \
+        scenario-test integrity-test metrics-token \
+        self-audit self-audit-fix scale scale-down \
+        manage kill-switch-on kill-switch-off control-stats
 
 BACKEND_URL ?= http://localhost:8080
 
@@ -40,10 +43,16 @@ help:
 	@echo "    make redis-cli    redis-cli shell inside redis container"
 	@echo ""
 	@echo "  ── Development ───────────────────────────────────────────────────"
-	@echo "    make lint         Run pyflakes + flake8 on backend code"
-	@echo "    make test         Run backend pytest suite"
-	@echo "    make ci           Run the full CI pipeline locally"
-	@echo "    make secrets-gen  Generate strong random secrets (.env)"
+	@echo "    make lint              Run pyflakes + flake8 on backend code"
+	@echo "    make test              Run backend pytest suite"
+	@echo "    make ci                Run the full CI pipeline locally"
+	@echo "    make secrets-gen       Generate strong random secrets (.env)"
+	@echo "    make scenario-test     Real end-to-end scenario load test"
+	@echo "    make integrity-test    Concurrent validation integrity test"
+	@echo "    make metrics-token     Write METRICS_BEARER_TOKEN → token file"
+	@echo "    make self-audit        AI self-audit (report only)"
+	@echo "    make self-audit-fix    AI self-audit + auto-apply safe fixes"
+	@echo "    make scale             Scale to REPLICAS=N backend instances"
 	@echo ""
 	@echo "  ── Monitoring (optional profile) ─────────────────────────────────"
 	@echo "    make monitoring       Start Prometheus + Grafana"
@@ -164,6 +173,50 @@ chaos:
 
 chaos-%:
 	@bash tests/chaos/chaos_test.sh $*
+
+scenario-test:
+	@echo "=== Real Scenario Load Test ==="
+	python3 tests/load/scenario_test.py --url $(BACKEND_URL) --users ${USERS:-10} --rounds ${ROUNDS:-1}
+
+integrity-test:
+	@echo "=== Concurrent Order Validation Integrity Test ==="
+	python3 tests/integration/integrity_test.py --url $(BACKEND_URL) --workers ${WORKERS:-100}
+
+metrics-token:
+	@source .env && bash scripts/generate-metrics-token.sh
+
+self-audit:
+	@echo "=== AI Self-Audit (report only) ==="
+	python3 scripts/self_audit_agent.py --report-only
+
+self-audit-fix:
+	@echo "=== AI Self-Audit with Auto-Fix ==="
+	python3 scripts/self_audit_agent.py --fix
+
+scale:
+	@echo "=== Scaling to ${REPLICAS:-3} backend instances ==="
+	docker compose -f docker-compose.yml -f docker-compose.scale.yml up -d --scale gula-backend=${REPLICAS:-3}
+	@echo "✓ HAProxy stats → http://localhost:8404/stats"
+
+scale-down:
+	docker compose -f docker-compose.yml -f docker-compose.scale.yml down
+
+manage:
+	@bash scripts/digitalocean-manage.sh $(filter-out $@,$(MAKECMDGOALS))
+
+kill-switch-on:
+	@echo "=== Activating kill switch ==="
+	bash scripts/digitalocean-manage.sh kill-switch on
+
+kill-switch-off:
+	@echo "=== Deactivating kill switch ==="
+	bash scripts/digitalocean-manage.sh kill-switch off
+
+control-stats:
+	@echo "=== Control Layer stats ==="
+	curl -sf -b "access_token=$$(grep GULA_ADMIN_TOKEN .env 2>/dev/null | cut -d= -f2)" \
+	    http://localhost:8080/admin/control-layer/stats | python3 -m json.tool 2>/dev/null \
+	    || echo "(Requires master_admin auth — use the API directly)"
 
 ci: lint
 	@echo "=== Syntax gate ==="

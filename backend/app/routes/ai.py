@@ -17,24 +17,52 @@ Routes:
   POST /api/ai/execute/{id}             — run in sandbox (doctor+)
   POST /api/ai/analyze-order/{order_id} — analyze all results in an order (doctor+)
   GET  /api/ai/operations               — list whitelisted sandbox ops
+  GET  /api/ai/critical-alerts          — recent حرج alerts for this lab (doctor+)
+
+  GET  /api/ai/interpret/{token}        — plain-Arabic explanation for patients (public)
 """
 
 from __future__ import annotations
 
+import json
+import logging
+import os
+import re
 import time
-from typing import Any, Dict, Optional
+from datetime import datetime, timezone
+from hashlib import sha256
+from typing import Any, Callable, Dict, Optional
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.ai.approval import approval_store
 from app.ai.guardrails import AIGuardrailViolation, ai_suggest
 from app.ai.sandbox import AISandbox
-from app.database import get_db
+from app.database import get_db, SessionLocal
+from app.models.audit_log import AuditLog
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
+from app.models.patient import Patient
 from app.security.dependencies import get_current_user
+
+logger = logging.getLogger("gula.ai")
+
+# ── Free AI provider config ───────────────────────────────────────────────────
+_GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
+_GROQ_KEY   = os.getenv("GROQ_API_KEY", "")
+_AI_PROVIDER = os.getenv(
+    "AI_PROVIDER",
+    "gemini" if _GEMINI_KEY else "groq" if _GROQ_KEY else "none",
+)
+_GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    "gemini-2.0-flash:generateContent?key={key}"
+)
+_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 router = APIRouter(prefix="/api/ai", tags=["AI Safety Layer"])
 
@@ -294,3 +322,459 @@ def list_operations():
         "whitelisted_operations": AISandbox.registered_operations(),
         "note": "Only these operations can be executed by AI after human approval.",
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CLINICAL INTERPRETATION LAYER — Patient-facing, public access
+# Authentication: none — the result token is the proof of access.
+# Rate limiting: nginx api_limit zone + in-process response cache.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_SEVERITY_NORMAL   = "طبيعي"
+_SEVERITY_WARNING  = "تنبيه"
+_SEVERITY_CRITICAL = "حرج"
+
+_DISCLAIMER = "هذا الشرح للتوعية فقط ولا يُغني عن استشارة الطبيب."
+
+_FORBIDDEN_PHRASES = [
+    "تشخيص:", "العلاج:", "الدواء:", "يُنصح بتناول", "جرعة",
+    "diagnosis:", "treatment:", "medication:", "prescribe",
+]
+
+# ── In-process response cache (prevents AI cost explosion / token replay) ─────
+_INTERPRET_CACHE: dict[str, tuple[dict, float]] = {}
+_CACHE_TTL = 120  # seconds — same token served from cache
+
+
+# ── Clinical Weighting Table ──────────────────────────────────────────────────
+# The critical threshold is divided by this weight, so high-risk tests trigger
+# حرج much sooner.  Format: lowercase substring → weight multiplier (default 1.0)
+_TEST_WEIGHTS: dict[str, float] = {
+    # Electrolytes — narrow therapeutic window, arrhythmia risk
+    "potassium": 2.5, "k+": 2.5,
+    "sodium": 2.0, "na+": 2.0,
+    "calcium": 2.0, "ca2+": 2.0,
+    "magnesium": 1.8,
+    # Acid-base
+    "ph": 2.5, "bicarbonate": 2.0, "hco3": 2.0,
+    # Cardiac markers
+    "troponin": 2.5, "bnp": 2.5, "nt-probnp": 2.5, "ck-mb": 2.0,
+    # Glucose / Diabetes
+    "glucose": 2.0, "blood sugar": 2.0, "سكر": 2.0, "hba1c": 1.8,
+    # Coagulation
+    "inr": 2.0, "pt": 1.8, "ptt": 1.8, "aptt": 1.8,
+    # Renal
+    "creatinine": 1.8, "كرياتينين": 1.8, "egfr": 2.0, "gfr": 2.0,
+    "urea": 1.5, "bun": 1.5,
+    # Hematology
+    "hemoglobin": 1.5, "hgb": 1.5, "هيموغلوبين": 1.5,
+    "platelets": 1.8, "plt": 1.8, "صفائح": 1.8, "wbc": 1.5,
+    # Thyroid / Liver
+    "tsh": 1.5, "t3": 1.3, "t4": 1.3,
+    "alt": 1.3, "ast": 1.3, "bilirubin": 1.4, "albumin": 1.5,
+}
+_BASE_CRITICAL_RATIO = 0.75  # fraction of range span beyond the limit → حرج
+
+# ── Conflict-detection patterns ───────────────────────────────────────────────
+# Each tuple: (pattern_id, keywords_a, keywords_b, Arabic message)
+_CONFLICT_PATTERNS: list[tuple[str, list[str], list[str], str]] = [
+    ("electrolyte_imbalance",
+     ["sodium", "na+", "صوديوم"], ["potassium", "k+", "بوتاسيوم"],
+     "اختلال في توازن الكهارل — يستوجب مراجعة طبية فورية"),
+    ("glucose_hba1c_gap",
+     ["glucose", "blood sugar", "سكر"], ["hba1c"],
+     "تفاوت بين قراءتي السكر الآني والتراكمي"),
+    ("liver_stress",
+     ["alt"], ["ast"],
+     "ارتفاع في إنزيمات الكبد"),
+    ("renal_pattern",
+     ["creatinine", "كرياتينين"], ["urea", "bun"],
+     "مؤشرات وظائف كلوية تستوجب المتابعة"),
+    ("anemia_pattern",
+     ["hemoglobin", "hgb", "هيموغلوبين"], ["rbc", "red blood", "كريات حمراء"],
+     "نمط يشير إلى احتمال فقر الدم"),
+]
+
+
+def _get_test_weight(test_name: str) -> float:
+    name_lower = (test_name or "").lower()
+    return max(
+        (w for key, w in _TEST_WEIGHTS.items() if key in name_lower),
+        default=1.0,
+    )
+
+
+def _classify_severity(val_raw, low_raw, high_raw, weight: float = 1.0) -> str:
+    try:
+        vf, lf, hf = float(val_raw), float(low_raw), float(high_raw)
+        if lf <= vf <= hf:
+            return _SEVERITY_NORMAL
+        span = hf - lf
+        deviation = (lf - vf) if vf < lf else (vf - hf)
+        ratio = deviation / span if span > 0 else 1.0
+        return _SEVERITY_CRITICAL if ratio >= _BASE_CRITICAL_RATIO / max(weight, 1.0) else _SEVERITY_WARNING
+    except (TypeError, ValueError):
+        return _SEVERITY_WARNING
+
+
+def _compute_severities(results_data: list[dict]) -> list[dict]:
+    enriched = []
+    for r in results_data:
+        val    = r.get("value") if r.get("value") is not None else r.get("value_text")
+        low, high = r.get("normal_range_low"), r.get("normal_range_high")
+        weight = _get_test_weight(r.get("test_name", ""))
+        if val is None:
+            sev = _SEVERITY_NORMAL
+        elif low is not None and high is not None:
+            sev = _classify_severity(val, low, high, weight)
+        else:
+            sev = _SEVERITY_NORMAL
+        enriched.append({**r, "severity": sev, "weight": weight})
+    return enriched
+
+
+def _overall_severity(enriched: list[dict]) -> str:
+    sevs = {r["severity"] for r in enriched}
+    if _SEVERITY_CRITICAL in sevs:
+        return _SEVERITY_CRITICAL
+    if _SEVERITY_WARNING in sevs:
+        return _SEVERITY_WARNING
+    return _SEVERITY_NORMAL
+
+
+def _detect_conflicts(enriched: list[dict]) -> list[str]:
+    """Return Arabic conflict messages for co-abnormal test pairs."""
+    # Build set of abnormal test name tokens for fast matching
+    abnormal = {
+        key
+        for r in enriched if r["severity"] != _SEVERITY_NORMAL
+        for key in _TEST_WEIGHTS if key in (r.get("test_name") or "").lower()
+    }
+    messages: list[str] = []
+    for _pid, kw_a, kw_b, msg in _CONFLICT_PATTERNS:
+        if any(k in abnormal for k in kw_a) and any(k in abnormal for k in kw_b):
+            messages.append(msg)
+    return messages
+
+
+def _compute_confidence(
+    enriched: list[dict],
+    patient_context: Optional[dict],
+    provider_used: str,
+) -> dict:
+    """
+    Score 0.0–1.0 based on data completeness and result complexity.
+    Returns {"score": float, "level": "high"|"medium"|"low"}.
+    """
+    score = 1.0
+    total = len(enriched)
+    if total:
+        no_range = sum(
+            1 for r in enriched
+            if r.get("normal_range_low") is None or r.get("normal_range_high") is None
+        )
+        score -= min(0.30, no_range / total * 0.40)
+    critical_count = sum(1 for r in enriched if r["severity"] == _SEVERITY_CRITICAL)
+    score -= min(0.20, critical_count * 0.05)
+    if not patient_context or not any(patient_context.values()):
+        score -= 0.10
+    if provider_used == "groq":
+        score -= 0.05
+    score = round(max(0.0, min(1.0, score)), 2)
+    level = "high" if score >= 0.80 else "medium" if score >= 0.55 else "low"
+    return {"score": score, "level": level}
+
+
+def _action_guidance(overall_sev: str) -> dict:
+    if overall_sev == _SEVERITY_CRITICAL:
+        return {"ar": "⚠️ راجع الطبيب فوراً — لا تتأخر في التواصل مع مزودك الصحي.",
+                "urgency": "immediate", "within_hours": 24}
+    if overall_sev == _SEVERITY_WARNING:
+        return {"ar": "📅 راجع طبيبك خلال أسبوع لمناقشة هذه النتائج.",
+                "urgency": "soon", "within_hours": 168}
+    return {"ar": "✅ جميع نتائجك ضمن الحدود الطبيعية. استمر في المتابعة الدورية.",
+            "urgency": "routine", "within_hours": None}
+
+
+def _emit_critical_alert(db: Session, order_id: int,
+                          critical_tests: list[str], token_prefix: str) -> None:
+    """Write a critical-result alert to audit_logs. Non-fatal."""
+    try:
+        db.add(AuditLog(
+            user_id=None,
+            user_role="system:ai",
+            action="critical_result_alert",
+            resource_type="lab_order",
+            resource_id=order_id,
+            details=json.dumps(
+                {"critical_tests": critical_tests, "token_prefix": token_prefix,
+                 "source": "ai_interpret"},
+                ensure_ascii=False,
+            ),
+        ))
+        db.commit()
+    except Exception as exc:
+        logger.error("[AI] critical_result_alert audit write failed: %s", exc)
+
+
+def _build_interpret_prompt(
+    results_data: list[dict],
+    patient_context: Optional[dict] = None,
+) -> str:
+    enriched     = _compute_severities(results_data)
+    has_critical = any(r["severity"] == _SEVERITY_CRITICAL for r in enriched)
+    action       = _action_guidance(_overall_severity(enriched))
+
+    ctx_lines = []
+    if patient_context:
+        if patient_context.get("age"):
+            ctx_lines.append(f"عمر المريض: {patient_context['age']} سنة")
+        if patient_context.get("gender"):
+            ctx_lines.append("الجنس: " + ("ذكر" if str(patient_context["gender"]).upper() == "M" else "أنثى"))
+    context_block = ("سياق المريض:\n" + "\n".join(ctx_lines) + "\n\n") if ctx_lines else ""
+
+    result_lines = []
+    for r in enriched:
+        val  = r.get("value") if r.get("value") is not None else r.get("value_text", "-")
+        unit = r.get("unit", "") or ""
+        low, high = r.get("normal_range_low"), r.get("normal_range_high")
+        range_str = (f"المدى الطبيعي: {low}–{high} {unit}".strip()
+                     if (low is not None and high is not None) else unit)
+        result_lines.append(f"[{r['severity']}] {r.get('test_name','')}: {val} {unit} — {range_str}")
+
+    critical_rule = (
+        "\n- ابدأ الرد بسطر: «⚠️ تنبيه: بعض النتائج تستوجب مراجعة طبية فورية.»"
+        if has_critical else ""
+    )
+    return (
+        "أنت مساعد توعوي طبي. مهمتك شرح نتائج التحاليل للمريض بأسلوب بسيط ومفهوم.\n\n"
+        + context_block
+        + "النتائج:\n" + "\n".join(result_lines) + "\n\n"
+        "قواعد صارمة — لا استثناء:\n"
+        "1. اكتب بالعربية حصراً.\n"
+        "2. جملة واحدة مرقّمة لكل تحليل (1. … 2. … إلخ).\n"
+        "3. في كل جملة: اسم التحليل + هل هو طبيعي أو خارج المدى + توضيح بسيط.\n"
+        "4. محظور: أي دواء بالاسم، أي مرض بالاسم، أي تشخيص، أي توصية علاجية.\n"
+        "5. محظور: اختلاق معلومات غير موجودة في البيانات.\n"
+        "6. الرد لا يتجاوز 220 كلمة."
+        + critical_rule
+        + f"\n7. أنهِ الرد بهذه الجملة حرفياً: «{action['ar']}»"
+        + f"\n8. آخر سطر حرفياً: «{_DISCLAIMER}»\n"
+        "\nابدأ الآن:"
+    )
+
+
+async def _call_gemini_flash(prompt: str) -> str:
+    url = _GEMINI_URL.format(key=_GEMINI_KEY)
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 500},
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(url, json=payload)
+        r.raise_for_status()
+    return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+
+async def _call_groq_llama(prompt: str) -> str:
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": 500,
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(
+            _GROQ_URL, json=payload,
+            headers={"Authorization": f"Bearer {_GROQ_KEY}"},
+        )
+        r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"].strip()
+
+
+async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
+    """
+    Try providers in priority order.  Returns (text, provider_name).
+    Falls back to the secondary provider on any error.
+    """
+    providers: list[tuple[str, Callable]] = []
+    if _GEMINI_KEY:
+        providers.append(("gemini", _call_gemini_flash))
+    if _GROQ_KEY:
+        providers.append(("groq", _call_groq_llama))
+    if not providers:
+        raise HTTPException(status_code=503, detail="تفسير الذكاء الاصطناعي غير مفعل حالياً.")
+
+    last_exc: Exception = RuntimeError("no providers")
+    for name, fn in providers:
+        try:
+            text = await fn(prompt)
+            return text, name
+        except Exception as exc:
+            logger.warning("[AI] Provider %s failed: %s — trying fallback", name, exc)
+            last_exc = exc
+    logger.error("[AI] All providers failed: %s", last_exc)
+    raise HTTPException(status_code=503, detail="تعذر الحصول على التفسير حالياً. حاول لاحقاً.")
+
+
+# ── Doctor-facing: critical alerts dashboard ──────────────────────────────────
+
+@router.get("/critical-alerts", summary="نتائج حرجة — تنبيهات المختبر")
+def list_critical_alerts(
+    limit: int = 50,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return recent critical-result alerts for the current lab.
+    Doctor+ only.  Sourced from audit_logs (action=critical_result_alert).
+    """
+    _require_doctor(current_user)
+    lab_order_ids = db.query(LabOrder.id).filter(
+        LabOrder.lab_id == current_user.lab_id
+    ).subquery()
+    rows = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.action == "critical_result_alert",
+            AuditLog.resource_id.in_(lab_order_ids),
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    items = []
+    for row in rows:
+        try:
+            details = json.loads(row.details or "{}")
+        except Exception:
+            details = {}
+        items.append({
+            "id":             row.id,
+            "order_id":       row.resource_id,
+            "critical_tests": details.get("critical_tests", []),
+            "token_prefix":   details.get("token_prefix", ""),
+            "created_at":     row.created_at.isoformat() if row.created_at else None,
+        })
+    return {"count": len(items), "alerts": items}
+
+
+# ── Public interpret endpoint ─────────────────────────────────────────────────
+
+@router.get(
+    "/interpret/{token}",
+    summary="تفسير نتائج التحليل للمريض (عام)",
+    response_class=JSONResponse,
+    tags=["AI Public"],
+)
+async def interpret_result_public(token: str) -> JSONResponse:
+    """
+    Plain-Arabic AI explanation for lab results identified by *token*.
+    Public endpoint — no login required.
+    Responses are cached 120 s per token to prevent cost explosion.
+    """
+    if not token or not re.match(r"^[A-Za-z0-9_-]{10,}$", token):
+        raise HTTPException(status_code=400, detail="رمز النتيجة غير صالح")
+
+    # ── In-process cache check ────────────────────────────────────────────────
+    cache_key = sha256(token.encode()).hexdigest()[:16]
+    cached = _INTERPRET_CACHE.get(cache_key)
+    if cached and time.monotonic() < cached[1]:
+        return JSONResponse({**cached[0], "cached": True})
+
+    # ── Load results + patient context from DB ────────────────────────────────
+    token_hash = sha256(token.encode()).hexdigest()
+    db: Session = SessionLocal()
+    patient_context: Optional[dict] = None
+    order_id: int = 0
+    results_data: list[dict] = []
+    try:
+        result = (
+            db.query(LabResult).filter(LabResult.token_hash == token_hash).first()
+            or db.query(LabResult).filter(LabResult.token == token).first()
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="نتيجة التحليل غير موجودة")
+        if result.expires_at and result.expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=410, detail="انتهت صلاحية رابط النتيجة")
+
+        order_id = result.order_id
+        results_data = [
+            {
+                "test_name":         r.test_name,
+                "value":             r.value,
+                "value_text":        getattr(r, "value_text", None),
+                "unit":              r.unit,
+                "normal_range_low":  r.normal_range_low,
+                "normal_range_high": r.normal_range_high,
+            }
+            for r in db.query(LabResult).filter(LabResult.order_id == order_id).all()
+        ]
+
+        order = db.query(LabOrder).filter(LabOrder.id == order_id).first()
+        if order and order.patient_id:
+            patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
+            if patient:
+                age = None
+                if patient.birth_date:
+                    today = datetime.now(timezone.utc).date()
+                    age = today.year - patient.birth_date.year - (
+                        (today.month, today.day) < (patient.birth_date.month, patient.birth_date.day)
+                    )
+                patient_context = {"age": age, "gender": patient.gender}
+    finally:
+        db.close()
+
+    if not results_data:
+        raise HTTPException(status_code=404, detail="لا توجد نتائج للتفسير")
+
+    # ── Severity, conflicts, action guidance ─────────────────────────────────
+    enriched         = _compute_severities(results_data)
+    overall_sev      = _overall_severity(enriched)
+    critical_flags   = [r["test_name"] for r in enriched if r["severity"] == _SEVERITY_CRITICAL]
+    results_severity = [{"test": r["test_name"], "severity": r["severity"]} for r in enriched]
+    conflicts        = _detect_conflicts(enriched)
+    action           = _action_guidance(overall_sev)
+
+    # ── Audit: write critical alert (non-fatal) ───────────────────────────────
+    if critical_flags:
+        db2: Session = SessionLocal()
+        try:
+            _emit_critical_alert(db2, order_id, critical_flags, token[:8])
+        finally:
+            db2.close()
+
+    # ── Call AI with automatic provider fallback ──────────────────────────────
+    prompt = _build_interpret_prompt(results_data, patient_context=patient_context)
+    text, provider_used = await _call_ai_with_fallback(prompt)
+
+    # ── Post-generation safety gate ───────────────────────────────────────────
+    for phrase in _FORBIDDEN_PHRASES:
+        if phrase in text:
+            logger.warning("[AI] Stripped forbidden phrase: %r", phrase)
+            text = text.replace(phrase, "")
+    if _DISCLAIMER not in text:
+        text = text.rstrip() + "\n" + _DISCLAIMER
+
+    # ── Confidence score ──────────────────────────────────────────────────────
+    confidence = _compute_confidence(enriched, patient_context, provider_used)
+
+    logger.info(
+        "[AI] interpreted token=%.8s provider=%s tests=%d severity=%s "
+        "critical=%d confidence=%s conflicts=%d",
+        token, provider_used, len(results_data), overall_sev,
+        len(critical_flags), confidence["level"], len(conflicts),
+    )
+
+    payload = {
+        "interpretation":   text,
+        "provider":         provider_used,
+        "severity":         overall_sev,
+        "critical_flags":   critical_flags,
+        "results_severity": results_severity,
+        "conflicts":        conflicts,
+        "confidence":       confidence,
+        "action_guidance":  action,
+    }
+    _INTERPRET_CACHE[cache_key] = (payload, time.monotonic() + _CACHE_TTL)
+    return JSONResponse(payload)

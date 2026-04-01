@@ -155,55 +155,123 @@ def validate_config() -> None:
 # ─── Step 2: DB Connectivity with Exponential Backoff ────────────────────────
 
 async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
-    """Wait for DB to become reachable. Raises RuntimeError after all retries."""
-    from ..database import check_db_connection
+    """
+    Wait for DB to become reachable with smart per-error-type retry logic.
 
-    await asyncio.sleep(initial_delay) # Initial delay to give DB time to start
+    - "refused" / "timeout" → transient, keep retrying (postgres still starting)
+    - "auth_failed"         → permanent, stop immediately (retrying won't help)
+    - "ok"                  → success, return True
+    """
+    from ..database import check_db_connection_detail, _DB_ACTION_MAP
+    import os
+
+    db_url = os.getenv("DATABASE_URL", "")
+    from urllib.parse import urlparse
+    parsed = urlparse(db_url)
+    host = parsed.hostname or "unknown"
+    port = parsed.port or 5432
+
+    await asyncio.sleep(initial_delay)
+
     for attempt in range(max_retries):
-        if check_db_connection():
-            logger.info("[STARTUP GUARD] Database connection OK (attempt %d)", attempt + 1)
+        status, detail = check_db_connection_detail()
+
+        if status == "ok":
+            logger.info(
+                "[STARTUP GUARD] Database connection OK (attempt %d) — %s",
+                attempt + 1, detail,
+            )
             return True
 
-        wait_sec = 2 ** attempt
+        action = _DB_ACTION_MAP.get(status, "retry")
+        if action == "stop_and_alert":
+            # Permanent misconfiguration — retrying will never help.
+            logger.critical(
+                "[STARTUP GUARD] DB %s — action=stop_and_alert — stopping all retries. "
+                "Fix credentials/pg_hba.conf and redeploy. Detail: %s", status, detail,
+            )
+            return False
+
+        # Transient (retry / retry_with_backoff) — keep going
+        wait_sec = min(2 ** attempt, 30)
         logger.warning(
-            "[STARTUP GUARD] Database not ready (attempt %d/%d) — retrying in %ds",
-            attempt + 1, max_retries, wait_sec,
+            "[STARTUP GUARD] DB not ready (attempt %d/%d, status=%s) — %s — retrying in %ds",
+            attempt + 1, max_retries, status, detail, wait_sec,
         )
         await asyncio.sleep(wait_sec)
 
     logger.critical(
-        f"[STARTUP GUARD] Database unreachable after {max_retries} attempts. "
-        "Check DATABASE_URL and PostgreSQL container status. Backend will start in unready state."
+        "[STARTUP GUARD] Database unreachable after %d attempts (host=%s:%s). "
+        "Check DATABASE_URL and PostgreSQL container status.",
+        max_retries, host, port,
     )
     return False
 
 
 # ─── Step 3: Migration Check ─────────────────────────────────────────────────
 
+# Tables that MUST exist for the app to function. If any are missing, migrations
+# have not been applied and the app must not start.
+_REQUIRED_TABLES = [
+    "labs",
+    "lab_users",
+    "patients",
+    "lab_orders",
+    "lab_results",
+    "outbox_events",
+    "audit_logs",
+]
+
+
 async def check_migrations() -> None:
-    """Verify Alembic migrations are not in a partial state."""
+    """Verify Alembic migrations have been applied and all required tables exist.
+
+    Fails fast with a clear message if:
+    - alembic_version table is absent (migrations never ran)
+    - alembic_version is empty (migration ran but didn't complete)
+    - Any required table is missing
+    """
     from ..database import engine
     from sqlalchemy import text, inspect
 
     def _check() -> Optional[str]:
         insp = inspect(engine)
+
+        # Gate 1: alembic_version must exist — if it doesn't, `alembic upgrade head`
+        # was never run. Accepting a missing table here was the original bug.
         if not insp.has_table("alembic_version"):
-            # Schema built via create_all — acceptable for current deployment model
-            return None
+            return (
+                "alembic_version table not found — migrations have never been applied. "
+                "Run: alembic upgrade head"
+            )
+
+        # Gate 2: version row must be present (incomplete migration aborted mid-run)
         with engine.connect() as conn:
             row = conn.execute(
                 text("SELECT version_num FROM alembic_version LIMIT 1")
             ).fetchone()
             if row is None:
-                return "alembic_version table exists but is empty (incomplete migration)"
+                return (
+                    "alembic_version table exists but is empty — migration aborted mid-run. "
+                    "Run: alembic upgrade head"
+                )
+
+        # Gate 3: every required table must exist
+        missing = [t for t in _REQUIRED_TABLES if not insp.has_table(t)]
+        if missing:
+            return (
+                f"Required tables missing after migrations: {missing}. "
+                "Run: alembic upgrade head"
+            )
+
         return None
 
     loop = asyncio.get_event_loop()
     error = await loop.run_in_executor(None, _check)
     if error:
-        raise RuntimeError(f"[STARTUP GUARD] Migration check failed: {error}")
+        raise RuntimeError(f"[STARTUP GUARD] Migration check FAILED: {error}")
 
-    logger.info("[STARTUP GUARD] Migration check passed")
+    logger.info("[STARTUP GUARD] Migration check passed — all required tables present")
 
 
 # ─── Step 4: Seed Critical Data ──────────────────────────────────────────────
@@ -211,30 +279,49 @@ async def check_migrations() -> None:
 async def seed_critical_data() -> None:
     """Run idempotent seed operations. Safe to call multiple times.
 
-    Functions are imported from their own modules to avoid circular imports
-    with main.py.
+    perm_version migration is FATAL — if lab_users doesn't exist, alembic
+    hasn't been applied and we must not start.
+
+    Catalog / admin / subscription seeds are NON-FATAL — missing optional
+    data doesn't block traffic; it is logged and the app continues.
     """
     loop = asyncio.get_event_loop()
 
+    # ── FATAL: must succeed ───────────────────────────────────────────────────
     logger.info("[STARTUP GUARD] Running perm_version migration...")
     await loop.run_in_executor(None, _run_perm_version_migration)
+    # ↑ raises RuntimeError if lab_users missing — propagates to run_startup_guard
 
-    logger.info("[STARTUP GUARD] Seeding test types catalog...")
-    await loop.run_in_executor(None, _run_seed_test_types)
-
-    logger.info("[STARTUP GUARD] Ensuring master admin exists...")
-    await loop.run_in_executor(None, _run_ensure_master_admin)
-
-    logger.info("[STARTUP GUARD] Seeding default lab subscriptions...")
-    await loop.run_in_executor(None, _run_seed_default_subscriptions)
+    # ── NON-FATAL: catalog / admin / subscriptions ────────────────────────────
+    for name, fn in [
+        ("test types catalog",      _run_seed_test_types),
+        ("master admin",            _run_ensure_master_admin),
+        ("default subscriptions",   _run_seed_default_subscriptions),
+    ]:
+        try:
+            logger.info("[STARTUP GUARD] Seeding %s...", name)
+            await loop.run_in_executor(None, fn)
+        except Exception as exc:
+            logger.error(
+                "[STARTUP GUARD] Seeding %s FAILED (non-fatal): %s", name, exc
+            )
 
     logger.info("[STARTUP GUARD] Critical data seeded OK")
 
 
 def _run_perm_version_migration() -> None:
-    """Add perm_version column to lab_users — no circular import."""
+    """Add perm_version column to lab_users — no circular import.
+
+    Raises RuntimeError if lab_users doesn't exist so the caller can treat it
+    as a fatal misconfiguration (migrations not applied) rather than swallowing it.
+    """
     from ..database import engine
-    from sqlalchemy import text
+    from sqlalchemy import text, inspect
+    insp = inspect(engine)
+    if not insp.has_table("lab_users"):
+        raise RuntimeError(
+            "lab_users table does not exist — alembic upgrade head must run before seeding"
+        )
     with engine.connect() as conn:
         conn.execute(text(
             "ALTER TABLE lab_users "
@@ -324,43 +411,36 @@ async def run_startup_guard() -> None:
 
     try:
         validate_config()          # Step 1 — synchronous
-        db_connected = await wait_for_db(max_retries=15, initial_delay=10)   # Step 2 — async retry with extended resilience
+
+        db_connected = await wait_for_db(max_retries=15, initial_delay=10)  # Step 2
         if not db_connected:
-            # If DB is not connected after retries, the system will start in an unready state.
-            # The global exception handler will return 503 for all requests.
-            logger.critical("[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state.")
-            # Do not exit early. Allow the process to continue, but system_ready will remain False.
-            # The global exception handler will then return 503 for all requests.
-            pass
-        await check_migrations()           # Step 3 — migration state
+            # DB unreachable after all retries — keep system_ready=False so the
+            # readiness probe keeps returning 503. DO NOT fall through to set True.
+            logger.critical(
+                "[STARTUP GUARD] Database not available after all retries. "
+                "system_ready stays False — readiness probe will return 503."
+            )
+            return  # ← critical: do not reach system_ready = True below
 
-        # If all critical steps (config, DB, migrations) pass, then the system is ready.
-        # The seed_critical_data step is now more resilient and won't prevent system_ready from being True.
+        await check_migrations()   # Step 3 — requires working DB connection
 
-        # Step 4 — seed critical data. This step is now made more resilient.
-        # If seeding fails, we log the error but allow the system to become ready.
-        # This prevents a full crash if, for example, a new test type fails to seed
-        # but the core application can still function.
-        try:
-            await seed_critical_data()
-        except Exception as e:
-            logger.error("[STARTUP GUARD] Critical data seeding FAILED: %s. System will start in potentially degraded state.", e)
+        # Step 4 — seed critical data.
+        # perm_version migration is fatal (missing table = alembic didn't run).
+        # Catalog / admin / subscription seeds are non-fatal (optional data).
+        await seed_critical_data()
 
     except Exception:
         elapsed = (time.perf_counter() - t0) * 1000
         logger.exception(
-            "[STARTUP GUARD] CRITICAL STARTUP FAILED after %.0fms — system_ready remains False",
+            "[STARTUP GUARD] CRITICAL STARTUP FAILED after %.0fms — "
+            "system_ready remains False. Container stays alive for health probes.",
             elapsed,
         )
-        # If any critical step (config, DB, migrations) fails, we still crash.
-        # This ensures core integrity. The readiness probe will keep returning 503.
-        # If any critical step (config, DB, migrations) fails, we do NOT crash the process.
-        # Instead, we keep system_ready = False. The readiness probe will keep returning 503.
-        # This allows the container to stay alive and potentially recover if the external dependency (DB) comes back.
-        # The global exception handler in main.py will handle requests by returning 503.
-        pass # Do not re-raise, allow the process to continue in an unready state
+        # Do not re-raise: keep process alive so Docker healthcheck can see 503
+        # and restart with exponential back-off.  system_ready stays False.
+        return  # ← critical: do not reach system_ready = True below
 
-    # Atomic success: only reached if no exception above
+    # Only reached when ALL critical steps succeeded.
     elapsed = (time.perf_counter() - t0) * 1000
     system_ready = True
     logger.info(
