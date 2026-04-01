@@ -209,6 +209,48 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .toast-ok{background:#16a34a}
 .toast-err{background:#dc2626}
 .toast-info{background:#2563eb}
+
+/* ── Offline banner ──────────────────────────────────────────────────────── */
+.offline-banner{
+  display:none;align-items:center;gap:10px;
+  background:#1c1a07;border:1px solid #ca8a04;border-radius:var(--radius-sm);
+  padding:12px 16px;margin-bottom:16px;
+  font-size:.84rem;color:#fde047;font-weight:600;
+}
+
+/* ── Trust badge ─────────────────────────────────────────────────────────── */
+.trust-badge{
+  font-size:.68rem;font-weight:600;color:var(--green-fg);opacity:.75;
+  display:inline-flex;align-items:center;gap:4px;margin-top:3px;
+}
+
+/* ── Emotional message ───────────────────────────────────────────────────── */
+.r-emotion{
+  font-size:.83rem;padding:9px 12px;border-radius:8px;margin-bottom:12px;
+  line-height:1.5;font-weight:500;
+}
+.emo-ok  {background:var(--green-bg);color:#bbf7d0;border:1px solid rgba(74,222,128,.15)}
+.emo-warn{background:rgba(217,119,6,.08);color:#fde68a;border:1px solid rgba(217,119,6,.2)}
+.emo-crit{background:rgba(220,38,38,.08);color:#fecaca;border:1px solid rgba(220,38,38,.2)}
+
+/* ── Secondary action buttons ────────────────────────────────────────────── */
+.r-actions-2{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn-act{
+  padding:9px 14px;border-radius:var(--radius-sm);
+  font-size:.8rem;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);background:var(--surface2);color:var(--text-sub);
+  font-family:var(--font);transition:all .18s;min-height:40px;text-decoration:none;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.btn-act:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Low-end device & reduced-motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+.low-end .skel{animation:none!important;background:var(--surface3)}
+.low-end .dot-warning,.low-end .dot-critical{animation:none!important}
+.low-end .r-bar-fill{transition:none!important}
 </style>
 </head>
 <body>
@@ -225,6 +267,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 </header>
 
 <main class="page">
+  <!-- Offline indicator -->
+  <div class="offline-banner" id="offlineBanner">
+    <span>📵</span>
+    <span>أنت الآن بدون اتصال — يتم عرض آخر نتائج محفوظة</span>
+  </div>
+
   <div class="greeting">
     <div class="greeting-name" id="gName">أهلاً بك</div>
     <div class="greeting-sub" id="gSub">يسعدنا أن نقدم لك نتائج تحاليلك بشكل واضح</div>
@@ -298,6 +346,15 @@ function sevFrom(value,low,high){
 const SEV_LABEL={'normal':'طبيعي','abnormal':'خارج المدى','warning':'يحتاج متابعة','critical':'يستوجب مراجعة فورية','pending':'في الانتظار'};
 const SEV_BADGE={'normal':'badge-normal','abnormal':'badge-warning','warning':'badge-warning','critical':'badge-critical','pending':'badge-warning'};
 const SEV_DOT  ={'normal':'dot-normal','abnormal':'dot-warning','warning':'dot-warning','critical':'dot-critical','pending':'dot-warning'};
+
+/* Emotional reassurance text — reduces patient anxiety */
+const SEV_EMOTION={
+  normal:   {cls:'emo-ok',  msg:'✅ هذه النتيجة ضمن الحدود الطبيعية — لا داعي للقلق.'},
+  abnormal: {cls:'emo-warn',msg:'لا داعي للقلق — هذه النتيجة تحتاج فقط لمتابعة بسيطة مع طبيبك.'},
+  warning:  {cls:'emo-warn',msg:'لا داعي للقلق — هذه النتيجة تحتاج لمناقشتها مع طبيبك في أقرب وقت.'},
+  critical: {cls:'emo-crit',msg:'هذه النتيجة تستوجب مراجعة طبيبك — يُنصح بالتواصل معه قريباً، ولا مبرر للهلع.'},
+  pending:  {cls:'emo-warn',msg:'⏳ نتيجتك قيد التجهيز — ستظهر هنا بمجرد اكتمالها.'},
+};
 
 /* ── Deviation bar ─────────────────────────────────────────────────────── */
 function deviationBar(value,low,high){
@@ -420,15 +477,25 @@ function renderResults(results){
     const high=r.reference_high??r.normal_range_high;
     const date=(r.collected_at||r.created_at||'').slice(0,10);
     const lab=r.lab_name||'';
+    const labPhone=r.lab_phone||'';
     const hasAI=token.length>=10;
+    const emo=SEV_EMOTION[sev]||SEV_EMOTION.abnormal;
+    const reportUrl=token?'/r/'+encodeURIComponent(token):'';
+    const waMsg=token?encodeURIComponent('نتائجي من '+esc(lab)+': https://'+location.host+reportUrl):'';
     return `
     <article class="r-card" id="${cid}">
       <div class="r-card-head">
         <span class="r-status-dot ${SEV_DOT[sev]||'dot-warning'}"></span>
-        <span class="r-test-name">${esc(r.test_name||r.name||'تحليل')}</span>
+        <div style="flex:1;min-width:0">
+          <div class="r-test-name">${esc(r.test_name||r.name||'تحليل')}</div>
+          ${lab?`<div class="trust-badge">✔ معتمد من ${esc(lab)}</div>`:''}
+        </div>
         <span class="r-badge ${SEV_BADGE[sev]||'badge-warning'}">${SEV_LABEL[sev]||sev}</span>
       </div>
       <div class="r-body">
+        <!-- Emotional reassurance -->
+        <div class="r-emotion ${emo.cls}">${emo.msg}</div>
+
         <div class="r-value-row">
           <div>
             <span class="r-value" dir="ltr">${esc(String(val))}</span>
@@ -437,14 +504,24 @@ function renderResults(results){
           ${low!=null&&high!=null?`<div class="r-range" dir="ltr">${esc(String(low))} – ${esc(String(high))}</div>`:''}
         </div>
         ${deviationBar(r.value,low,high)}
-        ${(date||lab)?`<div class="r-meta">${date?'📅 '+date:''}${date&&lab?' &nbsp;·&nbsp; ':''}${lab?'🏥 '+esc(lab):''}</div>`:''}
+        ${date?`<div class="r-meta">📅 ${date}</div>`:''}
+
+        <!-- Primary actions -->
         <div class="r-actions">
-          ${hasAI?`<button class="btn-explain" id="exBtn_${cid}" onclick="explainResult('${esc(token)}','${cid}')">🤖 اشرح لي هذه النتيجة</button>`:''}
-          ${token?`<a class="btn-report" href="/r/${esc(token)}" target="_blank" rel="noopener">📄 التقرير الكامل</a>`:''}
+          ${hasAI?`<button class="btn-explain" id="exBtn_${cid}" onclick="explainResult('${esc(token)}','${cid}')">🤖 اشرح لي النتيجة</button>`:''}
+          ${reportUrl?`<a class="btn-report" href="${reportUrl}" target="_blank" rel="noopener">📄 التقرير</a>`:''}
         </div>
+
+        <!-- Secondary actions -->
+        <div class="r-actions-2">
+          ${labPhone?`<a class="btn-act" href="tel:${esc(labPhone)}">📞 اتصل بالمختبر</a>`:''}
+          ${reportUrl?`<a class="btn-act" href="https://wa.me/?text=${waMsg}" target="_blank" rel="noopener">📤 أرسل للطبيب</a>`:''}
+          ${reportUrl?`<button class="btn-act" onclick="copyLink('${esc(reportUrl)}')">🔗 نسخ الرابط</button>`:''}
+        </div>
+
         <!-- AI box (hidden until clicked) -->
         <div class="ai-box" id="aiBox_${cid}">
-          <div class="ai-header">🤖 الشرح بالذكاء الاصطناعي <span>للتوعية فقط</span></div>
+          <div class="ai-header">🤖 الشرح بالذكاء الاصطناعي <span>للتوعية فقط — ليس تشخيصاً</span></div>
           <div class="ai-critical-banner" id="aiCrit_${cid}"></div>
           <div id="aiAct_${cid}"></div>
           <div class="ai-text" id="aiTxt_${cid}"></div>
@@ -463,15 +540,35 @@ function renderResults(results){
   document.getElementById('summaryStrip').style.display='flex';
 }
 
-/* ── Load results ──────────────────────────────────────────────────────── */
+/* ── Copy link helper ──────────────────────────────────────────────────── */
+function copyLink(path){
+  const url=location.origin+path;
+  navigator.clipboard?.writeText(url).then(()=>toast('تم نسخ الرابط','ok')).catch(()=>{
+    const inp=document.createElement('input');inp.value=url;document.body.appendChild(inp);
+    inp.select();document.execCommand('copy');inp.remove();toast('تم نسخ الرابط','ok');
+  });
+}
+
+/* ── Load results (with offline fallback) ─────────────────────────────── */
+const CACHE_KEY='gula_results_cache';
 async function loadResults(){
   const area=document.getElementById('resultArea');
   area.innerHTML=renderSkeleton();
   try{
     const data=await apiFetch('/citizen/results');
-    const results=data?.results||data||[];
-    renderResults(Array.isArray(results)?results:[]);
+    const results=Array.isArray(data)?data:(data?.results||data||[]);
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify(results));}catch{}
+    renderResults(results);
   }catch(e){
+    // Offline or server error — try local cache
+    try{
+      const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+      if(cached&&cached.length){
+        document.getElementById('offlineBanner').style.display='flex';
+        renderResults(cached);
+        return;
+      }
+    }catch{}
     area.innerHTML=renderError(e.message);
   }
 }
@@ -511,12 +608,25 @@ function init(){
   try{citizen=JSON.parse(raw);}catch{location.replace('/citizen/login.html');return;}
 
   const name=citizen.name||citizen.full_name||'مريض';
-  const letter=(name.trim()[0]||'م');
   document.getElementById('gName').textContent='أهلاً، '+name;
   const h=new Date().getHours();
   document.getElementById('gSub').textContent=
     (h<12?'صباح الخير ☀️':h<17?'مساء الخير 🌤️':'مساء النور 🌙')
     +' — هذه آخر نتائج تحاليلك';
+
+  // Low-end device detection — disable animations to save CPU/battery
+  const conn=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  if(conn?.saveData||conn?.effectiveType==='2g'||conn?.effectiveType==='slow-2g'){
+    document.body.classList.add('low-end');
+  }
+
+  // Offline indicator
+  function checkOnline(){
+    document.getElementById('offlineBanner').style.display=navigator.onLine?'none':'flex';
+  }
+  window.addEventListener('online', ()=>{ checkOnline(); loadResults(); });
+  window.addEventListener('offline', checkOnline);
+  checkOnline();
 
   loadResults();
   loadOrders();
