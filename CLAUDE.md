@@ -110,3 +110,31 @@ make chaos           # chaos engineering tests
 4. `/metrics/prom` MUST require Bearer token in production
 5. `system_ready` MUST stay False until DB is confirmed reachable
 6. Optimistic lock (`version` column) MUST be checked on all result mutations
+
+## Migration Policy (MANDATORY — never violate)
+
+Violating these rules causes `NoSuchTableError` on fresh deploys and silent
+data drift between environments.
+
+| Rule | Why |
+|------|-----|
+| **Never modify an existing migration** | Existing DBs have already run it; changing it creates divergence |
+| **All schema changes = new revision only** | `alembic revision --autogenerate -m "describe_change"` |
+| **`20250322_0000` is immutable** | It is the bootstrap snapshot; treat it like a DB backup |
+| **Every migration must be idempotent** | Use `_has_column()`, `_table_exists()`, `_index_exists()` guards |
+| **New columns must be nullable or have a server_default** | Non-nullable columns without defaults break existing rows |
+| **Test every migration on a clean DB before PR** | Run `docker compose run --rm gula-backend alembic upgrade head` |
+
+### Quick reference
+
+```bash
+# Create a new migration
+cd backend && alembic revision --autogenerate -m "add_foo_column"
+
+# Test it on a clean database (same as CI migration-gate)
+docker compose down -v && docker compose up -d gula-postgres
+docker compose run --rm gula-backend alembic upgrade head
+
+# Downgrade one step (must not error)
+docker compose run --rm gula-backend alembic downgrade -1
+```
