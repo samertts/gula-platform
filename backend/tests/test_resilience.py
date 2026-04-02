@@ -27,9 +27,9 @@ class TestDatabaseResilience:
 
     def test_check_db_connection_returns_false_on_failure(self):
         """check_db_connection should return False, not crash, when DB is down."""
-        from backend.app.database import check_db_connection
+        from app.database import check_db_connection
         # Mock engine to simulate connection failure
-        with patch('backend.app.database.engine') as mock_engine:
+        with patch('app.database.engine') as mock_engine:
             mock_conn = MagicMock()
             mock_conn.__enter__ = MagicMock(side_effect=Exception("Connection refused"))
             mock_conn.__exit__ = MagicMock(return_value=False)
@@ -39,8 +39,8 @@ class TestDatabaseResilience:
 
     def test_check_db_connection_returns_true_on_success(self):
         """check_db_connection returns True when DB is available."""
-        from backend.app.database import check_db_connection
-        with patch('backend.app.database.engine') as mock_engine:
+        from app.database import check_db_connection
+        with patch('app.database.engine') as mock_engine:
             mock_conn = MagicMock()
             mock_conn.__enter__ = MagicMock(return_value=mock_conn)
             mock_conn.__exit__ = MagicMock(return_value=False)
@@ -50,7 +50,7 @@ class TestDatabaseResilience:
 
     def test_pool_status_returns_dict(self):
         """Pool status should return dict with expected keys."""
-        from backend.app.database import get_pool_status
+        from app.database import get_pool_status
         status = get_pool_status()
         assert isinstance(status, dict)
         assert "pool_size" in status
@@ -60,7 +60,7 @@ class TestDatabaseResilience:
 
     def test_db_session_generator_cleanup(self):
         """get_db generator should close cleanly on normal flow."""
-        from backend.app.database import get_db
+        from app.database import get_db
         gen = get_db()
         db = next(gen)
         assert db is not None
@@ -72,7 +72,7 @@ class TestDatabaseResilience:
 
     def test_db_session_rollback_on_exception(self):
         """get_db should rollback on exception."""
-        from backend.app.database import get_db
+        from app.database import get_db
         gen = get_db()
         db = next(gen)
         # Simulate error during request processing
@@ -89,7 +89,7 @@ class TestAuthResilience:
 
     def test_intrusion_detector_blocks_after_threshold(self):
         """IDS should block IP after max_attempts."""
-        from backend.app.security.intrusion_detection import IntrusionDetector
+        from app.security.intrusion_detection import IntrusionDetector
         detector = IntrusionDetector(max_attempts=5, window_seconds=60)
         for _ in range(5):
             assert detector.detect("192.168.1.100") == "ok"
@@ -97,7 +97,7 @@ class TestAuthResilience:
 
     def test_intrusion_detector_memory_safety(self):
         """Detector should not leak memory with many unique IPs."""
-        from backend.app.security.intrusion_detection import IntrusionDetector
+        from app.security.intrusion_detection import IntrusionDetector
         detector = IntrusionDetector(max_attempts=5, window_seconds=1)
         for i in range(500):
             detector.detect(f"10.0.{i // 256}.{i % 256}")
@@ -108,7 +108,7 @@ class TestAuthResilience:
 
     def test_intrusion_detector_reset(self):
         """Successful login should reset IP attempts."""
-        from backend.app.security.intrusion_detection import IntrusionDetector
+        from app.security.intrusion_detection import IntrusionDetector
         detector = IntrusionDetector(max_attempts=3, window_seconds=60)
         for _ in range(3):
             detector.detect("10.0.0.1")
@@ -118,7 +118,7 @@ class TestAuthResilience:
 
     def test_intrusion_detector_tracked_count(self):
         """tracked_count property should reflect actual state."""
-        from backend.app.security.intrusion_detection import IntrusionDetector
+        from app.security.intrusion_detection import IntrusionDetector
         detector = IntrusionDetector(max_attempts=5, window_seconds=60)
         assert detector.tracked_count == 0
         detector.detect("1.1.1.1")
@@ -130,7 +130,7 @@ class TestAuthResilience:
 
     def test_rate_limiter_blocks_after_limit(self):
         """Rate limiter should enforce limits."""
-        from backend.app.security.rate_limit import RateLimiter
+        from app.security.rate_limit import RateLimiter
         limiter = RateLimiter()
         for _ in range(10):
             assert limiter.check("test:ip_block", max_requests=10, window_seconds=60)
@@ -138,7 +138,7 @@ class TestAuthResilience:
 
     def test_rate_limiter_concurrent_access(self):
         """Rate limiter should handle concurrent requests safely."""
-        from backend.app.security.rate_limit import RateLimiter
+        from app.security.rate_limit import RateLimiter
         limiter = RateLimiter()
         results = []
         def check():
@@ -151,7 +151,7 @@ class TestAuthResilience:
 
     def test_rate_limiter_different_keys_independent(self):
         """Different rate limit keys should be independent."""
-        from backend.app.security.rate_limit import RateLimiter
+        from app.security.rate_limit import RateLimiter
         limiter = RateLimiter()
         # Exhaust key A
         for _ in range(5):
@@ -229,18 +229,18 @@ class TestConfigSafety:
 
     def test_config_loads_in_development(self):
         """Config should load without crash in development mode."""
-        from backend.app.config import APP_VERSION, APP_NAME
+        from app.config import APP_VERSION, APP_NAME
         assert APP_VERSION
         assert APP_NAME
 
     def test_jwt_expire_hours_valid(self):
         """JWT expiration should be reasonable."""
-        from backend.app.config import JWT_EXPIRE_HOURS
+        from app.config import JWT_EXPIRE_HOURS
         assert 1 <= JWT_EXPIRE_HOURS <= 24, f"JWT_EXPIRE_HOURS={JWT_EXPIRE_HOURS} is unreasonable"
 
     def test_config_has_required_fields(self):
         """Config module should expose all required settings."""
-        from backend.app import config
+        from app import config
         required = ['DATABASE_URL', 'SECRET_KEY', 'APP_NAME', 'APP_VERSION',
                      'JWT_ALGORITHM', 'JWT_EXPIRE_HOURS', 'ENCRYPTION_KEY',
                      'RESULT_TOKEN_LENGTH', 'RESULT_LINK_EXPIRE_DAYS']
@@ -250,9 +250,9 @@ class TestConfigSafety:
     def test_production_blocks_without_secrets(self):
         """Production mode should refuse to start without secrets."""
         # This test verifies the safety behavior exists
-        from backend.app.config import IS_PRODUCTION, ENV
-        # In test mode we're in development, so this should be False
-        assert ENV == "development"
+        from app.config import IS_PRODUCTION, ENV
+        # In CI, ENV may be "test" or "development" — both are non-production
+        assert ENV in ("development", "test"), f"Expected non-production ENV, got {ENV!r}"
         assert IS_PRODUCTION is False
 
 
@@ -263,7 +263,7 @@ class TestConcurrentLoad:
 
     def test_concurrent_dashboard_requests(self):
         """Simulate 20 concurrent dashboard requests."""
-        from backend.app.security.rate_limit import RateLimiter
+        from app.security.rate_limit import RateLimiter
         limiter = RateLimiter()
         allowed = 0
         for i in range(20):
@@ -274,7 +274,7 @@ class TestConcurrentLoad:
 
     def test_burst_login_attempts(self):
         """Simulate brute force attack - should block quickly."""
-        from backend.app.security.intrusion_detection import IntrusionDetector
+        from app.security.intrusion_detection import IntrusionDetector
         detector = IntrusionDetector(max_attempts=5, window_seconds=300)
         attacker_ip = "203.0.113.66"
         blocked_at = None
@@ -287,7 +287,7 @@ class TestConcurrentLoad:
 
     def test_many_ips_rate_limiter(self):
         """Rate limiter should handle many unique IPs without issues."""
-        from backend.app.security.rate_limit import RateLimiter
+        from app.security.rate_limit import RateLimiter
         limiter = RateLimiter()
         for i in range(200):
             result = limiter.check(f"mass:{i}", max_requests=10, window_seconds=60)
@@ -358,7 +358,7 @@ class TestModelIndexes:
 
     def test_lab_order_indexes(self):
         """LabOrder should have indexes on status, lab_id, created_at."""
-        from backend.app.models.lab_order import LabOrder
+        from app.models.lab_order import LabOrder
         cols = LabOrder.__table__.columns
         assert cols['status'].index is True, "lab_orders.status missing index"
         assert cols['lab_id'].index is True, "lab_orders.lab_id missing index"
@@ -367,7 +367,7 @@ class TestModelIndexes:
 
     def test_lab_user_indexes(self):
         """LabUser should have indexes on email, is_active, role, lab_id."""
-        from backend.app.models.lab_user import LabUser
+        from app.models.lab_user import LabUser
         cols = LabUser.__table__.columns
         assert cols['email'].index is True, "lab_users.email missing index"
         assert cols['is_active'].index is True, "lab_users.is_active missing index"
@@ -376,13 +376,13 @@ class TestModelIndexes:
 
     def test_lab_result_flag_index(self):
         """LabResult should have index on flag column."""
-        from backend.app.models.lab_result import LabResult
+        from app.models.lab_result import LabResult
         cols = LabResult.__table__.columns
         assert cols['flag'].index is True, "lab_results.flag missing index"
 
     def test_audit_log_indexes(self):
         """AuditLog should have indexes on user_id, action, created_at."""
-        from backend.app.models.audit_log import AuditLog
+        from app.models.audit_log import AuditLog
         cols = AuditLog.__table__.columns
         assert cols['user_id'].index is True, "audit_logs.user_id missing index"
         assert cols['action'].index is True, "audit_logs.action missing index"
@@ -390,7 +390,7 @@ class TestModelIndexes:
 
     def test_sample_indexes(self):
         """Sample should have indexes on order_id, status, barcode."""
-        from backend.app.models.sample import Sample
+        from app.models.sample import Sample
         cols = Sample.__table__.columns
         assert cols['order_id'].index is True, "samples.order_id missing index"
         assert cols['status'].index is True, "samples.status missing index"
@@ -398,14 +398,14 @@ class TestModelIndexes:
 
     def test_quality_control_indexes(self):
         """QualityControl should have indexes on lab_id, test_code."""
-        from backend.app.models.quality_control import QualityControl
+        from app.models.quality_control import QualityControl
         cols = QualityControl.__table__.columns
         assert cols['lab_id'].index is True, "quality_controls.lab_id missing index"
         assert cols['test_code'].index is True, "quality_controls.test_code missing index"
 
     def test_lab_is_active_index(self):
         """Lab should have index on is_active."""
-        from backend.app.models.lab import Lab
+        from app.models.lab import Lab
         cols = Lab.__table__.columns
         assert cols['is_active'].index is True, "labs.is_active missing index"
 
