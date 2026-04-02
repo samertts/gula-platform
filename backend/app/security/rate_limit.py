@@ -27,6 +27,20 @@ from .redis_client import cache
 logger = logging.getLogger("gula.rate_limit")
 
 
+class RateLimiter:
+    """Thin class wrapper around _check() for direct use and unit testing.
+
+    Usage (without a Request object — e.g. in tests or background tasks):
+        limiter = RateLimiter()
+        allowed = limiter.check("my-key", max_requests=5, window_seconds=60)
+    """
+
+    def check(self, key: str, max_requests: int, window_seconds: int) -> bool:
+        """Returns True if within limits, False if the limit is exceeded."""
+        allowed, _, _ = _check(key, max_requests, window_seconds)
+        return allowed
+
+
 def _is_private_ip(ip: str) -> bool:
     """Return True for RFC-1918 / loopback / Docker addresses."""
     try:
@@ -50,10 +64,10 @@ def get_client_ip(request: Request) -> str:
     direct_ip = request.client.host if request.client else "unknown"
 
     if _is_private_ip(direct_ip):
-        real_ip = request.headers.get("X-Real-IP", "").strip()
+        real_ip = (request.headers.get("X-Real-IP") or "").strip()
         if real_ip:
             return real_ip
-        forwarded = request.headers.get("X-Forwarded-For", "").strip()
+        forwarded = (request.headers.get("X-Forwarded-For") or "").strip()
         if forwarded:
             first_ip = forwarded.split(",")[0].strip()
             if first_ip:
