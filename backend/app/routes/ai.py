@@ -744,11 +744,37 @@ async def interpret_result_public(token: str) -> JSONResponse:
         finally:
             db2.close()
 
-    # ── Call AI with automatic provider fallback ──────────────────────────────
-    prompt = _build_interpret_prompt(results_data, patient_context=patient_context)
-    text, provider_used = await _call_ai_with_fallback(prompt)
+    # ── Try structured JSON AI output first, fall back to plain text ─────────
+    from app.services.structured_ai import get_structured_ai
+    structured_engine = get_structured_ai()
+    structured_result = await structured_engine.interpret(results_data, patient_context=patient_context)
 
-    # ── Post-generation safety gate ───────────────────────────────────────────
+    if structured_result.usable and structured_result.data:
+        # Use structured output — extract text from the validated JSON
+        s_data = structured_result.data
+        # Rebuild text from structured items for display
+        lines = []
+        for i, item in enumerate(s_data.get("items", []), 1):
+            lines.append(f"{i}. {item.get('test_name', '')}: {item.get('explanation_ar', '')}")
+        action_ar = s_data.get("action_ar", action["ar"])
+        text = s_data.get("summary", "") + "\n\n" + "\n".join(lines)
+        if not text.strip():
+            text = s_data.get("summary", "")
+        if action_ar and action_ar not in text:
+            text = text.rstrip() + "\n" + action_ar
+        if _DISCLAIMER not in text:
+            text = text.rstrip() + "\n" + _DISCLAIMER
+        provider_used   = structured_result.provider
+        structured_data = s_data
+        structured_valid = True
+    else:
+        # Fall back to plain-text AI
+        prompt = _build_interpret_prompt(results_data, patient_context=patient_context)
+        text, provider_used = await _call_ai_with_fallback(prompt)
+        structured_data  = None
+        structured_valid = False
+
+    # ── Post-generation safety gate (applies to both paths) ──────────────────
     for phrase in _FORBIDDEN_PHRASES:
         if phrase in text:
             logger.warning("[AI] Stripped forbidden phrase: %r", phrase)
@@ -761,20 +787,21 @@ async def interpret_result_public(token: str) -> JSONResponse:
 
     logger.info(
         "[AI] interpreted token=%.8s provider=%s tests=%d severity=%s "
-        "critical=%d confidence=%s conflicts=%d",
+        "critical=%d confidence=%s conflicts=%d structured=%s",
         token, provider_used, len(results_data), overall_sev,
-        len(critical_flags), confidence["level"], len(conflicts),
+        len(critical_flags), confidence["level"], len(conflicts), structured_valid,
     )
 
     payload = {
-        "interpretation":   text,
-        "provider":         provider_used,
-        "severity":         overall_sev,
-        "critical_flags":   critical_flags,
-        "results_severity": results_severity,
-        "conflicts":        conflicts,
-        "confidence":       confidence,
-        "action_guidance":  action,
+        "interpretation":    text,
+        "provider":          provider_used,
+        "severity":          overall_sev,
+        "critical_flags":    critical_flags,
+        "results_severity":  results_severity,
+        "conflicts":         conflicts,
+        "confidence":        confidence,
+        "action_guidance":   action,
+        "structured_output": structured_data,   # None if fallback to plain text
     }
     _INTERPRET_CACHE[cache_key] = (payload, time.monotonic() + _CACHE_TTL)
     return JSONResponse(payload)

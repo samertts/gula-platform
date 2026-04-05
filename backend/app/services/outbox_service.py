@@ -37,6 +37,7 @@ from sqlalchemy.orm import Session
 
 from app.core.events import events
 from app.models.outbox import MAX_ATTEMPTS, OutboxEvent
+from app.models.processed_event import is_processed, mark_processed, move_to_dlq
 
 logger = logging.getLogger("gula.outbox")
 
@@ -105,6 +106,14 @@ class OutboxWorker:
         )
 
         for event in events_to_process:
+            # Idempotency guard: skip if already processed by this consumer
+            if is_processed(db, event.id, consumer="outbox_worker"):
+                event.status = "done"
+                db.flush()
+                summary["skipped"] += 1
+                logger.debug("[OUTBOX] skipped duplicate event_id=%d (already processed)", event.id)
+                continue
+
             event.status   = "processing"
             event.attempts = (event.attempts or 0) + 1
             db.flush()
@@ -116,6 +125,13 @@ class OutboxWorker:
                 event.status       = "done"
                 event.processed_at = now
                 event.last_error   = None
+
+                # Record idempotency token so duplicate deliveries are skipped
+                mark_processed(
+                    db, event.id,
+                    consumer="outbox_worker",
+                    event_type=event.event_type,
+                )
 
                 logger.info(
                     "[OUTBOX] event_type=%s id=%d aggregate=%s/%s dispatched_to=%d handlers",
@@ -129,10 +145,23 @@ class OutboxWorker:
                 event.last_error = str(exc)[:500]
                 if event.attempts >= MAX_ATTEMPTS:
                     event.status = "failed"
-                    logger.error(
-                        "[OUTBOX] PERMANENTLY FAILED event_type=%s id=%d after %d attempts: %s",
-                        event.event_type, event.id, event.attempts, exc,
-                    )
+                    # Move to Dead Letter Queue for manual ops review
+                    try:
+                        move_to_dlq(
+                            db,
+                            original_id = event.id,
+                            event_type  = event.event_type,
+                            payload     = event.payload,
+                            attempts    = event.attempts,
+                            last_error  = event.last_error or "",
+                            consumer    = "outbox_worker",
+                        )
+                        logger.error(
+                            "[OUTBOX] MOVED TO DLQ event_type=%s id=%d after %d attempts: %s",
+                            event.event_type, event.id, event.attempts, exc,
+                        )
+                    except Exception as dlq_exc:
+                        logger.error("[OUTBOX] DLQ write failed for event_id=%d: %s", event.id, dlq_exc)
                     summary["failed"] += 1
                 else:
                     event.status = "failed"  # will be retried next cycle

@@ -483,6 +483,12 @@ from .routes import gbn as gbn_routes
 from .models.blood import Donor, BloodUnit, PlasmaProduct, BloodRequest, Transfusion, BloodTransfer  # noqa: F401  register with Base
 app.include_router(gbn_routes.router)
 
+# Claims + Fraud Detection
+from .routes import claims as claims_routes
+from .models.claim import Claim, FraudScore  # noqa: F401  register with Base
+from .models.processed_event import ProcessedEvent, DLQEvent  # noqa: F401  register with Base
+app.include_router(claims_routes.router)
+
 
 # ===== HEALTH ALERT WATCHDOG =====
 async def _health_alert_loop():
