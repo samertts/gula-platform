@@ -478,6 +478,11 @@ app.include_router(ai_routes.router)
 # AI System Optimizer (admin-only, read-only performance monitoring)
 app.include_router(optimizer_routes.router)
 
+# GULA Blood Network (GBN) — national blood supply management
+from .routes import gbn as gbn_routes
+from .models.blood import Donor, BloodUnit, PlasmaProduct, BloodRequest, Transfusion, BloodTransfer  # noqa: F401  register with Base
+app.include_router(gbn_routes.router)
+
 
 # ===== HEALTH ALERT WATCHDOG =====
 async def _health_alert_loop():
