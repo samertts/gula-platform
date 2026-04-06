@@ -65,8 +65,7 @@ def upgrade() -> None:
     # ── Audit Logs ────────────────────────────────────────────────────────────
     # Compliance reporting: filter by time range and action
     _idx("ix_audit_logs_created_action",   "audit_logs", "created_at DESC, action")
-    # Per-lab audit trail
-    _idx("ix_audit_logs_lab_created",      "audit_logs", "lab_id, created_at DESC")
+    # Note: audit_logs has no lab_id column — per-lab filtering uses user_id join
     # Chain hash verification
     _idx("ix_audit_logs_chain_hash",       "audit_logs", "chain_hash")
 
@@ -83,8 +82,7 @@ def upgrade() -> None:
     _idx("ix_users_nid",     "users",   "national_id_hash")
 
     # ── Samples ───────────────────────────────────────────────────────────────
-    # Barcode scan lookup
-    _idx("ix_samples_barcode_lab",  "samples", "barcode, lab_id")
+    # Barcode scan lookup (samples has no lab_id — barcode is globally unique)
     _idx("ix_samples_order_status", "samples", "order_id, status")
 
     # ── Labs ─────────────────────────────────────────────────────────────────
@@ -97,10 +95,10 @@ def downgrade() -> None:
         "ix_patients_phone_lookup", "ix_patients_lab_name", "ix_patients_nid_hash",
         "ix_lab_orders_lab_status_date", "ix_lab_orders_patient_lab",
         "ix_lab_results_order_test", "ix_lab_results_token_hash", "ix_lab_results_created_at",
-        "ix_audit_logs_created_action", "ix_audit_logs_lab_created", "ix_audit_logs_chain_hash",
+        "ix_audit_logs_created_action", "ix_audit_logs_chain_hash",
         "ix_lab_users_email", "ix_lab_users_lab_active",
         "ix_users_email", "ix_users_phone", "ix_users_nid",
-        "ix_samples_barcode_lab", "ix_samples_order_status",
+        "ix_samples_order_status",
         "ix_labs_active",
     ]
     for idx in indexes:
