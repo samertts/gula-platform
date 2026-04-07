@@ -468,6 +468,10 @@ app.include_router(tiers_routes.router)
 # Citizen / patient portal
 app.include_router(citizen_portal_routes.router)
 
+# Claims / Insurance module
+from .routes import claims as claims_routes
+app.include_router(claims_routes.router)
+
 # Legacy routes (kept for API compatibility)
 app.include_router(national_identity.router)
 app.include_router(insurance.router)
