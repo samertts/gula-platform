@@ -15,6 +15,11 @@ Checks:
   8.  Status machine validity        no illegal state transitions in DB
   9.  Hash-chain integrity           audit_logs hash chain unbroken (if populated)
   10. Orphan detection               claim_items without a parent claim
+  11. Temporal integrity             no silent delivery windows (unprocessed >5 min)
+  12. Replay safety                  no event processed twice, no cross-tenant key collision
+  13. Processing latency             avg <30s, p95 <120s (last-hour SLO)
+  14. Backlog explosion              <100 healthy / 100-1000 warn / >1000 critical
+  15. Schema drift                   alembic_version matches expected head, no split-brain
 
 Usage:
     # Read DATABASE_URL from environment (same as the backend):
@@ -501,6 +506,206 @@ def check_hash_chain(db: DB) -> None:
              "audit logs may have been tampered with")
 
 
+# ── Check 11: Temporal Integrity — no silent delivery window ─────────────────
+
+def check_temporal_integrity(db: DB) -> None:
+    section("CHECK 11: Temporal Integrity — No Silent Delivery Windows")
+
+    if not db.table_exists("outbox_events"):
+        warn("'outbox_events' table not found"); return
+
+    # Events still unprocessed after 5 minutes → delivery window open
+    window_open = db.scalar("""
+        SELECT COUNT(*) FROM outbox_events
+        WHERE processed_at IS NULL
+          AND status NOT IN ('failed')
+          AND created_at < NOW() - INTERVAL '5 minutes'
+    """)
+    if window_open == 0:
+        ok("No unprocessed events older than 5 minutes (delivery window closed)")
+    else:
+        fail(f"{window_open} events unprocessed >5 min",
+             "delivery window open — data may not have reached external system")
+
+    # Events where processed_at < created_at (time-travel bug — clock skew)
+    time_travel = db.scalar("""
+        SELECT COUNT(*) FROM outbox_events
+        WHERE processed_at IS NOT NULL
+          AND processed_at < created_at
+    """)
+    if time_travel > 0:
+        fail(f"{time_travel} events with processed_at < created_at",
+             "clock skew or timestamp corruption — investigate immediately")
+    else:
+        ok("No timestamp anomalies (processed_at ≥ created_at on all processed events)")
+
+
+# ── Check 12: Replay Safety — no event processed twice ───────────────────────
+
+def check_replay_safety(db: DB) -> None:
+    section("CHECK 12: Replay Safety — No Event Processed Twice")
+
+    if not db.table_exists("outbox_events"):
+        warn("'outbox_events' table not found"); return
+
+    # Multiple outbox events for the same (aggregate_id, event_type) pair
+    replays = db.all("""
+        SELECT aggregate_id, event_type, COUNT(*) AS cnt
+        FROM outbox_events
+        WHERE aggregate_type = 'claim'
+          AND event_type = 'claim_submitted'
+          AND aggregate_id IS NOT NULL
+        GROUP BY aggregate_id, event_type
+        HAVING COUNT(*) > 1
+        LIMIT 10
+    """)
+    if replays:
+        fail("Duplicate outbox events for same claim (replay risk)",
+             f"{len(replays)} claim IDs: {[(r[0], r[2]) for r in replays]}")
+    else:
+        ok("No duplicate claim_submitted events (replay safe)")
+
+    # Idempotency key re-use across different labs (cross-tenant leak)
+    if db.table_exists("claims"):
+        cross_tenant = db.scalar("""
+            SELECT COUNT(*) FROM (
+                SELECT idempotency_key, COUNT(DISTINCT lab_id) AS labs
+                FROM claims
+                WHERE idempotency_key IS NOT NULL
+                GROUP BY idempotency_key
+                HAVING COUNT(DISTINCT lab_id) > 1
+            ) AS t
+        """)
+        if cross_tenant > 0:
+            fail(f"{cross_tenant} idempotency keys used across multiple labs",
+                 "CRITICAL: cross-tenant key collision — investigate data isolation")
+        else:
+            ok("Idempotency keys are lab-scoped (no cross-tenant collision)")
+
+
+# ── Check 13: Processing Latency ─────────────────────────────────────────────
+
+def check_processing_latency(db: DB) -> None:
+    section("CHECK 13: Outbox Processing Latency (SLO: avg < 30s, p95 < 120s)")
+
+    if not db.table_exists("outbox_events"):
+        warn("'outbox_events' table not found"); return
+
+    stats = db.one("""
+        SELECT
+            AVG(EXTRACT(EPOCH FROM (processed_at - created_at)))::numeric(10,2)  AS avg_s,
+            PERCENTILE_CONT(0.95) WITHIN GROUP (
+                ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))
+            )::numeric(10,2)                                                     AS p95_s,
+            MAX(EXTRACT(EPOCH FROM (processed_at - created_at)))::numeric(10,2)  AS max_s,
+            COUNT(*)                                                              AS sample
+        FROM outbox_events
+        WHERE processed_at IS NOT NULL
+          AND created_at > NOW() - INTERVAL '1 hour'
+    """)
+
+    if not stats or stats[3] == 0:
+        warn("No processed events in the last hour — cannot measure latency")
+        return
+
+    avg_s, p95_s, max_s, sample = float(stats[0] or 0), float(stats[1] or 0), float(stats[2] or 0), int(stats[3])
+    info(f"Last-hour sample={sample}  avg={avg_s:.1f}s  p95={p95_s:.1f}s  max={max_s:.1f}s")
+
+    if avg_s < 30:
+        ok(f"Average latency {avg_s:.1f}s < 30s SLO")
+    elif avg_s < 120:
+        warn(f"Average latency {avg_s:.1f}s — approaching SLO limit")
+    else:
+        fail(f"Average latency {avg_s:.1f}s exceeds 30s SLO", "worker may be overloaded")
+
+    if p95_s < 120:
+        ok(f"p95 latency {p95_s:.1f}s < 120s SLO")
+    else:
+        fail(f"p95 latency {p95_s:.1f}s exceeds 120s SLO")
+
+
+# ── Check 14: Backlog Explosion ───────────────────────────────────────────────
+
+def check_backlog(db: DB) -> None:
+    section("CHECK 14: Outbox Backlog — Explosion Detection")
+
+    if not db.table_exists("outbox_events"):
+        warn("'outbox_events' table not found"); return
+
+    backlog = db.scalar("""
+        SELECT COUNT(*) FROM outbox_events WHERE processed_at IS NULL
+    """)
+    failed_count = db.scalar("""
+        SELECT COUNT(*) FROM outbox_events WHERE status = 'failed'
+    """)
+
+    info(f"Current backlog: {backlog} unprocessed | {failed_count} permanently failed")
+
+    # Thresholds
+    if backlog < 100:
+        ok(f"Backlog healthy ({backlog} events)")
+    elif backlog < 1000:
+        warn(f"Backlog growing ({backlog} events)", "monitor worker throughput")
+    else:
+        fail(f"Backlog explosion ({backlog} events)", "worker not keeping up — scale or investigate")
+
+    if failed_count == 0:
+        ok("No permanently failed events")
+    elif failed_count < 10:
+        warn(f"{failed_count} permanently failed events", "check logs for root cause")
+    else:
+        fail(f"{failed_count} permanently failed events", "delivery failures accumulating")
+
+    # Growth rate: compare last 5 min vs prior 5 min
+    recent = db.scalar("""
+        SELECT COUNT(*) FROM outbox_events
+        WHERE processed_at IS NULL
+          AND created_at > NOW() - INTERVAL '5 minutes'
+    """)
+    prior = db.scalar("""
+        SELECT COUNT(*) FROM outbox_events
+        WHERE processed_at IS NULL
+          AND created_at BETWEEN NOW() - INTERVAL '10 minutes' AND NOW() - INTERVAL '5 minutes'
+    """)
+    if prior > 0 and recent > prior * 2:
+        warn(f"Backlog growth accelerating (last 5m={recent} vs prior 5m={prior})",
+             "unusual traffic spike or worker slowdown")
+    elif recent == 0 and backlog > 0:
+        warn("No new events queued in last 5 min but backlog exists",
+             "may indicate processing stalled")
+
+
+# ── Check 15: Schema Drift — migration version consistent ────────────────────
+
+def check_schema_drift(db: DB) -> None:
+    section("CHECK 15: Schema Drift — Migration Version")
+
+    if not db.table_exists("alembic_version"):
+        fail("alembic_version table missing — migrations never ran or DB is wrong"); return
+
+    versions = db.all("SELECT version_num FROM alembic_version")
+    if not versions:
+        fail("alembic_version is empty — no migration applied"); return
+
+    current = versions[0][0]
+    ok(f"Current migration: {current}")
+
+    # Expected head (the latest migration file we know about)
+    expected_head = "20260407_0001"
+    if current == expected_head:
+        ok(f"Schema is at expected head ({expected_head})")
+    else:
+        warn(f"Schema version {current} ≠ expected {expected_head}",
+             "run: alembic upgrade head")
+
+    # Multiple version rows = split-brain migration (should never happen)
+    if len(versions) > 1:
+        fail("Multiple rows in alembic_version",
+             f"versions={[r[0] for r in versions]} — DB may be in inconsistent state")
+    else:
+        ok("Single version row in alembic_version (no split-brain)")
+
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 
 def print_summary(strict: bool) -> int:
@@ -566,7 +771,7 @@ def main() -> int:
             sys.exit(2)
 
     if args.checks == "all":
-        run = set(range(1, 11))
+        run = set(range(1, 16))
     else:
         run = set(int(c) for c in args.checks.split(","))
 
@@ -599,6 +804,11 @@ def main() -> int:
         if 8  in run: check_orphans(db)
         if 9  in run: check_audit_coverage(db)
         if 10 in run: check_hash_chain(db)
+        if 11 in run: check_temporal_integrity(db)
+        if 12 in run: check_replay_safety(db)
+        if 13 in run: check_processing_latency(db)
+        if 14 in run: check_backlog(db)
+        if 15 in run: check_schema_drift(db)
     finally:
         db.close()
 
