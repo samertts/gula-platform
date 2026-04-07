@@ -197,7 +197,7 @@ class RepairEngine:
             from app.models.outbox import OutboxEvent
             db = SessionLocal()
             try:
-                return db.query(OutboxEvent).filter(OutboxEvent.delivered_at.is_(None)).count()
+                return db.query(OutboxEvent).filter(OutboxEvent.processed_at.is_(None)).count()
             finally:
                 db.close()
         except Exception:
