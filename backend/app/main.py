@@ -550,7 +550,7 @@ async def _health_alert_loop():
                 _db2 = _SL()
                 try:
                     queue_backlog = _db2.query(_OE).filter(
-                        _OE.delivered_at.is_(None)
+                        _OE.processed_at.is_(None)
                     ).count()
                 finally:
                     _db2.close()
@@ -924,7 +924,7 @@ def health_deep():
         _db2 = SessionLocal()
         try:
             queue_backlog = _db2.query(OutboxEvent).filter(
-                OutboxEvent.delivered_at.is_(None)
+                OutboxEvent.processed_at.is_(None)
             ).count()
         finally:
             _db2.close()
