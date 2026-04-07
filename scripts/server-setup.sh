@@ -178,41 +178,129 @@ EOF
 systemctl enable --now fail2ban
 ok "Fail2ban configured"
 
-# ── 9. Create .env file template ─────────────────────────────────────────────
+# ── 9. Create .env file (all required secrets) ────────────────────────────────
 if [ ! -f "${REPO_DIR}/.env" ]; then
-  log "Creating .env template..."
-  gen_secret() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
-  PG_PASS=$(gen_secret)
-  REDIS_PASS=$(gen_secret)
+  log "Generating production .env with all required secrets..."
+
+  # Helpers
+  gen_urlsafe()  { python3 -c 'import secrets; print(secrets.token_urlsafe(64))'; }
+  gen_hex32()    { python3 -c 'import secrets; print(secrets.token_hex(32))'; }
+  gen_fernet()   { python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())' 2>/dev/null \
+                   || python3 -c 'import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())'; }
+  gen_password() { python3 -c 'import secrets,string; chars=string.ascii_letters+string.digits+"!@#%^&*"; print("".join(secrets.choice(chars) for _ in range(24)))'; }
+
+  PG_PASS=$(gen_password)
+  REDIS_PASS=$(gen_password)
+  ADMIN_PASS=$(gen_password)
+  SECRET_KEY=$(gen_urlsafe)
+  REFRESH_SECRET=$(gen_urlsafe)
+  ENC_KEY=$(gen_fernet)
+  NID_KEY=$(gen_hex32)
+  DEVICE_KEY=$(gen_hex32)
+  METRICS_TOKEN=$(gen_urlsafe)
 
   cat > "${REPO_DIR}/.env" << ENVEOF
-# ===== GULA PLATFORM - Production Environment =====
-# Generated: $(date)
-# Server: $(hostname -I | awk '{print $1}')
+# ===== GULA PLATFORM — Production Environment =====
+# Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+# Server:    $(hostname -I | awk '{print $1}') (gula-core-server · DO FRA1)
+# WARNING:   Never commit this file. chmod 600 always.
 
-# Database
+ENV=production
+
+# ── Database ──────────────────────────────────────────────────────────────────
 POSTGRES_PASSWORD=${PG_PASS}
 DATABASE_URL=postgresql://postgres:${PG_PASS}@postgres:5432/labdb
 
-# Cache
+# ── Redis ─────────────────────────────────────────────────────────────────────
 REDIS_PASSWORD=${REDIS_PASS}
 REDIS_URL=redis://:${REDIS_PASS}@redis:6379
 
-# Security
-SECRET_KEY=$(gen_secret)
-ENCRYPTION_KEY=$(gen_secret)
-NID_HMAC_KEY=$(gen_secret)
+# ── JWT Secrets ───────────────────────────────────────────────────────────────
+SECRET_KEY=${SECRET_KEY}
+REFRESH_TOKEN_SECRET=${REFRESH_SECRET}
+REFRESH_TOKEN_EXPIRE_DAYS=30
+JWT_EXPIRE_MINUTES=30
 
-# App
-ENVIRONMENT=production
-DOMAIN=${DOMAIN}
+# ── Encryption ────────────────────────────────────────────────────────────────
+ENCRYPTION_KEY=${ENC_KEY}
+
+# ── HMAC Keys ─────────────────────────────────────────────────────────────────
+NID_HMAC_KEY=${NID_KEY}
+DEVICE_HMAC_KEY=${DEVICE_KEY}
+ALLOWED_DEVICE_IDS=
+
+# ── Admin Bootstrap ───────────────────────────────────────────────────────────
+GULA_ADMIN_EMAIL=admin@${DOMAIN}
+GULA_ADMIN_NAME=GULA Platform Admin
+GULA_ADMIN_PASSWORD=${ADMIN_PASS}
+
+# ── Platform ──────────────────────────────────────────────────────────────────
+BASE_URL=https://${DOMAIN}
+CORS_ORIGINS=https://${DOMAIN},http://${DOMAIN}
+ENABLE_API_DOCS=false
+
+# ── Concurrency & Performance (4 GB / 2 vCPU) ────────────────────────────────
+WEB_CONCURRENCY=3
+DB_POOL_SIZE=6
+DB_MAX_OVERFLOW=12
+DB_POOL_TIMEOUT=10
+DB_POOL_RECYCLE=1800
+MAX_CONCURRENT_REQUESTS=50
+MAX_REQUEST_BODY_MB=2
+
+# ── Docker Resource Limits ────────────────────────────────────────────────────
+PG_SHARED_BUFFERS=512MB
+PG_MEM_LIMIT=896m
+PG_CPUS=1.0
+BACKEND_MEM_LIMIT=1536m
+BACKEND_CPUS=1.5
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+GRAFANA_PASSWORD=${ADMIN_PASS}
+METRICS_BEARER_TOKEN=${METRICS_TOKEN}
+RATE_LIMIT_BLOCK_DURATION_SECONDS=3600
+
+# ── AI (Ollama local — free, no API key needed) ───────────────────────────────
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_CLINICAL_MODEL=llama3.2:3b
+OLLAMA_MODEL=llama3.2:1b
+OLLAMA_TIMEOUT=20
+GEMINI_API_KEY=
+GROQ_API_KEY=
+AI_PROVIDER=
+
+# ── Control Layer ─────────────────────────────────────────────────────────────
+CONTROL_LAYER_ENABLED=true
+KILL_SWITCH=false
+GULA_AUTO_FIX=false
+ANTHROPIC_API_KEY=
+GULA_AUDIT_MODEL=claude-sonnet-4-6
+
+# ── Alerting (Telegram/Discord webhook — leave empty to disable) ──────────────
+ALERT_WEBHOOK_URL=
+HEALTH_ALERT_INTERVAL_SECONDS=60
+SENTRY_DSN=
+SENTRY_TRACES_RATE=0.05
 ENVEOF
 
   chown "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/.env"
   chmod 600 "${REPO_DIR}/.env"
-  ok ".env created"
+  ok ".env generated with all secrets"
+
+  # Print bootstrap credentials for the operator (shown ONCE — save these!)
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo -e "${YELLOW} SAVE THESE CREDENTIALS — SHOWN ONLY ONCE${NC}"
+  echo "════════════════════════════════════════════════════════════"
+  echo "  Admin email    : admin@${DOMAIN}"
+  echo "  Admin password : ${ADMIN_PASS}"
+  echo "  PG password    : ${PG_PASS}"
+  echo "  Redis password : ${REDIS_PASS}"
+  echo "  Metrics token  : ${METRICS_TOKEN}"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
 else
-  ok ".env already exists"
+  ok ".env already exists — skipping generation"
 fi
 
 # ── 10. Swap space (important for small droplets) ─────────────────────────────
@@ -306,13 +394,21 @@ SUDOEOF
 chmod 440 "$SUDOERS_FILE"
 
 # Install cron for deploy user
-CRON_JOB="*/5 * * * * GULA_DIR=${REPO_DIR} ${REPO_DIR}/scripts/auto_heal.sh >> /var/log/gula-heal.log 2>&1"
-( crontab -u "$DEPLOY_USER" -l 2>/dev/null | grep -v "auto_heal" ; echo "$CRON_JOB" ) \
-    | crontab -u "$DEPLOY_USER" -
+# auto_heal.sh   — bash watchdog (every 5 min): checks containers, restarts if down
+# self_heal.py   — Python ASHS (every 1 min):  checks API health, triggers repair actions
+CRON_HEAL="*/5 * * * * GULA_DIR=${REPO_DIR} ${REPO_DIR}/scripts/auto_heal.sh >> /var/log/gula-heal.log 2>&1"
+CRON_ASHS="* * * * * cd ${REPO_DIR} && python3 scripts/self_heal.py >> /var/log/gula-ashs.log 2>&1"
+(
+    crontab -u "$DEPLOY_USER" -l 2>/dev/null \
+        | grep -v "auto_heal" \
+        | grep -v "self_heal"
+    echo "$CRON_HEAL"
+    echo "$CRON_ASHS"
+) | crontab -u "$DEPLOY_USER" -
 
-touch /var/log/gula-heal.log
-chown "${DEPLOY_USER}:${DEPLOY_USER}" /var/log/gula-heal.log
-ok "Watchdog cron installed (every 5 minutes)"
+touch /var/log/gula-heal.log /var/log/gula-ashs.log
+chown "${DEPLOY_USER}:${DEPLOY_USER}" /var/log/gula-heal.log /var/log/gula-ashs.log
+ok "Watchdog crons installed (auto_heal every 5 min, ASHS every 1 min)"
 
 # ── 14. Run nginx-ensure.sh now to start nginx correctly ─────────────────────
 log "Starting nginx with correct config..."

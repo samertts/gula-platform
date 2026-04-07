@@ -174,7 +174,7 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
         _db2 = SessionLocal()
         try:
             queue_backlog = _db2.query(OutboxEvent).filter(
-                OutboxEvent.delivered_at.is_(None)
+                OutboxEvent.processed_at.is_(None)
             ).count()
         finally:
             _db2.close()
