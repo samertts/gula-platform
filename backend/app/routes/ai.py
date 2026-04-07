@@ -54,9 +54,19 @@ logger = logging.getLogger("gula.ai")
 # ── Free AI provider config ───────────────────────────────────────────────────
 _GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 _GROQ_KEY   = os.getenv("GROQ_API_KEY", "")
+
+# Ollama — completely free, runs locally on the server (no API key required).
+# Install: curl -fsSL https://ollama.com/install.sh | sh && ollama pull llama3.2:3b
+_OLLAMA_BASE_URL      = os.getenv("OLLAMA_BASE_URL",      "http://localhost:11434")
+_OLLAMA_CLINICAL_MODEL = os.getenv("OLLAMA_CLINICAL_MODEL", "llama3.2:3b")
+_OLLAMA_TIMEOUT        = float(os.getenv("OLLAMA_TIMEOUT",  "20"))
+
+# Auto-detect provider priority: Ollama (local/free) → Gemini → Groq → none
 _AI_PROVIDER = os.getenv(
     "AI_PROVIDER",
-    "gemini" if _GEMINI_KEY else "groq" if _GROQ_KEY else "none",
+    "ollama" if _OLLAMA_BASE_URL else
+    "gemini" if _GEMINI_KEY else
+    "groq"   if _GROQ_KEY   else "none",
 )
 _GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -324,6 +334,67 @@ def list_operations():
     }
 
 
+@router.get("/providers", summary="حالة مزودي الذكاء الاصطناعي")
+async def list_ai_providers():
+    """
+    Return which AI providers are configured and their reachability status.
+    Useful for operators to verify the fallback chain before going live.
+    """
+    statuses = []
+
+    # Ollama — test by calling /api/tags (lightweight list-models endpoint)
+    ollama_ok = False
+    ollama_models: list[str] = []
+    try:
+        async with httpx.AsyncClient(timeout=3) as client:
+            r = await client.get(f"{_OLLAMA_BASE_URL}/api/tags")
+            if r.status_code == 200:
+                ollama_ok = True
+                ollama_models = [m["name"] for m in r.json().get("models", [])]
+    except Exception:
+        pass
+    statuses.append({
+        "name":        "ollama",
+        "type":        "local",
+        "configured":  True,
+        "reachable":   ollama_ok,
+        "model":       _OLLAMA_CLINICAL_MODEL,
+        "base_url":    _OLLAMA_BASE_URL,
+        "available_models": ollama_models,
+        "cost":        "free (local)",
+    })
+
+    # Gemini
+    statuses.append({
+        "name":       "gemini",
+        "type":       "cloud",
+        "configured": bool(_GEMINI_KEY),
+        "reachable":  None,   # not probed (expensive to test)
+        "model":      "gemini-2.0-flash",
+        "cost":       "free tier (1500 req/day)",
+    })
+
+    # Groq
+    statuses.append({
+        "name":       "groq",
+        "type":       "cloud",
+        "configured": bool(_GROQ_KEY),
+        "reachable":  None,
+        "model":      "llama-3.1-8b-instant",
+        "cost":       "free tier (30 req/min)",
+    })
+
+    active = next(
+        (p["name"] for p in statuses if p.get("configured") and p.get("reachable") is not False),
+        "none",
+    )
+    return {
+        "providers":       statuses,
+        "active_provider": active,
+        "fallback_chain":  ["ollama", "gemini", "groq"],
+    }
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # CLINICAL INTERPRETATION LAYER — Patient-facing, public access
 # Authentication: none — the result token is the proof of access.
@@ -564,6 +635,28 @@ def _build_interpret_prompt(
     )
 
 
+async def _call_ollama_clinical(prompt: str) -> str:
+    """
+    Call local Ollama server for clinical interpretation.
+    Uses /api/chat endpoint for better instruction-following than /api/generate.
+    Raises httpx.HTTPError or RuntimeError on failure so the caller can fall back.
+    """
+    url = f"{_OLLAMA_BASE_URL}/api/chat"
+    payload = {
+        "model":  _OLLAMA_CLINICAL_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream":  False,
+        "options": {"temperature": 0.3, "num_predict": 550},
+    }
+    async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
+        r = await client.post(url, json=payload)
+        r.raise_for_status()
+    text = r.json().get("message", {}).get("content", "").strip()
+    if not text:
+        raise RuntimeError("Ollama returned empty response")
+    return text
+
+
 async def _call_gemini_flash(prompt: str) -> str:
     url = _GEMINI_URL.format(key=_GEMINI_KEY)
     payload = {
@@ -595,17 +688,20 @@ async def _call_groq_llama(prompt: str) -> str:
 async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     """
     Try providers in priority order.  Returns (text, provider_name).
-    Falls back to the secondary provider on any error.
+
+    Priority: Ollama (local/free, no limits) → Gemini (free tier) → Groq (free tier).
+    Ollama is always attempted first when OLLAMA_BASE_URL is set (default).
+    Cloud providers are used as fallback when Ollama is offline/unavailable.
     """
     providers: list[tuple[str, Callable]] = []
+    # Ollama is always first — it's free, local, and has no rate limits
+    providers.append(("ollama", _call_ollama_clinical))
     if _GEMINI_KEY:
         providers.append(("gemini", _call_gemini_flash))
     if _GROQ_KEY:
         providers.append(("groq", _call_groq_llama))
-    if not providers:
-        raise HTTPException(status_code=503, detail="تفسير الذكاء الاصطناعي غير مفعل حالياً.")
 
-    last_exc: Exception = RuntimeError("no providers")
+    last_exc: Exception = RuntimeError("no providers configured")
     for name, fn in providers:
         try:
             text = await fn(prompt)
