@@ -129,12 +129,12 @@ services:
       APNS_KEY: ${APNS_KEY:-}
       DEVICE_HMAC_KEY: ${DEVICE_HMAC_KEY:-}
       ALLOWED_DEVICE_IDS: ${ALLOWED_DEVICE_IDS:-}
-      # Concurrency: number of uvicorn workers.  Default 4 (2× CPU cores on 2-core VPS).
+      # Concurrency: number of uvicorn workers.  Default 2 (safe for 2-core VPS).
       # Each worker is a full Python process with its own DB pool.
       # Total DB connections = WEB_CONCURRENCY × (DB_POOL_SIZE + DB_MAX_OVERFLOW)
-      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-3}
-      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-7}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
       DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-10}
       DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       # Concurrency throttle: max simultaneous write requests in-flight per worker
