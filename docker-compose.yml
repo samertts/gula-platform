@@ -152,6 +152,9 @@ services:
       # Audit anchor file: persisted outside DB for tamper detection
       # Mount as named volume so it survives container rebuilds
       - audit-anchors:/app/data
+    # Allow backend to reach Ollama running on the Docker host (free local AI)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # SECURITY: No external ports - only accessible via api-gateway
     expose:
       - "8000"
