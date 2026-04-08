@@ -77,12 +77,13 @@ ok "Disk free: ${DISK_FREE_MB} MB"
 if [[ "$SKIP_BACKUP" == "false" ]]; then
     log "Step 1/7: Backing up database..."
     # On first deploy postgres is not running yet — nothing to back up, skip gracefully.
-    PG_RUNNING=$(docker compose ps postgres 2>/dev/null | grep -c "running\|Up" || true)
+    PG_RUNNING=$(docker compose ps postgres 2>/dev/null | grep -c "running\|Up\|healthy" || true)
     if [[ "$PG_RUNNING" -eq 0 ]]; then
         log "Step 1/7: First deploy detected (postgres not running) — skipping backup"
-    elif bash scripts/backup.sh daily >> "$LOG_FILE" 2>&1; then
+    elif bash scripts/backup.sh daily 2>&1 | tee -a "$LOG_FILE"; then
         ok "Database backup complete"
     else
+        log "Backup script output above. Use --skip-backup to bypass if backup dir issue."
         fail "Backup failed — deploy aborted (use --skip-backup to override)"
     fi
 else

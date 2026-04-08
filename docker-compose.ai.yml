@@ -33,7 +33,9 @@ services:
     # On 16 GB server: set to 12288m to use aya:8b comfortably
     mem_limit: ${OLLAMA_MEM_LIMIT:-6144m}
     mem_reservation: 2048m
-    cpus: "${OLLAMA_CPUS:-3.5}"
+    # cpus capped at 1.8 to stay within the 2-vCPU minimum Docker allows on any server.
+    # Override via OLLAMA_CPUS env var on larger machines.
+    cpus: "${OLLAMA_CPUS:-1.8}"
     volumes:
       - ollama-models:/root/.ollama
     # Bind only to localhost — nginx proxy handles external access

@@ -11,7 +11,12 @@
 
 set -euo pipefail
 
-BACKUP_DIR="${BACKUP_DIR:-/home/user/gula-platform/backups}"
+# Resolve project root relative to this script — works regardless of where the
+# script is called from or which user runs it.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+BACKUP_DIR="${BACKUP_DIR:-${PROJECT_DIR}/backups}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_TYPE="${1:-daily}"
