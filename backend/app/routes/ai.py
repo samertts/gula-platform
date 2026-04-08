@@ -92,7 +92,8 @@ _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # AI response cache — Redis (cross-worker) with in-process dict fallback.
 # Key = SHA256(first 300 chars of prompt) so identical test panels hit cache.
 # This cuts AI API calls by ~70% for repeated/similar result patterns.
-_AI_CACHE_TTL = int(os.getenv("AI_CACHE_TTL_SECONDS", "7200"))  # 2 hours default
+_AI_CACHE_TTL     = int(os.getenv("AI_CACHE_TTL_SECONDS", "7200"))   # 2 hours
+_AI_BUDGET_SECS   = float(os.getenv("AI_BUDGET_SECONDS", "6.0"))   # hard wall for entire chain
 try:
     from app.security.redis_client import cache as _redis_cache
     _AI_CACHE_BACKEND = _redis_cache
@@ -891,23 +892,36 @@ def _prompt_cache_key(prompt: str) -> str:
     return sha256(prompt[:300].encode()).hexdigest()[:24]
 
 
+# ── Async wrappers for blocking Redis I/O ────────────────────────────────────
+# _ai_cache_get/set call redis-py (synchronous) which blocks the event loop.
+# asyncio.to_thread() offloads them to a thread pool so the loop stays free.
+# The in-process dict path is ~µs but also runs in the thread — no downside.
+async def _ai_cache_get_async(cache_key: str) -> Optional[tuple[str, str]]:
+    return await asyncio.to_thread(_ai_cache_get, cache_key)
+
+
+async def _ai_cache_set_async(cache_key: str, text: str, provider: str) -> None:
+    await asyncio.to_thread(_ai_cache_set, cache_key, text, provider)
+
+
 async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     """
     Try providers in priority order.  Returns (text, provider_name).
 
     Layers (in order):
-      1. Redis/in-process cache  — zero cost, ~2h TTL
+      1. Redis/in-process cache  — zero cost, ~2h TTL          (async, non-blocking)
       2. Stampede protection     — secondary requests wait on the first
-      3. Circuit breaker         — skip providers that failed ≥3× in last 30s
-      4. Provider chain          — Ollama → OpenRouter → Gemini → Groq
-      5. Retry                   — 1 retry on 429/503/529 for cloud providers
+      3. Hard budget timer       — AI_BUDGET_SECONDS (default 6s) wall for entire chain
+      4. Circuit breaker         — skip providers that failed ≥3× in last 30s
+      5. Provider chain          — Ollama → OpenRouter → Gemini → Groq
+      6. Retry                   — 1 retry on 429/503/529 for cloud providers
 
     Privacy: prompt contains only test names, numeric values, age, and gender.
     No patient name, ID, or any PII is sent to cloud providers.
     """
-    # ── 1. Cache lookup ───────────────────────────────────────────────────────
+    # ── 1. Cache lookup (async — does not block the event loop) ──────────────
     cache_key = _prompt_cache_key(prompt)
-    cached = _ai_cache_get(cache_key)
+    cached = await _ai_cache_get_async(cache_key)
     if cached:
         logger.info("[AI] event=ai_call cache=hit provider=%s", cached[1])
         return cached
@@ -920,7 +934,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
             await asyncio.wait_for(event.wait(), timeout=25)
         except asyncio.TimeoutError:
             pass  # timed out — proceed to fetch ourselves
-        cached = _ai_cache_get(cache_key)
+        cached = await _ai_cache_get_async(cache_key)
         if cached:
             logger.info("[AI] event=ai_call cache=hit_after_wait provider=%s", cached[1])
             return cached
@@ -930,7 +944,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     _IN_FLIGHT[cache_key] = fetch_event
 
     try:
-        # ── 4. Provider chain ─────────────────────────────────────────────────
+        # ── 4. Provider chain (with hard budget timer) ────────────────────────
         providers: list[tuple[str, Callable]] = []
         if _OLLAMA_ENABLED:
             providers.append(("ollama", _call_ollama_clinical))
@@ -941,29 +955,51 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
         if _GROQ_KEY:
             providers.append(("groq", _call_groq_llama))
 
+        t_budget = time.perf_counter()
         last_exc: Exception = RuntimeError("no providers configured")
-        for name, fn in providers:
-            cb = _CIRCUIT_BREAKERS.get(name)
 
-            # Skip providers whose circuit is open
+        for name, fn in providers:
+            # ── Budget check: stop if wall time exhausted ─────────────────────
+            remaining = _AI_BUDGET_SECS - (time.perf_counter() - t_budget)
+            if remaining <= 0.3:
+                logger.warning(
+                    "[AI] event=ai_call budget_exhausted elapsed=%.1fs — stopping chain",
+                    time.perf_counter() - t_budget,
+                )
+                break
+
+            cb = _CIRCUIT_BREAKERS.get(name)
             if cb and cb.is_open():
                 logger.warning("[AI] Circuit open for %s — skipping", name)
                 continue
 
             t0 = time.perf_counter()
             try:
-                # Ollama: no retry (local, fail-fast)
-                # Cloud: 1 retry on transient overload (429/503/529)
-                text = await fn(prompt) if name == "ollama" else await _call_with_retry(fn, prompt, retries=1)
+                # Wrap the call (including any retry waits) in the remaining budget.
+                # asyncio.wait_for cancels the coroutine cleanly on timeout.
+                call_coro = (
+                    fn(prompt) if name == "ollama"
+                    else _call_with_retry(fn, prompt, retries=1)
+                )
+                text = await asyncio.wait_for(call_coro, timeout=remaining)
                 latency_ms = (time.perf_counter() - t0) * 1000
                 if cb:
                     cb.record_success()
-                _ai_cache_set(cache_key, text, name)
+                await _ai_cache_set_async(cache_key, text, name)
                 logger.info(
                     "[AI] event=ai_call cache=miss provider=%s latency_ms=%.0f",
                     name, latency_ms,
                 )
                 return text, name
+            except asyncio.TimeoutError:
+                latency_ms = (time.perf_counter() - t0) * 1000
+                if cb:
+                    cb.record_failure()
+                logger.warning(
+                    "[AI] event=ai_call provider=%s timeout after %.0fms — trying fallback",
+                    name, latency_ms,
+                )
+                last_exc = asyncio.TimeoutError(f"{name} timed out")
             except Exception as exc:
                 latency_ms = (time.perf_counter() - t0) * 1000
                 if cb:
