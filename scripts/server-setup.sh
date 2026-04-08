@@ -260,11 +260,17 @@ GRAFANA_PASSWORD=${ADMIN_PASS}
 METRICS_BEARER_TOKEN=${METRICS_TOKEN}
 RATE_LIMIT_BLOCK_DURATION_SECONDS=3600
 
-# ── AI (Ollama local — free, no API key needed) ───────────────────────────────
+# ── AI (provider fallback chain: Ollama → OpenRouter → Gemini → Groq) ────────
+# On 4 GB servers: set OLLAMA_ENABLED=false and configure OPENROUTER_API_KEY.
+# OpenRouter gives Qwen3-14b and DeepSeek-R1 for FREE with no RAM cost.
+# Free key (no card): https://openrouter.ai/keys
+OLLAMA_ENABLED=false
 OLLAMA_BASE_URL=http://host.docker.internal:11434
 OLLAMA_CLINICAL_MODEL=llama3.2:3b
 OLLAMA_MODEL=llama3.2:1b
 OLLAMA_TIMEOUT=20
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=qwen/qwen3-14b:free
 GEMINI_API_KEY=
 GROQ_API_KEY=
 AI_PROVIDER=

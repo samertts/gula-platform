@@ -55,18 +55,32 @@ logger = logging.getLogger("gula.ai")
 _GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 _GROQ_KEY   = os.getenv("GROQ_API_KEY", "")
 
+# OpenRouter — free-tier gateway to Qwen, DeepSeek, and 200+ models.
+# Get a free key at https://openrouter.ai/keys (no credit card for free models).
+# Recommended free models (strong Arabic support):
+#   qwen/qwen3-14b:free          — best Arabic quality, strong reasoning
+#   deepseek/deepseek-r1:free    — strong reasoning, good Arabic
+#   qwen/qwen3-8b:free           — faster, lighter
+_OPENROUTER_KEY   = os.getenv("OPENROUTER_API_KEY", "")
+_OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen3-14b:free")
+_OPENROUTER_URL   = "https://openrouter.ai/api/v1/chat/completions"
+
 # Ollama — completely free, runs locally on the server (no API key required).
+# Set OLLAMA_ENABLED=false to skip Ollama entirely (saves RAM on small servers).
 # Install: curl -fsSL https://ollama.com/install.sh | sh && ollama pull llama3.2:3b
-_OLLAMA_BASE_URL      = os.getenv("OLLAMA_BASE_URL",      "http://localhost:11434")
+_OLLAMA_ENABLED        = os.getenv("OLLAMA_ENABLED", "true").lower() not in ("false", "0", "no")
+_OLLAMA_BASE_URL       = os.getenv("OLLAMA_BASE_URL",       "http://localhost:11434")
 _OLLAMA_CLINICAL_MODEL = os.getenv("OLLAMA_CLINICAL_MODEL", "llama3.2:3b")
 _OLLAMA_TIMEOUT        = float(os.getenv("OLLAMA_TIMEOUT",  "20"))
 
-# Auto-detect provider priority: Ollama (local/free) → Gemini → Groq → none
+# Auto-detect provider priority:
+#   Ollama (local/free, if enabled) → OpenRouter (Qwen/DeepSeek) → Gemini → Groq → none
 _AI_PROVIDER = os.getenv(
     "AI_PROVIDER",
-    "ollama" if _OLLAMA_BASE_URL else
-    "gemini" if _GEMINI_KEY else
-    "groq"   if _GROQ_KEY   else "none",
+    "ollama"       if (_OLLAMA_ENABLED and _OLLAMA_BASE_URL) else
+    "openrouter"   if _OPENROUTER_KEY else
+    "gemini"       if _GEMINI_KEY else
+    "groq"         if _GROQ_KEY   else "none",
 )
 _GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -345,31 +359,47 @@ async def list_ai_providers():
     # Ollama — test by calling /api/tags (lightweight list-models endpoint)
     ollama_ok = False
     ollama_models: list[str] = []
-    try:
-        async with httpx.AsyncClient(timeout=3) as client:
-            r = await client.get(f"{_OLLAMA_BASE_URL}/api/tags")
-            if r.status_code == 200:
-                ollama_ok = True
-                ollama_models = [m["name"] for m in r.json().get("models", [])]
-    except Exception:
-        pass
+    if _OLLAMA_ENABLED:
+        try:
+            async with httpx.AsyncClient(timeout=3) as client:
+                r = await client.get(f"{_OLLAMA_BASE_URL}/api/tags")
+                if r.status_code == 200:
+                    ollama_ok = True
+                    ollama_models = [m["name"] for m in r.json().get("models", [])]
+        except Exception:
+            pass
     statuses.append({
-        "name":        "ollama",
-        "type":        "local",
-        "configured":  True,
-        "reachable":   ollama_ok,
-        "model":       _OLLAMA_CLINICAL_MODEL,
-        "base_url":    _OLLAMA_BASE_URL,
+        "name":             "ollama",
+        "type":             "local",
+        "enabled":          _OLLAMA_ENABLED,
+        "configured":       _OLLAMA_ENABLED,
+        "reachable":        ollama_ok if _OLLAMA_ENABLED else None,
+        "model":            _OLLAMA_CLINICAL_MODEL,
+        "base_url":         _OLLAMA_BASE_URL,
         "available_models": ollama_models,
-        "cost":        "free (local)",
+        "cost":             "free (local)" if _OLLAMA_ENABLED else "disabled (OLLAMA_ENABLED=false)",
+        "note":             None if _OLLAMA_ENABLED else "Set OLLAMA_ENABLED=true to re-enable",
+    })
+
+    # OpenRouter (Qwen / DeepSeek)
+    statuses.append({
+        "name":       "openrouter",
+        "type":       "cloud",
+        "enabled":    bool(_OPENROUTER_KEY),
+        "configured": bool(_OPENROUTER_KEY),
+        "reachable":  None,   # not probed (avoids wasting free-tier quota)
+        "model":      _OPENROUTER_MODEL,
+        "cost":       "free tier (qwen3-14b:free, deepseek-r1:free)",
+        "note":       "Set OPENROUTER_API_KEY + OPENROUTER_MODEL in .env",
     })
 
     # Gemini
     statuses.append({
         "name":       "gemini",
         "type":       "cloud",
+        "enabled":    bool(_GEMINI_KEY),
         "configured": bool(_GEMINI_KEY),
-        "reachable":  None,   # not probed (expensive to test)
+        "reachable":  None,
         "model":      "gemini-2.0-flash",
         "cost":       "free tier (1500 req/day)",
     })
@@ -378,6 +408,7 @@ async def list_ai_providers():
     statuses.append({
         "name":       "groq",
         "type":       "cloud",
+        "enabled":    bool(_GROQ_KEY),
         "configured": bool(_GROQ_KEY),
         "reachable":  None,
         "model":      "llama-3.1-8b-instant",
@@ -391,7 +422,10 @@ async def list_ai_providers():
     return {
         "providers":       statuses,
         "active_provider": active,
-        "fallback_chain":  ["ollama", "gemini", "groq"],
+        "fallback_chain":  [
+            p["name"] for p in statuses
+            if p.get("configured") and p.get("enabled")
+        ] or ["none"],
     }
 
 
@@ -685,17 +719,51 @@ async def _call_groq_llama(prompt: str) -> str:
     return r.json()["choices"][0]["message"]["content"].strip()
 
 
+async def _call_openrouter(prompt: str) -> str:
+    """
+    Call OpenRouter API — free gateway to Qwen, DeepSeek, and 200+ models.
+    Default model: qwen/qwen3-14b:free (strong Arabic support, no cost).
+    Uses OpenAI-compatible /v1/chat/completions endpoint.
+    """
+    payload = {
+        "model": _OPENROUTER_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": 500,
+    }
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.post(
+            _OPENROUTER_URL, json=payload,
+            headers={
+                "Authorization": f"Bearer {_OPENROUTER_KEY}",
+                "HTTP-Referer": "https://gula-platform.org",
+                "X-Title": "GULA Platform",
+            },
+        )
+        r.raise_for_status()
+    text = r.json()["choices"][0]["message"]["content"].strip()
+    if not text:
+        raise RuntimeError("OpenRouter returned empty response")
+    return text
+
+
 async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     """
     Try providers in priority order.  Returns (text, provider_name).
 
-    Priority: Ollama (local/free, no limits) → Gemini (free tier) → Groq (free tier).
-    Ollama is always attempted first when OLLAMA_BASE_URL is set (default).
-    Cloud providers are used as fallback when Ollama is offline/unavailable.
+    Priority:
+      Ollama (local, if OLLAMA_ENABLED=true) →
+      OpenRouter (Qwen/DeepSeek, free tier) →
+      Gemini (free tier) →
+      Groq (free tier)
+
+    Set OLLAMA_ENABLED=false on low-RAM servers to skip directly to cloud.
     """
     providers: list[tuple[str, Callable]] = []
-    # Ollama is always first — it's free, local, and has no rate limits
-    providers.append(("ollama", _call_ollama_clinical))
+    if _OLLAMA_ENABLED:
+        providers.append(("ollama", _call_ollama_clinical))
+    if _OPENROUTER_KEY:
+        providers.append(("openrouter", _call_openrouter))
     if _GEMINI_KEY:
         providers.append(("gemini", _call_gemini_flash))
     if _GROQ_KEY:
