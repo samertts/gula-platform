@@ -104,6 +104,54 @@ _AI_RESPONSE_CACHE: dict[str, tuple[str, str, float]] = {}  # key → (text, pro
 # Semaphore to limit concurrent Ollama calls (prevents RAM exhaustion on 4 GB servers)
 _OLLAMA_SEMAPHORE = asyncio.Semaphore(1)
 
+# ── Stampede protection ───────────────────────────────────────────────────────
+# Maps cache_key → asyncio.Event.  When a key is in-flight, subsequent requests
+# wait on the event instead of all hitting the AI provider simultaneously.
+# Per-worker only (Redis-based cross-worker lock omitted for simplicity — max
+# 3 parallel calls across 3 workers is acceptable).
+_IN_FLIGHT: dict[str, asyncio.Event] = {}
+
+
+# ── Per-provider circuit breaker ─────────────────────────────────────────────
+# After _CB_THRESHOLD consecutive failures within _CB_WINDOW seconds, the
+# provider is skipped until the window expires (half-open retry).
+_CB_THRESHOLD = 3
+_CB_WINDOW    = 30   # seconds
+
+class _CircuitBreaker:
+    """Lightweight in-process circuit breaker for one AI provider."""
+    __slots__ = ("failures", "opened_at")
+
+    def __init__(self) -> None:
+        self.failures: int = 0
+        self.opened_at: float = 0.0
+
+    def is_open(self) -> bool:
+        """Return True if the circuit is open (provider should be skipped)."""
+        if self.failures >= _CB_THRESHOLD:
+            age = time.monotonic() - self.opened_at
+            if age < _CB_WINDOW:
+                return True
+            # Window expired — reset and allow a trial call (half-open)
+            self.failures = 0
+        return False
+
+    def record_failure(self) -> None:
+        self.failures += 1
+        self.opened_at = time.monotonic()
+
+    def record_success(self) -> None:
+        self.failures = 0
+
+
+# One breaker per provider name
+_CIRCUIT_BREAKERS: dict[str, _CircuitBreaker] = {
+    "ollama":      _CircuitBreaker(),
+    "openrouter":  _CircuitBreaker(),
+    "gemini":      _CircuitBreaker(),
+    "groq":        _CircuitBreaker(),
+}
+
 router = APIRouter(prefix="/api/ai", tags=["AI Safety Layer"])
 
 _DOCTOR_ROLES = {"doctor", "admin", "lab_admin", "province_admin",
@@ -847,51 +895,92 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     """
     Try providers in priority order.  Returns (text, provider_name).
 
-    Cache: checks Redis/in-process first — same test panel = cache hit, zero API cost.
-    Priority (on miss):
-      Ollama (local, if OLLAMA_ENABLED=true) →
-      OpenRouter (Qwen/DeepSeek, free tier, 1 retry on 429/529) →
-      Gemini (free tier, 1 retry) →
-      Groq (free tier, 1 retry)
+    Layers (in order):
+      1. Redis/in-process cache  — zero cost, ~2h TTL
+      2. Stampede protection     — secondary requests wait on the first
+      3. Circuit breaker         — skip providers that failed ≥3× in last 30s
+      4. Provider chain          — Ollama → OpenRouter → Gemini → Groq
+      5. Retry                   — 1 retry on 429/503/529 for cloud providers
 
-    Privacy: prompt contains only test names, numeric values, and age/gender.
-    No patient name, ID, or any PII is included — safe to send to cloud providers.
+    Privacy: prompt contains only test names, numeric values, age, and gender.
+    No patient name, ID, or any PII is sent to cloud providers.
     """
-    # ── Cache lookup ─────────────────────────────────────────────────────────
+    # ── 1. Cache lookup ───────────────────────────────────────────────────────
     cache_key = _prompt_cache_key(prompt)
     cached = _ai_cache_get(cache_key)
     if cached:
-        logger.debug("[AI] Cache hit (key=%s)", cache_key[:8])
+        logger.info("[AI] event=ai_call cache=hit provider=%s", cached[1])
         return cached
 
-    # ── Provider chain ────────────────────────────────────────────────────────
-    providers: list[tuple[str, Callable]] = []
-    if _OLLAMA_ENABLED:
-        providers.append(("ollama", _call_ollama_clinical))
-    if _OPENROUTER_KEY:
-        providers.append(("openrouter", _call_openrouter))
-    if _GEMINI_KEY:
-        providers.append(("gemini", _call_gemini_flash))
-    if _GROQ_KEY:
-        providers.append(("groq", _call_groq_llama))
-
-    last_exc: Exception = RuntimeError("no providers configured")
-    for name, fn in providers:
+    # ── 2. Stampede protection ────────────────────────────────────────────────
+    if cache_key in _IN_FLIGHT:
+        event = _IN_FLIGHT[cache_key]
+        logger.debug("[AI] Waiting for in-flight request (key=%s)", cache_key[:8])
         try:
-            # Ollama: no retry (it's local; if it fails, fallback is immediate)
-            # Cloud providers: 1 retry with 2s delay on transient overload errors
-            if name == "ollama":
-                text = await fn(prompt)
-            else:
-                text = await _call_with_retry(fn, prompt, retries=1)
-            _ai_cache_set(cache_key, text, name)
-            return text, name
-        except Exception as exc:
-            logger.warning("[AI] Provider %s failed: %s — trying fallback", name, exc)
-            last_exc = exc
+            await asyncio.wait_for(event.wait(), timeout=25)
+        except asyncio.TimeoutError:
+            pass  # timed out — proceed to fetch ourselves
+        cached = _ai_cache_get(cache_key)
+        if cached:
+            logger.info("[AI] event=ai_call cache=hit_after_wait provider=%s", cached[1])
+            return cached
 
-    logger.error("[AI] All providers failed: %s", last_exc)
-    raise HTTPException(status_code=503, detail="تعذر الحصول على التفسير حالياً. حاول لاحقاً.")
+    # ── 3. Register as the fetcher ────────────────────────────────────────────
+    fetch_event = asyncio.Event()
+    _IN_FLIGHT[cache_key] = fetch_event
+
+    try:
+        # ── 4. Provider chain ─────────────────────────────────────────────────
+        providers: list[tuple[str, Callable]] = []
+        if _OLLAMA_ENABLED:
+            providers.append(("ollama", _call_ollama_clinical))
+        if _OPENROUTER_KEY:
+            providers.append(("openrouter", _call_openrouter))
+        if _GEMINI_KEY:
+            providers.append(("gemini", _call_gemini_flash))
+        if _GROQ_KEY:
+            providers.append(("groq", _call_groq_llama))
+
+        last_exc: Exception = RuntimeError("no providers configured")
+        for name, fn in providers:
+            cb = _CIRCUIT_BREAKERS.get(name)
+
+            # Skip providers whose circuit is open
+            if cb and cb.is_open():
+                logger.warning("[AI] Circuit open for %s — skipping", name)
+                continue
+
+            t0 = time.perf_counter()
+            try:
+                # Ollama: no retry (local, fail-fast)
+                # Cloud: 1 retry on transient overload (429/503/529)
+                text = await fn(prompt) if name == "ollama" else await _call_with_retry(fn, prompt, retries=1)
+                latency_ms = (time.perf_counter() - t0) * 1000
+                if cb:
+                    cb.record_success()
+                _ai_cache_set(cache_key, text, name)
+                logger.info(
+                    "[AI] event=ai_call cache=miss provider=%s latency_ms=%.0f",
+                    name, latency_ms,
+                )
+                return text, name
+            except Exception as exc:
+                latency_ms = (time.perf_counter() - t0) * 1000
+                if cb:
+                    cb.record_failure()
+                logger.warning(
+                    "[AI] event=ai_call provider=%s latency_ms=%.0f failed=%s — trying fallback",
+                    name, latency_ms, exc,
+                )
+                last_exc = exc
+
+        logger.error("[AI] event=ai_call all_providers_failed last_error=%s", last_exc)
+        raise HTTPException(status_code=503, detail="تعذر الحصول على التفسير حالياً. حاول لاحقاً.")
+
+    finally:
+        # Always unblock waiting coroutines, success or failure
+        fetch_event.set()
+        _IN_FLIGHT.pop(cache_key, None)
 
 
 # ── Doctor-facing: critical alerts dashboard ──────────────────────────────────
