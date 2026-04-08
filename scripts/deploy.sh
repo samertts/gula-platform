@@ -90,14 +90,25 @@ else
     log "Step 1/7: Backup skipped (--skip-backup)"
 fi
 
-# ── Step 2: Pull latest code ──────────────────────────────────────────────────
-log "Step 2/7: Pulling latest code..."
+# ── Step 2: Sync code from remote ────────────────────────────────────────────
+log "Step 2/7: Syncing code from remote..."
 if [[ -n "$BRANCH" ]]; then
     git fetch origin "$BRANCH" || fail "git fetch failed"
-    git checkout "$BRANCH"     || fail "git checkout failed"
+    git checkout "$BRANCH"      || fail "git checkout failed"
+else
+    BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    git fetch origin "$BRANCH"  || fail "git fetch failed"
 fi
-git pull || fail "git pull failed"
-ok "Code updated — $(git log -1 --oneline)"
+# Use reset --hard instead of pull: avoids merge conflicts on the deploy host.
+# The remote is always authoritative. .env and backups/ are gitignored — safe.
+OLD_COMMIT=$(git rev-parse --short HEAD)
+git reset --hard "origin/$BRANCH" || fail "git reset failed"
+NEW_COMMIT=$(git rev-parse --short HEAD)
+if [[ "$OLD_COMMIT" != "$NEW_COMMIT" ]]; then
+    ok "Code synced: $OLD_COMMIT → $NEW_COMMIT"
+else
+    ok "Already up to date ($NEW_COMMIT)"
+fi
 
 # ── Step 3: Build images (fail fast — do not touch running containers) ────────
 log "Step 3/7: Building Docker images..."
