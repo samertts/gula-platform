@@ -129,7 +129,8 @@ def validate_config() -> None:
         except Exception:
             errors.append(
                 "ENCRYPTION_KEY is not a valid Fernet key (must be 44 base64url chars). "
-                "Run: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                "Fix with: bash scripts/fix-encryption-key.sh  "
+                "OR: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
             )
 
     if not NID_HMAC_KEY:
