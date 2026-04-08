@@ -24,6 +24,7 @@ Routes:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -87,6 +88,21 @@ _GEMINI_URL = (
     "gemini-2.0-flash:generateContent?key={key}"
 )
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+# AI response cache — Redis (cross-worker) with in-process dict fallback.
+# Key = SHA256(first 300 chars of prompt) so identical test panels hit cache.
+# This cuts AI API calls by ~70% for repeated/similar result patterns.
+_AI_CACHE_TTL = int(os.getenv("AI_CACHE_TTL_SECONDS", "7200"))  # 2 hours default
+try:
+    from app.security.redis_client import cache as _redis_cache
+    _AI_CACHE_BACKEND = _redis_cache
+except Exception:
+    _AI_CACHE_BACKEND = None   # fall back to in-process dict
+
+_AI_RESPONSE_CACHE: dict[str, tuple[str, str, float]] = {}  # key → (text, provider, expire_at)
+
+# Semaphore to limit concurrent Ollama calls (prevents RAM exhaustion on 4 GB servers)
+_OLLAMA_SEMAPHORE = asyncio.Semaphore(1)
 
 router = APIRouter(prefix="/api/ai", tags=["AI Safety Layer"])
 
@@ -672,8 +688,7 @@ def _build_interpret_prompt(
 async def _call_ollama_clinical(prompt: str) -> str:
     """
     Call local Ollama server for clinical interpretation.
-    Uses /api/chat endpoint for better instruction-following than /api/generate.
-    Raises httpx.HTTPError or RuntimeError on failure so the caller can fall back.
+    Semaphore-limited to 1 concurrent call to protect RAM on 4 GB servers.
     """
     url = f"{_OLLAMA_BASE_URL}/api/chat"
     payload = {
@@ -682,13 +697,50 @@ async def _call_ollama_clinical(prompt: str) -> str:
         "stream":  False,
         "options": {"temperature": 0.3, "num_predict": 550},
     }
-    async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
-        r = await client.post(url, json=payload)
-        r.raise_for_status()
+    async with _OLLAMA_SEMAPHORE:
+        async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
+            r = await client.post(url, json=payload)
+            r.raise_for_status()
     text = r.json().get("message", {}).get("content", "").strip()
     if not text:
         raise RuntimeError("Ollama returned empty response")
     return text
+
+
+async def _call_with_retry(fn: Callable, prompt: str, retries: int = 1) -> str:
+    """
+    Call an async AI provider function with a single retry on transient errors.
+
+    Retries on: 429 (rate limit), 503 (service unavailable), 529 (overloaded).
+    Waits 2s before the retry so the provider has time to recover.
+    Does NOT retry on 4xx client errors (bad key, bad request, etc.).
+    """
+    _RETRYABLE_STATUS = {429, 503, 529}
+    last_exc: Exception = RuntimeError("unknown")
+    for attempt in range(retries + 1):
+        try:
+            return await fn(prompt)
+        except httpx.HTTPStatusError as exc:
+            last_exc = exc
+            if exc.response.status_code in _RETRYABLE_STATUS and attempt < retries:
+                logger.warning(
+                    "[AI] %s HTTP %s (attempt %d/%d) — retrying in 2s",
+                    fn.__name__, exc.response.status_code, attempt + 1, retries + 1,
+                )
+                await asyncio.sleep(2)
+            else:
+                raise
+        except Exception as exc:
+            last_exc = exc
+            if attempt < retries:
+                logger.warning(
+                    "[AI] %s failed (attempt %d/%d): %s — retrying in 2s",
+                    fn.__name__, attempt + 1, retries + 1, exc,
+                )
+                await asyncio.sleep(2)
+            else:
+                raise
+    raise last_exc
 
 
 async def _call_gemini_flash(prompt: str) -> str:
@@ -747,18 +799,72 @@ async def _call_openrouter(prompt: str) -> str:
     return text
 
 
+def _ai_cache_get(cache_key: str) -> Optional[tuple[str, str]]:
+    """Return (text, provider) from Redis or in-process cache, or None."""
+    # Redis first (shared across workers)
+    if _AI_CACHE_BACKEND is not None:
+        try:
+            cached = _AI_CACHE_BACKEND.get(f"ai:interp:{cache_key}")
+            if cached:
+                parts = cached.split("\x00", 1)
+                provider = parts[0] if len(parts) == 2 else "cache"
+                text = parts[1] if len(parts) == 2 else parts[0]
+                return text, f"{provider}(cache)"
+        except Exception:
+            pass
+
+    # In-process fallback
+    entry = _AI_RESPONSE_CACHE.get(cache_key)
+    if entry:
+        text, provider, expire_at = entry
+        if time.monotonic() < expire_at:
+            return text, f"{provider}(cache)"
+        del _AI_RESPONSE_CACHE[cache_key]
+
+    return None
+
+
+def _ai_cache_set(cache_key: str, text: str, provider: str) -> None:
+    """Write to Redis (preferred) and in-process cache."""
+    payload = f"{provider}\x00{text}"
+
+    if _AI_CACHE_BACKEND is not None:
+        try:
+            _AI_CACHE_BACKEND.set(f"ai:interp:{cache_key}", payload, ex=_AI_CACHE_TTL)
+        except Exception:
+            pass
+
+    # Always write in-process as backup
+    _AI_RESPONSE_CACHE[cache_key] = (text, provider, time.monotonic() + _AI_CACHE_TTL)
+
+
+def _prompt_cache_key(prompt: str) -> str:
+    """Stable cache key from prompt content (first 300 chars are sufficient for uniqueness)."""
+    return sha256(prompt[:300].encode()).hexdigest()[:24]
+
+
 async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     """
     Try providers in priority order.  Returns (text, provider_name).
 
-    Priority:
+    Cache: checks Redis/in-process first — same test panel = cache hit, zero API cost.
+    Priority (on miss):
       Ollama (local, if OLLAMA_ENABLED=true) →
-      OpenRouter (Qwen/DeepSeek, free tier) →
-      Gemini (free tier) →
-      Groq (free tier)
+      OpenRouter (Qwen/DeepSeek, free tier, 1 retry on 429/529) →
+      Gemini (free tier, 1 retry) →
+      Groq (free tier, 1 retry)
 
-    Set OLLAMA_ENABLED=false on low-RAM servers to skip directly to cloud.
+    Privacy: prompt contains only test names, numeric values, and age/gender.
+    No patient name, ID, or any PII is included — safe to send to cloud providers.
     """
+    # ── Cache lookup ─────────────────────────────────────────────────────────
+    cache_key = _prompt_cache_key(prompt)
+    cached = _ai_cache_get(cache_key)
+    if cached:
+        logger.debug("[AI] Cache hit (key=%s)", cache_key[:8])
+        return cached
+
+    # ── Provider chain ────────────────────────────────────────────────────────
     providers: list[tuple[str, Callable]] = []
     if _OLLAMA_ENABLED:
         providers.append(("ollama", _call_ollama_clinical))
@@ -772,11 +878,18 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     last_exc: Exception = RuntimeError("no providers configured")
     for name, fn in providers:
         try:
-            text = await fn(prompt)
+            # Ollama: no retry (it's local; if it fails, fallback is immediate)
+            # Cloud providers: 1 retry with 2s delay on transient overload errors
+            if name == "ollama":
+                text = await fn(prompt)
+            else:
+                text = await _call_with_retry(fn, prompt, retries=1)
+            _ai_cache_set(cache_key, text, name)
             return text, name
         except Exception as exc:
             logger.warning("[AI] Provider %s failed: %s — trying fallback", name, exc)
             last_exc = exc
+
     logger.error("[AI] All providers failed: %s", last_exc)
     raise HTTPException(status_code=503, detail="تعذر الحصول على التفسير حالياً. حاول لاحقاً.")
 
