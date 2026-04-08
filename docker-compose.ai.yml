@@ -1,0 +1,78 @@
+# =============================================================================
+# GULA Platform — Dedicated AI Server (Ollama Node)
+# =============================================================================
+#
+# PURPOSE:
+#   Run Ollama as an isolated service on a separate machine (≥8 GB RAM).
+#   The core backend connects to this node via OLLAMA_BASE_URL.
+#
+# DEPLOYMENT:
+#   On the AI server:
+#     cp .env.ai .env
+#     docker compose -f docker-compose.ai.yml up -d
+#
+# CONNECT CORE SERVER:
+#   In core server .env:
+#     OLLAMA_BASE_URL=http://<AI_SERVER_IP>:11434
+#     OLLAMA_MAX_CONCURRENT=2   # increase from 1 on dedicated node
+#
+# SECURITY:
+#   nginx in this file acts as a reverse proxy + Bearer token guard.
+#   Never expose port 11434 directly to the internet.
+#   Only the core server IP should reach port 80/443 on this host.
+# =============================================================================
+
+services:
+
+  # ── Ollama AI Engine ────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: gula-ollama
+    restart: always
+    # On 8 GB server: 6 GB for Ollama (leaves 2 GB for OS)
+    # On 16 GB server: set to 12288m to use aya:8b comfortably
+    mem_limit: ${OLLAMA_MEM_LIMIT:-6144m}
+    mem_reservation: 2048m
+    cpus: "${OLLAMA_CPUS:-3.5}"
+    volumes:
+      - ollama-models:/root/.ollama
+    # Bind only to localhost — nginx proxy handles external access
+    expose:
+      - "11434"
+    networks:
+      - ai-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── nginx — Bearer token guard + reverse proxy ──────────────────────────────
+  # Protects Ollama from unauthenticated access.
+  # The core backend must send: Authorization: Bearer <OLLAMA_ACCESS_TOKEN>
+  ai-gateway:
+    image: nginx:1.25-alpine
+    container_name: gula-ai-gateway
+    restart: always
+    mem_limit: 64m
+    cpus: "0.5"
+    ports:
+      - "11435:80"     # external port 11435 → nginx → ollama:11434
+    volumes:
+      - ./config/nginx/ai-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - ai-net
+    environment:
+      OLLAMA_ACCESS_TOKEN: ${OLLAMA_ACCESS_TOKEN:-changeme}
+
+networks:
+  ai-net:
+    driver: bridge
+
+volumes:
+  ollama-models:
+    driver: local

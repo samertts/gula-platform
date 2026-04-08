@@ -24,6 +24,7 @@ Routes:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -57,9 +58,25 @@ _GROQ_KEY   = os.getenv("GROQ_API_KEY", "")
 
 # Ollama — completely free, runs locally on the server (no API key required).
 # Install: curl -fsSL https://ollama.com/install.sh | sh && ollama pull llama3.2:3b
-_OLLAMA_BASE_URL      = os.getenv("OLLAMA_BASE_URL",      "http://localhost:11434")
-_OLLAMA_CLINICAL_MODEL = os.getenv("OLLAMA_CLINICAL_MODEL", "llama3.2:3b")
-_OLLAMA_TIMEOUT        = float(os.getenv("OLLAMA_TIMEOUT",  "20"))
+_OLLAMA_BASE_URL       = os.getenv("OLLAMA_BASE_URL",        "http://localhost:11434")
+_OLLAMA_CLINICAL_MODEL = os.getenv("OLLAMA_CLINICAL_MODEL",  "llama3.2:3b")
+_OLLAMA_TIMEOUT        = float(os.getenv("OLLAMA_TIMEOUT",   "20"))
+# Optional Bearer token for dedicated AI server (set by setup-ai-server.sh).
+# Leave empty when Ollama runs on localhost (no auth needed).
+_OLLAMA_ACCESS_TOKEN   = os.getenv("OLLAMA_ACCESS_TOKEN", "")
+# Limit concurrent Ollama inference requests to prevent RAM exhaustion.
+# On a 4 GB server: 1 concurrent request is safe.
+# On an 8+ GB dedicated AI server: set to 2-3.
+_OLLAMA_MAX_CONCURRENT = int(os.getenv("OLLAMA_MAX_CONCURRENT", "1"))
+_ollama_semaphore: asyncio.Semaphore | None = None   # initialised lazily on first use
+
+
+def _get_ollama_semaphore() -> asyncio.Semaphore:
+    """Return (or lazily create) the per-process Ollama concurrency semaphore."""
+    global _ollama_semaphore
+    if _ollama_semaphore is None:
+        _ollama_semaphore = asyncio.Semaphore(_OLLAMA_MAX_CONCURRENT)
+    return _ollama_semaphore
 
 # Auto-detect provider priority: Ollama (local/free) → Gemini → Groq → none
 _AI_PROVIDER = os.getenv(
@@ -638,23 +655,44 @@ def _build_interpret_prompt(
 async def _call_ollama_clinical(prompt: str) -> str:
     """
     Call local Ollama server for clinical interpretation.
-    Uses /api/chat endpoint for better instruction-following than /api/generate.
-    Raises httpx.HTTPError or RuntimeError on failure so the caller can fall back.
+
+    Concurrency guard:
+      Tries to acquire the semaphore with a short timeout (100 ms).
+      If Ollama is already busy → raises RuntimeError immediately so the
+      fallback chain skips to Gemini/Groq without queuing.
+      This prevents RAM exhaustion: on a 4 GB server a second parallel
+      inference would cause swap thrashing and OOM kills.
+
+    Uses /api/chat for better Arabic instruction-following.
     """
-    url = f"{_OLLAMA_BASE_URL}/api/chat"
-    payload = {
-        "model":  _OLLAMA_CLINICAL_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream":  False,
-        "options": {"temperature": 0.3, "num_predict": 550},
-    }
-    async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
-        r = await client.post(url, json=payload)
-        r.raise_for_status()
-    text = r.json().get("message", {}).get("content", "").strip()
-    if not text:
-        raise RuntimeError("Ollama returned empty response")
-    return text
+    sem = _get_ollama_semaphore()
+    try:
+        await asyncio.wait_for(sem.acquire(), timeout=0.10)
+    except asyncio.TimeoutError:
+        raise RuntimeError(
+            f"Ollama busy (max {_OLLAMA_MAX_CONCURRENT} concurrent) — "
+            "falling back to cloud provider"
+        )
+    try:
+        url = f"{_OLLAMA_BASE_URL}/api/chat"
+        payload = {
+            "model":    _OLLAMA_CLINICAL_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream":   False,
+            "options":  {"temperature": 0.3, "num_predict": 550},
+        }
+        headers = {}
+        if _OLLAMA_ACCESS_TOKEN:
+            headers["Authorization"] = f"Bearer {_OLLAMA_ACCESS_TOKEN}"
+        async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
+            r = await client.post(url, json=payload, headers=headers)
+            r.raise_for_status()
+        text = r.json().get("message", {}).get("content", "").strip()
+        if not text:
+            raise RuntimeError("Ollama returned empty response")
+        return text
+    finally:
+        sem.release()
 
 
 async def _call_gemini_flash(prompt: str) -> str:
