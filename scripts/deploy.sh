@@ -76,7 +76,11 @@ ok "Disk free: ${DISK_FREE_MB} MB"
 # ── Step 1: Backup database before any change ─────────────────────────────────
 if [[ "$SKIP_BACKUP" == "false" ]]; then
     log "Step 1/7: Backing up database..."
-    if bash scripts/backup.sh daily >> "$LOG_FILE" 2>&1; then
+    # On first deploy postgres is not running yet — nothing to back up, skip gracefully.
+    PG_RUNNING=$(docker compose ps postgres 2>/dev/null | grep -c "running\|Up" || true)
+    if [[ "$PG_RUNNING" -eq 0 ]]; then
+        log "Step 1/7: First deploy detected (postgres not running) — skipping backup"
+    elif bash scripts/backup.sh daily >> "$LOG_FILE" 2>&1; then
         ok "Database backup complete"
     else
         fail "Backup failed — deploy aborted (use --skip-backup to override)"
@@ -96,7 +100,9 @@ ok "Code updated — $(git log -1 --oneline)"
 
 # ── Step 3: Build images (fail fast — do not touch running containers) ────────
 log "Step 3/7: Building Docker images..."
-if docker compose build --pull 2>&1 | tee -a "$LOG_FILE"; then
+# Note: --pull tries to refresh base images from Docker Hub.
+# Skip --pull on first run (no network changes expected) to avoid registry errors.
+if docker compose build 2>&1 | tee -a "$LOG_FILE"; then
     ok "Build successful"
 else
     fail "Build failed — running containers are untouched"
