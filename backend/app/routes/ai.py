@@ -153,6 +153,35 @@ _CIRCUIT_BREAKERS: dict[str, _CircuitBreaker] = {
     "groq":        _CircuitBreaker(),
 }
 
+
+# ── AI in-process metrics (Prometheus-compatible) ─────────────────────────────
+# Simple integer counters — safe without a lock in CPython (GIL).
+# Exposed via get_ai_metrics() imported by metrics.py.
+_AI_CALLS:             dict[str, int] = {}   # provider → successful API calls
+_AI_TIMEOUTS:          dict[str, int] = {}   # provider → timeout count
+_AI_ERRORS:            dict[str, int] = {}   # provider → non-timeout failure count
+_AI_CACHE_HITS:        int = 0
+_AI_CACHE_MISSES:      int = 0
+_AI_BUDGET_EXHAUSTED:  int = 0
+
+
+def get_ai_metrics() -> dict:
+    """Return current AI metrics snapshot for Prometheus exposition.
+    Called from metrics.py — must never raise.
+    """
+    return {
+        "calls":            dict(_AI_CALLS),
+        "timeouts":         dict(_AI_TIMEOUTS),
+        "errors":           dict(_AI_ERRORS),
+        "cache_hits":       _AI_CACHE_HITS,
+        "cache_misses":     _AI_CACHE_MISSES,
+        "budget_exhausted": _AI_BUDGET_EXHAUSTED,
+        "circuit_open": {
+            name: 1 if cb.is_open() else 0
+            for name, cb in _CIRCUIT_BREAKERS.items()
+        },
+    }
+
 router = APIRouter(prefix="/api/ai", tags=["AI Safety Layer"])
 
 _DOCTOR_ROLES = {"doctor", "admin", "lab_admin", "province_admin",
@@ -919,12 +948,16 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     Privacy: prompt contains only test names, numeric values, age, and gender.
     No patient name, ID, or any PII is sent to cloud providers.
     """
+    global _AI_CACHE_HITS, _AI_CACHE_MISSES, _AI_BUDGET_EXHAUSTED
+
     # ── 1. Cache lookup (async — does not block the event loop) ──────────────
     cache_key = _prompt_cache_key(prompt)
     cached = await _ai_cache_get_async(cache_key)
     if cached:
+        _AI_CACHE_HITS += 1
         logger.info("[AI] event=ai_call cache=hit provider=%s", cached[1])
         return cached
+    _AI_CACHE_MISSES += 1
 
     # ── 2. Stampede protection ────────────────────────────────────────────────
     if cache_key in _IN_FLIGHT:
@@ -962,6 +995,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
             # ── Budget check: stop if wall time exhausted ─────────────────────
             remaining = _AI_BUDGET_SECS - (time.perf_counter() - t_budget)
             if remaining <= 0.3:
+                _AI_BUDGET_EXHAUSTED += 1
                 logger.warning(
                     "[AI] event=ai_call budget_exhausted elapsed=%.1fs — stopping chain",
                     time.perf_counter() - t_budget,
@@ -985,6 +1019,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
                 latency_ms = (time.perf_counter() - t0) * 1000
                 if cb:
                     cb.record_success()
+                _AI_CALLS[name] = _AI_CALLS.get(name, 0) + 1
                 await _ai_cache_set_async(cache_key, text, name)
                 logger.info(
                     "[AI] event=ai_call cache=miss provider=%s latency_ms=%.0f",
@@ -995,6 +1030,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
                 latency_ms = (time.perf_counter() - t0) * 1000
                 if cb:
                     cb.record_failure()
+                _AI_TIMEOUTS[name] = _AI_TIMEOUTS.get(name, 0) + 1
                 logger.warning(
                     "[AI] event=ai_call provider=%s timeout after %.0fms — trying fallback",
                     name, latency_ms,
@@ -1004,6 +1040,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
                 latency_ms = (time.perf_counter() - t0) * 1000
                 if cb:
                     cb.record_failure()
+                _AI_ERRORS[name] = _AI_ERRORS.get(name, 0) + 1
                 logger.warning(
                     "[AI] event=ai_call provider=%s latency_ms=%.0f failed=%s — trying fallback",
                     name, latency_ms, exc,

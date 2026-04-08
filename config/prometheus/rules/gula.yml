@@ -394,3 +394,77 @@ groups:
             50+ DB connection-refused errors in 5 minutes. Only /health, /auth/login,
             /admin/kill-switch/deactivate, and /metrics/prom are reachable.
             Immediate action required: check postgres container and network.
+
+  # ===========================================================================
+  # AI LAYER
+  # ===========================================================================
+  - name: gula_ai
+    interval: 30s
+    rules:
+
+      - alert: AICircuitOpen
+        expr: gula_ai_circuit_open == 1
+        for: 1m
+        labels:
+          severity: warning
+          service: ai
+        annotations:
+          summary: "🟡 AI circuit open: {{ $labels.provider }}"
+          description: |
+            Provider {{ $labels.provider }} has failed ≥3 times in the last 30s.
+            The circuit breaker is open — requests are being routed to the next
+            provider in the fallback chain.
+            Check: docker logs gula-backend 2>&1 | grep "Circuit open"
+
+      - alert: AIAllCircuitsOpen
+        expr: sum(gula_ai_circuit_open) == count(gula_ai_circuit_open)
+        for: 1m
+        labels:
+          severity: critical
+          service: ai
+        annotations:
+          summary: "🔴 All AI providers down — /interpret returning 503"
+          description: |
+            Every configured AI provider has an open circuit. The patient-facing
+            interpretation endpoint (/api/ai/interpret) is returning 503.
+            Check OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY in .env.
+
+      - alert: AIBudgetExhaustedSpike
+        expr: increase(gula_ai_budget_exhausted_total[5m]) > 3
+        for: 2m
+        labels:
+          severity: warning
+          service: ai
+        annotations:
+          summary: "🟡 AI budget exhausted {{ $value }} times in 5 min"
+          description: |
+            The 6s hard budget for the AI provider chain is being hit repeatedly.
+            This means all providers are slow or failing within the budget window.
+            Consider increasing AI_BUDGET_SECONDS or checking provider status.
+
+      - alert: AICacheHitRateLow
+        expr: gula_ai_cache_hit_rate < 0.30
+        for: 10m
+        labels:
+          severity: warning
+          service: ai
+        annotations:
+          summary: "🟡 AI cache hit rate {{ $value | humanizePercentage }} (< 30%)"
+          description: |
+            AI response cache hit rate has dropped below 30% for 10 minutes.
+            This increases API call volume and latency.
+            Possible causes: Redis restart (cache cleared), highly varied result panels,
+            or AI_CACHE_TTL_SECONDS set too low.
+            Check: docker logs gula-backend 2>&1 | grep "cache=hit"
+
+      - alert: AIErrorSpike
+        expr: increase(gula_ai_errors_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: ai
+        annotations:
+          summary: "🟡 AI errors: {{ $value }} in 5 min (provider={{ $labels.provider }})"
+          description: |
+            High rate of AI provider errors. The circuit breaker may open soon.
+            Check provider key validity and rate limits.

@@ -331,5 +331,62 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     except Exception:
         pass
 
+    # ── AI Layer metrics ─────────────────────────────────────────────────────
+    # Exposes cache efficiency, provider usage, circuit breaker states,
+    # budget exhaustion, and per-provider timeouts/errors.
+    try:
+        from ..routes.ai import get_ai_metrics
+        ai = get_ai_metrics()
+
+        lines += [
+            "",
+            "# HELP gula_ai_cache_hits_total Cumulative AI cache hits (no API call made)",
+            "# TYPE gula_ai_cache_hits_total counter",
+            f"gula_ai_cache_hits_total {ai['cache_hits']}",
+            "",
+            "# HELP gula_ai_cache_misses_total Cumulative AI cache misses (API call made)",
+            "# TYPE gula_ai_cache_misses_total counter",
+            f"gula_ai_cache_misses_total {ai['cache_misses']}",
+            "",
+            "# HELP gula_ai_budget_exhausted_total Times the 6s hard budget was hit before any provider responded",
+            "# TYPE gula_ai_budget_exhausted_total counter",
+            f"gula_ai_budget_exhausted_total {ai['budget_exhausted']}",
+        ]
+
+        for provider, count in ai["calls"].items():
+            lines += [
+                "",
+                f"# HELP gula_ai_calls_total{{provider=\"{provider}\"}} Successful AI calls by provider",
+                "# TYPE gula_ai_calls_total counter",
+                f'gula_ai_calls_total{{provider="{provider}"}} {count}',
+            ]
+
+        for provider, count in ai["timeouts"].items():
+            lines += [
+                f'gula_ai_timeouts_total{{provider="{provider}"}} {count}',
+            ]
+
+        for provider, count in ai["errors"].items():
+            lines += [
+                f'gula_ai_errors_total{{provider="{provider}"}} {count}',
+            ]
+
+        for provider, is_open in ai["circuit_open"].items():
+            lines += [
+                f'gula_ai_circuit_open{{provider="{provider}"}} {is_open}',
+            ]
+
+        # Derived: cache hit rate (0–1)
+        total_ai = ai["cache_hits"] + ai["cache_misses"]
+        hit_rate = round(ai["cache_hits"] / total_ai, 4) if total_ai > 0 else 1.0
+        lines += [
+            "",
+            "# HELP gula_ai_cache_hit_rate Current AI cache hit rate (0–1, higher is better)",
+            "# TYPE gula_ai_cache_hit_rate gauge",
+            f"gula_ai_cache_hit_rate {hit_rate}",
+        ]
+    except Exception:
+        pass
+
     lines.append("")
     return PlainTextResponse("\n".join(lines) + "\n", media_type=_PROM_CONTENT_TYPE)
