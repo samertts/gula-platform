@@ -26,6 +26,7 @@ logger = logging.getLogger("gula.billing")
 AI_COST_PER_CALL_IQD = 50          # per AI interpretation call
 REFERRAL_COMMISSION_RATE = 0.10    # 10% of referred lab payment
 REFERRAL_MONTHS = 6                # earning window
+AI_DAILY_LIMIT_PER_LAB = int(__import__("os").getenv("AI_MAX_CALLS_PER_LAB_DAILY", "200"))
 
 
 # ── Wallet ────────────────────────────────────────────────────────────────────
@@ -40,19 +41,41 @@ def get_or_create_wallet(db: Session, lab_id: int) -> LabWallet:
 
 
 def credit_wallet(db: Session, lab_id: int, amount: int) -> None:
-    w = get_or_create_wallet(db, lab_id)
-    w.balance_iqd += amount
-    w.updated_at = datetime.now(timezone.utc)
+    """Atomic wallet credit — safe under concurrent requests."""
+    # Ensure wallet row exists first
+    get_or_create_wallet(db, lab_id)
+    # Single atomic UPDATE — no read-modify-write race condition
+    db.execute(text("""
+        UPDATE lab_wallets
+        SET balance_iqd = balance_iqd + :amount,
+            updated_at  = NOW()
+        WHERE lab_id = :lab_id
+    """), {"amount": amount, "lab_id": lab_id})
 
 
 # ── Usage tracking ─────────────────────────────────────────────────────────────
 
-def track_ai_call(db: Session, lab_id: int, user_id: Optional[int] = None) -> None:
-    """Record one AI call usage event. Cheap — one INSERT."""
+def track_ai_call(db: Session, lab_id: int, user_id: Optional[int] = None) -> bool:
+    """
+    Record one AI call usage event.
+    Returns False and does nothing if lab has hit its daily limit.
+    """
+    today = date.today()
+    today_count = db.query(func.count(UsageEvent.id)).filter(
+        UsageEvent.lab_id == lab_id,
+        UsageEvent.event_type == "ai_call",
+        func.date(UsageEvent.created_at) == today,
+    ).scalar() or 0
+
+    if today_count >= AI_DAILY_LIMIT_PER_LAB:
+        logger.warning("[BILLING] lab=%d hit AI daily limit (%d)", lab_id, AI_DAILY_LIMIT_PER_LAB)
+        return False
+
     db.add(UsageEvent(
         lab_id=lab_id, user_id=user_id,
         event_type="ai_call", cost_iqd=AI_COST_PER_CALL_IQD,
     ))
+    return True
 
 
 def track_test(db: Session, lab_id: int, test_type: str, price_iqd: int,
@@ -78,6 +101,9 @@ def track_test(db: Session, lab_id: int, test_type: str, price_iqd: int,
 
 
 # ── Dynamic pricing ────────────────────────────────────────────────────────────
+# In-process EMA (Exponential Moving Average) cache: test_type → last smoothed price
+_price_ema: dict[str, float] = {}
+
 
 def get_dynamic_price(db: Session, test_type: str, lab_id: Optional[int] = None) -> dict:
     """
@@ -103,8 +129,13 @@ def get_dynamic_price(db: Session, test_type: str, lab_id: Optional[int] = None)
     hour = datetime.now(timezone.utc).hour
     peak_boost = 0.10 if 8 <= hour <= 11 else 0.0
 
-    price = int(pricing.base_price * (1 + demand_boost + peak_boost))
-    price = max(pricing.min_price, min(pricing.max_price, price))
+    raw_price = pricing.base_price * (1 + demand_boost + peak_boost)
+
+    # EMA smoothing — prevents sudden price jumps (α=0.3 new, 0.7 old)
+    prev = _price_ema.get(test_type, raw_price)
+    smoothed = prev * 0.7 + raw_price * 0.3
+    _price_ema[test_type] = smoothed
+    price = int(max(pricing.min_price, min(pricing.max_price, smoothed)))
 
     signal = "high" if demand_boost > 0.10 else ("medium" if demand_boost > 0.03 else "low")
     return {
@@ -183,10 +214,33 @@ def create_invoice(db: Session, lab_id: int, total_iqd: int,
     return inv
 
 
-def mark_paid(db: Session, payment_id: int) -> bool:
-    pmt = db.query(Payment).filter(Payment.id == payment_id).first()
+def mark_paid(db: Session, payment_id: int, external_id: str = "") -> bool:
+    """
+    Mark a payment as paid. Idempotent — safe if webhook fires twice.
+    Uses SELECT FOR UPDATE to prevent concurrent double-processing.
+    """
+    # Lock row to prevent concurrent webhook race
+    pmt = (
+        db.query(Payment)
+        .filter(Payment.id == payment_id)
+        .with_for_update()
+        .first()
+    )
     if not pmt or pmt.status == "paid":
-        return False
+        return False  # already processed — do nothing
+
+    # If provider sent an external_id, verify no duplicate transaction
+    if external_id:
+        dup = (
+            db.query(Payment)
+            .filter(Payment.external_id == external_id, Payment.status == "paid")
+            .first()
+        )
+        if dup:
+            logger.warning("[PAYMENT] Duplicate external_id=%s blocked", external_id)
+            return False
+        pmt.external_id = external_id
+
     pmt.status = "paid"
     if pmt.invoice_id:
         inv = db.query(Invoice).filter(Invoice.id == pmt.invoice_id).first()

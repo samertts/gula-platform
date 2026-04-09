@@ -1201,8 +1201,10 @@ async def interpret_result_public(token: str, request: Request) -> JSONResponse:
             from ..services.billing_service import track_ai_call
             _bill_db: Session = SessionLocal()
             try:
-                track_ai_call(_bill_db, lab_id=order.lab_id)
+                allowed = track_ai_call(_bill_db, lab_id=order.lab_id)
                 _bill_db.commit()
+                if not allowed:
+                    logger.warning("[AI] lab=%d AI daily limit reached", order.lab_id)
             finally:
                 _bill_db.close()
         except Exception:

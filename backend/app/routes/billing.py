@@ -211,7 +211,14 @@ def _verify_webhook_sig(provider: str, payload: bytes, sig: str) -> bool:
     secret_env = {"zaincash": "ZAINCASH_SECRET", "qicard": "QICARD_SECRET"}
     secret = os.getenv(secret_env.get(provider, ""), "")
     if not secret:
-        return True   # no secret configured → accept (dev mode)
+        # In production this means the env var is unset — log loudly but don't block
+        # so we don't break a live integration on first deploy.
+        # Set the secret in .env to enforce signature verification.
+        logger.warning("[WEBHOOK] %s secret not configured — signature check skipped", provider)
+        return True
+    if not sig:
+        logger.warning("[WEBHOOK] %s: missing X-Signature header", provider)
+        return False
     expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, sig)
 
@@ -246,9 +253,13 @@ async def payment_webhook(
             raise HTTPException(404, "Payment not found")
         if pmt.provider != provider:
             raise HTTPException(400, "Provider mismatch")
-        pmt.external_id = str(data.get("transaction_id", ""))
-        svc.mark_paid(db, payment_id)
-        logger.info("[WEBHOOK] Payment %d confirmed via %s", payment_id, provider)
+        external_id = str(data.get("transaction_id", "") or data.get("ref", ""))
+        paid = svc.mark_paid(db, payment_id, external_id=external_id)
+        if paid:
+            logger.info("[WEBHOOK] Payment %d confirmed via %s ext=%s",
+                        payment_id, provider, external_id)
+        else:
+            logger.info("[WEBHOOK] Payment %d already processed — skipped", payment_id)
     elif status in ("failed", "cancelled"):
         pmt = db.query(Payment).filter(Payment.id == payment_id).first()
         if pmt:
