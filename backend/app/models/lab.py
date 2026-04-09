@@ -19,6 +19,7 @@ class Lab(Base):
     phone = Column(String(20))
     is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    referral_code = Column(String(20), nullable=True, unique=True, index=True)
 
     users        = relationship("LabUser", back_populates="lab", cascade="all, delete-orphan")
     patients     = relationship("Patient", back_populates="lab", cascade="all, delete-orphan")

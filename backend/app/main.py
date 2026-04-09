@@ -426,7 +426,12 @@ from .routes import ai as ai_routes
 from .routes import optimizer as optimizer_routes
 from .routes import tiers as tiers_routes
 from .routes import citizen_portal as citizen_portal_routes
+from .routes import billing as billing_routes
 from .models.subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag  # noqa: F401  register with Base
+from .models.billing import (  # noqa: F401  register with Base
+    LabWallet, UsageEvent, Invoice, Payment, LabTransaction,
+    Referral, ReferralEarning, TestPricing, StatsDaily,
+)
 
 # Core routes
 app.include_router(login.router)
@@ -467,6 +472,9 @@ app.include_router(tiers_routes.router)
 
 # Citizen / patient portal
 app.include_router(citizen_portal_routes.router)
+
+# Billing, revenue, referral, pricing
+app.include_router(billing_routes.router)
 
 # Claims / Insurance module
 from .routes import claims as claims_routes

@@ -1106,12 +1106,16 @@ def list_critical_alerts(
     response_class=JSONResponse,
     tags=["AI Public"],
 )
-async def interpret_result_public(token: str) -> JSONResponse:
+async def interpret_result_public(token: str, request: Request) -> JSONResponse:
     """
     Plain-Arabic AI explanation for lab results identified by *token*.
     Public endpoint — no login required.
     Responses are cached 120 s per token to prevent cost explosion.
+    Rate limited: 20 requests / minute per IP.
     """
+    from ..security.rate_limit import rate_limit_public
+    rate_limit_public(request, max_per_minute=20)
+
     if not token or not re.match(r"^[A-Za-z0-9_-]{10,}$", token):
         raise HTTPException(status_code=400, detail="رمز النتيجة غير صالح")
 
@@ -1183,9 +1187,26 @@ async def interpret_result_public(token: str) -> JSONResponse:
         finally:
             db2.close()
 
+    # ── Input size guard ──────────────────────────────────────────────────────
+    if len(results_data) > 50:
+        raise HTTPException(status_code=400, detail="Too many test results in one request")
+
     # ── Call AI with automatic provider fallback ──────────────────────────────
     prompt = _build_interpret_prompt(results_data, patient_context=patient_context)
     text, provider_used = await _call_ai_with_fallback(prompt)
+
+    # ── Billing: track AI call per lab (best-effort, non-fatal) ──────────────
+    if order and order.lab_id:
+        try:
+            from ..services.billing_service import track_ai_call
+            _bill_db: Session = SessionLocal()
+            try:
+                track_ai_call(_bill_db, lab_id=order.lab_id)
+                _bill_db.commit()
+            finally:
+                _bill_db.close()
+        except Exception:
+            pass
 
     # ── Post-generation safety gate ───────────────────────────────────────────
     for phrase in _FORBIDDEN_PHRASES:
