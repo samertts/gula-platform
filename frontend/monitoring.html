@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GULA — لوحة المراقبة</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e1a; --card: #111827; --border: #1f2937;
+    --green: #10b981; --red: #ef4444; --yellow: #f59e0b; --blue: #3b82f6;
+    --text: #f9fafb; --muted: #6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 1.5rem; }
+  h1 { font-size: 1.4rem; margin-bottom: 1.5rem; color: var(--blue); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+  .card label { font-size: .75rem; color: var(--muted); display: block; margin-bottom: .3rem; }
+  .card .val { font-size: 1.6rem; font-weight: 700; }
+  .pill { display: inline-block; padding: .2rem .7rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+  .pill.healthy { background: #064e3b; color: var(--green); }
+  .pill.degraded { background: #451a03; color: var(--yellow); }
+  .pill.critical { background: #450a0a; color: var(--red); }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+  @media (max-width: 640px) { .charts { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+  .chart-card h3 { font-size: .85rem; color: var(--muted); margin-bottom: .75rem; }
+  .ai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
+  #lastUpdate { font-size: .7rem; color: var(--muted); margin-top: 1rem; text-align: center; }
+  canvas { max-height: 160px; }
+</style>
+</head>
+<body>
+<h1>📊 GULA — لوحة المراقبة المباشرة</h1>
+
+<!-- Status bar -->
+<div class="grid">
+  <div class="card">
+    <label>حالة النظام</label>
+    <div class="val" id="status">—</div>
+  </div>
+  <div class="card">
+    <label>وقت التشغيل</label>
+    <div class="val" id="uptime">—</div>
+  </div>
+  <div class="card">
+    <label>ذاكرة RSS</label>
+    <div class="val" id="rss">—</div>
+  </div>
+  <div class="card">
+    <label>قاعدة البيانات</label>
+    <div class="val" id="db">—</div>
+  </div>
+  <div class="card">
+    <label>Redis</label>
+    <div class="val" id="redis">—</div>
+  </div>
+  <div class="card">
+    <label>مستوى التدهور</label>
+    <div class="val" id="degradation">—</div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts">
+  <div class="chart-card">
+    <h3>استهلاك الذاكرة (MB)</h3>
+    <canvas id="rssChart"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>زمن استجابة DB (ms)</h3>
+    <canvas id="dbChart"></canvas>
+  </div>
+</div>
+
+<!-- AI Stats -->
+<div class="card" style="margin-bottom:1rem">
+  <label>إحصائيات الذكاء الاصطناعي</label>
+  <div class="ai-grid" id="aiStats" style="margin-top:.75rem">
+    <span style="color:var(--muted)">جارٍ التحميل...</span>
+  </div>
+</div>
+
+<!-- Billing today -->
+<div class="card" style="margin-bottom:1rem">
+  <label>إيرادات اليوم</label>
+  <div class="ai-grid" id="billingStats" style="margin-top:.75rem">
+    <span style="color:var(--muted)">جارٍ التحميل...</span>
+  </div>
+</div>
+
+<div id="lastUpdate"></div>
+
+<script>
+const API = '/monitoring/live';
+const TOKEN = localStorage.getItem('metrics_token') || '';
+
+const chartOpts = (color) => ({
+  type: 'line',
+  data: { labels: [], datasets: [{ data: [], borderColor: color,
+    borderWidth: 2, pointRadius: 0, tension: 0.3,
+    fill: true, backgroundColor: color + '20' }] },
+  options: {
+    animation: false, responsive: true, maintainAspectRatio: false,
+    scales: { x: { display: false }, y: { grid: { color: '#1f2937' },
+      ticks: { color: '#6b7280', font: { size: 10 } } } },
+    plugins: { legend: { display: false } }
+  }
+});
+
+const rssChart = new Chart(document.getElementById('rssChart'), chartOpts('#3b82f6'));
+const dbChart  = new Chart(document.getElementById('dbChart'),  chartOpts('#10b981'));
+
+function fmt(ts) {
+  return new Date(ts * 1000).toLocaleTimeString('ar-IQ', { hour12: false });
+}
+
+function setCard(id, val, color) {
+  const el = document.getElementById(id);
+  el.innerHTML = val;
+  if (color) el.style.color = color;
+}
+
+async function load() {
+  try {
+    const headers = TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {};
+    const res = await fetch(API, { headers });
+    if (!res.ok) {
+      setCard('status', '401 — أدخل التوكن', '#ef4444');
+      promptToken();
+      return;
+    }
+    const d = await res.json();
+
+    // Status
+    const stColors = { healthy: '#10b981', degraded: '#f59e0b', critical: '#ef4444' };
+    const stLabels  = { healthy: '✅ سليم', degraded: '⚠️ متدهور', critical: '🔴 حرج' };
+    document.getElementById('status').innerHTML =
+      `<span class="pill ${d.status}">${stLabels[d.status] || d.status}</span>`;
+
+    // System
+    const h = Math.floor(d.uptime_s / 3600);
+    const m = Math.floor((d.uptime_s % 3600) / 60);
+    setCard('uptime', `${h}h ${m}m`);
+    setCard('rss', `${d.system.rss_mb} MB`,
+            d.system.rss_mb > 800 ? '#ef4444' : d.system.rss_mb > 600 ? '#f59e0b' : '#10b981');
+    setCard('db',
+            d.system.db_ok ? `${d.system.db_ms}ms ✅` : '❌ Down',
+            d.system.db_ok ? (d.system.db_ms > 300 ? '#f59e0b' : '#10b981') : '#ef4444');
+    setCard('redis',
+            d.system.redis_ok ? `${d.system.redis_ms}ms ✅` : '❌ Down',
+            d.system.redis_ok ? '#10b981' : '#ef4444');
+    const degLabels = ['لا شيء', 'L1 محدود', 'L2 قراءة فقط', 'L3 حرج'];
+    setCard('degradation', degLabels[d.system.degradation] || d.system.degradation,
+            d.system.degradation > 0 ? '#f59e0b' : '#10b981');
+
+    // Charts
+    if (d.history && d.history.timestamps.length) {
+      const labels = d.history.timestamps.map(fmt);
+      rssChart.data.labels = labels;
+      rssChart.data.datasets[0].data = d.history.rss_mb;
+      rssChart.update('none');
+      dbChart.data.labels = labels;
+      dbChart.data.datasets[0].data = d.history.db_ms;
+      dbChart.update('none');
+    }
+
+    // AI stats
+    if (d.ai && Object.keys(d.ai).length) {
+      const a = d.ai;
+      document.getElementById('aiStats').innerHTML = `
+        <div class="card"><label>استدعاءات AI</label><div class="val">${a.calls || 0}</div></div>
+        <div class="card"><label>Cache hit %</label><div class="val" style="color:${a.hit_rate > 0.5 ? '#10b981' : '#f59e0b'}">${Math.round((a.hit_rate||0)*100)}%</div></div>
+        <div class="card"><label>أخطاء</label><div class="val" style="color:${a.errors ? '#ef4444' : '#10b981'}">${a.errors || 0}</div></div>
+        <div class="card"><label>Circuit Open</label><div class="val" style="color:${a.circuit_open ? '#ef4444' : '#10b981'}">${a.circuit_open ? '🔴' : '✅'}</div></div>
+        <div class="card"><label>Budget Miss</label><div class="val">${a.budget_exhausted || 0}</div></div>
+      `;
+    }
+
+    // Billing today
+    if (d.billing && Object.keys(d.billing).length) {
+      const b = d.billing;
+      document.getElementById('billingStats').innerHTML = `
+        <div class="card"><label>AI calls اليوم</label><div class="val">${b.ai_calls || 0}</div></div>
+        <div class="card"><label>إيرادات IQD</label><div class="val">${(b.revenue_iqd||0).toLocaleString()}</div></div>
+        <div class="card"><label>عمولة IQD</label><div class="val">${(b.commission_iqd||0).toLocaleString()}</div></div>
+      `;
+    }
+
+    document.getElementById('lastUpdate').textContent =
+      'آخر تحديث: ' + new Date().toLocaleTimeString('ar-IQ');
+
+  } catch(e) {
+    setCard('status', '⚠️ خطأ في الاتصال', '#f59e0b');
+    console.error(e);
+  }
+}
+
+function promptToken() {
+  const t = prompt('أدخل METRICS_BEARER_TOKEN:');
+  if (t) { localStorage.setItem('metrics_token', t); location.reload(); }
+}
+
+setInterval(load, 3000);
+load();
+</script>
+</body>
+</html>

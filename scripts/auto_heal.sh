@@ -24,6 +24,21 @@ ok()   { echo "${LOG_PREFIX} OK: $*"; }
 warn() { echo "${LOG_PREFIX} WARNING: $*"; }
 err()  { echo "${LOG_PREFIX} ERROR: $*"; }
 
+# Telegram alert — only fires if TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID are set.
+# Set these in /etc/environment or docker-compose environment to enable.
+_telegram_alert() {
+    local msg="$1"
+    local bot="${TELEGRAM_BOT_TOKEN:-}"
+    local chat="${TELEGRAM_CHAT_ID:-}"
+    [ -z "$bot" ] || [ -z "$chat" ] && return 0
+    curl -sf --max-time 5 \
+        "https://api.telegram.org/bot${bot}/sendMessage" \
+        -d "chat_id=${chat}" \
+        -d "text=${msg}" \
+        -d "parse_mode=HTML" \
+        >/dev/null 2>&1 || true
+}
+
 cd "$PROJECT_DIR" || { err "Cannot cd to $PROJECT_DIR"; exit 1; }
 
 # ─── Restart counter (reset every hour) ──────────────────────────────────────
@@ -99,6 +114,7 @@ restart_container() {
         || true
     bump_restart
     log "Restarted $svc (restart #${restart_count}/hour)"
+    _telegram_alert "⚠️ GULA: restarted <b>${svc}</b> on $(hostname) (${restart_count}/${MAX_RESTARTS_PER_HOUR}/hr)"
 }
 
 containers_down=0
@@ -121,6 +137,7 @@ if [ "$HTTP_CODE" = "200" ]; then
     ok "End-to-end health check passed (HTTP $HTTP_CODE)"
 elif [ "$HTTP_CODE" = "000" ]; then
     err "End-to-end health check FAILED — site not responding"
+    _telegram_alert "🔴 GULA: site not responding on $(hostname) — HTTP 000"
     # Only restart api-gateway if Docker containers look OK but site is down
     # (handles the case where nginx is up but Docker gateway is stuck)
     if systemctl is-active --quiet nginx && can_restart; then
@@ -146,6 +163,31 @@ fi
 mem_kb=$(awk '/MemAvailable/{print $2}' /proc/meminfo 2>/dev/null || echo 999999)
 if [ "${mem_kb:-999999}" -lt 200000 ]; then
     warn "Low memory (${mem_kb}KB available) — check for leaks"
+fi
+
+# ─── 7. Degradation level alert ──────────────────────────────────────────────
+# Poll /monitoring/live and alert if degradation > 0 or kill switch active
+MONITORING_TOKEN="${METRICS_BEARER_TOKEN:-}"
+MON_URL="http://localhost:8000/monitoring/live"
+
+if command -v curl >/dev/null 2>&1; then
+    MON_RESP=$(curl -sf --max-time 4 \
+        ${MONITORING_TOKEN:+-H "Authorization: Bearer $MONITORING_TOKEN"} \
+        "$MON_URL" 2>/dev/null || echo "")
+
+    if [ -n "$MON_RESP" ]; then
+        DEG=$(echo "$MON_RESP" | grep -o '"degradation":[0-9]' | grep -o '[0-9]' || echo "0")
+        KS=$(echo  "$MON_RESP" | grep -o '"kill_switch":true' || echo "")
+
+        if [ -n "$KS" ]; then
+            warn "Kill switch is ACTIVE — autonomous actions halted"
+            _telegram_alert "🔴 GULA: Kill switch ACTIVE on $(hostname)"
+        fi
+        if [ "${DEG:-0}" -ge 2 ]; then
+            warn "Degradation level ${DEG} detected (L2=read-only, L3=critical)"
+            _telegram_alert "⚠️ GULA: Degradation L${DEG} on $(hostname)"
+        fi
+    fi
 fi
 
 log "Done (restarts this hour: ${restart_count}/${MAX_RESTARTS_PER_HOUR})"

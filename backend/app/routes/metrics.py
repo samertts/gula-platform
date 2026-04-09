@@ -1,11 +1,12 @@
 """Operational and Prometheus metrics endpoints.
 
-GET /metrics        — JSON dashboard metrics (authenticated)
-GET /metrics/prom   — Prometheus text format (Bearer token or no-auth in dev)
-
-The JSON endpoint now uses SQL aggregate queries (no more Python-loop over all
-orders) — constant-time regardless of data volume.
+GET /metrics          — JSON dashboard metrics (authenticated)
+GET /metrics/prom     — Prometheus text format (Bearer token or no-auth in dev)
+GET /monitoring/live  — Unauthenticated live snapshot for admin dashboard
+                        (protected by METRICS_BEARER_TOKEN in production)
 """
+import os
+import collections
 import time
 from datetime import datetime, date, timezone
 from fastapi import APIRouter, Depends, Request, Response
@@ -390,3 +391,101 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
 
     lines.append("")
     return PlainTextResponse("\n".join(lines) + "\n", media_type=_PROM_CONTENT_TYPE)
+
+
+# ── Live monitoring endpoint for admin dashboard ──────────────────────────────
+# Rolling history: last 60 data points (1 point per poll ~every 3s = 3min window)
+_HISTORY: dict = {
+    "ts":     collections.deque(maxlen=60),
+    "rss":    collections.deque(maxlen=60),
+    "db_ms":  collections.deque(maxlen=60),
+}
+
+
+@router.get("/monitoring/live", include_in_schema=False)
+def monitoring_live(request: Request, db: Session = Depends(get_db)):
+    """
+    Lightweight live snapshot for the admin monitoring dashboard.
+    Protected by METRICS_BEARER_TOKEN in production.
+    Returns current stats + rolling history for charts.
+    """
+    token = os.getenv("METRICS_BEARER_TOKEN", "")
+    if token and IS_PRODUCTION:
+        auth = request.headers.get("Authorization", "")
+        if auth != f"Bearer {token}":
+            from fastapi.responses import JSONResponse as _J
+            return _J({"error": "Unauthorized"}, status_code=401)
+
+    db_ok, db_ms = _ping_db(db)
+    red_ok, red_ms = _ping_redis()
+    rss = _rss_mb()
+    uptime_s = int(time.time() - _START)
+    now_ts = int(time.time())
+
+    # Append to rolling history
+    _HISTORY["ts"].append(now_ts)
+    _HISTORY["rss"].append(rss)
+    _HISTORY["db_ms"].append(db_ms if db_ms >= 0 else 0)
+
+    # AI layer stats (if available)
+    ai_stats: dict = {}
+    try:
+        from ..routes.ai import get_ai_metrics
+        ai_raw = get_ai_metrics()
+        total_ai = ai_raw["cache_hits"] + ai_raw["cache_misses"]
+        ai_stats = {
+            "calls":        sum(ai_raw["calls"].values()),
+            "cache_hits":   ai_raw["cache_hits"],
+            "cache_misses": ai_raw["cache_misses"],
+            "hit_rate":     round(ai_raw["cache_hits"] / total_ai, 3) if total_ai else 1.0,
+            "budget_exhausted": ai_raw["budget_exhausted"],
+            "errors":       sum(ai_raw["errors"].values()),
+            "circuit_open": any(ai_raw["circuit_open"].values()),
+        }
+    except Exception:
+        pass
+
+    # Billing today (if available)
+    billing_today: dict = {}
+    try:
+        from ..services.billing_service import get_platform_stats
+        ps = get_platform_stats(db)
+        billing_today = ps.get("today", {})
+    except Exception:
+        pass
+
+    # Kill switch + degradation
+    ks_active = False
+    deg_level = 0
+    try:
+        from ..core.kill_switch import is_kill_switch_active
+        from ..core.self_healing import health as _sh
+        ks_active = is_kill_switch_active()
+        deg_level = _sh.degradation_level.value
+    except Exception:
+        pass
+
+    overall_status = "critical" if (not db_ok or ks_active or deg_level >= 3) else \
+                     "degraded" if (deg_level > 0 or not red_ok) else "healthy"
+
+    return {
+        "status":    overall_status,
+        "uptime_s":  uptime_s,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "system": {
+            "rss_mb":     rss,
+            "db_ok":      db_ok,
+            "db_ms":      db_ms,
+            "redis_ok":   red_ok,
+            "redis_ms":   red_ms,
+            "kill_switch": ks_active,
+            "degradation": deg_level,
+        },
+        "ai":      ai_stats,
+        "billing": billing_today,
+        "history": {
+            "timestamps": list(_HISTORY["ts"]),
+            "rss_mb":     list(_HISTORY["rss"]),
+            "db_ms":      list(_HISTORY["db_ms"]),
+        },
+    }
