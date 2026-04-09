@@ -110,7 +110,7 @@ def compute_risk(
     last_ts = _recent_actions.get(action, 0)
     if last_ts and (time.time() - last_ts) < 300:
         score += 1
-        factors.append(f"+1 repeated within 5 min")
+        factors.append("+1 repeated within 5 min")
     _recent_actions[action] = time.time()
 
     # ── Clamp and classify ───────────────────────────────────────────────────

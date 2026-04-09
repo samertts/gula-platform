@@ -2,13 +2,13 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional
 from ..database import get_db
 from ..models.patient import Patient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
-from ..services.identity import normalize_name, match_score, hash_national_id, hash_family_id
+from ..services.identity import match_score, hash_national_id, hash_family_id
 from ..services.audit_service import log_action
 
 router = APIRouter(prefix="/patients", tags=["patients"])

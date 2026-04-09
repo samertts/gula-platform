@@ -13,7 +13,6 @@ from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
 from ..services.interpretation import get_flag
 from ..services.audit_service import log_action
-from ..config import BASE_URL
 
 router = APIRouter(prefix="/batch", tags=["batch"])
 

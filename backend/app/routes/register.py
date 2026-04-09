@@ -7,11 +7,11 @@ from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.user import User
-from ..security.auth import hash_password, create_token
+from ..security.auth import hash_password
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
-from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY
+from ..config import NID_HMAC_KEY
 
 router = APIRouter(tags=["auth"])
 

@@ -14,7 +14,7 @@ from ..models.lab_user import LabUser
 from ..models.lab import Lab
 from ..security.auth import decode_refresh_token, create_token, create_refresh_token, build_token_payload, verify_password, hash_password
 from ..security.dependencies import get_current_user
-from ..security.session import bump_perm_version, warm_perm_version, get_perm_version
+from ..security.session import bump_perm_version, get_perm_version
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
 import os
@@ -300,7 +300,6 @@ def mobile_stats(
     """
     from ..models.patient import Patient
     from ..models.lab_order import LabOrder
-    from ..models.lab_result import LabResult
     from sqlalchemy import func
     from datetime import datetime, timezone, timedelta
 

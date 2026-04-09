@@ -7,7 +7,6 @@ from ..database import get_db
 from ..models.patient import Patient
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
-from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 

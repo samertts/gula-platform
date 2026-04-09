@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, case, and_, literal_column
+from sqlalchemy import func, case, and_
 from datetime import datetime, timezone, timedelta
 from ..database import get_db
 from ..models.patient import Patient

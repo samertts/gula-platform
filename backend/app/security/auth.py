@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from ..config import (
-    SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_MINUTES, JWT_EXPIRE_HOURS,
+    SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_MINUTES,
     REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRE_DAYS,
 )
 

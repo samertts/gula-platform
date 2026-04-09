@@ -1,9 +1,8 @@
 """Quality Control endpoints - Westgard rules for lab instrument validation."""
-import math
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 from ..database import get_db

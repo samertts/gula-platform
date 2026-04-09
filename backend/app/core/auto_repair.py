@@ -20,8 +20,7 @@ import gc
 import logging
 import os
 import time
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass
 
 logger = logging.getLogger("gula.auto_repair")
 
@@ -29,7 +28,7 @@ logger = logging.getLogger("gula.auto_repair")
 def _guard_repair(name: str) -> bool:
     """Return False (and log) if policy blocks this repair action."""
     try:
-        from app.core.decision_guard import guard_repair, PolicyViolation
+        from app.core.decision_guard import guard_repair
         guard_repair(name)
         return True
     except Exception as exc:

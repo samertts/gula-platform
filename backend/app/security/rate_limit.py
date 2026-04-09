@@ -21,7 +21,6 @@ import math
 import time
 import logging
 from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse
 from .redis_client import cache
 
 logger = logging.getLogger("gula.rate_limit")

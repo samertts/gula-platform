@@ -338,7 +338,7 @@ class ExternalGateway:
     @staticmethod
     def _make_cache_key(gateway_name: str, **kwargs: Any) -> str:
         raw = f"{gateway_name}:{sorted(kwargs.items())}"
-        return hashlib.md5(raw.encode()).hexdigest()
+        return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
     # ── Audit ─────────────────────────────────────────────────────────────────
 

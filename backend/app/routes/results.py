@@ -8,13 +8,11 @@ from typing import Optional, List
 from datetime import datetime, timezone
 from ..database import get_db
 from ..models.patient import Patient
-from ..domain.order_state import enforce_transition, assert_not_locked
+from ..domain.order_state import enforce_transition
 from ..core.events import events, ORDER_VALIDATED, ORDER_CANCELLED, ORDER_CREATED, RESULT_CRITICAL
-from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
-from ..models.test_type import TestType
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_public, rate_limit_user, get_client_ip
 from ..services.interpretation import interpret_result, get_flag

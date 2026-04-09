@@ -1,9 +1,8 @@
 """Lab device integration - receive results from analyzers."""
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from datetime import datetime, timezone
 
 from ..database import get_db
 from ..models.lab_order import LabOrder

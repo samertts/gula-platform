@@ -16,7 +16,6 @@ import logging
 import os
 import sys
 import time
-import hashlib
 import subprocess
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
@@ -31,7 +30,7 @@ from ..models.patient import Patient
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.audit_log import AuditLog
-from ..security.dependencies import get_current_user, get_current_lab
+from ..security.dependencies import get_current_user
 from ..services.audit_service import verify_audit_chain, get_latest_anchor
 from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION
 
@@ -147,8 +146,6 @@ def audit_summary(
 
     Provides counts of actions by type for the current lab.
     """
-    from sqlalchemy import text
-
     # Count audit actions for this lab's users
     lab_user_ids = [u.id for u in db.query(LabUser.id).filter(
         LabUser.lab_id == current_user.lab_id
@@ -555,8 +552,7 @@ def get_dhis2_aggregate(
     Data exported: total tests by type, result flag distribution, monthly counts.
     No patient PII is included in this response.
     """
-    from sqlalchemy import text, extract
-    from datetime import date
+    from sqlalchemy import text
 
     # Aggregate test counts by type (no patient data)
     test_counts = db.execute(text("""

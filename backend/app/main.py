@@ -17,7 +17,7 @@ from .config import (
 )
 
 # Configure structured JSON logging (production) or text logging (dev)
-from .core.logging_config import configure_logging, bind_log_context, get_request_id
+from .core.logging_config import configure_logging, bind_log_context
 configure_logging(
     is_production=IS_PRODUCTION,
     log_level="WARNING" if IS_PRODUCTION else "INFO",

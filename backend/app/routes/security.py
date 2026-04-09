@@ -1,7 +1,7 @@
 """Security status and health check endpoints."""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, text
+from sqlalchemy import func
 from datetime import datetime, timezone, timedelta
 
 from ..database import get_db

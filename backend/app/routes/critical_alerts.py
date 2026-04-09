@@ -1,12 +1,11 @@
 """Critical result alerts - immediate notification system for dangerous values."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from datetime import datetime, timezone, timedelta
 from ..database import get_db
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
-from ..models.patient import Patient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 

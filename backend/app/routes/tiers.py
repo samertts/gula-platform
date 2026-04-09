@@ -24,11 +24,9 @@ from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag
-from ..models.user import User
 from ..security.dependencies import get_current_user
-from ..security.rbac import require_role
 from ..core.feature_flags import (
-    _TIER_FEATURES, get_tier_features, get_lab_subscription_info,
+    get_tier_features, get_lab_subscription_info,
     is_upgrade_valid, get_tier_limits, _VALID_TIERS,
     _VALID_DEPLOYMENTS, _VALID_SECURITY,
 )
@@ -209,7 +207,6 @@ def submit_upgrade_demand(
         raise HTTPException(status_code=404, detail="Lab not found")
 
     # Rate limit: has this user already requested this lab in the last 30 days?
-    from sqlalchemy import text
     recent = db.query(UpgradeRequest).filter(
         UpgradeRequest.lab_id == body.lab_id,
         UpgradeRequest.requester_id == current_user.id,

@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models.claim import Claim, ClaimItem
+from ..models.claim import Claim
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services import claims_service

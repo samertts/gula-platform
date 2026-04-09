@@ -3,10 +3,9 @@ import urllib.parse
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from ..database import get_db
-from ..models.lab_result import LabResult, hash_token
+from ..models.lab_result import LabResult
 from ..models.lab_order import LabOrder
 from ..models.patient import Patient
 from ..models.lab import Lab

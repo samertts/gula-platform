@@ -15,7 +15,6 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional
-from datetime import datetime, timezone
 
 from ..database import get_db, SessionLocal
 from ..models.user import User
@@ -25,7 +24,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.patient import Patient
 from ..models.audit_log import AuditLog
-from ..security.dependencies import get_current_user, require_permission
+from ..security.dependencies import require_permission
 from ..security.auth import hash_password
 from ..security.session import bump_perm_version
 from ..security.rbac import (

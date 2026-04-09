@@ -6,7 +6,7 @@ import threading
 import time
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, declarative_base
-from .config import DATABASE_URL, IS_PRODUCTION
+from .config import DATABASE_URL
 
 logger = logging.getLogger("gula.database")
 
@@ -273,7 +273,7 @@ def check_db_connection_detail() -> tuple[str, str]:
             detail = f"authentication rejected by {host}:{port} — check POSTGRES_PASSWORD"
         elif "no pg_hba.conf entry" in msg:
             status = "auth_failed"
-            detail = f"pg_hba.conf rejected connection from this host — check pg_hba.conf subnet"
+            detail = "pg_hba.conf rejected connection from this host — check pg_hba.conf subnet"
         elif "timeout" in msg or "timed out" in msg:
             status = "timeout"
             detail = f"connection to {host}:{port} timed out"
