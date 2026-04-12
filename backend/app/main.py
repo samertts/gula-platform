@@ -20,7 +20,7 @@ from .config import (
 from .core.logging_config import configure_logging, bind_log_context, get_request_id
 configure_logging(
     is_production=IS_PRODUCTION,
-    log_level="WARNING" if IS_PRODUCTION else "INFO",
+    log_level="INFO",
 )
 logger = logging.getLogger("gula")
 
@@ -245,22 +245,27 @@ app.add_middleware(
 
 
 # ===== REQUEST TIMING & LOGGING MIDDLEWARE =====
+# Paths excluded from per-request access logs to avoid health-check noise.
+_SILENT_PATHS: frozenset[str] = frozenset({"/health", "/health/ready", "/health/live"})
+
 class RequestTimingMiddleware(BaseHTTPMiddleware):
-    """Log request timing for performance monitoring."""
+    """Emit a structured access-log line (path, latency_ms, status) per request."""
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
         response = await call_next(request)
-        elapsed_ms = (time.perf_counter() - start) * 1000
+        elapsed_ms = round((time.perf_counter() - start) * 1000)
+        status = response.status_code
+        path = request.url.path
 
-        # Log slow requests (>2 seconds)
-        if elapsed_ms > 2000:
-            logger.warning(
-                "SLOW REQUEST [%s]: %s %s took %.0fms (status=%d)",
-                getattr(request.state, "request_id", "?"),
-                request.method, request.url.path, elapsed_ms, response.status_code,
+        if path not in _SILENT_PATHS:
+            log_fn = logger.warning if elapsed_ms > 2000 or status >= 500 else logger.info
+            log_fn(
+                "%s %s %d",
+                request.method, path, status,
+                extra={"path": path, "latency_ms": elapsed_ms, "status": status},
             )
 
-        response.headers["X-Response-Time"] = f"{elapsed_ms:.0f}ms"
+        response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
         response.headers["X-API-Version"] = APP_VERSION
         return response
 

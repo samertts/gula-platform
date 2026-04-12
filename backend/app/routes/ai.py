@@ -55,11 +55,15 @@ logger = logging.getLogger("gula.ai")
 _GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 _GROQ_KEY   = os.getenv("GROQ_API_KEY", "")
 
+# Hard timeout budget for every external AI HTTP call.  Keeps p99 latency ≤6s
+# and prevents a slow provider from blocking a gunicorn worker indefinitely.
+_AI_BUDGET_S = float(os.getenv("AI_BUDGET_SECONDS", "6"))
+
 # Ollama — completely free, runs locally on the server (no API key required).
 # Install: curl -fsSL https://ollama.com/install.sh | sh && ollama pull llama3.2:3b
-_OLLAMA_BASE_URL      = os.getenv("OLLAMA_BASE_URL",      "http://localhost:11434")
+_OLLAMA_BASE_URL      = os.getenv("OLLAMA_BASE_URL",      "")
 _OLLAMA_CLINICAL_MODEL = os.getenv("OLLAMA_CLINICAL_MODEL", "llama3.2:3b")
-_OLLAMA_TIMEOUT        = float(os.getenv("OLLAMA_TIMEOUT",  "20"))
+_OLLAMA_TIMEOUT        = float(os.getenv("OLLAMA_TIMEOUT",  str(_AI_BUDGET_S)))
 
 # Auto-detect provider priority: Ollama (local/free) → Gemini → Groq → none
 _AI_PROVIDER = os.getenv(
@@ -663,7 +667,7 @@ async def _call_gemini_flash(prompt: str) -> str:
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.3, "maxOutputTokens": 500},
     }
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=_AI_BUDGET_S) as client:
         r = await client.post(url, json=payload)
         r.raise_for_status()
     return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
@@ -676,7 +680,7 @@ async def _call_groq_llama(prompt: str) -> str:
         "temperature": 0.3,
         "max_tokens": 500,
     }
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=_AI_BUDGET_S) as client:
         r = await client.post(
             _GROQ_URL, json=payload,
             headers={"Authorization": f"Bearer {_GROQ_KEY}"},
