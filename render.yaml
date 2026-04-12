@@ -1,56 +1,92 @@
+# =============================================================================
+# GULA Platform — Render deployment manifest
+# Architecture: Client → Render (Docker/gunicorn+uvicorn) → Supabase (Postgres)
+#
+# Before first deploy, set these secrets in the Render dashboard:
+#   DATABASE_URL   — Supabase connection string (postgres://...?sslmode=require)
+#   ENCRYPTION_KEY — 44-char Fernet key:
+#                    python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# =============================================================================
+
 services:
   - type: web
-    name: gula-platform-backend
-    runtime: node
-    plan: free
-    buildCommand: pnpm install && pnpm build
-    startCommand: pnpm start
+    name: gula-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+
+    # Render listens on this port; must match gunicorn --bind 0.0.0.0:10000
+    port: 10000
+
+    # Render uses this path for health/readiness checks
+    healthCheckPath: /health
+
+    # Migrations run ONCE before the new deploy goes live — not inside CMD.
+    # Render spins up a short-lived container from the same image, runs this
+    # command with all env vars injected, then promotes traffic only on success.
+    preDeployCommand: "alembic upgrade head"
+
     envVars:
-      - key: NODE_ENV
+      # ── Runtime mode ─────────────────────────────────────────────────────
+      - key: ENV
         value: production
-      - key: PORT
-        value: 3000
+      - key: DEBUG
+        value: "false"
+
+      # ── Server sizing (2 workers × 15 conns = 30 total, fits Supabase free) ─
+      - key: WEB_CONCURRENCY
+        value: "2"
+
+      # ── DB connection pool (per spec: pool_size=5, max_overflow=10, recycle=1800)
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "10"
+      - key: DB_POOL_RECYCLE
+        value: "1800"
+      - key: DB_STMT_TIMEOUT
+        value: "25s"
+
+      # ── Concurrency back-pressure ─────────────────────────────────────────
+      - key: MAX_CONCURRENT_REQUESTS
+        value: "50"
+
+      # ── AI budget (hard timeout for external AI API calls) ────────────────
+      - key: AI_BUDGET_SECONDS
+        value: "6"
+
+      # ── Secrets (must be set manually in Render dashboard) ───────────────
+      # DATABASE_URL: Supabase postgres URL (postgres://user:pass@host/db?sslmode=require)
       - key: DATABASE_URL
-        fromDatabase:
-          name: gula-platform-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: gula-platform-redis
-          type: redis
-          property: connectionString
-      - key: JWT_SECRET
-        generateValue: true
+        sync: false
+
+      # ENCRYPTION_KEY: 44-char Fernet key — generate with Fernet.generate_key()
       - key: ENCRYPTION_KEY
+        sync: false
+
+      # Auto-generated strong random values — safe to let Render generate these
+      - key: SECRET_KEY
         generateValue: true
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: NID_HMAC_KEY
+        generateValue: true
+
+      # ── CORS (update to match your frontend domain) ───────────────────────
       - key: CORS_ORIGINS
-        value: https://gula-platform.org,https://www.gula-platform.org
-      - key: LOG_LEVEL
-        value: info
+        value: "https://gula-platform.org,https://www.gula-platform.org"
 
-  - type: redis
-    name: gula-platform-redis
-    plan: free
-    ipAllowList: []
+      # ── Feature flags ─────────────────────────────────────────────────────
+      - key: ENABLE_API_DOCS
+        value: "false"
 
-  - type: pserv
-    name: gula-platform-db
-    runtime: mysql
-    plan: free
-    mysqlVersion: "8.0"
-    ipAllowList: []
-    envVars:
-      - key: MYSQL_ROOT_PASSWORD
-        generateValue: true
-      - key: MYSQL_DATABASE
-        value: gula_platform
-      - key: MYSQL_USER
-        value: gula_user
-      - key: MYSQL_PASSWORD
-        generateValue: true
+      # ── Optional: AI providers (leave blank to disable) ───────────────────
+      # - key: GEMINI_API_KEY
+      #   sync: false
+      # - key: GROQ_API_KEY
+      #   sync: false
 
-databases:
-  - name: gula-platform-db
-    databaseName: gula_platform
-    user: gula_user
-    plan: free
+      # ── Optional: Sentry error tracking ──────────────────────────────────
+      # - key: SENTRY_DSN
+      #   sync: false
