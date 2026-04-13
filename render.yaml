@@ -1,28 +1,55 @@
 # =============================================================================
 # GULA Platform — Render deployment manifest
-# Architecture: Client → Render (Docker/gunicorn+uvicorn) → Supabase (Postgres)
+# منصة غولا الصحية — مخطط النشر على Render
 #
-# Before first deploy, set these secrets in the Render dashboard:
-#   DATABASE_URL   — Supabase connection string (postgres://...?sslmode=require)
-#   ENCRYPTION_KEY — 44-char Fernet key:
-#                    python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Architecture: Browser → Render Static (frontend)
+#                       → Render Web Service (FastAPI backend, Docker)
+#                       → Supabase Postgres (managed DB, sslmode=require)
+#                       → Render Key Value (Redis-compatible, optional)
+#
+# ── ONE-TIME SETUP ──────────────────────────────────────────────────────────
+# 1. Create the Supabase project (see supabase/README.md), copy the
+#    connection string from "Project Settings → Database → Connection string
+#    → URI" and toggle "Use connection pooling (transaction mode)".
+#
+# 2. Generate a Fernet key locally:
+#       python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#
+# 3. In the Render dashboard, set these *secret* env vars on `gula-backend`:
+#       DATABASE_URL    — Supabase pooled URI (port 6543, sslmode=require)
+#       ENCRYPTION_KEY  — 44-char Fernet key from step 2
+#       NID_HMAC_KEY    — `python3 -c "import secrets; print(secrets.token_hex(32))"`
+#       GULA_ADMIN_PASSWORD — strong bootstrap admin password
+#
+# 4. Optional: AI providers (free tiers)
+#       GEMINI_API_KEY, GROQ_API_KEY
+#
+# 5. Optional: Sentry
+#       SENTRY_DSN
+#
+# After committing this file, run "Blueprint → New Blueprint Instance" in
+# the Render dashboard and point it at this repository.
 # =============================================================================
 
 services:
+  # ── Backend (FastAPI / gunicorn-uvicorn, Docker runtime) ──────────────────
   - type: web
     name: gula-backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: starter            # 512 MB / 0.5 CPU — fits 2 workers × pool 5
+    region: frankfurt        # closest to Saudi Arabia / GCC; switch as needed
+    branch: main
+    autoDeploy: true
 
     # Render listens on this port; must match gunicorn --bind 0.0.0.0:10000
     port: 10000
 
-    # Render uses this path for health/readiness checks
+    # Render uses this path for liveness / readiness probes
     healthCheckPath: /health
 
-    # Migrations run ONCE before the new deploy goes live — not inside CMD.
+    # Migrations run ONCE before the new deploy goes live.
     # Render spins up a short-lived container from the same image, runs this
     # command with all env vars injected, then promotes traffic only on success.
     preDeployCommand: "alembic upgrade head"
@@ -31,62 +58,163 @@ services:
       # ── Runtime mode ─────────────────────────────────────────────────────
       - key: ENV
         value: production
+      - key: ENVIRONMENT
+        value: production
       - key: DEBUG
         value: "false"
 
-      # ── Server sizing (2 workers × 15 conns = 30 total, fits Supabase free) ─
+      # ── Server sizing ────────────────────────────────────────────────────
+      # 2 workers × (5 base + 10 overflow) = 30 connections total.
+      # Supabase free tier allows 60 direct + 200 via pgbouncer. Stay safe.
       - key: WEB_CONCURRENCY
         value: "2"
 
-      # ── DB connection pool (per spec: pool_size=5, max_overflow=10, recycle=1800)
+      # ── DB connection pool ───────────────────────────────────────────────
       - key: DB_POOL_SIZE
         value: "5"
       - key: DB_MAX_OVERFLOW
         value: "10"
       - key: DB_POOL_RECYCLE
         value: "1800"
+      - key: DB_POOL_TIMEOUT
+        value: "10"
       - key: DB_STMT_TIMEOUT
         value: "25s"
 
-      # ── Concurrency back-pressure ─────────────────────────────────────────
+      # ── Concurrency back-pressure ────────────────────────────────────────
       - key: MAX_CONCURRENT_REQUESTS
         value: "50"
+      - key: MAX_REQUEST_BODY_MB
+        value: "2"
 
-      # ── AI budget (hard timeout for external AI API calls) ────────────────
+      # ── AI budget (hard timeout for external AI API calls) ───────────────
       - key: AI_BUDGET_SECONDS
         value: "6"
 
       # ── Secrets (must be set manually in Render dashboard) ───────────────
-      # DATABASE_URL: Supabase postgres URL (postgres://user:pass@host/db?sslmode=require)
+      # Supabase pooled URI: use port 6543 + ?sslmode=require
+      # postgresql://postgres.<project>:<pwd>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
       - key: DATABASE_URL
         sync: false
 
-      # ENCRYPTION_KEY: 44-char Fernet key — generate with Fernet.generate_key()
+      # Fernet symmetric key — DO NOT change after first row is encrypted
       - key: ENCRYPTION_KEY
         sync: false
 
-      # Auto-generated strong random values — safe to let Render generate these
+      # National-ID HMAC — DO NOT change after first patient is registered
+      - key: NID_HMAC_KEY
+        sync: false
+
+      # Bootstrap admin (used by app/services/bootstrap_admin.py on first boot)
+      - key: GULA_ADMIN_EMAIL
+        value: admin@gula-platform.org
+      - key: GULA_ADMIN_NAME
+        value: GULA Platform Admin
+      - key: GULA_ADMIN_PASSWORD
+        sync: false
+
+      # JWT — Render generates strong random values on first deploy.
       - key: SECRET_KEY
         generateValue: true
       - key: REFRESH_TOKEN_SECRET
         generateValue: true
-      - key: NID_HMAC_KEY
+      - key: METRICS_BEARER_TOKEN
+        generateValue: true
+      - key: DEVICE_HMAC_KEY
         generateValue: true
 
-      # ── CORS (update to match your frontend domain) ───────────────────────
-      - key: CORS_ORIGINS
-        value: "https://gula-platform.org,https://www.gula-platform.org"
+      # ── Redis (Render Key Value, attached below) ─────────────────────────
+      - key: REDIS_URL
+        fromService:
+          name: gula-redis
+          type: keyvalue
+          property: connectionString
 
-      # ── Feature flags ─────────────────────────────────────────────────────
+      # ── CORS — match the static-site domain that Render assigns us ───────
+      # After first deploy, edit the value to your custom domain(s).
+      - key: CORS_ORIGINS
+        value: "https://gula-frontend.onrender.com,https://gula-platform.org,https://www.gula-platform.org"
+
+      # ── Public URL printed in QR codes / SMS / outbound emails ──────────
+      - key: BASE_URL
+        value: "https://gula-platform.org"
+
+      # ── Feature flags ────────────────────────────────────────────────────
       - key: ENABLE_API_DOCS
         value: "false"
+      - key: CONTROL_LAYER_ENABLED
+        value: "true"
+      - key: KILL_SWITCH
+        value: "false"
+      - key: GULA_AUTO_FIX
+        value: "false"
 
-      # ── Optional: AI providers (leave blank to disable) ───────────────────
-      # - key: GEMINI_API_KEY
-      #   sync: false
-      # - key: GROQ_API_KEY
-      #   sync: false
+      # ── Optional: AI providers (leave blank/unset to disable) ────────────
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: AI_PROVIDER
+        value: ""
 
       # ── Optional: Sentry error tracking ──────────────────────────────────
-      # - key: SENTRY_DSN
-      #   sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_TRACES_RATE
+        value: "0.05"
+
+      # ── Health alerting webhook (Telegram / Discord / Slack) ─────────────
+      - key: ALERT_WEBHOOK_URL
+        sync: false
+      - key: HEALTH_ALERT_INTERVAL_SECONDS
+        value: "60"
+
+  # ── Frontend (static site — pure HTML/JS, no build step) ──────────────────
+  - type: web
+    name: gula-frontend
+    runtime: static
+    branch: main
+    autoDeploy: true
+    staticPublishPath: ./frontend
+    pullRequestPreviewsEnabled: true
+
+    # SPA-style routing: serve index.html for any unknown path
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://gula-backend.onrender.com/:splat
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    headers:
+      - path: /*
+        name: Strict-Transport-Security
+        value: "max-age=31536000; includeSubDomains"
+      - path: /*
+        name: X-Content-Type-Options
+        value: "nosniff"
+      - path: /*
+        name: X-Frame-Options
+        value: "SAMEORIGIN"
+      - path: /*
+        name: Referrer-Policy
+        value: "strict-origin-when-cross-origin"
+      - path: /sw.js
+        name: Cache-Control
+        value: "no-cache, no-store, must-revalidate"
+
+# ── Render Key Value (Redis-compatible, internal-only) ──────────────────────
+# Used for: rate limiting, perm_version invalidation, outbox idempotency,
+# DB sliding-window event persistence.
+databases: []   # Supabase is the SQL store, not Render Postgres.
+
+# Key/Value store for rate-limiting + session invalidation (Render-managed Redis).
+# `gula-backend` reads its connection string via `fromService → property:
+# connectionString` above.
+keyValues:
+  - name: gula-redis
+    plan: free          # 25 MB — enough for rate limit counters
+    region: frankfurt
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []     # internal access only
