@@ -178,7 +178,7 @@ _TIMEOUT_L2_THRESHOLD     = int(os.getenv("DB_TIMEOUT_L2_THRESHOLD",     "15")) 
 # Configurable via env vars for larger deployments.
 _WORKERS       = int(os.getenv("WEB_CONCURRENCY", "2"))
 _POOL_SIZE     = max(2, int(os.getenv("DB_POOL_SIZE",    "5")))   # per worker
-_MAX_OVERFLOW  = max(0, int(os.getenv("DB_MAX_OVERFLOW", "15")))  # per worker
+_MAX_OVERFLOW  = max(0, int(os.getenv("DB_MAX_OVERFLOW", "10")))  # per worker
 _POOL_TIMEOUT  = int(os.getenv("DB_POOL_TIMEOUT",  "10"))
 _POOL_RECYCLE  = int(os.getenv("DB_POOL_RECYCLE", "1800"))
 _STMT_TIMEOUT  = os.getenv("DB_STMT_TIMEOUT", "30s")

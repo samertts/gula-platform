@@ -44,17 +44,18 @@ RUN python -m compileall app/
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 
-EXPOSE 8000
+EXPOSE 10000
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:10000/health', timeout=3)"
 
-# Startup sequence:
-#   1. create_all  — idempotent table creation (safe on fresh DB)
-#   2. alembic     — incremental schema migrations
-#   3. uvicorn     — application server (startup_guard validates config/DB/seeds)
-#
-# WEB_CONCURRENCY: number of uvicorn workers (default 4).
-#   Total DB connections = WEB_CONCURRENCY × (DB_POOL_SIZE + DB_MAX_OVERFLOW)
-#   Keep WEB_CONCURRENCY × 10 ≤ 100 (PG max_connections) → max 10 workers.
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-4} --no-access-log --loop uvloop --http httptools --timeout-keep-alive 65 --backlog 2048"]
+# Startup: gunicorn with UvicornWorker.
+#   Migrations (alembic upgrade head) run as a Render preDeployCommand — NOT here.
+#   Total DB connections = 2 workers × (pool_size + max_overflow) = 2 × 15 = 30.
+#   Keep well under Supabase free-tier limit (60 connections).
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", \
+     "--workers", "2", \
+     "--timeout", "30", \
+     "--bind", "0.0.0.0:10000", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
