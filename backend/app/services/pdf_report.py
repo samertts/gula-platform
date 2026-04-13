@@ -20,7 +20,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle,
     Paragraph, Spacer, Image, HRFlowable,
 )
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -131,7 +131,6 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
     )
 
     # ─── Styles ───────────────────────────────────────────────────────────────
-    styles = getSampleStyleSheet()
     W = doc.width
 
     def style(name, **kwargs):
@@ -145,8 +144,7 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
     s_normal = style("GulaNormal", fontName=_ARABIC_FONT, fontSize=9)
     s_right = style("GulaRight", fontName=_ARABIC_FONT, fontSize=9, alignment=TA_RIGHT)
     s_center = style("GulaCenter", fontName=_ARABIC_FONT, fontSize=9, alignment=TA_CENTER)
-    s_label = style("GulaLabel", fontName=_ARABIC_FONT_BOLD, fontSize=8,
-                    textColor=colors.HexColor("#374151"))
+
     s_small = style("GulaSmall", fontName=_ARABIC_FONT, fontSize=7,
                     textColor=colors.grey)
     s_disclaimer = style("GulaDisclaimer", fontName=_ARABIC_FONT, fontSize=7,

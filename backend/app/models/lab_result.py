@@ -34,13 +34,17 @@ class LabResult(Base):
     flag = Column(String(10), nullable=True, index=True)  # H, L, normal, critical
     token = Column(String(64), unique=True, nullable=False, default=generate_token, index=True)
     token_hash = Column(String(64), unique=True, nullable=True, index=True)
-    expires_at = Column(DateTime(timezone=True), default=default_expiry)
+    expires_at = Column(DateTime(timezone=True), default=default_expiry, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Version of the clinical engine that last evaluated this result.
     # Populated when evaluate_result() / evaluate_order() is called after save.
     # NULL on results created before the clinical engine was introduced.
     clinical_engine_version = Column(String(20), nullable=True)
+
+    # Optimistic locking — increment on every mutation.
+    # If the caller's version no longer matches DB, the caller receives HTTP 409.
+    version = Column(Integer, nullable=False, default=1)
 
     order = relationship("LabOrder", back_populates="results")
     test_type = relationship("TestType")

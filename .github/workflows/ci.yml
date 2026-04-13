@@ -11,8 +11,107 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/gula-platform
 
 jobs:
+  # ─── Fast Syntax Gate (runs in < 30s, blocks everything else) ──────────────
+  syntax-gate:
+    name: Python Syntax + NameError Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -q -r requirements.txt
+
+      - name: Syntax check — all Python files
+        run: |
+          echo "Checking syntax..."
+          find app migrations -name '*.py' | sort | xargs python3 -m py_compile
+          echo "✓ Syntax OK"
+
+      - name: NameError / missing-import scan
+        env:
+          ENV: test
+          DATABASE_URL: "postgresql://x:x@localhost/x"
+          SECRET_KEY: "ci-scan-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          REFRESH_TOKEN_SECRET: "ci-scan-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+        run: |
+          python3 - <<'PYEOF'
+          import sys, importlib.util, pathlib, unittest.mock as mock
+
+          STUBS = [
+              'sqlalchemy','sqlalchemy.orm','sqlalchemy.orm.session',
+              'sqlalchemy.exc','sqlalchemy.ext','sqlalchemy.ext.declarative',
+              'redis','jose','jose.jwt','jose.exceptions',
+              'passlib','passlib.context','passlib.hash',
+              'cryptography','cryptography.fernet','cryptography.hazmat',
+              'cryptography.hazmat.primitives','cryptography.hazmat.primitives.hashes',
+              'qrcode','PIL','PIL.Image',
+              'reportlab','reportlab.lib','reportlab.lib.pagesizes',
+              'reportlab.lib.styles','reportlab.lib.units',
+              'reportlab.platypus','reportlab.pdfgen',
+              'arabic_reshaper','bidi','bidi.algorithm',
+              'httpx','psycopg2','psycopg2.extras',
+              'fastapi','fastapi.middleware','fastapi.middleware.cors',
+              'fastapi.middleware.gzip','fastapi.responses',
+              'starlette','starlette.middleware','starlette.middleware.base',
+              'starlette.requests','starlette.responses','starlette.types',
+              'pydantic','pydantic_settings','pydantic.functional_validators',
+              'uvicorn','orjson','alembic','alembic.config',
+          ]
+          for m in STUBS:
+              sys.modules[m] = mock.MagicMock()
+
+          errors = []
+          for p in sorted(pathlib.Path('app').rglob('*.py')):
+              if '__pycache__' in str(p): continue
+              mname = str(p).replace('/','_').replace('.py','')
+              mod = None
+              try:
+                  spec = importlib.util.spec_from_file_location(mname, p)
+                  mod  = importlib.util.module_from_spec(spec)
+                  sys.modules[mname] = mod   # register so @dataclass can find module
+                  spec.loader.exec_module(mod)
+              except (NameError, AttributeError) as e:
+                  errors.append(f'  {p}: {type(e).__name__}: {e}')
+              except SystemExit as e:
+                  errors.append(f'  {p}: SystemExit({e.code}) — module calls sys.exit at import time')
+              except Exception:
+                  pass
+              finally:
+                  if mod is None and mname in sys.modules:
+                      del sys.modules[mname]
+
+          if errors:
+              print('FAIL — module-level NameError/AttributeError/SystemExit:')
+              for err in errors: print(err)
+              sys.exit(1)
+          else:
+              total = sum(1 for _ in pathlib.Path('app').rglob('*.py'))
+              print(f'✓ No NameError/AttributeError ({total} modules scanned)')
+          PYEOF
+
+      - name: Flake8 — undefined names (F821) + syntax errors (E9)
+        run: |
+          pip install -q flake8
+          flake8 app --select=E9,F821 --max-line-length=200 --statistics
+          echo "✓ No undefined names or syntax errors"
+
   # ─── Backend Tests ──────────────────────────────────────────────────────────
   backend-test:
+    needs: [syntax-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -105,7 +204,7 @@ jobs:
         with:
           dockerfile: backend/Dockerfile
           failure-threshold: error
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Scan for secrets with Gitleaks
         uses: gitleaks/gitleaks-action@v2
@@ -124,11 +223,182 @@ jobs:
             echo "✓ No insecure /tmp writes found"
           fi
 
+  # ─── Migration Gate ────────────────────────────────────────────────────────
+  # Runs alembic upgrade head on a completely fresh (empty) database.
+  # Blocks merge if any migration is broken, missing, or leaves required tables absent.
+  migration-check:
+    name: Alembic Migration Gate
+    needs: [syntax-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: migtest
+          POSTGRES_DB: labdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -q -r requirements.txt
+
+      - name: Run alembic upgrade head on empty database
+        env:
+          DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+        run: |
+          echo "Running alembic upgrade head on fresh empty DB..."
+          alembic upgrade head
+          echo "✓ alembic upgrade head succeeded"
+
+      - name: Verify required tables exist after migrations
+        env:
+          DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+        run: |
+          python3 - <<'PYEOF'
+          import psycopg2, sys
+          REQUIRED = ["labs","lab_users","patients","lab_orders","lab_results","outbox_events","audit_logs","alembic_version"]
+          conn = psycopg2.connect("postgresql://postgres:migtest@localhost:5432/labdb")
+          cur  = conn.cursor()
+          missing = []
+          for t in REQUIRED:
+              cur.execute("SELECT to_regclass(%s)", (f"public.{t}",))
+              if cur.fetchone()[0] is None:
+                  missing.append(t)
+          conn.close()
+          if missing:
+              print(f"FAIL — required tables missing after alembic upgrade head: {missing}")
+              sys.exit(1)
+          print(f"✓ All {len(REQUIRED)} required tables present")
+          PYEOF
+
+      - name: Verify alembic downgrade -1 works (migration is reversible)
+        env:
+          DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+        run: |
+          alembic downgrade -1
+          alembic upgrade head
+          echo "✓ Downgrade -1 + upgrade head round-trip OK"
+
+  # ─── Runtime Smoke Test ───────────────────────────────────────────────────
+  smoke-test:
+    name: Runtime Smoke Test
+    needs: [syntax-gate, migration-check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -q -r backend/requirements.txt
+
+      - name: Start PostgreSQL + Redis
+        run: |
+          docker run -d --name ci-postgres \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=citest \
+            -e POSTGRES_DB=labdb \
+            -p 5432:5432 postgres:16-alpine
+          docker run -d --name ci-redis \
+            -p 6379:6379 redis:7-alpine redis-server --requirepass citest
+          # Wait for services
+          until docker exec ci-postgres pg_isready -U postgres; do sleep 1; done
+          until docker exec ci-redis redis-cli -a citest ping; do sleep 1; done
+          echo "✓ Postgres and Redis ready"
+
+      - name: Run backend and check /health endpoints
+        env:
+          DATABASE_URL: postgresql://postgres:citest@localhost:5432/labdb
+          REDIS_URL: redis://:citest@localhost:6379/0
+          SECRET_KEY: ci-secret-key-64chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-refresh-key-64chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          GULA_ADMIN_EMAIL: ci-admin@gula.test
+          GULA_ADMIN_PASSWORD: CiAdmin-test-123
+          ENV: development
+          ENABLE_API_DOCS: "true"
+        run: |
+          cd backend
+          # Start uvicorn in background
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 \
+            --loop asyncio --no-access-log &
+          SERVER_PID=$!
+
+          # Wait up to 60s for startup
+          echo "Waiting for backend..."
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/health/ready > /dev/null 2>&1; then
+              echo "✓ Backend ready (${i}×2s)"
+              break
+            fi
+            sleep 2
+          done
+
+          # Verify health endpoints
+          echo "--- /health ---"
+          curl -sf http://127.0.0.1:8000/health | python3 -m json.tool
+          echo ""
+
+          echo "--- /health/ready ---"
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/health/ready)
+          if [ "$STATUS" != "200" ]; then
+            echo "FAIL: /health/ready returned HTTP $STATUS"
+            kill $SERVER_PID 2>/dev/null
+            exit 1
+          fi
+          echo "✓ /health/ready → 200"
+
+          echo "--- /health/deep ---"
+          DEEP=$(curl -sf http://127.0.0.1:8000/health/deep)
+          echo "$DEEP" | python3 -m json.tool
+          GRADE=$(echo "$DEEP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('grade','?'))")
+          echo "Health grade: $GRADE"
+          if [ "$GRADE" = "RED" ]; then
+            echo "FAIL: /health/deep returned RED"
+            kill $SERVER_PID 2>/dev/null
+            exit 1
+          fi
+
+          echo "--- /test-types (public endpoint) ---"
+          curl -sf http://127.0.0.1:8000/test-types | python3 -c \
+            "import sys,json; d=json.load(sys.stdin); print(f'✓ {len(d)} test types seeded')"
+
+          kill $SERVER_PID 2>/dev/null
+          echo "✓ Smoke test passed"
+
   # ─── Build & Push Images to GHCR ──────────────────────────────────────────
   build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [backend-test]
+    needs: [syntax-gate, migration-check, smoke-test, backend-test]
     permissions:
       contents: read
       packages: write

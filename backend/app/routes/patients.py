@@ -261,7 +261,7 @@ def create_patient(
                 "message_ar": "لم يتم العثور على ولي الأمر في هذا المختبر",
             })
 
-    health_id = f"GULA-{secrets.token_hex(4).upper()}"
+    health_id = f"GULA-{secrets.token_hex(8).upper()}"
 
     patient = Patient(
         lab_id=current_user.lab_id,

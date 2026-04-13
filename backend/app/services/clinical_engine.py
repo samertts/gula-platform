@@ -104,7 +104,6 @@ def _safe_analyze(test: str, value, context: str, patient_context: dict) -> dict
 
         # Age/gender adjustment — example: anaemia threshold lower for children
         age = patient_context.get("age")
-        gender = patient_context.get("gender", "")
         if test.lower() in ("hb", "hemoglobin") and isinstance(age, (int, float)) and age < 12:
             if value is not None and float(value) < 11.5 and result.get("severity") == SEVERITY_NORMAL:
                 result = {"message": "هيموغلوبين منخفض للعمر (طفل < 12 سنة)", "severity": SEVERITY_WARNING}

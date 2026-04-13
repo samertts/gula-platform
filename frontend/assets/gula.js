@@ -685,7 +685,7 @@ async function wfLoadRecent() {
 }
 
 // ---- Router ----
-const routes = { dashboard: pageDashboard, workflow: pageWorkflow, patients: pagePatients, orders: pageOrders, samples: pageSamples, 'test-types': pageTestTypes, employees: pageEmployees, qc: pageQC, alerts: pageAlerts, lab: pageLab, profile: pageProfile, compliance: pageCompliance, admin: pageAdmin };
+const routes = { dashboard: pageDashboard, workflow: pageWorkflow, patients: pagePatients, orders: pageOrders, samples: pageSamples, 'test-types': pageTestTypes, employees: pageEmployees, qc: pageQC, alerts: pageAlerts, lab: pageLab, profile: pageProfile, compliance: pageCompliance, admin: pageAdmin, tiers: pageTiers };
 
 function navigate(page) {
   if (!routes[page]) page = 'dashboard';
@@ -1009,7 +1009,7 @@ async function viewPatient(id) {
         </table></div>
       ` : '<div class="empty"><p>لا توجد نتائج سابقة</p></div>'}
       <div style="margin-top:16px">
-        <button class="btn btn-primary btn-sm" onclick="closeModal();newOrderForPatient(${parseInt(p.id)})">+ طلب تحليل جديد</button>
+        <button class="btn btn-primary btn-sm" onclick="closeModal();newOrderForPatient(${parseInt(p.id)},'${escAttr(p.full_name)}')">+ طلب تحليل جديد</button>
       </div>
     `);
   } catch (e) { toast(e.message, 'error'); }
@@ -1136,8 +1136,8 @@ async function viewOrder(id) {
           <a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🔗 عرض النتائج</a>
           <a href="https://wa.me/?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener" class="btn btn-wa btn-sm">📤 واتساب</a>
           <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${location.origin}/r/${escAttr(firstToken)}').then(()=>toast('تم نسخ الرابط'))">نسخ الرابط</button>
+          <a href="/r/${escAttr(firstToken)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🖨️ طباعة / PDF</a>
         ` : ''}
-        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ طباعة</button>
         ${canValidate ? `<button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="validateOrder(${parseInt(o.id)})">✓ اعتماد وقفل</button>` : ''}
       </div>
     `);
@@ -1237,13 +1237,13 @@ function selectOrderPatient(id, name, phone) {
   $('ordPatientBadge').innerHTML = `<span style="color:var(--success)">✓ ${esc(name)}</span> <span dir="ltr" style="color:var(--text-muted)">${esc(phone)}</span>`;
 }
 
-function newOrderForPatient(id) {
+function newOrderForPatient(id, name) {
   openNewOrder();
-  // Pre-fill patient id — name will just show as "تم الاختيار"
   _ordSelectedPatient = id;
   $('ordPatientId').value = id;
-  $('ordPatientBadge').innerHTML = `<span style="color:var(--success)">✓ مريض #${id}</span>`;
-  $('ordPatientSearch').value = 'مريض #' + id;
+  const label = name || ('مريض #' + id);
+  $('ordPatientBadge').innerHTML = `<span style="color:var(--success)">✓ ${esc(label)}</span>`;
+  $('ordPatientSearch').value = label;
 }
 
 let _ttCache = null;
@@ -2507,7 +2507,7 @@ async function showWelcomeDialog() {
     health = await fetch('/health', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
   } catch {}
 
-  const dbOk = health.database === 'connected';
+  const dbOk = health.database === 'ok' || health.database === 'connected';
   const sysStatus = health.status === 'healthy' ? 'سليم' : 'يحتاج فحص';
   const sysColor = health.status === 'healthy' ? '#10b981' : '#f59e0b';
   const version = health.version || '—';
@@ -2584,6 +2584,25 @@ function init() {
 
   // Set lab name
   if (G.user.lab_name) $('labName').textContent = G.user.lab_name;
+
+  // Load subscription tier badge (non-blocking)
+  api('/tiers/my').then(sub => {
+    if (!sub) return;
+    const TIER_ICONS = { starter: '🌱', growth: '🚀', enterprise: '🏢' };
+    const TIER_LABELS = { starter: 'المبتدئ', growth: 'النمو', enterprise: 'المؤسسي' };
+    const t = sub.tier || 'starter';
+    const badge = document.getElementById('tierBadge');
+    const icon = document.getElementById('tierBadgeIcon');
+    const label = document.getElementById('tierBadgeLabel');
+    if (badge && icon && label) {
+      icon.textContent = TIER_ICONS[t] || '🌱';
+      label.textContent = TIER_LABELS[t] || t;
+      badge.style.display = '';
+      // Hide "upgrade" arrow if already enterprise
+      const upArrow = badge.querySelector('span:last-child');
+      if (upArrow && t === 'enterprise') upArrow.style.display = 'none';
+    }
+  }).catch(() => { /* tier info not critical */ });
 
   // Show welcome dialog on first load of the session
   setTimeout(showWelcomeDialog, 800);
@@ -2794,6 +2813,169 @@ window.addEventListener('error', (event) => {
     console.error('[GULA] Script error:', event.message, 'at', event.lineno);
   }
 });
+
+// ---- TIERS PAGE ----
+async function pageTiers() {
+  $('page').innerHTML = '<div class="spinner"></div>';
+  const isAdmin = G.user?.role === 'admin' || G.user?.role === 'master_admin';
+
+  const TIER_INFO = {
+    starter:    { label: 'المبتدئ',    color: '#64748b', icon: '🌱', price: 'مجاني',       maxP: 500,  maxS: 5,  maxB: 1,  maxO: 100,  ai: 0 },
+    growth:     { label: 'النمو',      color: '#2563eb', icon: '🚀', price: '$49/شهر',     maxP: 2000, maxS: 20, maxB: 3,  maxO: 500,  ai: 50 },
+    enterprise: { label: 'المؤسسي',   color: '#7c3aed', icon: '🏢', price: 'حسب الاتفاق', maxP: 99999,maxS: 200,maxB: 99, maxO: 9999, ai: 500 },
+  };
+
+  let sub = null, demands = [], myRequests = [];
+  try {
+    sub = await api('/tiers/my');
+  } catch { /* not available */ }
+  try { myRequests = (await api('/tiers/my/requests')) || []; } catch { /* ok */ }
+  if (isAdmin && G.user?.role === 'master_admin') {
+    try { demands = (await api('/admin/tiers/demands')) || []; } catch { /* ok */ }
+  }
+
+  const tierKey = sub?.tier || 'starter';
+  const tierInfo = TIER_INFO[tierKey] || TIER_INFO.starter;
+  const depMode = sub?.deployment_mode || 'single';
+  const secLevel = sub?.security_level || 'standard';
+  const DEP_LABELS = { single: 'مختبر واحد', multi_branch: 'متعدد الفروع', government: 'حكومي' };
+  const SEC_LABELS = { standard: 'قياسي', high_security: 'أمان عالٍ', air_gapped: 'معزول تماماً' };
+
+  function tierCard(key) {
+    const t = TIER_INFO[key]; const isCurrent = key === tierKey;
+    return `
+    <div class="card" style="border:2px solid ${isCurrent ? t.color : 'var(--border)'};transition:.2s;${isCurrent?'box-shadow:0 0 0 3px '+t.color+'22':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:1.8rem;margin-bottom:6px">${t.icon}</div>
+          <div style="font-size:1.15rem;font-weight:700;color:${t.color}">${t.label}</div>
+          <div style="font-size:.85rem;color:var(--text-muted);margin-top:2px">${t.price}</div>
+        </div>
+        ${isCurrent ? `<span class="badge badge-blue">الباقة الحالية</span>` : ''}
+      </div>
+      <ul style="margin:16px 0 0;padding-right:18px;font-size:.82rem;color:var(--text-muted);line-height:2">
+        <li>حتى ${t.maxP === 99999 ? 'غير محدود' : t.maxP.toLocaleString()} مريض</li>
+        <li>حتى ${t.maxS} موظف</li>
+        <li>حتى ${t.maxB === 99 ? 'غير محدود' : t.maxB} فرع</li>
+        <li>حتى ${t.maxO === 9999 ? 'غير محدود' : t.maxO} طلب يومياً</li>
+        <li>${t.ai === 0 ? 'بدون ذكاء اصطناعي' : 'حتى ' + t.ai + ' استدعاء ذكاء/يوم'}</li>
+      </ul>
+      ${!isCurrent && isAdmin ? `
+        <button class="btn btn-outline" style="width:100%;margin-top:14px;font-size:.82rem" onclick="requestUpgrade('${key}')">
+          طلب الترقية إلى ${t.label}
+        </button>` : ''}
+      ${!isCurrent && !isAdmin ? `
+        <button class="btn btn-outline" style="width:100%;margin-top:14px;font-size:.82rem" onclick="sendDemand('${key}')">
+          أريد هذه الباقة
+        </button>` : ''}
+    </div>`;
+  }
+
+  const masterAdminPanel = G.user?.role === 'master_admin' && demands.length > 0 ? `
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">طلبات الترقية (المدير العام)</div>
+      <table class="table" style="font-size:.82rem">
+        <thead><tr><th>المختبر</th><th>الباقة المطلوبة</th><th>الطلبات</th><th>الأولوية</th><th>إجراء</th></tr></thead>
+        <tbody>
+          ${demands.map(d => `
+          <tr>
+            <td>#${d.lab_id}</td>
+            <td><span class="badge badge-blue">${TIER_INFO[d.target_tier]?.label || d.target_tier}</span></td>
+            <td>${d.unique_requesters || 0}</td>
+            <td>${(d.weighted_score || 0).toFixed(1)}</td>
+            <td><button class="btn btn-sm btn-primary" onclick="approveUpgrade(${d.lab_id},'${d.target_tier}')">موافقة</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : '';
+
+  const historyRows = myRequests.map(r => {
+    const st = { pending:'🟡 معلق', approved:'🟢 موافق', rejected:'🔴 مرفوض' }[r.status] || r.status;
+    return `<tr>
+      <td>${TIER_INFO[r.target_tier]?.label || r.target_tier}</td>
+      <td>${st}</td>
+      <td style="direction:ltr;text-align:right">${r.created_at ? r.created_at.slice(0,10) : '-'}</td>
+      <td style="color:var(--text-muted);font-size:.78rem">${esc(r.review_note || '-')}</td>
+    </tr>`;
+  }).join('');
+
+  $('page').innerHTML = `
+    <div class="page-header">
+      <h2>إدارة الاشتراك</h2>
+      <p>عرض وإدارة باقة مختبرك</p>
+    </div>
+
+    <!-- Current status banner -->
+    <div class="card" style="background:linear-gradient(135deg,${tierInfo.color}22,${tierInfo.color}11);border:1px solid ${tierInfo.color}44;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:2.5rem">${tierInfo.icon}</div>
+          <div>
+            <div style="font-size:1.3rem;font-weight:700;color:${tierInfo.color}">${tierInfo.label}</div>
+            <div style="font-size:.82rem;color:var(--text-muted);margin-top:2px">
+              ${DEP_LABELS[depMode] || depMode} &nbsp;•&nbsp; أمان ${SEC_LABELS[secLevel] || secLevel}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${sub?.expires_at ? `<span class="badge badge-yellow">تنتهي ${sub.expires_at.slice(0,10)}</span>` : '<span class="badge badge-green">نشط</span>'}
+          ${sub?.trial_ends_at ? `<span class="badge badge-yellow">تجريبي حتى ${sub.trial_ends_at.slice(0,10)}</span>` : ''}
+        </div>
+      </div>
+      ${sub ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid ${tierInfo.color}33">
+        <div style="text-align:center"><div style="font-size:1.2rem;font-weight:700">${sub.max_patients?.toLocaleString()}</div><div style="font-size:.72rem;color:var(--text-muted)">الحد الأقصى للمرضى</div></div>
+        <div style="text-align:center"><div style="font-size:1.2rem;font-weight:700">${sub.max_staff}</div><div style="font-size:.72rem;color:var(--text-muted)">الحد الأقصى للموظفين</div></div>
+        <div style="text-align:center"><div style="font-size:1.2rem;font-weight:700">${sub.max_branches}</div><div style="font-size:.72rem;color:var(--text-muted)">الفروع</div></div>
+        <div style="text-align:center"><div style="font-size:1.2rem;font-weight:700">${sub.max_orders_per_day}</div><div style="font-size:.72rem;color:var(--text-muted)">طلب يومياً</div></div>
+        <div style="text-align:center"><div style="font-size:1.2rem;font-weight:700">${sub.max_ai_calls_per_day}</div><div style="font-size:.72rem;color:var(--text-muted)">ذكاء اصطناعي/يوم</div></div>
+      </div>` : ''}
+    </div>
+
+    <!-- Tier cards -->
+    <div class="grid-3" style="margin-bottom:20px">
+      ${tierCard('starter')}
+      ${tierCard('growth')}
+      ${tierCard('enterprise')}
+    </div>
+
+    <!-- My upgrade requests history -->
+    ${myRequests.length > 0 ? `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">طلبات الترقية السابقة</div>
+      <table class="table" style="font-size:.82rem">
+        <thead><tr><th>الباقة المطلوبة</th><th>الحالة</th><th>التاريخ</th><th>ملاحظة</th></tr></thead>
+        <tbody>${historyRows}</tbody>
+      </table>
+    </div>` : ''}
+
+    ${masterAdminPanel}
+  `;
+
+  window.requestUpgrade = async function(targetTier) {
+    const reason = prompt(`سبب الترقية إلى باقة ${TIER_INFO[targetTier]?.label || targetTier} (اختياري):`) ?? '';
+    try {
+      await api('/tiers/upgrade', { method: 'POST', body: JSON.stringify({ target_tier: targetTier, reason }) });
+      showToast('تم إرسال طلب الترقية بنجاح', 'success');
+      pageTiers();
+    } catch (e) { showToast('خطأ: ' + (e.message || 'فشل الطلب'), 'error'); }
+  };
+  window.sendDemand = async function(targetTier) {
+    const reason = prompt(`أخبرنا لماذا تحتاج باقة ${TIER_INFO[targetTier]?.label || targetTier}:`) ?? '';
+    try {
+      await api('/tiers/upgrade-demand', { method: 'POST', body: JSON.stringify({ target_tier: targetTier, reason }) });
+      showToast('تم تسجيل طلبك — سيتم مراجعته من قِبل الإدارة', 'success');
+    } catch (e) { showToast('خطأ: ' + (e.message || 'فشل الطلب'), 'error'); }
+  };
+  window.approveUpgrade = async function(labId, targetTier) {
+    if (!confirm(`تأكيد ترقية المختبر #${labId} إلى ${TIER_INFO[targetTier]?.label || targetTier}؟`)) return;
+    try {
+      await api(`/admin/tiers/${labId}`, { method: 'PUT', body: JSON.stringify({ tier: targetTier }) });
+      showToast('تمت الترقية بنجاح', 'success');
+      pageTiers();
+    } catch (e) { showToast('خطأ: ' + (e.message || 'فشل الترقية'), 'error'); }
+  };
+}
 
 // ── Service Worker Registration ─────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

@@ -71,7 +71,7 @@ class _MemoryStore:
 
 class _RedisWrapper:
     """
-    Thin wrapper around redis-py that exposes set/get/delete/incr.
+    Thin wrapper around redis-py that exposes set/get/delete/incr/ping.
     Constructed lazily so import doesn't fail if redis-py is not installed.
     """
 
@@ -96,6 +96,11 @@ class _RedisWrapper:
 
     def expire(self, key: str, seconds: int) -> None:
         self._client.expire(key, seconds)
+
+    def ping(self) -> bool:
+        """Ping Redis — raises on failure so callers can catch it."""
+        self._client.ping()
+        return True
 
 
 # ── Public singleton ──────────────────────────────────────────────────────────

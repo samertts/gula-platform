@@ -944,3 +944,63 @@ def ensure_master_admin() -> None:
         logger.error("Bootstrap: failed — %s", exc)
     finally:
         db.close()
+
+
+# =============================================================================
+# CONTROL LAYER — Kill Switch (master_admin only)
+# =============================================================================
+
+class _KillSwitchRequest(BaseModel):
+    reason: str = "manual"
+
+
+@router.get("/kill-switch/status")
+def kill_switch_status(admin: LabUser = Depends(require_admin)):
+    """Return current kill switch state."""
+    from ..core.kill_switch import status as ks_status
+    return ks_status()
+
+
+@router.post("/kill-switch/activate")
+def kill_switch_activate(
+    body: _KillSwitchRequest,
+    admin: LabUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Activate the kill switch — halts all autonomous AI/repair actions platform-wide."""
+    from ..core.kill_switch import activate as ks_activate
+    result = ks_activate(reason=body.reason, propagate=True)
+    log_action(db, "kill_switch_activate", admin.id, admin.lab_id,
+               {"reason": body.reason}, admin.id)
+    db.commit()
+    logger.critical("[KILL-SWITCH] Activated by %s (id=%d) — reason: %s",
+                    admin.email, admin.id, body.reason)
+    return result
+
+
+@router.post("/kill-switch/deactivate")
+def kill_switch_deactivate(
+    body: _KillSwitchRequest,
+    admin: LabUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Deactivate the kill switch — resumes autonomous actions."""
+    from ..core.kill_switch import deactivate as ks_deactivate
+    result = ks_deactivate(reason=body.reason, propagate=True)
+    log_action(db, "kill_switch_deactivate", admin.id, admin.lab_id,
+               {"reason": body.reason}, admin.id)
+    db.commit()
+    logger.warning("[KILL-SWITCH] Deactivated by %s (id=%d) — reason: %s",
+                   admin.email, admin.id, body.reason)
+    return result
+
+
+@router.get("/control-layer/stats")
+def control_layer_stats(admin: LabUser = Depends(require_admin)):
+    """Return Policy Engine and Auto-Repair statistics."""
+    from ..core.policy_engine import policy_engine
+    from ..core.auto_repair import auto_repair
+    return {
+        "policy": policy_engine.stats(),
+        "auto_repair": auto_repair.stats(),
+    }

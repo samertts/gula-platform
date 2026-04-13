@@ -30,14 +30,18 @@ scrape_configs:
 
   # ─── MVP Backend ────────────────────────────────────────────────────────────
   - job_name: 'gula-backend'
-    metrics_path: /metrics
+    metrics_path: /metrics/prom
+    # Bearer token secures /metrics/prom (set METRICS_BEARER_TOKEN in .env)
+    # When token is empty the endpoint is open (dev mode)
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/metrics_token
     static_configs:
       - targets: ['gula-backend:8000']
-    # Relabel to expose useful labels from /metrics endpoint
     metric_relabel_configs:
       - source_labels: [__name__]
         regex: 'python_.*|process_.*'
-        action: drop  # Drop noisy Python/process metrics to save storage
+        action: drop
 
   # ─── Infrastructure ──────────────────────────────────────────────────────────
   # Node Exporter: host CPU, memory, disk, network
@@ -72,12 +76,10 @@ scrape_configs:
   # - job_name: 'rabbitmq'
   #   static_configs:
   #     - targets: ['rabbitmq:15692']
-  #   metrics_path: /metrics
 
   # - job_name: 'clickhouse'
   #   static_configs:
   #     - targets: ['clickhouse:8123']
-  #   metrics_path: /metrics
 
   # - job_name: 'minio'
   #   metrics_path: /minio/v2/metrics/cluster

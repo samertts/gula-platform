@@ -1,208 +1,396 @@
 groups:
   # ===========================================================================
-  # SERVICE AVAILABILITY
+  # SLO RECORDING RULES
+  # ===========================================================================
+  - name: gula_slo_recording
+    interval: 30s
+    rules:
+      - record: slo:gula_availability
+        expr: gula_up
+
+      - record: slo:gula_db_health
+        expr: |
+          gula_db_up
+          * clamp_max(1.0, 300 / clamp_min(gula_db_latency_ms, 1))
+
+      - record: slo:gula_redis_health
+        expr: |
+          gula_redis_up
+          * clamp_max(1.0, 50 / clamp_min(gula_redis_latency_ms, 1))
+
+      - record: slo:gula_queue_pressure
+        expr: |
+          clamp_max(gula_orders_pending / clamp_min(gula_orders_total, 1), 1)
+
+      # DB error ratio — fraction of health checks that failed in last 5min
+      - record: slo:gula_db_error_ratio
+        expr: gula_db_error_ratio_5m
+
+  # ===========================================================================
+  # SERVICE AVAILABILITY (uses actual /metrics/prom metric names)
   # ===========================================================================
   - name: gula_availability
     interval: 30s
     rules:
 
-      # Backend completely unreachable for >1 minute
       - alert: BackendDown
-        expr: up{job="gula-backend"} == 0
+        expr: gula_up == 0
         for: 1m
         labels:
           severity: critical
           service: backend
         annotations:
-          summary: "GULA backend is DOWN"
-          description: "gula-backend has been unreachable for more than 1 minute. Patients cannot access results."
+          summary: "🔴 GULA Platform DOWN"
+          description: "gula_up=0 for >1m. Platform unreachable. Patients cannot access results."
 
-      # Backend returning errors (5xx > 5% of requests over 2 min)
-      - alert: BackendHighErrorRate
-        expr: |
-          (
-            rate(http_requests_total{job="gula-backend", status=~"5.."}[2m])
-            /
-            rate(http_requests_total{job="gula-backend"}[2m])
-          ) > 0.05
-        for: 2m
-        labels:
-          severity: warning
-          service: backend
-        annotations:
-          summary: "GULA backend high error rate ({{ $value | humanizePercentage }})"
-          description: "More than 5% of requests are returning 5xx errors."
-
-      # Database unavailable (readiness probe failing)
       - alert: DatabaseDown
-        expr: gula_db_connected == 0
+        expr: gula_db_up == 0
         for: 1m
         labels:
           severity: critical
           service: database
         annotations:
-          summary: "PostgreSQL database is DOWN"
-          description: "The GULA backend cannot reach the database. All write operations are blocked."
+          summary: "🔴 PostgreSQL unreachable"
+          description: "gula_db_up=0. All write operations are blocked."
 
-      # Redis unavailable
       - alert: RedisDown
-        expr: gula_redis_connected == 0
+        expr: gula_redis_up == 0
         for: 2m
         labels:
           severity: warning
           service: cache
         annotations:
-          summary: "Redis cache is DOWN"
-          description: "Redis is unreachable. JWT blacklist and rate limiting are degraded."
+          summary: "🟡 Redis unreachable"
+          description: "Rate limiting and session cache are degraded (in-memory fallback)."
 
   # ===========================================================================
-  # PERFORMANCE
+  # PERFORMANCE — latency SLOs
   # ===========================================================================
   - name: gula_performance
     interval: 60s
     rules:
 
-      # Response time degradation (p95 > 3 seconds)
-      - alert: SlowResponses
-        expr: |
-          histogram_quantile(0.95,
-            rate(http_request_duration_seconds_bucket{job="gula-backend"}[5m])
-          ) > 3
+      - alert: DatabaseSlow
+        expr: gula_db_up == 1 and gula_db_latency_ms > 200
+        for: 3m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "🟡 DB slow {{ $value | humanize }}ms"
+          description: "DB ping >200ms for 3min. Queries may time out under load."
+
+      - alert: DatabaseVerySlow
+        expr: gula_db_up == 1 and gula_db_latency_ms > 500
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "🔴 DB critically slow {{ $value | humanize }}ms"
+          description: "DB ping >500ms. Requests are timing out. Check PG slow query log."
+
+      - alert: RedisSlow
+        expr: gula_redis_up == 1 and gula_redis_latency_ms > 50
+        for: 3m
+        labels:
+          severity: warning
+          service: cache
+        annotations:
+          summary: "🟡 Redis slow {{ $value | humanize }}ms"
+          description: "Redis ping >50ms for 3min. Rate-limiting accuracy reduced."
+
+  # ===========================================================================
+  # CAPACITY — concurrency, memory, order backlog
+  # ===========================================================================
+  - name: gula_capacity
+    interval: 60s
+    rules:
+
+      - alert: HighConcurrency
+        expr: gula_active_requests > 150
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "🟡 {{ $value }} active requests (limit: 200)"
+          description: "Approaching concurrency limit. New requests may be rejected."
+
+      - alert: ConcurrencyLimitReached
+        expr: gula_active_requests > 190
+        for: 30s
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "🔴 Concurrency limit reached ({{ $value }}/200)"
+          description: "System at capacity. New requests are being rejected with 503."
+
+      - alert: HighMemory
+        expr: gula_memory_rss_mb > 600
         for: 5m
         labels:
           severity: warning
           service: backend
         annotations:
-          summary: "GULA backend p95 latency > 3s"
-          description: "95th percentile response time is {{ $value }}s. Users are experiencing slow load times."
+          summary: "🟡 Backend memory {{ $value }}MB RSS"
+          description: "Memory RSS >600MB for 5min. Risk of OOM."
 
-      # Very high response time (p95 > 10s = system overloaded)
-      - alert: CriticalSlowResponses
-        expr: |
-          histogram_quantile(0.95,
-            rate(http_request_duration_seconds_bucket{job="gula-backend"}[5m])
-          ) > 10
-        for: 2m
+      - alert: OrderBacklog
+        expr: gula_orders_pending > 100
+        for: 5m
         labels:
-          severity: critical
+          severity: warning
           service: backend
         annotations:
-          summary: "GULA backend critically slow (p95 > 10s)"
-          description: "System may be overloaded or experiencing a memory/CPU issue."
+          summary: "🟡 Order backlog: {{ $value }} pending"
+          description: "100+ orders pending for >5min. Check outbox worker health."
 
   # ===========================================================================
-  # INFRASTRUCTURE
+  # INFRASTRUCTURE (requires node-exporter running)
   # ===========================================================================
   - name: gula_infrastructure
     interval: 60s
     rules:
 
-      # Disk almost full (>85%)
       - alert: DiskSpaceWarning
         expr: |
-          (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) > 0.85
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} /
+                node_filesystem_size_bytes{mountpoint="/"})) > 0.80
         for: 5m
         labels:
           severity: warning
           service: host
         annotations:
-          summary: "Disk usage above 85% on {{ $labels.instance }}"
-          description: "Current usage: {{ $value | humanizePercentage }}. Run backup cleanup before disk fills."
+          summary: "🟡 Disk {{ $value | humanizePercentage }}"
+          description: "Disk >80%. Run 'make backup' and clear old logs."
 
-      # Disk critical (>95%) — imminent data loss risk
       - alert: DiskSpaceCritical
         expr: |
-          (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) > 0.95
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} /
+                node_filesystem_size_bytes{mountpoint="/"})) > 0.92
         for: 1m
         labels:
           severity: critical
           service: host
         annotations:
-          summary: "CRITICAL: Disk almost full on {{ $labels.instance }}"
-          description: "Disk usage is {{ $value | humanizePercentage }}. Database writes may fail immediately."
+          summary: "🔴 Disk nearly full {{ $value | humanizePercentage }}"
+          description: "Disk >92%. DB writes WILL fail. Emergency cleanup required."
 
-      # High memory usage (>90%)
-      - alert: HighMemoryUsage
+      - alert: HighSystemMemory
         expr: |
-          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.90
+          (1 - (node_memory_MemAvailable_bytes /
+                node_memory_MemTotal_bytes)) > 0.90
         for: 5m
         labels:
           severity: warning
           service: host
         annotations:
-          summary: "Memory usage above 90%"
-          description: "Available memory is critically low. OOM killer may terminate containers."
+          summary: "🟡 System memory {{ $value | humanizePercentage }}"
+          description: "Available memory critically low. OOM killer may terminate containers."
 
-      # High CPU (>80% for 10 min)
-      - alert: HighCPUUsage
+      - alert: HighCPU
         expr: |
-          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+          100 - (avg by(instance)
+            (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
         for: 10m
         labels:
           severity: warning
           service: host
         annotations:
-          summary: "CPU usage above 80% for 10 minutes"
-          description: "Sustained high CPU may indicate a processing spike or runaway process."
+          summary: "🟡 CPU {{ $value | humanize }}% for 10min"
+          description: "Sustained high CPU. Check for runaway processes."
 
   # ===========================================================================
-  # SECURITY
-  # ===========================================================================
-  - name: gula_security
-    interval: 60s
-    rules:
-
-      # Spike in 401/403 (brute force or credential stuffing attempt)
-      - alert: AuthFailureSpike
-        expr: |
-          rate(http_requests_total{job="gula-backend", status=~"40[13]"}[5m]) > 10
-        for: 3m
-        labels:
-          severity: warning
-          service: security
-        annotations:
-          summary: "High authentication failure rate"
-          description: "More than 10 auth failures/second over 3 minutes. Possible brute-force attack."
-
-      # Rate limit spike (429s) — DDoS/abuse pattern
-      - alert: RateLimitSpike
-        expr: |
-          rate(http_requests_total{job="gula-backend", status="429"}[5m]) > 5
-        for: 2m
-        labels:
-          severity: warning
-          service: security
-        annotations:
-          summary: "Rate limit spike detected"
-          description: "Unusual number of 429 responses. Review nginx access logs for attacking IPs."
-
-  # ===========================================================================
-  # DATABASE HEALTH
+  # DATABASE CONNECTIONS (requires postgres-exporter)
   # ===========================================================================
   - name: gula_database
     interval: 60s
     rules:
 
-      # PostgreSQL connection pool near capacity
-      - alert: DatabaseConnectionPoolExhausted
-        expr: |
-          pg_stat_activity_count{datname="labdb"} > 80
+      - alert: PostgresConnectionsHigh
+        expr: pg_stat_activity_count{datname="labdb"} > 70
         for: 5m
         labels:
           severity: warning
           service: database
         annotations:
-          summary: "PostgreSQL connection pool nearly exhausted"
-          description: "{{ $value }} active connections. Max is typically 100. Check for connection leaks."
+          summary: "🟡 Postgres connections {{ $value }}/100"
+          description: "Connection count >70. Risk of exhaustion. Check for leaks."
 
-      # Slow queries (>5s) appearing
-      - alert: SlowDatabaseQueries
-        expr: |
-          pg_stat_activity_max_tx_duration{datname="labdb"} > 5
+      - alert: PostgresConnectionsExhausted
+        expr: pg_stat_activity_count{datname="labdb"} > 90
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "🔴 Postgres connections critical {{ $value }}/100"
+          description: "Near-full connection pool. New connections will be rejected."
+
+  # ===========================================================================
+  # DB CONNECTION ERROR TYPE ALERTS
+  # These fire on per-error-type counters from /metrics/prom.
+  # auth_failed is CRITICAL immediately — it is a misconfiguration that will
+  # NEVER self-heal and requires operator action.
+  # refused / timeout fire after a sustained period (transient is OK).
+  # ===========================================================================
+  - name: gula_db_error_types
+    interval: 30s
+    rules:
+
+      - alert: DatabaseAuthFailed
+        expr: increase(gula_db_auth_failed_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: database
+          action: stop_and_alert
+        annotations:
+          summary: "🔴 DB authentication failure — IMMEDIATE action required"
+          description: |
+            PostgreSQL rejected authentication. This is a permanent misconfiguration —
+            retries will never succeed. Fix POSTGRES_PASSWORD or pg_hba.conf and redeploy.
+            The backend will NOT become healthy until this is resolved.
+
+      - alert: DatabaseConnectionRefused
+        expr: increase(gula_db_refused_total[10m]) > 5
         for: 2m
         labels:
           severity: warning
           service: database
+          action: retry
         annotations:
-          summary: "Slow PostgreSQL queries detected"
-          description: "Queries running longer than 5 seconds detected in labdb."
+          summary: "🟡 DB connection refused {{ $value }} times in 10min"
+          description: |
+            Backend cannot reach PostgreSQL (TCP refused). Possible causes:
+            listen_addresses misconfiguration, postgres container restart, or
+            network issue. Check: docker-compose ps && docker-compose logs postgres
+
+      - alert: DatabaseConnectionRefusedCritical
+        expr: increase(gula_db_refused_total[10m]) > 20
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+          action: retry
+        annotations:
+          summary: "🔴 DB connection refused {{ $value }} times — system degraded"
+          description: |
+            High rate of TCP-refused DB connections. Backend is running in degraded
+            mode. All write operations are failing. Check postgres container health.
+
+      - alert: DatabaseTimeout
+        expr: increase(gula_db_timeout_total[10m]) > 3
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+          action: retry_with_backoff
+        annotations:
+          summary: "🟡 DB connection timeouts {{ $value }} in 10min"
+          description: |
+            DB connections are timing out. PostgreSQL may be overloaded or the
+            network is congested. Check pg_stat_activity and system load.
+
+      # ── Ratio-based alerts (sliding-window gauges from /metrics/prom) ────────
+      # These fire based on the *fraction* of DB checks failing, not raw counts.
+      # They're immune to stale history — the window resets every 5 minutes.
+
+      - alert: DatabaseErrorRatioHigh
+        expr: gula_db_error_ratio_5m > 0.25
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+          action: retry
+        annotations:
+          summary: "🟡 DB error ratio {{ $value | humanizePercentage }} in last 5min"
+          description: |
+            More than 25% of DB health checks failed in the last 5 minutes.
+            Transient blips are normal; sustained >25% indicates a real outage.
+
+      - alert: DatabaseErrorRatioCritical
+        expr: gula_db_error_ratio_5m > 0.75
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+          action: retry_with_backoff
+        annotations:
+          summary: "🔴 DB error ratio {{ $value | humanizePercentage }} — system degraded"
+          description: |
+            Over 75% of DB health checks failed in the last 5 minutes.
+            Backend is likely running in degraded/read-only mode.
+            Check: docker-compose ps && docker-compose logs postgres
+
+      - alert: DatabaseRefusedRateHigh
+        expr: gula_db_refused_rate_5m > 6
+        for: 1m
+        labels:
+          severity: warning
+          service: database
+          action: retry
+        annotations:
+          summary: "🟡 DB refused {{ $value }}/min — circuit may open"
+          description: |
+            Connection-refused rate exceeds 6/min. If sustained, the circuit
+            breaker will open automatically at 20 events/5min.
+
+  # ===========================================================================
+  # POLICY / CONTROL LAYER ALERTS
+  # ===========================================================================
+  - name: gula_control_layer
+    interval: 60s
+    rules:
+
+      - alert: PolicyBlockSpike
+        expr: increase(gula_policy_block_total[15m]) > 10
+        for: 0m
+        labels:
+          severity: warning
+          service: control_layer
+        annotations:
+          summary: "🟡 {{ $value }} autonomous actions blocked in 15min"
+          description: |
+            The policy engine is blocking many autonomous actions. This may indicate
+            a repair loop or misconfigured automation. Check /admin/control-layer/stats
+
+      - alert: KillSwitchActive
+        expr: gula_kill_switch_active == 1
+        for: 0m
+        labels:
+          severity: critical
+          service: control_layer
+        annotations:
+          summary: "🔴 Kill switch ACTIVE — all autonomous actions halted"
+          description: |
+            The platform kill switch is active. No auto-repair, scaling, or AI actions
+            will execute. To deactivate: POST /admin/kill-switch/deactivate
+
+      - alert: DegradationL2ReadOnly
+        expr: gula_degradation_level == 2
+        for: 0m
+        labels:
+          severity: warning
+          service: degradation
+        annotations:
+          summary: "🟡 System L2_READ_ONLY — writes blocked (DB circuit open)"
+          description: |
+            DB circuit breaker opened after sustained connection-refused errors.
+            Write endpoints return 503. GET requests still pass.
+            Recovery: DB will be probed every 10s; circuit closes automatically.
+
+      - alert: DegradationL3CriticalOnly
+        expr: gula_degradation_level == 3
+        for: 0m
+        labels:
+          severity: critical
+          service: degradation
+        annotations:
+          summary: "🔴 System L3_CRITICAL_ONLY — DB storm, only essential paths reachable"
+          description: |
+            50+ DB connection-refused errors in 5 minutes. Only /health, /auth/login,
+            /admin/kill-switch/deactivate, and /metrics/prom are reachable.
+            Immediate action required: check postgres container and network.

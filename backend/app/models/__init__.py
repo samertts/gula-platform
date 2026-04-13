@@ -10,6 +10,7 @@ from .sample import Sample
 from .audit_log import AuditLog
 from .quality_control import QualityControl
 from .outbox import OutboxEvent
+from .subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag
 
 __all__ = [
     "Base",
@@ -24,4 +25,8 @@ __all__ = [
     "AuditLog",
     "QualityControl",
     "OutboxEvent",
+    "LabSubscription",
+    "UpgradeRequest",
+    "UpgradeDemandScore",
+    "FeatureFlag",
 ]
