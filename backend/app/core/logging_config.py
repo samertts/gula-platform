@@ -79,9 +79,10 @@ class _JSONFormatter(logging.Formatter):
         if lid is not None:
             doc["lab_id"] = lid
 
-        # Latency (when attached by RequestTimingMiddleware)
-        if hasattr(record, "latency_ms"):
-            doc["latency_ms"] = record.latency_ms
+        # Access-log fields (attached by RequestTimingMiddleware via extra={})
+        for _field in ("latency_ms", "path", "status"):
+            if hasattr(record, _field):
+                doc[_field] = getattr(record, _field)
 
         # Exception chain
         if record.exc_info:

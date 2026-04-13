@@ -109,13 +109,15 @@ MAX_REQUEST_BODY_MB = int(os.getenv("MAX_REQUEST_BODY_MB", "10"))
 RATE_LIMIT_AUTH = int(os.getenv("RATE_LIMIT_AUTH", "10"))
 RATE_LIMIT_PUBLIC = int(os.getenv("RATE_LIMIT_PUBLIC", "30"))
 
-# ─── Redis (optional - for production rate limiting) ─────────────────────────
+# ─── Redis (optional — MVP deployments run without Redis; in-memory fallback ──
+# is used automatically by redis_client.py when REDIS_URL is absent.
+# For full cross-process session invalidation and rate limiting, set REDIS_URL.
 REDIS_URL = os.getenv("REDIS_URL", "")
 if not REDIS_URL:
-    if IS_PRODUCTION:
-        print("[GULA FATAL] REDIS_URL must be set in production.", file=sys.stderr)
-        sys.exit(1)
-    logger.warning("REDIS_URL not set. Redis caching and rate limiting will be disabled.")
+    logger.warning(
+        "REDIS_URL not set — using in-memory store (not shared across workers). "
+        "Set REDIS_URL for full rate-limiting and cross-process session invalidation."
+    )
 
 # ─── Mobile / Notifications ─────────────────────────────────────────────────
 FCM_SERVER_KEY = os.getenv("FCM_SERVER_KEY", "")  # Firebase Cloud Messaging
