@@ -26,7 +26,7 @@ class TestConcurrentInterpretation:
 
     def test_100_concurrent_interpretations_no_crash(self):
         """100 threads calling interpret_result simultaneously must not crash."""
-        from backend.app.services.interpretation import interpret_result
+        from app.services.interpretation import interpret_result
         errors = []
         results = []
         lock = threading.Lock()
@@ -61,7 +61,7 @@ class TestConcurrentInterpretation:
 
     def test_interpretation_results_consistent_under_load(self):
         """Same input must always produce same output regardless of concurrency."""
-        from backend.app.services.interpretation import interpret_result
+        from app.services.interpretation import interpret_result
         results = []
         lock = threading.Lock()
 
@@ -89,7 +89,7 @@ class TestConcurrentWestgard:
 
     def test_50_concurrent_westgard_calls(self):
         """50 threads evaluating QC simultaneously."""
-        from backend.app.routes.quality_control import evaluate_westgard
+        from app.routes.quality_control import evaluate_westgard
         errors = []
         results = []
         lock = threading.Lock()
@@ -124,7 +124,7 @@ class TestRateLimiterConcurrency:
 
     def test_rate_limiter_exact_limit_under_contention(self):
         """Under heavy concurrency, rate limiter must never allow > max_requests."""
-        from backend.app.security.rate_limit import RateLimiter
+        from app.security.rate_limit import RateLimiter
         limiter = RateLimiter()
         allowed = []
         lock = threading.Lock()
@@ -150,7 +150,7 @@ class TestRateLimiterConcurrency:
 
     def test_rate_limiter_no_deadlock_under_load(self):
         """Rate limiter must not deadlock with 200 concurrent threads."""
-        from backend.app.security.rate_limit import RateLimiter
+        from app.security.rate_limit import RateLimiter
         limiter = RateLimiter()
         completed = []
         lock = threading.Lock()
@@ -178,7 +178,7 @@ class TestIntrusionDetectorConcurrency:
 
     def test_concurrent_attack_detection(self):
         """Multiple IPs attacking simultaneously — each tracked independently."""
-        from backend.app.security.intrusion_detection import IntrusionDetector
+        from app.security.intrusion_detection import IntrusionDetector
         detector = IntrusionDetector(max_attempts=5, window_seconds=300)
         results = {}
         lock = threading.Lock()
@@ -204,7 +204,7 @@ class TestIntrusionDetectorConcurrency:
 
     def test_detector_no_cross_ip_contamination(self):
         """Attacks from one IP must not affect other IPs."""
-        from backend.app.security.intrusion_detection import IntrusionDetector
+        from app.security.intrusion_detection import IntrusionDetector
         detector = IntrusionDetector(max_attempts=3, window_seconds=300)
 
         # Fill up bad IP
@@ -227,7 +227,7 @@ class TestTokenUniqueness:
 
     def test_jwt_tokens_unique_per_user_under_concurrency(self):
         """Tokens for distinct users must all be unique, no crashes."""
-        from backend.app.security.auth import create_token
+        from app.security.auth import create_token
         tokens = []
         lock = threading.Lock()
         errors = []
@@ -254,7 +254,7 @@ class TestTokenUniqueness:
 
     def test_encryption_thread_safe(self):
         """encrypt() must be thread-safe for concurrent calls."""
-        from backend.app.security.encryption import encrypt, decrypt
+        from app.security.encryption import encrypt, decrypt
         results = []
         errors = []
         lock = threading.Lock()
@@ -289,7 +289,7 @@ class TestSustainedLoadPerformance:
 
     def test_interpretation_throughput_1000_per_second(self):
         """Clinical engine must handle ≥ 1000 interpretations/second."""
-        from backend.app.services.interpretation import interpret_result
+        from app.services.interpretation import interpret_result
         count = 0
         start = time.perf_counter()
         deadline = start + 1.0  # 1 second window
@@ -302,7 +302,7 @@ class TestSustainedLoadPerformance:
 
     def test_westgard_throughput_500_per_second(self):
         """QC engine must handle ≥ 500 evaluations/second."""
-        from backend.app.routes.quality_control import evaluate_westgard
+        from app.routes.quality_control import evaluate_westgard
         count = 0
         start = time.perf_counter()
         deadline = start + 1.0
@@ -315,7 +315,7 @@ class TestSustainedLoadPerformance:
 
     def test_critical_check_throughput_2000_per_second(self):
         """Critical alerts check must handle ≥ 2000 checks/second."""
-        from backend.app.routes.critical_alerts import check_critical
+        from app.routes.critical_alerts import check_critical
         count = 0
         start = time.perf_counter()
         deadline = start + 1.0
@@ -330,7 +330,7 @@ class TestSustainedLoadPerformance:
 
     def test_p99_latency_interpretation(self):
         """P99 latency for interpretation must be < 1ms."""
-        from backend.app.services.interpretation import interpret_result
+        from app.services.interpretation import interpret_result
         times = []
 
         for _ in range(5000):
@@ -343,7 +343,7 @@ class TestSustainedLoadPerformance:
 
     def test_p99_latency_westgard(self):
         """P99 latency for Westgard must be < 1ms."""
-        from backend.app.routes.quality_control import evaluate_westgard
+        from app.routes.quality_control import evaluate_westgard
         times = []
 
         for _ in range(5000):
@@ -364,7 +364,7 @@ class TestMemoryStability:
     def test_no_memory_growth_interpretation(self):
         """Repeated calls must not grow memory unboundedly."""
         import tracemalloc
-        from backend.app.services.interpretation import interpret_result
+        from app.services.interpretation import interpret_result
 
         tracemalloc.start()
         snap1 = tracemalloc.take_snapshot()
@@ -383,7 +383,7 @@ class TestMemoryStability:
 
     def test_rate_limiter_memory_bounded(self):
         """Rate limiter must not grow memory for many unique IPs."""
-        from backend.app.security.rate_limit import RateLimiter
+        from app.security.rate_limit import RateLimiter
         limiter = RateLimiter()
 
         # Simulate 10,000 unique IPs
@@ -404,7 +404,7 @@ class TestClinicalScenarios:
 
     def test_sepsis_pattern_all_critical(self):
         """WBC=18, Hemoglobin=6, Platelets=50 → all should flag abnormal."""
-        from backend.app.services.interpretation import interpret_result, get_flag
+        from app.services.interpretation import interpret_result, get_flag
         scenarios = [
             ("wbc",        18.0,  4.0,  11.0, "H"),
             ("hemoglobin",  6.0, 12.0,  17.0, "critical"),  # critically low
@@ -418,8 +418,8 @@ class TestClinicalScenarios:
 
     def test_diabetic_ketoacidosis_pattern(self):
         """Glucose=550 (>500 threshold), HbA1c=11 → both critical."""
-        from backend.app.services.interpretation import interpret_result
-        from backend.app.routes.critical_alerts import check_critical
+        from app.services.interpretation import interpret_result
+        from app.routes.critical_alerts import check_critical
 
         # Glucose critical threshold = 500 mg/dL
         glucose = interpret_result("glucose", 550, 70, 100)
@@ -434,8 +434,8 @@ class TestClinicalScenarios:
 
     def test_hypokalemia_critical_pattern(self):
         """Potassium=2.0 is life-threatening."""
-        from backend.app.services.interpretation import interpret_result, get_flag
-        from backend.app.routes.critical_alerts import check_critical
+        from app.services.interpretation import interpret_result, get_flag
+        from app.routes.critical_alerts import check_critical
 
         interp = interpret_result("potassium", 2.0)
         flag = get_flag(2.0, 3.5, 5.0, "Potassium")
@@ -449,7 +449,7 @@ class TestClinicalScenarios:
 
     def test_normal_patient_no_alerts(self):
         """A healthy patient should produce no critical alerts."""
-        from backend.app.routes.critical_alerts import check_critical
+        from app.routes.critical_alerts import check_critical
 
         normal_tests = [
             ("Glucose", 85),
@@ -465,7 +465,7 @@ class TestClinicalScenarios:
 
     def test_borderline_values_consistency(self):
         """Values just at threshold must be consistently flagged."""
-        from backend.app.services.interpretation import get_flag
+        from app.services.interpretation import get_flag
 
         # Exactly at normal_high → normal
         assert get_flag(100.0, 70, 100) == "normal"

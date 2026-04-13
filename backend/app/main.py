@@ -1,4 +1,5 @@
 import os
+import asyncio
 import time
 import uuid
 import logging
@@ -9,23 +10,47 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .database import Base, engine, check_db_connection, get_pool_status
+from .database import Base, engine, check_db_connection, get_pool_status  # noqa: F401
 from .config import (
     APP_NAME, APP_VERSION, IS_PRODUCTION, ENABLE_API_DOCS,
     MAX_REQUEST_BODY_MB, PLATFORM_NAME_AR,
 )
 
-# Configure structured logging
-logging.basicConfig(
-    level=logging.WARNING if IS_PRODUCTION else logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+# Configure structured JSON logging (production) or text logging (dev)
+from .core.logging_config import configure_logging, bind_log_context, get_request_id
+configure_logging(
+    is_production=IS_PRODUCTION,
+    log_level="INFO",
 )
 logger = logging.getLogger("gula")
 
-# Import all models so they are registered with Base
-from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl
-from .models.outbox import OutboxEvent  # register OutboxEvent with Base metadata
+# ── Optional Sentry error tracking ─────────────────────────────────────────
+# Activates only when SENTRY_DSN is set in the environment.
+_SENTRY_DSN = os.getenv("SENTRY_DSN")
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            environment=os.getenv("ENVIRONMENT", "production"),
+            release=os.getenv("APP_VERSION", "unknown"),
+            integrations=[
+                FastApiIntegration(),
+                SqlalchemyIntegration(),
+                LoggingIntegration(level=logging.ERROR, event_level=logging.ERROR),
+            ],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0.05")),
+        )
+        logger.info("Sentry error tracking initialized (env=%s)", os.getenv("ENVIRONMENT", "production"))
+    except ImportError:
+        logger.warning("SENTRY_DSN set but sentry-sdk not installed; skipping")
+
+# Import all models so they are registered with Base.metadata (needed for create_all + alembic)
+from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl  # noqa: F401
+from .models.outbox import OutboxEvent  # noqa: F401  register OutboxEvent with Base metadata
 
 # Schema management: create_all is safe and idempotent (checkfirst=True by default).
 # It creates missing tables without touching existing data.
@@ -130,11 +155,26 @@ app.add_middleware(MaxBodySizeMiddleware, max_size_mb=MAX_REQUEST_BODY_MB)
 
 # ===== REQUEST ID MIDDLEWARE =====
 class RequestIDMiddleware(BaseHTTPMiddleware):
-    """Assign a unique ID to every request for tracing."""
+    """Assign a unique ID to every request for tracing and bind it to the log context.
+
+    Also sets DB correlation context vars so any DB failure during this request
+    is automatically tagged with request_id + endpoint in the structured log.
+    """
     async def dispatch(self, request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
-        response = await call_next(request)
+        bind_log_context(request_id=request_id)
+
+        # Inject into DB correlation context vars (read by check_db_connection_detail)
+        from .database import _request_id_var, _endpoint_var
+        rid_token = _request_id_var.set(request_id)
+        ep_token  = _endpoint_var.set(request.url.path)
+        try:
+            response = await call_next(request)
+        finally:
+            _request_id_var.reset(rid_token)
+            _endpoint_var.reset(ep_token)
+
         response.headers["X-Request-ID"] = request_id
         return response
 
@@ -204,22 +244,27 @@ app.add_middleware(
 
 
 # ===== REQUEST TIMING & LOGGING MIDDLEWARE =====
+# Paths excluded from per-request access logs to avoid health-check noise.
+_SILENT_PATHS: frozenset[str] = frozenset({"/health", "/health/ready", "/health/live"})
+
 class RequestTimingMiddleware(BaseHTTPMiddleware):
-    """Log request timing for performance monitoring."""
+    """Emit a structured access-log line (path, latency_ms, status) per request."""
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
         response = await call_next(request)
-        elapsed_ms = (time.perf_counter() - start) * 1000
+        elapsed_ms = round((time.perf_counter() - start) * 1000)
+        status = response.status_code
+        path = request.url.path
 
-        # Log slow requests (>2 seconds)
-        if elapsed_ms > 2000:
-            logger.warning(
-                "SLOW REQUEST [%s]: %s %s took %.0fms (status=%d)",
-                getattr(request.state, "request_id", "?"),
-                request.method, request.url.path, elapsed_ms, response.status_code,
+        if path not in _SILENT_PATHS:
+            log_fn = logger.warning if elapsed_ms > 2000 or status >= 500 else logger.info
+            log_fn(
+                "%s %s %d",
+                request.method, path, status,
+                extra={"path": path, "latency_ms": elapsed_ms, "status": status},
             )
 
-        response.headers["X-Response-Time"] = f"{elapsed_ms:.0f}ms"
+        response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
         response.headers["X-API-Version"] = APP_VERSION
         return response
 
@@ -255,7 +300,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "form-action 'self'; "
             "frame-ancestors 'none'"
         )
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        # Health probes are scraped by Prometheus every 15s — a short public
+        # cache reduces backend pressure without hiding state changes.
+        if request.method == "GET" and request.url.path in _ALWAYS_ALLOWED_PATHS:
+            response.headers["Cache-Control"] = "public, max-age=10, stale-while-revalidate=5"
+        else:
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         if IS_PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
@@ -273,6 +323,7 @@ _ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset({
     "/health/ready",
     "/health/live",
     "/health/status",  # diagnostic — always visible so you can see WHY startup failed
+    "/health/deep",   # deep diagnostics — always accessible for monitoring
 })
 
 
@@ -377,6 +428,9 @@ from .routes import mobile, compliance
 from .routes import setup, metrics
 from .routes import ai as ai_routes
 from .routes import optimizer as optimizer_routes
+from .routes import tiers as tiers_routes
+from .routes import citizen_portal as citizen_portal_routes
+from .models.subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag  # noqa: F401  register with Base
 
 # Core routes
 app.include_router(login.router)
@@ -412,6 +466,16 @@ app.include_router(mobile.router)
 # Government compliance routes
 app.include_router(compliance.router)
 
+# Subscription tier management
+app.include_router(tiers_routes.router)
+
+# Citizen / patient portal
+app.include_router(citizen_portal_routes.router)
+
+# Claims / Insurance module
+from .routes import claims as claims_routes
+app.include_router(claims_routes.router)
+
 # Legacy routes (kept for API compatibility)
 app.include_router(national_identity.router)
 app.include_router(insurance.router)
@@ -423,19 +487,269 @@ app.include_router(ai_routes.router)
 app.include_router(optimizer_routes.router)
 
 
+# ===== HEALTH ALERT WATCHDOG =====
+async def _health_alert_loop():
+    """Background coroutine: comprehensive health monitoring with thresholds.
+
+    Checks every HEALTH_ALERT_INTERVAL_SECONDS (default 60s).
+    When grade is RED, retries every 10s for fast recovery detection.
+    Fires webhook on EVERY grade change (GREEN↔YELLOW↔RED) + periodic RED reminder.
+
+    Thresholds:
+      RED    — DB down OR Redis down
+      YELLOW — DB slow (>200ms) OR Redis slow (>50ms) OR memory >600MB
+               OR queue backlog >100 OR degraded mode
+      GREEN  — all clear
+
+    Set ALERT_WEBHOOK_URL in .env (Telegram, Discord, Slack, or any HTTP POST sink).
+    """
+    import asyncio as _aio
+    import os
+    import time as _t
+
+    _INTERVAL      = int(os.getenv("HEALTH_ALERT_INTERVAL_SECONDS", "60"))
+    _RETRY_FAST    = 10          # seconds between checks when in RED state
+    _REMIND_SECS   = 300         # re-alert every 5 min if still RED
+    _WEBHOOK       = os.getenv("ALERT_WEBHOOK_URL", "")
+
+    _PREV_GRADE    = "GREEN"
+    _RED_SINCE     = 0.0         # monotonic timestamp when RED started
+    _LAST_ALERT    = 0.0         # monotonic timestamp of last webhook send
+
+    await _aio.sleep(30)         # Let startup complete before first check
+
+    while True:
+        try:
+            from .core.self_healing import health as _sh
+            from .security.redis_client import cache as _r
+            from .database import check_db_connection as _db_check
+
+            # ── Component checks ──────────────────────────────────────────
+            t0     = _t.perf_counter()
+            db_ok  = _db_check()
+            db_ms  = round((_t.perf_counter() - t0) * 1000, 1)
+
+            red_ok, red_ms = False, -1.0
+            try:
+                t0 = _t.perf_counter()
+                _r.ping()
+                red_ms = round((_t.perf_counter() - t0) * 1000, 1)
+                red_ok = True
+            except Exception:
+                pass
+
+            rss_mb = 0.0
+            try:
+                with open("/proc/self/status") as _f:
+                    for line in _f:
+                        if line.startswith("VmRSS:"):
+                            rss_mb = round(int(line.split()[1]) / 1024, 1)
+                            break
+            except OSError:
+                pass
+
+            sh_dict    = _sh.to_dict()
+            degraded   = sh_dict.get("degraded", False)
+
+            queue_backlog = 0
+            try:
+                from .database import SessionLocal as _SL
+                from .models.outbox import OutboxEvent as _OE  # noqa: F811
+                _db2 = _SL()
+                try:
+                    queue_backlog = _db2.query(_OE).filter(
+                        _OE.processed_at.is_(None)
+                    ).count()
+                finally:
+                    _db2.close()
+            except Exception:
+                pass
+
+            # ── Grade determination ───────────────────────────────────────
+            issues = []
+            if not db_ok:             issues.append("database_down")
+            if not red_ok:            issues.append("redis_down")
+            if db_ok and db_ms > 200: issues.append(f"database_slow_{db_ms}ms")
+            if red_ok and red_ms > 50:issues.append(f"redis_slow_{red_ms}ms")
+            if rss_mb > 600:          issues.append(f"memory_high_{rss_mb}MB")
+            if queue_backlog > 100:   issues.append(f"queue_backlog_{queue_backlog}")
+            if degraded:              issues.append("degraded_mode")
+
+            critical = [i for i in issues if "down" in i]
+            grade = "RED" if critical else ("YELLOW" if issues else "GREEN")
+
+            # ── Track RED duration ────────────────────────────────────────
+            now_mono = _t.monotonic()
+            if grade == "RED" and _PREV_GRADE != "RED":
+                _RED_SINCE = now_mono
+            elif grade != "RED":
+                _RED_SINCE = 0.0
+
+            # ── Alert logic: transition OR periodic RED reminder ──────────
+            transition    = grade != _PREV_GRADE
+            red_reminder  = (grade == "RED" and
+                             (now_mono - _LAST_ALERT) >= _REMIND_SECS and
+                             _RED_SINCE > 0)
+            should_alert  = (transition or red_reminder) and _WEBHOOK
+
+            if should_alert:
+                import httpx as _hx
+                from datetime import datetime, timezone
+                emoji = "🔴" if grade == "RED" else ("🟡" if grade == "YELLOW" else "✅")
+                red_dur = ""
+                if grade == "RED" and _RED_SINCE > 0:
+                    red_dur = f" ({int(now_mono - _RED_SINCE)}s in RED)"
+                payload = {
+                    "text": (
+                        f"{emoji} *GULA Platform* — `{_PREV_GRADE}` → `{grade}`{red_dur}\n"
+                        f"Issues: {', '.join(issues) or 'none'}\n"
+                        f"DB: {db_ms}ms  Redis: {red_ms}ms  "
+                        f"Mem: {rss_mb}MB  Queue: {queue_backlog}\n"
+                        f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                    ),
+                    "grade": grade,
+                    "prev_grade": _PREV_GRADE,
+                    "issues": issues,
+                    "metrics": {
+                        "db_ms": db_ms,
+                        "redis_ms": red_ms,
+                        "memory_mb": rss_mb,
+                        "queue_backlog": queue_backlog,
+                    },
+                }
+                try:
+                    async with _hx.AsyncClient(timeout=10) as _c:
+                        await _c.post(_WEBHOOK, json=payload)
+                    _LAST_ALERT = now_mono
+                    logger.info("Health alert sent: %s → %s issues=%s", _PREV_GRADE, grade, issues)
+                except Exception as _e:
+                    logger.warning("Health alert webhook failed: %s", _e)
+
+            _PREV_GRADE = grade
+
+        except Exception as exc:
+            logger.debug("Health watchdog error: %s", exc)
+
+        # Faster retry when system is degraded, normal interval when healthy
+        sleep_s = _RETRY_FAST if _PREV_GRADE == "RED" else _INTERVAL
+        await _aio.sleep(sleep_s)
+
+
+# ===== ADAPTIVE CONCURRENCY =====
+async def _adaptive_concurrency_loop():
+    """Dynamically tighten the concurrency cap when the DB is under stress.
+
+    Logic:
+    - Poll DB latency every 30s.
+    - 2 consecutive slow readings (>300ms): halve _max to shed non-critical load.
+    - 3 consecutive fast readings (<150ms): restore original _max.
+
+    Prevents a slow DB from cascading into a full request pile-up:
+    fewer in-flight requests → shorter queue → DB recovers faster.
+    """
+    import asyncio as _aio
+    from .database import check_db_connection as _db_check
+    import time as _t
+    import gc as _gc
+
+    _orig        = _MAX_CONCURRENT
+    _slow_streak = 0
+    _fast_streak = 0
+    _SLOW_MS     = 300
+    _FAST_MS     = 150
+    _SLOW_TRIG   = 2
+    _FAST_TRIG   = 3
+    _POLL        = 30
+
+    await _aio.sleep(45)   # let startup complete
+
+    while True:
+        try:
+            t0    = _t.perf_counter()
+            _db_check()
+            db_ms = (_t.perf_counter() - t0) * 1000
+
+            if db_ms > _SLOW_MS:
+                _slow_streak += 1
+                _fast_streak  = 0
+            elif db_ms < _FAST_MS:
+                _fast_streak += 1
+                _slow_streak  = max(0, _slow_streak - 1)
+            else:
+                _slow_streak = max(0, _slow_streak - 1)
+                _fast_streak = max(0, _fast_streak - 1)
+
+            # Tighten when DB is consistently slow
+            if _slow_streak >= _SLOW_TRIG:
+                new_max = max(10, _orig // 2)
+                if new_max != _orig:
+                    logger.warning(
+                        "Adaptive concurrency: DB slow %.0fms ×%d → cap %d→%d",
+                        db_ms, _slow_streak, _orig, new_max,
+                    )
+                    for obj in _gc.get_objects():
+                        if isinstance(obj, ConcurrencyLimitMiddleware):
+                            obj._max = new_max
+                    _orig = new_max
+
+            # Restore when DB recovers
+            elif _fast_streak >= _FAST_TRIG and _orig < _MAX_CONCURRENT:
+                logger.info(
+                    "Adaptive concurrency: DB recovered %.0fms ×%d → restore to %d",
+                    db_ms, _fast_streak, _MAX_CONCURRENT,
+                )
+                for obj in _gc.get_objects():
+                    if isinstance(obj, ConcurrencyLimitMiddleware):
+                        obj._max = _MAX_CONCURRENT
+                _orig        = _MAX_CONCURRENT
+                _fast_streak = 0
+
+        except Exception as exc:
+            logger.debug("Adaptive concurrency check error: %s", exc)
+
+        await _aio.sleep(_POLL)
+
+
 # ===== STARTUP WARMUP =====
+
+# Tracks all background tasks so shutdown can cancel them cleanly.
+_bg_tasks: set = set()
+
+
+def _spawn(coro) -> "asyncio.Task":
+    """Create a tracked background task that is auto-cancelled on shutdown."""
+    task = asyncio.create_task(coro)
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
+    return task
+
+
 @app.on_event("startup")
 async def start_background_workers():
     """Launch background workers for outbox delivery and self-healing recovery."""
-    import asyncio
     from .services.outbox_service import OutboxWorker
     from .core.self_healing import RecoveryWorker
 
-    asyncio.create_task(OutboxWorker.background_loop())
+    _spawn(OutboxWorker.background_loop())
     logger.info("Outbox worker started")
 
-    asyncio.create_task(RecoveryWorker.background_loop())
+    _spawn(RecoveryWorker.background_loop())
     logger.info("Recovery worker started")
+
+    _spawn(_health_alert_loop())
+    logger.info("Health alert watchdog started")
+
+    _spawn(_adaptive_concurrency_loop())
+    logger.info("Adaptive concurrency monitor started")
+
+    from .core.auto_repair import auto_repair as _auto_repair
+    _spawn(_auto_repair.run())
+    logger.info("Auto-repair engine started")
+
+    # ── Restore sliding window from Redis (DB error history survives restarts) ─
+    from .database import restore_db_window_from_redis
+    restore_db_window_from_redis()
+    logger.info("DB sliding window restored from Redis")
 
 
 @app.on_event("startup")
@@ -466,17 +780,20 @@ def health():
     """
     from .core.self_healing import health as sys_health
     from .core.startup_guard import system_ready
-    db_ok = check_db_connection()
+    from .database import check_db_connection_detail
+    db_status, db_detail = check_db_connection_detail()
     pool = get_pool_status()
     return {
-        "status": "healthy" if db_ok else "degraded",
+        "status": "healthy" if db_status == "ok" else "degraded",
         "platform": APP_NAME,
         "platform_ar": PLATFORM_NAME_AR,
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
         "system_ready": system_ready,
-        "database": "connected" if db_ok else "disconnected",
-        "degraded_mode": sys_health.degraded,
+        "database": db_status,          # "ok" | "refused" | "auth_failed" | "timeout" | "error"
+        "database_detail": db_detail,   # human-readable reason for failures
+        "degraded_mode":      sys_health.degraded,
+        "degradation_level":  sys_health.degradation_level.name,
         "circuits": sys_health.to_dict()["circuits"],
         "pool": pool,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -563,6 +880,146 @@ def health_status():
     }
 
 
+@app.get("/health/deep", tags=["system"])
+def health_deep():
+    """
+    Deep diagnostic endpoint — comprehensive latency + queue + memory snapshot.
+    Designed for monitoring dashboards and alerting (Prometheus, Grafana, etc.).
+
+    Returns overall health grade:
+      GREEN   — all components healthy, latencies normal
+      YELLOW  — degraded performance, some components slow
+      RED     — one or more critical components failing
+
+    Always returns HTTP 200 — check 'grade' field for actual state.
+    Accessible without authentication (all values are non-sensitive metrics).
+    """
+    import time as _t
+
+    t_start = _t.perf_counter()
+
+    # ── 1. Database latency ──────────────────────────────────────────────────
+    db_ok, db_ms, db_err = False, -1.0, None
+    try:
+        from .database import SessionLocal
+        from sqlalchemy import text as _text
+        _db = SessionLocal()
+        try:
+            t0 = _t.perf_counter()
+            _db.execute(_text("SELECT 1"))
+            db_ms = round((_t.perf_counter() - t0) * 1000, 1)
+            db_ok = True
+        finally:
+            _db.close()
+    except Exception as e:
+        db_err = str(e)[:120]
+
+    # ── 2. Redis latency ─────────────────────────────────────────────────────
+    red_ok, red_ms, red_err = False, -1.0, None
+    try:
+        from .security.redis_client import cache as _r
+        t0 = _t.perf_counter()
+        _r.ping()
+        red_ms = round((_t.perf_counter() - t0) * 1000, 1)
+        red_ok = True
+    except Exception as e:
+        red_err = str(e)[:80]
+
+    # ── 3. Queue backlog (OutboxEvent undelivered rows) ──────────────────────
+    queue_backlog, queue_err = 0, None
+    try:
+        from .database import SessionLocal
+        _db2 = SessionLocal()
+        try:
+            queue_backlog = _db2.query(OutboxEvent).filter(
+                OutboxEvent.processed_at.is_(None)
+            ).count()
+        finally:
+            _db2.close()
+    except Exception as e:
+        queue_err = str(e)[:80]
+
+    # ── 4. Memory RSS ────────────────────────────────────────────────────────
+    rss_mb = 0.0
+    try:
+        with open("/proc/self/status") as _f:
+            for line in _f:
+                if line.startswith("VmRSS:"):
+                    rss_mb = round(int(line.split()[1]) / 1024, 1)
+                    break
+    except OSError:
+        pass
+
+    # ── 5. Circuit breaker state ─────────────────────────────────────────────
+    circuits = {}
+    degraded = False
+    try:
+        from .core.self_healing import health as _sh
+        sh = _sh.to_dict()
+        circuits = sh.get("circuits", {})
+        degraded = sh.get("degraded", False)
+    except Exception:
+        pass
+
+    # ── 6. Uptime ────────────────────────────────────────────────────────────
+    from .routes.metrics import _START as _proc_start
+    uptime_s = int(_t.time() - _proc_start)
+
+    # ── 7. Active concurrent requests (from ConcurrencyLimitMiddleware) ─────────
+    active_requests = 0
+    try:
+        active_requests = ConcurrencyLimitMiddleware._active
+    except Exception:
+        pass
+
+    # ── 8. Determine health grade ─────────────────────────────────────────────
+    issues = []
+    if not db_ok:
+        issues.append("database_down")
+    elif db_ms > 200:
+        issues.append("database_slow")
+    if not red_ok:
+        issues.append("redis_down")
+    elif red_ms > 50:
+        issues.append("redis_slow")
+    if queue_backlog > 100:
+        issues.append("queue_backlog_high")
+    if rss_mb > 800:
+        issues.append("memory_high")
+    if degraded:
+        issues.append("degraded_mode")
+    if any("down" in i for i in issues):
+        grade = "RED"
+    elif issues:
+        grade = "YELLOW"
+    else:
+        grade = "GREEN"
+
+    total_ms = round((_t.perf_counter() - t_start) * 1000, 1)
+
+    return {
+        "grade": grade,
+        "issues": issues,
+        "components": {
+            "database": {"ok": db_ok, "latency_ms": db_ms, "error": db_err},
+            "redis":    {"ok": red_ok, "latency_ms": red_ms, "error": red_err},
+            "queue":    {"backlog": queue_backlog, "error": queue_err},
+        },
+        "process": {
+            "memory_rss_mb": rss_mb,
+            "uptime_s": uptime_s,
+            "uptime_h": round(uptime_s / 3600, 2),
+            "active_requests": active_requests,
+            "degraded_mode": degraded,
+        },
+        "circuits": circuits,
+        "check_duration_ms": total_ms,
+        "version": APP_VERSION,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "auto_repair": (lambda: __import__("app.core.auto_repair", fromlist=["auto_repair"]).auto_repair.stats())(),
+    }
+
+
 
 # ===== PUBLIC ENDPOINTS =====
 _test_types_cache: dict = {"data": None, "at": 0.0}
@@ -579,7 +1036,6 @@ def list_test_types():
         return cache["data"]
 
     from .database import SessionLocal
-    from .models.test_type import TestType
     db = SessionLocal()
     try:
         types = db.query(TestType).order_by(TestType.category, TestType.test_name).all()
@@ -614,9 +1070,14 @@ async def on_startup():
 
 
 @app.on_event("shutdown")
-def on_shutdown():
-    """Graceful shutdown - close database connections."""
-    logger.info("GULA Platform shutting down gracefully...")
+async def on_shutdown():
+    """Graceful shutdown — cancel background tasks then release DB connections."""
+    logger.info("GULA Platform shutting down — cancelling %d background task(s)...", len(_bg_tasks))
+    for task in list(_bg_tasks):
+        task.cancel()
+    if _bg_tasks:
+        await asyncio.gather(*list(_bg_tasks), return_exceptions=True)
+    logger.info("All background tasks stopped")
     engine.dispose()
     logger.info("Database connections closed")
 
@@ -645,7 +1106,6 @@ def _migrate_perm_version():
 def _seed_test_types():
     """Seed test types catalog if empty (fast: single COUNT check)."""
     from .database import SessionLocal
-    from .models.test_type import TestType
 
     db = SessionLocal()
     try:
