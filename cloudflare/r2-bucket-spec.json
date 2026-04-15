@@ -1,0 +1,36 @@
+{
+  "_comment": "Declarative spec for the Cloudflare R2 bucket used by GULA. Apply via `wrangler r2 bucket create` + `wrangler r2 bucket cors put`. Bucket stores signed PDF lab reports only — never PHI beyond what's rendered on the report itself (same trust boundary as email/SMS PDF attachments).",
+  "bucket": {
+    "name": "gula-reports",
+    "location_hint": "eeur",
+    "jurisdiction": "default"
+  },
+  "lifecycle": [
+    {
+      "id": "expire-90d",
+      "description": "Lab reports expire 90 days after the signed link is issued (matches RESULT_LINK_EXPIRE_DAYS).",
+      "prefix": "reports/",
+      "days_until_deletion": 90
+    },
+    {
+      "id": "abort-incomplete-uploads",
+      "description": "Abort multipart uploads that did not finish within 1 day.",
+      "days_to_abort_multipart": 1
+    }
+  ],
+  "cors": [
+    {
+      "allowed_origins": ["https://portal.gula.health", "https://app.gula.health"],
+      "allowed_methods": ["GET", "HEAD"],
+      "allowed_headers": ["Range", "If-None-Match"],
+      "expose_headers":  ["ETag", "Content-Length", "Content-Range"],
+      "max_age_seconds": 3600
+    }
+  ],
+  "public_access": "disabled",
+  "notes": [
+    "Objects are served only through signed URLs issued by the backend; bucket-public-access must remain disabled.",
+    "Encryption at rest is applied by R2 by default (AES-256).",
+    "Access keys must be created with the 'Object Read & Write' scope limited to this bucket only — never account-wide."
+  ]
+}

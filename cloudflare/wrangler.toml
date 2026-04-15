@@ -1,0 +1,53 @@
+# Wrangler configuration for the GULA edge layer.
+#
+# This file declares:
+#   1. The Worker that sits in front of the origin (HAProxy / gula-backend)
+#      and adds global rate-limiting, bot-protection, and audit headers.
+#   2. An R2 bucket for durable report storage (PDF lab reports, signed
+#      once, served worldwide).
+#
+# How to deploy:
+#
+#   npm install -g wrangler
+#   wrangler login
+#   wrangler deploy --env=production
+#
+# Required secrets (do NOT commit — use `wrangler secret put`):
+#   CF_ORIGIN_URL          — https://api.gula.health (HAProxy frontend)
+#   CF_SHARED_SECRET       — rotating secret stamped as x-cf-signed into
+#                            every proxied request; the origin rejects any
+#                            call that doesn't carry the matching header.
+
+name            = "gula-edge"
+main            = "worker.js"
+compatibility_date = "2025-03-01"
+workers_dev     = false
+
+# ── Routes ────────────────────────────────────────────────────────────────
+# The Worker intercepts every request to api.gula.health and its subdomains.
+# Static /app/* assets are handled by Cloudflare Pages, not this worker.
+
+[[routes]]
+pattern = "api.gula.health/*"
+zone_name = "gula.health"
+
+# ── R2 bucket — durable report storage ────────────────────────────────────
+# Binding name must match what the backend expects if/when it is wired up.
+[[r2_buckets]]
+binding     = "GULA_REPORTS"
+bucket_name = "gula-reports"
+
+# ── Environment: production ──────────────────────────────────────────────
+[env.production]
+name = "gula-edge-prod"
+vars = { ENVIRONMENT = "production" }
+
+# ── Environment: staging ─────────────────────────────────────────────────
+[env.staging]
+name = "gula-edge-staging"
+vars = { ENVIRONMENT = "staging" }
+
+# ── Observability ────────────────────────────────────────────────────────
+[observability]
+enabled = true
+head_sampling_rate = 1.0

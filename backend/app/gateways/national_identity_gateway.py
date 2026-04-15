@@ -3,6 +3,18 @@ Iraqi National Identity Gateway — Ministry of Interior Integration
 ==================================================================
 Trust level: NON_CRITICAL — used for identity enrichment, not clinical decisions.
 
+Three operating modes (see ``app.gateways.mode``):
+
+  STUB    — default. Local length-validation only; no network call.
+  LIVE    — real HTTPS call to the MoI endpoint if credentials are present.
+  SHADOW  — LIVE call is made and logged, but STUB data is returned to the
+            caller. Used for pre-production validation.
+
+Environment:
+  GULA_ADAPTER_MODE_NID       = stub | live | shadow
+  MOI_NID_API_URL             = https://...  (required for live/shadow)
+  MOI_NID_API_KEY             = ...          (required for live/shadow)
+
 SECURITY:
   - Cache keys are MD5(gateway + national_id) — raw IDs never appear in cache keys.
   - Responses validated strictly before use.
@@ -11,6 +23,8 @@ SECURITY:
 
 from __future__ import annotations
 
+import logging
+import os
 from typing import Any
 
 from app.gateways.base import (
@@ -20,10 +34,15 @@ from app.gateways.base import (
     FieldRule,
     validate_schema,
 )
+from app.gateways.mode import AdapterMode, resolve_mode
+
+logger = logging.getLogger("gula.gateways.national_identity")
 
 _gateway: "NationalIdentityGateway | None" = None
 
 _VALID_ID_LENGTHS = {12, 16}
+_ADAPTER_KEY      = "nid"
+_REQUIRED_CREDS   = ("MOI_NID_API_URL", "MOI_NID_API_KEY")
 
 
 class NationalIdentityGateway(ExternalGateway):
@@ -42,31 +61,63 @@ class NationalIdentityGateway(ExternalGateway):
         FieldRule("source", str,  required=True),
     ]
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.mode = resolve_mode(_ADAPTER_KEY, _REQUIRED_CREDS)
+
+    # Exposed for health probes
+    def current_mode(self) -> AdapterMode:
+        return self.mode
+
     def _validate_response(self, response: Any) -> None:
         validate_schema(response, self._SCHEMA, context="national_identity")
 
-    def _do_call(self, action: str, **kwargs: Any) -> Any:
-        national_id: str = kwargs.get("national_id", "")
-
-        # ── Placeholder ───────────────────────────────────────────────────────
-        # Replace with real HTTP call when MoI API is available:
-        #
-        #   return self._http("post", "https://moi.gov.iq/api/id/verify",
-        #                     json={"id": national_id},
-        #                     headers={"X-API-Key": settings.MOI_API_KEY})
-        #
+    def _stub_response(self, national_id: str) -> dict:
         if len(national_id) not in _VALID_ID_LENGTHS:
             return {
                 "valid":   False,
-                "source":  "local_validation",
+                "source":  "stub_local_validation",
                 "message": "Invalid ID length",
             }
-
         return {
             "valid":   True,
-            "source":  "local_validation",
-            "message": "Awaiting government registry integration",
+            "source":  "stub_local_validation",
+            "message": "Awaiting MoI production credential",
         }
+
+    def _live_response(self, national_id: str) -> dict:
+        base = os.environ["MOI_NID_API_URL"].rstrip("/")
+        key  = os.environ["MOI_NID_API_KEY"]
+        return self._http(
+            "post",
+            f"{base}/api/id/verify",
+            json={"id": national_id},
+            headers={"X-API-Key": key, "Accept": "application/json"},
+        )
+
+    def _do_call(self, action: str, **kwargs: Any) -> Any:
+        national_id: str = kwargs.get("national_id", "") or ""
+
+        if self.mode is AdapterMode.STUB:
+            return self._stub_response(national_id)
+
+        if self.mode is AdapterMode.SHADOW:
+            stub = self._stub_response(national_id)
+            try:
+                live = self._live_response(national_id)
+                logger.info(
+                    "[SHADOW] gateway=%s action=%s stub=%r live=%r",
+                    self.name, action, stub, live,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "[SHADOW] gateway=%s action=%s live_error=%s",
+                    self.name, action, exc,
+                )
+            return stub
+
+        # LIVE
+        return self._live_response(national_id)
 
 
 def get_national_identity_gateway() -> NationalIdentityGateway:

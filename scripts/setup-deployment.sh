@@ -176,6 +176,41 @@ ENABLE_API_DOCS=false
 CONTROL_LAYER_ENABLED=true
 KILL_SWITCH=false
 GULA_AUTO_FIX=false
+
+# ── External adapter mode (stub | live | shadow) ───────────────────────────
+# Default stays on "stub" until the corresponding credentials below are set.
+# See backend/app/gateways/mode.py and docs/INTEGRATIONS.md.
+GULA_ADAPTER_MODE=stub
+# GULA_ADAPTER_MODE_NID=stub
+# GULA_ADAPTER_MODE_INSURANCE=stub
+# GULA_ADAPTER_MODE_RESIDENCY=stub
+# GULA_ADAPTER_MODE_CLOUDFLARE=stub
+
+# ── Iraqi government APIs (leave blank to keep stub mode) ──────────────────
+# Ministry of Interior — National ID
+MOI_NID_API_URL=
+MOI_NID_API_KEY=
+# National Health Insurance (Law No. 22 of 2020)
+INSURANCE_API_URL=
+INSURANCE_API_KEY=
+# MoI — Directorate of Residency (foreign travelers)
+RESIDENCY_API_URL=
+RESIDENCY_API_KEY=
+
+# ── Cloudflare (leave blank to keep stub) ──────────────────────────────────
+CF_API_TOKEN=
+CF_ACCOUNT_ID=
+CF_ZONE_ID=
+CF_R2_BUCKET=gula-reports
+
+# ── Supabase (optional — informational) ────────────────────────────────────
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_KEY=
+
+# ── Render / DigitalOcean platform identifiers (optional) ──────────────────
+RENDER_SERVICE_ID=
+DIGITALOCEAN_APP_ID=
 EOF
 chmod 600 "$ENV_FILE"
 ok "Wrote $ENV_FILE (chmod 600)."
