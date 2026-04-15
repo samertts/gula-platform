@@ -486,6 +486,14 @@ app.include_router(ai_routes.router)
 # AI System Optimizer (admin-only, read-only performance monitoring)
 app.include_router(optimizer_routes.router)
 
+# Master Patient Index — national-layer identity (canonical citizen registry)
+from .services.mpi import router as mpi_router  # noqa: E402
+app.include_router(mpi_router)
+
+# External integrations health + probe (gov NID, insurance, residency, Cloudflare)
+from .routes import integrations as integrations_routes  # noqa: E402
+app.include_router(integrations_routes.router)
+
 
 # ===== HEALTH ALERT WATCHDOG =====
 async def _health_alert_loop():
