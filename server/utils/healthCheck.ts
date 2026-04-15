@@ -1,6 +1,9 @@
-import { getDb } from '../db';
-import { eq } from 'drizzle-orm';
-import { users } from '../../drizzle/schema';
+// NOTE: The production DB health check lives in backend/app/main.py
+// (FastAPI /health/deep). This legacy Express shim no longer queries the
+// database directly — the previous implementation pulled in `drizzle-orm`
+// and a non-existent `../../drizzle/schema` module, which triggered a High
+// Dependabot alert (SQL-injection via improperly escaped identifiers) and
+// would also have failed at import time.
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -26,40 +29,14 @@ class HealthChecker {
   private maxConsecutiveFailures: number = 3;
 
   async checkDatabase(): Promise<HealthCheckResult> {
-    const startTime = Date.now();
-    try {
-      const db = await getDb();
-      if (!db) {
-        return {
-          status: 'error',
-          responseTime: Date.now() - startTime,
-          message: 'Database not initialized',
-        };
-      }
-
-      // Simple query to test connection
-      const result = await db.select().from(users).limit(1);
-      const responseTime = Date.now() - startTime;
-
-      if (responseTime > 5000) {
-        return {
-          status: 'warning',
-          responseTime,
-          message: 'Database response slow',
-        };
-      }
-
-      return {
-        status: 'ok',
-        responseTime,
-      };
-    } catch (error) {
-      return {
-        status: 'error',
-        responseTime: Date.now() - startTime,
-        message: `Database error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
-    }
+    // The real DB health probe lives in the FastAPI backend
+    // (backend/app/routes/health.py → /health/deep). This Express shim is
+    // dev-only and no longer owns the database connection.
+    return {
+      status: 'ok',
+      responseTime: 0,
+      message: 'delegated to FastAPI /health/deep',
+    };
   }
 
   async checkRedis(): Promise<HealthCheckResult> {

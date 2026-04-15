@@ -132,6 +132,75 @@ def _name_similarity(name1: str, name2: str) -> float:
     return len(intersection) / len(union)
 
 
+def jaro_similarity(s1: str, s2: str) -> float:
+    """Jaro similarity — character-level fuzzy match in [0, 1].
+
+    Used by the MPI matcher. Robust to transpositions and small typos.
+    """
+    if s1 == s2:
+        return 1.0
+    len1, len2 = len(s1), len(s2)
+    if len1 == 0 or len2 == 0:
+        return 0.0
+
+    match_distance = max(len1, len2) // 2 - 1
+    if match_distance < 0:
+        match_distance = 0
+
+    s1_matches = [False] * len1
+    s2_matches = [False] * len2
+    matches = 0
+    transpositions = 0
+
+    for i in range(len1):
+        start = max(0, i - match_distance)
+        end = min(i + match_distance + 1, len2)
+        for j in range(start, end):
+            if s2_matches[j]:
+                continue
+            if s1[i] != s2[j]:
+                continue
+            s1_matches[i] = True
+            s2_matches[j] = True
+            matches += 1
+            break
+
+    if matches == 0:
+        return 0.0
+
+    k = 0
+    for i in range(len1):
+        if not s1_matches[i]:
+            continue
+        while not s2_matches[k]:
+            k += 1
+        if s1[i] != s2[k]:
+            transpositions += 1
+        k += 1
+
+    t = transpositions / 2
+    return (matches / len1 + matches / len2 + (matches - t) / matches) / 3
+
+
+def jaro_winkler(s1: str, s2: str, prefix_weight: float = 0.1, max_prefix: int = 4) -> float:
+    """Jaro-Winkler similarity — Jaro boosted for matching prefixes.
+
+    Returns a score in [0, 1]. Standard Winkler defaults: p=0.1, ℓ≤4.
+    Names sharing a common prefix (very common in Arabic patronymics)
+    score noticeably higher.
+    """
+    jaro = jaro_similarity(s1, s2)
+    if jaro < 0.7:  # Winkler: only apply prefix bonus for reasonably similar strings
+        return jaro
+    prefix_len = 0
+    for a, b in zip(s1, s2):
+        if a == b and prefix_len < max_prefix:
+            prefix_len += 1
+        else:
+            break
+    return jaro + prefix_len * prefix_weight * (1 - jaro)
+
+
 def hash_national_id(national_id: str) -> str:
     """Hash a national ID for secure storage using HMAC-SHA256 with a stable key.
 
