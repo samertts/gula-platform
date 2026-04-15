@@ -1,0 +1,73 @@
+{
+  "_comment": "GULA Cloudflare WAF rule-set — import via `wrangler` or the Cloudflare API. Rules run in order; first match wins. Designed for a national healthcare platform: conservative defaults, explicit allow-list for government webhook IPs, strict POST-body size cap, blanket block on common patient-data exfiltration patterns.",
+  "version": "2026.04.15",
+  "rules": [
+    {
+      "id": "rate-limit-auth",
+      "description": "Throttle brute-force attempts on /login and /register",
+      "expression": "(http.request.uri.path in {\"/login\" \"/register\" \"/refresh\"})",
+      "action": "challenge",
+      "rate_limit": { "requests_per_period": 10, "period": 60, "mitigation_timeout": 600 }
+    },
+    {
+      "id": "rate-limit-api-global",
+      "description": "Global sliding-window cap per IP across /api/*",
+      "expression": "starts_with(http.request.uri.path, \"/api/\")",
+      "action": "block",
+      "rate_limit": { "requests_per_period": 300, "period": 60, "mitigation_timeout": 60 }
+    },
+    {
+      "id": "block-sql-patterns",
+      "description": "Block classic SQL-injection signatures in query strings",
+      "expression": "(lower(http.request.uri.query) contains \"union select\" or lower(http.request.uri.query) contains \"drop table\" or lower(http.request.uri.query) contains \"' or '1'='1\")",
+      "action": "block"
+    },
+    {
+      "id": "block-path-traversal",
+      "description": "Path traversal attempts",
+      "expression": "http.request.uri.path contains \"../\" or http.request.uri.path contains \"..%2F\"",
+      "action": "block"
+    },
+    {
+      "id": "block-oversized-body",
+      "description": "Cap request body at 10 MB — matches MAX_REQUEST_BODY_MB",
+      "expression": "http.request.body.size gt 10485760",
+      "action": "block"
+    },
+    {
+      "id": "require-api-version",
+      "description": "API clients must declare a version header (defense in depth)",
+      "expression": "starts_with(http.request.uri.path, \"/api/\") and not any(http.request.headers[\"accept\"][*] contains \"application/json\")",
+      "action": "challenge"
+    },
+    {
+      "id": "allowlist-gov-webhook-ips",
+      "description": "Allow-list inbound from declared Iraqi government webhook source IPs (placeholders — update before going live)",
+      "expression": "ip.src in {10.0.0.0/8} and starts_with(http.request.uri.path, \"/webhooks/gov/\")",
+      "action": "skip",
+      "skip_phases": ["http_request_firewall_managed"]
+    },
+    {
+      "id": "block-webhook-not-allowlisted",
+      "description": "Any /webhooks/gov/* not from the allow-list is rejected",
+      "expression": "starts_with(http.request.uri.path, \"/webhooks/gov/\") and not (ip.src in {10.0.0.0/8})",
+      "action": "block"
+    },
+    {
+      "id": "block-admin-country",
+      "description": "Admin endpoints are Iraq-only (+ listed partners)",
+      "expression": "starts_with(http.request.uri.path, \"/admin/\") and not (ip.geoip.country in {\"IQ\" \"SA\" \"AE\"})",
+      "action": "block"
+    }
+  ],
+  "managed_rules": {
+    "cloudflare_managed_ruleset":     "on",
+    "cloudflare_owasp_core_ruleset":  "on",
+    "cloudflare_exposed_credentials": "on"
+  },
+  "notes": [
+    "Rule ids are internal labels — Cloudflare assigns its own ids on import.",
+    "Before going LIVE, replace the 10.0.0.0/8 placeholder in allowlist-gov-webhook-ips with the actual MoH / MoI / NHI source ranges.",
+    "Rule rate-limit-auth uses Challenge, not Block, so a legitimate user locked out can solve a captcha within the cool-down."
+  ]
+}

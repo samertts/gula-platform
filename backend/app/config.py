@@ -126,3 +126,44 @@ APNS_KEY = os.getenv("APNS_KEY", "")              # Apple Push Notifications
 # ─── API Documentation ───────────────────────────────────────────────────────
 # Enable API docs in production for government testers (controlled by env var)
 ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
+
+
+# ─── External Adapter Mode (stub | live | shadow) ────────────────────────────
+# See backend/app/gateways/mode.py for resolution rules.
+#   GULA_ADAPTER_MODE            — global default (fallback: "stub")
+#   GULA_ADAPTER_MODE_NID        — overrides global for gov-NID adapter
+#   GULA_ADAPTER_MODE_INSURANCE  — overrides for NHI insurance adapter
+#   GULA_ADAPTER_MODE_RESIDENCY  — overrides for MoI residency adapter
+#   GULA_ADAPTER_MODE_CLOUDFLARE — overrides for Cloudflare control plane
+ADAPTER_MODE_DEFAULT    = os.getenv("GULA_ADAPTER_MODE", "stub").lower()
+ADAPTER_MODE_NID        = os.getenv("GULA_ADAPTER_MODE_NID",        ADAPTER_MODE_DEFAULT).lower()
+ADAPTER_MODE_INSURANCE  = os.getenv("GULA_ADAPTER_MODE_INSURANCE",  ADAPTER_MODE_DEFAULT).lower()
+ADAPTER_MODE_RESIDENCY  = os.getenv("GULA_ADAPTER_MODE_RESIDENCY",  ADAPTER_MODE_DEFAULT).lower()
+ADAPTER_MODE_CLOUDFLARE = os.getenv("GULA_ADAPTER_MODE_CLOUDFLARE", ADAPTER_MODE_DEFAULT).lower()
+
+# ─── Iraqi government endpoints (optional — LIVE mode only) ──────────────────
+# Leave empty to keep the adapter in STUB mode. When present, the adapter
+# runs against the real API. Credentials must NEVER be committed.
+MOI_NID_API_URL       = os.getenv("MOI_NID_API_URL", "")
+MOI_NID_API_KEY       = os.getenv("MOI_NID_API_KEY", "")
+INSURANCE_API_URL     = os.getenv("INSURANCE_API_URL", "")
+INSURANCE_API_KEY     = os.getenv("INSURANCE_API_KEY", "")
+RESIDENCY_API_URL     = os.getenv("RESIDENCY_API_URL", "")
+RESIDENCY_API_KEY     = os.getenv("RESIDENCY_API_KEY", "")
+
+# ─── Cloudflare control plane (optional — LIVE mode only) ────────────────────
+CF_API_TOKEN   = os.getenv("CF_API_TOKEN", "")
+CF_ACCOUNT_ID  = os.getenv("CF_ACCOUNT_ID", "")
+CF_ZONE_ID     = os.getenv("CF_ZONE_ID", "")
+CF_R2_BUCKET   = os.getenv("CF_R2_BUCKET", "gula-reports")
+
+# ─── Supabase (optional — for projects migrating to Supabase Postgres) ───────
+# When set, health/diagnostic scripts surface the Supabase project. Primary
+# DATABASE_URL is still authoritative for runtime connections.
+SUPABASE_URL         = os.getenv("SUPABASE_URL", "")
+SUPABASE_ANON_KEY    = os.getenv("SUPABASE_ANON_KEY", "")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+
+# ─── Render / DigitalOcean (informational — set by their platforms) ──────────
+RENDER_SERVICE_ID        = os.getenv("RENDER_SERVICE_ID", "")
+DIGITALOCEAN_APP_ID      = os.getenv("DIGITALOCEAN_APP_ID", "")
