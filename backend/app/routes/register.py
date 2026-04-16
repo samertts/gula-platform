@@ -11,7 +11,70 @@ from ..security.auth import hash_password, create_token
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_auth, get_client_ip
 from ..services.audit_service import log_action
+from ..services.mpi.models import Citizen
+from ..services.mpi.blocking import blocking_key, phone_last10
+from ..services.identity import normalize_name as mpi_normalize_name, hash_national_id as mpi_hash_nid
 from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY
+
+
+def _mint_citizen_from_self_registration(db: Session, *, full_name: str, phone: str,
+                                         birth_date: str = "", gender: str = "",
+                                         national_id: str = "") -> str | None:
+    """Create (or link to) a canonical MPI Citizen for a self-registering user.
+
+    Citizens exist as a national identity registry independent of any lab.
+    Minting on self-registration makes the platform citizen-first instead of
+    lab-first, so a user has a longitudinal record ready before their first
+    lab visit. Returns the canonical citizen_ulid or None on failure
+    (non-fatal; a reconciler can re-run).
+    """
+    import secrets, time
+    try:
+        nid_h = mpi_hash_nid(national_id) if national_id else None
+        if nid_h:
+            existing = (db.query(Citizen)
+                          .filter(Citizen.nid_hash == nid_h,
+                                  Citizen.status.in_(("active", "review")))
+                          .first())
+            if existing is not None:
+                return existing.canonical().citizen_ulid
+
+        by = bm = bd = None
+        if birth_date:
+            try:
+                from datetime import date as _date
+                d = _date.fromisoformat(birth_date)
+                by, bm, bd = d.year, d.month, d.day
+            except ValueError:
+                pass
+
+        # ULID inline (avoid circular import with resolver)
+        _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+        ms = int(time.time() * 1000) & ((1 << 48) - 1)
+        rand = secrets.randbits(80)
+        val = (ms << 80) | rand
+        out = []
+        for _ in range(26):
+            out.append(_CROCKFORD[val & 0x1F]); val >>= 5
+        ulid = "".join(reversed(out))
+
+        citizen = Citizen(
+            citizen_ulid=ulid,
+            nid_hash=nid_h,
+            nid_verified=False,
+            phone_last10=phone_last10(phone),
+            birth_year=by, birth_month=bm, birth_day=bd,
+            gender=(gender.upper()[:1] if gender else None),
+            name_canonical=mpi_normalize_name(full_name),
+            name_blocking_key=blocking_key(full_name),
+            status="active",
+            version=1,
+        )
+        db.add(citizen)
+        db.flush()
+        return ulid
+    except Exception:
+        return None
 
 router = APIRouter(tags=["auth"])
 
@@ -240,6 +303,16 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
         db.rollback()
         raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
 
+    # Citizen-first: canonical national identity exists before any lab visit.
+    citizen_ulid = _mint_citizen_from_self_registration(
+        db,
+        full_name=data.full_name,
+        phone=data.phone,
+        birth_date=data.birth_date,
+        gender=data.gender,
+        national_id=data.national_id,
+    )
+
     log_action(
         db,
         action="register",
@@ -247,7 +320,7 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
         resource_id=citizen.id,
         user_id=citizen.id,
         user_role="citizen",
-        details=f"Citizen self-registered (user_id={citizen.id})",
+        details=f"Citizen self-registered (user_id={citizen.id}, citizen_ulid={citizen_ulid})",
         ip_address=get_client_ip(request),
     )
     db.commit()
@@ -256,6 +329,7 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
     return {
         "message": "Account created successfully",
         "user_id": citizen.id,
+        "citizen_ulid": citizen_ulid,
     }
 
 
