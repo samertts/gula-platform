@@ -85,11 +85,13 @@ def test_0001_points_to_0000():
     and assumed create_all() had already run. After the Dockerfile fix that
     assumption was false, causing NoSuchTableError: lab_users on every fresh deploy.
     """
-    paths = list(MIGRATIONS_DIR.glob("*0001*"))
-    assert paths, "Migration 0001 not found"
+    # Match only the original 20250322_0001 — other dated "0001" migrations
+    # (e.g. 20260407_0001, 20260413_0001) are downstream revisions.
+    paths = list(MIGRATIONS_DIR.glob("20250322_0001*"))
+    assert paths, "Migration 20250322_0001 not found"
     meta = _read_migration_meta(paths[0])
     assert meta["down_revision"] == "20250322_0000", (
-        f"Migration 0001 has down_revision={meta['down_revision']!r}. "
+        f"Migration 20250322_0001 has down_revision={meta['down_revision']!r}. "
         "It MUST point to '20250322_0000' so the base schema is created first."
     )
 
