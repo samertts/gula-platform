@@ -10,6 +10,7 @@ from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
 from ..services.identity import normalize_name, match_score, hash_national_id, hash_family_id
 from ..services.audit_service import log_action
+from ..services.mpi import resolver as mpi_resolver
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -276,10 +277,56 @@ def create_patient(
         guardian_id=data.guardian_id,
     )
     db.add(patient)
+    db.flush()
+
+    # National unified-record linkage (MPI). Every lab patient resolves to a
+    # single canonical Citizen so the same person across labs shares one
+    # longitudinal record. Failure is non-fatal: we log and still return the
+    # patient; a reconciler can re-run MPI later.
+    birth_year = birth_month = birth_day = None
+    if patient.birth_date:
+        birth_year, birth_month, birth_day = (
+            patient.birth_date.year,
+            patient.birth_date.month,
+            patient.birth_date.day,
+        )
+    citizen_ulid = None
+    mpi_match_method = None
+    try:
+        outcome = mpi_resolver.resolve_identity(
+            db,
+            lab_id=current_user.lab_id,
+            local_patient_id=patient.id,
+            name=patient.full_name,
+            phone=patient.phone,
+            birth_year=birth_year,
+            birth_month=birth_month,
+            birth_day=birth_day,
+            gender=patient.gender,
+            national_id=data.national_id,
+            family_id=data.family_id,
+            claimed_by_user_id=current_user.id,
+        )
+        citizen_ulid = outcome.citizen.citizen_ulid
+        mpi_match_method = outcome.match_method
+    except Exception as mpi_err:
+        log_action(
+            db,
+            action="mpi_resolve_failed",
+            resource_type="patient",
+            resource_id=patient.id,
+            user_id=current_user.id,
+            user_role=current_user.role,
+            details=f"MPI resolve failed: {type(mpi_err).__name__}: {str(mpi_err)[:200]}",
+        )
+
     db.commit()
     db.refresh(patient)
 
-    return {"message": "Patient created", "patient": patient_to_dict(patient)}
+    resp = patient_to_dict(patient)
+    resp["citizen_ulid"] = citizen_ulid
+    resp["mpi_match_method"] = mpi_match_method
+    return {"message": "Patient created", "patient": resp}
 
 
 @router.get("/family/{family_id}")
