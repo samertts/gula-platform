@@ -338,7 +338,8 @@ class ExternalGateway:
     @staticmethod
     def _make_cache_key(gateway_name: str, **kwargs: Any) -> str:
         raw = f"{gateway_name}:{sorted(kwargs.items())}"
-        return hashlib.md5(raw.encode()).hexdigest()
+        # Non-crypto cache key; usedforsecurity=False silences the SAST finding.
+        return hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()
 
     # ── Audit ─────────────────────────────────────────────────────────────────
 
