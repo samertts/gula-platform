@@ -64,3 +64,30 @@ class MergeResponse(BaseModel):
     secondary_ulid:  str
     occurred_at:     datetime
     entry_hash:      str
+
+
+class PendingReviewItem(BaseModel):
+    """A single ambiguous claim awaiting admin adjudication."""
+    claim_id:        int
+    citizen_ulid:    str
+    lab_id:          int
+    local_patient_id: int
+    match_score:     Optional[float] = None
+    match_features:  dict = Field(default_factory=dict)
+    created_at:      datetime
+
+
+class PendingReviewPage(BaseModel):
+    total:  int
+    items:  list[PendingReviewItem]
+
+
+class ResolveDecision(BaseModel):
+    """Body of POST /mpi/review/{claim_id}/decide.
+
+    decision:
+      - 'confirm'  → keep the claim as-is, flip match_method to 'manual'
+      - 'reject'   → detach from this citizen and mint a new canonical citizen
+    """
+    decision:  str = Field(..., pattern=r"^(confirm|reject)$")
+    reason:    str = Field(..., min_length=10, max_length=500)
