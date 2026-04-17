@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from ...database import get_db
 from ...models.lab_user import LabUser
 from ...models.patient import Patient
+from ...security.consent_dep import require_consent
 from ...security.dependencies import get_current_user
 from ...security.rate_limit import rate_limit_user
 from ...security.rbac import require_own_lab, require_role
@@ -269,3 +270,45 @@ def decide_pending_review(
         "new_citizen_ulid": outcome.citizen.citizen_ulid,
         "match_method": outcome.match_method,
     }
+
+
+# ── GET /mpi/citizens/{citizen_ulid}/access — consent-gated citizen read ─────
+# Unlike the admin-only projection above, this endpoint is reachable by any
+# authenticated actor (doctor, staff). It is gated by the consent layer:
+# the caller must hold an active Consent row (scope='read:citizen') for this
+# citizen, OR be the citizen themselves (owner bypass), OR supply the
+# emergency break-glass header as a doctor.
+
+@router.get("/citizens/{citizen_ulid}/access", response_model=CitizenResponse)
+def get_citizen_with_consent(
+    citizen_ulid: str,
+    current_user: LabUser = Depends(require_consent("read:citizen")),
+    db: Session = Depends(get_db),
+) -> CitizenResponse:
+    """Cross-lab citizen projection, gated by the consent layer.
+
+    Response shape matches the admin endpoint (no raw PII). The difference
+    is the authorization model: this route is for doctors/labs acting on
+    the subject's behalf with recorded consent, not for administrators.
+    """
+    citizen = (db.query(Citizen)
+                 .filter(Citizen.citizen_ulid == citizen_ulid)
+                 .first())
+    if citizen is None:
+        raise HTTPException(status_code=404, detail="citizen not found")
+
+    merged_into_ulid = None
+    if citizen.merged_into_id is not None:
+        survivor = citizen.canonical()
+        if survivor is not None and survivor.id != citizen.id:
+            merged_into_ulid = survivor.citizen_ulid
+
+    return CitizenResponse(
+        citizen_ulid=citizen.citizen_ulid,
+        nid_verified=citizen.nid_verified,
+        birth_year=citizen.birth_year,
+        gender=citizen.gender,
+        status=citizen.status,
+        merged_into_ulid=merged_into_ulid,
+        created_at=citizen.created_at,
+    )
