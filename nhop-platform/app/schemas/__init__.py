@@ -1,3 +1,15 @@
-from .citizen import CitizenBrief, CitizenCreate, CitizenRead
+from .citizen import (
+    CitizenCreate, CitizenRead, CitizenUpdate,
+    CitizenSearchResult, CitizenSummary, DuplicateMatch,
+    LabTestRead,
+)
 
-__all__ = ["CitizenCreate", "CitizenRead", "CitizenBrief"]
+__all__ = [
+    "CitizenCreate",
+    "CitizenRead",
+    "CitizenUpdate",
+    "CitizenSearchResult",
+    "CitizenSummary",
+    "DuplicateMatch",
+    "LabTestRead",
+]
