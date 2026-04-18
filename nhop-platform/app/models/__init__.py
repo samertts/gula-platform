@@ -1,4 +1,5 @@
-from .base import Base
-from .citizen import Citizen, Gender
+from .citizen import Citizen
+from .lab_test import LabTest
+from .audit_log import AuditLog
 
-__all__ = ["Base", "Citizen", "Gender"]
+__all__ = ["Citizen", "LabTest", "AuditLog"]

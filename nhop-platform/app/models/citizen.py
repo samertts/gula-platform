@@ -1,71 +1,54 @@
-from __future__ import annotations
+"""Canonical citizen record for the national health registry.
 
-import enum
-import secrets
-import uuid
-from datetime import date, datetime
+One row per real person. Externally identified by `health_id` (never by
+primary key, never by raw national_id). `national_id` is unique when present
+but nullable for edge cases (e.g. newborns awaiting civil registration).
+"""
+from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Enum, String
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy import (
+    JSON, Date, DateTime, Index, Integer, String,
+)
+from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
-
-
-class Gender(str, enum.Enum):
-    male = "male"
-    female = "female"
-
-
-def _generate_health_id() -> str:
-    return "HID-" + secrets.token_hex(8).upper()
+from ..core.database import Base
 
 
 class Citizen(Base):
     __tablename__ = "citizens"
+    __table_args__ = (
+        Index("ix_citizens_name", "full_name"),
+        Index("ix_citizens_province", "province"),
+        Index("ix_citizens_birth", "birth_date"),
+    )
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    national_id = Column(String(20), unique=True, nullable=False, index=True)
-    health_id = Column(String(32), unique=True, nullable=False, index=True, default=_generate_health_id)
-    first_name = Column(String(100), nullable=False)
-    father_name = Column(String(100), nullable=True)
-    grandfather_name = Column(String(100), nullable=True)
-    last_name = Column(String(100), nullable=False)
-    mother_name = Column(String(100), nullable=True)
-    birth_date = Column(Date, nullable=False)
-    gender = Column(Enum(Gender, name="citizen_gender"), nullable=True)
-    blood_type = Column(String(5), nullable=True)
-    phone = Column(String(20), nullable=True)
-    province = Column(String(100), nullable=True)
-    district = Column(String(100), nullable=True)
-    is_alive = Column(Boolean, nullable=False, default=True, server_default="true")
-    created_at = Column(
+    id:            Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    health_id:     Mapped[str]      = mapped_column(String(20),  unique=True, nullable=False, index=True)
+    national_id:   Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, index=True)
+
+    full_name:     Mapped[str]      = mapped_column(String(200), nullable=False)
+    mother_name:   Mapped[str | None] = mapped_column(String(200), nullable=True)
+    birth_date:    Mapped[date | None] = mapped_column(Date, nullable=True)
+    gender:        Mapped[str | None] = mapped_column(String(1), nullable=True)   # 'M' | 'F'
+    phone:         Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    email:         Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    province:      Mapped[str | None] = mapped_column(String(80),  nullable=True)
+    district:      Mapped[str | None] = mapped_column(String(120), nullable=True)
+    address:       Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Clinical summary fields (denormalized for fast /summary responses).
+    # Detailed history lives elsewhere (lab_tests, encounters).
+    chronic_diseases: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    allergies:        Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    blood_type:       Mapped[str | None]  = mapped_column(String(5), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
-        default=lambda: datetime.utcnow(),
-        server_default=func.now(),
     )
-    updated_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.utcnow(),
-        onupdate=lambda: datetime.utcnow(),
-        server_default=func.now(),
-    )
-
-    health_records = relationship(
-        "HealthRecord",
-        back_populates="citizen",
-        cascade="all, delete-orphan",
-        lazy="selectin",
-    )
-    test_results = relationship(
-        "TestResult",
-        back_populates="citizen",
-        cascade="all, delete-orphan",
-        lazy="selectin",
-    )
-
-    def __repr__(self) -> str:
-        return f"<Citizen id={self.id} health_id={self.health_id}>"
