@@ -426,6 +426,7 @@ from .routes import qr, id_scan, admin, samples
 from .routes import quality_control, critical_alerts, batch
 from .routes import mobile, compliance
 from .routes import setup, metrics
+from .routes import test_results
 from .routes import ai as ai_routes
 from .routes import optimizer as optimizer_routes
 from .routes import tiers as tiers_routes
@@ -439,6 +440,7 @@ app.include_router(setup.router)
 app.include_router(metrics.router)
 app.include_router(patients.router)
 app.include_router(results.router)
+app.include_router(test_results.router)
 app.include_router(dashboard.router)
 app.include_router(labs.router)
 app.include_router(samples.router)
@@ -489,6 +491,10 @@ app.include_router(optimizer_routes.router)
 # Master Patient Index — national-layer identity (canonical citizen registry)
 from .services.mpi import router as mpi_router  # noqa: E402
 app.include_router(mpi_router)
+
+# Consent layer — governing access control for reads of citizen data
+from .routes import consent as consent_routes  # noqa: E402
+app.include_router(consent_routes.router)
 
 # External integrations health + probe (gov NID, insurance, residency, Cloudflare)
 from .routes import integrations as integrations_routes  # noqa: E402
