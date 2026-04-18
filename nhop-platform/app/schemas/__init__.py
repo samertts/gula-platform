@@ -1,15 +1,15 @@
-from .citizen import (
-    CitizenCreate, CitizenRead, CitizenUpdate,
-    CitizenSearchResult, CitizenSummary, DuplicateMatch,
-    LabTestRead,
+from .lab import (
+    LabBrief,
+    LabCreate,
+    LabDeviceCreate,
+    LabDeviceRead,
+    LabRead,
 )
 
 __all__ = [
-    "CitizenCreate",
-    "CitizenRead",
-    "CitizenUpdate",
-    "CitizenSearchResult",
-    "CitizenSummary",
-    "DuplicateMatch",
-    "LabTestRead",
+    "LabBrief",
+    "LabCreate",
+    "LabDeviceCreate",
+    "LabDeviceRead",
+    "LabRead",
 ]
