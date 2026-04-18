@@ -11,6 +11,7 @@ from .audit_log import AuditLog
 from .quality_control import QualityControl
 from .outbox import OutboxEvent
 from .subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag
+from .consent import Consent
 
 __all__ = [
     "Base",
@@ -29,4 +30,5 @@ __all__ = [
     "UpgradeRequest",
     "UpgradeDemandScore",
     "FeatureFlag",
+    "Consent",
 ]
