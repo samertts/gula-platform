@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 
 from .api.v1 import api_router
-from .core.database import Base, engine
+from .core.database import Base as CoreBase, engine
 
 
 def create_app() -> FastAPI:
@@ -11,9 +11,9 @@ def create_app() -> FastAPI:
         version="0.1.0",
         description="National Health Oversight Platform: citizen registry API.",
     )
-    # Models imported for side-effect so Base.metadata is populated.
+    # Import models for side-effect so Base.metadata is populated.
     from . import models  # noqa: F401
-    Base.metadata.create_all(engine)
+    CoreBase.metadata.create_all(engine)
 
     app.include_router(api_router)
 

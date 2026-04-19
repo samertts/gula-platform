@@ -5,6 +5,18 @@ from .lab import (
     LabDeviceRead,
     LabRead,
 )
+from .test_result import (
+    CitizenTimelineResponse,
+    TestResultCreate,
+    TestResultListResponse,
+    TestResultRead,
+    TestResultValidateRequest,
+    TestResultValidateResponse,
+    TestResultVerifyRequest,
+    TimelinePoint,
+    TimelineSeries,
+    ValidationWarning,
+)
 
 __all__ = [
     "LabBrief",
@@ -12,4 +24,14 @@ __all__ = [
     "LabDeviceCreate",
     "LabDeviceRead",
     "LabRead",
+    "CitizenTimelineResponse",
+    "TestResultCreate",
+    "TestResultListResponse",
+    "TestResultRead",
+    "TestResultValidateRequest",
+    "TestResultValidateResponse",
+    "TestResultVerifyRequest",
+    "TimelinePoint",
+    "TimelineSeries",
+    "ValidationWarning",
 ]
