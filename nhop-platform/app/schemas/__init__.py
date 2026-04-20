@@ -5,6 +5,15 @@ from .lab import (
     LabDeviceRead,
     LabRead,
 )
+from .outbreak import (
+    AlertsResponse,
+    HeatmapResponse,
+    OutbreakAlert,
+    ProvinceCount,
+    ResistancePair,
+    ResistanceResponse,
+    Severity,
+)
 
 __all__ = [
     "LabBrief",
@@ -12,4 +21,11 @@ __all__ = [
     "LabDeviceCreate",
     "LabDeviceRead",
     "LabRead",
+    "AlertsResponse",
+    "HeatmapResponse",
+    "OutbreakAlert",
+    "ProvinceCount",
+    "ResistancePair",
+    "ResistanceResponse",
+    "Severity",
 ]
