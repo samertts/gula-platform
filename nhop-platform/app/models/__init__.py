@@ -1,5 +1,6 @@
 from .base import Base
 from .lab import Lab, LabDevice, LabType
+from .notification import Notification, NotificationPriority, NotificationType
 from .test_result import (
     ResultCategory,
     ResultStatus,
@@ -12,6 +13,9 @@ __all__ = [
     "Lab",
     "LabDevice",
     "LabType",
+    "Notification",
+    "NotificationPriority",
+    "NotificationType",
     "ResultCategory",
     "ResultStatus",
     "TestResult",
