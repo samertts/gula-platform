@@ -5,6 +5,12 @@ from .lab import (
     LabDeviceRead,
     LabRead,
 )
+from .notification import (
+    NotificationCreate,
+    NotificationListResponse,
+    NotificationRead,
+    NotificationUnreadCount,
+)
 from .test_result import (
     CitizenTimelineResponse,
     TestResultCreate,
@@ -24,6 +30,10 @@ __all__ = [
     "LabDeviceCreate",
     "LabDeviceRead",
     "LabRead",
+    "NotificationCreate",
+    "NotificationListResponse",
+    "NotificationRead",
+    "NotificationUnreadCount",
     "CitizenTimelineResponse",
     "TestResultCreate",
     "TestResultListResponse",
