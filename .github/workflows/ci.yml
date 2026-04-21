@@ -345,6 +345,18 @@ jobs:
           until docker exec ci-redis redis-cli -a citest ping; do sleep 1; done
           echo "✓ Postgres and Redis ready"
 
+      - name: Apply migrations (required for startup guard)
+        env:
+          DATABASE_URL: postgresql://postgres:citest@localhost:5432/labdb
+          ENV: test
+          SECRET_KEY: ci-secret-key-64chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-refresh-key-64chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+        run: |
+          cd backend
+          alembic upgrade head
+          echo "✓ Migrations applied"
+
       - name: Run backend and check /health endpoints
         env:
           DATABASE_URL: postgresql://postgres:citest@localhost:5432/labdb
