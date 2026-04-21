@@ -157,6 +157,15 @@ jobs:
           pip install -r backend/requirements.txt
           pip install -r backend/requirements-dev.txt
 
+      - name: Dump resolved dependency versions
+        # Detect drift between CI and local (unpinned ranges in requirements.txt
+        # can resolve to different versions on different days/runners).
+        run: |
+          cd backend
+          pip freeze | sort > pip-freeze.txt
+          echo "---- resolved deps ($(wc -l < pip-freeze.txt) pkgs) ----"
+          cat pip-freeze.txt
+
       - name: Run backend tests
         env:
           DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
@@ -171,12 +180,13 @@ jobs:
           # non-interactive failures. -ra shows short summary for all outcomes
           # (failed, errored, xfailed, xpassed, skipped, passed with warnings)
           # so the failing test name is always visible in the tail.
+          # --maxfail=1 stops at the first failure for a clean, focused tail.
           set -o pipefail
-          python -m pytest tests/ -v --tb=long -ra \
+          python -m pytest tests/ -v --tb=long -ra --maxfail=1 \
             --junitxml=pytest-junit.xml \
             2>&1 | tee pytest-output.log
 
-      - name: Upload pytest logs
+      - name: Upload pytest logs + env snapshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -184,6 +194,7 @@ jobs:
           path: |
             backend/pytest-output.log
             backend/pytest-junit.xml
+            backend/pip-freeze.txt
           if-no-files-found: warn
           retention-days: 7
 
