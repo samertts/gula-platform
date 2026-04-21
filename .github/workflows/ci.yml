@@ -150,7 +150,9 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
 
       - name: Run backend tests
         env:
@@ -265,6 +267,13 @@ jobs:
       - name: Run alembic upgrade head on empty database
         env:
           DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+          # ENV=test + CI-dummy secrets are required because migrations/env.py
+          # imports app.database → app.config, which sys.exit(1)s at import
+          # time when IS_PRODUCTION and any of these are unset.
+          ENV: test
+          SECRET_KEY: ci-migration-gate-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-migration-gate-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
         run: |
           echo "Running alembic upgrade head on fresh empty DB..."
           alembic upgrade head
@@ -294,6 +303,10 @@ jobs:
       - name: Verify alembic downgrade -1 works (migration is reversible)
         env:
           DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+          ENV: test
+          SECRET_KEY: ci-migration-gate-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-migration-gate-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
         run: |
           alembic downgrade -1
           alembic upgrade head
