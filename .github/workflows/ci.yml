@@ -117,7 +117,10 @@ jobs:
 
     services:
       postgres:
-        image: postgres:14.11-alpine
+        # Match production (docker-compose.yml), migration-check, and smoke-test
+        # — all use postgres:16-alpine. The previous 14.11 pin was out of sync
+        # and caused backend-test to fail against CI-only version-dependent SQL.
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test_password
