@@ -71,6 +71,7 @@ def db(db_engine):
 def client(db):
     """TestClient with the real DB dependency replaced by the test DB session."""
     from app.main import app
+    import app.core.startup_guard as _guard
 
     def _override_get_db():
         try:
@@ -79,9 +80,18 @@ def client(db):
             pass
 
     app.dependency_overrides[get_db] = _override_get_db
-    with TestClient(app, raise_server_exceptions=True) as c:
-        yield c
-    app.dependency_overrides.clear()
+    # The backend-test CI job doesn't run `alembic upgrade head`, so
+    # run_startup_guard() would fail (no alembic_version table) keeping
+    # system_ready=False. ReadinessMiddleware then returns 503 for every request.
+    # run_startup_guard() has `if system_ready: return` at the top, so setting
+    # it True here causes startup validation to be skipped entirely in tests.
+    _guard.system_ready = True
+    try:
+        with TestClient(app, raise_server_exceptions=True) as c:
+            yield c
+    finally:
+        _guard.system_ready = False
+        app.dependency_overrides.clear()
 
 
 # ── Model factories ───────────────────────────────────────────────────────────
