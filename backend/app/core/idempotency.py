@@ -38,7 +38,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
 from fastapi import Depends, Header, HTTPException
@@ -117,6 +117,9 @@ def idempotency_check(
 
     lab_id = getattr(current_user, "lab_id", None)
 
+    # Compute cutoff in Python so the query works on both SQLite and PostgreSQL
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_KEY_TTL_HOURS)
+
     # Check for existing key
     row = db.execute(
         text("""
@@ -124,9 +127,9 @@ def idempotency_check(
             FROM idempotency_keys
             WHERE key = :key
               AND (lab_id = :lab_id OR lab_id IS NULL)
-              AND created_at > now() - make_interval(hours => :ttl)
+              AND created_at > :cutoff
         """),
-        {"key": key, "lab_id": lab_id, "ttl": _KEY_TTL_HOURS},
+        {"key": key, "lab_id": lab_id, "cutoff": cutoff},
     ).fetchone()
 
     if row:

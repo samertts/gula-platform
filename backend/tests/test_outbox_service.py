@@ -140,16 +140,17 @@ class TestOutboxWorkerRunOnce:
         emit_to_outbox(db, event_type="order.validated", payload={})
         db.commit()
 
-        bus = EventBus()
-        bus.subscribe("order.validated", lambda p: (_ for _ in ()).throw(RuntimeError("dispatch error")))
-
-        with patch("app.services.outbox_service.events", bus):
+        # EventBus.emit() eats handler exceptions by design (fire-and-forget).
+        # To test that the outbox worker records dispatch failures, we patch emit()
+        # itself to raise — that's what the worker's except block actually handles.
+        with patch("app.services.outbox_service.events") as mock_events:
+            mock_events.emit.side_effect = RuntimeError("dispatch error")
             summary = OutboxWorker.run_once(db)
 
         ev = db.query(OutboxEvent).first()
         assert ev.attempts == 1
         assert ev.last_error is not None
-        assert "dispatch" in ev.last_error or ev.last_error  # any error message stored
+        assert "dispatch" in ev.last_error
 
     def test_event_permanently_fails_after_max_attempts(self, db):
         ev = OutboxEvent(
@@ -162,10 +163,8 @@ class TestOutboxWorkerRunOnce:
         db.add(ev)
         db.commit()
 
-        bus = EventBus()
-        bus.subscribe("result.critical", lambda p: (_ for _ in ()).throw(RuntimeError("boom")))
-
-        with patch("app.services.outbox_service.events", bus):
+        with patch("app.services.outbox_service.events") as mock_events:
+            mock_events.emit.side_effect = RuntimeError("boom")
             summary = OutboxWorker.run_once(db)
 
         db.refresh(ev)
@@ -235,10 +234,12 @@ class TestOutboxWorkerRunOnce:
         with patch("app.services.outbox_service.events", good_bus):
             summary = OutboxWorker.run_once(db)
 
-        assert summary["processed"] == 2
-        # "no_handler_event" has no subscribers → 0 handlers dispatched but no exception raised
-        # so it's counted as processed (emit returns 0 but doesn't raise)
-        assert summary["processed"] + summary["failed"] + summary["skipped"] == 3
+        # All 3 events are marked processed: the 2 order.created events have a handler
+        # that succeeds, and no_handler_event has no subscribers but emit() returns 0
+        # without raising, so the worker still marks it done.
+        assert summary["processed"] == 3
+        assert summary["failed"] == 0
+        assert summary["skipped"] == 0
 
     def test_no_op_when_queue_is_empty(self, db):
         bus = EventBus()

@@ -46,6 +46,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.models.lab import Lab
@@ -69,8 +70,13 @@ def db_engine():
     import app.models.consent
     import app.models.outbox
     import app.models.subscription
-    from app.services.mpi.models import Citizen, CitizenAlias  # noqa: F401
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    import app.models.claim
+    from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     yield engine
     Base.metadata.drop_all(engine)

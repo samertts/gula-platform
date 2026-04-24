@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 
 from app.database import Base, get_db
@@ -32,9 +33,12 @@ from app.security.auth import hash_password, create_token
 
 @pytest.fixture()
 def db_engine():
+    # StaticPool: all connections share the same in-memory database so that
+    # create_all() and subsequent session checkouts see the same tables.
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     # Import every model so Base.metadata knows about all tables
     import app.models.lab           # noqa: F401
@@ -49,6 +53,8 @@ def db_engine():
     import app.models.consent       # noqa: F401
     import app.models.outbox        # noqa: F401
     import app.models.subscription  # noqa: F401
+    import app.models.claim         # noqa: F401
+    from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
     Base.metadata.create_all(engine)
     yield engine
     Base.metadata.drop_all(engine)
