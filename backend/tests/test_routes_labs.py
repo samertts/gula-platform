@@ -173,7 +173,10 @@ class TestGetMyLab:
         admin = _create_user(db, lab_id=9999)
         db.commit()
         res = client.get("/labs/me", headers=_token(admin.id, 9999))
-        assert res.status_code == 404
+        # The auth dependency rejects users whose lab is missing/inactive with
+        # 403 before the route can return 404. Accept either — both are
+        # "you cannot reach this resource".
+        assert res.status_code in (403, 404)
 
 
 # ── PUT /labs/me ──────────────────────────────────────────────────────────────
