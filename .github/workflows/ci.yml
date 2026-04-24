@@ -265,6 +265,10 @@ jobs:
       - name: Run alembic upgrade head on empty database
         env:
           DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+          ENV: test
+          SECRET_KEY: ci-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-test-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
         run: |
           echo "Running alembic upgrade head on fresh empty DB..."
           alembic upgrade head
@@ -273,6 +277,10 @@ jobs:
       - name: Verify required tables exist after migrations
         env:
           DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+          ENV: test
+          SECRET_KEY: ci-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-test-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
         run: |
           python3 - <<'PYEOF'
           import psycopg2, sys
@@ -294,6 +302,10 @@ jobs:
       - name: Verify alembic downgrade -1 works (migration is reversible)
         env:
           DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+          ENV: test
+          SECRET_KEY: ci-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-test-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
         run: |
           alembic downgrade -1
           alembic upgrade head
@@ -331,6 +343,20 @@ jobs:
           until docker exec ci-postgres pg_isready -U postgres; do sleep 1; done
           until docker exec ci-redis redis-cli -a citest ping; do sleep 1; done
           echo "✓ Postgres and Redis ready"
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:citest@localhost:5432/labdb
+          ENV: development
+          SECRET_KEY: ci-secret-key-64chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-refresh-key-64chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+        run: |
+          cd backend
+          alembic upgrade head
+          echo "✓ Migrations applied"
 
       - name: Run backend and check /health endpoints
         env:

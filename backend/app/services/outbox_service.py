@@ -214,14 +214,16 @@ def purge_old_events(db: Session, days: int = 30) -> int:
     Returns the number of rows deleted.
     """
     from sqlalchemy import text
+    from datetime import datetime, timedelta
 
+    cutoff = datetime.utcnow() - timedelta(days=days)
     result = db.execute(
         text("""
             DELETE FROM outbox_events
             WHERE status IN ('done', 'failed')
-              AND created_at < now() - make_interval(days => :days)
+              AND created_at < :cutoff
         """),
-        {"days": days},
+        {"cutoff": cutoff},
     )
     db.commit()
     count = result.rowcount
