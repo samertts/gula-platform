@@ -420,11 +420,23 @@ def persist_db_window_to_redis() -> None:
 
 
 def get_pool_status() -> dict:
-    """Get connection pool metrics for monitoring."""
+    """Get connection pool metrics for monitoring.
+
+    SQLite's StaticPool (used in tests) does not expose size/overflow/etc.,
+    so we return zeros for any attribute the pool does not implement.
+    """
     pool = engine.pool
+
+    def _call(name: str) -> int:
+        fn = getattr(pool, name, None)
+        try:
+            return fn() if callable(fn) else 0
+        except Exception:
+            return 0
+
     return {
-        "pool_size": pool.size(),
-        "checked_out": pool.checkedout(),
-        "overflow": pool.overflow(),
-        "checked_in": pool.checkedin(),
+        "pool_size":   _call("size"),
+        "checked_out": _call("checkedout"),
+        "overflow":    _call("overflow"),
+        "checked_in":  _call("checkedin"),
     }

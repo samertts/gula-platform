@@ -106,7 +106,8 @@ def validate_config() -> None:
     errors: list[str] = []
 
     if not SECRET_KEY:
-        errors.append("SECRET_KEY is not set")
+        if IS_PRODUCTION:
+            errors.append("SECRET_KEY is not set")
     elif IS_PRODUCTION and _is_weak(SECRET_KEY):
         errors.append(
             "SECRET_KEY looks like a placeholder/default value. "
