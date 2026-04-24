@@ -119,6 +119,13 @@ if not REDIS_URL:
         "Set REDIS_URL for full rate-limiting and cross-process session invalidation."
     )
 
+# ─── AI Providers ────────────────────────────────────────────────────────────
+# All optional — platform functions without any AI key (rules-based fallback).
+# Gemini: free tier (1 500 req/day). Get a key at https://aistudio.google.com
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GROQ_API_KEY   = os.getenv("GROQ_API_KEY", "")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "")
+
 # ─── Mobile / Notifications ─────────────────────────────────────────────────
 FCM_SERVER_KEY = os.getenv("FCM_SERVER_KEY", "")  # Firebase Cloud Messaging
 APNS_KEY = os.getenv("APNS_KEY", "")              # Apple Push Notifications
