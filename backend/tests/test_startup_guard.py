@@ -34,31 +34,29 @@ import pytest
 
 class TestValidateConfig:
     def _run(self, secret_key="", encryption_key="", nid_hmac_key="", is_prod=True):
-        """Helper: patch config values and call validate_config()."""
+        """Helper: patch app.config attributes and call validate_config().
+
+        validate_config() does `from ..config import SECRET_KEY, ...` inside the
+        function body, so we must mutate app.config attributes directly — not
+        try to patch them on the startup_guard namespace where they don't exist.
+        """
         from app.core import startup_guard
-        with patch("app.core.startup_guard.IS_PRODUCTION", is_prod):
-            with patch("app.config.SECRET_KEY",     secret_key):
-                with patch("app.config.ENCRYPTION_KEY", encryption_key):
-                    with patch("app.config.NID_HMAC_KEY",   nid_hmac_key):
-                        # Re-import the function to pick up the patches
-                        from importlib import reload
-                        # Call directly with patched config module
-                        import app.config as cfg
-                        old_sk  = cfg.SECRET_KEY
-                        old_ek  = cfg.ENCRYPTION_KEY
-                        old_nid = cfg.NID_HMAC_KEY
-                        old_prod = cfg.IS_PRODUCTION
-                        try:
-                            cfg.SECRET_KEY      = secret_key
-                            cfg.ENCRYPTION_KEY  = encryption_key
-                            cfg.NID_HMAC_KEY    = nid_hmac_key
-                            cfg.IS_PRODUCTION   = is_prod
-                            startup_guard.validate_config()
-                        finally:
-                            cfg.SECRET_KEY      = old_sk
-                            cfg.ENCRYPTION_KEY  = old_ek
-                            cfg.NID_HMAC_KEY    = old_nid
-                            cfg.IS_PRODUCTION   = old_prod
+        import app.config as cfg
+        old_sk   = cfg.SECRET_KEY
+        old_ek   = cfg.ENCRYPTION_KEY
+        old_nid  = cfg.NID_HMAC_KEY
+        old_prod = cfg.IS_PRODUCTION
+        try:
+            cfg.SECRET_KEY     = secret_key
+            cfg.ENCRYPTION_KEY = encryption_key
+            cfg.NID_HMAC_KEY   = nid_hmac_key
+            cfg.IS_PRODUCTION  = is_prod
+            startup_guard.validate_config()
+        finally:
+            cfg.SECRET_KEY     = old_sk
+            cfg.ENCRYPTION_KEY = old_ek
+            cfg.NID_HMAC_KEY   = old_nid
+            cfg.IS_PRODUCTION  = old_prod
 
     def test_passes_with_strong_secrets(self):
         from cryptography.fernet import Fernet
@@ -156,7 +154,7 @@ class TestSystemReadiness:
         from app.core.startup_guard import set_system_ready, is_system_ready
         set_system_ready(True, "ok")
         # is_system_ready also checks DB — mock the DB check to pass
-        with patch("app.core.startup_guard.check_db_connection", return_value=True):
+        with patch("app.database.check_db_connection", return_value=True):
             with patch("app.security.redis_client.cache") as mock_redis:
                 mock_redis.set.return_value = True
                 ready, reason = is_system_ready()
@@ -172,7 +170,7 @@ class TestSystemReadiness:
     def test_database_down_after_startup_returns_503_reason(self):
         from app.core.startup_guard import set_system_ready, is_system_ready
         set_system_ready(True, "ok")
-        with patch("app.core.startup_guard.check_db_connection", return_value=False):
+        with patch("app.database.check_db_connection", return_value=False):
             ready, reason = is_system_ready()
         assert ready is False
         assert reason == "database_unavailable"
@@ -180,7 +178,7 @@ class TestSystemReadiness:
     def test_redis_down_after_startup_returns_degraded_not_false(self):
         from app.core.startup_guard import set_system_ready, is_system_ready
         set_system_ready(True, "ok")
-        with patch("app.core.startup_guard.check_db_connection", return_value=True):
+        with patch("app.database.check_db_connection", return_value=True):
             with patch("app.security.redis_client.cache") as mock_redis:
                 mock_redis.set.side_effect = Exception("Redis connection refused")
                 ready, reason = is_system_ready()
