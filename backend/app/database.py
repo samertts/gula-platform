@@ -188,16 +188,26 @@ logger.debug(
     _WORKERS, _POOL_SIZE, _MAX_OVERFLOW, _WORKERS * (_POOL_SIZE + _MAX_OVERFLOW),
 )
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,             # Drop and replace stale connections silently
-    pool_size=_POOL_SIZE,
-    max_overflow=_MAX_OVERFLOW,
-    pool_timeout=_POOL_TIMEOUT,     # Raise TimeoutError if pool exhausted
-    pool_recycle=_POOL_RECYCLE,     # Prevent 8-hour idle disconnect (Postgres)
-    connect_args={"connect_timeout": 5},
-    echo=False,
-)
+_IS_SQLITE = DATABASE_URL.startswith("sqlite")
+if _IS_SQLITE:
+    from sqlalchemy.pool import StaticPool
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False,
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=_POOL_SIZE,
+        max_overflow=_MAX_OVERFLOW,
+        pool_timeout=_POOL_TIMEOUT,
+        pool_recycle=_POOL_RECYCLE,
+        connect_args={"connect_timeout": 5},
+        echo=False,
+    )
 
 # Set statement timeout + work_mem per connection (PostgreSQL only)
 @event.listens_for(engine, "connect")
@@ -410,11 +420,23 @@ def persist_db_window_to_redis() -> None:
 
 
 def get_pool_status() -> dict:
-    """Get connection pool metrics for monitoring."""
+    """Get connection pool metrics for monitoring.
+
+    SQLite's StaticPool (used in tests) does not expose size/overflow/etc.,
+    so we return zeros for any attribute the pool does not implement.
+    """
     pool = engine.pool
+
+    def _call(name: str) -> int:
+        fn = getattr(pool, name, None)
+        try:
+            return fn() if callable(fn) else 0
+        except Exception:
+            return 0
+
     return {
-        "pool_size": pool.size(),
-        "checked_out": pool.checkedout(),
-        "overflow": pool.overflow(),
-        "checked_in": pool.checkedin(),
+        "pool_size":   _call("size"),
+        "checked_out": _call("checkedout"),
+        "overflow":    _call("overflow"),
+        "checked_in":  _call("checkedin"),
     }
