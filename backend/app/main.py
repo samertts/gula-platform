@@ -231,7 +231,18 @@ if not _allowed_origins:
         "http://gula-platform.org",
     ]
     if os.getenv("ENV", "production") in ("development", "test"):
-        _allowed_origins += ["http://localhost:8080", "http://localhost:80", "http://localhost:3000"]
+        _allowed_origins += [
+            "http://localhost:8080",
+            "http://localhost:80",
+            "http://localhost:3000",
+            "http://localhost:5173",   # Vite dev server
+            "http://localhost:4173",   # Vite preview
+            "http://localhost:8000",   # FastAPI self (Swagger UI)
+            # Frontend design tools — used for UI prototyping against this API.
+            # Google AI Studio and Claude design send requests from these origins.
+            "https://aistudio.google.com",
+            "https://claude.ai",
+        ]
 
 app.add_middleware(
     CORSMiddleware,
