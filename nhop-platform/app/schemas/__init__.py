@@ -5,17 +5,14 @@ from .lab import (
     LabDeviceRead,
     LabRead,
 )
-from .test_result import (
-    CitizenTimelineResponse,
-    TestResultCreate,
-    TestResultListResponse,
-    TestResultRead,
-    TestResultValidateRequest,
-    TestResultValidateResponse,
-    TestResultVerifyRequest,
-    TimelinePoint,
-    TimelineSeries,
-    ValidationWarning,
+from .outbreak import (
+    AlertsResponse,
+    HeatmapResponse,
+    OutbreakAlert,
+    ProvinceCount,
+    ResistancePair,
+    ResistanceResponse,
+    Severity,
 )
 
 __all__ = [
@@ -24,14 +21,11 @@ __all__ = [
     "LabDeviceCreate",
     "LabDeviceRead",
     "LabRead",
-    "CitizenTimelineResponse",
-    "TestResultCreate",
-    "TestResultListResponse",
-    "TestResultRead",
-    "TestResultValidateRequest",
-    "TestResultValidateResponse",
-    "TestResultVerifyRequest",
-    "TimelinePoint",
-    "TimelineSeries",
-    "ValidationWarning",
+    "AlertsResponse",
+    "HeatmapResponse",
+    "OutbreakAlert",
+    "ProvinceCount",
+    "ResistancePair",
+    "ResistanceResponse",
+    "Severity",
 ]
