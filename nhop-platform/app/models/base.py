@@ -1,6 +1,10 @@
-from sqlalchemy.orm import DeclarativeBase
+"""Shared declarative base for all NHOP ORM models.
 
+We re-export the declarative base from ``app.core.database`` so that models
+defined via ``app.models.base.Base`` share a single ``MetaData`` with models
+defined via ``app.core.database.Base``. Cross-metadata foreign keys cannot
+be resolved at ``create_all`` time, so a single shared metadata is required.
+"""
+from ..core.database import Base
 
-class Base(DeclarativeBase):
-    """Declarative base class for all NHOP platform ORM models."""
-    pass
+__all__ = ["Base"]

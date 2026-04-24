@@ -14,6 +14,11 @@ from alembic import context
 # alembic.ini sets prepend_sys_path = . (backend/), so `app` is importable.
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+# Prevent config.py from calling sys.exit() for missing prod keys when alembic
+# runs without a full app environment (e.g. the migration-gate CI step only
+# sets DATABASE_URL but not SECRET_KEY/ENCRYPTION_KEY/NID_HMAC_KEY).
+os.environ.setdefault("ENV", "test")
+
 # ── Import models so their tables are visible to autogenerate ─────────────────
 from app.database import Base                                    # noqa: E402
 from app.models import (                                         # noqa: E402, F401
