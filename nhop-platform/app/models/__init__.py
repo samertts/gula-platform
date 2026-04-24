@@ -18,6 +18,8 @@ __all__ = [
     "NotificationType",
     "ResultCategory",
     "ResultStatus",
+    "TestOrder",
+    "TestOrderStatus",
     "TestResult",
     "generate_sample_barcode",
 ]
