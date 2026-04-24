@@ -117,7 +117,10 @@ jobs:
 
     services:
       postgres:
-        image: postgres:14.11-alpine
+        # Match production (docker-compose.yml), migration-check, and smoke-test
+        # — all use postgres:16-alpine. The previous 14.11 pin was out of sync
+        # and caused backend-test to fail against CI-only version-dependent SQL.
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test_password
@@ -150,7 +153,18 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
+
+      - name: Dump resolved dependency versions
+        # Detect drift between CI and local (unpinned ranges in requirements.txt
+        # can resolve to different versions on different days/runners).
+        run: |
+          cd backend
+          pip freeze | sort > pip-freeze.txt
+          echo "---- resolved deps ($(wc -l < pip-freeze.txt) pkgs) ----"
+          cat pip-freeze.txt
 
       - name: Run backend tests
         env:
@@ -162,7 +176,27 @@ jobs:
           ENV: test
         run: |
           cd backend
-          python -m pytest tests/ -v --tb=short
+          # Tee pytest output to a file so it's captured as an artifact even on
+          # non-interactive failures. -ra shows short summary for all outcomes
+          # (failed, errored, xfailed, xpassed, skipped, passed with warnings)
+          # so the failing test name is always visible in the tail.
+          # --maxfail=1 stops at the first failure for a clean, focused tail.
+          set -o pipefail
+          python -m pytest tests/ -v --tb=long -ra --maxfail=1 \
+            --junitxml=pytest-junit.xml \
+            2>&1 | tee pytest-output.log
+
+      - name: Upload pytest logs + env snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-backend-test-logs
+          path: |
+            backend/pytest-output.log
+            backend/pytest-junit.xml
+            backend/pip-freeze.txt
+          if-no-files-found: warn
+          retention-days: 7
 
   # ─── Security Scanning ─────────────────────────────────────────────────────
   security-scan:
@@ -265,9 +299,12 @@ jobs:
       - name: Run alembic upgrade head on empty database
         env:
           DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+          # ENV=test + CI-dummy secrets are required because migrations/env.py
+          # imports app.database → app.config, which sys.exit(1)s at import
+          # time when IS_PRODUCTION and any of these are unset.
           ENV: test
-          SECRET_KEY: ci-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          REFRESH_TOKEN_SECRET: ci-test-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          SECRET_KEY: ci-migration-gate-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-migration-gate-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
           ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
         run: |
           echo "Running alembic upgrade head on fresh empty DB..."
@@ -303,8 +340,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
           ENV: test
-          SECRET_KEY: ci-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          REFRESH_TOKEN_SECRET: ci-test-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          SECRET_KEY: ci-migration-gate-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-migration-gate-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
           ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
         run: |
           alembic downgrade -1
@@ -344,15 +381,13 @@ jobs:
           until docker exec ci-redis redis-cli -a citest ping; do sleep 1; done
           echo "✓ Postgres and Redis ready"
 
-      - name: Run database migrations
+      - name: Apply migrations (required for startup guard)
         env:
           DATABASE_URL: postgresql://postgres:citest@localhost:5432/labdb
-          ENV: development
+          ENV: test
           SECRET_KEY: ci-secret-key-64chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
           REFRESH_TOKEN_SECRET: ci-refresh-key-64chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
           ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
-          NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
-          DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
         run: |
           cd backend
           alembic upgrade head
