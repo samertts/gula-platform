@@ -314,6 +314,10 @@ jobs:
       - name: Verify required tables exist after migrations
         env:
           DATABASE_URL: postgresql://postgres:migtest@localhost:5432/labdb
+          ENV: test
+          SECRET_KEY: ci-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: ci-test-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
         run: |
           python3 - <<'PYEOF'
           import psycopg2, sys
@@ -404,6 +408,9 @@ jobs:
           ENABLE_API_DOCS: "true"
         run: |
           cd backend
+          echo "Applying migrations..."
+          alembic upgrade head
+          echo "✓ Migrations applied"
           # Start uvicorn in background
           uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 \
             --loop asyncio --no-access-log &
