@@ -100,6 +100,35 @@ def client(db):
         app.dependency_overrides.clear()
 
 
+# ── Test isolation: clear cross-test global state ────────────────────────────
+
+@pytest.fixture(autouse=True)
+def _reset_global_caches():
+    """Clear cache state (rate limits, perm_version, JWT blacklist) between tests.
+
+    SQLite in-memory DBs reset on every test, so user/lab IDs are re-used; if
+    cache state from a prior test (e.g. perm_ver=2 for user_id=1) leaks into
+    the next, unrelated tests fail with 401 ("Permissions updated"). Handles
+    both the in-memory _MemoryStore (local dev) and the real Redis backend
+    used in CI.
+    """
+    from app.security.redis_client import cache
+
+    def _clear():
+        if hasattr(cache, "_data"):
+            cache._data.clear()
+        client = getattr(cache, "_client", None)
+        if client is not None:
+            try:
+                client.flushdb()
+            except Exception:
+                pass
+
+    _clear()
+    yield
+    _clear()
+
+
 # ── Model factories ───────────────────────────────────────────────────────────
 
 @pytest.fixture()
