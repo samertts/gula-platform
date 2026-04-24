@@ -104,18 +104,29 @@ def client(db):
 
 @pytest.fixture(autouse=True)
 def _reset_global_caches():
-    """Clear in-memory cache (rate limits, perm_version, JWT blacklist) between tests.
+    """Clear cache state (rate limits, perm_version, JWT blacklist) between tests.
 
     SQLite in-memory DBs reset on every test, so user/lab IDs are re-used; if
-    Redis-style state from a prior test (e.g. perm_ver=2 for user_id=1) leaks
-    into the next, unrelated tests fail with 401 ("Permissions updated").
+    cache state from a prior test (e.g. perm_ver=2 for user_id=1) leaks into
+    the next, unrelated tests fail with 401 ("Permissions updated"). Handles
+    both the in-memory _MemoryStore (local dev) and the real Redis backend
+    used in CI.
     """
     from app.security.redis_client import cache
-    if hasattr(cache, "_data"):
-        cache._data.clear()
+
+    def _clear():
+        if hasattr(cache, "_data"):
+            cache._data.clear()
+        client = getattr(cache, "_client", None)
+        if client is not None:
+            try:
+                client.flushdb()
+            except Exception:
+                pass
+
+    _clear()
     yield
-    if hasattr(cache, "_data"):
-        cache._data.clear()
+    _clear()
 
 
 # ── Model factories ───────────────────────────────────────────────────────────
