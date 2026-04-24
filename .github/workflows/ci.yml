@@ -150,21 +150,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install -r backend/requirements.txt
-          pip install -r backend/requirements-dev.txt
-
-      - name: Run database migrations
-        env:
-          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
-          ENV: test
-          SECRET_KEY: ci-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          REFRESH_TOKEN_SECRET: ci-test-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
-        run: |
-          cd backend
-          alembic upgrade head
-          echo "✓ Migrations applied"
+        run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
 
       - name: Run backend tests
         env:
