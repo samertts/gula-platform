@@ -325,6 +325,72 @@ jobs:
           alembic upgrade head
           echo "✓ Downgrade -1 + upgrade head round-trip OK"
 
+  # ─── OpenAPI Contract Gate ────────────────────────────────────────────────
+  # Exports the live FastAPI OpenAPI spec, fails the build if any path that
+  # frontend/mobile clients depend on disappears, and uploads the spec as a
+  # build artifact so review can diff it.
+  openapi-contract:
+    name: OpenAPI Contract Gate
+    needs: [syntax-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -q -r backend/requirements.txt
+
+      - name: Export OpenAPI spec
+        env:
+          ENV: test
+          DATABASE_URL: "postgresql://x:x@localhost/x"
+          SECRET_KEY: "ci-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          REFRESH_TOKEN_SECRET: "ci-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+        run: |
+          python3 scripts/export_openapi.py --out openapi.json
+          test -s openapi.json
+          echo "✓ openapi.json generated ($(wc -c < openapi.json) bytes)"
+
+      - name: Verify required public endpoints are present
+        run: |
+          python3 - <<'PYEOF'
+          import json, sys
+          REQUIRED = [
+              "/health", "/health/ready",
+              "/login", "/register",
+              "/labs/me",
+              "/test-types",
+          ]
+          spec  = json.load(open("openapi.json"))
+          paths = set(spec.get("paths", {}).keys())
+          missing = [p for p in REQUIRED if p not in paths]
+          if missing:
+              print(f"FAIL — required public endpoints missing from OpenAPI: {missing}")
+              sys.exit(1)
+          print(f"✓ All {len(REQUIRED)} contract endpoints present (total: {len(paths)})")
+          PYEOF
+
+      - name: Upload OpenAPI artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: openapi.json
+          retention-days: 30
+
   # ─── Runtime Smoke Test ───────────────────────────────────────────────────
   smoke-test:
     name: Runtime Smoke Test
@@ -441,7 +507,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [syntax-gate, migration-check, smoke-test, backend-test]
+    needs: [syntax-gate, migration-check, smoke-test, backend-test, openapi-contract]
     permissions:
       contents: read
       packages: write
