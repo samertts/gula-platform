@@ -347,6 +347,9 @@ jobs:
           ENABLE_API_DOCS: "true"
         run: |
           cd backend
+          echo "Applying migrations..."
+          alembic upgrade head
+          echo "✓ Migrations applied"
           # Start uvicorn in background
           uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 \
             --loop asyncio --no-access-log &

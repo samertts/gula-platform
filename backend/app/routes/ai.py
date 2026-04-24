@@ -878,3 +878,122 @@ async def interpret_result_public(token: str) -> JSONResponse:
     }
     _INTERPRET_CACHE[cache_key] = (payload, time.monotonic() + _CACHE_TTL)
     return JSONResponse(payload)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GEMINI ASSISTANT CHAT — Frontend-facing conversational AI
+# Authentication: JWT required (lab staff only).
+# Safety: no clinical state changes — display-only by design.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_ASSISTANT_SYSTEM_PROMPT = (
+    "أنت مساعد ذكي لمنصة GULA للمختبرات الطبية. "
+    "تساعد موظفي المختبر وأطباء المختبر على إدارة الطلبات والنتائج والمرضى. "
+    "ردودك باللغة العربية ما لم يطلب المستخدم خلاف ذلك. "
+    "أنت لا تُشخّص أمراضاً ولا تصف دواءً — هذا دور الطبيب المعالج. "
+    "كن موجزاً ودقيقاً ومفيداً."
+)
+
+_CHAT_MAX_TOKENS = int(os.getenv("GEMINI_CHAT_MAX_TOKENS", "600"))
+_CHAT_RATE_WINDOW: dict[str, tuple[int, float]] = {}  # user_id → (count, window_start)
+_CHAT_RATE_LIMIT  = int(os.getenv("GEMINI_CHAT_RATE_LIMIT", "30"))   # req per 60s per user
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+    context: Optional[str] = Field(default=None, max_length=500,
+                                   description="Optional page context (e.g. 'orders page')")
+
+
+async def _call_gemini_chat(system_prompt: str, user_message: str) -> str:
+    """Call Gemini 2.0 Flash for the assistant chat endpoint."""
+    if not _GEMINI_KEY:
+        raise RuntimeError("GEMINI_API_KEY not configured")
+    url = _GEMINI_URL.format(key=_GEMINI_KEY)
+    payload = {
+        "contents": [
+            {"role": "user", "parts": [
+                {"text": f"{system_prompt}\n\n---\n{user_message}"}
+            ]}
+        ],
+        "generationConfig": {
+            "temperature": 0.5,
+            "maxOutputTokens": _CHAT_MAX_TOKENS,
+        },
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {"category": "HARM_CATEGORY_MEDICAL",           "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+        ],
+    }
+    async with httpx.AsyncClient(timeout=_AI_BUDGET_S) as client:
+        r = await client.post(url, json=payload)
+        r.raise_for_status()
+    data = r.json()
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except (KeyError, IndexError) as exc:
+        raise RuntimeError(f"Gemini returned unexpected shape: {exc}") from exc
+
+
+@router.post(
+    "/chat",
+    summary="مساعد GULA الذكي — محادثة",
+    tags=["AI Assistant"],
+)
+async def ai_chat(
+    body: ChatRequest,
+    current_user=Depends(get_current_user),
+):
+    """
+    Send a message to the GULA AI assistant (powered by Gemini 2.0 Flash).
+
+    Responses are display-only and never mutate clinical data.
+    Rate-limited to GEMINI_CHAT_RATE_LIMIT requests per 60 s per user.
+    Falls back to a rule-based helper message if Gemini is unavailable.
+    """
+    # ── Per-user rate limit ───────────────────────────────────────────────────
+    uid   = str(current_user.id)
+    now   = time.monotonic()
+    entry = _CHAT_RATE_WINDOW.get(uid, (0, now))
+    count, window_start = entry
+    if now - window_start > 60:
+        count, window_start = 0, now
+    count += 1
+    _CHAT_RATE_WINDOW[uid] = (count, window_start)
+    if count > _CHAT_RATE_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail="تجاوزت حد الطلبات المسموح به. انتظر دقيقة وأعد المحاولة.",
+        )
+
+    # ── Build contextual system prompt ────────────────────────────────────────
+    system = _ASSISTANT_SYSTEM_PROMPT
+    if body.context:
+        system += f"\nالصفحة الحالية: {body.context}"
+
+    # ── Call Gemini with Ollama/Groq fallback ─────────────────────────────────
+    provider_used = "gemini"
+    try:
+        reply = await _call_gemini_chat(system, body.message)
+    except Exception as gemini_exc:
+        logger.warning("[AI/chat] Gemini failed (%s), trying fallback", gemini_exc)
+        # Fallback: try Ollama then Groq via the existing clinical pipeline
+        try:
+            combined = f"{system}\n\nسؤال المستخدم: {body.message}"
+            reply, provider_used = await _call_ai_with_fallback(combined)
+        except HTTPException:
+            reply = (
+                "عذراً، المساعد الذكي غير متاح حالياً. "
+                "يرجى المحاولة لاحقاً أو التواصل مع الدعم الفني."
+            )
+            provider_used = "none"
+
+    logger.info(
+        "[AI/chat] user=%s provider=%s chars_in=%d chars_out=%d",
+        current_user.id, provider_used, len(body.message), len(reply),
+    )
+    return {
+        "reply":    reply,
+        "provider": provider_used,
+        "display_only": True,
+    }
