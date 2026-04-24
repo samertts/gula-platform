@@ -42,7 +42,9 @@ from ...schemas.test_result import (
     TimelineSeries,
     ValidationWarning,
 )
+from ...models.notification import NotificationPriority, NotificationType
 from ...services.audit import log_action
+from ...services.notification import send_notification
 from ...services.smart_analysis import (
     compare_with_history,
     validate_result,
@@ -118,6 +120,25 @@ def _fire_critical_alert(
             "direction": row.direction,
             "lab_id": str(row.lab_id),
         },
+    )
+
+    title = f"نتيجة حرجة: {row.test_name}"
+    body_parts = [f"تحليل {row.test_code}"]
+    if row.value_numeric is not None:
+        unit = row.unit or ""
+        body_parts.append(f"القيمة: {row.value_numeric} {unit}".strip())
+    if row.direction:
+        body_parts.append(f"الاتجاه: {row.direction}")
+    send_notification(
+        db,
+        recipient_id=citizen.health_id,
+        recipient_role="citizen",
+        type=NotificationType.critical_result,
+        title=title,
+        body=" | ".join(body_parts),
+        priority=NotificationPriority.urgent,
+        related_type="test_result",
+        related_id=str(row.id),
     )
 
 

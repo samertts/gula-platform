@@ -27,11 +27,11 @@ class Claim(Base):
     )
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
-    lab_id          = Column(Integer, ForeignKey("labs.id",       ondelete="CASCADE"),  nullable=False, index=True)
-    patient_id      = Column(Integer, ForeignKey("patients.id",   ondelete="CASCADE"),  nullable=False, index=True)
+    lab_id          = Column(Integer, ForeignKey("labs.id",       ondelete="CASCADE"),  nullable=False)
+    patient_id      = Column(Integer, ForeignKey("patients.id",   ondelete="CASCADE"),  nullable=False)
     order_id        = Column(Integer, ForeignKey("lab_orders.id", ondelete="SET NULL"), nullable=True,  index=True)
 
-    status          = Column(String(30),         nullable=False, default="draft", index=True)
+    status          = Column(String(30),         nullable=False, default="draft")
     total_amount    = Column(Numeric(12, 2),      nullable=True)
     currency        = Column(String(10),          nullable=False, default="IQD")
     idempotency_key = Column(String(255),         nullable=True,  unique=True)
