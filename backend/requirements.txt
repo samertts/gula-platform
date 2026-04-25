@@ -27,3 +27,6 @@ redis>=5.0.0
 orjson>=3.9.0
 # Error tracking — optional, activates only when SENTRY_DSN env var is set
 sentry-sdk[fastapi]>=2.0.0
+# Google AI Studio — official Gemini SDK (optional: raw HTTP fallback used if absent)
+# Get a free API key at https://aistudio.google.com/apikey
+google-generativeai>=0.8.0
