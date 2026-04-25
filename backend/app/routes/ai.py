@@ -43,7 +43,6 @@ from app.ai.approval import approval_store
 from app.ai.guardrails import AIGuardrailViolation, ai_suggest
 from app.ai.sandbox import AISandbox
 from app.database import get_db, SessionLocal
-from app.gateways import google_ai as _google_ai  # Google AI Studio gateway
 from app.models.audit_log import AuditLog
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
@@ -369,17 +368,14 @@ async def list_ai_providers():
         "cost":        "free (local)",
     })
 
-    # Google AI Studio (Gemini)
-    _gai = _google_ai.provider_info()
+    # Gemini
     statuses.append({
-        "name":          "gemini",
-        "type":          "cloud",
-        "source":        "aistudio.google.com",
-        "configured":    bool(_GEMINI_KEY),
-        "reachable":     None,   # not probed (expensive to test)
-        "model":         _gai["clinical_model"],
-        "sdk_available": _gai["sdk_available"],
-        "cost":          "free tier (1500 req/day)",
+        "name":       "gemini",
+        "type":       "cloud",
+        "configured": bool(_GEMINI_KEY),
+        "reachable":  None,   # not probed (expensive to test)
+        "model":      "gemini-2.0-flash",
+        "cost":       "free tier (1500 req/day)",
     })
 
     # Groq
