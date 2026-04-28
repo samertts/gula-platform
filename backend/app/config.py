@@ -121,10 +121,14 @@ if not REDIS_URL:
 
 # ─── AI Providers ────────────────────────────────────────────────────────────
 # All optional — platform functions without any AI key (rules-based fallback).
-# Gemini: free tier (1 500 req/day). Get a key at https://aistudio.google.com
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GROQ_API_KEY   = os.getenv("GROQ_API_KEY", "")
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "")
+# Google AI Studio (Gemini): free tier (1 500 req/day, 15 req/min).
+# Get a free key at https://aistudio.google.com/apikey
+# SDK: pip install google-generativeai>=0.8.0  (raw HTTP fallback if not installed)
+GEMINI_API_KEY       = os.getenv("GEMINI_API_KEY", "")
+GEMINI_CLINICAL_MODEL = os.getenv("GEMINI_CLINICAL_MODEL", "gemini-2.0-flash")
+GEMINI_CHAT_MODEL     = os.getenv("GEMINI_CHAT_MODEL",     "gemini-2.0-flash")
+GROQ_API_KEY         = os.getenv("GROQ_API_KEY", "")
+OLLAMA_BASE_URL      = os.getenv("OLLAMA_BASE_URL", "")
 
 # ─── Mobile / Notifications ─────────────────────────────────────────────────
 FCM_SERVER_KEY = os.getenv("FCM_SERVER_KEY", "")  # Firebase Cloud Messaging
