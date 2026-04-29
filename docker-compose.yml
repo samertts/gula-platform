@@ -105,6 +105,10 @@ services:
 
     environment:
       ENV: ${ENV:-production}
+      # Runtime isolation: API container must NEVER spawn maintenance loops.
+      # Workers run in the dedicated gula-worker container.
+      RUNTIME_MODE: api
+      FEATURE_BACKGROUND_TASKS: "false"
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       # SECURITY: No hardcoded fallback — SECRET_KEY must be set in .env
@@ -174,6 +178,49 @@ services:
       timeout: 10s
       retries: 20
       start_period: 120s
+
+  # ---------------------------------------------------------------------------
+  # BACKGROUND WORKER
+  # ---------------------------------------------------------------------------
+  # Runs the maintenance loops (outbox dispatch, recovery probe, health
+  # watchdog, adaptive concurrency, auto-repair) in a process completely
+  # separate from the API. Failure to set RUNTIME_MODE=worker here will
+  # cause the entrypoint to refuse to start.
+
+  gula-worker:
+    image: "${GULA_IMAGE_PREFIX:-local}/backend:${GULA_IMAGE_TAG:-local}"
+    build:
+      context: ./backend
+    container_name: gula-worker
+    mem_limit: ${WORKER_MEM_LIMIT:-512m}
+    mem_reservation: 128m
+    cpus: "${WORKER_CPUS:-0.5}"
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    command: ["python", "-m", "app.worker"]
+    environment:
+      ENV: ${ENV:-production}
+      RUNTIME_MODE: worker
+      FEATURE_BACKGROUND_TASKS: "true"
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/labdb
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SECRET_KEY: ${SECRET_KEY:-}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      NID_HMAC_KEY: ${NID_HMAC_KEY:-}
+      DEVICE_HMAC_KEY: ${DEVICE_HMAC_KEY:-}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      HEALTH_ALERT_INTERVAL_SECONDS: ${HEALTH_ALERT_INTERVAL_SECONDS:-60}
+      DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-3}
+      DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-5}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gula-net
 
   # ---------------------------------------------------------------------------
   # FRONTEND (static files served by nginx)

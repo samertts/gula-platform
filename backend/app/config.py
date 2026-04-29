@@ -9,6 +9,55 @@ logger = logging.getLogger("gula.config")
 ENV = os.getenv("ENV", "production")
 IS_PRODUCTION = ENV == "production"
 
+# ─── Runtime Isolation ───────────────────────────────────────────────────────
+# RUNTIME_MODE controls what kind of process this is:
+#   "api"     — FastAPI HTTP server. Must NOT run maintenance loops.
+#   "worker"  — Background worker process. Runs OutboxWorker, RecoveryWorker,
+#               health watchdog, adaptive concurrency, auto-repair. Has access
+#               to edge_* tables.
+#   "test"    — Test runtime. NEVER spawns threads, tasks, or background loops.
+#   "cli"     — One-shot scripts (alembic, seeders). No background tasks.
+#
+# FEATURE_BACKGROUND_TASKS is the master kill-switch. When false, NO background
+# coroutines are launched even if RUNTIME_MODE allows it. Defaults to false in
+# anything other than the worker runtime so the API process stays cleanly
+# isolated by default.
+RUNTIME_MODE = os.getenv("RUNTIME_MODE", "api").lower()
+if RUNTIME_MODE not in {"api", "worker", "test", "cli"}:
+    print(
+        f"[GULA FATAL] Invalid RUNTIME_MODE={RUNTIME_MODE!r}. "
+        "Allowed: api | worker | test | cli",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+IS_WORKER_RUNTIME = RUNTIME_MODE == "worker"
+IS_API_RUNTIME    = RUNTIME_MODE == "api"
+IS_TEST_RUNTIME   = RUNTIME_MODE == "test" or ENV == "test"
+IS_CLI_RUNTIME    = RUNTIME_MODE == "cli"
+
+# Master switch for background tasks. Defaults to True only inside the worker
+# runtime; everywhere else it must be explicitly enabled to spawn anything.
+_DEFAULT_BG = "true" if IS_WORKER_RUNTIME else "false"
+FEATURE_BACKGROUND_TASKS = os.getenv("FEATURE_BACKGROUND_TASKS", _DEFAULT_BG).lower() == "true"
+
+# Hard rule: tests must never spawn background tasks regardless of env vars.
+if IS_TEST_RUNTIME:
+    FEATURE_BACKGROUND_TASKS = False
+
+
+def background_tasks_enabled() -> bool:
+    """Return True if this process is allowed to spawn background coroutines.
+
+    A task is allowed only when BOTH conditions hold:
+      1. FEATURE_BACKGROUND_TASKS=true (explicit opt-in)
+      2. RUNTIME_MODE=worker          (correct process type)
+
+    This double-gate prevents an API or test process from accidentally
+    launching maintenance loops if the env var is misconfigured.
+    """
+    return FEATURE_BACKGROUND_TASKS and IS_WORKER_RUNTIME
+
 # ─── App Info ────────────────────────────────────────────────────────────────
 APP_NAME = "GULA Platform"
 APP_VERSION = "2.1.0"
