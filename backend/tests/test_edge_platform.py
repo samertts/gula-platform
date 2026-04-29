@@ -16,6 +16,13 @@ from datetime import datetime, timedelta, timezone
 from app.edge import config as edge_config, identity, policy as policy_mod, \
     registry, scheduler, trust as trust_mod, governance
 from app.models.edge import EdgeDevice, EdgeTask
+from app.security.auth import create_token
+
+
+def _auth(user_id: int, lab_id: int, role: str = "admin") -> dict:
+    """Bearer header for an admin user — same recipe as conftest.auth_headers."""
+    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role})
+    return {"Authorization": f"Bearer {token}"}
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -315,8 +322,8 @@ def test_pick_models_for_active_assignment(db, lab, admin_user, public_key_pem):
 # ── HTTP — operator API smoke ────────────────────────────────────────────────
 
 def test_http_register_and_list(client, db, lab, admin_user, public_key_pem):
-    from tests.conftest import auth_headers
-    headers = auth_headers(user_id=admin_user.id, lab_id=lab.id, role="admin")
+    
+    headers = _auth(admin_user.id, lab.id, "admin")
 
     r = client.post("/edge/devices/register", json={
         "public_key_pem": public_key_pem,
@@ -335,8 +342,8 @@ def test_http_register_and_list(client, db, lab, admin_user, public_key_pem):
 
 def test_http_agent_heartbeat_claims_task(client, db, lab, admin_user,
                                           public_key_pem):
-    from tests.conftest import auth_headers
-    headers = auth_headers(user_id=admin_user.id, lab_id=lab.id, role="admin")
+    
+    headers = _auth(admin_user.id, lab.id, "admin")
 
     reg = client.post("/edge/devices/register", json={
         "public_key_pem": public_key_pem,
@@ -369,8 +376,8 @@ def test_http_agent_heartbeat_claims_task(client, db, lab, admin_user,
 
 def test_http_agent_token_invalid_signature_rejected(client, db, lab,
                                                      admin_user, public_key_pem):
-    from tests.conftest import auth_headers
-    headers = auth_headers(user_id=admin_user.id, lab_id=lab.id, role="admin")
+    
+    headers = _auth(admin_user.id, lab.id, "admin")
     reg = client.post("/edge/devices/register", json={
         "public_key_pem": public_key_pem, "role_mode": "personal",
     }, headers=headers).json()
