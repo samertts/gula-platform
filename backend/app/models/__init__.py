@@ -12,6 +12,10 @@ from .quality_control import QualityControl
 from .outbox import OutboxEvent
 from .subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag
 from .consent import Consent
+from .edge import (
+    EdgeDevice, EdgeTask, EdgeTelemetry, EdgeModel,
+    EdgeModelAssignment, EdgePolicy, EdgeEvent,
+)
 
 __all__ = [
     "Base",
@@ -31,4 +35,11 @@ __all__ = [
     "UpgradeDemandScore",
     "FeatureFlag",
     "Consent",
+    "EdgeDevice",
+    "EdgeTask",
+    "EdgeTelemetry",
+    "EdgeModel",
+    "EdgeModelAssignment",
+    "EdgePolicy",
+    "EdgeEvent",
 ]
