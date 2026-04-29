@@ -1,0 +1,26 @@
+[Unit]
+Description=GULA Edge AI Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gula-edge
+WorkingDirectory=/opt/gula-edge
+Environment=GULA_EDGE_CONFIG=/etc/gula-edge/config.toml
+ExecStart=/opt/gula-edge/venv/bin/python -m gula_edge_agent.cli run
+Restart=always
+RestartSec=15
+# Hardening — see Section 12 (Security Model)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/var/lib/gula-edge
+
+[Install]
+WantedBy=multi-user.target
