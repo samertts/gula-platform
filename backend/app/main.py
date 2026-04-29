@@ -14,6 +14,8 @@ from .database import Base, engine, check_db_connection, get_pool_status  # noqa
 from .config import (
     APP_NAME, APP_VERSION, IS_PRODUCTION, ENABLE_API_DOCS,
     MAX_REQUEST_BODY_MB, PLATFORM_NAME_AR,
+    RUNTIME_MODE, IS_API_RUNTIME, IS_TEST_RUNTIME,
+    background_tasks_enabled,
 )
 
 # Configure structured JSON logging (production) or text logging (dev)
@@ -751,7 +753,24 @@ def _spawn(coro) -> "asyncio.Task":
 
 @app.on_event("startup")
 async def start_background_workers():
-    """Launch background workers for outbox delivery and self-healing recovery."""
+    """Launch background workers — only when this process is the worker runtime.
+
+    Runtime isolation rules (see config.background_tasks_enabled):
+      - API runtime         → never launches maintenance loops
+      - Worker runtime      → launches all loops
+      - Test / CLI runtime  → never launches anything
+
+    The double-gate (FEATURE_BACKGROUND_TASKS + RUNTIME_MODE=worker) ensures
+    a misconfigured env var alone can't promote an API process into a worker.
+    """
+    if not background_tasks_enabled():
+        logger.info(
+            "Background tasks disabled (RUNTIME_MODE=%s). "
+            "Maintenance loops will NOT start in this process.",
+            RUNTIME_MODE,
+        )
+        return
+
     from .services.outbox_service import OutboxWorker
     from .core.self_healing import RecoveryWorker
 

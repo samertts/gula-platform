@@ -41,6 +41,8 @@ jobs:
       - name: NameError / missing-import scan
         env:
           ENV: test
+          RUNTIME_MODE: test
+          FEATURE_BACKGROUND_TASKS: "false"
           DATABASE_URL: "postgresql://x:x@localhost/x"
           SECRET_KEY: "ci-scan-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           REFRESH_TOKEN_SECRET: "ci-scan-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -174,6 +176,10 @@ jobs:
           REFRESH_TOKEN_SECRET: test-refresh-secret-for-ci-only-not-used-in-prod
           ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
           ENV: test
+          # Runtime isolation: tests must never spawn maintenance loops or
+          # background workers, and must never touch edge_* tables.
+          RUNTIME_MODE: test
+          FEATURE_BACKGROUND_TASKS: "false"
         run: |
           cd backend
           # Tee pytest output to a file so it's captured as an artifact even on
@@ -376,6 +382,8 @@ jobs:
       - name: Export OpenAPI spec
         env:
           ENV: test
+          RUNTIME_MODE: test
+          FEATURE_BACKGROUND_TASKS: "false"
           DATABASE_URL: "postgresql://x:x@localhost/x"
           SECRET_KEY: "ci-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           REFRESH_TOKEN_SECRET: "ci-refresh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -471,6 +479,10 @@ jobs:
           GULA_ADMIN_EMAIL: ci-admin@gula.test
           GULA_ADMIN_PASSWORD: CiAdmin-test-123
           ENV: development
+          # Smoke-test runs the API process — keep maintenance loops off so the
+          # test verifies the HTTP surface alone (workers run in their own job).
+          RUNTIME_MODE: api
+          FEATURE_BACKGROUND_TASKS: "false"
           ENABLE_API_DOCS: "true"
         run: |
           cd backend
