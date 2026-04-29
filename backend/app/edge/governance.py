@@ -68,6 +68,9 @@ def register_model(
         metadata_json=metadata_json or {},
     )
     db.add(model)
+    # Flush so subsequent set_model_status / assign_model in the same
+    # transaction can find this row under autoflush=False sessions.
+    db.flush()
 
     db.add(EdgeEvent(
         event_type="model_registered", severity="info",

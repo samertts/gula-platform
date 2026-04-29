@@ -258,7 +258,8 @@ def sweep_stale(db: Session) -> int:
     )
     n = 0
     for t in stale:
-        deadline = t.dispatched_at + timedelta(seconds=t.timeout_s + EDGE_DISPATCH_GRACE_S)
+        dispatched = _ensure_aware(t.dispatched_at)
+        deadline = dispatched + timedelta(seconds=t.timeout_s + EDGE_DISPATCH_GRACE_S)
         if deadline < now:
             fail_task(db, t, error=f"dispatch_timeout after {t.timeout_s}s")
             n += 1
@@ -266,11 +267,12 @@ def sweep_stale(db: Session) -> int:
     expired = (
         db.query(EdgeTask)
           .filter(EdgeTask.status == "pending",
-                  EdgeTask.expires_at.isnot(None),
-                  EdgeTask.expires_at < now)
+                  EdgeTask.expires_at.isnot(None))
           .all()
     )
     for t in expired:
+        if _ensure_aware(t.expires_at) >= now:
+            continue
         t.status = "expired"
         t.completed_at = now
         n += 1
@@ -279,7 +281,20 @@ def sweep_stale(db: Session) -> int:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _duration_ms(task: EdgeTask) -> Optional[int]:
-    if task.dispatched_at is None or task.completed_at is None:
+def _ensure_aware(dt: datetime | None) -> datetime | None:
+    """SQLite stores DATETIMEs naively; postgres returns tz-aware. Normalize
+    so arithmetic against `datetime.now(timezone.utc)` always works.
+    """
+    if dt is None:
         return None
-    return int((task.completed_at - task.dispatched_at).total_seconds() * 1000)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _duration_ms(task: EdgeTask) -> Optional[int]:
+    a = _ensure_aware(task.dispatched_at)
+    b = _ensure_aware(task.completed_at)
+    if a is None or b is None:
+        return None
+    return int((b - a).total_seconds() * 1000)
