@@ -226,9 +226,21 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+# Block edge_* table access from API/test/CLI runtimes. No-op inside worker.
+try:
+    from .core.runtime_guard import install_edge_access_guard
+    install_edge_access_guard(engine)
+except Exception as _guard_exc:
+    logger.warning("Edge-access guard not installed: %s", _guard_exc)
+
 
 def get_db():
-    """Database session dependency with proper cleanup."""
+    """Database session dependency with proper cleanup.
+
+    Note: Tests must override this dependency via ``app.dependency_overrides``
+    so that no real engine is touched during the test run. The
+    ``conftest.py`` fixture already does this — never bypass it.
+    """
     db = SessionLocal()
     try:
         yield db

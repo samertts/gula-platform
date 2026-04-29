@@ -10,6 +10,13 @@ import os
 import sys
 
 # ── Must come before any app import ──────────────────────────────────────────
+# Runtime isolation: tests run in a process that must NEVER spawn background
+# tasks, must NEVER trigger maintenance loops, and must NEVER touch edge_*
+# tables. These two env vars are read by app.config at import time and force
+# the strict isolation profile.
+os.environ["RUNTIME_MODE"] = "test"
+os.environ["FEATURE_BACKGROUND_TASKS"] = "false"
+
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production-" + "x" * 32)
@@ -74,16 +81,31 @@ def db(db_engine):
 # ── FastAPI TestClient ────────────────────────────────────────────────────────
 
 @pytest.fixture()
-def client(db):
-    """TestClient with the real DB dependency replaced by the test DB session."""
+def client(db, db_engine, monkeypatch):
+    """TestClient with the real DB dependency replaced by the test DB session.
+
+    Three layers of override are needed because production code touches the
+    database in three different ways:
+      1. ``Depends(get_db)`` in route handlers           → dependency_overrides
+      2. ``SessionLocal()`` called directly in services  → monkeypatched
+      3. ``engine`` referenced by health/metrics paths   → monkeypatched
+    Without all three, a test could silently hit the real (or CI) database
+    even though `get_db` was overridden, breaking isolation.
+    """
     from app.main import app
+    import app.database as _database
     import app.core.startup_guard as _guard
+    from sqlalchemy.orm import sessionmaker
 
     def _override_get_db():
         try:
             yield db
         finally:
             pass
+
+    test_session_factory = sessionmaker(bind=db_engine, autoflush=False)
+    monkeypatch.setattr(_database, "SessionLocal", test_session_factory, raising=True)
+    monkeypatch.setattr(_database, "engine", db_engine, raising=True)
 
     app.dependency_overrides[get_db] = _override_get_db
     # The backend-test CI job doesn't run `alembic upgrade head`, so
