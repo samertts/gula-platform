@@ -1,0 +1,36 @@
+# GULA Edge Agent — example configuration
+# Copy to `config.toml` and fill in your values.
+
+[backend]
+# Public URL of the GULA api-gateway (NOT the backend container)
+url = "https://gula-platform.org"
+# Path used by the agent endpoints
+edge_path = "/edge"
+
+[device]
+# personal | clinic | enterprise — see README
+role_mode    = "personal"
+display_name = "lab-pc-01"
+
+[bootstrap]
+# A short-lived JWT obtained by an admin via /login. Used ONCE during
+# `python -m gula_edge_agent.cli register`. The agent then receives a
+# permanent agent_token and never needs the admin JWT again.
+owner_user_token = ""
+
+[runtime]
+# Ollama is the default AI runtime. The agent shells out to `ollama` to
+# load and run models. Set this to "noop" for diagnostic-only deployments.
+type     = "ollama"
+ollama_url = "http://127.0.0.1:11434"
+
+[resources]
+# Hard caps the agent self-enforces in addition to server policy.
+cpu_cap_pct      = 60
+ram_cap_mb       = 2048
+battery_floor_pct = 30
+idle_only         = true
+
+[storage]
+# Encrypted state directory (token, signed-task ledger, offline queue).
+state_dir = "~/.gula/edge"

@@ -511,6 +511,14 @@ app.include_router(consent_routes.router)
 from .routes import integrations as integrations_routes  # noqa: E402
 app.include_router(integrations_routes.router)
 
+# Edge AI Platform — managed edge nodes (device registry, task scheduler, model governance)
+from .routes import edge as edge_routes  # noqa: E402
+app.include_router(edge_routes.router)
+from .models.edge import (  # noqa: E402, F401  register edge tables with Base metadata
+    EdgeDevice, EdgeTask, EdgeTelemetry, EdgeModel,
+    EdgeModelAssignment, EdgePolicy, EdgeEvent,
+)
+
 
 # ===== HEALTH ALERT WATCHDOG =====
 async def _health_alert_loop():
@@ -770,6 +778,11 @@ async def start_background_workers():
     from .core.auto_repair import auto_repair as _auto_repair
     _spawn(_auto_repair.run())
     logger.info("Auto-repair engine started")
+
+    # Edge AI maintenance — reaps stale tasks, marks offline devices, prunes telemetry
+    from .edge.maintenance import edge_maintenance_loop
+    _spawn(edge_maintenance_loop())
+    logger.info("Edge maintenance loop started")
 
     # ── Restore sliding window from Redis (DB error history survives restarts) ─
     from .database import restore_db_window_from_redis
