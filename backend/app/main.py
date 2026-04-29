@@ -779,10 +779,14 @@ async def start_background_workers():
     _spawn(_auto_repair.run())
     logger.info("Auto-repair engine started")
 
-    # Edge AI maintenance — reaps stale tasks, marks offline devices, prunes telemetry
-    from .edge.maintenance import edge_maintenance_loop
-    _spawn(edge_maintenance_loop())
-    logger.info("Edge maintenance loop started")
+    # Edge AI maintenance — reaps stale tasks, marks offline devices, prunes telemetry.
+    # Skipped under ENV=test so the loop's SessionLocal() calls (which target the
+    # production engine, not the test fixture session) can't touch a Postgres DB
+    # whose edge_* tables aren't created by the test fixture.
+    if os.getenv("ENV") != "test":
+        from .edge.maintenance import edge_maintenance_loop
+        _spawn(edge_maintenance_loop())
+        logger.info("Edge maintenance loop started")
 
     # ── Restore sliding window from Redis (DB error history survives restarts) ─
     from .database import restore_db_window_from_redis
