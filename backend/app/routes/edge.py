@@ -394,15 +394,14 @@ def get_device(
 @router.post("/devices/{device_id}/quarantine")
 def quarantine_device(
     device_id: str,
+    request: Request,
     reason: str = Query(..., min_length=3, max_length=200),
-    request: Request = None,
     user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
     _require_admin(user)
-    if request is not None:
-        rate_limit_user(request, user.id, max_per_minute=20)
+    rate_limit_user(request, user.id, max_per_minute=20)
     d = registry.get_device_for_lab(db, device_id=device_id, lab_id=user.lab_id)
     if d is None:
         raise HTTPException(404, "Device not found")
@@ -414,15 +413,14 @@ def quarantine_device(
 @router.post("/devices/{device_id}/revoke")
 def revoke_device(
     device_id: str,
+    request: Request,
     reason: str = Query(..., min_length=3, max_length=200),
-    request: Request = None,
     user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
     _require_admin(user)
-    if request is not None:
-        rate_limit_user(request, user.id, max_per_minute=20)
+    rate_limit_user(request, user.id, max_per_minute=20)
     d = registry.get_device_for_lab(db, device_id=device_id, lab_id=user.lab_id)
     if d is None:
         raise HTTPException(404, "Device not found")
@@ -455,15 +453,14 @@ def reinstate_device(
 @router.post("/devices/{device_id}/kill_switch")
 def device_kill_switch(
     device_id: str,
+    request: Request,
     on: bool = Query(...),
-    request: Request = None,
     user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
     _require_admin(user)
-    if request is not None:
-        rate_limit_user(request, user.id, max_per_minute=20)
+    rate_limit_user(request, user.id, max_per_minute=20)
     d = registry.get_device_for_lab(db, device_id=device_id, lab_id=user.lab_id)
     if d is None:
         raise HTTPException(404, "Device not found")
@@ -559,14 +556,13 @@ def get_task(
 @router.post("/tasks/{task_uid}/cancel")
 def cancel_task_endpoint(
     task_uid: str,
+    request: Request,
     reason: str = Query("operator cancelled", min_length=3, max_length=200),
-    request: Request = None,
     user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
-    if request is not None:
-        rate_limit_user(request, user.id, max_per_minute=60)
+    rate_limit_user(request, user.id, max_per_minute=60)
     t = (
         db.query(EdgeTask)
           .filter(EdgeTask.task_uid == task_uid,

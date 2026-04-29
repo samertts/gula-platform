@@ -102,6 +102,9 @@ def submit_task(
     )
     task.payload_sig = identity.sign_task(task.task_uid, task.kind, task.payload)
     db.add(task)
+    # Flush so the row is visible to the next idempotency-key lookup even when
+    # the session is configured with autoflush=False (the test fixture is).
+    db.flush()
 
     db.add(EdgeEvent(
         lab_id=lab_id, event_type="task_submitted", severity="info",
@@ -145,8 +148,9 @@ def _device_concurrency(db: Session, device: EdgeDevice) -> int:
 def claim_next_task(db: Session, device: EdgeDevice) -> Optional[EdgeTask]:
     """Atomically pick and assign the next eligible task for `device`.
 
-    Uses SELECT ... FOR UPDATE SKIP LOCKED so concurrent agents don't fight
-    for the same row. Caller commits.
+    Uses SELECT ... FOR UPDATE SKIP LOCKED on Postgres so concurrent agents
+    don't fight for the same row. SQLite (test backend) silently no-ops the
+    lock — concurrency is single-threaded there anyway. Caller commits.
     """
     pol = policy_mod.get_policy(db, device.lab_id)
     if pol.kill_switch:
@@ -164,9 +168,16 @@ def claim_next_task(db: Session, device: EdgeDevice) -> Optional[EdgeTask]:
                   EdgeTask.status == "pending",
                   or_(EdgeTask.expires_at.is_(None), EdgeTask.expires_at > now))
           .order_by(EdgeTask.priority.asc(), EdgeTask.created_at.asc())
-          .with_for_update(skip_locked=True)
           .limit(20)
     )
+
+    # Apply row locking only on dialects that support it. SQLAlchemy's SQLite
+    # dialect generally drops FOR UPDATE silently, but we make it explicit so
+    # any future dialect change can't surface a SQL syntax error in tests.
+    bind = db.get_bind()
+    dialect_name = getattr(getattr(bind, "dialect", None), "name", "") or ""
+    if dialect_name in ("postgresql", "mysql", "mariadb"):
+        q = q.with_for_update(skip_locked=True)
 
     for task in q:
         if not _device_matches_task(device, task, pol):
