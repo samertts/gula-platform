@@ -685,7 +685,7 @@ async function wfLoadRecent() {
 }
 
 // ---- Router ----
-const routes = { dashboard: pageDashboard, workflow: pageWorkflow, patients: pagePatients, orders: pageOrders, samples: pageSamples, 'test-types': pageTestTypes, employees: pageEmployees, qc: pageQC, alerts: pageAlerts, lab: pageLab, profile: pageProfile, compliance: pageCompliance, admin: pageAdmin, tiers: pageTiers };
+const routes = { dashboard: pageDashboard, workflow: pageWorkflow, patients: pagePatients, orders: pageOrders, samples: pageSamples, 'test-types': pageTestTypes, employees: pageEmployees, qc: pageQC, alerts: pageAlerts, lab: pageLab, profile: pageProfile, compliance: pageCompliance, admin: pageAdmin, tiers: pageTiers, edge: pageEdge };
 
 function navigate(page) {
   if (!routes[page]) page = 'dashboard';
@@ -2581,6 +2581,10 @@ function init() {
   if (G.user.role === 'master_admin') $('adminNav').style.display = '';
   // Show employees nav for admin and master_admin
   if (G.user.role === 'admin' || G.user.role === 'master_admin') $('employeesNav').style.display = '';
+  // Show edge nav for admin / master_admin / ministry_admin (control plane operators)
+  if (['admin','lab_admin','master_admin','ministry_admin','province_admin'].includes(G.user.role)) {
+    const en = $('edgeNav'); if (en) en.style.display = '';
+  }
 
   // Set lab name
   if (G.user.lab_name) $('labName').textContent = G.user.lab_name;
@@ -2813,6 +2817,362 @@ window.addEventListener('error', (event) => {
     console.error('[GULA] Script error:', event.message, 'at', event.lineno);
   }
 });
+
+// ---- EDGE AI PLATFORM PAGE ----
+// Operator UI for the Managed Distributed Edge AI Platform.
+// Covers: fleet summary, device lifecycle, task submission, recent task list,
+// and (admin-only) per-lab policy editing.
+async function pageEdge() {
+  const isAdmin = ['admin','lab_admin','master_admin','ministry_admin','province_admin']
+                    .includes(G.user?.role || '');
+  $('page').innerHTML = '<div class="spinner"></div>';
+  let summary = {}, devices = [], tasks = [], policy = null;
+  try {
+    [summary, devices, tasks, policy] = await Promise.all([
+      api('/edge/fleet/summary').catch(() => ({})),
+      api('/edge/devices').catch(() => []),
+      api('/edge/tasks?limit=20').catch(() => []),
+      isAdmin ? api('/edge/policy').catch(() => null) : Promise.resolve(null),
+    ]);
+  } catch (e) {
+    $('page').innerHTML = `<div class="info-box error">${esc(e.message || 'تعذر تحميل بيانات الذكاء الطرفي')}</div>`;
+    return;
+  }
+
+  const STATUS_AR = { active: 'نشط', pending: 'قيد التفعيل', quarantined: 'محجور',
+                      revoked: 'ملغى', offline: 'غير متصل' };
+  const STATUS_COLOR = { active: '#10b981', pending: '#f59e0b', quarantined: '#f97316',
+                         revoked: '#ef4444', offline: '#64748b' };
+  const TASK_AR = { pending: 'بانتظار', dispatched: 'مرسل', running: 'يعمل',
+                    completed: 'مكتمل', failed: 'فشل', cancelled: 'ملغى',
+                    expired: 'منتهٍ' };
+
+  const trustClass = (s) => s >= 80 ? 'green' : s >= 50 ? 'cyan' : s >= 20 ? 'yellow' : 'red';
+
+  const renderDeviceRow = (d) => {
+    const seen = d.last_seen_at ? new Date(d.last_seen_at).toLocaleString('ar-IQ',
+                  { dateStyle:'short', timeStyle:'short' }) : '—';
+    const statColor = STATUS_COLOR[d.status] || '#64748b';
+    const id = escAttr(d.device_id);
+    const adminActions = isAdmin ? `
+        <button class="btn btn-outline btn-sm" onclick="edgeQuarantine('${id}')">حجر</button>
+        <button class="btn btn-outline btn-sm" onclick="edgeRevoke('${id}')" style="color:#fca5a5;border-color:#7f1d1d">إلغاء</button>
+        ${d.status === 'quarantined' ? `<button class="btn btn-outline btn-sm" onclick="edgeReinstate('${id}')">إعادة</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="edgeKillToggle('${id}', ${d.kill_switched ? 'false' : 'true'})">
+          ${d.kill_switched ? 'إلغاء قاطع' : 'قاطع طوارئ'}
+        </button>` : '';
+    return `
+      <tr>
+        <td><code style="font-size:.72rem">${esc(d.device_id)}</code></td>
+        <td>${esc(d.display_name || '—')}</td>
+        <td><span class="badge" style="background:${statColor}22;color:${statColor};border:1px solid ${statColor}55">${STATUS_AR[d.status] || d.status}</span></td>
+        <td><span class="stat-card ${trustClass(d.trust_score)}" style="display:inline-block;padding:2px 8px;font-size:.8rem">${(d.trust_score || 0).toFixed(0)}</span></td>
+        <td>${esc(d.role_mode || '-')}</td>
+        <td style="font-size:.78rem;color:var(--text-muted)">${esc(seen)}</td>
+        <td style="font-size:.78rem">${esc(d.agent_version || '-')}</td>
+        <td><div style="display:flex;gap:4px;flex-wrap:wrap">${adminActions}</div></td>
+      </tr>`;
+  };
+
+  const renderTaskRow = (t) => {
+    const created = new Date(t.created_at).toLocaleString('ar-IQ',
+                      { dateStyle:'short', timeStyle:'short' });
+    const tColor = t.status === 'completed' ? '#10b981'
+                 : t.status === 'failed' ? '#ef4444'
+                 : t.status === 'cancelled' || t.status === 'expired' ? '#64748b'
+                 : '#3b82f6';
+    return `
+      <tr>
+        <td><code style="font-size:.72rem">${esc(t.task_uid.slice(0,12))}…</code></td>
+        <td>${esc(t.kind)}</td>
+        <td><span class="badge" style="background:${tColor}22;color:${tColor};border:1px solid ${tColor}55">${TASK_AR[t.status] || t.status}</span></td>
+        <td>${esc(String(t.priority))}</td>
+        <td>${esc(t.privacy_level)}</td>
+        <td>${esc(t.device_id ? t.device_id.slice(0,12) + '…' : '—')}</td>
+        <td>${esc(String(t.attempts))}</td>
+        <td style="font-size:.78rem;color:var(--text-muted)">${esc(created)}</td>
+      </tr>`;
+  };
+
+  const policyCard = (isAdmin && policy) ? `
+    <div class="card" style="margin-top:16px">
+      <div class="card-header"><h3>سياسة الذكاء الطرفي</h3>
+        <button class="btn btn-outline btn-sm" onclick="edgeOpenPolicyEditor()">تعديل</button>
+      </div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        <div><div class="stat-label">حد التشغيل المتزامن للجهاز</div><div class="stat-value">${policy.max_concurrent_per_device}</div></div>
+        <div><div class="stat-label">حد الأجهزة لكل مختبر</div><div class="stat-value">${policy.max_devices_per_lab}</div></div>
+        <div><div class="stat-label">سقف المعالج (%)</div><div class="stat-value">${policy.cpu_cap_pct}</div></div>
+        <div><div class="stat-label">سقف الذاكرة (MB)</div><div class="stat-value">${policy.ram_cap_mb}</div></div>
+        <div><div class="stat-label">حد الثقة الأدنى</div><div class="stat-value">${(policy.min_trust_score || 0).toFixed(0)}</div></div>
+        <div><div class="stat-label">قاطع الطوارئ</div><div class="stat-value" style="color:${policy.kill_switch ? '#ef4444' : '#10b981'}">${policy.kill_switch ? 'مُفعَّل' : 'إيقاف'}</div></div>
+      </div>
+    </div>` : '';
+
+  $('page').innerHTML = `
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div>
+        <h2>الذكاء الطرفي — Managed Edge AI</h2>
+        <p style="color:var(--text-muted);font-size:.85rem">منصّة موزّعة لتشغيل الذكاء الاصطناعي محلّياً على أجهزة المختبر بأمان وعزل تام للمستأجرين.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="navigate('edge')">↻ تحديث</button>
+        <button class="btn btn-primary btn-sm" onclick="edgeOpenSubmitTask()">+ إرسال مهمة</button>
+        ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick="edgeOpenRegisterDevice()">+ تسجيل جهاز</button>` : ''}
+      </div>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <div class="stat-card blue">
+        <div class="stat-label">الأجهزة المتصلة الآن</div>
+        <div class="stat-value">${(summary.online_devices || 0).toLocaleString('ar')}</div>
+        <div class="stat-sub">من إجمالي ${(summary.devices_total || 0).toLocaleString('ar')}</div>
+      </div>
+      <div class="stat-card cyan">
+        <div class="stat-label">المهام قيد التشغيل</div>
+        <div class="stat-value">${(summary.pending_tasks || 0).toLocaleString('ar')}</div>
+        <div class="stat-sub">قائمة الانتظار</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">معدل المعالج</div>
+        <div class="stat-value">${(summary.avg_cpu_pct || 0).toFixed(0)}%</div>
+        <div class="stat-sub">آخر 10 دقائق</div>
+      </div>
+      <div class="stat-card ${summary.kill_switched ? 'red' : 'green'}">
+        <div class="stat-label">قاطع الطوارئ</div>
+        <div class="stat-value" style="font-size:1.1rem">${summary.kill_switched ? 'مُفعَّل' : 'سليم'}</div>
+        <div class="stat-sub">${summary.kill_switched ? 'لا تنفذ مهام' : 'النظام يعمل'}</div>
+      </div>
+    </div>
+
+    ${policyCard}
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-header"><h3>الأجهزة (${devices.length})</h3></div>
+      <div class="card-body" style="overflow-x:auto">
+        ${devices.length === 0 ? '<div class="wf-empty">لا أجهزة مسجَّلة بعد. ابدأ بتسجيل أوّل جهاز عبر زر «تسجيل جهاز» أعلاه.</div>' : `
+        <table class="data-table" style="min-width:760px">
+          <thead><tr>
+            <th>المعرّف</th><th>الاسم</th><th>الحالة</th><th>درجة الثقة</th>
+            <th>الوضع</th><th>آخر ظهور</th><th>الإصدار</th><th>إجراءات</th>
+          </tr></thead>
+          <tbody>${devices.map(renderDeviceRow).join('')}</tbody>
+        </table>`}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-header"><h3>آخر المهام (${tasks.length})</h3></div>
+      <div class="card-body" style="overflow-x:auto">
+        ${tasks.length === 0 ? '<div class="wf-empty">لا مهام بعد.</div>' : `
+        <table class="data-table" style="min-width:760px">
+          <thead><tr>
+            <th>المعرّف</th><th>النوع</th><th>الحالة</th><th>الأولوية</th>
+            <th>الخصوصية</th><th>الجهاز</th><th>المحاولات</th><th>أُنشئ</th>
+          </tr></thead>
+          <tbody>${tasks.map(renderTaskRow).join('')}</tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
+// ---- Edge actions (called from inline onclick handlers) ----
+async function edgeQuarantine(deviceId) {
+  const reason = prompt('سبب الحجر:'); if (!reason) return;
+  try {
+    await api('/edge/devices/' + encodeURIComponent(deviceId) + '/quarantine?reason=' + encodeURIComponent(reason), { method: 'POST' });
+    toast('تم حجر الجهاز');
+    navigate('edge');
+  } catch (e) { toast(e.message || 'فشل', 'error'); }
+}
+
+async function edgeRevoke(deviceId) {
+  if (!confirm('سيتم إلغاء صلاحية الجهاز نهائياً. متابعة؟')) return;
+  const reason = prompt('سبب الإلغاء:'); if (!reason) return;
+  try {
+    await api('/edge/devices/' + encodeURIComponent(deviceId) + '/revoke?reason=' + encodeURIComponent(reason), { method: 'POST' });
+    toast('تم إلغاء الجهاز');
+    navigate('edge');
+  } catch (e) { toast(e.message || 'فشل', 'error'); }
+}
+
+async function edgeReinstate(deviceId) {
+  try {
+    await api('/edge/devices/' + encodeURIComponent(deviceId) + '/reinstate', { method: 'POST' });
+    toast('تمت إعادة الجهاز للخدمة');
+    navigate('edge');
+  } catch (e) { toast(e.message || 'فشل', 'error'); }
+}
+
+async function edgeKillToggle(deviceId, on) {
+  try {
+    await api('/edge/devices/' + encodeURIComponent(deviceId) + '/kill_switch?on=' + (on === 'true' || on === true), { method: 'POST' });
+    toast(on === 'true' || on === true ? 'تم تفعيل قاطع الطوارئ' : 'تم إلغاء قاطع الطوارئ');
+    navigate('edge');
+  } catch (e) { toast(e.message || 'فشل', 'error'); }
+}
+
+function edgeOpenSubmitTask() {
+  openModal('إرسال مهمة جديدة', `
+    <form id="edgeTaskForm" onsubmit="edgeSubmitTask(event)">
+      <label>النوع
+        <select name="kind" required>
+          <option value="diag.ping">diag.ping (تجربة)</option>
+          <option value="ai.translate">ai.translate</option>
+          <option value="ai.summarize_report">ai.summarize_report</option>
+          <option value="ai.classify">ai.classify</option>
+          <option value="ai.extract_lab_values">ai.extract_lab_values</option>
+          <option value="ai.embed">ai.embed</option>
+        </select>
+      </label>
+      <label>الأولوية (1=عالية … 10=منخفضة)
+        <input type="number" name="priority" min="1" max="10" value="5" required>
+      </label>
+      <label>مستوى الخصوصية
+        <select name="privacy_level">
+          <option value="standard">قياسي</option>
+          <option value="sensitive">حساس</option>
+          <option value="phi">بيانات صحية شخصية</option>
+        </select>
+      </label>
+      <label>الحمولة (JSON)
+        <textarea name="payload" rows="5">{"text":"hello","target":"ar"}</textarea>
+      </label>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button type="submit" class="btn btn-primary">إرسال</button>
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      </div>
+    </form>
+  `);
+}
+
+async function edgeSubmitTask(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  let payload = {};
+  try { payload = JSON.parse(f.payload.value || '{}'); }
+  catch { toast('JSON غير صالح', 'error'); return; }
+  try {
+    await api('/edge/tasks', { method: 'POST', body: JSON.stringify({
+      kind: f.kind.value,
+      priority: parseInt(f.priority.value, 10),
+      privacy_level: f.privacy_level.value,
+      payload,
+    }) });
+    closeModal();
+    toast('تم إرسال المهمة');
+    navigate('edge');
+  } catch (e) { toast(e.message || 'فشل', 'error'); }
+}
+
+function edgeOpenRegisterDevice() {
+  openModal('تسجيل جهاز جديد', `
+    <p style="color:var(--text-muted);font-size:.85rem">
+      هذا النموذج يُسجِّل المفتاح العام لأحد الأجهزة في خطّة التحكّم. الإجراء العملي للتسجيل
+      يعتمد على وكيل الذكاء الطرفي (<code>edge_agent</code>). راجع <code>EDGE_PLATFORM.md</code>
+      للتفاصيل.
+    </p>
+    <form id="edgeRegisterForm" onsubmit="edgeRegisterDevice(event)">
+      <label>اسم الجهاز
+        <input type="text" name="display_name" maxlength="200" placeholder="lab-pc-01" required>
+      </label>
+      <label>الوضع
+        <select name="role_mode">
+          <option value="personal">شخصي</option>
+          <option value="clinic">عيادة</option>
+          <option value="enterprise">مؤسسي</option>
+        </select>
+      </label>
+      <label>المفتاح العام (PEM)
+        <textarea name="public_key_pem" rows="6" required placeholder="-----BEGIN PUBLIC KEY-----&#10;..."></textarea>
+      </label>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button type="submit" class="btn btn-primary">تسجيل</button>
+        <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      </div>
+    </form>
+  `);
+}
+
+async function edgeRegisterDevice(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    const r = await api('/edge/devices/register', { method: 'POST', body: JSON.stringify({
+      display_name: f.display_name.value,
+      role_mode: f.role_mode.value,
+      public_key_pem: f.public_key_pem.value,
+    }) });
+    closeModal();
+    openModal('تم تسجيل الجهاز', `
+      <p>أنشئ الوكيل واستخدم القيم التالية لإكمال الإقران:</p>
+      <pre style="background:#0a0e1a;padding:12px;border-radius:8px;overflow:auto;font-size:.78rem">device_id: ${esc(r.device_id)}
+agent_token: ${esc(r.agent_token)}
+fingerprint: ${esc(r.cert_fingerprint)}
+nonce: ${esc(r.nonce)}</pre>
+      <button class="btn btn-primary" onclick="closeModal();navigate('edge')">حسناً</button>
+    `);
+  } catch (e) { toast(e.message || 'فشل', 'error'); }
+}
+
+function edgeOpenPolicyEditor() {
+  api('/edge/policy').then(p => {
+    openModal('تعديل سياسة الذكاء الطرفي', `
+      <form id="edgePolicyForm" onsubmit="edgeSavePolicy(event)">
+        <label>حد التشغيل المتزامن للجهاز
+          <input type="number" name="max_concurrent_per_device" value="${p.max_concurrent_per_device}" min="1" max="64">
+        </label>
+        <label>حد الأجهزة لكل مختبر
+          <input type="number" name="max_devices_per_lab" value="${p.max_devices_per_lab}" min="1" max="10000">
+        </label>
+        <label>سقف المعالج (%)
+          <input type="number" name="cpu_cap_pct" value="${p.cpu_cap_pct}" min="10" max="100">
+        </label>
+        <label>سقف الذاكرة (MB)
+          <input type="number" name="ram_cap_mb" value="${p.ram_cap_mb}" min="128" max="131072">
+        </label>
+        <label>حد الثقة الأدنى
+          <input type="number" name="min_trust_score" value="${p.min_trust_score}" min="0" max="100" step="0.5">
+        </label>
+        <label>أدنى نسبة بطارية للمشاركة (%)
+          <input type="number" name="battery_floor_pct" value="${p.battery_floor_pct}" min="0" max="100">
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <input type="checkbox" name="idle_only" ${p.idle_only ? 'checked' : ''}> تنفيذ المهام فقط عند خمول الجهاز
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;color:#fca5a5">
+          <input type="checkbox" name="kill_switch" ${p.kill_switch ? 'checked' : ''}> قاطع طوارئ المختبر (إيقاف فوري للأجهزة)
+        </label>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button type="submit" class="btn btn-primary">حفظ</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+        </div>
+      </form>
+    `);
+  }).catch(e => toast(e.message || 'فشل', 'error'));
+}
+
+async function edgeSavePolicy(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const body = {
+    max_concurrent_per_device: parseInt(f.max_concurrent_per_device.value, 10),
+    max_devices_per_lab:       parseInt(f.max_devices_per_lab.value, 10),
+    cpu_cap_pct:               parseInt(f.cpu_cap_pct.value, 10),
+    ram_cap_mb:                parseInt(f.ram_cap_mb.value, 10),
+    min_trust_score:           parseFloat(f.min_trust_score.value),
+    battery_floor_pct:         parseInt(f.battery_floor_pct.value, 10),
+    idle_only:                 !!f.idle_only.checked,
+    kill_switch:               !!f.kill_switch.checked,
+  };
+  try {
+    await api('/edge/policy', { method: 'PUT', body: JSON.stringify(body) });
+    closeModal();
+    toast('تم حفظ السياسة');
+    navigate('edge');
+  } catch (e) { toast(e.message || 'فشل الحفظ', 'error'); }
+}
 
 // ---- TIERS PAGE ----
 async function pageTiers() {

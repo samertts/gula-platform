@@ -54,6 +54,7 @@ def db_engine():
     import app.models.outbox        # noqa: F401
     import app.models.subscription  # noqa: F401
     import app.models.claim         # noqa: F401
+    import app.models.edge          # noqa: F401
     from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
     Base.metadata.create_all(engine)
     yield engine
