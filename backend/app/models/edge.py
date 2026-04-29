@@ -20,6 +20,12 @@ from sqlalchemy import (
 from ..database import Base
 
 
+# SQLite primary keys auto-increment only on plain Integer columns. Postgres
+# can use BIGINT for larger task / event counts, so we declare the column type
+# as BigInteger but fall back to Integer on SQLite (which is the test backend).
+_BigPK = BigInteger().with_variant(Integer(), "sqlite")
+
+
 # ── Status & enum-like constants ──────────────────────────────────────────────
 
 DEVICE_STATUS = ("pending", "active", "quarantined", "revoked", "offline")
@@ -80,7 +86,7 @@ class EdgeTask(Base):
         Index("idx_edge_tasks_idem",     "lab_id", "idempotency_key"),
     )
 
-    id                  = Column(BigInteger, primary_key=True)
+    id                  = Column(_BigPK, primary_key=True, autoincrement=True)
     task_uid            = Column(String(36), nullable=False, unique=True, index=True)
     idempotency_key     = Column(String(80), nullable=True)
     lab_id              = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"),
@@ -117,7 +123,7 @@ class EdgeTelemetry(Base):
         Index("idx_edge_telemetry_ts", "ts"),
     )
 
-    id          = Column(BigInteger, primary_key=True)
+    id          = Column(_BigPK, primary_key=True, autoincrement=True)
     device_id   = Column(String(64), nullable=False)
     lab_id      = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"),
                          nullable=False)
@@ -227,7 +233,7 @@ class EdgeEvent(Base):
         Index("idx_edge_events_type",   "event_type", "ts"),
     )
 
-    id            = Column(BigInteger, primary_key=True)
+    id            = Column(_BigPK, primary_key=True, autoincrement=True)
     ts            = Column(DateTime(timezone=True),
                            default=lambda: datetime.now(timezone.utc),
                            nullable=False)
