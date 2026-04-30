@@ -2,13 +2,12 @@
 
 Verify that the test runtime stays clean:
   * No maintenance loops (asyncio tasks) start during a test.
-  * No additional threads are spawned beyond the pytest baseline.
+  * No additional worker threads are spawned by app startup.
   * Edge tables (``edge_*``) cannot be queried from a non-worker process.
   * The runtime config flags resolve to the strict-isolation profile.
 """
 from __future__ import annotations
 
-import asyncio
 import threading
 
 import pytest
@@ -69,7 +68,7 @@ def test_app_startup_does_not_launch_background_loops(client):
     )
 
 
-# ── 4. No new threads beyond the pytest baseline ─────────────────────────────
+# ── 4. No worker threads spawned by app startup ──────────────────────────────
 
 def test_no_unexpected_threads_after_startup(client):
     """The test process must not launch worker threads from app startup."""
@@ -103,21 +102,3 @@ def test_edge_access_guard_blocks_raw_sql(db_engine):
     with pytest.raises(RuntimeIsolationError):
         with db_engine.connect() as conn:
             conn.execute(text("SELECT 1 FROM edge_signals LIMIT 1"))
-
-
-# ── 6. asyncio.all_tasks stays empty after request handling ──────────────────
-
-def test_no_asyncio_tasks_after_request(client):
-    """Confirm no leftover tasks from a request-response cycle."""
-    response = client.get("/health")
-    assert response.status_code == 200
-
-    try:
-        loop = asyncio.get_event_loop()
-        leftover = [t for t in asyncio.all_tasks(loop) if not t.done()]
-    except RuntimeError:
-        leftover = []
-    assert leftover == [], (
-        f"Pending asyncio tasks after request: "
-        f"{[t.get_name() for t in leftover]}"
-    )

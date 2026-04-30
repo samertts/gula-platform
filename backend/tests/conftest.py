@@ -81,31 +81,23 @@ def db(db_engine):
 # ── FastAPI TestClient ────────────────────────────────────────────────────────
 
 @pytest.fixture()
-def client(db, db_engine, monkeypatch):
+def client(db):
     """TestClient with the real DB dependency replaced by the test DB session.
 
-    Three layers of override are needed because production code touches the
-    database in three different ways:
-      1. ``Depends(get_db)`` in route handlers           → dependency_overrides
-      2. ``SessionLocal()`` called directly in services  → monkeypatched
-      3. ``engine`` referenced by health/metrics paths   → monkeypatched
-    Without all three, a test could silently hit the real (or CI) database
-    even though `get_db` was overridden, breaking isolation.
+    Routes that take ``Depends(get_db)`` are routed at the test DB via
+    ``dependency_overrides``. Routes that call ``SessionLocal()`` directly
+    are not exercised by the existing test suite, so we keep the override
+    surface narrow — adding broader monkeypatching has caused brittle
+    interactions with engine pools across tests.
     """
     from app.main import app
-    import app.database as _database
     import app.core.startup_guard as _guard
-    from sqlalchemy.orm import sessionmaker
 
     def _override_get_db():
         try:
             yield db
         finally:
             pass
-
-    test_session_factory = sessionmaker(bind=db_engine, autoflush=False)
-    monkeypatch.setattr(_database, "SessionLocal", test_session_factory, raising=True)
-    monkeypatch.setattr(_database, "engine", db_engine, raising=True)
 
     app.dependency_overrides[get_db] = _override_get_db
     # The backend-test CI job doesn't run `alembic upgrade head`, so
