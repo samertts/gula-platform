@@ -1,8 +1,8 @@
 """GULA Platform — Background Worker Entrypoint
 ================================================
 Runs the maintenance loops (outbox dispatch, recovery probe, health watchdog,
-adaptive concurrency, auto-repair) in a process separate from the FastAPI
-API server.
+adaptive concurrency, auto-repair) AND the discrete task queue consumer in a
+process separate from the FastAPI API server.
 
 Runtime contract:
     RUNTIME_MODE=worker            (mandatory — refuses to start otherwise)
@@ -38,9 +38,42 @@ from .config import IS_PRODUCTION
 configure_logging(is_production=IS_PRODUCTION, log_level="INFO")
 logger = logging.getLogger("gula.worker")
 
+# ── Crash-isolated loop wrapper ───────────────────────────────────────────────
+
+_RESTART_BASE_DELAY_S  = 5.0
+_RESTART_MAX_DELAY_S   = 120.0
+
+
+async def _resilient_loop(coro_factory, name: str) -> None:
+    """Run a background coroutine and restart it on unexpected crashes.
+
+    Each consecutive crash doubles the restart delay (exponential backoff)
+    up to _RESTART_MAX_DELAY_S. A clean cancellation (asyncio.CancelledError)
+    propagates immediately without restart.
+    """
+    delay = _RESTART_BASE_DELAY_S
+    while True:
+        try:
+            logger.info("Loop [%s] starting", name)
+            await coro_factory()
+            # Coroutine returned normally — shouldn't happen for infinite loops.
+            # Restart immediately rather than treating it as a crash.
+            logger.warning("Loop [%s] exited normally — restarting", name)
+            delay = _RESTART_BASE_DELAY_S
+        except asyncio.CancelledError:
+            logger.info("Loop [%s] cancelled", name)
+            raise
+        except Exception as exc:
+            logger.error("Loop [%s] crashed: %s — restarting in %.0fs",
+                         name, exc, delay, exc_info=True)
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, _RESTART_MAX_DELAY_S)
+
+
+# ── Main worker coroutine ─────────────────────────────────────────────────────
 
 async def _run_worker() -> None:
-    """Spawn every maintenance loop and wait for shutdown."""
+    """Spawn every maintenance loop + task worker and wait for shutdown."""
     # Lazy imports — these touch the DB engine and we want config validation
     # (RUNTIME_MODE check) to fail fast before we open any pools.
     from .services.outbox_service import OutboxWorker
@@ -48,19 +81,46 @@ async def _run_worker() -> None:
     from .core.auto_repair import auto_repair as _auto_repair
     from .database import restore_db_window_from_redis
     from .main import _health_alert_loop, _adaptive_concurrency_loop
+    from .tasks.queue import task_queue
+    from .tasks.worker import TaskWorker
 
     logger.info("GULA Worker %s starting (RUNTIME_MODE=%s)", APP_VERSION, RUNTIME_MODE)
 
     restore_db_window_from_redis()
 
+    _task_worker = TaskWorker(task_queue)
+
+    # Each maintenance loop is wrapped in _resilient_loop so a single crash
+    # restarts only that loop, leaving all siblings running.
     tasks: list[asyncio.Task] = [
-        asyncio.create_task(OutboxWorker.background_loop(),  name="outbox"),
-        asyncio.create_task(RecoveryWorker.background_loop(), name="recovery"),
-        asyncio.create_task(_health_alert_loop(),             name="health-alert"),
-        asyncio.create_task(_adaptive_concurrency_loop(),     name="adaptive-concurrency"),
-        asyncio.create_task(_auto_repair.run(),               name="auto-repair"),
+        asyncio.create_task(
+            _resilient_loop(OutboxWorker.background_loop, "outbox"),
+            name="outbox",
+        ),
+        asyncio.create_task(
+            _resilient_loop(RecoveryWorker.background_loop, "recovery"),
+            name="recovery",
+        ),
+        asyncio.create_task(
+            _resilient_loop(_health_alert_loop, "health-alert"),
+            name="health-alert",
+        ),
+        asyncio.create_task(
+            _resilient_loop(_adaptive_concurrency_loop, "adaptive-concurrency"),
+            name="adaptive-concurrency",
+        ),
+        asyncio.create_task(
+            _resilient_loop(_auto_repair.run, "auto-repair"),
+            name="auto-repair",
+        ),
+        # Discrete task queue consumer — runs until cancelled, crashes are
+        # isolated to the failing task, not this loop.
+        asyncio.create_task(
+            _resilient_loop(_task_worker.run, "task-worker"),
+            name="task-worker",
+        ),
     ]
-    logger.info("Worker spawned %d background loops: %s",
+    logger.info("Worker spawned %d loops: %s",
                 len(tasks), [t.get_name() for t in tasks])
 
     stop = asyncio.Event()
@@ -84,6 +144,8 @@ async def _run_worker() -> None:
     await asyncio.gather(*tasks, return_exceptions=True)
     logger.info("Worker stopped cleanly")
 
+
+# ── Entrypoint ────────────────────────────────────────────────────────────────
 
 def main() -> None:
     if not IS_WORKER_RUNTIME:
