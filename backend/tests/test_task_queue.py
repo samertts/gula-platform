@@ -248,21 +248,18 @@ async def test_worker_timeout_triggers_retry():
     async def _slow(payload: dict):
         await asyncio.sleep(9999)
 
+    # timeout_s=0 → asyncio.wait_for times out immediately
+    # max_retries=0 → next_attempt() exhausted immediately → DEAD (no sleep needed)
     task = TaskPayload(type=type_name, timeout_s=0, max_retries=0)
     await q.enqueue(task)
-
-    import app.tasks.worker as worker_mod
-    original_sleep = asyncio.sleep
-    worker_mod.asyncio.sleep = lambda _: asyncio.coroutine(lambda: None)()
 
     try:
         w      = fresh_worker(q)
         result = await w.run_once()
-        assert result.status in (TaskStatus.DEAD, TaskStatus.FAILED)
+        assert result.status == TaskStatus.DEAD
+        assert await q.dlq_depth() == 1
     finally:
-        worker_mod.asyncio.sleep = original_sleep
-
-    _REGISTRY.pop(type_name, None)
+        _REGISTRY.pop(type_name, None)
 
 
 # ── Queue FIFO ordering ───────────────────────────────────────────────────────
