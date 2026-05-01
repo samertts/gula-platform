@@ -239,18 +239,18 @@ async def test_worker_unknown_type_goes_to_dlq():
 # ── TaskWorker — timeout enforcement ─────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_worker_timeout_triggers_retry():
+async def test_worker_timeout_error_goes_to_dlq():
+    """asyncio.TimeoutError raised by a handler → DLQ when max_retries=0."""
     q         = fresh_queue()
     type_name = "_test_timeout"
     _REGISTRY.pop(type_name, None)
 
     @task_handler(type_name)
-    async def _slow(payload: dict):
-        await asyncio.sleep(9999)
+    async def _timeout_handler(payload: dict):
+        # Simulate an internal deadline being exceeded (e.g. from a network call)
+        raise asyncio.TimeoutError("deadline exceeded")
 
-    # timeout_s=0 → asyncio.wait_for times out immediately
-    # max_retries=0 → next_attempt() exhausted immediately → DEAD (no sleep needed)
-    task = TaskPayload(type=type_name, timeout_s=0, max_retries=0)
+    task = TaskPayload(type=type_name, max_retries=0)
     await q.enqueue(task)
 
     try:

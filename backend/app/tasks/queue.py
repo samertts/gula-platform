@@ -85,47 +85,40 @@ class _RedisTaskQueue:
         self._r = redis_client
 
     async def enqueue(self, task: TaskPayload) -> None:
-        await asyncio.get_event_loop().run_in_executor(
-            None, self._r.lpush, QUEUE_KEY, task.model_dump_json()
-        )
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._r.lpush, QUEUE_KEY, task.model_dump_json())
         logger.debug("Enqueued task %s (%s)", task.task_id, task.type)
 
     async def dequeue(self, timeout: int = 5) -> Optional[TaskPayload]:
-        result = await asyncio.get_event_loop().run_in_executor(
-            None, self._r.brpop, QUEUE_KEY, timeout
-        )
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, self._r.brpop, QUEUE_KEY, timeout)
         if result is None:
             return None
         _key, raw = result
         return TaskPayload.model_validate_json(raw)
 
     async def dead_letter(self, task: TaskPayload, error: str) -> None:
-        entry = json.dumps({"task": task.model_dump(), "error": error})
-        await asyncio.get_event_loop().run_in_executor(
-            None, self._r.lpush, DLQ_KEY, entry
-        )
+        entry = json.dumps({"task": task.model_dump_json(), "error": error})
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._r.lpush, DLQ_KEY, entry)
         logger.warning("DLQ: task %s (%s) after %d attempts — %s",
                        task.task_id, task.type, task.retry_count, error)
 
     async def ack(self, task_id: str) -> None:
-        await asyncio.get_event_loop().run_in_executor(
-            None, self._r.srem, RUNNING_SET, task_id
-        )
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._r.srem, RUNNING_SET, task_id)
 
     async def mark_running(self, task_id: str) -> None:
-        await asyncio.get_event_loop().run_in_executor(
-            None, self._r.sadd, RUNNING_SET, task_id
-        )
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._r.sadd, RUNNING_SET, task_id)
 
     async def queue_depth(self) -> int:
-        return await asyncio.get_event_loop().run_in_executor(
-            None, self._r.llen, QUEUE_KEY
-        )
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._r.llen, QUEUE_KEY)
 
     async def dlq_depth(self) -> int:
-        return await asyncio.get_event_loop().run_in_executor(
-            None, self._r.llen, DLQ_KEY
-        )
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._r.llen, DLQ_KEY)
 
     async def close(self) -> None:
         try:
