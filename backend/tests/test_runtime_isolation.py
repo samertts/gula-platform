@@ -93,16 +93,28 @@ def test_no_unexpected_threads_after_startup(client):
 
 # ── 5. Edge access guard rejects raw SQL ─────────────────────────────────────
 
-def test_edge_access_guard_blocks_raw_sql(db_engine):
+def test_edge_access_guard_blocks_raw_sql():
     """Any statement referencing edge_* must be rejected from the test runtime."""
-    from sqlalchemy import text
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.pool import StaticPool
     from app.core.runtime_guard import install_edge_access_guard
 
-    install_edge_access_guard(db_engine)
+    # Use a private engine so that installing the guard here does not pollute
+    # the shared db_engine fixture and cause RuntimeIsolationError during
+    # Base.metadata.drop_all() in fixture teardown (PRAGMA table_info triggers
+    # the guard on any edge_* table name).
+    guard_engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    install_edge_access_guard(guard_engine)
 
     with pytest.raises(RuntimeIsolationError):
-        with db_engine.connect() as conn:
+        with guard_engine.connect() as conn:
             conn.execute(text("SELECT 1 FROM edge_signals LIMIT 1"))
+
+    guard_engine.dispose()
 
 
 # ── 6. asyncio.all_tasks stays empty after request handling ──────────────────
