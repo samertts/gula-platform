@@ -35,6 +35,52 @@ The backend never binds a public port. All traffic enters through host nginx
 
 ---
 
+## Quick path — fresh VPS to verified-live in ~10 minutes
+
+If you have a clean Ubuntu 22.04 VPS and SSH access, this is the shortest
+path to a system you can trust. Each step has a verification gate; do not
+proceed until the previous gate prints `[✓]`.
+
+```bash
+# 0. SSH in as the deploy user, clone, configure
+git clone https://github.com/samertts/gula-platform.git
+cd gula-platform
+cp .env.example .env
+nano .env                        # set BASE_URL, CORS_ORIGINS, GULA_ADMIN_*
+
+# 1. Bring up the stack with auto-secret-generation + health gate
+sudo bash setup-production.sh    # ~5 min — exits non-zero on any failure
+                                 # gate: prints "GULA Platform is running!"
+
+# 2. Smoke + perf gate against the live system
+bash scripts/smoke-bootstrap.sh
+                                 # gate: prints "Smoke gate PASSED"
+                                 # checks /health, /health/ready, /health/deep,
+                                 # POST /login, authed GET, p50/p95/p99 latency,
+                                 # error rate over 100 calls
+
+# 3. TLS (only after DNS A-record points at this VPS)
+sudo bash scripts/setup-https.sh api.gula.iq
+                                 # gate: curl -I https://api.gula.iq/health → 200
+
+# 4. Re-run the smoke gate against the public URL
+bash scripts/smoke-bootstrap.sh https://api.gula.iq
+                                 # gate: same as step 2, but over the internet
+
+# 5. Backups
+make backup
+bash scripts/backup-verification.sh ./backups/gula_*.sql.gz | tail -1
+                                 # gate: prints "Backup is restorable"
+```
+
+If any gate fails, do not proceed. Run `make logs-backend` to see the
+single-line reason; the startup guard / health endpoints are explicit about
+what failed and why. The detailed phase-by-phase guide below covers
+everything Quick Path skips (CI/CD, monitoring, scaling, on-prem mode,
+mobile clients).
+
+---
+
 ## Phase 1 — Provision the VPS
 
 Minimum viable host:
