@@ -2,11 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## GULA Platform — Medical Laboratory SaaS
+## GULA Platform — Medical Laboratory SaaS (Monorepo)
 
-Arabic-first healthcare platform for Iraqi medical laboratories. Production stack is
-a FastAPI monolith (`backend/app/`) backed by PostgreSQL 16 + Redis 7; a parallel
-microservices tree (`services/`) exists for future decomposition but is not the
+Arabic-first healthcare platform for Iraqi medical laboratories. This is a **monorepo**
+that consolidates three previously separate GitHub repositories:
+
+| Former Repo | Location in monorepo | Role |
+|-------------|----------------------|------|
+| `samertts/gula-platform` | `backend/`, `services/`, `nhop-platform/`, `ai/` | Core platform (source of truth) |
+| `samertts/LabLink-Core` | `services/device_bridge/` | Lab instrument integration (ASTM/HL7) |
+| `samertts/Front-end-` | `frontend-v2/` | Rich React + Firebase UI |
+
+Production stack is a FastAPI monolith (`backend/app/`) backed by PostgreSQL 16 + Redis 7;
+a parallel microservices tree (`services/`) exists for future decomposition but is not the
 primary deployment target.
 
 ## Core Principles (NON-NEGOTIABLE)
@@ -126,11 +134,20 @@ concurrency middlewares.
 
 - **`backend/app/`** is the production monolith. All routes, models, services live here.
   This is what runs in Docker as `gula-backend`.
-- **`services/`** (top-level) contains future-decomposed microservices (`lab`,
-  `order`, `patient`, `result`, `sample`, `notification`, `ai`, `autonomous_manager`).
-  They're shipped as images via the CI matrix but the main deployment still uses
-  the monolith. Don't duplicate business logic between them — the monolith is
-  source of truth for now.
+- **`services/`** (top-level) contains independent services:
+  - `services/device_bridge/` — **LabLink-Core**: ASTM/HL7 lab instrument integration.
+    Reads from physical devices (Sysmex, Roche, Mindray, generic), normalises results,
+    and forwards to `gula-backend` via `app/integration/gula_client.py`.
+    Start with: `docker compose --profile device-bridge up device-bridge`
+  - `services/lab`, `order`, `patient`, etc. — future-decomposed microservices shipped
+    as images via CI matrix; monolith is still the source of truth for business logic.
+- **`frontend-v2/`** — Rich React + Firebase UI (formerly `samertts/Front-end-`).
+  Contains citizen portal, Ministry Command Centre, predictive analytics, doctor/lab
+  dashboards. Firebase-backed (Firestore + Auth). Run: `cd frontend-v2 && npm install && npm run dev`
+- **`client/`** — Lightweight tRPC + React SPA connected to `gula-backend`.
+- **`frontend/`** — Static HTML PWA (offline-capable).
+- **`nhop-platform/`** — National Health Oversight Platform (separate FastAPI app on port 8100).
+  Owns the national citizen registry; GULA owns the per-lab LIMS view.
 - **`backend/services/`** and **`backend/core/`** (both with `api/` subdirs) are
   experimental stubs — avoid committing business logic there.
 
@@ -245,6 +262,10 @@ feedback loop before pushing.
 | `config/haproxy/haproxy.cfg` | Load balancer for `make scale` |
 | `config/prometheus/` | Scrape config + alerting rules |
 | `config/grafana/` | Provisioned dashboards |
+| `services/device_bridge/` | LabLink-Core — ASTM/HL7 device integration |
+| `services/device_bridge/app/integration/gula_client.py` | Device bridge → GULA API client |
+| `frontend-v2/src/` | Rich React + Firebase frontend (citizen/doctor/lab/ministry portals) |
+| `nhop-platform/` | National citizen registry companion service |
 
 ## Self-Audit Workflow
 
