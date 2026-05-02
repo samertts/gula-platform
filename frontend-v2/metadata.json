@@ -1,0 +1,13 @@
+{
+  "name": "Remix: GULA Medical \u0026 LIMS Infrastructure",
+  "description": "Enterprise-grade Decision Intelligence and LIMS platform. Transforms raw clinical data into actionable insights with predictive forecasting, real-time alert protocols, and an integrated execution work queue.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "AI-Assisted Diagnostics",
+    "Multi-tenant LIMS",
+    "HL7 Integration"
+  ]
+}

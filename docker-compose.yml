@@ -359,6 +359,39 @@ services:
       retries: 3
       start_period: 20s
 
+# ---------------------------------------------------------------------------
+  # DEVICE BRIDGE (LabLink-Core) — Lab instrument integration service
+  # Translates ASTM/HL7 device data → GULA REST API
+  # ---------------------------------------------------------------------------
+  device-bridge:
+    build:
+      context: ./services/device_bridge
+      dockerfile: Dockerfile
+    container_name: gula-device-bridge
+    restart: unless-stopped
+    mem_limit: 256m
+    mem_reservation: 64m
+    cpus: "0.5"
+    environment:
+      GULA_BACKEND_URL: "http://gula-backend:8000"
+      LABLINK_API_KEY: "${LABLINK_API_KEY:-}"
+      DEPLOYMENT_MODE: "${LABLINK_MODE:-hybrid}"
+    expose:
+      - "8200"
+    depends_on:
+      gula-backend:
+        condition: service_healthy
+    networks:
+      - gula-net
+    profiles:
+      - device-bridge
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8200/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
 # =============================================================================
 # VOLUMES
 # =============================================================================

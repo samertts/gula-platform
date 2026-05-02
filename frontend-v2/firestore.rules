@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. GLOBAL HELPERS
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    function getUserData(uid) { 
+      return get(/databases/$(database)/documents/users/$(uid)).data; 
+    }
+
+    function isMasterAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'samertts2@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'master_admin')
+      ); 
+    }
+
+    function hasRole(role) { 
+      return isSignedIn() && (
+        isMasterAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == role)
+      );
+    }
+
+    // 2. VALIDATION HELPERS
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['timestamp', 'userId', 'action', 'resource', 'resourceId', 'metadata']) &&
+             data.userId == request.auth.uid &&
+             data.timestamp == request.time;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['type', 'status', 'priority', 'entityId', 'createdAt']) &&
+             data.createdAt == request.time;
+    }
+
+    // 3. SECURITY MATCH BLOCKS
+    match /{document=**} { 
+      allow read, write: if isMasterAdmin(); 
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isMasterAdmin());
+      allow list: if isMasterAdmin() || hasRole('admin') || hasRole('ministry_admin');
+      allow create: if isSignedIn();
+      allow update: if isMasterAdmin() || (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'specialty', 'wing', 'updatedAt', 'phone', 'nationalId', 'verified']));
+    }
+
+    match /audit_logs/{logId} {
+      allow list, get: if isMasterAdmin() || hasRole('auditor') || hasRole('regulator') || hasRole('ministry_admin') || hasRole('ministry_inspector');
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    match /events/{eventId} {
+      allow list, get: if isSignedIn() && (
+        resource.data.recipientId == request.auth.uid || 
+        resource.data.recipientId == 'all' || 
+        resource.data.senderId == request.auth.uid ||
+        isMasterAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.recipientId == request.auth.uid || isMasterAdmin());
+      allow delete: if isMasterAdmin();
+    }
+
+    match /consents/{consentId} {
+      allow list, get: if isSignedIn() && (resource.data.citizenId == request.auth.uid || resource.data.physicianId == request.auth.uid || isMasterAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.citizenId == request.auth.uid || isMasterAdmin());
+      allow delete: if isMasterAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn(); // Broad read for collaborators, refine if needed
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isMasterAdmin();
+    }
+
+    match /tenants/{tenantId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterAdmin();
+    }
+
+    match /patients/{patientId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /lab_results/{resultId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+  }
+}
