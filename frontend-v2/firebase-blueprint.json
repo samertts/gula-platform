@@ -1,0 +1,143 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "System user with organizational link",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "entityId": { "type": "string", "description": "The Lab or Clinical Center ID the user belongs to" },
+        "displayName": { "type": "string" },
+        "specialty": { "type": "string" },
+        "identityLevel": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "Immutable record of all system actions",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" },
+        "action": { "type": "string" },
+        "resource": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "changes": { "type": "object" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "Tenant": {
+      "title": "Organizational Tenant",
+      "description": "A lab, hospital, or clinic entity",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["hospital", "lab", "clinic"] },
+        "status": { "type": "string" },
+        "apiKey": { "type": "string", "description": "For external integrations" }
+      },
+      "required": ["name", "type"]
+    },
+    "Consent": {
+      "title": "Data Consent Record",
+      "description": "Patient authorization for data access",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "grantedTo": { "type": "string", "description": "User or Entity ID" },
+        "accessLevel": { "type": "string" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientId", "grantedTo"]
+    },
+    "Patient": {
+      "title": "Patient Record",
+      "description": "Basic demographic info for a patient",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "number" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "bloodType": { "type": "string" },
+        "ownerId": { "type": "string", "description": "User who registered the patient" },
+        "citizenId": { "type": "string", "description": "Linked Citizen User ID" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "age", "ownerId"]
+    },
+    "LabResult": {
+      "title": "Lab Result",
+      "description": "Diagnostic laboratory telemetry",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "testName": { "type": "string" },
+        "value": { "type": "string" },
+        "unit": { "type": "string" },
+        "range": { "type": "string" },
+        "status": { "type": "string", "enum": ["normal", "warning", "critical"] },
+        "flag": { "type": "string", "enum": ["N", "H", "L"] },
+        "ownerId": { "type": "string", "description": "Creator of result" },
+        "verifiedBy": { "type": "string", "description": "Pathologist UID who verified result" },
+        "validatedAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string", "enum": ["device", "manual"] },
+        "deviceId": { "type": "string" }
+      },
+      "required": ["patientId", "testName", "value", "status", "ownerId"]
+    },
+    "LabTask": {
+      "title": "Lab Task",
+      "description": "Operational unit in the Lab work queue",
+      "type": "object",
+      "properties": {
+        "sampleId": { "type": "string" },
+        "testName": { "type": "string" },
+        "priority": { "type": "string", "enum": ["routine", "urgent", "stat"] },
+        "status": { "type": "string", "enum": ["unassigned", "claimed", "in-progress", "review", "completed"] },
+        "owner": { "type": "string" },
+        "section": { "type": "string" },
+        "slaDeadline": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Consent": {
+      "title": "User Consent",
+      "description": "Data access permissions granted by citizens",
+      "type": "object",
+      "properties": {
+        "citizenId": { "type": "string" },
+        "providerId": { "type": "string" },
+        "scope": { "type": "string", "enum": ["full", "limited", "emergency"] },
+        "expiry": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "revoked", "expired"] }
+      }
+    },
+    "GulaEvent": {
+      "title": "System Event",
+      "description": "Telemetry and notifications",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "recipientId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "wing": { "type": "string" },
+        "read": { "type": "boolean" },
+        "payload": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": { "schema": "User", "description": "Profiles for all user wings" },
+    "patients/{patientId}": { "schema": "Patient", "description": "Core patient demographic records" },
+    "lab_results/{resultId}": { "schema": "LabResult", "description": "Centralized diagnostic telemetry" },
+    "lab_tasks/{taskId}": { "schema": "LabTask", "description": "Work queue management" },
+    "audit_logs/{logId}": { "schema": "AuditLog", "description": "Immutable system logs" },
+    "consents/{consentId}": { "schema": "Consent", "description": "Trust registry for data sharing" },
+    "events/{eventId}": { "schema": "GulaEvent", "description": "Cross-wing communication relay" }
+  }
+}
