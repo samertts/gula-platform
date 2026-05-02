@@ -1,498 +1,397 @@
-# GULA Platform - Production Deployment Guide
+# GULA Platform — Production Deployment
 
-## 🚀 Production-Grade System Architecture
+Step-by-step runbook for deploying the GULA medical-laboratory SaaS on a fresh
+Linux VPS. Aligned with the actual stack (FastAPI + PostgreSQL 16 + Redis 7),
+the existing `Makefile`, `setup-production.sh`, the CI/CD pipeline in
+`.github/workflows/`, and the nginx reverse-proxy config in
+`config/nginx/system/`.
 
-This guide provides step-by-step instructions to deploy GULA Platform as a true production-grade system with enterprise-level security, monitoring, and auto-healing capabilities.
-
----
-
-## Phase 1: Pre-Deployment Verification
-
-### 1.1 Security Checklist
-
-```bash
-# Generate secure keys
-JWT_SECRET=$(openssl rand -hex 32)
-ENCRYPTION_KEY=$(openssl rand -hex 32)
-REDIS_PASSWORD=$(openssl rand -hex 16)
-DB_PASSWORD=$(openssl rand -hex 16)
-
-echo "JWT_SECRET=$JWT_SECRET" >> .env.production
-echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" >> .env.production
-echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> .env.production
-```
-
-### 1.2 Database Verification
-
-```bash
-# Test database connection
-mysql -h localhost -u gula_user -p$DB_PASSWORD -e "SELECT 1;"
-
-# Create required indexes
-mysql -h localhost -u gula_user -p$DB_PASSWORD gula_platform << 'EOF'
-CREATE INDEX idx_patients_national_id ON patients(national_id);
-CREATE INDEX idx_samples_patient_id ON samples(patient_id);
-CREATE INDEX idx_samples_status ON samples(status);
-CREATE INDEX idx_results_sample_id ON results(sample_id);
-CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_timestamp ON audit_logs(created_at);
-EOF
-```
-
-### 1.3 Redis Verification
-
-```bash
-# Test Redis connection
-redis-cli -a $REDIS_PASSWORD ping
-
-# Should return: PONG
-```
+> **Stack note** — The platform uses **PostgreSQL 16 exclusively**. MySQL is
+> not supported. Ignore any older docs that mention `mysql` / `mysqldump` —
+> they predate the migration.
 
 ---
 
-## Phase 2: Environment Configuration
+## Topology
 
-### 2.1 Production .env File
-
-```bash
-# Copy template
-cp .env.example .env.production
-
-# Edit with production values
-nano .env.production
+```
+Internet
+   │
+   ▼
+Host nginx (TLS, port 80/443)        ◄── system service, /etc/nginx
+   │
+   ▼
+api-gateway  (Docker, 127.0.0.1:8080) ◄── reverse proxy + rate limit
+   │
+   ▼
+gula-backend (FastAPI, expose 8000)   ◄── gunicorn + uvicorn workers
+   │
+   ├─► postgres (postgres:16-alpine, expose 5432)
+   └─► redis    (redis:7-alpine,    expose 6379)
 ```
 
-**Critical settings:**
+The backend never binds a public port. All traffic enters through host nginx
+→ Docker api-gateway → backend. See `docker-compose.yml`.
+
+---
+
+## Phase 1 — Provision the VPS
+
+Minimum viable host:
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| OS       | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| vCPU     | 2 | 4 |
+| RAM      | 4 GB | 8 GB |
+| Disk     | 40 GB SSD | 80 GB SSD |
+| Network  | Public IPv4 + DNS A record | + IPv6 |
+
+```bash
+# As root, on the VPS
+apt update && apt upgrade -y
+apt install -y docker.io docker-compose-plugin git nginx certbot \
+                python3-certbot-nginx ufw fail2ban
+systemctl enable --now docker
+
+# Firewall
+ufw allow OpenSSH
+ufw allow 'Nginx Full'
+ufw --force enable
+
+# Create deploy user (do NOT deploy as root)
+adduser --disabled-password --gecos "" samertts
+usermod -aG docker,sudo samertts
+mkdir -p /home/samertts/.ssh
+# Paste the deploy key into authorized_keys, chown samertts:samertts, chmod 600
+```
+
+---
+
+## Phase 2 — Clone & configure
+
+```bash
+sudo -iu samertts
+git clone https://github.com/samertts/gula-platform.git
+cd gula-platform
+
+# Generate strong secrets in one shot
+make secrets-gen >> .env          # appends SECRET_KEY, ENCRYPTION_KEY, etc.
+# OR use the dedicated script that writes a complete .env:
+bash scripts/generate-launch-secrets.sh
+```
+
+Then open `.env` and set:
 
 ```env
-NODE_ENV=production
+ENV=production
 DEBUG=false
-LOG_LEVEL=info
+LOG_LEVEL=warning
 
-# Database
-DATABASE_URL=mysql://gula_user:$DB_PASSWORD@db:3306/gula_platform
-DB_POOL_SIZE=5
-DB_MAX_OVERFLOW=5
+BASE_URL=https://api.gula.iq            # your domain
+CORS_ORIGINS=https://gula.iq,https://www.gula.iq
+ENABLE_API_DOCS=false                   # /docs is admin-gated in prod anyway
 
-# Redis
-REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=$REDIS_PASSWORD
+POSTGRES_PASSWORD=<from secrets-gen>
+DATABASE_URL=postgresql://postgres:<same-password>@postgres:5432/labdb
+REDIS_PASSWORD=<from secrets-gen>
+REDIS_URL=redis://:<same-password>@redis:6379
 
-# Security
-JWT_SECRET=$JWT_SECRET
-ENCRYPTION_KEY=$ENCRYPTION_KEY
+SECRET_KEY=<from secrets-gen>           # JWT signing
+REFRESH_TOKEN_SECRET=<DIFFERENT value>  # MUST differ from SECRET_KEY
+ENCRYPTION_KEY=<Fernet key>             # never change after first data write
+NID_HMAC_KEY=<from secrets-gen>         # never change after first patient
+DEVICE_HMAC_KEY=<from secrets-gen>
 
-# CORS (STRICT)
-CORS_ORIGINS=https://gula-platform.org
+GULA_ADMIN_EMAIL=admin@gula.iq
+GULA_ADMIN_PASSWORD=<strong, ≥20 chars>
 
-# Rate Limiting
-RATE_LIMIT_PER_IP=50
-RATE_LIMIT_PER_USER=100
-RATE_LIMIT_LOGIN=5
+TZ=Asia/Baghdad
 ```
+
+`config.py` hard-fails on startup if any of these are missing or match a
+known weak pattern — that's a feature, not a bug.
+
+`.env.example` is the source-of-truth template; if you add a new variable,
+update it in the same PR.
 
 ---
 
-## Phase 3: Health Checks Setup
-
-### 3.1 Implement Health Endpoint
-
-```typescript
-// server/routers.ts - Add health check route
-router({
-  health: publicProcedure.query(async () => {
-    const health = await healthChecker.performHealthCheck();
-    return health;
-  }),
-});
-```
-
-### 3.2 Configure Health Monitoring
+## Phase 3 — Bring up the stack
 
 ```bash
-# Test health endpoint
-curl http://localhost:3000/api/health
-
-# Expected response:
-{
-  "status": "healthy",
-  "checks": {
-    "database": { "status": "ok", "responseTime": 45 },
-    "redis": { "status": "ok", "responseTime": 12 },
-    "memory": { "status": "ok" },
-    "uptime": { "status": "ok" }
-  }
-}
+make ci          # syntax-gate + lint + docker build (locally — fast feedback)
+make up          # docker compose up -d + waits for /health/ready
+make health-deep # full diagnostic: GREEN / YELLOW / RED grade
 ```
+
+Expected on success:
+
+```
+gula-postgres    healthy
+gula-redis       healthy
+gula-backend     healthy
+api-gateway      healthy
+Grade: GREEN
+```
+
+If `make health-deep` returns RED, check `make logs-backend` first — the
+startup guard prints a single line explaining exactly which check failed
+(missing secret, DB unreachable, migration drift, etc.).
 
 ---
 
-## Phase 4: Structured Logging Setup
+## Phase 4 — TLS termination (host nginx)
 
-### 4.1 Configure JSON Logging
-
-```typescript
-// All logs are now structured JSON with trace IDs
-structuredLogger.info('Application started', {
-  version: '1.0.0',
-  environment: 'production',
-});
-```
-
-### 4.2 Log Aggregation
+`config/nginx/system/gula-platform-http.conf` is the bootstrap HTTP-only
+config. The deploy script copies it into `/etc/nginx/sites-available/` on
+every push. To enable HTTPS:
 
 ```bash
-# View logs with trace IDs
-docker-compose logs -f backend | grep "traceId"
+# Point your DNS A record at the VPS first, then:
+sudo bash scripts/setup-https.sh api.gula.iq
+```
 
-# Filter by log level
-docker-compose logs backend | grep '"level":"error"'
+This script:
+
+1. Confirms the domain resolves to this host
+2. Runs `certbot --nginx -d api.gula.iq --redirect`
+3. Swaps the active nginx config to the SSL-enabled variant
+4. Sets up the renewal timer (`systemctl status certbot.timer`)
+
+Verify:
+
+```bash
+curl -I https://api.gula.iq/health
+# HTTP/2 200
+# strict-transport-security: max-age=31536000
 ```
 
 ---
 
-## Phase 5: Rate Limiting Configuration
+## Phase 5 — CI/CD
 
-### 5.1 Multi-Tier Rate Limiting
+`.github/workflows/ci.yml` runs on every push (syntax-gate, migrations,
+smoke test, pytest, security scan, image build to GHCR).
 
-```typescript
-// Automatically enforced in all endpoints
-const rateLimitCheck = advancedRateLimiter.checkAllLimits(
-  req,
-  userId,
-  endpoint
-);
+`.github/workflows/deploy.yml` runs on pushes to `main`:
 
-if (rateLimitCheck.limited) {
-  return res.status(429).json({
-    error: rateLimitCheck.reason,
-    remaining: rateLimitCheck.remaining,
-  });
-}
-```
+1. Resolves the GHCR image tag (short SHA)
+2. SSHs to `${SERVER_HOST}` as `${SERVER_USER}` using `${SERVER_SSH_KEY}`
+3. `git fetch origin main && git reset --hard origin/main` (preserving `.env`)
+4. Auto-fills any missing secrets in `.env`
+5. Pulls the new image, `docker compose up -d --remove-orphans`
+6. Waits up to 3 minutes for `http://127.0.0.1:8080/health` to respond
+7. **Rolls back to the previous commit** if the health check fails
 
-### 5.2 Rate Limit Tiers
+Required GitHub Secrets:
 
-| Tier | Limit | Window |
-|------|-------|--------|
-| Per IP | 50 req/min | 1 minute |
-| Per User | 100 req/min | 1 minute |
-| Per Endpoint | 1000 req/min | 1 minute |
-| Login Attempts | 5 req/min | 1 minute |
+| Secret | Value |
+|--------|-------|
+| `SERVER_HOST` | `1.2.3.4` (VPS IPv4) |
+| `SERVER_USER` | `samertts` (deploy user) |
+| `SERVER_SSH_KEY` | full Ed25519 private key |
+
+Manual deploys: `gh workflow run deploy.yml -f image_tag=<sha>`.
 
 ---
 
-## Phase 6: Smart Caching Setup
+## Phase 6 — Backups
 
-### 6.1 Cache Configuration
+```bash
+# Manual snapshot (gzipped pg_dump → ./backups/gula_<ts>.sql.gz)
+make backup
 
-```typescript
-// Set cache with TTL and tags
-smartCache.set(
-  'patients:list',
-  patientsList,
-  3600000, // 1 hour TTL
-  ['patients', 'list'] // Tags for invalidation
-);
-
-// Invalidate by tag when data changes
-smartCache.invalidateByTag('patients');
+# Verify a backup is restorable on a scratch DB
+bash scripts/backup-verification.sh ./backups/gula_<ts>.sql.gz
 ```
 
-### 6.2 Cache Invalidation Strategy
-
-- **TTL-based**: Automatic expiration after set time
-- **Tag-based**: Invalidate related entries
-- **Pattern-based**: Invalidate by regex pattern
-- **Smart**: Combine TTL + LRU eviction
-
----
-
-## Phase 7: Database Optimization
-
-### 7.1 Connection Pooling
+For automated nightly backups, set in `.env`:
 
 ```env
-DB_POOL_SIZE=5
-DB_MAX_OVERFLOW=5
-DB_POOL_IDLE_TIMEOUT=900
-DB_POOL_CONNECTION_TIMEOUT=30
+BACKUP_ENABLED=true
+BACKUP_SCHEDULE=0 2 * * *      # 02:00 Asia/Baghdad
+BACKUP_RETENTION_DAYS=30
 ```
 
-### 7.2 Query Optimization
+The `gula-backup` sidecar in `docker-compose.full.yml` runs
+`scripts/backup.sh` on the schedule; old archives past
+`BACKUP_RETENTION_DAYS` are pruned automatically.
 
-```typescript
-// Use indexes effectively
-const patients = await db.select()
-  .from(patients)
-  .where(eq(patients.national_id, nationalId))
-  .limit(1);
-
-// Avoid N+1 queries
-const samplesWithResults = await db.select()
-  .from(samples)
-  .leftJoin(results, eq(samples.id, results.sample_id))
-  .where(eq(samples.patient_id, patientId));
-```
+Off-host copy (recommended): rsync `./backups/` to a separate object store
+nightly via cron.
 
 ---
 
-## Phase 8: Backup & Recovery
-
-### 8.1 Automated Backups
+## Phase 7 — Monitoring (optional)
 
 ```bash
-# Create backup script
-cat > /usr/local/bin/backup-gula.sh << 'EOF'
-#!/bin/bash
-BACKUP_DIR="/backups/gula"
-DATE=$(date +%Y%m%d_%H%M%S)
-
-# Database backup
-mysqldump -u gula_user -p$DB_PASSWORD gula_platform | \
-  gzip > $BACKUP_DIR/db_$DATE.sql.gz
-
-# Verify backup
-gunzip -t $BACKUP_DIR/db_$DATE.sql.gz && echo "Backup verified"
-
-# Keep only last 30 days
-find $BACKUP_DIR -mtime +30 -delete
-EOF
-
-chmod +x /usr/local/bin/backup-gula.sh
-
-# Schedule daily backup
-echo "0 2 * * * /usr/local/bin/backup-gula.sh" | crontab -
+make metrics-token       # writes config/prometheus/metrics_token
+make monitoring          # starts prometheus + grafana on the monitoring profile
 ```
 
-### 8.2 Backup Verification
+Both bind to `127.0.0.1` only — reach them via SSH tunnel:
 
 ```bash
-# Test restore
-LATEST_BACKUP=$(ls -t /backups/gula/db_*.sql.gz | head -1)
-gunzip -c $LATEST_BACKUP | mysql -u gula_user -p$DB_PASSWORD gula_platform_test
+ssh -L 9090:127.0.0.1:9090 -L 3001:127.0.0.1:3000 samertts@api.gula.iq
+# then http://localhost:9090 (Prometheus) and http://localhost:3001 (Grafana)
 ```
+
+Grafana is provisioned from `config/grafana/`; dashboards reload on container
+start. Default login is `admin` + `${GRAFANA_PASSWORD}` from `.env`.
+
+For external alerting set `ALERT_WEBHOOK_URL` in `.env` (Telegram / Discord
+/ Slack). The `_health_alert_loop` watchdog in `backend/app/main.py` fires
+on GREEN→YELLOW→RED transitions and re-fires every 5 min while RED.
 
 ---
 
-## Phase 9: Security Hardening
+## Phase 8 — Horizontal scaling
 
-### 9.1 Security Headers
-
-```nginx
-# In nginx.conf
-add_header Strict-Transport-Security "max-age=31536000" always;
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-XSS-Protection "1; mode=block" always;
-add_header Content-Security-Policy "default-src 'self'" always;
+```bash
+make scale REPLICAS=5    # HAProxy + 5 backend replicas
+open http://localhost:8404/stats   # via SSH tunnel
 ```
 
-### 9.2 CORS Configuration
-
-```typescript
-// Strict CORS
-const corsOptions = {
-  origin: ['https://gula-platform.org'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-};
-```
+Pool budget: `WEB_CONCURRENCY × (DB_POOL_SIZE + DB_MAX_OVERFLOW) <
+postgres.max_connections`. With defaults (`2 × (3 + 7) = 20` per replica)
+five replicas use 100 connections — bump `max_connections` in
+`config/postgres/postgresql.conf` if you exceed that.
 
 ---
 
-## Phase 10: Monitoring & Alerting
+## Phase 9 — Local / on-prem mode
 
-### 10.1 System Monitoring
+For laboratories without reliable internet, the same stack runs on a
+mini-PC inside the lab. The only differences from cloud mode:
+
+| Setting | Cloud | Local |
+|---------|-------|-------|
+| `BASE_URL` | `https://api.gula.iq` | `http://192.168.1.10:8000` |
+| `CORS_ORIGINS` | public domain | `http://192.168.1.10` |
+| TLS | Let's Encrypt | self-signed (or none on LAN) |
+| `DEBUG` | `false` | `false` (still) |
+
+The mobile and web clients pick the base URL at runtime (see Phase 10) — no
+code changes are required to switch modes.
+
+For lab-instrument integration (ASTM/HL7), enable the device-bridge profile:
 
 ```bash
-# Monitor system resources
-watch -n 5 'docker stats --no-stream'
-
-# Monitor logs
-docker-compose logs -f backend --tail 100
-
-# Check health
-curl http://localhost:3000/api/health | jq
+docker compose --profile device-bridge up -d device-bridge
 ```
 
-### 10.2 Alert Configuration
-
-```env
-SENTRY_DSN=your-sentry-dsn
-DATADOG_API_KEY=your-datadog-key
-ALERT_EMAIL=admin@gula-platform.org
-```
+See `services/device_bridge/README.md`.
 
 ---
 
-## Phase 11: Load Testing
+## Phase 10 — Mobile & web clients
 
-### 11.1 Performance Testing
+The Flutter mobile app and `frontend-v2/` React app talk to the **same
+public API** — never directly to the database.
 
-```bash
-# Install Apache Bench
-apt-get install apache2-utils
+Flutter base-URL pattern:
 
-# Load test
-ab -n 1000 -c 50 http://localhost:3000/api/health
-
-# Expected results:
-# Requests per second: > 100
-# Failed requests: 0
-# Response time: < 200ms
+```dart
+const baseUrl = String.fromEnvironment(
+  'API_URL',
+  defaultValue: 'https://api.gula.iq',
+);
+final dio = Dio(BaseOptions(
+  baseUrl: baseUrl,
+  headers: {'Authorization': 'Bearer $jwt'},
+));
 ```
 
-### 11.2 Stress Testing
+Build for production:
 
 ```bash
-# Install Apache JMeter or use wrk
-wrk -t4 -c100 -d30s http://localhost:3000/api/health
-
-# Monitor during test
-docker stats
+flutter build appbundle --release --dart-define=API_URL=https://api.gula.iq
+flutter build ios       --release --dart-define=API_URL=https://api.gula.iq
 ```
+
+Build for an offline-capable lab install:
+
+```bash
+flutter build apk --release --dart-define=API_URL=http://192.168.1.10:8000
+```
+
+App-store requirements (both stores reject without these):
+
+- HTTPS in production (no plaintext `http://` in the public build)
+- Privacy policy URL (citizen-data implications — required for healthcare apps)
+- Justified Android permissions (camera = barcode scan, location = lab pickup,
+  notifications = result-ready alerts)
+- Apple: 2 FA on the developer account, an iOS-13-or-newer minimum target
 
 ---
 
-## Phase 12: Deployment
+## Production readiness checklist
 
-### 12.1 Build Production Image
+Run through this before announcing the deployment:
 
-```bash
-docker-compose -f docker-compose.yml build --no-cache
-```
-
-### 12.2 Start Services
-
-```bash
-docker-compose -f docker-compose.yml up -d
-
-# Verify all services
-docker-compose ps
-
-# Should show:
-# backend      - healthy
-# db           - healthy
-# redis        - healthy
-# nginx        - healthy
-```
-
-### 12.3 Verify Deployment
-
-```bash
-# Check application
-curl https://gula-platform.org
-
-# Check health
-curl https://gula-platform.org/api/health
-
-# Check logs
-docker-compose logs backend --tail 50
-```
+- [ ] `make ci` passes locally
+- [ ] `.env` has zero `CHANGE_ME` markers (`grep CHANGE_ME .env` returns nothing)
+- [ ] `make health-deep` reports `Grade: GREEN`
+- [ ] `curl -I https://<domain>/health` returns 200 + HSTS header
+- [ ] `/docs` is gated (returns 401 without admin JWT)
+- [ ] `make backup` succeeds and `scripts/backup-verification.sh` confirms restore
+- [ ] `gh secret list` shows `SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`
+- [ ] Push a no-op commit to `main` and watch `deploy.yml` go green end-to-end
+- [ ] DNS has a low-TTL A record (300 s) to enable fast failover
+- [ ] Admin password rotated from the bootstrap value
+- [ ] `ALERT_WEBHOOK_URL` set and a test alert reaches the on-call channel
 
 ---
 
-## Phase 13: Post-Deployment Verification
+## Troubleshooting
 
-### 13.1 Security Verification
+**`make up` hangs at "waiting for /health/ready"**
+Run `make logs-backend`. The startup guard prints exactly one line per
+failed check. Most common causes: missing secret in `.env`, Postgres
+volume from a previous version that's incompatible with the current
+schema (run `make backup && docker volume rm gula-platform_pgdata` only as
+a last resort, after confirming the backup), or `migrations/` divergence
+(`docker compose run --rm gula-backend alembic upgrade head`).
 
-```bash
-# Check SSL certificate
-curl -I https://gula-platform.org
+**Deploy succeeds but `/health` returns 503**
+The readiness middleware blocks every non-whitelisted path until the
+startup guard confirms DB reachability. Hit `/health/status` instead — it
+bypasses the readiness gate and explains why startup hasn't completed.
 
-# Check security headers
-curl -I https://gula-platform.org | grep -i "strict-transport"
+**High DB connection count**
+Check `WEB_CONCURRENCY × (DB_POOL_SIZE + DB_MAX_OVERFLOW) <
+postgres.max_connections` (default 100). Lower `DB_MAX_OVERFLOW` or raise
+`max_connections` in `config/postgres/postgresql.conf`.
 
-# Test rate limiting
-for i in {1..60}; do curl http://localhost:3000/api/health; done
-```
+**Container OOM-killed**
+`docker stats` to confirm. Bump `BACKEND_MEM_LIMIT` / `PG_MEM_LIMIT` in
+`.env`, then `make restart`.
 
-### 13.2 Performance Verification
-
-```bash
-# Check response times
-curl -w "@curl-format.txt" -o /dev/null -s https://gula-platform.org
-
-# Check cache hit rate
-docker-compose logs backend | grep "X-Cache-Status"
-
-# Check database performance
-docker-compose logs backend | grep "duration"
-```
-
----
-
-## 🎯 Production Readiness Checklist
-
-- [x] Security keys generated and stored securely
-- [x] Database indexes created
-- [x] Redis configured and tested
-- [x] Health checks implemented
-- [x] Structured logging configured
-- [x] Rate limiting enabled
-- [x] Smart caching configured
-- [x] Database pooling optimized
-- [x] Backups automated and verified
-- [x] Security headers configured
-- [x] CORS properly configured
-- [x] Monitoring and alerting set up
-- [x] Load testing completed
-- [x] SSL/TLS configured
-- [x] All services deployed and healthy
+**Deploy rolled back automatically**
+`deploy.yml` rolls back on health-check failure. SSH in, `git log -3` to
+see which commit you're on, then `make logs-backend` on the rolled-back
+build to find the regression. Fix on a branch, re-merge.
 
 ---
 
-## 📊 Performance Targets
+## Reference
 
-| Metric | Target | Status |
-|--------|--------|--------|
-| API Response Time | < 200ms | ✅ |
-| Database Query Time | < 100ms | ✅ |
-| Cache Hit Rate | > 80% | ✅ |
-| Uptime | > 99.9% | ✅ |
-| Error Rate | < 0.1% | ✅ |
-
----
-
-## 🚨 Troubleshooting
-
-### Database Connection Issues
-
-```bash
-# Check connection
-docker-compose exec db mysql -u gula_user -p$DB_PASSWORD -e "SELECT 1;"
-
-# Check logs
-docker-compose logs db
-```
-
-### Redis Connection Issues
-
-```bash
-# Check connection
-docker-compose exec redis redis-cli ping
-
-# Check logs
-docker-compose logs redis
-```
-
-### High Memory Usage
-
-```bash
-# Check memory
-docker stats
-
-# Restart service
-docker-compose restart backend
-```
-
----
-
-## 📚 References
-
-- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
-- [Nginx Performance Tuning](https://nginx.org/en/docs/)
-- [MySQL Performance Optimization](https://dev.mysql.com/doc/refman/8.0/en/optimization.html)
-- [Redis Best Practices](https://redis.io/topics/best-practices)
+| Path | Purpose |
+|------|---------|
+| `Makefile` | Every operational command — `make help` lists them |
+| `setup-production.sh` | One-shot bootstrap for a fresh VPS |
+| `deploy.sh` | Manual deploy from the VPS itself |
+| `scripts/generate-launch-secrets.sh` | Writes a complete `.env` |
+| `scripts/setup-https.sh` | Certbot + nginx SSL switch-over |
+| `scripts/backup.sh` / `backup-verification.sh` | DB snapshot + restore test |
+| `scripts/dr_recovery.sh` | Disaster-recovery playbook |
+| `scripts/preflight.sh` | Pre-deploy sanity check |
+| `config/nginx/system/` | Host-level nginx (HTTP-only and SSL variants) |
+| `config/postgres/postgresql.conf` | DB tuning |
+| `config/haproxy/haproxy.cfg` | Load balancer (used by `make scale`) |
+| `config/prometheus/` | Scrape config + alert rules |
+| `config/grafana/` | Provisioned dashboards |
+| `.github/workflows/ci.yml` | CI: syntax + migrations + tests + security + build |
+| `.github/workflows/deploy.yml` | CD: pull + restart + health gate + auto-rollback |
+| `.github/workflows/blue-green-deploy.yml` | Zero-downtime release variant |
