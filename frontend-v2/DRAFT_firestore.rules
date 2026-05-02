@@ -1,0 +1,154 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================================
+    // PILLAR 3: PRIMITIVE DEFINITIONS & GLOBAL HELPERS
+    // ============================================================
+    
+    function isSignedIn() { return request.auth != null; }
+    function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // Identity-Based Access
+    function getUserData(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
+    function getRole() { return getUserData(request.auth.uid).role; }
+    function hasRole(role) { return isSignedIn() && getRole() == role; }
+    function isAdmin() { return hasRole('admin'); }
+    function isPhysician() { return hasRole('physician'); }
+    function isTechnician() { return hasRole('technician'); }
+    function isPathologist() { return hasRole('pathologist'); }
+    function isCitizen() { return hasRole('citizen'); }
+    
+    // ============================================================
+    // PILLAR 2: VALIDATION BLUEPRINTS (The "Anti-Update-Gap")
+    // ============================================================
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.role in ['physician', 'technician', 'pathologist', 'citizen'] &&
+             data.email is string && data.email.size() <= 100 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidPatient(data) {
+      return data.keys().hasAll(['name', 'age', 'ownerId', 'createdAt']) &&
+             data.name is string && data.name.size() <= 128 &&
+             data.age is number && data.age >= 0 && data.age < 120 &&
+             data.ownerId == request.auth.uid &&
+             data.createdAt == request.time;
+    }
+
+    function isValidLabResult(data) {
+      return data.keys().hasAll(['patientId', 'testName', 'value', 'status', 'ownerId', 'createdAt']) &&
+             data.testName is string && data.testName.size() <= 128 &&
+             data.value is string && data.value.size() <= 256 &&
+             data.status in ['normal', 'warning', 'critical'] &&
+             data.ownerId == request.auth.uid &&
+             data.createdAt == request.time;
+    }
+
+    function isValidConsent(data) {
+      return data.keys().hasAll(['citizenId', 'providerId', 'scope', 'status', 'createdAt']) &&
+             data.citizenId == request.auth.uid &&
+             data.scope in ['full', 'limited', 'emergency'] &&
+             data.status in ['active', 'revoked'] &&
+             data.createdAt == request.time;
+    }
+
+    // ============================================================
+    // PILLAR 0: GLOBAL SAFETY NET
+    // ============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // PILLAR 6 & 8: MATCH BLOCKS
+    // ============================================================
+
+    // USERS (PII Isolation)
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin(); // No blanket user searches
+      allow create: if isEmailVerified() && isValidUser(incoming()) && userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'specialty', 'identityLevel'])) ||
+        isAdmin()
+      );
+    }
+
+    // PATIENTS (PILLAR 1: Relational Sync)
+    match /patients/{patientId} {
+      allow get: if isSignedIn() && (
+        existing().ownerId == request.auth.uid || 
+        existing().citizenId == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid || 
+        resource.data.citizenId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isEmailVerified() && isValidPatient(incoming()) && isValidId(patientId);
+      allow update: if isSignedIn() && (
+        (existing().ownerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['age', 'address', 'phoneNumber'])) ||
+        isAdmin()
+      );
+    }
+
+    // LAB RESULTS (PILLAR 8: Secure Queries)
+    match /lab_results/{resultId} {
+      allow get: if isSignedIn() && (
+        existing().ownerId == request.auth.uid || 
+        existing().patientId == request.auth.uid || // Citizen access
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid || 
+        resource.data.patientId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if (isTechnician() || isPathologist() || isAdmin()) && 
+                    isEmailVerified() && isValidLabResult(incoming());
+      allow update: if (isPathologist() || isAdmin()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['verifiedBy', 'status', 'validatedAt']);
+    }
+
+    // LAB TASKS (Work Queue)
+    match /lab_tasks/{taskId} {
+      allow read: if (isTechnician() || isPathologist() || isAdmin());
+      allow create: if (isTechnician() || isAdmin()) && isEmailVerified();
+      allow update: if isSignedIn() && (
+        (isTechnician() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'owner'])) ||
+        isAdmin()
+      );
+    }
+
+    // CONSENTS (PILLAR 1: Identity & Consent)
+    match /consents/{consentId} {
+      allow read: if isSignedIn() && (
+        resource.data.citizenId == request.auth.uid || 
+        resource.data.providerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isCitizen() && isEmailVerified() && isValidConsent(incoming());
+      allow update: if isCitizen() && request.auth.uid == existing().citizenId && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['status', 'expiry', 'scope']);
+      allow delete: if isCitizen() && request.auth.uid == existing().citizenId;
+    }
+
+    // EVENTS
+    match /events/{eventId} {
+      allow get: if isSignedIn() && (resource.data.recipientId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.recipientId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn(); // Allow system services to emit
+      allow update: if isSignedIn() && request.auth.uid == existing().recipientId && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+    }
+  }
+}
