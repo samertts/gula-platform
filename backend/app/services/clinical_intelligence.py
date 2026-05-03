@@ -136,6 +136,128 @@ CLINICAL_PATTERNS = [
             r.get("triglycerides", 0) > 300
         ),
     },
+    # ─── 8 New Clinical Patterns ──────────────────────────────────────────────
+    {
+        "id": "acute_mi_risk",
+        "name": "Possible Acute Myocardial Infarction",
+        "name_ar": "نمط محتمل لاحتشاء عضلة القلب الحاد",
+        "severity": "critical",
+        "message": "Troponin and CK are both critically elevated — strong evidence of acute myocardial injury.",
+        "message_ar": "ارتفاع حرج في التروبونين والكرياتين كيناز — دليل قوي على احتشاء عضلة القلب الحاد.",
+        "action": "Emergency cardiac evaluation required immediately.",
+        "action_ar": "يلزم تقييم قلبي طارئ فوراً.",
+        "requires": ["troponin", "ck"],
+        "check": lambda r: (
+            r.get("troponin", 0) > 0.1 and
+            r.get("ck", 0) > 300
+        ),
+    },
+    {
+        "id": "acute_pancreatitis",
+        "name": "Possible Acute Pancreatitis",
+        "name_ar": "نمط محتمل لالتهاب البنكرياس الحاد",
+        "severity": "critical",
+        "message": "Both amylase and lipase are markedly elevated — acute pancreatitis is highly likely.",
+        "message_ar": "ارتفاع ملحوظ في الأميليز والليباز معاً — التهاب البنكرياس الحاد مرجّح بشدة.",
+        "action": "Urgent surgical/gastroenterology assessment required.",
+        "action_ar": "تلزم مشاورة جراحية أو هضمية عاجلة.",
+        "requires": ["amylase", "lipase"],
+        "check": lambda r: (
+            r.get("amylase", 0) > 200 and
+            r.get("lipase", 0) > 150
+        ),
+    },
+    {
+        "id": "iron_deficiency_anemia",
+        "name": "Iron Deficiency Anemia Pattern",
+        "name_ar": "نمط فقر الدم بنقص الحديد",
+        "severity": "warning",
+        "message": "Low hemoglobin combined with low ferritin — iron deficiency anemia pattern detected.",
+        "message_ar": "انخفاض الهيموغلوبين مع انخفاض الفيريتين — نمط فقر الدم بنقص الحديد.",
+        "action": "Iron profile evaluation and supplementation consult recommended.",
+        "action_ar": "يُوصى بتقييم مخزون الحديد والنظر في العلاج التكميلي.",
+        "requires": ["hemoglobin", "ferritin"],
+        "check": lambda r: (
+            r.get("hemoglobin", 99) < 11.0 and
+            r.get("ferritin", 99) < 15
+        ),
+    },
+    {
+        "id": "sepsis_inflammatory",
+        "name": "Sepsis — Inflammatory Marker Pattern",
+        "name_ar": "نمط التهابي مشير للإنتان",
+        "severity": "critical",
+        "message": "Markedly elevated CRP and procalcitonin — sepsis or severe bacterial infection.",
+        "message_ar": "ارتفاع ملحوظ في CRP والبروكالسيتونين — يُشير بقوة للإنتان أو عدوى بكتيرية شديدة.",
+        "action": "Immediate blood culture and antibiotics assessment required.",
+        "action_ar": "يلزم إجراء مزرعة دم فورية وتقييم المضادات الحيوية.",
+        "requires": ["crp", "procalcitonin"],
+        "check": lambda r: (
+            r.get("crp", 0) > 80 and
+            r.get("procalcitonin", 0) > 1.0
+        ),
+    },
+    {
+        "id": "coagulopathy_severe",
+        "name": "Severe Coagulopathy",
+        "name_ar": "اعتلال تخثر شديد",
+        "severity": "critical",
+        "message": "PT and INR are critically prolonged — major coagulation disorder.",
+        "message_ar": "زمن البروثرومبين و INR مطوّلان بشكل خطير — اضطراب تخثر حاد.",
+        "action": "Immediate haematology consultation and coagulation correction required.",
+        "action_ar": "تلزم استشارة أمراض الدم الفورية وتصحيح التخثر.",
+        "requires": ["pt", "inr"],
+        "check": lambda r: (
+            r.get("pt", 0) > 25 and
+            r.get("inr", 0) > 3.0
+        ),
+    },
+    {
+        "id": "hepatic_failure_risk",
+        "name": "Possible Hepatic Failure",
+        "name_ar": "نمط محتمل لفشل الكبد",
+        "severity": "critical",
+        "message": "Markedly elevated liver enzymes with elevated bilirubin and coagulopathy — possible hepatic failure.",
+        "message_ar": "ارتفاع ملحوظ في إنزيمات الكبد مع ارتفاع البيليروبين واضطراب التخثر — فشل كبدي محتمل.",
+        "action": "Urgent hepatology assessment and liver function evaluation required.",
+        "action_ar": "تلزم مراجعة طارئة لطبيب الكبد وتقييم وظائفه.",
+        "requires": ["alt", "bilirubin_total"],
+        "check": lambda r: (
+            r.get("alt", 0) > 300 and
+            r.get("bilirubin_total", 0) > 5.0
+        ),
+    },
+    {
+        "id": "metabolic_syndrome_risk",
+        "name": "Metabolic Syndrome Risk Pattern",
+        "name_ar": "نمط مخاطرة بالمتلازمة الاستقلابية",
+        "severity": "warning",
+        "message": "Elevated glucose, HbA1c, and triglycerides suggest metabolic syndrome.",
+        "message_ar": "ارتفاع السكر وHbA1c والدهون الثلاثية يُشير إلى المتلازمة الاستقلابية.",
+        "action": "Comprehensive metabolic evaluation and lifestyle modification recommended.",
+        "action_ar": "يُوصى بتقييم استقلابي شامل وتعديل نمط الحياة.",
+        "requires": ["glucose", "hba1c", "triglycerides"],
+        "check": lambda r: (
+            r.get("glucose", 0) > 110 and
+            r.get("hba1c", 0) > 6.0 and
+            r.get("triglycerides", 0) > 200
+        ),
+    },
+    {
+        "id": "vitamin_b12_folate_deficiency",
+        "name": "B12 / Folate Deficiency Pattern",
+        "name_ar": "نمط نقص فيتامين ب12 / حمض الفوليك",
+        "severity": "warning",
+        "message": "Both Vitamin B12 and folate are low — risk of megaloblastic anemia and neurological complications.",
+        "message_ar": "انخفاض فيتامين ب12 والفولات معاً — خطر فقر الدم الضخم الكريات ومضاعفات عصبية.",
+        "action": "B12 and folic acid supplementation and dietary assessment recommended.",
+        "action_ar": "يُوصى بمكملات ب12 وحمض الفوليك وتقييم النظام الغذائي.",
+        "requires": ["vitamin_b12", "folate"],
+        "check": lambda r: (
+            r.get("vitamin_b12", 999) < 200 and
+            r.get("folate", 999) < 3.5
+        ),
+    },
 ]
 
 

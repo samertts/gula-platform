@@ -13,20 +13,55 @@ from ..security.dependencies import get_current_user
 router = APIRouter(prefix="/alerts", tags=["critical-alerts"])
 
 # Critical value thresholds (life-threatening ranges requiring immediate action)
+# Sources: AACC critical value guidelines, ISLAB recommendations
 CRITICAL_THRESHOLDS = {
+    # ─── Chemistry ─────────────────────────────────────────────────────────────
     "glucose": {"critical_low": 40, "critical_high": 500, "unit": "mg/dL"},
     "potassium": {"critical_low": 2.5, "critical_high": 6.5, "unit": "mEq/L"},
     "sodium": {"critical_low": 120, "critical_high": 160, "unit": "mEq/L"},
+    "calcium": {"critical_low": 6.0, "critical_high": 13.0, "unit": "mg/dL"},
+    "creatinine": {"critical_low": None, "critical_high": 10.0, "unit": "mg/dL"},
+    "urea": {"critical_low": None, "critical_high": 200, "unit": "mg/dL"},
+    "phosphorus": {"critical_low": 1.0, "critical_high": 8.0, "unit": "mg/dL"},
+    "magnesium": {"critical_low": 0.9, "critical_high": 4.9, "unit": "mg/dL"},
+    "bicarbonate": {"critical_low": 10, "critical_high": 40, "unit": "mEq/L"},
+    "ammonia": {"critical_low": None, "critical_high": 150, "unit": "µmol/L"},
+    # ─── Haematology ───────────────────────────────────────────────────────────
     "hemoglobin": {"critical_low": 5.0, "critical_high": 20.0, "unit": "g/dL"},
     "wbc": {"critical_low": 1.0, "critical_high": 30.0, "unit": "×10³/µL"},
     "platelets": {"critical_low": 20, "critical_high": 1000, "unit": "×10³/µL"},
-    "creatinine": {"critical_low": None, "critical_high": 10.0, "unit": "mg/dL"},
-    "calcium": {"critical_low": 6.0, "critical_high": 13.0, "unit": "mg/dL"},
+    # ─── Coagulation ───────────────────────────────────────────────────────────
+    "pt": {"critical_low": None, "critical_high": 30.0, "unit": "seconds"},
+    "inr": {"critical_low": None, "critical_high": 4.0, "unit": ""},
+    "aptt": {"critical_low": None, "critical_high": 70.0, "unit": "seconds"},
+    "fibrinogen": {"critical_low": 80, "critical_high": None, "unit": "mg/dL"},
+    # ─── Cardiac ───────────────────────────────────────────────────────────────
+    "troponin": {"critical_low": None, "critical_high": 0.4, "unit": "ng/mL"},
+    "troponin_i": {"critical_low": None, "critical_high": 0.4, "unit": "ng/mL"},
+    "ck": {"critical_low": None, "critical_high": 1000, "unit": "U/L"},
+    "ldh": {"critical_low": None, "critical_high": 1000, "unit": "U/L"},
+    # ─── Endocrine ────────────────────────────────────────────────────────────
     "tsh": {"critical_low": 0.05, "critical_high": 50.0, "unit": "mIU/L"},
     "hba1c": {"critical_low": None, "critical_high": 14.0, "unit": "%"},
+    "cortisol": {"critical_low": 2.0, "critical_high": 50.0, "unit": "µg/dL"},
+    # ─── Liver ────────────────────────────────────────────────────────────────
     "alt": {"critical_low": None, "critical_high": 1000, "unit": "U/L"},
     "ast": {"critical_low": None, "critical_high": 1000, "unit": "U/L"},
-    "troponin": {"critical_low": None, "critical_high": 0.4, "unit": "ng/mL"},
+    "bilirubin_total": {"critical_low": None, "critical_high": 15.0, "unit": "mg/dL"},
+    "ggt": {"critical_low": None, "critical_high": 500, "unit": "U/L"},
+    "alp": {"critical_low": None, "critical_high": 1000, "unit": "U/L"},
+    # ─── Inflammation ─────────────────────────────────────────────────────────
+    "crp": {"critical_low": None, "critical_high": 200, "unit": "mg/L"},
+    "c_reactive_protein": {"critical_low": None, "critical_high": 200, "unit": "mg/L"},
+    "procalcitonin": {"critical_low": None, "critical_high": 10.0, "unit": "ng/mL"},
+    # ─── Pancreas ─────────────────────────────────────────────────────────────
+    "amylase": {"critical_low": None, "critical_high": 600, "unit": "U/L"},
+    "lipase": {"critical_low": None, "critical_high": 600, "unit": "U/L"},
+    # ─── Iron Studies ─────────────────────────────────────────────────────────
+    "iron": {"critical_low": None, "critical_high": 500, "unit": "µg/dL"},
+    "ferritin": {"critical_low": None, "critical_high": 2000, "unit": "ng/mL"},
+    # ─── Metabolic ────────────────────────────────────────────────────────────
+    "uric_acid": {"critical_low": None, "critical_high": 13.0, "unit": "mg/dL"},
 }
 
 
