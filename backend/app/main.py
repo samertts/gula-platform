@@ -516,6 +516,10 @@ app.include_router(integrations_routes.router)
 # Edge AI Platform — managed edge nodes (device registry, task scheduler, model governance)
 from .routes import edge as edge_routes  # noqa: E402
 app.include_router(edge_routes.router)
+
+# Digital Patient Card — QR-backed identity card + full-history aggregator
+from .routes import patient_card as patient_card_routes  # noqa: E402
+app.include_router(patient_card_routes.router)
 from .models.edge import (  # noqa: E402, F401  register edge tables with Base metadata
     EdgeDevice, EdgeTask, EdgeTelemetry, EdgeModel,
     EdgeModelAssignment, EdgePolicy, EdgeEvent,
