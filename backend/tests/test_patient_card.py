@@ -27,7 +27,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
-from tests.conftest import auth_headers
+
+def auth_headers(user_id: int, lab_id: int, role: str = "admin") -> dict:
+    """Bearer header for the given user — mirrors ``conftest.auth_headers``.
+
+    Inlined rather than imported because ``backend/tests/`` is not a Python
+    package (no ``__init__.py``), so ``from tests.conftest import …`` fails
+    under CI's pytest invocation.
+    """
+    from app.security.auth import create_token
+
+    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role})
+    return {"Authorization": f"Bearer {token}"}
 
 
 # ── Service-level tests ──────────────────────────────────────────────────────
