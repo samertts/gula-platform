@@ -501,6 +501,10 @@ app.include_router(ai_routes.router)
 # AI System Optimizer (admin-only, read-only performance monitoring)
 app.include_router(optimizer_routes.router)
 
+# Statistics & Trends — cached time-series analytics
+from .routes import stats as stats_routes  # noqa: E402
+app.include_router(stats_routes.router)
+
 # Master Patient Index — national-layer identity (canonical citizen registry)
 from .services.mpi import router as mpi_router  # noqa: E402
 app.include_router(mpi_router)
