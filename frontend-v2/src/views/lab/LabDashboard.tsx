@@ -14,6 +14,7 @@ import { Task } from '../../types/domain';
 import { auth } from '../../firebase';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { LabDeviceMonitor } from '../../components/LabDeviceMonitor';
+import LabStatsTrends from '../../components/LabStatsTrends';
 
 const StatCard = ({ title, value, subtext, icon: Icon, trend, color, bg }: any) => (
   <motion.div 
@@ -419,6 +420,11 @@ export function LabDashboard() {
               </div>
            </div>
         </div>
+        </div>
+
+        {/* ── Statistics & Trends ──────────────────────────────────────── */}
+        <LabStatsTrends />
+
         </div>
       </div>
     </div>
