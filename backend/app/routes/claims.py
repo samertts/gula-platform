@@ -14,7 +14,7 @@ from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -44,6 +44,8 @@ class ClaimCreate(BaseModel):
 
 
 class ClaimItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id:          int
     claim_id:    int
     test_code:   str
@@ -52,11 +54,10 @@ class ClaimItemResponse(BaseModel):
     unit_price:  Decimal
     amount:      Decimal
 
-    class Config:
-        from_attributes = True
-
 
 class ClaimResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id:              int
     lab_id:          int
     patient_id:      int
@@ -70,9 +71,6 @@ class ClaimResponse(BaseModel):
     created_at:      Optional[str]
     updated_at:      Optional[str]
     items:           List[ClaimItemResponse]
-
-    class Config:
-        from_attributes = True
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
