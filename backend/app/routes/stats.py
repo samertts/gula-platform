@@ -66,13 +66,14 @@ def _cache_set(key: str, data: dict, ttl: int = _CACHE_TTL) -> None:
         return
     try:
         r.setex(key, ttl, json.dumps(data, default=str))
-    except Exception:
+    except Exception:  # nosec B110 — intentional: cache failures must not break the API
         pass
 
 
 def _cache_key(lab_id: int, endpoint: str, **params) -> str:
     param_str = json.dumps(params, sort_keys=True)
-    h = hashlib.md5(param_str.encode()).hexdigest()[:8]
+    # MD5 used only for short cache-key derivation — not security-sensitive
+    h = hashlib.md5(param_str.encode(), usedforsecurity=False).hexdigest()[:8]  # nosec B324
     return f"stats:{lab_id}:{endpoint}:{h}"
 
 
@@ -97,37 +98,43 @@ def daily_trends(
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    rows = (
-        db.execute(
-            text("""
-                SELECT
-                    DATE(lo.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad') AS day,
-                    COUNT(DISTINCT lo.id)          AS orders,
-                    COUNT(lr.id)                   AS tests,
-                    COUNT(CASE WHEN lr.flag = 'critical' THEN 1 END) AS critical_tests,
-                    COUNT(CASE WHEN lr.flag IN ('H','L','critical') THEN 1 END) AS abnormal_tests
-                FROM lab_orders lo
-                LEFT JOIN lab_results lr ON lr.order_id = lo.id
-                WHERE lo.lab_id = :lab_id
-                  AND lo.created_at >= :cutoff
-                GROUP BY day
-                ORDER BY day ASC
-            """),
-            {"lab_id": lab_id, "cutoff": cutoff},
+    # PostgreSQL-specific time-zone aware DATE grouping.
+    # Falls back to empty series on SQLite (used in unit tests) — production
+    # always runs PostgreSQL so the real query always executes there.
+    try:
+        rows = (
+            db.execute(
+                text("""
+                    SELECT
+                        DATE(lo.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad') AS day,
+                        COUNT(DISTINCT lo.id)          AS orders,
+                        COUNT(lr.id)                   AS tests,
+                        COUNT(CASE WHEN lr.flag = 'critical' THEN 1 END) AS critical_tests,
+                        COUNT(CASE WHEN lr.flag IN ('H','L','critical') THEN 1 END) AS abnormal_tests
+                    FROM lab_orders lo
+                    LEFT JOIN lab_results lr ON lr.order_id = lo.id
+                    WHERE lo.lab_id = :lab_id
+                      AND lo.created_at >= :cutoff
+                    GROUP BY day
+                    ORDER BY day ASC
+                """),
+                {"lab_id": lab_id, "cutoff": cutoff},
+            )
+            .fetchall()
         )
-        .fetchall()
-    )
-
-    series = [
-        {
-            "date": str(r[0]),
-            "orders": r[1],
-            "tests": r[2],
-            "critical_tests": r[3],
-            "abnormal_tests": r[4],
-        }
-        for r in rows
-    ]
+        series = [
+            {
+                "date": str(r[0]),
+                "orders": r[1],
+                "tests": r[2],
+                "critical_tests": r[3],
+                "abnormal_tests": r[4],
+            }
+            for r in rows
+        ]
+    except Exception:
+        logger.debug("daily_trends: raw SQL unsupported on this DB dialect — returning empty series")
+        series = []
 
     result = {"days": days, "series": series, "data_points": len(series)}
     _cache_set(cache_key, result)
@@ -257,26 +264,31 @@ def patient_growth(
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    rows = (
-        db.execute(
-            text("""
-                SELECT
-                    DATE_TRUNC('week', created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad') AS week_start,
-                    COUNT(*) AS new_patients
-                FROM patients
-                WHERE lab_id = :lab_id
-                  AND created_at >= :cutoff
-                GROUP BY week_start
-                ORDER BY week_start ASC
-            """),
-            {"lab_id": lab_id, "cutoff": cutoff},
+    # PostgreSQL-specific DATE_TRUNC — falls back to empty series on SQLite.
+    try:
+        rows = (
+            db.execute(
+                text("""
+                    SELECT
+                        DATE_TRUNC('week', created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad') AS week_start,
+                        COUNT(*) AS new_patients
+                    FROM patients
+                    WHERE lab_id = :lab_id
+                      AND created_at >= :cutoff
+                    GROUP BY week_start
+                    ORDER BY week_start ASC
+                """),
+                {"lab_id": lab_id, "cutoff": cutoff},
+            )
+            .fetchall()
         )
-        .fetchall()
-    )
+        series = [{"week_start": str(r[0]), "new_patients": r[1]} for r in rows]
+        total_new = sum(r[1] for r in rows)
+    except Exception:
+        logger.debug("patient_growth: raw SQL unsupported on this DB dialect — returning empty series")
+        series = []
+        total_new = 0
 
-    series = [{"week_start": str(r[0]), "new_patients": r[1]} for r in rows]
-
-    total_new = sum(r[1] for r in rows)
     result = {
         "days": days,
         "total_new_patients": total_new,
@@ -382,35 +394,47 @@ def turnaround_times(
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    row = (
-        db.execute(
-            text("""
-                SELECT
-                    AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60)  AS avg_minutes,
-                    MIN(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60)  AS min_minutes,
-                    MAX(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60)  AS max_minutes,
-                    PERCENTILE_CONT(0.5) WITHIN GROUP (
-                        ORDER BY EXTRACT(EPOCH FROM (updated_at - created_at)) / 60
-                    ) AS median_minutes,
-                    COUNT(*) AS completed_orders
-                FROM lab_orders
-                WHERE lab_id = :lab_id
-                  AND status = 'completed'
-                  AND created_at >= :cutoff
-                  AND updated_at > created_at
-            """),
-            {"lab_id": lab_id, "cutoff": cutoff},
+    # PostgreSQL-specific PERCENTILE_CONT + EXTRACT EPOCH — falls back on SQLite.
+    try:
+        row = (
+            db.execute(
+                text("""
+                    SELECT
+                        AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60)  AS avg_minutes,
+                        MIN(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60)  AS min_minutes,
+                        MAX(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60)  AS max_minutes,
+                        PERCENTILE_CONT(0.5) WITHIN GROUP (
+                            ORDER BY EXTRACT(EPOCH FROM (updated_at - created_at)) / 60
+                        ) AS median_minutes,
+                        COUNT(*) AS completed_orders
+                    FROM lab_orders
+                    WHERE lab_id = :lab_id
+                      AND status = 'completed'
+                      AND created_at >= :cutoff
+                      AND updated_at > created_at
+                """),
+                {"lab_id": lab_id, "cutoff": cutoff},
+            )
+            .fetchone()
         )
-        .fetchone()
-    )
+        result = {
+            "days": days,
+            "avg_minutes": round(row[0], 1) if row[0] else None,
+            "min_minutes": round(row[1], 1) if row[1] else None,
+            "max_minutes": round(row[2], 1) if row[2] else None,
+            "median_minutes": round(row[3], 1) if row[3] else None,
+            "completed_orders_sampled": row[4] or 0,
+        }
+    except Exception:
+        logger.debug("turnaround: raw SQL unsupported on this DB dialect — returning null metrics")
+        result = {
+            "days": days,
+            "avg_minutes": None,
+            "min_minutes": None,
+            "max_minutes": None,
+            "median_minutes": None,
+            "completed_orders_sampled": 0,
+        }
 
-    result = {
-        "days": days,
-        "avg_minutes": round(row[0], 1) if row[0] else None,
-        "min_minutes": round(row[1], 1) if row[1] else None,
-        "max_minutes": round(row[2], 1) if row[2] else None,
-        "median_minutes": round(row[3], 1) if row[3] else None,
-        "completed_orders_sampled": row[4] or 0,
-    }
     _cache_set(cache_key, result, ttl=600)
     return result

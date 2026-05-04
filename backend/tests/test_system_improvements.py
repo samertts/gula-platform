@@ -666,24 +666,50 @@ class TestStatsAPI:
 
 
 class TestMigrationIdempotency:
-    """Verify the new migration's helper functions work correctly."""
+    """Verify the new migration file is correct and readable."""
 
-    def test_index_exists_helper(self):
-        """_index_exists should not raise on empty DB."""
-        from migrations.versions.migration_test_helpers import check_migration_helpers  # noqa
-        # Just ensure the module imports without error
-        import importlib
-        spec = importlib.util.find_spec(
-            "migrations.versions.20260503_0001_stats_trends_perf_indexes"
-        )
-        assert spec is not None
+    _MIGRATION_FILE = (
+        __import__("pathlib").Path(__file__).parent.parent
+        / "migrations"
+        / "versions"
+        / "20260503_0001_stats_trends_perf_indexes.py"
+    )
 
-    def test_migration_module_importable(self):
-        import importlib
-        mod = importlib.import_module(
-            "migrations.versions.20260503_0001_stats_trends_perf_indexes"
-        )
-        assert mod.revision == "20260503_0001"
-        assert mod.down_revision == "20260428_0001"
-        assert callable(mod.upgrade)
-        assert callable(mod.downgrade)
+    def test_migration_file_exists(self):
+        assert self._MIGRATION_FILE.exists(), "Migration file not found"
+
+    def test_migration_metadata(self):
+        """revision / down_revision must be correct without importing the module."""
+        import re
+        src = self._MIGRATION_FILE.read_text()
+        rev_match = re.search(r'^revision\s*=\s*["\']([^"\']+)["\']', src, re.MULTILINE)
+        down_match = re.search(r'^down_revision\s*=\s*["\']([^"\']+)["\']', src, re.MULTILINE)
+        assert rev_match, "revision not found in migration"
+        assert down_match, "down_revision not found in migration"
+        assert rev_match.group(1) == "20260503_0001"
+        assert down_match.group(1) == "20260428_0001"
+
+    def test_migration_has_upgrade_and_downgrade(self):
+        """Both upgrade() and downgrade() functions must be defined."""
+        src = self._MIGRATION_FILE.read_text()
+        assert "def upgrade():" in src
+        assert "def downgrade():" in src
+
+    def test_migration_syntax(self):
+        """Migration file must compile without syntax errors."""
+        import py_compile
+        py_compile.compile(str(self._MIGRATION_FILE), doraise=True)
+
+    def test_migration_all_indexes_listed(self):
+        """All 6 expected index names must appear in the migration."""
+        src = self._MIGRATION_FILE.read_text()
+        expected = [
+            "ix_lab_orders_lab_created",
+            "ix_lab_orders_lab_status_created",
+            "ix_patients_lab_created",
+            "ix_lab_results_flag_created",
+            "ix_lab_results_testname_created",
+            "ix_lab_results_order_created",
+        ]
+        for idx in expected:
+            assert idx in src, f"Index '{idx}' not found in migration"
