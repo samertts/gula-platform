@@ -289,7 +289,8 @@ class TestInterpretationEngine:
         assert self.get_flag(7.0, 4.0, 6.0) == "H"
 
     def test_flag_low(self):
-        assert self.get_flag(2.0, 4.0, 6.0) == "L"
+        # 3.0 is 75% of normal_low (4.0) — below range but above the 50% critical threshold
+        assert self.get_flag(3.0, 4.0, 6.0) == "L"
 
     def test_flag_critical_troponin(self):
         # Troponin I critical threshold is 0.4 ng/mL
