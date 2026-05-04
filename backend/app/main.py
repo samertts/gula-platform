@@ -3,11 +3,12 @@ import asyncio
 import time
 import uuid
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine, check_db_connection, get_pool_status  # noqa: F401
@@ -68,10 +69,38 @@ if not IS_PRODUCTION or ENABLE_API_DOCS:
     _docs_url = "/docs"
     _redoc_url = "/redoc"
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Unified startup / shutdown lifecycle (replaces deprecated @app.on_event)."""
+    # ── startup ──────────────────────────────────────────────────────────────
+    # Functions are defined later in this module; Python resolves them at call
+    # time (after full module load), so forward references are safe here.
+    await start_background_workers()
+    await warmup()
+    from .core.startup_guard import run_startup_guard
+    logger.info("GULA Platform %s starting up...", APP_VERSION)
+    await run_startup_guard()
+
+    yield  # ← application running
+
+    # ── shutdown ─────────────────────────────────────────────────────────────
+    logger.info(
+        "GULA Platform shutting down — cancelling %d background task(s)...",
+        len(_bg_tasks),
+    )
+    for task in list(_bg_tasks):
+        task.cancel()
+    if _bg_tasks:
+        await asyncio.gather(*list(_bg_tasks), return_exceptions=True)
+    logger.info("All background tasks stopped")
+    engine.dispose()
+    logger.info("Database connections closed")
+
+
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
-    default_response_class=ORJSONResponse,
+    lifespan=_lifespan,
     description=(
         "**GULA** - منصة غولا الصحية الذكية للمختبرات\n\n"
         "Smart Health Platform for Medical Laboratories in Iraq.\n\n"
@@ -767,7 +796,6 @@ def _spawn(coro) -> "asyncio.Task":
     return task
 
 
-@app.on_event("startup")
 async def start_background_workers():
     """Launch background workers — only when this process is the worker runtime.
 
@@ -821,7 +849,6 @@ async def start_background_workers():
     logger.info("DB sliding window restored from Redis")
 
 
-@app.on_event("startup")
 async def warmup():
     """Pre-load hot-path modules so first real request is fast."""
     import time as _t
@@ -1127,28 +1154,6 @@ def list_test_types():
     finally:
         db.close()
 
-
-# ===== STARTUP & SHUTDOWN =====
-@app.on_event("startup")
-async def on_startup():
-    """Run the production startup guard then mark the system ready."""
-    from .core.startup_guard import run_startup_guard
-    logger.info("GULA Platform %s starting up...", APP_VERSION)
-    await run_startup_guard()
-    # system_ready flag is set to True inside run_startup_guard on success
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    """Graceful shutdown — cancel background tasks then release DB connections."""
-    logger.info("GULA Platform shutting down — cancelling %d background task(s)...", len(_bg_tasks))
-    for task in list(_bg_tasks):
-        task.cancel()
-    if _bg_tasks:
-        await asyncio.gather(*list(_bg_tasks), return_exceptions=True)
-    logger.info("All background tasks stopped")
-    engine.dispose()
-    logger.info("Database connections closed")
 
 
 def _migrate_perm_version():
