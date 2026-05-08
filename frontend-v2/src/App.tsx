@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { DashboardView } from './views/DashboardView';
@@ -43,6 +43,8 @@ import { CommandPalette } from './components/CommandPalette';
 import { HelpAssistant } from './components/HelpAssistant';
 import { GlobalAiAssistant } from './components/GlobalAiAssistant';
 import { ShortcutsModal } from './components/ShortcutsModal';
+import { RouteErrorBoundary } from './components/ui/ErrorBoundary';
+import { useKeySequence } from './lib/useShortcut';
 import { WifiOff, Activity as ActivityIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -65,9 +67,10 @@ import { ScrollToTop } from './components/ScrollToTop';
 
 function AnimatedRoutes() {
   const location = useLocation();
-  
+
   return (
     <AnimatePresence mode="wait">
+      <RouteErrorBoundary resetKey={location.pathname}>
       <Routes location={location} key={location.pathname}>
         {/* Doctor Wing */}
         <Route path="/" element={<DashboardView />} />
@@ -147,8 +150,50 @@ function AnimatedRoutes() {
         <Route path="/settings" element={<SettingsView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </RouteErrorBoundary>
     </AnimatePresence>
   );
+}
+
+/**
+ * Global keyboard sequences (Vim-style chords). Lives inside `<BrowserRouter>`
+ * so `useNavigate` works. Reads no state — pure side-effect wiring.
+ */
+function GlobalShortcuts({
+  onOpenShortcuts,
+}: {
+  onOpenShortcuts: () => void;
+}) {
+  const navigate = useNavigate();
+
+  useKeySequence({
+    'g d': () => navigate('/'),
+    'g p': () => navigate('/patients'),
+    'g a': () => navigate('/appointments'),
+    'g i': () => navigate('/intelligence'),
+    'g l': () => navigate('/lab/dashboard'),
+    'g q': () => navigate('/lab/queue'),
+    'g s': () => navigate('/settings'),
+    'g h': () => onOpenShortcuts(),
+  });
+
+  // `/` focuses the command palette — common pattern across Slack, GitHub,
+  // Linear. We dispatch the existing CustomEvent so the palette (which owns
+  // the open state) responds.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('open-command-palette'));
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  return null;
 }
 
 function AppContent() {
@@ -159,7 +204,11 @@ function AppContent() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+      const tgt = e.target as HTMLElement | null;
+      const inEditable =
+        !!tgt &&
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(tgt.tagName) || tgt.isContentEditable);
+      if (e.key === '?' && !inEditable) {
         setShowShortcuts(prev => !prev);
       }
       if (e.key === 'Escape') {
@@ -167,8 +216,16 @@ function AppContent() {
       }
     };
 
+    // The CommandPalette dispatches this when the user activates the
+    // "Keyboard Shortcuts" command, so all entry points stay in sync.
+    const handleOpenShortcuts = () => setShowShortcuts(true);
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-shortcuts', handleOpenShortcuts);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-shortcuts', handleOpenShortcuts);
+    };
   }, []);
 
   useEffect(() => {
@@ -198,6 +255,7 @@ function AppContent() {
 
   return (
     <BrowserRouter>
+      <GlobalShortcuts onOpenShortcuts={() => setShowShortcuts(true)} />
       <CommandPalette />
       <HelpAssistant />
       <GlobalAiAssistant />
