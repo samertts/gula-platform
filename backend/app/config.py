@@ -236,3 +236,23 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 # ─── Render / DigitalOcean (informational — set by their platforms) ──────────
 RENDER_SERVICE_ID        = os.getenv("RENDER_SERVICE_ID", "")
 DIGITALOCEAN_APP_ID      = os.getenv("DIGITALOCEAN_APP_ID", "")
+
+# ─── Financial Engine (feature-flagged, OFF by default) ──────────────────────
+# The Financial Engine is the provider-billing / ranking / ads / fraud /
+# clinical-governance / incentive subsystem. It is shipped progressively
+# behind the two flags below. Both default to OFF in every environment so
+# that:
+#   1. Phase A migrations can land in production without activating any
+#      runtime behaviour (tables sit empty until the engine is turned on).
+#   2. Rolling back is a single env-var flip — no schema changes required.
+#
+# ENABLE_FINANCIAL_ENGINE  — master switch for the whole engine. Gates the
+#   /financial/* routes, pricing, ranking, transactions, governance and
+#   incentive paths. Must stay OFF until Phase B+ code is shipped and
+#   validated in staging.
+#
+# ENABLE_ADS               — sub-flag for the sponsored-listing / ad bidding
+#   surface. Has effect ONLY when ENABLE_FINANCIAL_ENGINE is also true.
+#   Allows ads to be paused independently of the rest of the engine.
+ENABLE_FINANCIAL_ENGINE = os.getenv("ENABLE_FINANCIAL_ENGINE", "false").lower() == "true"
+ENABLE_ADS              = os.getenv("ENABLE_ADS",              "false").lower() == "true"
