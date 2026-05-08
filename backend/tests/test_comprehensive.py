@@ -646,15 +646,17 @@ class TestPerformanceBaseline:
         assert avg_ms < 20, f"Avg encrypt/decrypt {avg_ms:.2f}ms exceeds 20ms limit"
 
     def test_rate_limiter_check_under_5ms(self):
-        """Rate limiter check must be near-instant."""
+        """Rate limiter check must be near-instant (measured against in-memory store)."""
         from app.security.rate_limit import RateLimiter
+        from app.security.redis_client import _MemoryStore
         limiter = RateLimiter()
         times = []
-        for i in range(100):
-            start = time.perf_counter()
-            limiter.check(f"10.0.0.{i % 255}", max_requests=1000, window_seconds=60)
-            elapsed = (time.perf_counter() - start) * 1000
-            times.append(elapsed)
+        with patch("app.security.rate_limit.cache", _MemoryStore()):
+            for i in range(100):
+                start = time.perf_counter()
+                limiter.check(f"10.0.0.{i % 255}", max_requests=1000, window_seconds=60)
+                elapsed = (time.perf_counter() - start) * 1000
+                times.append(elapsed)
         avg_ms = statistics.mean(times)
         assert avg_ms < 5, f"Rate limiter check {avg_ms:.3f}ms exceeds 5ms"
 
