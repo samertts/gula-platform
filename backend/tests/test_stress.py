@@ -382,17 +382,20 @@ class TestMemoryStability:
         assert total_growth_kb < 500, f"Memory grew {total_growth_kb:.0f}KB for 10k calls"
 
     def test_rate_limiter_memory_bounded(self):
-        """Rate limiter must not grow memory for many unique IPs."""
+        """Rate limiter must not grow memory for many unique IPs (in-memory store)."""
+        from unittest.mock import patch
         from app.security.rate_limit import RateLimiter
+        from app.security.redis_client import _MemoryStore
         limiter = RateLimiter()
+        mem_store = _MemoryStore()
 
-        # Simulate 10,000 unique IPs
-        for i in range(10000):
-            limiter.check(f"{i // 256}.{i % 256}.0.1", max_requests=10, window_seconds=1)
+        # Simulate 10,000 unique IPs — use in-memory store so the test stays fast
+        with patch("app.security.rate_limit.cache", mem_store):
+            for i in range(10000):
+                limiter.check(f"{i // 256}.{i % 256}.0.1", max_requests=10, window_seconds=1)
 
-        # After window expires, cleanup should have occurred
-        # (just verify no crash and limiter still works)
-        assert limiter.check("final.test.ip", max_requests=10, window_seconds=60)
+            # Verify no crash and limiter still works
+            assert limiter.check("final.test.ip", max_requests=10, window_seconds=60)
 
 
 # =============================================================================
