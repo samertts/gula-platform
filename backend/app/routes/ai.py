@@ -926,7 +926,7 @@ async def ai_chat(
         logger.warning("[AI/chat] Gemini failed (%s), trying fallback", gemini_exc)
         # Fallback: try Ollama then Groq via the existing clinical pipeline
         try:
-            combined = f"{system}\n\nسؤال المستخدم: {body.message}"
+            combined = f"سؤال المستخدم: {body.message}"
             reply, provider_used = await _call_ai_with_fallback(combined)
         except HTTPException:
             reply = (
