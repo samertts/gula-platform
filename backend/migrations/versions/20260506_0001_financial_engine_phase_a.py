@@ -1,8 +1,17 @@
 """Financial Engine — Phase A: data-model bootstrap (safe, additive).
 
-Revision ID: 20260505_0001
-Revises    : 20260503_0001
+Revision ID: 20260506_0001
+Revises    : 20260505_0006
 Create Date: 2026-05-05
+
+NOTE: This migration was previously authored with revision id ``20260505_0001``
+and ``down_revision = 20260503_0001`` — colliding with the SNDHS Phase 1
+extend-patients migration that landed in parallel. The duplicate revision
+caused alembic to fail on every fresh deploy. This rename re-parents the
+migration to the head of the SNDHS chain (``20260505_0006``) and renumbers
+to ``20260506_0001`` — restoring a linear single-head history. Schema
+behaviour is unchanged: this migration only creates new ``fin_*`` tables
+that are independent of any SNDHS object.
 
 Provider-billing / ranking / ads / fraud / clinical-governance / incentive
 engine. Phase A is **purely additive**: it creates nine new tables that hold
@@ -45,8 +54,8 @@ from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
 
-revision      = "20260505_0001"
-down_revision = "20260503_0001"
+revision      = "20260506_0001"
+down_revision = "20260505_0006"
 branch_labels = None
 depends_on    = None
 
