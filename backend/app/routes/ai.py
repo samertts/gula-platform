@@ -35,6 +35,7 @@ from typing import Any, Callable, Dict, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from app.gateways import google_ai as _google_ai
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -52,8 +53,7 @@ from app.security.dependencies import get_current_user
 logger = logging.getLogger("gula.ai")
 
 # ── Free AI provider config ───────────────────────────────────────────────────
-_GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
-_GROQ_KEY   = os.getenv("GROQ_API_KEY", "")
+_GROQ_KEY = os.getenv("GROQ_API_KEY", "")
 
 # Hard timeout budget for every external AI HTTP call.  Keeps p99 latency ≤6s
 # and prevents a slow provider from blocking a gunicorn worker indefinitely.
@@ -69,12 +69,8 @@ _OLLAMA_TIMEOUT        = float(os.getenv("OLLAMA_TIMEOUT",  str(_AI_BUDGET_S)))
 _AI_PROVIDER = os.getenv(
     "AI_PROVIDER",
     "ollama" if _OLLAMA_BASE_URL else
-    "gemini" if _GEMINI_KEY else
+    "gemini" if _google_ai.is_configured() else
     "groq"   if _GROQ_KEY   else "none",
-)
-_GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.0-flash:generateContent?key={key}"
 )
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -368,14 +364,11 @@ async def list_ai_providers():
         "cost":        "free (local)",
     })
 
-    # Gemini
+    # Gemini — via google_ai gateway (SDK when available, HTTP fallback)
+    _gemini_info = _google_ai.provider_info()
     statuses.append({
-        "name":       "gemini",
-        "type":       "cloud",
-        "configured": bool(_GEMINI_KEY),
-        "reachable":  None,   # not probed (expensive to test)
-        "model":      "gemini-2.0-flash",
-        "cost":       "free tier (1500 req/day)",
+        **_gemini_info,
+        "reachable": None,   # not probed (expensive to test)
     })
 
     # Groq
@@ -662,15 +655,7 @@ async def _call_ollama_clinical(prompt: str) -> str:
 
 
 async def _call_gemini_flash(prompt: str) -> str:
-    url = _GEMINI_URL.format(key=_GEMINI_KEY)
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 500},
-    }
-    async with httpx.AsyncClient(timeout=_AI_BUDGET_S) as client:
-        r = await client.post(url, json=payload)
-        r.raise_for_status()
-    return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    return await _google_ai.generate_clinical(prompt)
 
 
 async def _call_groq_llama(prompt: str) -> str:
@@ -700,7 +685,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     providers: list[tuple[str, Callable]] = []
     # Ollama is always first — it's free, local, and has no rate limits
     providers.append(("ollama", _call_ollama_clinical))
-    if _GEMINI_KEY:
+    if _google_ai.is_configured():
         providers.append(("gemini", _call_gemini_flash))
     if _GROQ_KEY:
         providers.append(("groq", _call_groq_llama))
@@ -886,14 +871,6 @@ async def interpret_result_public(token: str) -> JSONResponse:
 # Safety: no clinical state changes — display-only by design.
 # ══════════════════════════════════════════════════════════════════════════════
 
-_ASSISTANT_SYSTEM_PROMPT = (
-    "أنت مساعد ذكي لمنصة GULA للمختبرات الطبية. "
-    "تساعد موظفي المختبر وأطباء المختبر على إدارة الطلبات والنتائج والمرضى. "
-    "ردودك باللغة العربية ما لم يطلب المستخدم خلاف ذلك. "
-    "أنت لا تُشخّص أمراضاً ولا تصف دواءً — هذا دور الطبيب المعالج. "
-    "كن موجزاً ودقيقاً ومفيداً."
-)
-
 _CHAT_MAX_TOKENS = int(os.getenv("GEMINI_CHAT_MAX_TOKENS", "600"))
 _CHAT_RATE_WINDOW: dict[str, tuple[int, float]] = {}  # user_id → (count, window_start)
 _CHAT_RATE_LIMIT  = int(os.getenv("GEMINI_CHAT_RATE_LIMIT", "30"))   # req per 60s per user
@@ -905,34 +882,9 @@ class ChatRequest(BaseModel):
                                    description="Optional page context (e.g. 'orders page')")
 
 
-async def _call_gemini_chat(system_prompt: str, user_message: str) -> str:
-    """Call Gemini 2.0 Flash for the assistant chat endpoint."""
-    if not _GEMINI_KEY:
-        raise RuntimeError("GEMINI_API_KEY not configured")
-    url = _GEMINI_URL.format(key=_GEMINI_KEY)
-    payload = {
-        "contents": [
-            {"role": "user", "parts": [
-                {"text": f"{system_prompt}\n\n---\n{user_message}"}
-            ]}
-        ],
-        "generationConfig": {
-            "temperature": 0.5,
-            "maxOutputTokens": _CHAT_MAX_TOKENS,
-        },
-        "safetySettings": [
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-            {"category": "HARM_CATEGORY_MEDICAL",           "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-        ],
-    }
-    async with httpx.AsyncClient(timeout=_AI_BUDGET_S) as client:
-        r = await client.post(url, json=payload)
-        r.raise_for_status()
-    data = r.json()
-    try:
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except (KeyError, IndexError) as exc:
-        raise RuntimeError(f"Gemini returned unexpected shape: {exc}") from exc
+async def _call_gemini_chat(message: str, context: Optional[str] = None) -> str:
+    """Call Gemini via the google_ai gateway (SDK when available, HTTP fallback)."""
+    return await _google_ai.generate_chat(message, context)
 
 
 @router.post(
@@ -966,15 +918,10 @@ async def ai_chat(
             detail="تجاوزت حد الطلبات المسموح به. انتظر دقيقة وأعد المحاولة.",
         )
 
-    # ── Build contextual system prompt ────────────────────────────────────────
-    system = _ASSISTANT_SYSTEM_PROMPT
-    if body.context:
-        system += f"\nالصفحة الحالية: {body.context}"
-
-    # ── Call Gemini with Ollama/Groq fallback ─────────────────────────────────
+    # ── Call Gemini (SDK when available) with Ollama/Groq fallback ───────────
     provider_used = "gemini"
     try:
-        reply = await _call_gemini_chat(system, body.message)
+        reply = await _call_gemini_chat(body.message, body.context)
     except Exception as gemini_exc:
         logger.warning("[AI/chat] Gemini failed (%s), trying fallback", gemini_exc)
         # Fallback: try Ollama then Groq via the existing clinical pipeline
