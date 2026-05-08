@@ -188,6 +188,15 @@ APNS_KEY = os.getenv("APNS_KEY", "")              # Apple Push Notifications
 ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
 
 
+# ─── SNDHS-lite Phase 1 deployment-wide flags ────────────────────────────────
+# These gate the rollout of new visit-centric and national-ID surfaces.
+# They are off by default so a fresh deploy of this branch behaves
+# identically to the previous release until ops flips them on.
+# The authoritative readers live in backend/app/core/sndhs_flags.py.
+SNDHS_ENABLE_VISITS      = os.getenv("SNDHS_ENABLE_VISITS",      "false").lower() == "true"
+SNDHS_ENABLE_NATIONAL_ID = os.getenv("SNDHS_ENABLE_NATIONAL_ID", "false").lower() == "true"
+
+
 # ─── External Adapter Mode (stub | live | shadow) ────────────────────────────
 # See backend/app/gateways/mode.py for resolution rules.
 #   GULA_ADAPTER_MODE            — global default (fallback: "stub")
