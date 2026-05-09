@@ -1,10 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist/client",
-  "installCommand": "npm install --legacy-peer-deps",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- client/ vite.config.ts tsconfig.json package.json package-lock.json",
+  "buildCommand": "cd frontend-v2 && npm run build",
+  "outputDirectory": "frontend-v2/dist",
+  "installCommand": "cd frontend-v2 && npm ci --legacy-peer-deps",
   "github": {
     "silent": false
   },
