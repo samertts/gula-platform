@@ -425,7 +425,6 @@ export function LabDashboard() {
         {/* ── Statistics & Trends ──────────────────────────────────────── */}
         <LabStatsTrends />
 
-        </div>
       </div>
     </div>
   );
