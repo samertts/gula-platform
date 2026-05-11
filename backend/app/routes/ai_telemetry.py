@@ -78,6 +78,20 @@ INTENT_VALUES = {
 
 STATUS_VALUES = {"ok", "error", "guardrail_blocked", "escalated"}
 
+# Directive §8 risk classes. Order is significant for severity comparisons.
+RISK_LEVELS = ("informational", "low_risk", "moderate_risk", "high_risk")
+RISK_LEVEL_SET = set(RISK_LEVELS)
+
+# Bounded safety-flag vocabulary. We deliberately reject unknown flags here
+# rather than at the DB layer so the analytics surface stays clean. Adding a
+# new flag is a one-line product decision.
+SAFETY_FLAG_VALUES = {
+    "pii_detected", "prompt_injection_suspected", "off_topic",
+    "policy_violation", "low_confidence", "stale_knowledge",
+    "non_medical_query", "ambiguous_query",
+}
+MAX_SAFETY_FLAGS = 16
+
 
 # ── Pydantic schemas ────────────────────────────────────────────────────────
 
@@ -105,6 +119,18 @@ class InteractionIn(BaseModel):
     latency_ms:         Optional[int] = Field(None, ge=0, le=600_000)
     status:             str           = Field("ok", max_length=20)
     error_code:         Optional[str] = Field(None, max_length=64)
+
+    # Directive §8 — AI safety layer
+    confidence_score:       Optional[float] = Field(None, ge=0.0, le=1.0)
+    risk_level:             Optional[str]   = Field(None, max_length=32)
+    escalation_recommended: bool            = False
+
+    # Directive §14 — hallucination control
+    retrieval_used:      Optional[bool] = None
+    source_quality:      Optional[float] = Field(None, ge=0.0, le=1.0)
+    unsupported_claims:  Optional[int]  = Field(None, ge=0, le=1_000)
+    fallback_generation: bool           = False
+    safety_flags:        Optional[List[str]] = None
 
 
 class InteractionOut(BaseModel):
@@ -168,11 +194,54 @@ def log_interaction(
         logger.info("ai.dataset.intent.unknown intent=%s lab_id=%s",
                     payload.intent, current_user.lab_id)
 
+    if payload.risk_level is not None and payload.risk_level not in RISK_LEVEL_SET:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_RISK_LEVEL", "allowed": list(RISK_LEVELS)},
+        )
+
+    # Directive §8 mandatory rule: high-risk outputs require physician
+    # escalation guidance. Reject the log if the caller claims high_risk
+    # without setting escalation_recommended — this catches a class of
+    # safety-layer regressions at the telemetry boundary.
+    if payload.risk_level == "high_risk" and not payload.escalation_recommended:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "HIGH_RISK_REQUIRES_ESCALATION"},
+        )
+
+    safety_flags = payload.safety_flags or None
+    if safety_flags is not None:
+        if len(safety_flags) > MAX_SAFETY_FLAGS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "TOO_MANY_SAFETY_FLAGS", "max": MAX_SAFETY_FLAGS},
+            )
+        unknown = [f for f in safety_flags if f not in SAFETY_FLAG_VALUES]
+        if unknown:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "INVALID_SAFETY_FLAG",
+                        "unknown": unknown,
+                        "allowed": sorted(SAFETY_FLAG_VALUES)},
+            )
+
     refs = payload.retrieval_refs or []
     if len(refs) > MAX_REFS_PER_REQUEST:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "TOO_MANY_REFS", "max": MAX_REFS_PER_REQUEST},
+        )
+
+    # Hallucination-control consistency: if retrieval_used is True but no
+    # refs were attached AND no retrieval_strategy supplied, that's a
+    # contradictory log — surface it rather than silently persisting.
+    if (payload.retrieval_used is True
+            and not refs
+            and not payload.retrieval_strategy):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "RETRIEVAL_USED_WITHOUT_EVIDENCE"},
         )
 
     now = _now()
@@ -193,6 +262,16 @@ def log_interaction(
         latency_ms=payload.latency_ms,
         status=payload.status,
         error_code=payload.error_code,
+        # Safety layer (§8)
+        confidence_score=payload.confidence_score,
+        risk_level=payload.risk_level,
+        escalation_recommended=payload.escalation_recommended,
+        # Hallucination control (§14)
+        retrieval_used=payload.retrieval_used,
+        source_quality=payload.source_quality,
+        unsupported_claims=payload.unsupported_claims,
+        fallback_generation=payload.fallback_generation,
+        safety_flags=safety_flags,
         created_at=now,
     )
     db.add(interaction)
@@ -392,12 +471,52 @@ def dataset_summary(
         .group_by(AIFeedback.signal)
         .all()
     )
+
+    # Directive §8 + §14 — surface safety + hallucination posture.
+    # All filters tenant-scoped on lab_id.
+    risk_breakdown = dict(
+        db.query(AIInteraction.risk_level, func.count(AIInteraction.id))
+        .filter(AIInteraction.lab_id == lab_id,
+                AIInteraction.risk_level.isnot(None))
+        .group_by(AIInteraction.risk_level)
+        .all()
+    )
+    escalation_count = (
+        db.query(func.count(AIInteraction.id))
+        .filter(AIInteraction.lab_id == lab_id,
+                AIInteraction.escalation_recommended.is_(True))
+        .scalar() or 0
+    )
+    fallback_count = (
+        db.query(func.count(AIInteraction.id))
+        .filter(AIInteraction.lab_id == lab_id,
+                AIInteraction.fallback_generation.is_(True))
+        .scalar() or 0
+    )
+    avg_confidence = (
+        db.query(func.avg(AIInteraction.confidence_score))
+        .filter(AIInteraction.lab_id == lab_id,
+                AIInteraction.confidence_score.isnot(None))
+        .scalar()
+    )
+    avg_source_quality = (
+        db.query(func.avg(AIInteraction.source_quality))
+        .filter(AIInteraction.lab_id == lab_id,
+                AIInteraction.source_quality.isnot(None))
+        .scalar()
+    )
     return {
         "lab_id": lab_id,
         "interactions_total": total_interactions,
         "feedback_total": total_feedback,
         "unresolved_open": open_unresolved,
         "feedback_breakdown": feedback_breakdown,
+        # §8 + §14 safety posture
+        "risk_breakdown": risk_breakdown,
+        "escalation_recommended_total": escalation_count,
+        "fallback_generation_total": fallback_count,
+        "avg_confidence_score": float(avg_confidence) if avg_confidence is not None else None,
+        "avg_source_quality": float(avg_source_quality) if avg_source_quality is not None else None,
     }
 
 
