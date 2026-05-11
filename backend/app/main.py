@@ -558,6 +558,17 @@ from .models.edge import (  # noqa: E402, F401  register edge tables with Base m
     EdgeModelAssignment, EdgePolicy, EdgeEvent,
 )
 
+# AI Interaction Dataset (Phase 3 + 4) — operational medical-intelligence
+# collection pipeline introduced for the 2026-05-11 production launch.
+# All endpoints are flag-gated (ENABLE_AI_DATASET); registration is
+# unconditional so /api/ai/dataset/status remains visible for operators.
+from .routes import ai_telemetry as ai_telemetry_routes  # noqa: E402
+app.include_router(ai_telemetry_routes.router)
+from .models.ai_interaction import (  # noqa: E402, F401  register with Base metadata
+    AIInteraction, AIRetrievalRef, AIFeedback,
+    AIUnresolvedQuestion, MedicalTerminologyNormalized,
+)
+
 
 # ===== HEALTH ALERT WATCHDOG =====
 async def _health_alert_loop():
