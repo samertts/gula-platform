@@ -53,6 +53,25 @@ class AIInteraction(Base):
     latency_ms         = Column(Integer,    nullable=True)
     status             = Column(String(20), nullable=False, default="ok", index=True)
     error_code         = Column(String(64), nullable=True)
+
+    # Safety layer (directive §8). All nullable: existing rows pre-migration
+    # remain valid; new writes are responsible for populating risk_level
+    # whenever the AI gateway can compute it. ``escalation_recommended`` is
+    # mandatory whenever risk_level == 'high_risk' (enforced in the route).
+    confidence_score        = Column(Float,      nullable=True)
+    risk_level              = Column(String(32), nullable=True, index=True)
+    escalation_recommended  = Column(Boolean,    nullable=False, default=False, index=True)
+
+    # Hallucination control (directive §14). retrieval_used = None means
+    # "not logged"; True/False are explicit. unsupported_claims is a count
+    # (0 == clean); fallback_generation is True when a secondary path
+    # produced the response.
+    retrieval_used      = Column(Boolean, nullable=True)
+    source_quality      = Column(Float,   nullable=True)
+    unsupported_claims  = Column(Integer, nullable=True)
+    fallback_generation = Column(Boolean, nullable=False, default=False)
+    safety_flags        = Column(_JSON,   nullable=True)
+
     created_at         = Column(DateTime(timezone=True), nullable=False, index=True)
 
     retrieval_refs = relationship(
