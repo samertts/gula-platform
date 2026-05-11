@@ -16,6 +16,10 @@ from .edge import (
     EdgeDevice, EdgeTask, EdgeTelemetry, EdgeModel,
     EdgeModelAssignment, EdgePolicy, EdgeEvent,
 )
+from .ai_interaction import (
+    AIInteraction, AIRetrievalRef, AIFeedback, AIUnresolvedQuestion,
+    MedicalTerminologyNormalized,
+)
 
 __all__ = [
     "Base",
@@ -42,4 +46,9 @@ __all__ = [
     "EdgeModelAssignment",
     "EdgePolicy",
     "EdgeEvent",
+    "AIInteraction",
+    "AIRetrievalRef",
+    "AIFeedback",
+    "AIUnresolvedQuestion",
+    "MedicalTerminologyNormalized",
 ]
