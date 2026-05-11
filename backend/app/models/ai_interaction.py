@@ -8,20 +8,25 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text,
+    JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text,
+    Uuid,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from ..database import Base
 
 
 # ── Cross-dialect type helpers ───────────────────────────────────────────────
-# In production the engine is PostgreSQL (see app/database.py); tests may run
-# against SQLite. SQLAlchemy's PG-specific UUID/JSONB types compile correctly
-# against PG and degrade gracefully via with_variant for sqlite.
-_UUID = UUID(as_uuid=True)
-_JSON = JSONB
+# Production runs PostgreSQL; the test suite runs SQLite in-memory (see
+# tests/conftest.py). SQLAlchemy 2.0's portable Uuid type maps to native
+# PG UUID on PostgreSQL and CHAR(32) on SQLite, with bidirectional bind/result
+# conversion handled by SQLAlchemy. The generic JSON type maps to PG JSONB-
+# compatible storage on PG (both deserialise to Python dict/list) and to
+# native JSON on SQLite. The actual PG column type (UUID, JSONB) is created
+# by the Alembic migration; the ORM declarations only need to be portable
+# enough for the SQLite test substrate.
+_UUID = Uuid(as_uuid=True)
+_JSON = JSON
 
 
 def _uuid_pk() -> Column:
