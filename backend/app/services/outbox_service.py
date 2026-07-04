@@ -30,7 +30,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -40,18 +40,19 @@ from app.models.outbox import MAX_ATTEMPTS, OutboxEvent
 
 logger = logging.getLogger("gula.outbox")
 
-_BATCH_SIZE   = 50   # events per worker cycle
-_POLL_SECS    = 10   # seconds between worker polls
+_BATCH_SIZE = 50  # events per worker cycle
+_POLL_SECS = 10  # seconds between worker polls
 
 
 # ─── Writer (called inside business transaction) ──────────────────────────────
+
 
 def emit_to_outbox(
     db: Session,
     event_type: str,
     payload: dict[str, Any],
     aggregate_type: str | None = None,
-    aggregate_id:   int | None = None,
+    aggregate_id: int | None = None,
 ) -> OutboxEvent:
     """
     Persist an outbox event in the same DB transaction as the business operation.
@@ -61,20 +62,21 @@ def emit_to_outbox(
     back, the event is never saved either.
     """
     event = OutboxEvent(
-        event_type     = event_type,
-        aggregate_type = aggregate_type,
-        aggregate_id   = aggregate_id,
-        payload        = json.dumps(payload, ensure_ascii=False),
-        status         = "pending",
-        attempts       = 0,
-        created_at     = datetime.now(timezone.utc),
+        event_type=event_type,
+        aggregate_type=aggregate_type,
+        aggregate_id=aggregate_id,
+        payload=json.dumps(payload, ensure_ascii=False),
+        status="pending",
+        attempts=0,
+        created_at=datetime.now(UTC),
     )
     db.add(event)
-    db.flush()   # get id immediately; still inside caller's transaction
+    db.flush()  # get id immediately; still inside caller's transaction
     return event
 
 
 # ─── Worker ──────────────────────────────────────────────────────────────────
+
 
 class OutboxWorker:
     """
@@ -89,7 +91,7 @@ class OutboxWorker:
 
         Returns a summary: {"processed": N, "failed": N, "skipped": N}
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         summary = {"processed": 0, "failed": 0, "skipped": 0}
 
         events_to_process = (
@@ -100,12 +102,12 @@ class OutboxWorker:
             )
             .order_by(OutboxEvent.created_at.asc())
             .limit(_BATCH_SIZE)
-            .with_for_update(skip_locked=True)   # safe for multiple workers
+            .with_for_update(skip_locked=True)  # safe for multiple workers
             .all()
         )
 
         for event in events_to_process:
-            event.status   = "processing"
+            event.status = "processing"
             event.attempts = (event.attempts or 0) + 1
             db.flush()
 
@@ -113,14 +115,16 @@ class OutboxWorker:
                 payload = json.loads(event.payload)
                 dispatched = events.emit(event.event_type, payload)
 
-                event.status       = "done"
+                event.status = "done"
                 event.processed_at = now
-                event.last_error   = None
+                event.last_error = None
 
                 logger.info(
                     "[OUTBOX] event_type=%s id=%d aggregate=%s/%s dispatched_to=%d handlers",
-                    event.event_type, event.id,
-                    event.aggregate_type or "—", event.aggregate_id or "—",
+                    event.event_type,
+                    event.id,
+                    event.aggregate_type or "—",
+                    event.aggregate_id or "—",
                     dispatched,
                 )
                 summary["processed"] += 1
@@ -131,15 +135,21 @@ class OutboxWorker:
                     event.status = "failed"
                     logger.error(
                         "[OUTBOX] PERMANENTLY FAILED event_type=%s id=%d after %d attempts: %s",
-                        event.event_type, event.id, event.attempts, exc,
+                        event.event_type,
+                        event.id,
+                        event.attempts,
+                        exc,
                     )
                     summary["failed"] += 1
                 else:
                     event.status = "failed"  # will be retried next cycle
                     logger.warning(
                         "[OUTBOX] attempt %d/%d failed event_type=%s id=%d: %s",
-                        event.attempts, MAX_ATTEMPTS,
-                        event.event_type, event.id, exc,
+                        event.attempts,
+                        MAX_ATTEMPTS,
+                        event.event_type,
+                        event.id,
+                        exc,
                     )
                     summary["skipped"] += 1
 
@@ -158,9 +168,11 @@ class OutboxWorker:
         permanently-failed events (MAX_ATTEMPTS exhausted) don't accumulate
         indefinitely in the database.
         """
-        from app.database import SessionLocal, engine
-        from sqlalchemy import inspect as _inspect
         import time as _t
+
+        from sqlalchemy import inspect as _inspect
+
+        from app.database import SessionLocal, engine
 
         # Guard: verify the outbox_events table exists before entering the loop.
         # If alembic hasn't been applied the table won't exist and every cycle
@@ -179,33 +191,41 @@ class OutboxWorker:
 
         logger.info("[OUTBOX] Worker started (poll_interval=%ds)", _POLL_SECS)
         _last_purge = _t.monotonic()
-        _PURGE_INTERVAL = 86_400  # 24 hours
+        _purge_interval = 86_400  # 24 hours
 
         while True:
             await asyncio.sleep(_POLL_SECS)
-            db = SessionLocal()
+
+            def _run_outbox_cycle(last_purge: float):
+                db = SessionLocal()
+                try:
+                    summary = OutboxWorker.run_once(db)
+                    purged = 0
+                    if _t.monotonic() - last_purge >= _purge_interval:
+                        purged = purge_old_events(db, days=30)
+                    return summary, purged
+                finally:
+                    db.close()
+
             try:
-                summary = OutboxWorker.run_once(db)
+                loop = asyncio.get_event_loop()
+                summary, purged = await loop.run_in_executor(None, _run_outbox_cycle, _last_purge)
+
                 if summary["processed"] or summary["failed"]:
                     logger.info("[OUTBOX] cycle summary: %s", summary)
 
-                # Periodic purge of old done/failed events
-                if _t.monotonic() - _last_purge >= _PURGE_INTERVAL:
-                    try:
-                        purged = purge_old_events(db, days=30)
-                        if purged:
-                            logger.info("[OUTBOX] Auto-purged %d old events", purged)
-                    except Exception as purge_exc:
-                        logger.warning("[OUTBOX] Purge failed: %s", purge_exc)
+                if purged:
+                    logger.info("[OUTBOX] Auto-purged %d old events", purged)
+
+                if purged or (summary["processed"] or summary["failed"]):
                     _last_purge = _t.monotonic()
 
             except Exception as exc:
                 logger.error("[OUTBOX] Worker cycle error: %s", exc)
-            finally:
-                db.close()
 
 
 # ─── Cleanup helper (CRON / maintenance) ─────────────────────────────────────
+
 
 def purge_old_events(db: Session, days: int = 30) -> int:
     """
@@ -213,8 +233,9 @@ def purge_old_events(db: Session, days: int = 30) -> int:
     Safe to run periodically from a maintenance CRON job.
     Returns the number of rows deleted.
     """
-    from sqlalchemy import text
     from datetime import datetime, timedelta
+
+    from sqlalchemy import text
 
     cutoff = datetime.utcnow() - timedelta(days=days)
     result = db.execute(
@@ -226,7 +247,7 @@ def purge_old_events(db: Session, days: int = 30) -> int:
         {"cutoff": cutoff},
     )
     db.commit()
-    count = result.rowcount
+    count = result.rowcount  # type: ignore[attr-defined]
     if count:
         logger.info("[OUTBOX] Purged %d old events (older than %d days)", count, days)
     return count

@@ -11,29 +11,30 @@ Implements:
 - Compliance status reporting
 - HL7 FHIR-compatible patient resource (basic)
 """
+
 import json
 import logging
 import os
+import subprocess
 import sys
 import time
-import hashlib
-import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from datetime import datetime, timezone
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, NID_HMAC_KEY
 from ..database import get_db
+from ..models.audit_log import AuditLog
 from ..models.lab import Lab
-from ..models.lab_user import LabUser
-from ..models.patient import Patient
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
-from ..models.audit_log import AuditLog
-from ..security.dependencies import get_current_user, get_current_lab
-from ..services.audit_service import verify_audit_chain, get_latest_anchor
-from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION
+from ..models.lab_user import LabUser
+from ..models.patient import Patient
+from ..security.dependencies import get_current_user
+from ..services.audit_service import get_latest_anchor, verify_audit_chain
 
 logger = logging.getLogger("gula.compliance")
 
@@ -132,7 +133,7 @@ def system_info(current_user: LabUser = Depends(get_current_user)):
             "support": "support@gula-platform.org",
             "website": "https://gula-platform.org",
         },
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -147,32 +148,31 @@ def audit_summary(
 
     Provides counts of actions by type for the current lab.
     """
-    from sqlalchemy import text
 
     # Count audit actions for this lab's users
-    lab_user_ids = [u.id for u in db.query(LabUser.id).filter(
-        LabUser.lab_id == current_user.lab_id
-    ).all()]
+    lab_user_ids = [
+        u.id for u in db.query(LabUser.id).filter(LabUser.lab_id == current_user.lab_id).all()
+    ]
 
     if not lab_user_ids:
         return {"message": "No audit data", "actions": {}}
 
-    actions = db.query(
-        AuditLog.action,
-        func.count(AuditLog.id).label("count")
-    ).filter(
-        AuditLog.user_id.in_(lab_user_ids)
-    ).group_by(AuditLog.action).all()
+    actions = (
+        db.query(AuditLog.action, func.count(AuditLog.id).label("count"))
+        .filter(AuditLog.user_id.in_(lab_user_ids))
+        .group_by(AuditLog.action)
+        .all()
+    )
 
-    total_events = db.query(func.count(AuditLog.id)).filter(
-        AuditLog.user_id.in_(lab_user_ids)
-    ).scalar() or 0
+    total_events = (
+        db.query(func.count(AuditLog.id)).filter(AuditLog.user_id.in_(lab_user_ids)).scalar() or 0
+    )
 
     return {
         "lab_id": current_user.lab_id,
         "total_audit_events": total_events,
         "actions_breakdown": {a.action: a.count for a in actions},
-        "report_generated_at": datetime.now(timezone.utc).isoformat(),
+        "report_generated_at": datetime.now(UTC).isoformat(),
         "note": "Audit logs include all create, update, view, login, and admin actions",
         "note_ar": "سجلات التدقيق تشمل جميع عمليات الإنشاء والتحديث والعرض وتسجيل الدخول والإدارة",
     }
@@ -191,13 +191,18 @@ def get_fhir_patient(
     Useful for interoperability with Ministry of Health systems.
     مفيد للتكامل مع أنظمة وزارة الصحة.
     """
-    patient = db.query(Patient).filter(
-        Patient.id == patient_id,
-        Patient.lab_id == current_user.lab_id,
-    ).first()
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.id == patient_id,
+            Patient.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
 
     if not patient:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Patient not found")
 
     # Build basic FHIR R4 Patient resource
@@ -231,17 +236,21 @@ def get_fhir_patient(
     }
 
     if patient.phone:
-        fhir_patient["telecom"].append({
-            "system": "phone",
-            "value": patient.phone,
-            "use": "mobile",
-        })
+        fhir_patient["telecom"].append(
+            {
+                "system": "phone",
+                "value": patient.phone,
+                "use": "mobile",
+            }
+        )
 
     if patient.email:
-        fhir_patient["telecom"].append({
-            "system": "email",
-            "value": patient.email,
-        })
+        fhir_patient["telecom"].append(
+            {
+                "system": "email",
+                "value": patient.email,
+            }
+        )
 
     return fhir_patient
 
@@ -256,13 +265,18 @@ def get_fhir_observations(
     Returns lab results in HL7 FHIR R4 Observation bundle format.
     نتائج المختبر بتنسيق HL7 FHIR R4 Observation bundle.
     """
-    order = db.query(LabOrder).filter(
-        LabOrder.id == order_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    order = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == order_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
 
     if not order:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Order not found")
 
     results = (
@@ -299,9 +313,7 @@ def get_fhir_observations(
             },
             "effectiveDateTime": r.created_at.isoformat() if r.created_at else None,
             "issued": r.created_at.isoformat() if r.created_at else None,
-            "performer": [
-                {"reference": f"Organization/{order.lab_id}"}
-            ],
+            "performer": [{"reference": f"Organization/{order.lab_id}"}],
             "interpretation": [
                 {
                     "coding": [
@@ -311,7 +323,9 @@ def get_fhir_observations(
                         }
                     ]
                 }
-            ] if r.flag else None,
+            ]
+            if r.flag
+            else None,
         }
 
         if r.value is not None:
@@ -357,10 +371,14 @@ def get_fhir_diagnostic_report(
     """
     from fastapi import HTTPException
 
-    order = db.query(LabOrder).filter(
-        LabOrder.id == order_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    order = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == order_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
 
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -383,8 +401,7 @@ def get_fhir_diagnostic_report(
     report_status = status_map.get(order.status or "pending", "partial")
 
     observations_refs = [
-        {"reference": f"Observation/{r.id}", "display": r.test_name}
-        for r in results
+        {"reference": f"Observation/{r.id}", "display": r.test_name} for r in results
     ]
 
     report = {
@@ -465,10 +482,14 @@ def get_fhir_service_request(
     """
     from fastapi import HTTPException
 
-    order = db.query(LabOrder).filter(
-        LabOrder.id == order_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    order = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == order_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
 
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -480,8 +501,6 @@ def get_fhir_service_request(
         .filter(LabResult.order_id == order_id, LabOrder.lab_id == current_user.lab_id)
         .all()
     )
-
-
 
     service_request = {
         "resourceType": "ServiceRequest",
@@ -524,10 +543,7 @@ def get_fhir_service_request(
         },
         "authoredOn": order.created_at.isoformat() if order.created_at else None,
         "performer": [{"reference": f"Organization/{order.lab_id}"}],
-        "orderDetail": [
-            {"text": r.test_name}
-            for r in results
-        ],
+        "orderDetail": [{"text": r.test_name} for r in results],
     }
 
     if order.doctor_name:
@@ -555,11 +571,12 @@ def get_dhis2_aggregate(
     Data exported: total tests by type, result flag distribution, monthly counts.
     No patient PII is included in this response.
     """
-    from sqlalchemy import text, extract
-    from datetime import date
+
+    from sqlalchemy import text
 
     # Aggregate test counts by type (no patient data)
-    test_counts = db.execute(text("""
+    test_counts = db.execute(
+        text("""
         SELECT test_name, COUNT(*) as count,
                SUM(CASE WHEN flag IN ('high', 'critical_high') THEN 1 ELSE 0 END) as abnormal_high,
                SUM(CASE WHEN flag IN ('low', 'critical_low') THEN 1 ELSE 0 END) as abnormal_low,
@@ -569,10 +586,13 @@ def get_dhis2_aggregate(
         GROUP BY test_name
         ORDER BY count DESC
         LIMIT 50
-    """), {"lab_id": current_user.lab_id}).fetchall()
+    """),
+        {"lab_id": current_user.lab_id},
+    ).fetchall()
 
     # Monthly order counts for trend analysis
-    monthly_counts = db.execute(text("""
+    monthly_counts = db.execute(
+        text("""
         SELECT
             EXTRACT(YEAR FROM created_at) as year,
             EXTRACT(MONTH FROM created_at) as month,
@@ -582,36 +602,41 @@ def get_dhis2_aggregate(
           AND created_at >= NOW() - INTERVAL '12 months'
         GROUP BY year, month
         ORDER BY year, month
-    """), {"lab_id": current_user.lab_id}).fetchall()
+    """),
+        {"lab_id": current_user.lab_id},
+    ).fetchall()
 
-    total_patients = db.query(func.count(Patient.id)).filter(
-        Patient.lab_id == current_user.lab_id
-    ).scalar() or 0
+    total_patients = (
+        db.query(func.count(Patient.id)).filter(Patient.lab_id == current_user.lab_id).scalar() or 0
+    )
 
-    total_orders = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == current_user.lab_id
-    ).scalar() or 0
+    total_orders = (
+        db.query(func.count(LabOrder.id)).filter(LabOrder.lab_id == current_user.lab_id).scalar()
+        or 0
+    )
 
     # Build DHIS2-compatible dataValueSets format
     data_values = []
     for row in test_counts:
-        data_values.extend([
-            {
-                "dataElement": f"GULA_TEST_{row.test_name.upper().replace(' ', '_')}_TOTAL",
-                "value": str(row.count),
-                "comment": f"Total {row.test_name} tests",
-            },
-            {
-                "dataElement": f"GULA_TEST_{row.test_name.upper().replace(' ', '_')}_ABNORMAL",
-                "value": str((row.abnormal_high or 0) + (row.abnormal_low or 0)),
-                "comment": f"Abnormal {row.test_name} results",
-            },
-        ])
+        data_values.extend(
+            [
+                {
+                    "dataElement": f"GULA_TEST_{row.test_name.upper().replace(' ', '_')}_TOTAL",
+                    "value": str(row.count),
+                    "comment": f"Total {row.test_name} tests",
+                },
+                {
+                    "dataElement": f"GULA_TEST_{row.test_name.upper().replace(' ', '_')}_ABNORMAL",
+                    "value": str((row.abnormal_high or 0) + (row.abnormal_low or 0)),
+                    "comment": f"Abnormal {row.test_name} results",
+                },
+            ]
+        )
 
     return {
         "dataSet": "GULA_LAB_AGGREGATE",
-        "completeDate": datetime.now(timezone.utc).date().isoformat(),
-        "period": datetime.now(timezone.utc).strftime("%Y%m"),
+        "completeDate": datetime.now(UTC).date().isoformat(),
+        "period": datetime.now(UTC).strftime("%Y%m"),
         "orgUnit": f"LAB_{current_user.lab_id}",
         "dataValues": data_values,
         "summary": {
@@ -639,7 +664,7 @@ def get_dhis2_aggregate(
         "metadata": {
             "format": "DHIS2 dataValueSets",
             "version": "2.40",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "platform": "GULA Medical Laboratory Platform",
             "note": "Aggregate statistics only - no patient PII included",
             "note_ar": "إحصائيات تجميعية فقط - لا تشمل بيانات المرضى الشخصية",
@@ -671,7 +696,7 @@ def audit_integrity(
 
     result = verify_audit_chain(db, limit=min(limit, 5000))
     result["lab_id"] = current_user.lab_id
-    result["checked_at"] = datetime.now(timezone.utc).isoformat()
+    result["checked_at"] = datetime.now(UTC).isoformat()
     result["note"] = (
         "Hash chain verification: each entry's chain_hash = "
         "SHA-256(previous_chain_hash + record_data). "
@@ -700,17 +725,28 @@ def security_report(
 
     # Recent failed logins (last 24h)
     from sqlalchemy import text
-    failed_logins_24h = db.execute(text("""
+
+    failed_logins_24h = (
+        db.execute(
+            text("""
         SELECT COUNT(*) FROM audit_logs
         WHERE action = 'login_failed'
           AND created_at >= NOW() - INTERVAL '24 hours'
-    """)).scalar() or 0
+    """)
+        ).scalar()
+        or 0
+    )
 
     # Count users with last login (active session indication)
-    total_users = db.query(func.count(LabUser.id)).filter(
-        LabUser.lab_id == current_user.lab_id,
-        LabUser.is_active == True,
-    ).scalar() or 0
+    total_users = (
+        db.query(func.count(LabUser.id))
+        .filter(
+            LabUser.lab_id == current_user.lab_id,
+            LabUser.is_active,
+        )
+        .scalar()
+        or 0
+    )
 
     # Python/platform version info
     python_ver = sys.version.split()[0]
@@ -718,10 +754,9 @@ def security_report(
     return {
         "report_type": "Security Posture Report",
         "report_type_ar": "تقرير وضع الأمان",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "platform_version": APP_VERSION,
         "environment": "production" if IS_PRODUCTION else "development",
-
         "authentication": {
             "method": "JWT Bearer (mobile) + httpOnly Cookie (web)",
             "algorithm": "HS256",
@@ -731,7 +766,6 @@ def security_report(
             "secure_cookies": "PASS - HttpOnly + SameSite=Strict + Secure (production)",
             "password_hashing": "PASS - bcrypt with random salt",
         },
-
         "access_control": {
             "rbac": "PASS - 4 roles: master_admin, admin, staff, technician",
             "multi_tenant": "PASS - per-lab data isolation enforced at query level",
@@ -739,14 +773,12 @@ def security_report(
             "failed_logins_24h": failed_logins_24h,
             "active_users_this_lab": total_users,
         },
-
         "encryption": {
             "data_in_transit": "PASS - HTTPS/TLS via nginx (production)",
             "data_at_rest": "PARTIAL - Fernet encryption for sensitive fields",
             "national_id_storage": "PASS - HMAC-SHA256 one-way hash (not reversible)",
             "key_management": "Env var injection (Vault recommended for enterprise)",
         },
-
         "audit_trail": {
             "status": chain_result["status"],
             "entries_verified": chain_result["entries_checked"],
@@ -755,7 +787,6 @@ def security_report(
             "immutability": "PASS - PostgreSQL trigger blocks UPDATE/DELETE",
             "coverage": "All login, patient, order, result, admin actions logged",
         },
-
         "api_security": {
             "rate_limiting": "PASS - nginx: API 100/min, Auth 10/min, Upload 20/min",
             "request_body_limit": "PASS - 10MB max request body enforced",
@@ -764,7 +795,6 @@ def security_report(
             "attack_path_blocking": "PASS - wp-admin, phpMyAdmin, .env, .git blocked",
             "intrusion_detection": "PASS - IP blocking after repeated failures",
         },
-
         "compliance_standards": {
             "owasp_api_top10": "Addressed in ARCHITECTURE documentation",
             "hl7_fhir_r4": "PASS - Patient, Observation, DiagnosticReport, ServiceRequest",
@@ -776,13 +806,11 @@ def security_report(
                 "A.8.29 Security testing in dev: PASS (Bandit + Trivy in CI)",
             ],
         },
-
         "runtime": {
             "python_version": python_ver,
             "container_user": "appuser (non-root)",
             "no_new_privileges": "PASS - security_opt in docker-compose",
         },
-
         "recommendations": [
             "Obtain ISO 27001:2022 formal certification",
             "Commission annual penetration test (CREST-certified testers)",
@@ -803,10 +831,10 @@ def time_sync_status():
     Government auditors use this to verify the server clock is trustworthy.
     No authentication required — time info is not sensitive.
     """
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
 
     # Maximum acceptable clock offset before raising a drift warning (2 seconds)
-    MAX_OFFSET_SECONDS = 2.0
+    max_offset_seconds = 2.0
 
     # ─── NTP synchronized flag ────────────────────────────────────────────────
     ntp_status = "unknown"
@@ -815,7 +843,9 @@ def time_sync_status():
     try:
         result = subprocess.run(
             ["timedatectl", "show", "--no-pager", "--property=NTPSynchronized,NTP,Timezone"],
-            capture_output=True, text=True, timeout=3
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         for line in result.stdout.splitlines():
             if "NTPSynchronized=" in line:
@@ -831,13 +861,15 @@ def time_sync_status():
     # timedatectl timesync-status output contains a line like:
     #   Offset: +359us    or    Offset: +1.234s
     # We parse it and compare against MAX_OFFSET_SECONDS.
-    ntp_offset_us: int | None = None   # offset in microseconds
+    ntp_offset_us: int | None = None  # offset in microseconds
     ntp_offset_str: str | None = None  # human-readable from timedatectl
     drift_warning = False
     try:
         ts_result = subprocess.run(
             ["timedatectl", "timesync-status", "--no-pager"],
-            capture_output=True, text=True, timeout=3
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         for line in ts_result.stdout.splitlines():
             line_stripped = line.strip()
@@ -846,6 +878,7 @@ def time_sync_status():
                 ntp_offset_str = raw
                 # Parse magnitude: timedatectl uses µs/ms/s suffixes
                 import re
+
                 m = re.match(r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)", raw.replace("µs", "us"))
                 if m:
                     val, unit = float(m.group(1)), m.group(2)
@@ -856,7 +889,7 @@ def time_sync_status():
                     elif unit == "s":
                         ntp_offset_us = int(val * 1_000_000)
                     offset_abs_s = abs(ntp_offset_us) / 1_000_000
-                    drift_warning = offset_abs_s > MAX_OFFSET_SECONDS
+                    drift_warning = offset_abs_s > max_offset_seconds
                 break
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass  # timesync-status may not be available in containers
@@ -869,10 +902,14 @@ def time_sync_status():
         recommendation = "ACTION REQUIRED: Run 'timedatectl set-ntp true' on the host"
         audit_impact = "WARNING: Unsynchronized clock may affect audit log credibility"
     elif drift_warning:
-        recommendation = f"WARNING: Clock drift {ntp_offset_str} exceeds {MAX_OFFSET_SECONDS}s threshold"
+        recommendation = (
+            f"WARNING: Clock drift {ntp_offset_str} exceeds {max_offset_seconds}s threshold"
+        )
         audit_impact = "DRIFT DETECTED: Large offset may affect audit log timestamp accuracy"
     else:
-        recommendation = "PASS - NTP synchronized" + (f" (offset: {ntp_offset_str})" if ntp_offset_str else "")
+        recommendation = "PASS - NTP synchronized" + (
+            f" (offset: {ntp_offset_str})" if ntp_offset_str else ""
+        )
         audit_impact = "Audit log timestamps are reliable"
 
     return {
@@ -885,7 +922,7 @@ def time_sync_status():
         "ntp_offset_us": ntp_offset_us,
         "ntp_offset_human": ntp_offset_str,
         "drift_warning": drift_warning,
-        "max_offset_seconds": MAX_OFFSET_SECONDS,
+        "max_offset_seconds": max_offset_seconds,
         "recommendation": recommendation,
         "audit_impact": audit_impact,
     }
@@ -906,13 +943,14 @@ def system_status(
     if current_user.role not in ("admin", "master_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # ─── Database health ───────────────────────────────────────────────────
     db_ok = False
     db_latency_ms = None
     try:
         from sqlalchemy import text as sql_text
+
         t0 = time.monotonic()
         db.execute(sql_text("SELECT 1"))
         db_latency_ms = round((time.monotonic() - t0) * 1000, 2)
@@ -925,32 +963,41 @@ def system_status(
     anchor = get_latest_anchor()
 
     # ─── Stats ────────────────────────────────────────────────────────────
-    total_patients = db.query(func.count(Patient.id)).filter(
-        Patient.lab_id == current_user.lab_id
-    ).scalar() or 0
+    total_patients = (
+        db.query(func.count(Patient.id)).filter(Patient.lab_id == current_user.lab_id).scalar() or 0
+    )
 
-    total_orders = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == current_user.lab_id
-    ).scalar() or 0
+    total_orders = (
+        db.query(func.count(LabOrder.id)).filter(LabOrder.lab_id == current_user.lab_id).scalar()
+        or 0
+    )
 
     total_audit_entries = db.query(func.count(AuditLog.id)).scalar() or 0
 
     # Failed logins in last 24h (security indicator)
     from sqlalchemy import text as sql_text
-    failed_24h = db.execute(sql_text(
-        "SELECT COUNT(*) FROM audit_logs "
-        "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours'"
-    )).scalar() or 0
+
+    failed_24h = (
+        db.execute(
+            sql_text(
+                "SELECT COUNT(*) FROM audit_logs "
+                "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours'"
+            )
+        ).scalar()
+        or 0
+    )
 
     # ─── Time sync (synchronized flag + drift check) ──────────────────────
-    _MAX_OFFSET_S = 2.0
+    _max_offset_s = 2.0
     ntp_ok = None
     ntp_drift_warning = False
     ntp_offset_str = None
     try:
         result = subprocess.run(
             ["timedatectl", "show", "--no-pager", "--property=NTPSynchronized"],
-            capture_output=True, text=True, timeout=3
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         ntp_ok = "NTPSynchronized=yes" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -958,18 +1005,25 @@ def system_status(
     # Parse drift from timesync-status
     try:
         import re as _re
+
         ts = subprocess.run(
             ["timedatectl", "timesync-status", "--no-pager"],
-            capture_output=True, text=True, timeout=3
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         for line in ts.stdout.splitlines():
             if line.strip().startswith("Offset:"):
                 ntp_offset_str = line.strip().split(":", 1)[1].strip()
-                m = _re.match(r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)", ntp_offset_str.replace("µs", "us"))
+                m = _re.match(
+                    r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)", ntp_offset_str.replace("µs", "us")
+                )
                 if m:
                     v, u = float(m.group(1)), m.group(2)
-                    us = int(v) if u == "us" else int(v * 1_000) if u == "ms" else int(v * 1_000_000)
-                    ntp_drift_warning = abs(us) / 1_000_000 > _MAX_OFFSET_S
+                    us = (
+                        int(v) if u == "us" else int(v * 1_000) if u == "ms" else int(v * 1_000_000)
+                    )
+                    ntp_drift_warning = abs(us) / 1_000_000 > _max_offset_s
                 break
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
@@ -990,7 +1044,6 @@ def system_status(
         "generated_at": now.isoformat(),
         "platform_version": APP_VERSION,
         "environment": "production" if IS_PRODUCTION else "development",
-
         "services": {
             "database": {
                 **status_flag(db_ok, "Database unreachable"),
@@ -1001,7 +1054,6 @@ def system_status(
                 "label": "PASS",
             },
         },
-
         "data": {
             "total_patients_this_lab": total_patients,
             "total_orders_this_lab": total_orders,
@@ -1009,7 +1061,6 @@ def system_status(
             "failed_logins_24h": failed_24h,
             "failed_logins_alert": failed_24h > 10,
         },
-
         "security": {
             "audit_chain": {
                 **status_flag(chain_result["verified"], "Audit log tampered"),
@@ -1031,8 +1082,10 @@ def system_status(
                 **status_flag(
                     None if ntp_ok is None else (ntp_ok and not ntp_drift_warning),
                     "NTP not synchronized — audit timestamps may be unreliable"
-                    if not ntp_ok else f"Clock drift {ntp_offset_str} exceeds {_MAX_OFFSET_S}s",
-                    "PASS - NTP synchronized" + (f" (offset: {ntp_offset_str})" if ntp_offset_str else ""),
+                    if not ntp_ok
+                    else f"Clock drift {ntp_offset_str} exceeds {_max_offset_s}s",
+                    "PASS - NTP synchronized"
+                    + (f" (offset: {ntp_offset_str})" if ntp_offset_str else ""),
                 ),
                 "drift_warning": ntp_drift_warning,
                 "offset": ntp_offset_str,
@@ -1045,7 +1098,6 @@ def system_status(
                 ),
             },
         },
-
         "compliance_checklist": {
             "fhir_r4": "PASS",
             "dhis2_export": "PASS",
@@ -1062,19 +1114,26 @@ def system_status(
             "iso_27001": "PENDING - Formal certification required",
             "pentest": "PENDING - Annual CREST-certified pentest required",
         },
-
         "disaster_recovery": restore_test,
-
         "alerts": [
-            msg for msg in [
+            msg
+            for msg in [
                 "⚠ CRITICAL: NTP not synchronized" if ntp_ok is False else None,
-                f"⚠ HIGH: Clock drift {ntp_offset_str} exceeds {_MAX_OFFSET_S}s — audit timestamps unreliable" if ntp_drift_warning else None,
+                f"⚠ HIGH: Clock drift {ntp_offset_str} exceeds {_max_offset_s}s — audit timestamps unreliable"
+                if ntp_drift_warning
+                else None,
                 f"⚠ HIGH: {failed_24h} failed logins in last 24h" if failed_24h > 10 else None,
                 "⚠ HIGH: Audit chain integrity broken" if not chain_result["verified"] else None,
-                "⚠ MEDIUM: Anchor cross-check failed" if chain_result.get("anchor_cross_check") and not chain_result["anchor_cross_check"].get("match") else None,
-                "⚠ MEDIUM: Restore test result tampered" if restore_test and restore_test.get("signature_valid") is False else None,
+                "⚠ MEDIUM: Anchor cross-check failed"
+                if chain_result.get("anchor_cross_check")
+                and not chain_result["anchor_cross_check"].get("match")
+                else None,
+                "⚠ MEDIUM: Restore test result tampered"
+                if restore_test and restore_test.get("signature_valid") is False
+                else None,
                 "⚠ INFO: Running in development mode" if not IS_PRODUCTION else None,
-            ] if msg
+            ]
+            if msg
         ],
     }
 
@@ -1091,21 +1150,30 @@ def _read_restore_test() -> dict | None:
     tampered with (e.g., someone manually changed "FAIL" → "PASS"), the
     signature will not match and signature_valid=False is returned.
     """
-    import hmac as _hmac
     import hashlib as _hashlib
+    import hmac as _hmac
+
     try:
         if not _RESTORE_RESULT_FILE.exists():
             return None
-        with open(_RESTORE_RESULT_FILE, "r", encoding="utf-8") as f:
+        with open(_RESTORE_RESULT_FILE, encoding="utf-8") as f:
             data = json.load(f)
 
         # Verify HMAC: recompute over payload without the "signature" field
         stored_sig = data.pop("signature", None)
         if stored_sig:
-            hmac_key = os.getenv("NID_HMAC_KEY", "gula-anchor-hmac-fallback").encode()
+            hmac_key = os.getenv("NID_HMAC_KEY", "")
+            if not hmac_key:
+                if not NID_HMAC_KEY:
+                    logger.error("NID_HMAC_KEY not set — cannot verify restore test HMAC")
+                    data["signature_valid"] = None
+                    return data
+                hmac_key = NID_HMAC_KEY
             # Canonical payload: compact JSON with sorted keys (matches shell output)
             payload = json.dumps(data, separators=(",", ":"), ensure_ascii=False, sort_keys=False)
-            expected = _hmac.new(hmac_key, payload.encode("utf-8"), _hashlib.sha256).hexdigest()
+            expected = _hmac.new(
+                hmac_key.encode("utf-8"), payload.encode("utf-8"), _hashlib.sha256
+            ).hexdigest()
             data["signature_valid"] = _hmac.compare_digest(expected, stored_sig)
             if not data["signature_valid"]:
                 logger.warning("Restore test JSON HMAC mismatch — possible tampering")
@@ -1114,7 +1182,7 @@ def _read_restore_test() -> dict | None:
 
         # Human "tested ago" label
         tested_at = datetime.fromisoformat(data["tested_at"].replace("Z", "+00:00"))
-        delta_seconds = int((datetime.now(timezone.utc) - tested_at).total_seconds())
+        delta_seconds = int((datetime.now(UTC) - tested_at).total_seconds())
         if delta_seconds < 3600:
             ago = f"{delta_seconds // 60} دقيقة"
         elif delta_seconds < 86400:
@@ -1129,9 +1197,12 @@ def _read_restore_test() -> dict | None:
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
+
 def _build_conclusion(results) -> str | None:
     """Summarize abnormal findings for DiagnosticReport conclusion field."""
-    abnormal = [r.test_name for r in results if r.flag in ("high", "low", "critical_high", "critical_low")]
+    abnormal = [
+        r.test_name for r in results if r.flag in ("high", "low", "critical_high", "critical_low")
+    ]
     if not abnormal:
         return None
     return f"Abnormal values found in: {', '.join(abnormal)}"
@@ -1144,7 +1215,11 @@ def _fhir_gender(gender: str | None) -> str:
 
 def _fhir_interpretation(flag: str | None) -> str:
     mapping = {
-        "high": "H", "low": "L", "critical_high": "HH",
-        "critical_low": "LL", "normal": "N", "unknown": "U",
+        "high": "H",
+        "low": "L",
+        "critical_high": "HH",
+        "critical_low": "LL",
+        "normal": "N",
+        "unknown": "U",
     }
     return mapping.get(flag or "", "N")

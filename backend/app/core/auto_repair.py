@@ -13,6 +13,7 @@ Runs as a background asyncio task. Detects and repairs:
 Does NOT modify business data. Only touches infrastructure connections
 and runtime settings. All actions are logged and idempotent.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,42 +21,45 @@ import gc
 import logging
 import os
 import time
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass
 
 logger = logging.getLogger("gula.auto_repair")
+
 
 # Control-layer imports — lazy to avoid circular imports at module load time
 def _guard_repair(name: str) -> bool:
     """Return False (and log) if policy blocks this repair action."""
     try:
-        from app.core.decision_guard import guard_repair, PolicyViolation
+        from app.core.decision_guard import guard_repair
+
         guard_repair(name)
         return True
     except Exception as exc:
         logger.warning("[AUTO-REPAIR] Blocked by policy: %s — %s", name, exc)
         return False
 
+
 # ─── Thresholds (all tunable via env) ────────────────────────────────────────
-_MEMORY_WARN_MB    = int(os.getenv("REPAIR_MEMORY_WARN_MB",    "600"))
-_MEMORY_CRITICAL_MB= int(os.getenv("REPAIR_MEMORY_CRITICAL_MB","900"))
-_DB_LATENCY_WARN   = float(os.getenv("REPAIR_DB_LATENCY_WARN", "300"))   # ms
-_REDIS_LATENCY_WARN= float(os.getenv("REPAIR_REDIS_LATENCY_WARN","50"))  # ms
-_QUEUE_WARN        = int(os.getenv("REPAIR_QUEUE_WARN",        "50"))
-_QUEUE_CRITICAL    = int(os.getenv("REPAIR_QUEUE_CRITICAL",    "200"))
-_POLL_SECS         = int(os.getenv("REPAIR_POLL_SECS",         "30"))
+_MEMORY_WARN_MB = int(os.getenv("REPAIR_MEMORY_WARN_MB", "600"))
+_MEMORY_CRITICAL_MB = int(os.getenv("REPAIR_MEMORY_CRITICAL_MB", "900"))
+_DB_LATENCY_WARN = float(os.getenv("REPAIR_DB_LATENCY_WARN", "300"))  # ms
+_REDIS_LATENCY_WARN = float(os.getenv("REPAIR_REDIS_LATENCY_WARN", "50"))  # ms
+_QUEUE_WARN = int(os.getenv("REPAIR_QUEUE_WARN", "50"))
+_QUEUE_CRITICAL = int(os.getenv("REPAIR_QUEUE_CRITICAL", "200"))
+_POLL_SECS = int(os.getenv("REPAIR_POLL_SECS", "30"))
 
 
 # ─── Repair actions registry ─────────────────────────────────────────────────
 
+
 @dataclass
 class RepairAction:
-    name:        str
+    name: str
     description: str
-    severity:    str   # "warn" | "critical"
-    triggered:   int   = 0
-    last_at:     float = 0.0
-    cooldown_s:  int   = 120    # don't repeat faster than this
+    severity: str  # "warn" | "critical"
+    triggered: int = 0
+    last_at: float = 0.0
+    cooldown_s: int = 120  # don't repeat faster than this
 
 
 class RepairEngine:
@@ -63,15 +67,15 @@ class RepairEngine:
 
     def __init__(self):
         self._actions: dict[str, RepairAction] = {}
-        self._repair_log: list[dict] = []   # in-memory rolling log (last 100)
+        self._repair_log: list[dict] = []  # in-memory rolling log (last 100)
 
     def _register(self, action: RepairAction):
         self._actions[action.name] = action
 
     def _record(self, action_name: str, details: str, success: bool):
         entry = {
-            "ts":      time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "action":  action_name,
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "action": action_name,
             "details": details,
             "success": success,
         }
@@ -108,6 +112,7 @@ class RepairEngine:
             # 2. Clear SQLAlchemy compiled query cache (if accessible)
             try:
                 from app.database import engine
+
                 engine.dispose(close=False)  # recycle idle connections, keep active
             except Exception:
                 pass
@@ -123,9 +128,11 @@ class RepairEngine:
         if not _guard_repair("circuit_probe"):
             return False
         try:
-            from app.core.self_healing import health, CircuitState
+            from app.core.self_healing import CircuitState, health
+
             if health.db_circuit.state == CircuitState.OPEN:
                 from app.database import check_db_connection
+
                 if check_db_connection():
                     health.db_circuit.record_success()
                     self._record("circuit_probe", "DB circuit breaker force-probed → CLOSED", True)
@@ -141,6 +148,7 @@ class RepairEngine:
             return False
         try:
             from app.database import engine
+
             engine.dispose(close=False)
             self._record("pool_recycle", "DB connection pool recycled", True)
             return True
@@ -154,6 +162,7 @@ class RepairEngine:
             return False
         try:
             from app.security.redis_client import cache
+
             cache.ping()
             self._record("redis_reconnect", "Redis ping OK", True)
             return True
@@ -176,6 +185,7 @@ class RepairEngine:
     def _db_latency_ms(self) -> float:
         try:
             from app.database import check_db_connection
+
             t0 = time.perf_counter()
             check_db_connection()
             return (time.perf_counter() - t0) * 1000
@@ -185,6 +195,7 @@ class RepairEngine:
     def _redis_latency_ms(self) -> float:
         try:
             from app.security.redis_client import cache
+
             t0 = time.perf_counter()
             cache.ping()
             return (time.perf_counter() - t0) * 1000
@@ -195,6 +206,7 @@ class RepairEngine:
         try:
             from app.database import SessionLocal
             from app.models.outbox import OutboxEvent
+
             db = SessionLocal()
             try:
                 return db.query(OutboxEvent).filter(OutboxEvent.processed_at.is_(None)).count()
@@ -210,10 +222,18 @@ class RepairEngine:
         logger.info("[AUTO-REPAIR] Engine started (poll=%ds)", _POLL_SECS)
 
         # Register actions
-        self._register(RepairAction("memory_gc",       "Force GC on memory pressure",     "warn",     cooldown_s=180))
-        self._register(RepairAction("circuit_probe",   "Force-probe open circuit breaker", "warn",     cooldown_s=60))
-        self._register(RepairAction("pool_recycle",    "Recycle stale DB connections",     "warn",     cooldown_s=300))
-        self._register(RepairAction("redis_reconnect", "Force Redis reconnect",            "critical", cooldown_s=30))
+        self._register(
+            RepairAction("memory_gc", "Force GC on memory pressure", "warn", cooldown_s=180)
+        )
+        self._register(
+            RepairAction("circuit_probe", "Force-probe open circuit breaker", "warn", cooldown_s=60)
+        )
+        self._register(
+            RepairAction("pool_recycle", "Recycle stale DB connections", "warn", cooldown_s=300)
+        )
+        self._register(
+            RepairAction("redis_reconnect", "Force Redis reconnect", "critical", cooldown_s=30)
+        )
 
         while True:
             await asyncio.sleep(_POLL_SECS)
@@ -223,10 +243,11 @@ class RepairEngine:
                 logger.debug("[AUTO-REPAIR] Check error: %s", exc)
 
     async def _check_and_repair(self):
-        rss_mb   = self._rss_mb()
-        db_ms    = await asyncio.get_event_loop().run_in_executor(None, self._db_latency_ms)
-        redis_ms = await asyncio.get_event_loop().run_in_executor(None, self._redis_latency_ms)
-        queue    = await asyncio.get_event_loop().run_in_executor(None, self._queue_depth)
+        loop = asyncio.get_event_loop()
+        rss_mb = await loop.run_in_executor(None, self._rss_mb)
+        db_ms = await loop.run_in_executor(None, self._db_latency_ms)
+        redis_ms = await loop.run_in_executor(None, self._redis_latency_ms)
+        queue = await loop.run_in_executor(None, self._queue_depth)
 
         # ── Memory pressure ─────────────────────────────────────────────────
         if rss_mb > _MEMORY_CRITICAL_MB and self._can_trigger("memory_gc"):
@@ -239,7 +260,9 @@ class RepairEngine:
             self._mark_triggered("memory_gc")
 
         # ── DB slow / circuit open ──────────────────────────────────────────
-        from ..core.self_healing import health as _sh, DegradationLevel as _DL
+        from ..core.self_healing import DegradationLevel
+        from ..core.self_healing import health as _sh
+
         if db_ms > 9000 and self._can_trigger("circuit_probe"):
             self._repair_circuit_breaker()
             self._mark_triggered("circuit_probe")
@@ -251,18 +274,23 @@ class RepairEngine:
         # Hysteresis prevents flapping: enter L1 at WARN, exit only at WARN*0.7.
         # This means: slow→fast→slow cycles don't oscillate unless latency
         # truly stays low for a full poll cycle.
-        _L1_ENTER_THRESHOLD = _DB_LATENCY_WARN           # e.g. 300ms
-        _L1_EXIT_THRESHOLD  = int(_DB_LATENCY_WARN * 0.7) # e.g. 210ms (lower to avoid flap)
-        if db_ms > _L1_ENTER_THRESHOLD and _sh.degradation_level == _DL.NONE:
+        _l1_enter_threshold = _DB_LATENCY_WARN  # e.g. 300ms
+        _l1_exit_threshold = int(_DB_LATENCY_WARN * 0.7)  # e.g. 210ms (lower to avoid flap)
+        if db_ms > _l1_enter_threshold and _sh.degradation_level == DegradationLevel.NONE:
             _sh.enter_degraded_mode(
-                f"High DB latency: {db_ms:.0f}ms > {_L1_ENTER_THRESHOLD}ms — cache preferred",
-                level=_DL.L1_CACHE_HEAVY,
+                f"High DB latency: {db_ms:.0f}ms > {_l1_enter_threshold}ms — cache preferred",
+                level=DegradationLevel.L1_CACHE_HEAVY,
             )
             logger.warning("[AUTO-REPAIR] Entered L1_CACHE_HEAVY — DB latency %.0fms", db_ms)
-        elif db_ms <= _L1_EXIT_THRESHOLD and _sh.degradation_level == _DL.L1_CACHE_HEAVY:
+        elif (
+            db_ms <= _l1_exit_threshold and _sh.degradation_level == DegradationLevel.L1_CACHE_HEAVY
+        ):
             _sh.exit_degraded_mode()
-            logger.info("[AUTO-REPAIR] DB latency recovered (%.0fms < %dms) — back to NONE",
-                        db_ms, _L1_EXIT_THRESHOLD)
+            logger.info(
+                "[AUTO-REPAIR] DB latency recovered (%.0fms < %dms) — back to NONE",
+                db_ms,
+                _l1_exit_threshold,
+            )
 
         # ── Redis down ──────────────────────────────────────────────────────
         if redis_ms > 9000 and self._can_trigger("redis_reconnect"):
@@ -272,6 +300,7 @@ class RepairEngine:
         # ── Persist sliding window to Redis (survives container restarts) ────
         try:
             from ..database import persist_db_window_to_redis
+
             persist_db_window_to_redis()
         except Exception:
             pass
@@ -280,7 +309,10 @@ class RepairEngine:
         if db_ms > _DB_LATENCY_WARN or redis_ms > _REDIS_LATENCY_WARN or rss_mb > _MEMORY_WARN_MB:
             logger.warning(
                 "[AUTO-REPAIR] Health snapshot: db=%.0fms redis=%.0fms mem=%.0fMB queue=%d",
-                db_ms, redis_ms, rss_mb, queue,
+                db_ms,
+                redis_ms,
+                rss_mb,
+                queue,
             )
 
     def repair_log(self) -> list[dict]:

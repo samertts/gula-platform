@@ -1,26 +1,32 @@
-import os
 import asyncio
+import logging
+import os
 import time
 import uuid
-import logging
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .database import Base, engine, check_db_connection, get_pool_status  # noqa: F401
 from .config import (
-    APP_NAME, APP_VERSION, IS_PRODUCTION, ENABLE_API_DOCS,
-    MAX_REQUEST_BODY_MB, PLATFORM_NAME_AR,
-    RUNTIME_MODE, IS_API_RUNTIME, IS_TEST_RUNTIME,
+    APP_NAME,
+    APP_VERSION,
+    ENABLE_API_DOCS,
+    IS_PRODUCTION,
+    MAX_REQUEST_BODY_MB,
+    PLATFORM_NAME_AR,
+    RUNTIME_MODE,
     background_tasks_enabled,
 )
 
 # Configure structured JSON logging (production) or text logging (dev)
-from .core.logging_config import configure_logging, bind_log_context, get_request_id
+from .core.logging_config import bind_log_context, configure_logging
+from .database import Base, check_db_connection, engine, get_pool_status  # noqa: F401
+
 configure_logging(
     is_production=IS_PRODUCTION,
     log_level="INFO",
@@ -34,8 +40,9 @@ if _SENTRY_DSN:
     try:
         import sentry_sdk
         from sentry_sdk.integrations.fastapi import FastApiIntegration
-        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
         from sentry_sdk.integrations.logging import LoggingIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
         sentry_sdk.init(
             dsn=_SENTRY_DSN,
             environment=os.getenv("ENVIRONMENT", "production"),
@@ -47,13 +54,26 @@ if _SENTRY_DSN:
             ],
             traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0.05")),
         )
-        logger.info("Sentry error tracking initialized (env=%s)", os.getenv("ENVIRONMENT", "production"))
+        logger.info(
+            "Sentry error tracking initialized (env=%s)", os.getenv("ENVIRONMENT", "production")
+        )
     except ImportError:
         logger.warning("SENTRY_DSN set but sentry-sdk not installed; skipping")
 
 # Import all models so they are registered with Base.metadata (needed for create_all + alembic)
-from .models import Lab, LabUser, User, Patient, TestType, LabOrder, LabResult, AuditLog, Sample, QualityControl  # noqa: F401
-from .models.outbox import OutboxEvent  # noqa: F401  register OutboxEvent with Base metadata
+from .models import (  # noqa: F401, E402
+    AuditLog,
+    Lab,
+    LabOrder,
+    LabResult,
+    LabUser,
+    Patient,
+    QualityControl,
+    Sample,
+    TestType,
+    User,
+)
+from .models.outbox import OutboxEvent  # noqa: F401, E402  register OutboxEvent with Base metadata
 
 # Schema management: create_all is safe and idempotent (checkfirst=True by default).
 # It creates missing tables without touching existing data.
@@ -69,6 +89,7 @@ if not IS_PRODUCTION or ENABLE_API_DOCS:
     _docs_url = "/docs"
     _redoc_url = "/redoc"
 
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     """Unified startup / shutdown lifecycle (replaces deprecated @app.on_event)."""
@@ -78,6 +99,7 @@ async def _lifespan(app: FastAPI):
     await start_background_workers()
     await warmup()
     from .core.startup_guard import run_startup_guard
+
     logger.info("GULA Platform %s starting up...", APP_VERSION)
     await run_startup_guard()
 
@@ -120,16 +142,24 @@ app = FastAPI(
     },
 )
 
+
 # ===== GLOBAL ERROR HANDLER =====
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
     request_id = getattr(request.state, "request_id", "unknown")
     from .core.startup_guard import is_system_ready
+
     ready, reason = is_system_ready()
 
     if not ready and IS_PRODUCTION:
-        logger.error("[%s] Unhandled exception during unready state: %s %s (Reason: %s)", request_id, request.method, request.url.path, reason)
+        logger.error(
+            "[%s] Unhandled exception during unready state: %s %s (Reason: %s)",
+            request_id,
+            request.method,
+            request.url.path,
+            reason,
+        )
         return JSONResponse(
             status_code=503,
             content={
@@ -138,8 +168,10 @@ async def global_exception_handler(request: Request, exc: Exception):
                 "request_id": request_id,
             },
         )
-    elif IS_PRODUCTION:
-        logger.error("[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path)
+    if IS_PRODUCTION:
+        logger.error(
+            "[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path
+        )
         return JSONResponse(
             status_code=500,
             content={
@@ -148,22 +180,22 @@ async def global_exception_handler(request: Request, exc: Exception):
                 "request_id": request_id,
             },
         )
-    else:
-        # In development, log full exception and return more details
-        logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "detail": str(exc),
-                "detail_ar": "حدث خطأ: " + str(exc),
-                "request_id": request_id,
-            },
-        )
+    # In development, log full exception and return more details
+    logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": str(exc),
+            "detail_ar": "حدث خطأ: " + str(exc),
+            "request_id": request_id,
+        },
+    )
 
 
 # ===== REQUEST BODY SIZE LIMIT =====
 class MaxBodySizeMiddleware(BaseHTTPMiddleware):
     """Reject oversized request bodies to prevent DoS attacks."""
+
     def __init__(self, app, max_size_mb: int = 10):
         super().__init__(app)
         self._max_bytes = max_size_mb * 1024 * 1024
@@ -191,15 +223,17 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     Also sets DB correlation context vars so any DB failure during this request
     is automatically tagged with request_id + endpoint in the structured log.
     """
+
     async def dispatch(self, request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
         bind_log_context(request_id=request_id)
 
         # Inject into DB correlation context vars (read by check_db_connection_detail)
-        from .database import _request_id_var, _endpoint_var
+        from .database import _endpoint_var, _request_id_var
+
         rid_token = _request_id_var.set(request_id)
-        ep_token  = _endpoint_var.set(request.url.path)
+        ep_token = _endpoint_var.set(request.url.path)
         try:
             response = await call_next(request)
         finally:
@@ -221,6 +255,7 @@ if IS_PRODUCTION and ENABLE_API_DOCS:
 
     class DocsAuthMiddleware(BaseHTTPMiddleware):
         """Require valid admin JWT to access /docs and /redoc in production."""
+
         _PROTECTED = {"/docs", "/redoc", "/openapi.json"}
 
         async def dispatch(self, request: Request, call_next):
@@ -257,18 +292,18 @@ if IS_PRODUCTION and ENABLE_API_DOCS:
 _allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
 _allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
 if not _allowed_origins:
+    # Production: HTTPS only
     _allowed_origins = [
         "https://gula-platform.org",
-        "http://gula-platform.org",
     ]
     if os.getenv("ENV", "production") in ("development", "test"):
         _allowed_origins += [
             "http://localhost:8080",
             "http://localhost:80",
             "http://localhost:3000",
-            "http://localhost:5173",   # Vite dev server
-            "http://localhost:4173",   # Vite preview
-            "http://localhost:8000",   # FastAPI self (Swagger UI)
+            "http://localhost:5173",  # Vite dev server
+            "http://localhost:4173",  # Vite preview
+            "http://localhost:8000",  # FastAPI self (Swagger UI)
             # Frontend design tools — used for UI prototyping against this API.
             # Google AI Studio and Claude design send requests from these origins.
             "https://aistudio.google.com",
@@ -280,7 +315,14 @@ app.add_middleware(
     allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Device-ID", "X-App-Version", "Idempotency-Key"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Request-ID",
+        "X-Device-ID",
+        "X-App-Version",
+        "Idempotency-Key",
+    ],
     expose_headers=["X-Request-ID", "X-Response-Time", "X-API-Version"],
 )
 
@@ -289,8 +331,10 @@ app.add_middleware(
 # Paths excluded from per-request access logs to avoid health-check noise.
 _SILENT_PATHS: frozenset[str] = frozenset({"/health", "/health/ready", "/health/live"})
 
+
 class RequestTimingMiddleware(BaseHTTPMiddleware):
     """Emit a structured access-log line (path, latency_ms, status) per request."""
+
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
         response = await call_next(request)
@@ -302,7 +346,9 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
             log_fn = logger.warning if elapsed_ms > 2000 or status >= 500 else logger.info
             log_fn(
                 "%s %s %d",
-                request.method, path, status,
+                request.method,
+                path,
+                status,
                 extra={"path": path, "latency_ms": elapsed_ms, "status": status},
             )
 
@@ -352,6 +398,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -360,13 +407,15 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # Explicit whitelist — paths that are ALWAYS reachable regardless of readiness.
 # Do NOT use startswith("/health") — that could be accidentally bypassed by
 # adding new /health-adjacent routes later.
-_ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset({
-    "/health",
-    "/health/ready",
-    "/health/live",
-    "/health/status",  # diagnostic — always visible so you can see WHY startup failed
-    "/health/deep",   # deep diagnostics — always accessible for monitoring
-})
+_ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset(
+    {
+        "/health",
+        "/health/ready",
+        "/health/live",
+        "/health/status",  # diagnostic — always visible so you can see WHY startup failed
+        "/health/deep",  # deep diagnostics — always accessible for monitoring
+    }
+)
 
 
 class ReadinessMiddleware(BaseHTTPMiddleware):
@@ -378,6 +427,7 @@ class ReadinessMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         from .core.startup_guard import system_ready
+
         if not system_ready and request.url.path not in _ALWAYS_ALLOWED_PATHS:
             return JSONResponse(
                 status_code=503,
@@ -395,7 +445,8 @@ app.add_middleware(ReadinessMiddleware)
 # ===== DEGRADED MODE MIDDLEWARE =====
 # Rejects write operations when DB circuit breaker opens (post-startup failure).
 # Works in conjunction with RecoveryWorker which probes and auto-heals.
-from .core.self_healing import DegradedModeMiddleware
+from .core.self_healing import DegradedModeMiddleware  # noqa: E402
+
 app.add_middleware(DegradedModeMiddleware)
 
 
@@ -409,9 +460,9 @@ _MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT_REQUESTS", "200"))
 # Clinical write operations that must NEVER be rejected by the backpressure limiter.
 # These paths modify patient records or results — blocking them risks patient harm.
 _CRITICAL_PATH_PREFIXES: tuple = (
-    "/results",       # entering / updating lab results
-    "/orders",        # creating orders, adding results, validating
-    "/samples",       # sample lifecycle (collection, processing)
+    "/results",  # entering / updating lab results
+    "/orders",  # creating orders, adding results, validating
+    "/samples",  # sample lifecycle (collection, processing)
     "/critical-alerts",  # critical value notifications
 )
 
@@ -428,11 +479,15 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
     Clinical write operations (results, orders, samples, critical alerts) are
     always allowed through regardless of the current load level.
     """
+
     _active: int = 0
+    _instance: "ConcurrencyLimitMiddleware | None" = None
 
     def __init__(self, app, max_concurrent: int = _MAX_CONCURRENT):
         super().__init__(app)
         self._max = max_concurrent
+        # Store the instance reference for adaptive concurrency adjustment
+        ConcurrencyLimitMiddleware._instance = self
 
     async def dispatch(self, request: Request, call_next):
         # Health checks — always allowed
@@ -461,19 +516,43 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
 app.add_middleware(ConcurrencyLimitMiddleware)
 
 # ===== ROUTES =====
-from .routes import login, register, patients, results, dashboard, labs
-from .routes import identity, notifications, ehr, security
-from .routes import national_identity, insurance, device_results
-from .routes import qr, id_scan, admin, samples
-from .routes import quality_control, critical_alerts, batch
-from .routes import mobile, compliance
-from .routes import setup, metrics
-from .routes import test_results
-from .routes import ai as ai_routes
-from .routes import optimizer as optimizer_routes
-from .routes import tiers as tiers_routes
-from .routes import citizen_portal as citizen_portal_routes
-from .models.subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag  # noqa: F401  register with Base
+from .models.subscription import (  # noqa: F401, E402  register with Base
+    FeatureFlag,
+    LabSubscription,
+    UpgradeDemandScore,
+    UpgradeRequest,
+)
+from .routes import (  # noqa: E402
+    admin,
+    batch,
+    compliance,
+    critical_alerts,
+    dashboard,
+    device_results,
+    ehr,
+    id_scan,
+    identity,
+    insurance,
+    labs,
+    login,
+    metrics,
+    mobile,
+    national_identity,
+    notifications,
+    patients,
+    qr,
+    quality_control,
+    register,
+    results,
+    samples,
+    security,
+    setup,
+    test_results,
+)
+from .routes import ai as ai_routes  # noqa: E402
+from .routes import citizen_portal as citizen_portal_routes  # noqa: E402
+from .routes import optimizer as optimizer_routes  # noqa: E402
+from .routes import tiers as tiers_routes  # noqa: E402
 
 # Core routes
 app.include_router(login.router)
@@ -517,7 +596,8 @@ app.include_router(tiers_routes.router)
 app.include_router(citizen_portal_routes.router)
 
 # Claims / Insurance module
-from .routes import claims as claims_routes
+from .routes import claims as claims_routes  # noqa: E402
+
 app.include_router(claims_routes.router)
 
 # Legacy routes (kept for API compatibility)
@@ -532,30 +612,41 @@ app.include_router(optimizer_routes.router)
 
 # Statistics & Trends — cached time-series analytics
 from .routes import stats as stats_routes  # noqa: E402
+
 app.include_router(stats_routes.router)
 
 # Master Patient Index — national-layer identity (canonical citizen registry)
 from .services.mpi import router as mpi_router  # noqa: E402
+
 app.include_router(mpi_router)
 
 # Consent layer — governing access control for reads of citizen data
 from .routes import consent as consent_routes  # noqa: E402
+
 app.include_router(consent_routes.router)
 
 # External integrations health + probe (gov NID, insurance, residency, Cloudflare)
 from .routes import integrations as integrations_routes  # noqa: E402
+
 app.include_router(integrations_routes.router)
 
 # Edge AI Platform — managed edge nodes (device registry, task scheduler, model governance)
 from .routes import edge as edge_routes  # noqa: E402
+
 app.include_router(edge_routes.router)
 
 # Digital Patient Card — QR-backed identity card + full-history aggregator
 from .routes import patient_card as patient_card_routes  # noqa: E402
+
 app.include_router(patient_card_routes.router)
 from .models.edge import (  # noqa: E402, F401  register edge tables with Base metadata
-    EdgeDevice, EdgeTask, EdgeTelemetry, EdgeModel,
-    EdgeModelAssignment, EdgePolicy, EdgeEvent,
+    EdgeDevice,
+    EdgeEvent,
+    EdgeModel,
+    EdgeModelAssignment,
+    EdgePolicy,
+    EdgeTask,
+    EdgeTelemetry,
 )
 
 # AI Interaction Dataset (Phase 3 + 4) — operational medical-intelligence
@@ -563,10 +654,14 @@ from .models.edge import (  # noqa: E402, F401  register edge tables with Base m
 # All endpoints are flag-gated (ENABLE_AI_DATASET); registration is
 # unconditional so /api/ai/dataset/status remains visible for operators.
 from .routes import ai_telemetry as ai_telemetry_routes  # noqa: E402
+
 app.include_router(ai_telemetry_routes.router)
 from .models.ai_interaction import (  # noqa: E402, F401  register with Base metadata
-    AIInteraction, AIRetrievalRef, AIFeedback,
-    AIUnresolvedQuestion, MedicalTerminologyNormalized,
+    AIFeedback,
+    AIInteraction,
+    AIRetrievalRef,
+    AIUnresolvedQuestion,
+    MedicalTerminologyNormalized,
 )
 
 
@@ -574,7 +669,7 @@ from .models.ai_interaction import (  # noqa: E402, F401  register with Base met
 async def _health_alert_loop():
     """Background coroutine: comprehensive health monitoring with thresholds.
 
-    Checks every HEALTH_ALERT_INTERVAL_SECONDS (default 60s).
+    Checks every HEALTH_ALERT_interval_SECONDS (default 60s).
     When grade is RED, retries every 10s for fast recovery detection.
     Fires webhook on EVERY grade change (GREEN↔YELLOW↔RED) + periodic RED reminder.
 
@@ -584,114 +679,132 @@ async def _health_alert_loop():
                OR queue backlog >100 OR degraded mode
       GREEN  — all clear
 
-    Set ALERT_WEBHOOK_URL in .env (Telegram, Discord, Slack, or any HTTP POST sink).
+    Set ALERT_webhook_URL in .env (Telegram, Discord, Slack, or any HTTP POST sink).
     """
     import asyncio as _aio
     import os
     import time as _t
 
-    _INTERVAL      = int(os.getenv("HEALTH_ALERT_INTERVAL_SECONDS", "60"))
-    _RETRY_FAST    = 10          # seconds between checks when in RED state
-    _REMIND_SECS   = 300         # re-alert every 5 min if still RED
-    _WEBHOOK       = os.getenv("ALERT_WEBHOOK_URL", "")
+    _interval = int(os.getenv("HEALTH_ALERT_INTERVAL_SECONDS", "60"))
+    _retry_fast = 10  # seconds between checks when in RED state
+    _remind_secs = 300  # re-alert every 5 min if still RED
+    _webhook = os.getenv("ALERT_WEBHOOK_URL", "")
 
-    _PREV_GRADE    = "GREEN"
-    _RED_SINCE     = 0.0         # monotonic timestamp when RED started
-    _LAST_ALERT    = 0.0         # monotonic timestamp of last webhook send
+    _prev_grade = "GREEN"
+    _red_since = 0.0  # monotonic timestamp when RED started
+    _last_alert = 0.0  # monotonic timestamp of last webhook send
 
-    await _aio.sleep(30)         # Let startup complete before first check
+    await _aio.sleep(30)  # Let startup complete before first check
 
     while True:
         try:
             from .core.self_healing import health as _sh
-            from .security.redis_client import cache as _r
             from .database import check_db_connection as _db_check
+            from .security.redis_client import cache as _r
 
-            # ── Component checks ──────────────────────────────────────────
-            t0     = _t.perf_counter()
-            db_ok  = _db_check()
-            db_ms  = round((_t.perf_counter() - t0) * 1000, 1)
+            # ── Component checks (run blocking ops in executor) ──────────
+            loop = _aio.get_event_loop()
+
+            t0 = _t.perf_counter()
+            db_ok = await loop.run_in_executor(None, _db_check)
+            db_ms = round((_t.perf_counter() - t0) * 1000, 1)
 
             red_ok, red_ms = False, -1.0
             try:
                 t0 = _t.perf_counter()
-                _r.ping()
+                await loop.run_in_executor(None, _r.ping)
                 red_ms = round((_t.perf_counter() - t0) * 1000, 1)
                 red_ok = True
             except Exception:
                 pass
 
-            rss_mb = 0.0
-            try:
-                with open("/proc/self/status") as _f:
-                    for line in _f:
-                        if line.startswith("VmRSS:"):
-                            rss_mb = round(int(line.split()[1]) / 1024, 1)
-                            break
-            except OSError:
-                pass
-
-            sh_dict    = _sh.to_dict()
-            degraded   = sh_dict.get("degraded", False)
-
-            queue_backlog = 0
-            try:
-                from .database import SessionLocal as _SL
-                from .models.outbox import OutboxEvent as _OE  # noqa: F811
-                _db2 = _SL()
+            def _read_rss() -> float:
                 try:
-                    queue_backlog = _db2.query(_OE).filter(
-                        _OE.processed_at.is_(None)
-                    ).count()
-                finally:
-                    _db2.close()
-            except Exception:
-                pass
+                    with open("/proc/self/status") as _f:
+                        for line in _f:
+                            if line.startswith("VmRSS:"):
+                                return round(int(line.split()[1]) / 1024, 1)
+                except OSError:
+                    pass
+                return 0.0
+
+            rss_mb = await loop.run_in_executor(None, _read_rss)
+
+            sh_dict = _sh.to_dict()
+            degraded = sh_dict.get("degraded", False)
+
+            def _get_queue_backlog() -> int:
+                try:
+                    from .database import SessionLocal
+                    from .models.outbox import OutboxEvent
+
+                    _db2 = SessionLocal()
+                    try:
+                        return (
+                            _db2.query(OutboxEvent)
+                            .filter(OutboxEvent.processed_at.is_(None))
+                            .count()
+                        )
+                    finally:
+                        _db2.close()
+                except Exception:
+                    return 0
+
+            queue_backlog = await loop.run_in_executor(None, _get_queue_backlog)
 
             # ── Grade determination ───────────────────────────────────────
             issues = []
-            if not db_ok:             issues.append("database_down")
-            if not red_ok:            issues.append("redis_down")
-            if db_ok and db_ms > 200: issues.append(f"database_slow_{db_ms}ms")
-            if red_ok and red_ms > 50:issues.append(f"redis_slow_{red_ms}ms")
-            if rss_mb > 600:          issues.append(f"memory_high_{rss_mb}MB")
-            if queue_backlog > 100:   issues.append(f"queue_backlog_{queue_backlog}")
-            if degraded:              issues.append("degraded_mode")
+            if not db_ok:
+                issues.append("database_down")
+            if not red_ok:
+                issues.append("redis_down")
+            if db_ok and db_ms > 200:
+                issues.append(f"database_slow_{db_ms}ms")
+            if red_ok and red_ms > 50:
+                issues.append(f"redis_slow_{red_ms}ms")
+            if rss_mb > 600:
+                issues.append(f"memory_high_{rss_mb}MB")
+            if queue_backlog > 100:
+                issues.append(f"queue_backlog_{queue_backlog}")
+            if degraded:
+                issues.append("degraded_mode")
 
             critical = [i for i in issues if "down" in i]
             grade = "RED" if critical else ("YELLOW" if issues else "GREEN")
 
             # ── Track RED duration ────────────────────────────────────────
             now_mono = _t.monotonic()
-            if grade == "RED" and _PREV_GRADE != "RED":
-                _RED_SINCE = now_mono
+            if grade == "RED" and _prev_grade != "RED":
+                _red_since = now_mono
             elif grade != "RED":
-                _RED_SINCE = 0.0
+                _red_since = 0.0
 
             # ── Alert logic: transition OR periodic RED reminder ──────────
-            transition    = grade != _PREV_GRADE
-            red_reminder  = (grade == "RED" and
-                             (now_mono - _LAST_ALERT) >= _REMIND_SECS and
-                             _RED_SINCE > 0)
-            should_alert  = (transition or red_reminder) and _WEBHOOK
+            transition = grade != _prev_grade
+            red_reminder = (
+                grade == "RED" and (now_mono - _last_alert) >= _remind_secs and _red_since > 0
+            )
+            should_alert = (transition or red_reminder) and _webhook
 
             if should_alert:
+                from datetime import datetime
+
                 import httpx as _hx
-                from datetime import datetime, timezone
+
                 emoji = "🔴" if grade == "RED" else ("🟡" if grade == "YELLOW" else "✅")
                 red_dur = ""
-                if grade == "RED" and _RED_SINCE > 0:
-                    red_dur = f" ({int(now_mono - _RED_SINCE)}s in RED)"
+                if grade == "RED" and _red_since > 0:
+                    red_dur = f" ({int(now_mono - _red_since)}s in RED)"
                 payload = {
                     "text": (
-                        f"{emoji} *GULA Platform* — `{_PREV_GRADE}` → `{grade}`{red_dur}\n"
+                        f"{emoji} *GULA Platform* — `{_prev_grade}` → `{grade}`{red_dur}\n"
                         f"Issues: {', '.join(issues) or 'none'}\n"
                         f"DB: {db_ms}ms  Redis: {red_ms}ms  "
                         f"Mem: {rss_mb}MB  Queue: {queue_backlog}\n"
-                        f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                        f"{datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC"
                     ),
                     "grade": grade,
-                    "prev_grade": _PREV_GRADE,
+                    "prev_grade": _prev_grade,
                     "issues": issues,
                     "metrics": {
                         "db_ms": db_ms,
@@ -702,19 +815,19 @@ async def _health_alert_loop():
                 }
                 try:
                     async with _hx.AsyncClient(timeout=10) as _c:
-                        await _c.post(_WEBHOOK, json=payload)
-                    _LAST_ALERT = now_mono
-                    logger.info("Health alert sent: %s → %s issues=%s", _PREV_GRADE, grade, issues)
+                        await _c.post(_webhook, json=payload)
+                    _last_alert = now_mono
+                    logger.info("Health alert sent: %s → %s issues=%s", _prev_grade, grade, issues)
                 except Exception as _e:
                     logger.warning("Health alert webhook failed: %s", _e)
 
-            _PREV_GRADE = grade
+            _prev_grade = grade
 
         except Exception as exc:
             logger.debug("Health watchdog error: %s", exc)
 
         # Faster retry when system is degraded, normal interval when healthy
-        sleep_s = _RETRY_FAST if _PREV_GRADE == "RED" else _INTERVAL
+        sleep_s = _retry_fast if _prev_grade == "RED" else _interval
         await _aio.sleep(sleep_s)
 
 
@@ -731,66 +844,72 @@ async def _adaptive_concurrency_loop():
     fewer in-flight requests → shorter queue → DB recovers faster.
     """
     import asyncio as _aio
-    from .database import check_db_connection as _db_check
     import time as _t
-    import gc as _gc
 
-    _orig        = _MAX_CONCURRENT
+    from .database import check_db_connection as _db_check
+
+    _orig = _MAX_CONCURRENT
     _slow_streak = 0
     _fast_streak = 0
-    _SLOW_MS     = 300
-    _FAST_MS     = 150
-    _SLOW_TRIG   = 2
-    _FAST_TRIG   = 3
-    _POLL        = 30
+    _slow_ms = 300
+    _fast_ms = 150
+    _slow_trig = 2
+    _fast_trig = 3
+    _poll = 30
 
-    await _aio.sleep(45)   # let startup complete
+    await _aio.sleep(45)  # let startup complete
 
     while True:
         try:
-            t0    = _t.perf_counter()
-            _db_check()
+            loop = _aio.get_event_loop()
+            t0 = _t.perf_counter()
+            await loop.run_in_executor(None, _db_check)
             db_ms = (_t.perf_counter() - t0) * 1000
 
-            if db_ms > _SLOW_MS:
+            if db_ms > _slow_ms:
                 _slow_streak += 1
-                _fast_streak  = 0
-            elif db_ms < _FAST_MS:
+                _fast_streak = 0
+            elif db_ms < _fast_ms:
                 _fast_streak += 1
-                _slow_streak  = max(0, _slow_streak - 1)
+                _slow_streak = max(0, _slow_streak - 1)
             else:
                 _slow_streak = max(0, _slow_streak - 1)
                 _fast_streak = max(0, _fast_streak - 1)
 
             # Tighten when DB is consistently slow
-            if _slow_streak >= _SLOW_TRIG:
+            if _slow_streak >= _slow_trig:
                 new_max = max(10, _orig // 2)
                 if new_max != _orig:
                     logger.warning(
                         "Adaptive concurrency: DB slow %.0fms ×%d → cap %d→%d",
-                        db_ms, _slow_streak, _orig, new_max,
+                        db_ms,
+                        _slow_streak,
+                        _orig,
+                        new_max,
                     )
-                    for obj in _gc.get_objects():
-                        if isinstance(obj, ConcurrencyLimitMiddleware):
-                            obj._max = new_max
+                    # Use the stored middleware instance instead of gc.get_objects()
+                    if ConcurrencyLimitMiddleware._instance is not None:
+                        ConcurrencyLimitMiddleware._instance._max = new_max
                     _orig = new_max
 
             # Restore when DB recovers
-            elif _fast_streak >= _FAST_TRIG and _orig < _MAX_CONCURRENT:
+            elif _fast_streak >= _fast_trig and _orig < _MAX_CONCURRENT:
                 logger.info(
                     "Adaptive concurrency: DB recovered %.0fms ×%d → restore to %d",
-                    db_ms, _fast_streak, _MAX_CONCURRENT,
+                    db_ms,
+                    _fast_streak,
+                    _MAX_CONCURRENT,
                 )
-                for obj in _gc.get_objects():
-                    if isinstance(obj, ConcurrencyLimitMiddleware):
-                        obj._max = _MAX_CONCURRENT
-                _orig        = _MAX_CONCURRENT
+                # Use the stored middleware instance instead of gc.get_objects()
+                if ConcurrencyLimitMiddleware._instance is not None:
+                    ConcurrencyLimitMiddleware._instance._max = _MAX_CONCURRENT
+                _orig = _MAX_CONCURRENT
                 _fast_streak = 0
 
         except Exception as exc:
             logger.debug("Adaptive concurrency check error: %s", exc)
 
-        await _aio.sleep(_POLL)
+        await _aio.sleep(_poll)
 
 
 # ===== STARTUP WARMUP =====
@@ -826,8 +945,8 @@ async def start_background_workers():
         )
         return
 
-    from .services.outbox_service import OutboxWorker
     from .core.self_healing import RecoveryWorker
+    from .services.outbox_service import OutboxWorker
 
     _spawn(OutboxWorker.background_loop())
     logger.info("Outbox worker started")
@@ -842,6 +961,7 @@ async def start_background_workers():
     logger.info("Adaptive concurrency monitor started")
 
     from .core.auto_repair import auto_repair as _auto_repair
+
     _spawn(_auto_repair.run())
     logger.info("Auto-repair engine started")
 
@@ -851,11 +971,13 @@ async def start_background_workers():
     # whose edge_* tables aren't created by the test fixture.
     if os.getenv("ENV") != "test":
         from .edge.maintenance import edge_maintenance_loop
+
         _spawn(edge_maintenance_loop())
         logger.info("Edge maintenance loop started")
 
     # ── Restore sliding window from Redis (DB error history survives restarts) ─
     from .database import restore_db_window_from_redis
+
     restore_db_window_from_redis()
     logger.info("DB sliding window restored from Redis")
 
@@ -863,11 +985,13 @@ async def start_background_workers():
 async def warmup():
     """Pre-load hot-path modules so first real request is fast."""
     import time as _t
+
     t0 = _t.perf_counter()
     try:
         # Resolve deferred import inside get_flag → check_critical
         from .routes.critical_alerts import check_critical
-        from .services.interpretation import interpret_result, get_flag
+        from .services.interpretation import get_flag, interpret_result
+
         # Warm function caches
         check_critical("Potassium", 4.0)
         interpret_result("glucose", 85, 70, 100)
@@ -888,6 +1012,7 @@ def health():
     from .core.self_healing import health as sys_health
     from .core.startup_guard import system_ready
     from .database import check_db_connection_detail
+
     db_status, db_detail = check_db_connection_detail()
     pool = get_pool_status()
     return {
@@ -897,13 +1022,13 @@ def health():
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
         "system_ready": system_ready,
-        "database": db_status,          # "ok" | "refused" | "auth_failed" | "timeout" | "error"
-        "database_detail": db_detail,   # human-readable reason for failures
-        "degraded_mode":      sys_health.degraded,
-        "degradation_level":  sys_health.degradation_level.name,
+        "database": db_status,  # "ok" | "refused" | "auth_failed" | "timeout" | "error"
+        "database_detail": db_detail,  # human-readable reason for failures
+        "degraded_mode": sys_health.degraded,
+        "degradation_level": sys_health.degradation_level.name,
         "circuits": sys_health.to_dict()["circuits"],
         "pool": pool,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -920,6 +1045,7 @@ def readiness():
     Docker healthcheck will detect it and trigger a container restart.
     """
     from .core.startup_guard import is_system_ready
+
     ready, reason = is_system_ready()
     if not ready:
         return JSONResponse(
@@ -942,8 +1068,8 @@ def health_status():
     Useful for debugging startup failures without needing server access.
     Always returns 200 — check 'ready' field for actual state.
     """
-    from .core.startup_guard import system_ready, is_system_ready
     from .core.self_healing import health as sys_health
+    from .core.startup_guard import is_system_ready, system_ready
 
     # Individual component checks
     db_ok = False
@@ -957,6 +1083,7 @@ def health_status():
     redis_error = None
     try:
         from .security.redis_client import cache as _redis
+
         _redis.set("_status_probe", "1", ex=10)
         redis_ok = True
     except Exception as e:
@@ -983,7 +1110,7 @@ def health_status():
         "degraded_mode": sys_h.get("degraded", False),
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -1008,8 +1135,10 @@ def health_deep():
     # ── 1. Database latency ──────────────────────────────────────────────────
     db_ok, db_ms, db_err = False, -1.0, None
     try:
-        from .database import SessionLocal
         from sqlalchemy import text as _text
+
+        from .database import SessionLocal
+
         _db = SessionLocal()
         try:
             t0 = _t.perf_counter()
@@ -1025,6 +1154,7 @@ def health_deep():
     red_ok, red_ms, red_err = False, -1.0, None
     try:
         from .security.redis_client import cache as _r
+
         t0 = _t.perf_counter()
         _r.ping()
         red_ms = round((_t.perf_counter() - t0) * 1000, 1)
@@ -1036,11 +1166,12 @@ def health_deep():
     queue_backlog, queue_err = 0, None
     try:
         from .database import SessionLocal
+
         _db2 = SessionLocal()
         try:
-            queue_backlog = _db2.query(OutboxEvent).filter(
-                OutboxEvent.processed_at.is_(None)
-            ).count()
+            queue_backlog = (
+                _db2.query(OutboxEvent).filter(OutboxEvent.processed_at.is_(None)).count()
+            )
         finally:
             _db2.close()
     except Exception as e:
@@ -1062,6 +1193,7 @@ def health_deep():
     degraded = False
     try:
         from .core.self_healing import health as _sh
+
         sh = _sh.to_dict()
         circuits = sh.get("circuits", {})
         degraded = sh.get("degraded", False)
@@ -1069,15 +1201,14 @@ def health_deep():
         pass
 
     # ── 6. Uptime ────────────────────────────────────────────────────────────
-    from .routes.metrics import _START as _proc_start
-    uptime_s = int(_t.time() - _proc_start)
+    from .routes.metrics import _START as PROC_START
+
+    uptime_s = int(_t.time() - PROC_START)
 
     # ── 7. Active concurrent requests (from ConcurrencyLimitMiddleware) ─────────
     active_requests = 0
-    try:
+    with suppress(Exception):
         active_requests = ConcurrencyLimitMiddleware._active
-    except Exception:
-        pass
 
     # ── 8. Determine health grade ─────────────────────────────────────────────
     issues = []
@@ -1109,8 +1240,8 @@ def health_deep():
         "issues": issues,
         "components": {
             "database": {"ok": db_ok, "latency_ms": db_ms, "error": db_err},
-            "redis":    {"ok": red_ok, "latency_ms": red_ms, "error": red_err},
-            "queue":    {"backlog": queue_backlog, "error": queue_err},
+            "redis": {"ok": red_ok, "latency_ms": red_ms, "error": red_err},
+            "queue": {"backlog": queue_backlog, "error": queue_err},
         },
         "process": {
             "memory_rss_mb": rss_mb,
@@ -1122,14 +1253,16 @@ def health_deep():
         "circuits": circuits,
         "check_duration_ms": total_ms,
         "version": APP_VERSION,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "auto_repair": (lambda: __import__("app.core.auto_repair", fromlist=["auto_repair"]).auto_repair.stats())(),
+        "timestamp": datetime.now(UTC).isoformat(),
+        "auto_repair": (
+            lambda: __import__("app.core.auto_repair", fromlist=["auto_repair"]).auto_repair.stats()
+        )(),
     }
-
 
 
 # ===== PUBLIC ENDPOINTS =====
 _test_types_cache: dict = {"data": None, "at": 0.0}
+
 
 @app.get("/test-types", tags=["system"])
 def list_test_types():
@@ -1138,11 +1271,13 @@ def list_test_types():
     Cached in-memory for 5 minutes to reduce database load.
     """
     import time
+
     cache = _test_types_cache
     if cache["data"] is not None and (time.time() - cache["at"]) < 300:
         return cache["data"]
 
     from .database import SessionLocal
+
     db = SessionLocal()
     try:
         types = db.query(TestType).order_by(TestType.category, TestType.test_name).all()
@@ -1166,21 +1301,21 @@ def list_test_types():
         db.close()
 
 
-
 def _migrate_perm_version():
     """Add perm_version column to lab_users if it does not exist (safe idempotent migration)."""
     from sqlalchemy import text
+
     try:
         with engine.connect() as conn:
             # Step 1: add the column if absent
-            conn.execute(text(
-                "ALTER TABLE lab_users "
-                "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
-            ))
+            conn.execute(
+                text(
+                    "ALTER TABLE lab_users "
+                    "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
+                )
+            )
             # Step 2: back-fill any NULL values left by a partial previous migration
-            conn.execute(text(
-                "UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"
-            ))
+            conn.execute(text("UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"))
             conn.commit()
         logger.info("perm_version column ensured on lab_users")
     except Exception as exc:
@@ -1198,26 +1333,186 @@ def _seed_test_types():
         if db.query(TestType.id).first() is not None:
             return
         test_types = [
-            TestType(test_code="glucose", test_name="Glucose (Fasting)", test_name_ar="السكر (صائم)", category="Chemistry", unit="mg/dL", normal_range_low=70, normal_range_high=100),
-            TestType(test_code="hemoglobin", test_name="Hemoglobin", test_name_ar="الهيموغلوبين", category="CBC", unit="g/dL", normal_range_low=12, normal_range_high=17),
-            TestType(test_code="wbc", test_name="White Blood Cells", test_name_ar="كريات الدم البيضاء", category="CBC", unit="×10³/µL", normal_range_low=4.0, normal_range_high=11.0),
-            TestType(test_code="platelets", test_name="Platelets", test_name_ar="الصفائح الدموية", category="CBC", unit="×10³/µL", normal_range_low=150, normal_range_high=400),
-            TestType(test_code="creatinine", test_name="Creatinine", test_name_ar="الكرياتينين", category="Kidney", unit="mg/dL", normal_range_low=0.6, normal_range_high=1.3),
-            TestType(test_code="urea", test_name="Urea (BUN)", test_name_ar="اليوريا", category="Kidney", unit="mg/dL", normal_range_low=15, normal_range_high=45),
-            TestType(test_code="cholesterol", test_name="Total Cholesterol", test_name_ar="الكوليسترول الكلي", category="Lipid", unit="mg/dL", normal_range_low=0, normal_range_high=200),
-            TestType(test_code="triglycerides", test_name="Triglycerides", test_name_ar="الدهون الثلاثية", category="Lipid", unit="mg/dL", normal_range_low=0, normal_range_high=150),
-            TestType(test_code="alt", test_name="ALT (SGPT)", test_name_ar="إنزيم الكبد ALT", category="Liver", unit="U/L", normal_range_low=0, normal_range_high=40),
-            TestType(test_code="ast", test_name="AST (SGOT)", test_name_ar="إنزيم الكبد AST", category="Liver", unit="U/L", normal_range_low=0, normal_range_high=40),
-            TestType(test_code="tsh", test_name="TSH", test_name_ar="هرمون الغدة الدرقية", category="Thyroid", unit="mIU/L", normal_range_low=0.4, normal_range_high=4.5),
-            TestType(test_code="potassium", test_name="Potassium", test_name_ar="البوتاسيوم", category="Electrolytes", unit="mEq/L", normal_range_low=3.5, normal_range_high=5.0),
-            TestType(test_code="sodium", test_name="Sodium", test_name_ar="الصوديوم", category="Electrolytes", unit="mEq/L", normal_range_low=135, normal_range_high=145),
-            TestType(test_code="hba1c", test_name="HbA1c", test_name_ar="السكر التراكمي", category="Diabetes", unit="%", normal_range_low=0, normal_range_high=5.7),
-            TestType(test_code="vitamin_d", test_name="Vitamin D", test_name_ar="فيتامين د", category="Vitamins", unit="ng/mL", normal_range_low=20, normal_range_high=100),
-            TestType(test_code="rbc", test_name="Red Blood Cells", test_name_ar="كريات الدم الحمراء", category="CBC", unit="×10⁶/µL", normal_range_low=4.0, normal_range_high=6.0),
-            TestType(test_code="mcv", test_name="MCV", test_name_ar="حجم الكرية الوسطي", category="CBC", unit="fL", normal_range_low=80, normal_range_high=100),
-            TestType(test_code="ldl", test_name="LDL Cholesterol", test_name_ar="الكوليسترول الضار", category="Lipid", unit="mg/dL", normal_range_low=0, normal_range_high=130),
-            TestType(test_code="hdl", test_name="HDL Cholesterol", test_name_ar="الكوليسترول النافع", category="Lipid", unit="mg/dL", normal_range_low=40, normal_range_high=100),
-            TestType(test_code="uric_acid", test_name="Uric Acid", test_name_ar="حمض اليوريك", category="Kidney", unit="mg/dL", normal_range_low=2.5, normal_range_high=7.0),
+            TestType(
+                test_code="glucose",
+                test_name="Glucose (Fasting)",
+                test_name_ar="السكر (صائم)",
+                category="Chemistry",
+                unit="mg/dL",
+                normal_range_low=70,
+                normal_range_high=100,
+            ),
+            TestType(
+                test_code="hemoglobin",
+                test_name="Hemoglobin",
+                test_name_ar="الهيموغلوبين",
+                category="CBC",
+                unit="g/dL",
+                normal_range_low=12,
+                normal_range_high=17,
+            ),
+            TestType(
+                test_code="wbc",
+                test_name="White Blood Cells",
+                test_name_ar="كريات الدم البيضاء",
+                category="CBC",
+                unit="×10³/µL",
+                normal_range_low=4.0,
+                normal_range_high=11.0,
+            ),
+            TestType(
+                test_code="platelets",
+                test_name="Platelets",
+                test_name_ar="الصفائح الدموية",
+                category="CBC",
+                unit="×10³/µL",
+                normal_range_low=150,
+                normal_range_high=400,
+            ),
+            TestType(
+                test_code="creatinine",
+                test_name="Creatinine",
+                test_name_ar="الكرياتينين",
+                category="Kidney",
+                unit="mg/dL",
+                normal_range_low=0.6,
+                normal_range_high=1.3,
+            ),
+            TestType(
+                test_code="urea",
+                test_name="Urea (BUN)",
+                test_name_ar="اليوريا",
+                category="Kidney",
+                unit="mg/dL",
+                normal_range_low=15,
+                normal_range_high=45,
+            ),
+            TestType(
+                test_code="cholesterol",
+                test_name="Total Cholesterol",
+                test_name_ar="الكوليسترول الكلي",
+                category="Lipid",
+                unit="mg/dL",
+                normal_range_low=0,
+                normal_range_high=200,
+            ),
+            TestType(
+                test_code="triglycerides",
+                test_name="Triglycerides",
+                test_name_ar="الدهون الثلاثية",
+                category="Lipid",
+                unit="mg/dL",
+                normal_range_low=0,
+                normal_range_high=150,
+            ),
+            TestType(
+                test_code="alt",
+                test_name="ALT (SGPT)",
+                test_name_ar="إنزيم الكبد ALT",
+                category="Liver",
+                unit="U/L",
+                normal_range_low=0,
+                normal_range_high=40,
+            ),
+            TestType(
+                test_code="ast",
+                test_name="AST (SGOT)",
+                test_name_ar="إنزيم الكبد AST",
+                category="Liver",
+                unit="U/L",
+                normal_range_low=0,
+                normal_range_high=40,
+            ),
+            TestType(
+                test_code="tsh",
+                test_name="TSH",
+                test_name_ar="هرمون الغدة الدرقية",
+                category="Thyroid",
+                unit="mIU/L",
+                normal_range_low=0.4,
+                normal_range_high=4.5,
+            ),
+            TestType(
+                test_code="potassium",
+                test_name="Potassium",
+                test_name_ar="البوتاسيوم",
+                category="Electrolytes",
+                unit="mEq/L",
+                normal_range_low=3.5,
+                normal_range_high=5.0,
+            ),
+            TestType(
+                test_code="sodium",
+                test_name="Sodium",
+                test_name_ar="الصوديوم",
+                category="Electrolytes",
+                unit="mEq/L",
+                normal_range_low=135,
+                normal_range_high=145,
+            ),
+            TestType(
+                test_code="hba1c",
+                test_name="HbA1c",
+                test_name_ar="السكر التراكمي",
+                category="Diabetes",
+                unit="%",
+                normal_range_low=0,
+                normal_range_high=5.7,
+            ),
+            TestType(
+                test_code="vitamin_d",
+                test_name="Vitamin D",
+                test_name_ar="فيتامين د",
+                category="Vitamins",
+                unit="ng/mL",
+                normal_range_low=20,
+                normal_range_high=100,
+            ),
+            TestType(
+                test_code="rbc",
+                test_name="Red Blood Cells",
+                test_name_ar="كريات الدم الحمراء",
+                category="CBC",
+                unit="×10⁶/µL",
+                normal_range_low=4.0,
+                normal_range_high=6.0,
+            ),
+            TestType(
+                test_code="mcv",
+                test_name="MCV",
+                test_name_ar="حجم الكرية الوسطي",
+                category="CBC",
+                unit="fL",
+                normal_range_low=80,
+                normal_range_high=100,
+            ),
+            TestType(
+                test_code="ldl",
+                test_name="LDL Cholesterol",
+                test_name_ar="الكوليسترول الضار",
+                category="Lipid",
+                unit="mg/dL",
+                normal_range_low=0,
+                normal_range_high=130,
+            ),
+            TestType(
+                test_code="hdl",
+                test_name="HDL Cholesterol",
+                test_name_ar="الكوليسترول النافع",
+                category="Lipid",
+                unit="mg/dL",
+                normal_range_low=40,
+                normal_range_high=100,
+            ),
+            TestType(
+                test_code="uric_acid",
+                test_name="Uric Acid",
+                test_name_ar="حمض اليوريك",
+                category="Kidney",
+                unit="mg/dL",
+                normal_range_low=2.5,
+                normal_range_high=7.0,
+            ),
         ]
         db.add_all(test_types)
         db.commit()
@@ -1229,6 +1524,7 @@ def _seed_test_types():
 def _ensure_master_admin():
     """Create master admin on first startup if not exists."""
     from .routes.admin import ensure_master_admin
+
     ensure_master_admin()
 
 
@@ -1238,12 +1534,14 @@ def _ensure_audit_log_immutable():
     Ensures audit records cannot be modified or deleted after creation.
     Safe to call multiple times (CREATE OR REPLACE + DROP IF EXISTS).
     """
-    from .database import SessionLocal
     from sqlalchemy import text
+
+    from .database import SessionLocal
 
     db = SessionLocal()
     try:
-        db.execute(text("""
+        db.execute(
+            text("""
             CREATE OR REPLACE FUNCTION prevent_audit_modification()
             RETURNS TRIGGER AS $$
             BEGIN
@@ -1254,13 +1552,16 @@ def _ensure_audit_log_immutable():
                 RETURN NULL;
             END;
             $$ LANGUAGE plpgsql;
-        """))
-        db.execute(text("""
+        """)
+        )
+        db.execute(
+            text("""
             DROP TRIGGER IF EXISTS audit_logs_immutable ON audit_logs;
             CREATE TRIGGER audit_logs_immutable
                 BEFORE UPDATE OR DELETE ON audit_logs
                 FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
-        """))
+        """)
+        )
         db.commit()
         logger.info("Audit log immutability trigger applied")
     except Exception as e:

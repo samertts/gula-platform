@@ -1,7 +1,7 @@
-import os
-import sys
-import secrets
 import logging
+import os
+import secrets
+import sys
 
 logger = logging.getLogger("gula.config")
 
@@ -25,16 +25,15 @@ IS_PRODUCTION = ENV == "production"
 RUNTIME_MODE = os.getenv("RUNTIME_MODE", "api").lower()
 if RUNTIME_MODE not in {"api", "worker", "test", "cli"}:
     print(
-        f"[GULA FATAL] Invalid RUNTIME_MODE={RUNTIME_MODE!r}. "
-        "Allowed: api | worker | test | cli",
+        f"[GULA FATAL] Invalid RUNTIME_MODE={RUNTIME_MODE!r}. Allowed: api | worker | test | cli",
         file=sys.stderr,
     )
     sys.exit(1)
 
 IS_WORKER_RUNTIME = RUNTIME_MODE == "worker"
-IS_API_RUNTIME    = RUNTIME_MODE == "api"
-IS_TEST_RUNTIME   = RUNTIME_MODE == "test" or ENV == "test"
-IS_CLI_RUNTIME    = RUNTIME_MODE == "cli"
+IS_API_RUNTIME = RUNTIME_MODE == "api"
+IS_TEST_RUNTIME = RUNTIME_MODE == "test" or ENV == "test"
+IS_CLI_RUNTIME = RUNTIME_MODE == "cli"
 
 # Master switch for background tasks. Defaults to True only inside the worker
 # runtime; everywhere else it must be explicitly enabled to spawn anything.
@@ -58,6 +57,7 @@ def background_tasks_enabled() -> bool:
     """
     return FEATURE_BACKGROUND_TASKS and IS_WORKER_RUNTIME
 
+
 # ─── App Info ────────────────────────────────────────────────────────────────
 APP_NAME = "GULA Platform"
 APP_VERSION = "2.1.0"
@@ -70,12 +70,25 @@ if not DATABASE_URL:
     if IS_PRODUCTION:
         print("[GULA FATAL] DATABASE_URL must be set in production.", file=sys.stderr)
         sys.exit(1)
-    DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/gula"
+    # Dev-only fallback: use local postgres without hardcoded password
+    DATABASE_URL = "postgresql://postgres@localhost:5432/gula"
+    logger.warning(
+        "DATABASE_URL not set — using local dev default. Set DATABASE_URL in .env for production."
+    )
 
 # ─── Weak-secret detection helper ────────────────────────────────────────────
 _WEAK_PATTERNS = (
-    "default", "change", "secret", "example", "test", "demo",
-    "gula_default", "changeme", "password", "12345", "abcdef",
+    "default",
+    "change",
+    "secret",
+    "example",
+    "test",
+    "demo",
+    "gula_default",
+    "changeme",
+    "password",
+    "12345",
+    "abcdef",
 )
 
 
@@ -117,7 +130,9 @@ if not REFRESH_TOKEN_SECRET:
         sys.exit(1)
     # Dev fallback: derive from SECRET_KEY (not suitable for production)
     REFRESH_TOKEN_SECRET = f"refresh_{SECRET_KEY}"
-    logger.warning("REFRESH_TOKEN_SECRET not set - derived from SECRET_KEY. Set it in .env for production.")
+    logger.warning(
+        "REFRESH_TOKEN_SECRET not set - derived from SECRET_KEY. Set it in .env for production."
+    )
 
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 
@@ -131,7 +146,7 @@ if not ENCRYPTION_KEY:
 elif IS_PRODUCTION and _is_weak_secret(ENCRYPTION_KEY):
     print(
         "[GULA FATAL] ENCRYPTION_KEY contains a weak/default pattern. "
-        "Generate with: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"",
+        'Generate with: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"',
         file=sys.stderr,
     )
     sys.exit(1)
@@ -173,15 +188,15 @@ if not REDIS_URL:
 # Google AI Studio (Gemini): free tier (1 500 req/day, 15 req/min).
 # Get a free key at https://aistudio.google.com/apikey
 # SDK: pip install google-generativeai>=0.8.0  (raw HTTP fallback if not installed)
-GEMINI_API_KEY       = os.getenv("GEMINI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_CLINICAL_MODEL = os.getenv("GEMINI_CLINICAL_MODEL", "gemini-2.0-flash")
-GEMINI_CHAT_MODEL     = os.getenv("GEMINI_CHAT_MODEL",     "gemini-2.0-flash")
-GROQ_API_KEY         = os.getenv("GROQ_API_KEY", "")
-OLLAMA_BASE_URL      = os.getenv("OLLAMA_BASE_URL", "")
+GEMINI_CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "")
 
 # ─── Mobile / Notifications ─────────────────────────────────────────────────
 FCM_SERVER_KEY = os.getenv("FCM_SERVER_KEY", "")  # Firebase Cloud Messaging
-APNS_KEY = os.getenv("APNS_KEY", "")              # Apple Push Notifications
+APNS_KEY = os.getenv("APNS_KEY", "")  # Apple Push Notifications
 
 # ─── API Documentation ───────────────────────────────────────────────────────
 # Enable API docs in production for government testers (controlled by env var)
@@ -193,7 +208,7 @@ ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
 # They are off by default so a fresh deploy of this branch behaves
 # identically to the previous release until ops flips them on.
 # The authoritative readers live in backend/app/core/sndhs_flags.py.
-SNDHS_ENABLE_VISITS      = os.getenv("SNDHS_ENABLE_VISITS",      "false").lower() == "true"
+SNDHS_ENABLE_VISITS = os.getenv("SNDHS_ENABLE_VISITS", "false").lower() == "true"
 SNDHS_ENABLE_NATIONAL_ID = os.getenv("SNDHS_ENABLE_NATIONAL_ID", "false").lower() == "true"
 
 
@@ -204,38 +219,38 @@ SNDHS_ENABLE_NATIONAL_ID = os.getenv("SNDHS_ENABLE_NATIONAL_ID", "false").lower(
 #   GULA_ADAPTER_MODE_INSURANCE  — overrides for NHI insurance adapter
 #   GULA_ADAPTER_MODE_RESIDENCY  — overrides for MoI residency adapter
 #   GULA_ADAPTER_MODE_CLOUDFLARE — overrides for Cloudflare control plane
-ADAPTER_MODE_DEFAULT    = os.getenv("GULA_ADAPTER_MODE", "stub").lower()
-ADAPTER_MODE_NID        = os.getenv("GULA_ADAPTER_MODE_NID",        ADAPTER_MODE_DEFAULT).lower()
-ADAPTER_MODE_INSURANCE  = os.getenv("GULA_ADAPTER_MODE_INSURANCE",  ADAPTER_MODE_DEFAULT).lower()
-ADAPTER_MODE_RESIDENCY  = os.getenv("GULA_ADAPTER_MODE_RESIDENCY",  ADAPTER_MODE_DEFAULT).lower()
+ADAPTER_MODE_DEFAULT = os.getenv("GULA_ADAPTER_MODE", "stub").lower()
+ADAPTER_MODE_NID = os.getenv("GULA_ADAPTER_MODE_NID", ADAPTER_MODE_DEFAULT).lower()
+ADAPTER_MODE_INSURANCE = os.getenv("GULA_ADAPTER_MODE_INSURANCE", ADAPTER_MODE_DEFAULT).lower()
+ADAPTER_MODE_RESIDENCY = os.getenv("GULA_ADAPTER_MODE_RESIDENCY", ADAPTER_MODE_DEFAULT).lower()
 ADAPTER_MODE_CLOUDFLARE = os.getenv("GULA_ADAPTER_MODE_CLOUDFLARE", ADAPTER_MODE_DEFAULT).lower()
 
 # ─── Iraqi government endpoints (optional — LIVE mode only) ──────────────────
 # Leave empty to keep the adapter in STUB mode. When present, the adapter
 # runs against the real API. Credentials must NEVER be committed.
-MOI_NID_API_URL       = os.getenv("MOI_NID_API_URL", "")
-MOI_NID_API_KEY       = os.getenv("MOI_NID_API_KEY", "")
-INSURANCE_API_URL     = os.getenv("INSURANCE_API_URL", "")
-INSURANCE_API_KEY     = os.getenv("INSURANCE_API_KEY", "")
-RESIDENCY_API_URL     = os.getenv("RESIDENCY_API_URL", "")
-RESIDENCY_API_KEY     = os.getenv("RESIDENCY_API_KEY", "")
+MOI_NID_API_URL = os.getenv("MOI_NID_API_URL", "")
+MOI_NID_API_KEY = os.getenv("MOI_NID_API_KEY", "")
+INSURANCE_API_URL = os.getenv("INSURANCE_API_URL", "")
+INSURANCE_API_KEY = os.getenv("INSURANCE_API_KEY", "")
+RESIDENCY_API_URL = os.getenv("RESIDENCY_API_URL", "")
+RESIDENCY_API_KEY = os.getenv("RESIDENCY_API_KEY", "")
 
 # ─── Cloudflare control plane (optional — LIVE mode only) ────────────────────
-CF_API_TOKEN   = os.getenv("CF_API_TOKEN", "")
-CF_ACCOUNT_ID  = os.getenv("CF_ACCOUNT_ID", "")
-CF_ZONE_ID     = os.getenv("CF_ZONE_ID", "")
-CF_R2_BUCKET   = os.getenv("CF_R2_BUCKET", "gula-reports")
+CF_API_TOKEN = os.getenv("CF_API_TOKEN", "")
+CF_ACCOUNT_ID = os.getenv("CF_ACCOUNT_ID", "")
+CF_ZONE_ID = os.getenv("CF_ZONE_ID", "")
+CF_R2_BUCKET = os.getenv("CF_R2_BUCKET", "gula-reports")
 
 # ─── Supabase (optional — for projects migrating to Supabase Postgres) ───────
 # When set, health/diagnostic scripts surface the Supabase project. Primary
 # DATABASE_URL is still authoritative for runtime connections.
-SUPABASE_URL         = os.getenv("SUPABASE_URL", "")
-SUPABASE_ANON_KEY    = os.getenv("SUPABASE_ANON_KEY", "")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
 # ─── Render / DigitalOcean (informational — set by their platforms) ──────────
-RENDER_SERVICE_ID        = os.getenv("RENDER_SERVICE_ID", "")
-DIGITALOCEAN_APP_ID      = os.getenv("DIGITALOCEAN_APP_ID", "")
+RENDER_SERVICE_ID = os.getenv("RENDER_SERVICE_ID", "")
+DIGITALOCEAN_APP_ID = os.getenv("DIGITALOCEAN_APP_ID", "")
 
 # ─── Financial Engine (feature-flagged, OFF by default) ──────────────────────
 # The Financial Engine is the provider-billing / ranking / ads / fraud /
@@ -255,4 +270,4 @@ DIGITALOCEAN_APP_ID      = os.getenv("DIGITALOCEAN_APP_ID", "")
 #   surface. Has effect ONLY when ENABLE_FINANCIAL_ENGINE is also true.
 #   Allows ads to be paused independently of the rest of the engine.
 ENABLE_FINANCIAL_ENGINE = os.getenv("ENABLE_FINANCIAL_ENGINE", "false").lower() == "true"
-ENABLE_ADS              = os.getenv("ENABLE_ADS",              "false").lower() == "true"
+ENABLE_ADS = os.getenv("ENABLE_ADS", "false").lower() == "true"
