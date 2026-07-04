@@ -24,26 +24,29 @@ Routes:
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import logging
 import os
 import re
 import time
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from app.gateways import google_ai as _google_ai
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.ai.approval import approval_store
-from app.ai.guardrails import AIGuardrailViolation, ai_suggest
+from app.ai.guardrails import AIGuardrailViolationError, ai_suggest
 from app.ai.sandbox import AISandbox
-from app.database import get_db, SessionLocal
+from app.database import SessionLocal, get_db
+from app.gateways import google_ai as _google_ai
 from app.models.audit_log import AuditLog
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
@@ -61,23 +64,26 @@ _AI_BUDGET_S = float(os.getenv("AI_BUDGET_SECONDS", "6"))
 
 # Ollama — completely free, runs locally on the server (no API key required).
 # Install: curl -fsSL https://ollama.com/install.sh | sh && ollama pull llama3.2:3b
-_OLLAMA_BASE_URL      = os.getenv("OLLAMA_BASE_URL",      "")
+_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "")
 _OLLAMA_CLINICAL_MODEL = os.getenv("OLLAMA_CLINICAL_MODEL", "llama3.2:3b")
-_OLLAMA_TIMEOUT        = float(os.getenv("OLLAMA_TIMEOUT",  str(_AI_BUDGET_S)))
+_OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", str(_AI_BUDGET_S)))
 
 # Auto-detect provider priority: Ollama (local/free) → Gemini → Groq → none
 _AI_PROVIDER = os.getenv(
     "AI_PROVIDER",
-    "ollama" if _OLLAMA_BASE_URL else
-    "gemini" if _google_ai.is_configured() else
-    "groq"   if _GROQ_KEY   else "none",
+    "ollama"
+    if _OLLAMA_BASE_URL
+    else "gemini"
+    if _google_ai.is_configured()
+    else "groq"
+    if _GROQ_KEY
+    else "none",
 )
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 router = APIRouter(prefix="/api/ai", tags=["AI Safety Layer"])
 
-_DOCTOR_ROLES = {"doctor", "admin", "lab_admin", "province_admin",
-                 "ministry_admin", "master_admin"}
+_DOCTOR_ROLES = {"doctor", "admin", "lab_admin", "province_admin", "ministry_admin", "master_admin"}
 
 
 def _require_doctor(user) -> None:
@@ -90,13 +96,14 @@ def _require_doctor(user) -> None:
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
 
+
 class SuggestRequest(BaseModel):
-    operation:   str             = Field(..., description="e.g. suggest_interpretation")
-    payload:     Dict[str, Any]  = Field(default_factory=dict)
-    entity_type: str             = Field(default="")
-    entity_id:   Optional[int]   = Field(default=None)
-    confidence:  float           = Field(default=0.5, ge=0.0, le=1.0)
-    rationale:   str             = Field(default="")
+    operation: str = Field(..., description="e.g. suggest_interpretation")
+    payload: dict[str, Any] = Field(default_factory=dict)
+    entity_type: str = Field(default="")
+    entity_id: int | None = Field(default=None)
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    rationale: str = Field(default="")
 
 
 class RejectRequest(BaseModel):
@@ -104,6 +111,7 @@ class RejectRequest(BaseModel):
 
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
+
 
 @router.post("/suggest")
 def create_suggestion(
@@ -124,16 +132,16 @@ def create_suggestion(
             entity_type=body.entity_type,
             entity_id=body.entity_id,
         )
-    except AIGuardrailViolation as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+    except AIGuardrailViolationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     approval = approval_store.submit(suggestion)
     return {
-        "suggestion_id":     suggestion.id,
-        "approval_id":       approval.id,
-        "operation":         suggestion.operation,
-        "operation_type":    suggestion.operation_type.value,
-        "status":            approval.status.value,
+        "suggestion_id": suggestion.id,
+        "approval_id": approval.id,
+        "operation": suggestion.operation,
+        "operation_type": suggestion.operation_type.value,
+        "status": approval.status.value,
         "requires_approval": approval.status.value == "pending",
     }
 
@@ -148,15 +156,15 @@ def list_pending(current_user=Depends(get_current_user)):
         "count": len(pending),
         "items": [
             {
-                "approval_id":    a.id,
-                "operation":      a.suggestion.operation,
+                "approval_id": a.id,
+                "operation": a.suggestion.operation,
                 "operation_type": a.suggestion.operation_type.value,
-                "entity_type":    a.suggestion.entity_type,
-                "entity_id":      a.suggestion.entity_id,
-                "confidence":     a.suggestion.confidence,
-                "rationale":      a.suggestion.rationale,
-                "submitted_at":   a.submitted_at,
-                "expires_in_s":   max(0, 1800 - (now - a.submitted_at)),
+                "entity_type": a.suggestion.entity_type,
+                "entity_id": a.suggestion.entity_id,
+                "confidence": a.suggestion.confidence,
+                "rationale": a.suggestion.rationale,
+                "submitted_at": a.submitted_at,
+                "expires_in_s": max(0, 1800 - (now - a.submitted_at)),
             }
             for a in pending
         ],
@@ -172,14 +180,14 @@ def approve_suggestion(
     _require_doctor(current_user)
     try:
         approval = approval_store.approve(approval_id, approver=current_user.email)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Approval not found")
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Approval not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return {
         "approval_id": approval.id,
-        "status":      approval.status.value,
+        "status": approval.status.value,
         "approved_by": approval.reviewed_by,
     }
 
@@ -198,16 +206,16 @@ def reject_suggestion(
             approver=current_user.email,
             reason=body.reason,
         )
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Approval not found")
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Approval not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return {
         "approval_id": approval.id,
-        "status":      approval.status.value,
+        "status": approval.status.value,
         "rejected_by": approval.reviewed_by,
-        "reason":      approval.rejection_reason,
+        "reason": approval.rejection_reason,
     }
 
 
@@ -232,16 +240,16 @@ def execute_suggestion(
 
     try:
         result = AISandbox.execute(approval)
-    except AIGuardrailViolation as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+    except AIGuardrailViolationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     return {
         "approval_id": result.approval_id,
-        "operation":   result.operation,
-        "success":     result.success,
-        "output":      result.output,
+        "operation": result.operation,
+        "success": result.success,
+        "output": result.output,
         "duration_ms": round(result.duration_ms, 1),
-        "error":       result.error or None,
+        "error": result.error or None,
     }
 
 
@@ -261,10 +269,14 @@ def analyze_order(
     _require_doctor(current_user)
 
     # Load the order, scoped to the user's lab
-    order = db.query(LabOrder).filter(
-        LabOrder.id == order_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    order = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == order_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -274,10 +286,10 @@ def analyze_order(
 
     result_list = [
         {
-            "test_name":       r.test_name,
-            "value":           r.value,
-            "unit":            r.unit,
-            "normal_range_low":  r.normal_range_low,
+            "test_name": r.test_name,
+            "value": r.value,
+            "unit": r.unit,
+            "normal_range_low": r.normal_range_low,
             "normal_range_high": r.normal_range_high,
         }
         for r in results
@@ -287,17 +299,17 @@ def analyze_order(
         suggestion = ai_suggest(
             operation="analyze_order",
             payload={
-                "order_id":    order_id,
+                "order_id": order_id,
                 "result_list": result_list,
             },
             ai_model="clinical_intelligence_engine",
-            confidence=1.0,   # rules-based, deterministic
+            confidence=1.0,  # rules-based, deterministic
             rationale="Multi-test clinical pattern analysis (rules-based, not ML)",
             entity_type="order",
             entity_id=order_id,
         )
-    except AIGuardrailViolation as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+    except AIGuardrailViolationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     approval = approval_store.submit(suggestion)
 
@@ -305,23 +317,23 @@ def analyze_order(
     if approval.is_executable:
         result = AISandbox.execute(approval)
         return {
-            "order_id":       order_id,
-            "approval_id":    approval.id,
-            "status":         approval.status.value,
+            "order_id": order_id,
+            "approval_id": approval.id,
+            "status": approval.status.value,
             "patterns_found": len(result.output.get("patterns", [])),
-            "flag_summary":   result.output.get("flag_summary", {}),
-            "patterns":       result.output.get("patterns", []),
+            "flag_summary": result.output.get("flag_summary", {}),
+            "patterns": result.output.get("patterns", []),
             "interpretations": result.output.get("interpretations", []),
-            "display_only":   True,
-            "disclaimer":     "This analysis is for physician review only. It does not constitute a diagnosis.",
-            "disclaimer_ar":  "هذا التحليل للمراجعة الطبية فقط. لا يُشكّل تشخيصاً طبياً.",
+            "display_only": True,
+            "disclaimer": "This analysis is for physician review only. It does not constitute a diagnosis.",
+            "disclaimer_ar": "هذا التحليل للمراجعة الطبية فقط. لا يُشكّل تشخيصاً طبياً.",
         }
 
     return {
-        "order_id":    order_id,
+        "order_id": order_id,
         "approval_id": approval.id,
-        "status":      approval.status.value,
-        "message":     "Analysis pending approval",
+        "status": approval.status.value,
+        "message": "Analysis pending approval",
     }
 
 
@@ -353,42 +365,48 @@ async def list_ai_providers():
                 ollama_models = [m["name"] for m in r.json().get("models", [])]
     except Exception:
         pass
-    statuses.append({
-        "name":        "ollama",
-        "type":        "local",
-        "configured":  True,
-        "reachable":   ollama_ok,
-        "model":       _OLLAMA_CLINICAL_MODEL,
-        "base_url":    _OLLAMA_BASE_URL,
-        "available_models": ollama_models,
-        "cost":        "free (local)",
-    })
+    statuses.append(
+        {
+            "name": "ollama",
+            "type": "local",
+            "configured": True,
+            "reachable": ollama_ok,
+            "model": _OLLAMA_CLINICAL_MODEL,
+            "base_url": _OLLAMA_BASE_URL,
+            "available_models": ollama_models,
+            "cost": "free (local)",
+        }
+    )
 
     # Gemini — via google_ai gateway (SDK when available, HTTP fallback)
     _gemini_info = _google_ai.provider_info()
-    statuses.append({
-        **_gemini_info,
-        "reachable": None,   # not probed (expensive to test)
-    })
+    statuses.append(
+        {
+            **_gemini_info,
+            "reachable": None,  # not probed (expensive to test)
+        }
+    )
 
     # Groq
-    statuses.append({
-        "name":       "groq",
-        "type":       "cloud",
-        "configured": bool(_GROQ_KEY),
-        "reachable":  None,
-        "model":      "llama-3.1-8b-instant",
-        "cost":       "free tier (30 req/min)",
-    })
+    statuses.append(
+        {
+            "name": "groq",
+            "type": "cloud",
+            "configured": bool(_GROQ_KEY),
+            "reachable": None,
+            "model": "llama-3.1-8b-instant",
+            "cost": "free tier (30 req/min)",
+        }
+    )
 
     active = next(
         (p["name"] for p in statuses if p.get("configured") and p.get("reachable") is not False),
         "none",
     )
     return {
-        "providers":       statuses,
+        "providers": statuses,
         "active_provider": active,
-        "fallback_chain":  ["ollama", "gemini", "groq"],
+        "fallback_chain": ["ollama", "gemini", "groq"],
     }
 
 
@@ -398,15 +416,22 @@ async def list_ai_providers():
 # Rate limiting: nginx api_limit zone + in-process response cache.
 # ══════════════════════════════════════════════════════════════════════════════
 
-_SEVERITY_NORMAL   = "طبيعي"
-_SEVERITY_WARNING  = "تنبيه"
+_SEVERITY_NORMAL = "طبيعي"
+_SEVERITY_WARNING = "تنبيه"
 _SEVERITY_CRITICAL = "حرج"
 
 _DISCLAIMER = "هذا الشرح للتوعية فقط ولا يُغني عن استشارة الطبيب."
 
 _FORBIDDEN_PHRASES = [
-    "تشخيص:", "العلاج:", "الدواء:", "يُنصح بتناول", "جرعة",
-    "diagnosis:", "treatment:", "medication:", "prescribe",
+    "تشخيص:",
+    "العلاج:",
+    "الدواء:",
+    "يُنصح بتناول",
+    "جرعة",
+    "diagnosis:",
+    "treatment:",
+    "medication:",
+    "prescribe",
 ]
 
 # ── In-process response cache (prevents AI cost explosion / token replay) ─────
@@ -419,48 +444,86 @@ _CACHE_TTL = 120  # seconds — same token served from cache
 # حرج much sooner.  Format: lowercase substring → weight multiplier (default 1.0)
 _TEST_WEIGHTS: dict[str, float] = {
     # Electrolytes — narrow therapeutic window, arrhythmia risk
-    "potassium": 2.5, "k+": 2.5,
-    "sodium": 2.0, "na+": 2.0,
-    "calcium": 2.0, "ca2+": 2.0,
+    "potassium": 2.5,
+    "k+": 2.5,
+    "sodium": 2.0,
+    "na+": 2.0,
+    "calcium": 2.0,
+    "ca2+": 2.0,
     "magnesium": 1.8,
     # Acid-base
-    "ph": 2.5, "bicarbonate": 2.0, "hco3": 2.0,
+    "ph": 2.5,
+    "bicarbonate": 2.0,
+    "hco3": 2.0,
     # Cardiac markers
-    "troponin": 2.5, "bnp": 2.5, "nt-probnp": 2.5, "ck-mb": 2.0,
+    "troponin": 2.5,
+    "bnp": 2.5,
+    "nt-probnp": 2.5,
+    "ck-mb": 2.0,
     # Glucose / Diabetes
-    "glucose": 2.0, "blood sugar": 2.0, "سكر": 2.0, "hba1c": 1.8,
+    "glucose": 2.0,
+    "blood sugar": 2.0,
+    "سكر": 2.0,
+    "hba1c": 1.8,
     # Coagulation
-    "inr": 2.0, "pt": 1.8, "ptt": 1.8, "aptt": 1.8,
+    "inr": 2.0,
+    "pt": 1.8,
+    "ptt": 1.8,
+    "aptt": 1.8,
     # Renal
-    "creatinine": 1.8, "كرياتينين": 1.8, "egfr": 2.0, "gfr": 2.0,
-    "urea": 1.5, "bun": 1.5,
+    "creatinine": 1.8,
+    "كرياتينين": 1.8,
+    "egfr": 2.0,
+    "gfr": 2.0,
+    "urea": 1.5,
+    "bun": 1.5,
     # Hematology
-    "hemoglobin": 1.5, "hgb": 1.5, "هيموغلوبين": 1.5,
-    "platelets": 1.8, "plt": 1.8, "صفائح": 1.8, "wbc": 1.5,
+    "hemoglobin": 1.5,
+    "hgb": 1.5,
+    "هيموغلوبين": 1.5,
+    "platelets": 1.8,
+    "plt": 1.8,
+    "صفائح": 1.8,
+    "wbc": 1.5,
     # Thyroid / Liver
-    "tsh": 1.5, "t3": 1.3, "t4": 1.3,
-    "alt": 1.3, "ast": 1.3, "bilirubin": 1.4, "albumin": 1.5,
+    "tsh": 1.5,
+    "t3": 1.3,
+    "t4": 1.3,
+    "alt": 1.3,
+    "ast": 1.3,
+    "bilirubin": 1.4,
+    "albumin": 1.5,
 }
 _BASE_CRITICAL_RATIO = 0.75  # fraction of range span beyond the limit → حرج
 
 # ── Conflict-detection patterns ───────────────────────────────────────────────
 # Each tuple: (pattern_id, keywords_a, keywords_b, Arabic message)
 _CONFLICT_PATTERNS: list[tuple[str, list[str], list[str], str]] = [
-    ("electrolyte_imbalance",
-     ["sodium", "na+", "صوديوم"], ["potassium", "k+", "بوتاسيوم"],
-     "اختلال في توازن الكهارل — يستوجب مراجعة طبية فورية"),
-    ("glucose_hba1c_gap",
-     ["glucose", "blood sugar", "سكر"], ["hba1c"],
-     "تفاوت بين قراءتي السكر الآني والتراكمي"),
-    ("liver_stress",
-     ["alt"], ["ast"],
-     "ارتفاع في إنزيمات الكبد"),
-    ("renal_pattern",
-     ["creatinine", "كرياتينين"], ["urea", "bun"],
-     "مؤشرات وظائف كلوية تستوجب المتابعة"),
-    ("anemia_pattern",
-     ["hemoglobin", "hgb", "هيموغلوبين"], ["rbc", "red blood", "كريات حمراء"],
-     "نمط يشير إلى احتمال فقر الدم"),
+    (
+        "electrolyte_imbalance",
+        ["sodium", "na+", "صوديوم"],
+        ["potassium", "k+", "بوتاسيوم"],
+        "اختلال في توازن الكهارل — يستوجب مراجعة طبية فورية",
+    ),
+    (
+        "glucose_hba1c_gap",
+        ["glucose", "blood sugar", "سكر"],
+        ["hba1c"],
+        "تفاوت بين قراءتي السكر الآني والتراكمي",
+    ),
+    ("liver_stress", ["alt"], ["ast"], "ارتفاع في إنزيمات الكبد"),
+    (
+        "renal_pattern",
+        ["creatinine", "كرياتينين"],
+        ["urea", "bun"],
+        "مؤشرات وظائف كلوية تستوجب المتابعة",
+    ),
+    (
+        "anemia_pattern",
+        ["hemoglobin", "hgb", "هيموغلوبين"],
+        ["rbc", "red blood", "كريات حمراء"],
+        "نمط يشير إلى احتمال فقر الدم",
+    ),
 ]
 
 
@@ -480,7 +543,11 @@ def _classify_severity(val_raw, low_raw, high_raw, weight: float = 1.0) -> str:
         span = hf - lf
         deviation = (lf - vf) if vf < lf else (vf - hf)
         ratio = deviation / span if span > 0 else 1.0
-        return _SEVERITY_CRITICAL if ratio >= _BASE_CRITICAL_RATIO / max(weight, 1.0) else _SEVERITY_WARNING
+        return (
+            _SEVERITY_CRITICAL
+            if ratio >= _BASE_CRITICAL_RATIO / max(weight, 1.0)
+            else _SEVERITY_WARNING
+        )
     except (TypeError, ValueError):
         return _SEVERITY_WARNING
 
@@ -488,7 +555,7 @@ def _classify_severity(val_raw, low_raw, high_raw, weight: float = 1.0) -> str:
 def _compute_severities(results_data: list[dict]) -> list[dict]:
     enriched = []
     for r in results_data:
-        val    = r.get("value") if r.get("value") is not None else r.get("value_text")
+        val = r.get("value") if r.get("value") is not None else r.get("value_text")
         low, high = r.get("normal_range_low"), r.get("normal_range_high")
         weight = _get_test_weight(r.get("test_name", ""))
         if val is None:
@@ -515,8 +582,10 @@ def _detect_conflicts(enriched: list[dict]) -> list[str]:
     # Build set of abnormal test name tokens for fast matching
     abnormal = {
         key
-        for r in enriched if r["severity"] != _SEVERITY_NORMAL
-        for key in _TEST_WEIGHTS if key in (r.get("test_name") or "").lower()
+        for r in enriched
+        if r["severity"] != _SEVERITY_NORMAL
+        for key in _TEST_WEIGHTS
+        if key in (r.get("test_name") or "").lower()
     }
     messages: list[str] = []
     for _pid, kw_a, kw_b, msg in _CONFLICT_PATTERNS:
@@ -527,7 +596,7 @@ def _detect_conflicts(enriched: list[dict]) -> list[str]:
 
 def _compute_confidence(
     enriched: list[dict],
-    patient_context: Optional[dict],
+    patient_context: dict | None,
     provider_used: str,
 ) -> dict:
     """
@@ -538,7 +607,8 @@ def _compute_confidence(
     total = len(enriched)
     if total:
         no_range = sum(
-            1 for r in enriched
+            1
+            for r in enriched
             if r.get("normal_range_low") is None or r.get("normal_range_high") is None
         )
         score -= min(0.30, no_range / total * 0.40)
@@ -555,69 +625,96 @@ def _compute_confidence(
 
 def _action_guidance(overall_sev: str) -> dict:
     if overall_sev == _SEVERITY_CRITICAL:
-        return {"ar": "⚠️ راجع الطبيب فوراً — لا تتأخر في التواصل مع مزودك الصحي.",
-                "urgency": "immediate", "within_hours": 24}
+        return {
+            "ar": "⚠️ راجع الطبيب فوراً — لا تتأخر في التواصل مع مزودك الصحي.",
+            "urgency": "immediate",
+            "within_hours": 24,
+        }
     if overall_sev == _SEVERITY_WARNING:
-        return {"ar": "📅 راجع طبيبك خلال أسبوع لمناقشة هذه النتائج.",
-                "urgency": "soon", "within_hours": 168}
-    return {"ar": "✅ جميع نتائجك ضمن الحدود الطبيعية. استمر في المتابعة الدورية.",
-            "urgency": "routine", "within_hours": None}
+        return {
+            "ar": "📅 راجع طبيبك خلال أسبوع لمناقشة هذه النتائج.",
+            "urgency": "soon",
+            "within_hours": 168,
+        }
+    return {
+        "ar": "✅ جميع نتائجك ضمن الحدود الطبيعية. استمر في المتابعة الدورية.",
+        "urgency": "routine",
+        "within_hours": None,
+    }
 
 
-def _emit_critical_alert(db: Session, order_id: int,
-                          critical_tests: list[str], token_prefix: str) -> None:
+def _emit_critical_alert(
+    db: Session, order_id: int, critical_tests: list[str], token_prefix: str
+) -> None:
     """Write a critical-result alert to audit_logs. Non-fatal."""
     try:
-        db.add(AuditLog(
-            user_id=None,
-            user_role="system:ai",
-            action="critical_result_alert",
-            resource_type="lab_order",
-            resource_id=order_id,
-            details=json.dumps(
-                {"critical_tests": critical_tests, "token_prefix": token_prefix,
-                 "source": "ai_interpret"},
-                ensure_ascii=False,
-            ),
-        ))
+        db.add(
+            AuditLog(
+                user_id=None,
+                user_role="system:ai",
+                action="critical_result_alert",
+                resource_type="lab_order",
+                resource_id=order_id,
+                details=json.dumps(
+                    {
+                        "critical_tests": critical_tests,
+                        "token_prefix": token_prefix,
+                        "source": "ai_interpret",
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+        )
         db.commit()
     except Exception as exc:
         logger.error("[AI] critical_result_alert audit write failed: %s", exc)
+        with contextlib.suppress(Exception):
+            db.rollback()
 
 
 def _build_interpret_prompt(
     results_data: list[dict],
-    patient_context: Optional[dict] = None,
+    patient_context: dict | None = None,
 ) -> str:
-    enriched     = _compute_severities(results_data)
+    enriched = _compute_severities(results_data)
     has_critical = any(r["severity"] == _SEVERITY_CRITICAL for r in enriched)
-    action       = _action_guidance(_overall_severity(enriched))
+    action = _action_guidance(_overall_severity(enriched))
 
     ctx_lines = []
     if patient_context:
         if patient_context.get("age"):
             ctx_lines.append(f"عمر المريض: {patient_context['age']} سنة")
         if patient_context.get("gender"):
-            ctx_lines.append("الجنس: " + ("ذكر" if str(patient_context["gender"]).upper() == "M" else "أنثى"))
+            ctx_lines.append(
+                "الجنس: " + ("ذكر" if str(patient_context["gender"]).upper() == "M" else "أنثى")
+            )
     context_block = ("سياق المريض:\n" + "\n".join(ctx_lines) + "\n\n") if ctx_lines else ""
 
     result_lines = []
     for r in enriched:
-        val  = r.get("value") if r.get("value") is not None else r.get("value_text", "-")
+        val = r.get("value") if r.get("value") is not None else r.get("value_text", "-")
         unit = r.get("unit", "") or ""
         low, high = r.get("normal_range_low"), r.get("normal_range_high")
-        range_str = (f"المدى الطبيعي: {low}–{high} {unit}".strip()
-                     if (low is not None and high is not None) else unit)
-        result_lines.append(f"[{r['severity']}] {r.get('test_name','')}: {val} {unit} — {range_str}")
+        range_str = (
+            f"المدى الطبيعي: {low}–{high} {unit}".strip()
+            if (low is not None and high is not None)
+            else unit
+        )
+        result_lines.append(
+            f"[{r['severity']}] {r.get('test_name', '')}: {val} {unit} — {range_str}"
+        )
 
     critical_rule = (
         "\n- ابدأ الرد بسطر: «⚠️ تنبيه: بعض النتائج تستوجب مراجعة طبية فورية.»"
-        if has_critical else ""
+        if has_critical
+        else ""
     )
     return (
         "أنت مساعد توعوي طبي. مهمتك شرح نتائج التحاليل للمريض بأسلوب بسيط ومفهوم.\n\n"
         + context_block
-        + "النتائج:\n" + "\n".join(result_lines) + "\n\n"
+        + "النتائج:\n"
+        + "\n".join(result_lines)
+        + "\n\n"
         "قواعد صارمة — لا استثناء:\n"
         "1. اكتب بالعربية حصراً.\n"
         "2. جملة واحدة مرقّمة لكل تحليل (1. … 2. … إلخ).\n"
@@ -640,9 +737,9 @@ async def _call_ollama_clinical(prompt: str) -> str:
     """
     url = f"{_OLLAMA_BASE_URL}/api/chat"
     payload = {
-        "model":  _OLLAMA_CLINICAL_MODEL,
+        "model": _OLLAMA_CLINICAL_MODEL,
         "messages": [{"role": "user", "content": prompt}],
-        "stream":  False,
+        "stream": False,
         "options": {"temperature": 0.3, "num_predict": 550},
     }
     async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
@@ -667,7 +764,8 @@ async def _call_groq_llama(prompt: str) -> str:
     }
     async with httpx.AsyncClient(timeout=_AI_BUDGET_S) as client:
         r = await client.post(
-            _GROQ_URL, json=payload,
+            _GROQ_URL,
+            json=payload,
             headers={"Authorization": f"Bearer {_GROQ_KEY}"},
         )
         r.raise_for_status()
@@ -704,6 +802,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
 
 # ── Doctor-facing: critical alerts dashboard ──────────────────────────────────
 
+
 @router.get("/critical-alerts", summary="نتائج حرجة — تنبيهات المختبر")
 def list_critical_alerts(
     limit: int = 50,
@@ -715,9 +814,7 @@ def list_critical_alerts(
     Doctor+ only.  Sourced from audit_logs (action=critical_result_alert).
     """
     _require_doctor(current_user)
-    lab_order_ids = db.query(LabOrder.id).filter(
-        LabOrder.lab_id == current_user.lab_id
-    ).subquery()
+    lab_order_ids = db.query(LabOrder.id).filter(LabOrder.lab_id == current_user.lab_id).subquery()
     rows = (
         db.query(AuditLog)
         .filter(
@@ -734,17 +831,20 @@ def list_critical_alerts(
             details = json.loads(row.details or "{}")
         except Exception:
             details = {}
-        items.append({
-            "id":             row.id,
-            "order_id":       row.resource_id,
-            "critical_tests": details.get("critical_tests", []),
-            "token_prefix":   details.get("token_prefix", ""),
-            "created_at":     row.created_at.isoformat() if row.created_at else None,
-        })
+        items.append(
+            {
+                "id": row.id,
+                "order_id": row.resource_id,
+                "critical_tests": details.get("critical_tests", []),
+                "token_prefix": details.get("token_prefix", ""),
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+        )
     return {"count": len(items), "alerts": items}
 
 
 # ── Public interpret endpoint ─────────────────────────────────────────────────
+
 
 @router.get(
     "/interpret/{token}",
@@ -767,67 +867,89 @@ async def interpret_result_public(token: str) -> JSONResponse:
     if cached and time.monotonic() < cached[1]:
         return JSONResponse({**cached[0], "cached": True})
 
-    # ── Load results + patient context from DB ────────────────────────────────
+    # ── Load results + patient context from DB (run blocking ops in executor) ─
     token_hash = sha256(token.encode()).hexdigest()
-    db: Session = SessionLocal()
-    patient_context: Optional[dict] = None
-    order_id: int = 0
-    results_data: list[dict] = []
-    try:
-        result = (
-            db.query(LabResult).filter(LabResult.token_hash == token_hash).first()
-            or db.query(LabResult).filter(LabResult.token == token).first()
-        )
-        if not result:
-            raise HTTPException(status_code=404, detail="نتيجة التحليل غير موجودة")
-        if result.expires_at and result.expires_at < datetime.now(timezone.utc):
-            raise HTTPException(status_code=410, detail="انتهت صلاحية رابط النتيجة")
 
-        order_id = result.order_id
-        results_data = [
-            {
-                "test_name":         r.test_name,
-                "value":             r.value,
-                "value_text":        getattr(r, "value_text", None),
-                "unit":              r.unit,
-                "normal_range_low":  r.normal_range_low,
-                "normal_range_high": r.normal_range_high,
-            }
-            for r in db.query(LabResult).filter(LabResult.order_id == order_id).all()
-        ]
+    def _load_results_from_db():
+        db: Session = SessionLocal()
+        patient_context: dict | None = None
+        order_id: int = 0
+        results_data: list[dict] = []
+        try:
+            result = (
+                db.query(LabResult).filter(LabResult.token_hash == token_hash).first()
+                or db.query(LabResult).filter(LabResult.token == token).first()
+            )
+            if not result:
+                return None, None, None
 
-        order = db.query(LabOrder).filter(LabOrder.id == order_id).first()
-        if order and order.patient_id:
-            patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
-            if patient:
-                age = None
-                if patient.birth_date:
-                    today = datetime.now(timezone.utc).date()
-                    age = today.year - patient.birth_date.year - (
-                        (today.month, today.day) < (patient.birth_date.month, patient.birth_date.day)
-                    )
-                patient_context = {"age": age, "gender": patient.gender}
-    finally:
-        db.close()
+            if result.expires_at and result.expires_at < datetime.now(UTC):
+                return None, None, None
+
+            order_id = result.order_id
+            results_data = [
+                {
+                    "test_name": r.test_name,
+                    "value": r.value,
+                    "value_text": getattr(r, "value_text", None),
+                    "unit": r.unit,
+                    "normal_range_low": r.normal_range_low,
+                    "normal_range_high": r.normal_range_high,
+                }
+                for r in db.query(LabResult).filter(LabResult.order_id == order_id).all()
+            ]
+
+            order = db.query(LabOrder).filter(LabOrder.id == order_id).first()
+            if order and order.patient_id:
+                patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
+                if patient:
+                    age = None
+                    if patient.birth_date:
+                        today = datetime.now(UTC).date()
+                        age = (
+                            today.year
+                            - patient.birth_date.year
+                            - (
+                                (today.month, today.day)
+                                < (patient.birth_date.month, patient.birth_date.day)
+                            )
+                        )
+                    patient_context = {"age": age, "gender": patient.gender}
+        finally:
+            db.close()
+
+        return order_id, results_data, patient_context
+
+    loop = asyncio.get_event_loop()
+    order_id, results_data, patient_context = await loop.run_in_executor(
+        None, _load_results_from_db
+    )
+
+    if order_id is None:
+        raise HTTPException(status_code=404, detail="نتيجة التحليل غير موجودة")
 
     if not results_data:
         raise HTTPException(status_code=404, detail="لا توجد نتائج للتفسير")
 
     # ── Severity, conflicts, action guidance ─────────────────────────────────
-    enriched         = _compute_severities(results_data)
-    overall_sev      = _overall_severity(enriched)
-    critical_flags   = [r["test_name"] for r in enriched if r["severity"] == _SEVERITY_CRITICAL]
+    enriched = _compute_severities(results_data)
+    overall_sev = _overall_severity(enriched)
+    critical_flags = [r["test_name"] for r in enriched if r["severity"] == _SEVERITY_CRITICAL]
     results_severity = [{"test": r["test_name"], "severity": r["severity"]} for r in enriched]
-    conflicts        = _detect_conflicts(enriched)
-    action           = _action_guidance(overall_sev)
+    conflicts = _detect_conflicts(enriched)
+    action = _action_guidance(overall_sev)
 
-    # ── Audit: write critical alert (non-fatal) ───────────────────────────────
+    # ── Audit: write critical alert (non-fatal, run in executor) ─────────────
     if critical_flags:
-        db2: Session = SessionLocal()
-        try:
-            _emit_critical_alert(db2, order_id, critical_flags, token[:8])
-        finally:
-            db2.close()
+
+        def _write_critical_alert():
+            db2: Session = SessionLocal()
+            try:
+                _emit_critical_alert(db2, order_id, critical_flags, token[:8])
+            finally:
+                db2.close()
+
+        await loop.run_in_executor(None, _write_critical_alert)
 
     # ── Call AI with automatic provider fallback ──────────────────────────────
     prompt = _build_interpret_prompt(results_data, patient_context=patient_context)
@@ -847,19 +969,24 @@ async def interpret_result_public(token: str) -> JSONResponse:
     logger.info(
         "[AI] interpreted token=%.8s provider=%s tests=%d severity=%s "
         "critical=%d confidence=%s conflicts=%d",
-        token, provider_used, len(results_data), overall_sev,
-        len(critical_flags), confidence["level"], len(conflicts),
+        token,
+        provider_used,
+        len(results_data),
+        overall_sev,
+        len(critical_flags),
+        confidence["level"],
+        len(conflicts),
     )
 
     payload = {
-        "interpretation":   text,
-        "provider":         provider_used,
-        "severity":         overall_sev,
-        "critical_flags":   critical_flags,
+        "interpretation": text,
+        "provider": provider_used,
+        "severity": overall_sev,
+        "critical_flags": critical_flags,
         "results_severity": results_severity,
-        "conflicts":        conflicts,
-        "confidence":       confidence,
-        "action_guidance":  action,
+        "conflicts": conflicts,
+        "confidence": confidence,
+        "action_guidance": action,
     }
     _INTERPRET_CACHE[cache_key] = (payload, time.monotonic() + _CACHE_TTL)
     return JSONResponse(payload)
@@ -873,16 +1000,17 @@ async def interpret_result_public(token: str) -> JSONResponse:
 
 _CHAT_MAX_TOKENS = int(os.getenv("GEMINI_CHAT_MAX_TOKENS", "600"))
 _CHAT_RATE_WINDOW: dict[str, tuple[int, float]] = {}  # user_id → (count, window_start)
-_CHAT_RATE_LIMIT  = int(os.getenv("GEMINI_CHAT_RATE_LIMIT", "30"))   # req per 60s per user
+_CHAT_RATE_LIMIT = int(os.getenv("GEMINI_CHAT_RATE_LIMIT", "30"))  # req per 60s per user
 
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
-    context: Optional[str] = Field(default=None, max_length=500,
-                                   description="Optional page context (e.g. 'orders page')")
+    context: str | None = Field(
+        default=None, max_length=500, description="Optional page context (e.g. 'orders page')"
+    )
 
 
-async def _call_gemini_chat(message: str, context: Optional[str] = None) -> str:
+async def _call_gemini_chat(message: str, context: str | None = None) -> str:
     """Call Gemini via the google_ai gateway (SDK when available, HTTP fallback)."""
     return await _google_ai.generate_chat(message, context)
 
@@ -904,8 +1032,8 @@ async def ai_chat(
     Falls back to a rule-based helper message if Gemini is unavailable.
     """
     # ── Per-user rate limit ───────────────────────────────────────────────────
-    uid   = str(current_user.id)
-    now   = time.monotonic()
+    uid = str(current_user.id)
+    now = time.monotonic()
     entry = _CHAT_RATE_WINDOW.get(uid, (0, now))
     count, window_start = entry
     if now - window_start > 60:
@@ -930,17 +1058,19 @@ async def ai_chat(
             reply, provider_used = await _call_ai_with_fallback(combined)
         except HTTPException:
             reply = (
-                "عذراً، المساعد الذكي غير متاح حالياً. "
-                "يرجى المحاولة لاحقاً أو التواصل مع الدعم الفني."
+                "عذراً، المساعد الذكي غير متاح حالياً. يرجى المحاولة لاحقاً أو التواصل مع الدعم الفني."
             )
             provider_used = "none"
 
     logger.info(
         "[AI/chat] user=%s provider=%s chars_in=%d chars_out=%d",
-        current_user.id, provider_used, len(body.message), len(reply),
+        current_user.id,
+        provider_used,
+        len(body.message),
+        len(reply),
     )
     return {
-        "reply":    reply,
+        "reply": reply,
         "provider": provider_used,
         "display_only": True,
     }

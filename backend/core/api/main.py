@@ -1,3 +1,5 @@
+import os
+import sys
 from datetime import datetime, timedelta
 
 import psycopg2
@@ -9,26 +11,33 @@ from passlib.hash import bcrypt
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-from workflow_engine.analyzer_router import route_test
-from workflow_engine.workflow_manager import start_workflow
-
 app = FastAPI(title="National Laboratory Platform")
 
-DB_HOST = "lab-postgres"
-DB_NAME = "labdb"
-DB_USER = "postgres"
-DB_PASS = "1234"
+# Load configuration from environment variables - fail fast if missing
+DB_HOST = os.getenv("DB_HOST", "")
+DB_NAME = os.getenv("DB_NAME", "")
+DB_USER = os.getenv("DB_USER", "")
+DB_PASS = os.getenv("DB_PASS", "")
 
-AI_SERVICE = "http://ai-service:9000"
+if not all([DB_HOST, DB_NAME, DB_USER, DB_PASS]):
+    print(
+        "[GULA FATAL] DB_HOST, DB_NAME, DB_USER, DB_PASS must all be set.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
-SECRET_KEY = "supersecretkey"
+AI_SERVICE = os.getenv("AI_SERVICE_URL", "http://ai-service:9000")
+
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    print("[GULA FATAL] SECRET_KEY must be set.", file=sys.stderr)
+    sys.exit(1)
+
 ALGORITHM = "HS256"
 
 
 def db():
-    return psycopg2.connect(
-        host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS
-    )
+    return psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
 
 
 @app.get("/")
@@ -335,14 +344,16 @@ def analyze_qc(test_id: int, value: float):
 
     ai = requests.post(
         f"{AI_SERVICE}/agent",
-        params={"task": f"""
+        params={
+            "task": f"""
 Analyze laboratory quality control value.
 
 Test ID: {test_id}
 QC Value: {value}
 
 Determine if the value indicates instrument drift or normal variation.
-"""},
+"""
+        },
     )
 
     return ai.json()

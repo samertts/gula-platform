@@ -5,15 +5,20 @@ Implements hash-chained audit log for tamper detection (ISO 27001 A.8.15).
 Each entry's chain_hash = SHA-256(previous_chain_hash + this_record_data).
 Any modification to a record or its chain breaks verification.
 """
+
+import hashlib
 import hmac
 import json
 import logging
 import os
-import hashlib
-from datetime import datetime, timezone
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from sqlalchemy.orm import Session
+
 from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from ..config import NID_HMAC_KEY as _CONFIG_NID_HMAC_KEY
 from ..models.audit_log import AuditLog
 
 logger = logging.getLogger("gula.audit")
@@ -29,7 +34,7 @@ _ANCHOR_INTERVAL = 100  # Write anchor checkpoint every N entries
 
 def _current_anchor_file() -> Path:
     """Return the anchor file path for the current calendar month."""
-    month_tag = datetime.now(timezone.utc).strftime("%Y-%m")
+    month_tag = datetime.now(UTC).strftime("%Y-%m")
     return _ANCHOR_DIR / f"audit_anchors_{month_tag}.log"
 
 
@@ -44,9 +49,16 @@ def _all_anchor_files() -> list[Path]:
 # HMAC key for signing anchor lines.
 # Key rotation: increment ANCHOR_KEY_VERSION and set NID_HMAC_KEY to new value.
 _ANCHOR_KEY_VERSION = int(os.getenv("ANCHOR_KEY_VERSION", "1"))
+
 _raw_anchor_key = os.getenv("NID_HMAC_KEY", "")
 if not _raw_anchor_key:
-    _raw_anchor_key = os.getenv("SECRET_KEY", "gula-anchor-fallback")
+    if not _CONFIG_NID_HMAC_KEY:
+        print(
+            "[GULA FATAL] NID_HMAC_KEY must be set in environment for audit anchor HMAC.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    _raw_anchor_key = _CONFIG_NID_HMAC_KEY
     logger.warning(
         "[SECURITY] NID_HMAC_KEY not set — audit anchor HMAC uses derived key. "
         "Set NID_HMAC_KEY in .env for production."
@@ -106,12 +118,7 @@ def _write_anchor(entry_id: int, chain_hash: str) -> None:
     try:
         anchor_file = _current_anchor_file()
         anchor_file.parent.mkdir(parents=True, exist_ok=True)
-        data = (
-            f"{_KEY_TAG}|"
-            f"{datetime.now(timezone.utc).isoformat()}|"
-            f"{entry_id}|"
-            f"{chain_hash}"
-        )
+        data = f"{_KEY_TAG}|{datetime.now(UTC).isoformat()}|{entry_id}|{chain_hash}"
         sig = _anchor_hmac(data)
         with open(anchor_file, "a", encoding="utf-8") as f:
             f.write(f"{data}|{sig}\n")
@@ -128,7 +135,7 @@ def get_latest_anchor() -> dict | None:
 
         all_lines: list[str] = []
         for f_path in files:
-            with open(f_path, "r", encoding="utf-8") as f:
+            with open(f_path, encoding="utf-8") as f:
                 chunk = [line.strip() for line in f.readlines() if line.strip()]
             all_lines = chunk + all_lines  # older lines first
 
@@ -141,9 +148,8 @@ def get_latest_anchor() -> dict | None:
             if len(parts) == 5:
                 if not _verify_anchor_hmac("|".join(parts[:4]), parts[4]):
                     hmac_failures += 1
-            elif len(parts) == 4:
-                if not _verify_anchor_hmac("|".join(parts[:3]), parts[3]):
-                    hmac_failures += 1
+            elif len(parts) == 4 and not _verify_anchor_hmac("|".join(parts[:3]), parts[3]):
+                hmac_failures += 1
 
         last = all_lines[-1].split("|")
         if len(last) == 5:
@@ -201,7 +207,7 @@ def log_action(
         resource_id=resource_id,
         details=details,
         ip_address=ip_address,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db.add(entry)
     db.flush()
@@ -231,13 +237,15 @@ def verify_audit_chain(db: Session, limit: int = 1000) -> dict:
             continue
         expected = _compute_chain_hash(prev_hash, entry)
         if entry.chain_hash != expected:
-            broken_at.append({
-                "id": entry.id,
-                "action": entry.action,
-                "created_at": entry.created_at.isoformat() if entry.created_at else None,
-                "stored_hash": entry.chain_hash,
-                "expected_hash": expected,
-            })
+            broken_at.append(
+                {
+                    "id": entry.id,
+                    "action": entry.action,
+                    "created_at": entry.created_at.isoformat() if entry.created_at else None,
+                    "stored_hash": entry.chain_hash,
+                    "expected_hash": expected,
+                }
+            )
         prev_hash = entry.chain_hash
 
     return {

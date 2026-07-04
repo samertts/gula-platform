@@ -8,15 +8,19 @@ Provides camera-based capture and OCR extraction of Iraqi National ID card field
 Uses OpenCV for image preprocessing and Tesseract for OCR.
 Falls back to regex-based extraction if OCR libraries are not available.
 """
-import re
+
+import asyncio
 import io
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
+import re
+
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
+
 from ..database import get_db
-from ..security.dependencies import get_current_user
 from ..models.lab_user import LabUser
-from ..services.identity import hash_national_id
+from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_auth
+from ..services.identity import hash_national_id
 
 router = APIRouter(prefix="/id-scan", tags=["identity"])
 
@@ -46,14 +50,12 @@ def preprocess_image(image_bytes: bytes):
 
         # Apply adaptive threshold for better text contrast
         thresh = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY, 11, 2
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
         )
 
         # Denoise
-        denoised = cv2.fastNlMeansDenoising(thresh, None, 10, 7, 21)
+        return cv2.fastNlMeansDenoising(thresh, None, 10, 7, 21)
 
-        return denoised
     except ImportError:
         return None
 
@@ -77,8 +79,7 @@ def extract_text_ocr(image_bytes: bytes) -> str:
             pil_img = Image.open(io.BytesIO(image_bytes))
 
         # Extract with both Arabic and English
-        text_ar = pytesseract.image_to_string(pil_img, lang="ara+eng")
-        return text_ar
+        return pytesseract.image_to_string(pil_img, lang="ara+eng")
 
     except ImportError:
         return ""
@@ -115,7 +116,7 @@ def extract_fields(text: str) -> dict:
             pass
 
     # Try to extract name (lines that contain mostly letters)
-    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
     name_candidates = []
     for line in lines:
         # Skip lines that are mostly numbers or very short
@@ -154,7 +155,9 @@ async def scan_national_id(
     # Validate content type strictly
     allowed_types = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
     if not image.content_type or image.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Please upload a valid image file (JPEG, PNG, WebP, BMP)")
+        raise HTTPException(
+            status_code=400, detail="Please upload a valid image file (JPEG, PNG, WebP, BMP)"
+        )
 
     # Read image (max 2MB - ID card photos shouldn't be larger)
     contents = await image.read()
@@ -163,16 +166,17 @@ async def scan_national_id(
     if len(contents) < 1000:
         raise HTTPException(status_code=400, detail="Image too small - may be corrupted")
 
-    # Extract text via OCR
-    text = extract_text_ocr(contents)
+    # Extract text via OCR (CPU-intensive - run in executor to avoid blocking event loop)
+    def _run_ocr():
+        text = extract_text_ocr(contents)
+        fields = extract_fields(text)
+        nid_hash = None
+        if fields["national_id"]:
+            nid_hash = hash_national_id(fields["national_id"])
+        return fields, nid_hash
 
-    # Extract structured fields
-    fields = extract_fields(text)
-
-    # Hash national ID if found
-    nid_hash = None
-    if fields["national_id"]:
-        nid_hash = hash_national_id(fields["national_id"])
+    loop = asyncio.get_event_loop()
+    fields, nid_hash = await loop.run_in_executor(None, _run_ocr)
 
     return {
         "success": bool(fields["national_id"] or fields["name"]),
