@@ -19,7 +19,7 @@ class TestInterpretationEngine:
     """Tests for the expanded interpretation engine."""
 
     def setup_method(self):
-        from app.services.interpretation import interpret_result, get_flag, INTERPRETATIONS
+        from app.services.interpretation import INTERPRETATIONS, get_flag, interpret_result
         self.interpret = interpret_result
         self.get_flag = get_flag
         self.INTERPRETATIONS = INTERPRETATIONS
@@ -312,7 +312,7 @@ class TestCriticalAlerts:
     """Tests for the extended critical alert thresholds."""
 
     def setup_method(self):
-        from app.routes.critical_alerts import check_critical, CRITICAL_THRESHOLDS
+        from app.services.critical_alerts import CRITICAL_THRESHOLDS, check_critical
         self.check_critical = check_critical
         self.thresholds = CRITICAL_THRESHOLDS
 
@@ -404,7 +404,7 @@ class TestClinicalIntelligence:
     """Tests for the enhanced clinical intelligence patterns."""
 
     def setup_method(self):
-        from app.services.clinical_intelligence import analyze_results, CLINICAL_PATTERNS
+        from app.services.clinical_intelligence import CLINICAL_PATTERNS, analyze_results
         self.analyze = analyze_results
         self.patterns = CLINICAL_PATTERNS
 
@@ -638,8 +638,8 @@ class TestStatsAPI:
 
     def test_lab_isolation(self, make_lab, make_lab_user):
         """Stats must be scoped to the requesting lab."""
-        from tests.conftest import auth_headers
         from app.models.patient import Patient
+        from tests.conftest import auth_headers
 
         # Create a patient in a different lab
         other_lab = make_lab(name="Other Lab")

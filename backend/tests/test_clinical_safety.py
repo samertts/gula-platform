@@ -44,13 +44,12 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
-from app.routes.critical_alerts import CRITICAL_THRESHOLDS, check_critical
 from app.models.lab import Lab
+from app.models.lab_order import LabOrder
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
-from app.models.lab_order import LabOrder
-from app.security.auth import hash_password, create_token
+from app.services.critical_alerts import CRITICAL_THRESHOLDS, check_critical
+from app.security.auth import create_token, hash_password
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
@@ -285,24 +284,24 @@ class TestAIClinicalBoundary:
     """AI cannot perform clinical sign-off operations regardless of context."""
 
     def test_validate_order_blocked_for_ai(self):
-        from app.ai.guardrails import ai_suggest, AIGuardrailViolation
-        with pytest.raises(AIGuardrailViolation):
+        from app.ai.guardrails import AIGuardrailViolationError, ai_suggest
+        with pytest.raises(AIGuardrailViolationError):
             ai_suggest("validate_order", {"order_id": 1})
 
     def test_modify_result_blocked_for_ai(self):
-        from app.ai.guardrails import ai_suggest, AIGuardrailViolation
-        with pytest.raises(AIGuardrailViolation):
+        from app.ai.guardrails import AIGuardrailViolationError, ai_suggest
+        with pytest.raises(AIGuardrailViolationError):
             ai_suggest("modify_result", {"result_id": 1, "value": 999})
 
     def test_approve_result_blocked_for_ai(self):
-        from app.ai.guardrails import ai_suggest, AIGuardrailViolation
-        with pytest.raises(AIGuardrailViolation):
+        from app.ai.guardrails import AIGuardrailViolationError, ai_suggest
+        with pytest.raises(AIGuardrailViolationError):
             ai_suggest("approve_result", {"result_id": 1})
 
     def test_send_critical_alert_blocked_for_ai(self):
         """Critical alerts must be triggered by verified clinical logic only."""
-        from app.ai.guardrails import ai_suggest, AIGuardrailViolation
-        with pytest.raises(AIGuardrailViolation):
+        from app.ai.guardrails import AIGuardrailViolationError, ai_suggest
+        with pytest.raises(AIGuardrailViolationError):
             ai_suggest("send_critical_alert", {"patient_id": 1, "severity": "high"})
 
 
