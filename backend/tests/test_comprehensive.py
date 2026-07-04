@@ -5,11 +5,11 @@ Run: python -m pytest backend/tests/test_comprehensive.py -v
 """
 
 import os
-import sys
-import time
-import threading
 import statistics
-from unittest.mock import patch, MagicMock
+import threading
+import time
+from pathlib import Path
+from unittest.mock import patch
 
 # ─── Environment Setup ────────────────────────────────────────────────────────
 os.environ.setdefault("ENV", "development")
@@ -346,33 +346,33 @@ class TestDataEncryption:
     """Test data encryption for sensitive clinical data."""
 
     def test_patient_name_encrypt_decrypt(self):
-        from app.security.encryption import encrypt, decrypt
+        from app.security.encryption import decrypt, encrypt
         name = "Ahmed Al-Rashid"
         encrypted = encrypt(name)
         assert encrypted != name
         assert decrypt(encrypted) == name
 
     def test_arabic_name_encrypt_decrypt(self):
-        from app.security.encryption import encrypt, decrypt
+        from app.security.encryption import decrypt, encrypt
         name = "أحمد محمد علي الرشيد"
         encrypted = encrypt(name)
         assert decrypt(encrypted) == name
 
     def test_national_id_encrypt_decrypt(self):
-        from app.security.encryption import encrypt, decrypt
+        from app.security.encryption import decrypt, encrypt
         nid = "1234567890"
         encrypted = encrypt(nid)
         assert encrypted != nid
         assert decrypt(encrypted) == nid
 
     def test_decrypt_invalid_raises(self):
-        from app.security.encryption import decrypt
         import pytest
+        from app.security.encryption import decrypt
         with pytest.raises(Exception):
             decrypt("not-valid-ciphertext")
 
     def test_empty_string_encrypt(self):
-        from app.security.encryption import encrypt, decrypt
+        from app.security.encryption import decrypt, encrypt
         encrypted = encrypt("")
         assert decrypt(encrypted) == ""
 
@@ -428,7 +428,7 @@ class TestCriticalAlertSystem:
     """Test critical value detection for life-threatening results."""
 
     def _check(self, test_name, value):
-        from app.routes.critical_alerts import check_critical
+        from app.services.critical_alerts import check_critical
         return check_critical(test_name, value)
 
     def test_potassium_critical_high_detected(self):
@@ -634,7 +634,7 @@ class TestPerformanceBaseline:
 
     def test_encryption_under_20ms(self):
         """Encryption + decryption round-trip < 20ms."""
-        from app.security.encryption import encrypt, decrypt
+        from app.security.encryption import decrypt, encrypt
         times = []
         for _ in range(50):
             start = time.perf_counter()
@@ -677,7 +677,7 @@ class TestSystemConfig:
              "os.environ.pop('SECRET_KEY', None); "
              "os.environ.pop('DATABASE_URL', None); "
              "from app.config import IS_PRODUCTION"],
-            cwd="/home/user/gula-platform",
+            cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True
         )
         # Should exit with error in production without keys

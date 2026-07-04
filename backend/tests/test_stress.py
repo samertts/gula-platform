@@ -4,11 +4,10 @@ Tests the system under concurrent load to find race conditions and bottlenecks.
 Run: python -m pytest backend/tests/test_stress.py -v
 """
 
-import os
-import time
-import threading
-import statistics
 import concurrent.futures
+import os
+import threading
+import time
 from collections import Counter
 
 os.environ.setdefault("ENV", "development")
@@ -254,7 +253,7 @@ class TestTokenUniqueness:
 
     def test_encryption_thread_safe(self):
         """encrypt() must be thread-safe for concurrent calls."""
-        from app.security.encryption import encrypt, decrypt
+        from app.security.encryption import decrypt, encrypt
         results = []
         errors = []
         lock = threading.Lock()
@@ -315,7 +314,7 @@ class TestSustainedLoadPerformance:
 
     def test_critical_check_throughput_2000_per_second(self):
         """Critical alerts check must handle ≥ 2000 checks/second."""
-        from app.routes.critical_alerts import check_critical
+        from app.services.critical_alerts import check_critical
         count = 0
         start = time.perf_counter()
         deadline = start + 1.0
@@ -364,6 +363,7 @@ class TestMemoryStability:
     def test_no_memory_growth_interpretation(self):
         """Repeated calls must not grow memory unboundedly."""
         import tracemalloc
+
         from app.services.interpretation import interpret_result
 
         tracemalloc.start()
@@ -384,6 +384,7 @@ class TestMemoryStability:
     def test_rate_limiter_memory_bounded(self):
         """Rate limiter must not grow memory for many unique IPs (in-memory store)."""
         from unittest.mock import patch
+
         from app.security.rate_limit import RateLimiter
         from app.security.redis_client import _MemoryStore
         limiter = RateLimiter()
@@ -407,7 +408,7 @@ class TestClinicalScenarios:
 
     def test_sepsis_pattern_all_critical(self):
         """WBC=18, Hemoglobin=6, Platelets=50 → all should flag abnormal."""
-        from app.services.interpretation import interpret_result, get_flag
+        from app.services.interpretation import get_flag, interpret_result
         scenarios = [
             ("wbc",        18.0,  4.0,  11.0, "H"),
             ("hemoglobin",  6.0, 12.0,  17.0, "critical"),  # critically low
@@ -421,8 +422,8 @@ class TestClinicalScenarios:
 
     def test_diabetic_ketoacidosis_pattern(self):
         """Glucose=550 (>500 threshold), HbA1c=11 → both critical."""
+        from app.services.critical_alerts import check_critical
         from app.services.interpretation import interpret_result
-        from app.routes.critical_alerts import check_critical
 
         # Glucose critical threshold = 500 mg/dL
         glucose = interpret_result("glucose", 550, 70, 100)
@@ -437,8 +438,8 @@ class TestClinicalScenarios:
 
     def test_hypokalemia_critical_pattern(self):
         """Potassium=2.0 is life-threatening."""
-        from app.services.interpretation import interpret_result, get_flag
-        from app.routes.critical_alerts import check_critical
+        from app.services.critical_alerts import check_critical
+        from app.services.interpretation import get_flag, interpret_result
 
         interp = interpret_result("potassium", 2.0)
         flag = get_flag(2.0, 3.5, 5.0, "Potassium")
@@ -452,7 +453,7 @@ class TestClinicalScenarios:
 
     def test_normal_patient_no_alerts(self):
         """A healthy patient should produce no critical alerts."""
-        from app.routes.critical_alerts import check_critical
+        from app.services.critical_alerts import check_critical
 
         normal_tests = [
             ("Glucose", 85),
