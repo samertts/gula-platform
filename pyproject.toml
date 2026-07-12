@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gula-platform"
-version = "0.1.0"
-description = "GULA National Healthcare Platform"
+version = "2.1.0"
+description = "GULA National Healthcare Platform — Unified Engineering Factory"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 
@@ -16,68 +16,67 @@ fix = true
 show-fixes = true
 
 exclude = [
-    ".git",
-    ".venv",
-    "node_modules",
-    "build",
-    "dist",
-    "__pycache__",
+    ".git", ".venv", "node_modules", "build", "dist",
+    "__pycache__", "archive", "frontend", "frontend-v2", "test_library",
 ]
 
 [tool.ruff.lint]
-select = [
-    "E",
-    "F",
-    "I",
-    "UP",
-    "B",
-    "SIM",
-    "C4",
-    "N",
-    "PIE",
-    "RET",
-]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "C4", "PIE", "RET", "T20", "RUF", "Q", "SLF"]
+ignore = ["E501", "B008", "N818", "RUF012", "SLF001"]
 
-ignore = [
-    "E501"
-]
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["T20", "N", "F401", "F841", "SLF001"]
+"**/migrations/**" = ["T20", "N", "I001", "F401", "F841"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+line-ending = "lf"
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
+plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
 warn_unused_configs = true
 warn_return_any = true
 warn_unused_ignores = true
 show_error_codes = true
 pretty = true
+ignore_missing_imports = true
+no_implicit_optional = true
+exclude = ["tests/", "build/", "dist/", "archive/", "frontend/", "frontend-v2/"]
 
-exclude = [
-    "tests",
-    "build",
-    "dist",
-]
+[[tool.mypy.overrides]]
+module = ["app.routes.*", "migrations.*", "services.*"]
+ignore_errors = true
 
 [tool.pytest.ini_options]
-testpaths = [
-    "backend/tests",
-    "tests"
-]
-
+minversion = "8.0"
+testpaths = ["backend/tests", "services/device_bridge/tests", "tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+norecursedirs = ["archive", "docs", "frontend", "frontend-v2", "node_modules",
+    ".git", ".venv", "build", "dist", "test_library", "ai", "nhop-platform", "sample_tracking"]
+addopts = "-ra --strict-markers --strict-config -v --tb=short"
 asyncio_mode = "auto"
-
-addopts = [
-    "-v",
-    "--tb=short",
-    "--strict-markers",
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "unit: isolated logic tests (no DB, no network)",
+    "integration: tests that require a DB session",
+    "routes: full HTTP integration tests via TestClient",
+    "stress: concurrency / throughput tests (slow)",
+    "security: security-related tests",
+    "smoke: quick smoke tests",
 ]
 
-markers = [
-    "unit",
-    "integration",
-    "routes",
-    "stress",
+[tool.coverage.run]
+source = ["backend/app", "shared", "services", "scripts"]
+omit = ["*/tests/*", "*/migrations/*", "*__pycache__*", "*/archive/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover", "def __repr__", "if self.debug:",
+    "if __name__ == .__main__.:", "raise AssertionError",
+    "raise NotImplementedError", "if 0:", "if False:", "if TYPE_CHECKING:",
 ]
