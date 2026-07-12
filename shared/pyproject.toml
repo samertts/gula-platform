@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "gula-shared"
+version = "2.1.0"
+description = "GULA Shared Engineering Library — canonical modules across all repositories"
+requires-python = ">=3.10"
+dependencies = [
+    "bcrypt>=4.0.0",
+    "cryptography>=41.0.0",
+    "python-jose>=3.3.0",
+    "qrcode>=7.4.0",
+    "reportlab>=4.0.0",
+    "boto3>=1.28.0",
+    "firebase-admin>=6.0.0",
+    "redis>=5.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+]
