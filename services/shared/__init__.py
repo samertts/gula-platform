@@ -1,16 +1,23 @@
-# GULA Platform - Shared utilities
-from .circuit_breaker import CircuitBreaker, CircuitOpenError, with_retry, get_circuit_breaker
-from .messaging import publish_event, get_publisher, MessageConsumer
-from .audit import AuditLogger, get_audit_logger
+"""Bridge to GULA Shared Library.
+
+This package now re-exports from the canonical ``shared/`` library.
+All new code should import directly from ``shared``.
+"""
+import warnings
+warnings.warn(
+    "services/shared/ is deprecated. Import from 'shared' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from shared.audit import AuditService, create_audit_entry
+from shared.circuit_breaker import CircuitBreaker, CircuitState
+from shared.messaging import MessageBroker
 
 __all__ = [
+    "AuditService",
+    "create_audit_entry",
     "CircuitBreaker",
-    "CircuitOpenError",
-    "with_retry",
-    "get_circuit_breaker",
-    "publish_event",
-    "get_publisher",
-    "MessageConsumer",
-    "AuditLogger",
-    "get_audit_logger",
+    "CircuitState",
+    "MessageBroker",
 ]
