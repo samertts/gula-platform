@@ -75,7 +75,7 @@ async def start_kernel() -> None:
         kernel = get_kernel()
         await kernel.start()
         _kernel_ready = True
-        logger.info("Kernel started succesfully")
+        logger.info("Kernel started successfully")
     except Exception as e:
         logger.error("Kernel start failed", extra={"error": str(e)})
         raise
@@ -157,9 +157,7 @@ async def kernel_middleware(request: Request, call_next):
         if request_id:
             ctx.set_request_id(request_id)
     try:
-        response = call_next(request)
-        if hasattr(response, "__await__"):
-            response = await response
+        response = await call_next(request)
         if ctx:
             response.headers["X-Kernel-Version"] = kernel.config.version
             if kernel_kill_switch_active():

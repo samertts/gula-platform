@@ -96,10 +96,11 @@ class Bootloader:
 
     async def _phase_initialize_modules(self) -> None:
         logger.info("Boot phase: initialize modules")
-        from backend.app.kernel.module.loader import ModuleLoader
+        if self.kernel.config.enable_modules:
+            from backend.app.kernel.module.loader import ModuleLoader
 
-        ml = ModuleLoader(self.kernel)
-        self.kernel.register_component("module_loader", ml)
+            ml = ModuleLoader(self.kernel)
+            self.kernel.register_component("module_loader", ml)
         self._boot_sequence.append(("initialize_modules", time.monotonic()))
 
     async def _phase_initialize_event_bus(self) -> None:
