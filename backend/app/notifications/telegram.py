@@ -1,10 +1,8 @@
 """
 Telegram Notification Gateway — GULA Platform
 ==============================================
-Trust level: ENRICHMENT — notifications are informational, never drive clinical logic.
-
-Telegram outages must never affect the core lab workflow.
-All calls return bool — never raise — via the ExternalGateway fallback system.
+Delegates to canonical shared.notifications for message sending.
+Maintains the TelegramGateway wrapper for circuit-broken external calls.
 """
 
 from __future__ import annotations
@@ -17,6 +15,7 @@ from app.gateways.base import (
     FieldRule,
     validate_schema,
 )
+from shared.notifications import NotificationSender, send_push, send_email, send_sms
 
 _TELEGRAM_API = "https://api.telegram.org"
 
@@ -29,7 +28,7 @@ class TelegramGateway(ExternalGateway):
     calls_per_minute          = 30
     circuit_failure_threshold = 5
     circuit_recovery_timeout  = 60.0
-    cache_ttl                 = 0.0     # notifications are never cached
+    cache_ttl                 = 0.0
     stale_threshold           = 0.0
 
     _SCHEMA = [
@@ -61,3 +60,13 @@ def send_telegram(bot_token: str, chat_id: str, message: str) -> bool:
         message=message,
     )
     return bool(result.data.get("ok")) if isinstance(result.data, dict) else False
+
+
+__all__ = [
+    "TelegramGateway",
+    "send_telegram",
+    "NotificationSender",
+    "send_push",
+    "send_email",
+    "send_sms",
+]

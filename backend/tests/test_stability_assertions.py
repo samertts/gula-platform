@@ -6,6 +6,7 @@ TEST 11 — Flapping Killer:     slow → fast × 10 must not oscillate
 TEST 12 — Recovery correctness: L2 stays L2 until explicit recovery
 TEST 13 — Cascading failure:   Redis + DB fail in sequence → L1 → L2 → L3
 """
+import asyncio
 import os
 import time
 
@@ -16,6 +17,15 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 import pytest
 from unittest.mock import patch, MagicMock
+
+
+def _run_async(coro):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 
 def _fresh_health():
@@ -54,14 +64,13 @@ class TestHysteresis:
         # Latency is in the "hysteresis gap": below enter but above exit threshold
         gap_latency = int(_DB_LATENCY_WARN * 0.85)  # e.g. 255ms if WARN=300
 
-        import asyncio
         with patch("app.core.self_healing.health", h), \
              patch.object(engine, "_rss_mb", return_value=100.0), \
              patch.object(engine, "_db_latency_ms", return_value=float(gap_latency)), \
              patch.object(engine, "_redis_latency_ms", return_value=1.0), \
              patch.object(engine, "_queue_depth", return_value=0), \
              patch.object(engine, "_can_trigger", return_value=False):
-            asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+            _run_async(engine._check_and_repair())
 
         assert h.degradation_level == DegradationLevel.L1_CACHE_HEAVY, (
             f"Latency {gap_latency}ms (in hysteresis gap) caused premature L1 exit. "
@@ -196,7 +205,6 @@ class TestFlappingKiller:
         slow_ms = _DB_LATENCY_WARN + 50   # 350ms → above enter threshold
         fast_ms = int(_DB_LATENCY_WARN * 0.85)  # 255ms → in hysteresis gap
 
-        import asyncio
         levels_seen = []
 
         for cycle in range(10):
@@ -207,7 +215,7 @@ class TestFlappingKiller:
                  patch.object(engine, "_redis_latency_ms", return_value=1.0), \
                  patch.object(engine, "_queue_depth", return_value=0), \
                  patch.object(engine, "_can_trigger", return_value=False):
-                asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+                _run_async(engine._check_and_repair())
             levels_seen.append(h.degradation_level)
 
         # After the first enter, level should stay at L1 (not bounce back to NONE)
@@ -232,14 +240,13 @@ class TestFlappingKiller:
         # Latency well below exit threshold
         recovered_ms = int(_DB_LATENCY_WARN * 0.4)  # 120ms — clearly recovered
 
-        import asyncio
         with patch("app.core.self_healing.health", h), \
              patch.object(engine, "_rss_mb", return_value=100.0), \
              patch.object(engine, "_db_latency_ms", return_value=float(recovered_ms)), \
              patch.object(engine, "_redis_latency_ms", return_value=1.0), \
              patch.object(engine, "_queue_depth", return_value=0), \
              patch.object(engine, "_can_trigger", return_value=False):
-            asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+            _run_async(engine._check_and_repair())
 
         assert h.degradation_level == DegradationLevel.NONE, (
             f"Clear recovery ({recovered_ms}ms) should exit L1, "
@@ -265,7 +272,6 @@ class TestRecoveryCorrectness:
         h.enter_degraded_mode("circuit open", DegradationLevel.L2_READ_ONLY)
         engine = RepairEngine()
 
-        import asyncio
         # DB appears fast again (e.g. postgres restarted) but circuit is still OPEN
         with patch("app.core.self_healing.health", h), \
              patch.object(engine, "_rss_mb", return_value=100.0), \
@@ -273,7 +279,7 @@ class TestRecoveryCorrectness:
              patch.object(engine, "_redis_latency_ms", return_value=1.0), \
              patch.object(engine, "_queue_depth", return_value=0), \
              patch.object(engine, "_can_trigger", return_value=False):
-            asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+            _run_async(engine._check_and_repair())
 
         assert h.degradation_level == DegradationLevel.L2_READ_ONLY, (
             "L2 degradation auto-cleared on fast latency! "

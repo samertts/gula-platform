@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -32,14 +32,14 @@ class License:
         self.id = license_id or str(uuid4())
         self.lab_id = lab_id
         self.tier = tier
-        self.expires_at = expires_at or (datetime.now(UTC) + timedelta(days=365))
+        self.expires_at = expires_at or (datetime.now(timezone.utc) + timedelta(days=365))
         self.features = features or []
         self.active = True
-        self.created_at = datetime.now(UTC)
+        self.created_at = datetime.now(timezone.utc)
 
     @property
     def expired(self) -> bool:
-        return datetime.now(UTC) > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def can_access(self, feature: str) -> bool:
         return bool(self.active and not self.expired and (feature in self.features))

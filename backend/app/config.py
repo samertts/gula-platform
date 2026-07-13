@@ -271,3 +271,40 @@ DIGITALOCEAN_APP_ID = os.getenv("DIGITALOCEAN_APP_ID", "")
 #   Allows ads to be paused independently of the rest of the engine.
 ENABLE_FINANCIAL_ENGINE = os.getenv("ENABLE_FINANCIAL_ENGINE", "false").lower() == "true"
 ENABLE_ADS = os.getenv("ENABLE_ADS", "false").lower() == "true"
+
+
+# ── Kernel Env Vars ──────────────────────────────────────────────────────────
+# The Kernel is the permanent runtime foundation. Every future module must
+# depend on the Kernel. Nothing should bypass the Kernel.
+#
+# These flags control which Kernel subsystems are enabled at deploy time.
+# All default to "true" so the Kernel is fully active out of the box.
+#
+# KERNEL_KILL_SWITCH       — emergency stop: blocks autonomous kernel actions
+# KERNEL_DEGRADED          — puts kernel into degraded mode (no plugin/module loading)
+# KERNEL_ENABLE_PLUGINS    — enable the plugin system
+# KERNEL_ENABLE_EVENT_BUS  — enable the internal event bus
+# KERNEL_ENABLE_BACKGROUND — enable background task processing
+# KERNEL_ENABLE_FEATURES   — enable feature flag management
+# KERNEL_ENABLE_CONFIG     — enable configuration engine
+# KERNEL_ENABLE_TENANT     — enable multi-tenant engine
+# KERNEL_ENABLE_GATEWAY    — enable internal API gateway
+KERNEL_KILL_SWITCH = os.getenv("KERNEL_KILL_SWITCH", "false").lower() == "true"
+KERNEL_DEGRADED = os.getenv("KERNEL_DEGRADED", "false").lower() == "true"
+KERNEL_ENABLE_PLUGINS = os.getenv("KERNEL_ENABLE_PLUGINS", "true").lower() == "true"
+KERNEL_ENABLE_EVENT_BUS = os.getenv("KERNEL_ENABLE_EVENT_BUS", "true").lower() == "true"
+KERNEL_ENABLE_BACKGROUND = os.getenv("KERNEL_ENABLE_BACKGROUND", "true").lower() == "true"
+KERNEL_ENABLE_FEATURES = os.getenv("KERNEL_ENABLE_FEATURES", "true").lower() == "true"
+KERNEL_ENABLE_CONFIG = os.getenv("KERNEL_ENABLE_CONFIG", "true").lower() == "true"
+KERNEL_ENABLE_TENANT = os.getenv("KERNEL_ENABLE_TENANT", "true").lower() == "true"
+KERNEL_ENABLE_GATEWAY = os.getenv("KERNEL_ENABLE_GATEWAY", "true").lower() == "true"
+
+
+# ── Canonical Config Accessor ────────────────────────────────────────────────
+# Returns the shared AppConfig dataclass for use by new code.
+# Legacy globals above remain for backward compatibility.
+
+def get_shared_config():
+    """Return the canonical AppConfig from shared.config.loader."""
+    from shared.config import load_config as _load
+    return _load()

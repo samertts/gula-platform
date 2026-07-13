@@ -293,11 +293,12 @@ async def seed_critical_data() -> None:
     await loop.run_in_executor(None, _run_perm_version_migration)
     # ↑ raises RuntimeError if lab_users missing — propagates to run_startup_guard
 
-    # ── NON-FATAL: catalog / admin / subscriptions ────────────────────────────
+    # ── NON-FATAL: catalog / admin / subscriptions / audit trigger ──────────
     for name, fn in [
         ("test types catalog",      _run_seed_test_types),
         ("master admin",            _run_ensure_master_admin),
         ("default subscriptions",   _run_seed_default_subscriptions),
+        ("audit log trigger",       _run_ensure_audit_log_immutable),
     ]:
         try:
             logger.info("[STARTUP GUARD] Seeding %s...", name)
@@ -389,6 +390,42 @@ def _run_seed_default_subscriptions() -> None:
         db.close()
 
 
+def _run_ensure_audit_log_immutable() -> None:
+    """Apply immutability trigger to audit_logs table (ISO 27001 A.8.15).
+    Ensures audit records cannot be modified or deleted after creation.
+    Safe to call multiple times (CREATE OR REPLACE + DROP IF EXISTS).
+    """
+    from ..database import SessionLocal
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        db.execute(text("""
+            CREATE OR REPLACE FUNCTION prevent_audit_modification()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                RAISE EXCEPTION
+                    'SECURITY: Audit log records are immutable. Attempted % on audit_logs',
+                    TG_OP
+                    USING ERRCODE = 'restrict_violation';
+                RETURN NULL;
+            END;
+            $$ LANGUAGE plpgsql;
+        """))
+        db.execute(text("""
+            DROP TRIGGER IF EXISTS audit_logs_immutable ON audit_logs;
+            CREATE TRIGGER audit_logs_immutable
+                BEFORE UPDATE OR DELETE ON audit_logs
+                FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+        """))
+        db.commit()
+        logger.info("[STARTUP GUARD] Audit log immutability trigger applied")
+    except Exception as e:
+        db.rollback()
+        logger.warning("[STARTUP GUARD] Could not apply audit immutability trigger: %s", e)
+    finally:
+        db.close()
+
+
 # ─── Atomic Orchestrator ─────────────────────────────────────────────────────
 
 async def run_startup_guard() -> None:
@@ -435,6 +472,18 @@ async def run_startup_guard() -> None:
             await seed_critical_data()
         except Exception as e:
             logger.error("[STARTUP GUARD] Critical data seeding FAILED: %s. System will start in potentially degraded state.", e)
+
+        # Step 5 — Kernel bootstrap. The Kernel is the permanent runtime
+        # foundation. If it fails, the system starts without kernel services.
+        try:
+            from ..kernel.integration import boot_kernel, start_kernel
+
+            await boot_kernel()
+            await start_kernel()
+            logger.info("[STARTUP GUARD] Kernel initialized successfully")
+        except Exception as e:
+            logger.error("[STARTUP GUARD] Kernel initialization FAILED: %s. System will start without Kernel.", e)
+
         critical_ok = True
 
     except Exception:

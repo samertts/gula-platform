@@ -78,6 +78,8 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-008](ADR-008-patient-card-system.md) | Patient Card System | Accepted | 2026-07-08 |
 | [ADR-009](ADR-009-self-healing-infrastructure.md) | Self-Healing Infrastructure | Accepted | 2026-07-08 |
 | [ADR-010](ADR-010-sndhs-government-integration.md) | SNDHS-lite Government Integration | Accepted | 2026-07-08 |
+| [ADR-011](ADR-011-notification-platform.md) | Notification Platform Architecture | Accepted | 2026-07-13 |
+| [ADR-012](ADR-012-engineering-automation.md) | Engineering Automation Platform | Accepted | 2026-07-13 |
 
 ## Constitution Reference
 

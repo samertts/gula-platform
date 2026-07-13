@@ -9,6 +9,9 @@ description = "GULA National Healthcare Platform — Unified Engineering Factory
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 
+[project.scripts]
+gula = "backend.app.engineering.productivity.cli:main"
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
@@ -26,6 +29,7 @@ ignore = ["E501", "B008", "N818", "RUF012", "SLF001"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["T20", "N", "F401", "F841", "SLF001"]
+"**/engineering/productivity/*" = ["T20"]
 "**/migrations/**" = ["T20", "N", "I001", "F401", "F841"]
 
 [tool.ruff.format]
@@ -68,6 +72,9 @@ markers = [
     "stress: concurrency / throughput tests (slow)",
     "security: security-related tests",
     "smoke: quick smoke tests",
+    "kernel: Kernel subsystem tests (no DB, no network)",
+    "slow: tests that take more than a few seconds",
+    "performance: performance baseline tests",
 ]
 
 [tool.coverage.run]

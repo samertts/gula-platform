@@ -1,6 +1,6 @@
 """Critical result alerts service - immediate notification system for dangerous values."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
@@ -95,7 +95,7 @@ def get_critical_alerts(
     hours: int = 24,
 ) -> dict:
     """Get critical results requiring immediate attention."""
-    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
     results = (
         db.query(LabResult)
@@ -142,7 +142,7 @@ def get_critical_alerts(
 
 def alert_statistics(db: Session, lab_id: int) -> dict:
     """Statistics on critical results for the lab."""
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     day_ago = now - timedelta(hours=24)
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)

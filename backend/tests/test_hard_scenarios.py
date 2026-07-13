@@ -8,6 +8,7 @@ TEST 8  — Memory Pressure: auto_repair intervenes before OOM
 TEST 9  — Race Condition: two concurrent writes to same record → optimistic lock
 TEST 10 — Silent Failure: iptables blocks port 5432 → timeout → escalate
 """
+import asyncio
 import os
 import sys
 import threading
@@ -20,6 +21,15 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 import pytest
 from unittest.mock import MagicMock, patch
+
+
+def _run_async(coro):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 
 def _fresh_health():
@@ -86,8 +96,7 @@ class TestSlowDeath:
              patch.object(engine, "_redis_latency_ms", return_value=1.0), \
              patch.object(engine, "_queue_depth", return_value=0), \
              patch.object(engine, "_can_trigger", return_value=False):
-            import asyncio
-            asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+            _run_async(engine._check_and_repair())
 
         assert mock_h.degradation_level == DegradationLevel.L1_CACHE_HEAVY, (
             f"Expected L1_CACHE_HEAVY on high latency, got {mock_h.degradation_level.name}"
@@ -112,8 +121,7 @@ class TestSlowDeath:
              patch.object(engine, "_redis_latency_ms", return_value=1.0), \
              patch.object(engine, "_queue_depth", return_value=0), \
              patch.object(engine, "_can_trigger", return_value=False):
-            import asyncio
-            asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+            _run_async(engine._check_and_repair())
 
         assert mock_h.degradation_level == DegradationLevel.NONE, (
             f"Expected NONE after latency recovery, got {mock_h.degradation_level.name}"
@@ -122,7 +130,6 @@ class TestSlowDeath:
     def test_l1_does_not_block_writes(self):
         """In L1 the system is stressed but writes still pass — not L2."""
         from app.core.self_healing import DegradationLevel
-        import asyncio
         mock_h = _fresh_health()
         mock_h.enter_degraded_mode("slow", DegradationLevel.L1_CACHE_HEAVY)
 
@@ -138,7 +145,7 @@ class TestSlowDeath:
             r = MagicMock(); r.headers = {}; return r
 
         with patch("app.core.self_healing.health", mock_h):
-            asyncio.get_event_loop().run_until_complete(mw.dispatch(req, call_next))
+            _run_async(mw.dispatch(req, call_next))
 
         assert passed, "POST should pass in L1_CACHE_HEAVY — L1 is warning, not blocking"
 
@@ -169,7 +176,6 @@ class TestRedisDown:
     def test_redis_down_does_not_block_writes(self):
         """Redis down only enters L1 — writes must still pass."""
         from app.core.self_healing import DegradationLevel
-        import asyncio
         h = _fresh_health()
         for _ in range(h.redis_circuit.failure_threshold):
             h.redis_circuit.record_failure()
@@ -187,7 +193,7 @@ class TestRedisDown:
             r = MagicMock(); r.headers = {}; return r
 
         with patch("app.core.self_healing.health", h):
-            asyncio.get_event_loop().run_until_complete(mw.dispatch(req, call_next))
+            _run_async(mw.dispatch(req, call_next))
 
         assert passed, "POST must pass when only Redis is down (L1 not L2)"
 
@@ -263,13 +269,12 @@ class TestMemoryPressure:
 
         engine._repair_memory_pressure = mock_repair
 
-        import asyncio
         with patch.object(engine, "_rss_mb", return_value=float(_MEMORY_CRITICAL_MB + 1)), \
              patch.object(engine, "_db_latency_ms", return_value=1.0), \
              patch.object(engine, "_redis_latency_ms", return_value=1.0), \
              patch.object(engine, "_queue_depth", return_value=0), \
              patch.object(engine, "_can_trigger", return_value=True):
-            asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+            _run_async(engine._check_and_repair())
 
         assert repair_called, (
             f"Memory at {_MEMORY_CRITICAL_MB+1}MB should trigger auto_repair GC. "
@@ -284,14 +289,13 @@ class TestMemoryPressure:
 
         engine._repair_memory_pressure = lambda rss: repair_called.append(rss) or True
 
-        import asyncio
         warn_level = (_MEMORY_WARN_MB + _MEMORY_CRITICAL_MB) // 2
         with patch.object(engine, "_rss_mb", return_value=float(warn_level)), \
              patch.object(engine, "_db_latency_ms", return_value=1.0), \
              patch.object(engine, "_redis_latency_ms", return_value=1.0), \
              patch.object(engine, "_queue_depth", return_value=0), \
              patch.object(engine, "_can_trigger", return_value=True):
-            asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+            _run_async(engine._check_and_repair())
 
         assert repair_called, f"Memory at {warn_level}MB should trigger GC (warn level)"
 
@@ -303,12 +307,11 @@ class TestMemoryPressure:
 
         engine._repair_memory_pressure = lambda rss: repair_called.append(rss) or True
 
-        import asyncio
         with patch.object(engine, "_rss_mb", return_value=100.0), \
              patch.object(engine, "_db_latency_ms", return_value=1.0), \
              patch.object(engine, "_redis_latency_ms", return_value=1.0), \
              patch.object(engine, "_queue_depth", return_value=0):
-            asyncio.get_event_loop().run_until_complete(engine._check_and_repair())
+            _run_async(engine._check_and_repair())
 
         assert not repair_called, "GC should not trigger when memory is normal"
 

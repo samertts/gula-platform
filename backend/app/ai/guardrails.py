@@ -90,6 +90,9 @@ class AIGuardrailViolation(RuntimeError):
     This must never be silently caught — it indicates a design violation.
     """
 
+# Backward-compatible alias
+AIGuardrailViolationError = AIGuardrailViolation
+
 
 # ─── AI Suggestion ────────────────────────────────────────────────────────────
 

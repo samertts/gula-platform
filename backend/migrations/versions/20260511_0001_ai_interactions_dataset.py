@@ -67,8 +67,8 @@ depends_on    = None
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _table_exists(name: str) -> bool:
-    return inspect(op.get_bind()).has_table(name)
+def _table_exists(table: str) -> bool:
+    return inspect(op.get_bind()).has_table(table)
 
 
 def _index_exists(index: str) -> bool:

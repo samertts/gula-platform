@@ -1,49 +1,58 @@
-from datetime import datetime, timedelta, timezone
-from passlib.context import CryptContext
-from jose import JWTError, jwt
+"""Authentication — delegates to canonical shared.auth with backend-specific extensions.
+
+Backend keeps:
+- JWT blacklist (Redis-backed revocation)
+- Token type discrimination (access vs refresh)
+- build_token_payload for LabUser
+- Dummy hash for timing-safe login
+"""
+
+from __future__ import annotations
+
+from uuid import uuid4
+
+from jose import JWTError
+
+from shared.auth import (
+    create_access_token as _shared_create_access_token,
+    create_refresh_token as _shared_create_refresh_token,
+    decode_access_token as _shared_decode_access_token,
+    hash_password as _shared_hash_password,
+    verify_password as _shared_verify_password,
+)
 from ..config import (
-    SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_MINUTES, JWT_EXPIRE_HOURS,
-    REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRE_DAYS,
+    JWT_ALGORITHM,
+    JWT_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    REFRESH_TOKEN_SECRET,
+    SECRET_KEY,
 )
 
 # ── JWT Token Blacklist (revocation) ──────────────────────────────────────────
-# Uses Redis (or in-memory fallback) to store revoked JTIs.
-# TTL matches token lifetime so keys auto-expire and storage stays bounded.
 
 def blacklist_token(jti: str, ttl_seconds: int) -> None:
-    """Add a JTI to the revocation list until it would have expired anyway."""
     from .redis_client import cache
     cache.set(f"blacklist:jti:{jti}", "1", ex=ttl_seconds)
 
 
 def is_token_blacklisted(jti: str) -> bool:
-    """Return True if this JTI has been revoked (logout or forced expiry)."""
     from .redis_client import cache
     return cache.get(f"blacklist:jti:{jti}") is not None
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Pre-computed dummy hash used to ensure constant-time comparison when a login
-# email does not match any user, preventing user-enumeration via timing attacks.
-_DUMMY_HASH: str = pwd_context.hash("__gula_dummy_password_not_a_real_account__")
+# Pre-computed dummy hash for timing-safe login (prevents user enumeration).
+_DUMMY_HASH: str = "$2b$12$KOyWdwU2QI3BzsWt.4RGgua1dx53C7jHfc8UzpEKylbB5QwaGPJ6G"
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return _shared_hash_password(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return _shared_verify_password(plain_password, hashed_password)
 
 
 def build_token_payload(user) -> dict:
-    """
-    Build the slim JWT payload for a LabUser.
-
-    We intentionally do NOT embed the permissions list.
-    Permissions are derived from role at request time (O(1) dict lookup).
-    Keeping the JWT small reduces cookie size on every HTTP request.
-    """
     return {
         "user_id": user.id,
         "lab_id": user.lab_id,
@@ -53,23 +62,19 @@ def build_token_payload(user) -> dict:
 
 
 def create_token(data: dict) -> str:
-    """Create a short-lived JWT access token (default: 30 minutes)."""
-    import uuid
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire, "type": "access", "jti": str(uuid.uuid4())})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=JWT_ALGORITHM)
+    to_encode.update({"type": "access", "jti": str(uuid4())})
+    return _shared_create_access_token(
+        to_encode,
+        secret_key=SECRET_KEY,
+        algorithm=JWT_ALGORITHM,
+        expire_minutes=JWT_EXPIRE_MINUTES,
+    )
 
 
 def decode_token(token: str) -> dict | None:
-    """Decode and validate an access token. Returns None on any failure."""
     try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[JWT_ALGORITHM],
-            options={"require": ["exp"]},
-        )
+        payload = _shared_decode_access_token(token, SECRET_KEY, [JWT_ALGORITHM])
         if payload.get("type") != "access":
             return None
         return payload
@@ -78,26 +83,21 @@ def decode_token(token: str) -> dict | None:
 
 
 def create_refresh_token(data: dict) -> str:
-    """Create a long-lived JWT refresh token (default: 30 days)."""
-    import uuid
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh", "jti": str(uuid.uuid4())})
-    return jwt.encode(to_encode, REFRESH_TOKEN_SECRET, algorithm=JWT_ALGORITHM)
+    to_encode.update({"type": "refresh", "jti": str(uuid4())})
+    return _shared_create_refresh_token(
+        to_encode,
+        refresh_secret=REFRESH_TOKEN_SECRET,
+        algorithm=JWT_ALGORITHM,
+        expire_days=REFRESH_TOKEN_EXPIRE_DAYS,
+    )
 
 
 def decode_refresh_token(token: str) -> dict | None:
-    """Decode and validate a refresh token. Returns None on any failure."""
     try:
-        payload = jwt.decode(
-            token,
-            REFRESH_TOKEN_SECRET,
-            algorithms=[JWT_ALGORITHM],
-            options={"require": ["exp"]},
-        )
+        payload = _shared_decode_access_token(token, REFRESH_TOKEN_SECRET, [JWT_ALGORITHM])
         if payload.get("type") != "refresh":
             return None
-        # Check revocation: refresh tokens can be blacklisted on logout
         jti = payload.get("jti")
         if jti and is_token_blacklisted(jti):
             return None

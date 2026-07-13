@@ -150,7 +150,10 @@ services:
       # Prometheus scrape token
       METRICS_BEARER_TOKEN: ${METRICS_BEARER_TOKEN:-}
       RATE_LIMIT_BLOCK_DURATION_SECONDS: ${RATE_LIMIT_BLOCK_DURATION_SECONDS:-3600}
+      PYTHONPATH: /app
     volumes:
+      # Canonical shared library (mounted for hot-reload)
+      - ./shared:/app/shared:ro
       # Audit anchor file: persisted outside DB for tamper detection
       # Mount as named volume so it survives container rebuilds
       - audit-anchors:/app/data
@@ -214,6 +217,9 @@ services:
       HEALTH_ALERT_INTERVAL_SECONDS: ${HEALTH_ALERT_INTERVAL_SECONDS:-60}
       DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-3}
       DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-5}
+      PYTHONPATH: /app
+    volumes:
+      - ./shared:/app/shared:ro
     depends_on:
       postgres:
         condition: service_healthy

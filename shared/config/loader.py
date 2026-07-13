@@ -25,10 +25,12 @@ def _is_weak_secret(value: str | None) -> bool:
 @dataclass
 class DatabaseConfig:
     url: str = ""
-    pool_size: int = 5
-    max_overflow: int = 10
+    pool_size: int = 6
+    max_overflow: int = 12
     pool_pre_ping: bool = True
     statement_timeout: int = 30000
+    pool_timeout: int = 10
+    pool_recycle: int = 1800
 
 
 @dataclass
@@ -57,6 +59,8 @@ class AIConfig:
     gemini_api_key: str = ""
     groq_api_key: str = ""
     ollama_base_url: str = ""
+    gemini_clinical_model: str = "gemini-2.0-flash"
+    gemini_chat_model: str = "gemini-2.0-flash"
 
 
 @dataclass
@@ -69,6 +73,40 @@ class SNDHSConfig:
 class NotificationConfig:
     fcm_server_key: str = ""
     apns_key: str = ""
+
+
+@dataclass
+class AdapterConfig:
+    mode_default: str = "stub"
+    mode_nid: str = "stub"
+    mode_insurance: str = "stub"
+    mode_residency: str = "stub"
+    mode_cloudflare: str = "stub"
+
+
+@dataclass
+class GovernmentConfig:
+    moi_nid_api_url: str = ""
+    moi_nid_api_key: str = ""
+    insurance_api_url: str = ""
+    insurance_api_key: str = ""
+    residency_api_url: str = ""
+    residency_api_key: str = ""
+
+
+@dataclass
+class CloudflareConfig:
+    api_token: str = ""
+    account_id: str = ""
+    zone_id: str = ""
+    r2_bucket: str = "gula-reports"
+
+
+@dataclass
+class SupabaseConfig:
+    url: str = ""
+    anon_key: str = ""
+    service_key: str = ""
 
 
 @dataclass
@@ -86,6 +124,10 @@ class AppConfig:
     ai: AIConfig = field(default_factory=AIConfig)
     sndhs: SNDHSConfig = field(default_factory=SNDHSConfig)
     notification: NotificationConfig = field(default_factory=NotificationConfig)
+    adapter: AdapterConfig = field(default_factory=AdapterConfig)
+    government: GovernmentConfig = field(default_factory=GovernmentConfig)
+    cloudflare: CloudflareConfig = field(default_factory=CloudflareConfig)
+    supabase: SupabaseConfig = field(default_factory=SupabaseConfig)
 
     rate_limit_auth: int = 10
     rate_limit_public: int = 30
@@ -98,6 +140,9 @@ class AppConfig:
     feature_background_tasks: bool = True
     runtime_mode: str = "api"
     sentry_dsn: str = ""
+
+    platform_name_ar: str = "منصة غولا الصحية"
+    enable_api_docs: bool = False
 
 
 def _env_str(key: str, default: str = "") -> str:
@@ -125,10 +170,14 @@ def load_config() -> AppConfig:
     cfg.app_version = _env_str("APP_VERSION", "2.1.0")
     cfg.debug = cfg.env == "development"
     cfg.base_url = _env_str("BASE_URL", "")
+    cfg.platform_name_ar = _env_str("PLATFORM_NAME_AR", "منصة غولا الصحية")
+    cfg.enable_api_docs = _env_bool("ENABLE_API_DOCS", False)
 
     cfg.database.url = _env_str("DATABASE_URL", "")
-    cfg.database.pool_size = _env_int("DB_POOL_SIZE", 5)
-    cfg.database.max_overflow = _env_int("DB_MAX_OVERFLOW", 10)
+    cfg.database.pool_size = _env_int("DB_POOL_SIZE", 6)
+    cfg.database.max_overflow = _env_int("DB_MAX_OVERFLOW", 12)
+    cfg.database.pool_timeout = _env_int("DB_POOL_TIMEOUT", 10)
+    cfg.database.pool_recycle = _env_int("DB_POOL_RECYCLE", 1800)
 
     cfg.jwt.secret_key = _env_str("SECRET_KEY", "")
     cfg.jwt.algorithm = _env_str("JWT_ALGORITHM", "HS256")
@@ -143,6 +192,8 @@ def load_config() -> AppConfig:
     cfg.redis.enabled = bool(cfg.redis.url)
 
     cfg.ai.gemini_api_key = _env_str("GEMINI_API_KEY", "")
+    cfg.ai.gemini_clinical_model = _env_str("GEMINI_CLINICAL_MODEL", "gemini-2.0-flash")
+    cfg.ai.gemini_chat_model = _env_str("GEMINI_CHAT_MODEL", "gemini-2.0-flash")
     cfg.ai.groq_api_key = _env_str("GROQ_API_KEY", "")
     cfg.ai.ollama_base_url = _env_str("OLLAMA_BASE_URL", "")
 
@@ -151,6 +202,28 @@ def load_config() -> AppConfig:
 
     cfg.notification.fcm_server_key = _env_str("FCM_SERVER_KEY", "")
     cfg.notification.apns_key = _env_str("APNS_KEY", "")
+
+    cfg.adapter.mode_default = _env_str("GULA_ADAPTER_MODE", "stub").lower()
+    cfg.adapter.mode_nid = _env_str("GULA_ADAPTER_MODE_NID", cfg.adapter.mode_default).lower()
+    cfg.adapter.mode_insurance = _env_str("GULA_ADAPTER_MODE_INSURANCE", cfg.adapter.mode_default).lower()
+    cfg.adapter.mode_residency = _env_str("GULA_ADAPTER_MODE_RESIDENCY", cfg.adapter.mode_default).lower()
+    cfg.adapter.mode_cloudflare = _env_str("GULA_ADAPTER_MODE_CLOUDFLARE", cfg.adapter.mode_default).lower()
+
+    cfg.government.moi_nid_api_url = _env_str("MOI_NID_API_URL", "")
+    cfg.government.moi_nid_api_key = _env_str("MOI_NID_API_KEY", "")
+    cfg.government.insurance_api_url = _env_str("INSURANCE_API_URL", "")
+    cfg.government.insurance_api_key = _env_str("INSURANCE_API_KEY", "")
+    cfg.government.residency_api_url = _env_str("RESIDENCY_API_URL", "")
+    cfg.government.residency_api_key = _env_str("RESIDENCY_API_KEY", "")
+
+    cfg.cloudflare.api_token = _env_str("CF_API_TOKEN", "")
+    cfg.cloudflare.account_id = _env_str("CF_ACCOUNT_ID", "")
+    cfg.cloudflare.zone_id = _env_str("CF_ZONE_ID", "")
+    cfg.cloudflare.r2_bucket = _env_str("CF_R2_BUCKET", "gula-reports")
+
+    cfg.supabase.url = _env_str("SUPABASE_URL", "")
+    cfg.supabase.anon_key = _env_str("SUPABASE_ANON_KEY", "")
+    cfg.supabase.service_key = _env_str("SUPABASE_SERVICE_KEY", "")
 
     cfg.rate_limit_auth = _env_int("RATE_LIMIT_AUTH", 10)
     cfg.rate_limit_public = _env_int("RATE_LIMIT_PUBLIC", 30)

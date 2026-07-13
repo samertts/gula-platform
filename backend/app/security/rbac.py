@@ -1,194 +1,54 @@
-"""Role-based access control for GULA platform.
+"""Role-based access control — canonical shared.rbac with backend extensions.
 
-Hierarchy (higher level = more authority):
-  master_admin   100  — Platform owner, full control
-  ministry_admin  90  — Ministry of Health, national oversight
-  province_admin  80  — Province health authority
-  admin           50  — Lab manager (own lab only)
-  lab_admin       50  — alias for admin
-  doctor          40  — Physician (read-only clinical)
-  staff           20  — Lab staff
-  lab_staff       20  — alias for staff
-  technician      20  — Lab technician
-  citizen         10  — Patient / public user
+All role/permission data is defined in shared.rbac. This module re-exports
+the extended string-based API for backward compatibility.
 
-Rule: a user can only create, modify, or deactivate users whose role_level
-is STRICTLY LESS than their own.  Master admin may not be modified by anyone
-except themselves (see can_manage_user).
+See shared/rbac/permissions.py for the canonical role hierarchy.
 """
 
-# ── Role levels (authoritative) ───────────────────────────────────────────────
-ROLE_LEVELS: dict[str, int] = {
-    "master_admin":   100,
-    "ministry_admin":  90,
-    "province_admin":  80,
-    "admin":           50,
-    "lab_admin":       50,   # legacy alias
-    "doctor":          40,
-    "staff":           20,
-    "lab_staff":       20,   # legacy alias
-    "technician":      20,
-    "citizen":         10,
-}
+from __future__ import annotations
 
-# ── Granular permission catalogue ────────────────────────────────────────────
-ALL_PERMISSIONS: list[str] = [
-    # Patients
-    "patients:read",
-    "patients:write",
-    "patients:delete",
-    # Orders
-    "orders:read",
-    "orders:write",
-    # Results
-    "results:read",
-    "results:write",
-    # Staff management (within a lab)
-    "staff:manage",
-    # Lab settings
-    "lab:read",
-    "lab:manage",
-    # Dashboard
-    "dashboard:read",
-    # Audit logs
-    "audit:read",
-    # Platform-level management (ministry/province admins)
-    "platform:manage_labs",    # create/activate/deactivate labs
-    "platform:manage_users",   # create/modify users below own level
-    "platform:view_stats",     # national/province statistics
-    # System-level (master_admin only)
-    "system:admin",
-]
+from shared.rbac import (
+    EXTENDED_ALL_PERMISSIONS as ALL_PERMISSIONS,
+    EXTENDED_ROLE_LEVELS as ROLE_LEVELS,
+    EXTENDED_ROLE_PERMISSIONS as ROLE_PERMISSIONS,
+    EXTENDED_VALID_ROLES as VALID_ROLES,
+    can_manage_role as _shared_can_manage_role,
+    get_permissions_for_role as _shared_get_permissions,
+    get_role_level as _shared_get_role_level,
+    has_permission_str,
+)
 
-# ── Role → permissions mapping ────────────────────────────────────────────────
-ROLE_PERMISSIONS: dict[str, list[str]] = {
-    "master_admin": ALL_PERMISSIONS,
-
-    "ministry_admin": [
-        "patients:read",
-        "orders:read",
-        "results:read",
-        "lab:read",
-        "dashboard:read",
-        "audit:read",
-        "platform:manage_labs",
-        "platform:manage_users",
-        "platform:view_stats",
-    ],
-
-    "province_admin": [
-        "patients:read",
-        "orders:read",
-        "results:read",
-        "lab:read",
-        "dashboard:read",
-        "audit:read",
-        "platform:manage_labs",
-        "platform:manage_users",
-        "platform:view_stats",
-    ],
-
-    # Lab-level administrator (lab manager)
-    "admin": [
-        "patients:read", "patients:write", "patients:delete",
-        "orders:read", "orders:write",
-        "results:read", "results:write",
-        "staff:manage",
-        "lab:read", "lab:manage",
-        "dashboard:read",
-        "audit:read",
-        "platform:manage_users",
-    ],
-    "lab_admin": [  # legacy alias → same as admin
-        "patients:read", "patients:write", "patients:delete",
-        "orders:read", "orders:write",
-        "results:read", "results:write",
-        "staff:manage",
-        "lab:read", "lab:manage",
-        "dashboard:read",
-        "audit:read",
-        "platform:manage_users",
-    ],
-
-    "doctor": [
-        "patients:read",
-        "orders:read",
-        "results:read",
-        "dashboard:read",
-    ],
-
-    "staff": [
-        "patients:read", "patients:write",
-        "orders:read", "orders:write",
-        "results:read", "results:write",
-        "lab:read",
-        "dashboard:read",
-    ],
-    "lab_staff": [  # legacy alias → same as staff
-        "patients:read", "patients:write",
-        "orders:read", "orders:write",
-        "results:read", "results:write",
-        "lab:read",
-        "dashboard:read",
-    ],
-
-    "technician": [
-        "orders:read", "orders:write",
-        "results:read", "results:write",
-        "lab:read",
-        "dashboard:read",
-    ],
-
-    "citizen": [],
-}
-
-VALID_ROLES: set[str] = set(ROLE_PERMISSIONS.keys())
+# ── Re-exports ─────────────────────────────────────────────────────────────────
+ROLE_LEVELS = ROLE_LEVELS
+ALL_PERMISSIONS = ALL_PERMISSIONS
+ROLE_PERMISSIONS = ROLE_PERMISSIONS
+VALID_ROLES = VALID_ROLES
+ROLES = ROLE_PERMISSIONS  # legacy alias
 
 
 def get_role_level(role: str) -> int:
-    """Return numeric level for a role (0 if unknown)."""
-    return ROLE_LEVELS.get(role, 0)
+    return _shared_get_role_level(role)
 
 
 def get_permissions_for_role(role: str) -> list[str]:
-    """Return the permission list for a given role."""
-    return ROLE_PERMISSIONS.get(role, [])
+    return _shared_get_permissions(role)
 
 
 def has_permission(role: str, permission: str) -> bool:
-    """Return True if *role* has *permission*."""
-    return permission in get_permissions_for_role(role)
+    return has_permission_str(role, permission)
 
 
 def can_manage_role(actor_role: str, target_role: str) -> bool:
-    """Return True if actor can create/modify a user with target_role.
-
-    Rules:
-    - Actor level must be STRICTLY GREATER than target level.
-    - master_admin cannot be created or modified by anyone except another
-      master_admin (and there is only one — enforced in ensure_master_admin).
-    """
-    if target_role == "master_admin":
-        return actor_role == "master_admin"
-    actor_level = get_role_level(actor_role)
-    target_level = get_role_level(target_role)
-    return actor_level > target_level and actor_level > 0
+    return _shared_can_manage_role(actor_role, target_role)
 
 
 def can_manage_user(actor, target_user) -> bool:
-    """Return True if actor LabUser can manage target LabUser.
-
-    Extra rule: province_admin can only manage users in their own province.
-    """
     if not can_manage_role(actor.role, target_user.role):
         return False
     if actor.role == "province_admin":
         return actor.province_id == target_user.province_id
     return True
-
-
-# ── Legacy helpers (kept for backward compatibility) ──────────────────────────
-ROLES = ROLE_PERMISSIONS  # alias
 
 
 def require_role(*allowed_roles):
@@ -207,18 +67,10 @@ def require_role(*allowed_roles):
 # ── ABAC: Attribute-Based Access Control ──────────────────────────────────────
 
 def require_own_lab(current_user, resource_lab_id: int) -> None:
-    """
-    Enforce lab isolation: a user can only access resources in their own lab,
-    unless they are a platform-level admin (master_admin, ministry_admin, province_admin).
-
-    Usage in routes:
-        require_own_lab(current_user, patient.lab_id)
-    """
     from fastapi import HTTPException
 
     platform_roles = {"master_admin", "ministry_admin", "province_admin"}
     if current_user.role in platform_roles:
-        # Province admins: additional province check handled separately
         return
 
     if getattr(current_user, "lab_id", None) != resource_lab_id:
@@ -233,25 +85,11 @@ def require_own_lab(current_user, resource_lab_id: int) -> None:
 
 
 def require_feature_for_lab(feature: str, lab_id: int, db) -> None:
-    """
-    Combined ABAC + tier check.
-    Raises 403 if lab does not have access to feature.
-    Wraps feature_flags.require_feature for convenience.
-
-    Usage:
-        require_feature_for_lab("ai_interpretation", current_user.lab_id, db)
-    """
     from ..core.feature_flags import require_feature
     require_feature(feature, lab_id, db)
 
 
 def assert_lab_within_limit(limit_field: str, current_count: int, lab_id: int, db) -> None:
-    """
-    Check resource limits defined in the lab's subscription.
-    Raises 402 (Payment Required) if limit is exceeded.
-
-    limit_field: 'max_patients' | 'max_staff' | 'max_orders_per_day' etc.
-    """
     from fastapi import HTTPException
     from ..models.subscription import LabSubscription
 
@@ -261,7 +99,6 @@ def assert_lab_within_limit(limit_field: str, current_count: int, lab_id: int, d
     ).first()
 
     if sub is None:
-        # No subscription row → default starter limits
         from ..core.feature_flags import get_tier_limits
         limits = get_tier_limits("starter")
     else:

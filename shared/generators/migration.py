@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 
 logger = logging.getLogger("gula.generators.migration")
 
@@ -50,7 +50,7 @@ class MigrationGenerator:
     def __init__(self, message: str, target_dir: str = "backend/migrations/versions") -> None:
         self._message = message
         self._target_dir = target_dir
-        self._ts = datetime.now(UTC)
+        self._ts = datetime.now(timezone.utc)
 
     def generate(self) -> None:
         ts_str = self._ts.strftime("%Y%m%d_%H%M%S")

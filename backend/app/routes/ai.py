@@ -32,7 +32,7 @@ import os
 import re
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from hashlib import sha256
 from typing import Any
 
@@ -883,7 +883,7 @@ async def interpret_result_public(token: str) -> JSONResponse:
             if not result:
                 return None, None, None
 
-            if result.expires_at and result.expires_at < datetime.now(UTC):
+            if result.expires_at and result.expires_at < datetime.now(timezone.utc):
                 return None, None, None
 
             order_id = result.order_id
@@ -905,7 +905,7 @@ async def interpret_result_public(token: str) -> JSONResponse:
                 if patient:
                     age = None
                     if patient.birth_date:
-                        today = datetime.now(UTC).date()
+                        today = datetime.now(timezone.utc).date()
                         age = (
                             today.year
                             - patient.birth_date.year

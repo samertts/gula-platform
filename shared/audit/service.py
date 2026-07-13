@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from typing import Any
 
 logger = logging.getLogger("gula.audit")
@@ -35,7 +35,7 @@ def create_audit_entry(
         text("SELECT chain_hash FROM audit_logs ORDER BY id DESC LIMIT 1 FOR UPDATE")
     ).scalar()
     previous_hash = last if last else "GENESIS"
-    timestamp = datetime.now(UTC).isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
     chain_hash = compute_chain_hash(previous_hash, action, entity_type, str(entity_id), user_id, timestamp)
     result = db_session.execute(
         text("""

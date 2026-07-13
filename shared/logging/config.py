@@ -4,7 +4,7 @@ import json
 import logging
 import traceback
 from contextvars import ContextVar
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 _ctx_request_id: ContextVar[str] = ContextVar("request_id", default="")
@@ -32,7 +32,7 @@ def get_request_id() -> str:
 class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         doc: dict[str, Any] = {
-            "ts": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
             "level": record.levelname,
             "logger": record.name,
             "msg": record.getMessage(),

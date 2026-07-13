@@ -29,7 +29,7 @@ async def create_{name}(data: dict[str, Any]) -> dict[str, Any]:
 
 _MODEL_TPL = '''from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 
 from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
@@ -41,8 +41,8 @@ class {model_name}(Base):
     __tablename__ = "{table_name}"
 
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 '''
 
 _TEST_TPL = '''"""Tests for {name} module."""
