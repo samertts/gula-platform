@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -52,9 +52,9 @@ class Subscription:
         self.lab_id = lab_id
         self.plan = PLANS.get(plan_name, PLANS["free"])
         self.active = True
-        self.billing_period_start = datetime.now(UTC)
-        self.billing_period_end = datetime.now(UTC) + timedelta(days=30)
-        self.created_at = datetime.now(UTC)
+        self.billing_period_start = datetime.now(timezone.utc)
+        self.billing_period_end = datetime.now(timezone.utc) + timedelta(days=30)
+        self.created_at = datetime.now(timezone.utc)
 
     @property
     def feature_set(self) -> list[str]:

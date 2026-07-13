@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -37,13 +37,13 @@ class Payment:
         self.description = description
         self.lab_id = lab_id
         self.status = PaymentStatus.PENDING
-        self.created_at = datetime.now(UTC)
+        self.created_at = datetime.now(timezone.utc)
         self.processed_at: datetime | None = None
         self.reference: str = ""
 
     def complete(self, reference: str = "") -> None:
         self.status = PaymentStatus.COMPLETED
-        self.processed_at = datetime.now(UTC)
+        self.processed_at = datetime.now(timezone.utc)
         self.reference = reference
 
     def fail(self) -> None:

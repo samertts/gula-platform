@@ -1,10 +1,16 @@
 import asyncio
 import logging
 import os
+import sys
 import time
 import uuid
 from contextlib import asynccontextmanager, suppress
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+# Ensure canonical shared library is on the Python path
+_SHARED_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "shared")
+if os.path.isdir(_SHARED_PATH) and _SHARED_PATH not in sys.path:
+    sys.path.insert(0, os.path.dirname(_SHARED_PATH))  # parent dir so 'import shared' works
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -103,6 +109,14 @@ async def _lifespan(app: FastAPI):
     logger.info("GULA Platform %s starting up...", APP_VERSION)
     await run_startup_guard()
 
+    # ── kernel warmup (kernel is booted inside run_startup_guard Step 5) ─────
+    try:
+        from .kernel.integration import warmup_kernel
+
+        await warmup_kernel()
+    except Exception as exc:
+        logger.warning("Kernel warmup skipped: %s", exc)
+
     yield  # ← application running
 
     # ── shutdown ─────────────────────────────────────────────────────────────
@@ -110,6 +124,14 @@ async def _lifespan(app: FastAPI):
         "GULA Platform shutting down — cancelling %d background task(s)...",
         len(_bg_tasks),
     )
+    from .kernel.integration import stop_kernel
+
+    try:
+        await stop_kernel()
+        logger.info("Kernel stopped")
+    except Exception as exc:
+        logger.error("Kernel shutdown error: %s", exc)
+
     for task in list(_bg_tasks):
         task.cancel()
     if _bg_tasks:
@@ -414,6 +436,7 @@ _ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset(
         "/health/live",
         "/health/status",  # diagnostic — always visible so you can see WHY startup failed
         "/health/deep",  # deep diagnostics — always accessible for monitoring
+        "/health/kernel",  # kernel health — always visible
     }
 )
 
@@ -448,6 +471,19 @@ app.add_middleware(ReadinessMiddleware)
 from .core.self_healing import DegradedModeMiddleware  # noqa: E402
 
 app.add_middleware(DegradedModeMiddleware)
+
+
+# ===== KERNEL MIDDLEWARE =====
+# Attaches kernel context to every request and enforces kernel-first dependency.
+# Runs after degraded-mode so it can observe system health state.
+class KernelMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        from .kernel.integration import kernel_middleware
+
+        return await kernel_middleware(request, call_next)
+
+
+app.add_middleware(KernelMiddleware)
 
 
 # ===== CONCURRENCY LIMIT (BACKPRESSURE) MIDDLEWARE =====
@@ -656,6 +692,13 @@ from .models.edge import (  # noqa: E402, F401  register edge tables with Base m
 from .routes import ai_telemetry as ai_telemetry_routes  # noqa: E402
 
 app.include_router(ai_telemetry_routes.router)
+
+# ===== KERNEL MANAGEMENT ROUTES =====
+# The Kernel is the permanent runtime foundation. These routes expose kernel
+# internals for observability without requiring direct process access.
+from .kernel import routes as kernel_routes  # noqa: E402
+
+app.include_router(kernel_routes.router)
 from .models.ai_interaction import (  # noqa: E402, F401  register with Base metadata
     AIFeedback,
     AIInteraction,
@@ -801,7 +844,7 @@ async def _health_alert_loop():
                         f"Issues: {', '.join(issues) or 'none'}\n"
                         f"DB: {db_ms}ms  Redis: {red_ms}ms  "
                         f"Mem: {rss_mb}MB  Queue: {queue_backlog}\n"
-                        f"{datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                        f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
                     ),
                     "grade": grade,
                     "prev_grade": _prev_grade,
@@ -1028,7 +1071,7 @@ def health():
         "degradation_level": sys_health.degradation_level.name,
         "circuits": sys_health.to_dict()["circuits"],
         "pool": pool,
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -1110,7 +1153,7 @@ def health_status():
         "degraded_mode": sys_h.get("degraded", False),
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -1253,11 +1296,32 @@ def health_deep():
         "circuits": circuits,
         "check_duration_ms": total_ms,
         "version": APP_VERSION,
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "auto_repair": (
             lambda: __import__("app.core.auto_repair", fromlist=["auto_repair"]).auto_repair.stats()
         )(),
     }
+
+
+# ===== KERNEL HEALTH =====
+@app.get("/health/kernel", tags=["system"])
+async def kernel_health():
+    """
+    Kernel health and diagnostics.
+    Returns the Kernel's internal state, component status, and uptime.
+    Bypasses all middlewares so it is always reachable.
+    """
+    try:
+        from .kernel.integration import get_kernel_health, is_kernel_ready
+
+        health = await get_kernel_health()
+        return health
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "kernel_initialized": False,
+        }
 
 
 # ===== PUBLIC ENDPOINTS =====
@@ -1301,271 +1365,4 @@ def list_test_types():
         db.close()
 
 
-def _migrate_perm_version():
-    """Add perm_version column to lab_users if it does not exist (safe idempotent migration)."""
-    from sqlalchemy import text
 
-    try:
-        with engine.connect() as conn:
-            # Step 1: add the column if absent
-            conn.execute(
-                text(
-                    "ALTER TABLE lab_users "
-                    "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
-                )
-            )
-            # Step 2: back-fill any NULL values left by a partial previous migration
-            conn.execute(text("UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"))
-            conn.commit()
-        logger.info("perm_version column ensured on lab_users")
-    except Exception as exc:
-        logger.error("perm_version migration FAILED: %s — login will fail until resolved", exc)
-        raise  # re-raise so startup logs clearly show the error
-
-
-def _seed_test_types():
-    """Seed test types catalog if empty (fast: single COUNT check)."""
-    from .database import SessionLocal
-
-    db = SessionLocal()
-    try:
-        # Fast existence check - avoids full count
-        if db.query(TestType.id).first() is not None:
-            return
-        test_types = [
-            TestType(
-                test_code="glucose",
-                test_name="Glucose (Fasting)",
-                test_name_ar="السكر (صائم)",
-                category="Chemistry",
-                unit="mg/dL",
-                normal_range_low=70,
-                normal_range_high=100,
-            ),
-            TestType(
-                test_code="hemoglobin",
-                test_name="Hemoglobin",
-                test_name_ar="الهيموغلوبين",
-                category="CBC",
-                unit="g/dL",
-                normal_range_low=12,
-                normal_range_high=17,
-            ),
-            TestType(
-                test_code="wbc",
-                test_name="White Blood Cells",
-                test_name_ar="كريات الدم البيضاء",
-                category="CBC",
-                unit="×10³/µL",
-                normal_range_low=4.0,
-                normal_range_high=11.0,
-            ),
-            TestType(
-                test_code="platelets",
-                test_name="Platelets",
-                test_name_ar="الصفائح الدموية",
-                category="CBC",
-                unit="×10³/µL",
-                normal_range_low=150,
-                normal_range_high=400,
-            ),
-            TestType(
-                test_code="creatinine",
-                test_name="Creatinine",
-                test_name_ar="الكرياتينين",
-                category="Kidney",
-                unit="mg/dL",
-                normal_range_low=0.6,
-                normal_range_high=1.3,
-            ),
-            TestType(
-                test_code="urea",
-                test_name="Urea (BUN)",
-                test_name_ar="اليوريا",
-                category="Kidney",
-                unit="mg/dL",
-                normal_range_low=15,
-                normal_range_high=45,
-            ),
-            TestType(
-                test_code="cholesterol",
-                test_name="Total Cholesterol",
-                test_name_ar="الكوليسترول الكلي",
-                category="Lipid",
-                unit="mg/dL",
-                normal_range_low=0,
-                normal_range_high=200,
-            ),
-            TestType(
-                test_code="triglycerides",
-                test_name="Triglycerides",
-                test_name_ar="الدهون الثلاثية",
-                category="Lipid",
-                unit="mg/dL",
-                normal_range_low=0,
-                normal_range_high=150,
-            ),
-            TestType(
-                test_code="alt",
-                test_name="ALT (SGPT)",
-                test_name_ar="إنزيم الكبد ALT",
-                category="Liver",
-                unit="U/L",
-                normal_range_low=0,
-                normal_range_high=40,
-            ),
-            TestType(
-                test_code="ast",
-                test_name="AST (SGOT)",
-                test_name_ar="إنزيم الكبد AST",
-                category="Liver",
-                unit="U/L",
-                normal_range_low=0,
-                normal_range_high=40,
-            ),
-            TestType(
-                test_code="tsh",
-                test_name="TSH",
-                test_name_ar="هرمون الغدة الدرقية",
-                category="Thyroid",
-                unit="mIU/L",
-                normal_range_low=0.4,
-                normal_range_high=4.5,
-            ),
-            TestType(
-                test_code="potassium",
-                test_name="Potassium",
-                test_name_ar="البوتاسيوم",
-                category="Electrolytes",
-                unit="mEq/L",
-                normal_range_low=3.5,
-                normal_range_high=5.0,
-            ),
-            TestType(
-                test_code="sodium",
-                test_name="Sodium",
-                test_name_ar="الصوديوم",
-                category="Electrolytes",
-                unit="mEq/L",
-                normal_range_low=135,
-                normal_range_high=145,
-            ),
-            TestType(
-                test_code="hba1c",
-                test_name="HbA1c",
-                test_name_ar="السكر التراكمي",
-                category="Diabetes",
-                unit="%",
-                normal_range_low=0,
-                normal_range_high=5.7,
-            ),
-            TestType(
-                test_code="vitamin_d",
-                test_name="Vitamin D",
-                test_name_ar="فيتامين د",
-                category="Vitamins",
-                unit="ng/mL",
-                normal_range_low=20,
-                normal_range_high=100,
-            ),
-            TestType(
-                test_code="rbc",
-                test_name="Red Blood Cells",
-                test_name_ar="كريات الدم الحمراء",
-                category="CBC",
-                unit="×10⁶/µL",
-                normal_range_low=4.0,
-                normal_range_high=6.0,
-            ),
-            TestType(
-                test_code="mcv",
-                test_name="MCV",
-                test_name_ar="حجم الكرية الوسطي",
-                category="CBC",
-                unit="fL",
-                normal_range_low=80,
-                normal_range_high=100,
-            ),
-            TestType(
-                test_code="ldl",
-                test_name="LDL Cholesterol",
-                test_name_ar="الكوليسترول الضار",
-                category="Lipid",
-                unit="mg/dL",
-                normal_range_low=0,
-                normal_range_high=130,
-            ),
-            TestType(
-                test_code="hdl",
-                test_name="HDL Cholesterol",
-                test_name_ar="الكوليسترول النافع",
-                category="Lipid",
-                unit="mg/dL",
-                normal_range_low=40,
-                normal_range_high=100,
-            ),
-            TestType(
-                test_code="uric_acid",
-                test_name="Uric Acid",
-                test_name_ar="حمض اليوريك",
-                category="Kidney",
-                unit="mg/dL",
-                normal_range_low=2.5,
-                normal_range_high=7.0,
-            ),
-        ]
-        db.add_all(test_types)
-        db.commit()
-        logger.info(f"Seeded {len(test_types)} test types")
-    finally:
-        db.close()
-
-
-def _ensure_master_admin():
-    """Create master admin on first startup if not exists."""
-    from .routes.admin import ensure_master_admin
-
-    ensure_master_admin()
-
-
-def _ensure_audit_log_immutable():
-    """Apply immutability trigger to audit_logs table (ISO 27001 A.8.15).
-
-    Ensures audit records cannot be modified or deleted after creation.
-    Safe to call multiple times (CREATE OR REPLACE + DROP IF EXISTS).
-    """
-    from sqlalchemy import text
-
-    from .database import SessionLocal
-
-    db = SessionLocal()
-    try:
-        db.execute(
-            text("""
-            CREATE OR REPLACE FUNCTION prevent_audit_modification()
-            RETURNS TRIGGER AS $$
-            BEGIN
-                RAISE EXCEPTION
-                    'SECURITY: Audit log records are immutable. Attempted % on audit_logs',
-                    TG_OP
-                    USING ERRCODE = 'restrict_violation';
-                RETURN NULL;
-            END;
-            $$ LANGUAGE plpgsql;
-        """)
-        )
-        db.execute(
-            text("""
-            DROP TRIGGER IF EXISTS audit_logs_immutable ON audit_logs;
-            CREATE TRIGGER audit_logs_immutable
-                BEFORE UPDATE OR DELETE ON audit_logs
-                FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
-        """)
-        )
-        db.commit()
-        logger.info("Audit log immutability trigger applied")
-    except Exception as e:
-        db.rollback()
-        logger.warning("Could not apply audit immutability trigger: %s", e)
-    finally:
-        db.close()

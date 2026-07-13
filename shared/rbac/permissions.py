@@ -103,6 +103,117 @@ _RBAC_MATRIX: dict[Role, set[Permission]] = {
 }
 
 
+# ── Extended Role Hierarchy (backend-compatible string API) ───────────────────
+# These mirror the richer role/permission model used by the GULA monolith.
+
+EXTENDED_ROLE_LEVELS: dict[str, int] = {
+    "master_admin":   100,
+    "ministry_admin":  90,
+    "province_admin":  80,
+    "admin":           50,
+    "lab_admin":       50,
+    "doctor":          40,
+    "staff":           20,
+    "lab_staff":       20,
+    "technician":      20,
+    "citizen":         10,
+}
+
+EXTENDED_ALL_PERMISSIONS: list[str] = [
+    "patients:read",
+    "patients:write",
+    "patients:delete",
+    "orders:read",
+    "orders:write",
+    "results:read",
+    "results:write",
+    "staff:manage",
+    "lab:read",
+    "lab:manage",
+    "dashboard:read",
+    "audit:read",
+    "platform:manage_labs",
+    "platform:manage_users",
+    "platform:view_stats",
+    "system:admin",
+]
+
+EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
+    "master_admin": EXTENDED_ALL_PERMISSIONS,
+    "ministry_admin": [
+        "patients:read", "orders:read", "results:read", "lab:read",
+        "dashboard:read", "audit:read",
+        "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+    ],
+    "province_admin": [
+        "patients:read", "orders:read", "results:read", "lab:read",
+        "dashboard:read", "audit:read",
+        "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+    ],
+    "admin": [
+        "patients:read", "patients:write", "patients:delete",
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "staff:manage", "lab:read", "lab:manage",
+        "dashboard:read", "audit:read",
+        "platform:manage_users",
+    ],
+    "lab_admin": [
+        "patients:read", "patients:write", "patients:delete",
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "staff:manage", "lab:read", "lab:manage",
+        "dashboard:read", "audit:read",
+        "platform:manage_users",
+    ],
+    "doctor": [
+        "patients:read", "orders:read", "results:read", "dashboard:read",
+    ],
+    "staff": [
+        "patients:read", "patients:write",
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "lab:read", "dashboard:read",
+    ],
+    "lab_staff": [
+        "patients:read", "patients:write",
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "lab:read", "dashboard:read",
+    ],
+    "technician": [
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "lab:read", "dashboard:read",
+    ],
+    "citizen": [],
+}
+
+EXTENDED_VALID_ROLES: set[str] = set(EXTENDED_ROLE_PERMISSIONS.keys())
+
+
+def get_role_level(role: str) -> int:
+    return EXTENDED_ROLE_LEVELS.get(role, 0)
+
+
+def get_permissions_for_role(role: str) -> list[str]:
+    return EXTENDED_ROLE_PERMISSIONS.get(role, [])
+
+
+def has_permission_str(role: str, permission: str) -> bool:
+    return permission in get_permissions_for_role(role)
+
+
+def can_manage_role(actor_role: str, target_role: str) -> bool:
+    if target_role == "master_admin":
+        return actor_role == "master_admin"
+    actor_level = get_role_level(actor_role)
+    target_level = get_role_level(target_role)
+    return actor_level > target_level and actor_level > 0
+
+
+# ── Original Enum-based API ───────────────────────────────────────────────────
+
 @dataclass
 class RBACMatrix:
     matrix: dict[Role, set[Permission]] = field(default_factory=lambda: _RBAC_MATRIX)

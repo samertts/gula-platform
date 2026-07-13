@@ -84,8 +84,8 @@ depends_on    = None
 # (20260511_0001, 20260506_0001). A future consolidation into
 # backend/migrations/helpers.py is tracked separately in directive §17A.
 
-def _table_exists(name: str) -> bool:
-    return inspect(op.get_bind()).has_table(name)
+def _table_exists(table: str) -> bool:
+    return inspect(op.get_bind()).has_table(table)
 
 
 def _has_column(table: str, column: str) -> bool:

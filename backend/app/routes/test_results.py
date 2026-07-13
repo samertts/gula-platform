@@ -31,7 +31,7 @@ from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..models.sample import Sample, generate_barcode
 from ..models.test_type import TestType
-from ..routes.critical_alerts import check_critical
+from ..services.critical_alerts import check_critical
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action

@@ -488,7 +488,7 @@ def validate_order(
     ip_address: str | None = None,
 ) -> dict:
     """Validate and lock an order."""
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
     if user_role not in {"admin", "master_admin", "doctor"}:
         return {"error": "Only admin or doctor can validate orders", "status_code": 403}
@@ -502,7 +502,7 @@ def validate_order(
 
     enforce_transition(order.status, "validated")
 
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     rows_updated = (
         db.query(LabOrder)
         .filter(LabOrder.id == order_id, LabOrder.locked_at.is_(None))
@@ -587,14 +587,14 @@ def cancel_order(
 
 def get_public_result(db: Session, token: str, ip_address: str | None = None) -> dict:
     """Get public result by token."""
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
     token_h = hash_token(token)
     result = db.query(LabResult).filter(LabResult.token_hash == token_h).first()
     if not result:
         return {"error": "Result not found", "status_code": 404}
 
-    if result.expires_at and result.expires_at < datetime.now(UTC):
+    if result.expires_at and result.expires_at < datetime.now(timezone.utc):
         return {"error": "Result link has expired", "status_code": 410}
 
     order = (
@@ -666,14 +666,14 @@ def get_public_result(db: Session, token: str, ip_address: str | None = None) ->
 def download_result_pdf(db: Session, token: str, ip_address: str | None = None) -> dict:
     """Download result as PDF."""
     import re
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
     token_h = hash_token(token)
     result = db.query(LabResult).filter(LabResult.token_hash == token_h).first()
     if not result:
         return {"error": "Result not found", "status_code": 404}
 
-    if result.expires_at and result.expires_at < datetime.now(UTC):
+    if result.expires_at and result.expires_at < datetime.now(timezone.utc):
         return {"error": "Result link has expired", "status_code": 410}
 
     order = (

@@ -8,6 +8,10 @@ from .loader import (
     AIConfig,
     SNDHSConfig,
     NotificationConfig,
+    AdapterConfig,
+    GovernmentConfig,
+    CloudflareConfig,
+    SupabaseConfig,
 )
 
 __all__ = [
@@ -20,4 +24,8 @@ __all__ = [
     "AIConfig",
     "SNDHSConfig",
     "NotificationConfig",
+    "AdapterConfig",
+    "GovernmentConfig",
+    "CloudflareConfig",
+    "SupabaseConfig",
 ]

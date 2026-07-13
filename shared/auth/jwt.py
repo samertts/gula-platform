@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from jose import JWTError, jwt
@@ -17,8 +17,8 @@ def create_access_token(
     extra_claims: dict[str, Any] | None = None,
 ) -> str:
     to_encode = data.copy()
-    expire = datetime.now(UTC) + timedelta(minutes=expire_minutes)
-    to_encode.update({"exp": expire, "iat": datetime.now(UTC)})
+    expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
     if extra_claims:
         to_encode.update(extra_claims)
     return jwt.encode(to_encode, secret_key, algorithm=algorithm)
@@ -31,8 +31,8 @@ def create_refresh_token(
     expire_days: int = 30,
 ) -> str:
     to_encode = data.copy()
-    expire = datetime.now(UTC) + timedelta(days=expire_days)
-    to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "refresh"})
+    expire = datetime.now(timezone.utc) + timedelta(days=expire_days)
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "refresh"})
     return jwt.encode(to_encode, refresh_secret, algorithm=algorithm)
 
 

@@ -30,7 +30,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -68,7 +68,7 @@ def emit_to_outbox(
         payload=json.dumps(payload, ensure_ascii=False),
         status="pending",
         attempts=0,
-        created_at=datetime.now(UTC),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(event)
     db.flush()  # get id immediately; still inside caller's transaction
@@ -91,7 +91,7 @@ class OutboxWorker:
 
         Returns a summary: {"processed": N, "failed": N, "skipped": N}
         """
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         summary = {"processed": 0, "failed": 0, "skipped": 0}
 
         events_to_process = (

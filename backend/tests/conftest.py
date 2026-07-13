@@ -24,7 +24,10 @@ os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0W
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 os.environ.setdefault("REDIS_URL", "")
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_REPO_ROOT = os.path.dirname(_BACKEND_DIR)
+sys.path.insert(0, _BACKEND_DIR)
+sys.path.insert(0, _REPO_ROOT)
 
 import pytest
 from sqlalchemy import create_engine

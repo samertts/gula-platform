@@ -217,23 +217,9 @@ def build_full_history(
 # ── QR generation ────────────────────────────────────────────────────────────
 
 def render_card_qr_png(token: str, *, box_size: int = 8, border: int = 3) -> bytes:
-    """Render a PNG QR for the given card token. Imported lazily so unit tests
-    that don't touch QR endpoints don't pay the import cost."""
-    import io
-    import qrcode
-
-    qr = qrcode.QRCode(
-        version=None,
-        box_size=box_size,
-        border=border,
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
-    )
-    qr.add_data(token)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
+    """Render a PNG QR for the given card token. Delegates to shared.qr."""
+    from shared.qr import generate_qr_image
+    return generate_qr_image(token, box_size=box_size, border=border)
 
 
 def lookup_patient_for_lab(
