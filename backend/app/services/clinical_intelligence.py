@@ -6,10 +6,12 @@ Rules-based (NOT AI) — deterministic, auditable, safe for clinical use.
 This does NOT diagnose — it flags patterns requiring physician attention.
 """
 
-from typing import Optional
 
 # ─── Pattern Definitions ──────────────────────────────────────────────────────
 # Each pattern: list of (test_key, condition_fn) + alert metadata
+
+import contextlib
+
 
 def _key(name: str) -> str:
     return name.lower().replace(" ", "_").replace("-", "_")
@@ -27,9 +29,9 @@ CLINICAL_PATTERNS = [
         "action_ar": "تلزم مراجعة طبية عاجلة.",
         "requires": ["wbc", "hemoglobin", "platelets"],
         "check": lambda r: (
-            r.get("wbc", 0) > 15.0 and
-            (r.get("hemoglobin", 99) < 10.0 or r.get("hemoglobin", 0) > 18.0) and
-            r.get("platelets", 999) < 100
+            r.get("wbc", 0) > 15.0
+            and (r.get("hemoglobin", 99) < 10.0 or r.get("hemoglobin", 0) > 18.0)
+            and r.get("platelets", 999) < 100
         ),
     },
     {
@@ -42,10 +44,7 @@ CLINICAL_PATTERNS = [
         "action": "Immediate medical assessment required.",
         "action_ar": "تلزم تقييم طبي فوري.",
         "requires": ["glucose", "hba1c"],
-        "check": lambda r: (
-            r.get("glucose", 0) > 300 and
-            r.get("hba1c", 0) > 8.0
-        ),
+        "check": lambda r: r.get("glucose", 0) > 300 and r.get("hba1c", 0) > 8.0,
     },
     {
         "id": "anemia_severe",
@@ -57,10 +56,7 @@ CLINICAL_PATTERNS = [
         "action": "Urgent hematology workup recommended.",
         "action_ar": "يُوصى بإجراء فحوصات دموية عاجلة.",
         "requires": ["hemoglobin", "wbc"],
-        "check": lambda r: (
-            r.get("hemoglobin", 99) < 7.0 and
-            r.get("wbc", 0) > 12.0
-        ),
+        "check": lambda r: r.get("hemoglobin", 99) < 7.0 and r.get("wbc", 0) > 12.0,
     },
     {
         "id": "thyroid_storm_risk",
@@ -84,10 +80,7 @@ CLINICAL_PATTERNS = [
         "action": "Nephrology consult recommended urgently.",
         "action_ar": "يُوصى بمشاورة أمراض الكلى بشكل عاجل.",
         "requires": ["creatinine", "urea"],
-        "check": lambda r: (
-            r.get("creatinine", 0) > 3.0 and
-            r.get("urea", 0) > 80
-        ),
+        "check": lambda r: r.get("creatinine", 0) > 3.0 and r.get("urea", 0) > 80,
     },
     {
         "id": "liver_injury_severe",
@@ -99,10 +92,7 @@ CLINICAL_PATTERNS = [
         "action": "Hepatology assessment required.",
         "action_ar": "تلزم تقييم أمراض الكبد.",
         "requires": ["alt", "ast"],
-        "check": lambda r: (
-            r.get("alt", 0) > 200 and
-            r.get("ast", 0) > 200
-        ),
+        "check": lambda r: r.get("alt", 0) > 200 and r.get("ast", 0) > 200,
     },
     {
         "id": "electrolyte_crisis",
@@ -115,10 +105,10 @@ CLINICAL_PATTERNS = [
         "action_ar": "مراقبة قلبية فورية وتصحيح الشوارد.",
         "requires": ["potassium"],
         "check": lambda r: (
-            r.get("potassium", 4) < 2.5 or
-            r.get("potassium", 4) > 6.5 or
-            r.get("sodium", 140) < 120 or
-            r.get("sodium", 140) > 160
+            r.get("potassium", 4) < 2.5
+            or r.get("potassium", 4) > 6.5
+            or r.get("sodium", 140) < 120
+            or r.get("sodium", 140) > 160
         ),
     },
     {
@@ -131,10 +121,7 @@ CLINICAL_PATTERNS = [
         "action": "Cardiovascular risk assessment recommended.",
         "action_ar": "يُوصى بتقييم مخاطر القلب والأوعية الدموية.",
         "requires": ["cholesterol", "triglycerides"],
-        "check": lambda r: (
-            r.get("cholesterol", 0) > 300 and
-            r.get("triglycerides", 0) > 300
-        ),
+        "check": lambda r: r.get("cholesterol", 0) > 300 and r.get("triglycerides", 0) > 300,
     },
     # ─── 8 New Clinical Patterns ──────────────────────────────────────────────
     {
@@ -147,10 +134,7 @@ CLINICAL_PATTERNS = [
         "action": "Emergency cardiac evaluation required immediately.",
         "action_ar": "يلزم تقييم قلبي طارئ فوراً.",
         "requires": ["troponin", "ck"],
-        "check": lambda r: (
-            r.get("troponin", 0) > 0.1 and
-            r.get("ck", 0) > 300
-        ),
+        "check": lambda r: r.get("troponin", 0) > 0.1 and r.get("ck", 0) > 300,
     },
     {
         "id": "acute_pancreatitis",
@@ -162,10 +146,7 @@ CLINICAL_PATTERNS = [
         "action": "Urgent surgical/gastroenterology assessment required.",
         "action_ar": "تلزم مشاورة جراحية أو هضمية عاجلة.",
         "requires": ["amylase", "lipase"],
-        "check": lambda r: (
-            r.get("amylase", 0) > 200 and
-            r.get("lipase", 0) > 150
-        ),
+        "check": lambda r: r.get("amylase", 0) > 200 and r.get("lipase", 0) > 150,
     },
     {
         "id": "iron_deficiency_anemia",
@@ -177,10 +158,7 @@ CLINICAL_PATTERNS = [
         "action": "Iron profile evaluation and supplementation consult recommended.",
         "action_ar": "يُوصى بتقييم مخزون الحديد والنظر في العلاج التكميلي.",
         "requires": ["hemoglobin", "ferritin"],
-        "check": lambda r: (
-            r.get("hemoglobin", 99) < 11.0 and
-            r.get("ferritin", 99) < 15
-        ),
+        "check": lambda r: r.get("hemoglobin", 99) < 11.0 and r.get("ferritin", 99) < 15,
     },
     {
         "id": "sepsis_inflammatory",
@@ -192,10 +170,7 @@ CLINICAL_PATTERNS = [
         "action": "Immediate blood culture and antibiotics assessment required.",
         "action_ar": "يلزم إجراء مزرعة دم فورية وتقييم المضادات الحيوية.",
         "requires": ["crp", "procalcitonin"],
-        "check": lambda r: (
-            r.get("crp", 0) > 80 and
-            r.get("procalcitonin", 0) > 1.0
-        ),
+        "check": lambda r: r.get("crp", 0) > 80 and r.get("procalcitonin", 0) > 1.0,
     },
     {
         "id": "coagulopathy_severe",
@@ -207,10 +182,7 @@ CLINICAL_PATTERNS = [
         "action": "Immediate haematology consultation and coagulation correction required.",
         "action_ar": "تلزم استشارة أمراض الدم الفورية وتصحيح التخثر.",
         "requires": ["pt", "inr"],
-        "check": lambda r: (
-            r.get("pt", 0) > 25 and
-            r.get("inr", 0) > 3.0
-        ),
+        "check": lambda r: r.get("pt", 0) > 25 and r.get("inr", 0) > 3.0,
     },
     {
         "id": "hepatic_failure_risk",
@@ -222,10 +194,7 @@ CLINICAL_PATTERNS = [
         "action": "Urgent hepatology assessment and liver function evaluation required.",
         "action_ar": "تلزم مراجعة طارئة لطبيب الكبد وتقييم وظائفه.",
         "requires": ["alt", "bilirubin_total"],
-        "check": lambda r: (
-            r.get("alt", 0) > 300 and
-            r.get("bilirubin_total", 0) > 5.0
-        ),
+        "check": lambda r: r.get("alt", 0) > 300 and r.get("bilirubin_total", 0) > 5.0,
     },
     {
         "id": "metabolic_syndrome_risk",
@@ -238,9 +207,9 @@ CLINICAL_PATTERNS = [
         "action_ar": "يُوصى بتقييم استقلابي شامل وتعديل نمط الحياة.",
         "requires": ["glucose", "hba1c", "triglycerides"],
         "check": lambda r: (
-            r.get("glucose", 0) > 110 and
-            r.get("hba1c", 0) > 6.0 and
-            r.get("triglycerides", 0) > 200
+            r.get("glucose", 0) > 110
+            and r.get("hba1c", 0) > 6.0
+            and r.get("triglycerides", 0) > 200
         ),
     },
     {
@@ -253,10 +222,7 @@ CLINICAL_PATTERNS = [
         "action": "B12 and folic acid supplementation and dietary assessment recommended.",
         "action_ar": "يُوصى بمكملات ب12 وحمض الفوليك وتقييم النظام الغذائي.",
         "requires": ["vitamin_b12", "folate"],
-        "check": lambda r: (
-            r.get("vitamin_b12", 999) < 200 and
-            r.get("folate", 999) < 3.5
-        ),
+        "check": lambda r: r.get("vitamin_b12", 999) < 200 and r.get("folate", 999) < 3.5,
     },
 ]
 
@@ -276,10 +242,8 @@ def analyze_results(results: list[dict]) -> list[dict]:
     for r in results:
         if r.get("value") is not None:
             k = _key(r.get("test_name", ""))
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 lookup[k] = float(r["value"])
-            except (ValueError, TypeError):
-                pass
 
     if not lookup:
         return []
@@ -293,17 +257,19 @@ def analyze_results(results: list[dict]) -> list[dict]:
 
         try:
             if pattern["check"](lookup):
-                alerts.append({
-                    "pattern_id": pattern["id"],
-                    "name": pattern["name"],
-                    "name_ar": pattern["name_ar"],
-                    "severity": pattern["severity"],
-                    "message": pattern["message"],
-                    "message_ar": pattern["message_ar"],
-                    "action": pattern["action"],
-                    "action_ar": pattern["action_ar"],
-                    "tests_involved": present,
-                })
+                alerts.append(
+                    {
+                        "pattern_id": pattern["id"],
+                        "name": pattern["name"],
+                        "name_ar": pattern["name_ar"],
+                        "severity": pattern["severity"],
+                        "message": pattern["message"],
+                        "message_ar": pattern["message_ar"],
+                        "action": pattern["action"],
+                        "action_ar": pattern["action_ar"],
+                        "tests_involved": present,
+                    }
+                )
         except Exception:
             continue
 

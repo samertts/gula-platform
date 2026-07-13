@@ -15,21 +15,20 @@ History aggregation pulls from the existing operational tables
 (`lab_orders`, `lab_results`) — patient "visits" in this platform are
 represented by lab orders. No new tables are introduced.
 """
+
 from __future__ import annotations
 
 import base64
-import hmac
 import hashlib
+import hmac
 import time
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from ..config import SECRET_KEY
-from ..models.patient import Patient
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
-
+from ..models.patient import Patient
 
 # ── Token format ─────────────────────────────────────────────────────────────
 # Body = base64url("<patient_id>.<lab_id>.<exp_unix>")
@@ -40,7 +39,7 @@ from ..models.lab_result import LabResult
 # scan reliably from a printed card on a low-end Android camera.
 
 _DEFAULT_TTL_SECONDS = 60 * 60 * 24 * 365  # 1 year — patient cards are durable
-_DOMAIN = b"gula.patient_card.v1"          # domain-separates from other HMACs
+_DOMAIN = b"gula.patient_card.v1"  # domain-separates from other HMACs
 
 
 def _b64u_encode(raw: bytes) -> str:
@@ -119,6 +118,7 @@ def _is_b64u(s: str) -> bool:
 
 # ── Card view ────────────────────────────────────────────────────────────────
 
+
 def build_card_view(patient: Patient) -> dict:
     """Compact, presentation-ready snapshot for the front-side of the card.
 
@@ -138,6 +138,7 @@ def build_card_view(patient: Patient) -> dict:
 
 
 # ── Full history aggregator ──────────────────────────────────────────────────
+
 
 def build_full_history(
     db: Session,
@@ -175,28 +176,30 @@ def build_full_history(
 
     timeline = []
     for o in orders:
-        timeline.append({
-            "type": "lab_order",
-            "order_id": o.id,
-            "doctor_name": o.doctor_name,
-            "status": o.status,
-            "created_at": o.created_at.isoformat() if o.created_at else None,
-            "validated_at": o.validated_at.isoformat() if o.validated_at else None,
-            "results": [
-                {
-                    "id": r.id,
-                    "test_name": r.test_name,
-                    "value": r.value,
-                    "value_text": r.value_text,
-                    "unit": r.unit,
-                    "flag": r.flag,
-                    "normal_range_low": r.normal_range_low,
-                    "normal_range_high": r.normal_range_high,
-                    "created_at": r.created_at.isoformat() if r.created_at else None,
-                }
-                for r in results_by_order.get(o.id, [])
-            ],
-        })
+        timeline.append(
+            {
+                "type": "lab_order",
+                "order_id": o.id,
+                "doctor_name": o.doctor_name,
+                "status": o.status,
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+                "validated_at": o.validated_at.isoformat() if o.validated_at else None,
+                "results": [
+                    {
+                        "id": r.id,
+                        "test_name": r.test_name,
+                        "value": r.value,
+                        "value_text": r.value_text,
+                        "unit": r.unit,
+                        "flag": r.flag,
+                        "normal_range_low": r.normal_range_low,
+                        "normal_range_high": r.normal_range_high,
+                        "created_at": r.created_at.isoformat() if r.created_at else None,
+                    }
+                    for r in results_by_order.get(o.id, [])
+                ],
+            }
+        )
 
     completed_or_validated = sum(1 for o in orders if o.status in ("completed", "validated"))
     pending = sum(1 for o in orders if o.status == "pending")
@@ -207,8 +210,12 @@ def build_full_history(
             "total_orders": len(orders),
             "completed_or_validated": completed_or_validated,
             "pending": pending,
-            "first_visit": orders[-1].created_at.isoformat() if orders and orders[-1].created_at else None,
-            "last_visit": orders[0].created_at.isoformat() if orders and orders[0].created_at else None,
+            "first_visit": orders[-1].created_at.isoformat()
+            if orders and orders[-1].created_at
+            else None,
+            "last_visit": orders[0].created_at.isoformat()
+            if orders and orders[0].created_at
+            else None,
         },
         "timeline": timeline,
     }
@@ -216,18 +223,14 @@ def build_full_history(
 
 # ── QR generation ────────────────────────────────────────────────────────────
 
+
 def render_card_qr_png(token: str, *, box_size: int = 8, border: int = 3) -> bytes:
     """Render a PNG QR for the given card token. Delegates to shared.qr."""
     from shared.qr import generate_qr_image
+
     return generate_qr_image(token, box_size=box_size, border=border)
 
 
-def lookup_patient_for_lab(
-    db: Session, *, patient_id: int, lab_id: int
-) -> Optional[Patient]:
+def lookup_patient_for_lab(db: Session, *, patient_id: int, lab_id: int) -> Patient | None:
     """Single source of truth for tenant-scoped patient lookup."""
-    return (
-        db.query(Patient)
-        .filter(Patient.id == patient_id, Patient.lab_id == lab_id)
-        .first()
-    )
+    return db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()

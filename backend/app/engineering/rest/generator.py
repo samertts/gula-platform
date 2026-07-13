@@ -12,7 +12,9 @@ class RESTSpec:
     prefix: str = ""
     version: str = "v1"
     tags: list[str] = field(default_factory=list)
-    operations: list[str] = field(default_factory=lambda: ["list", "get", "create", "update", "delete"])
+    operations: list[str] = field(
+        default_factory=lambda: ["list", "get", "create", "update", "delete"]
+    )
     auth: bool = True
     pagination: bool = True
 
@@ -55,18 +57,25 @@ router = APIRouter(prefix="{prefix}", tags={tags})
 '''
         self._write(f"routes/{module}.py", content)
 
-        self._write(f"routes/__init__.py", f"""from __future__ import annotations
+        self._write(
+            "routes/__init__.py",
+            f"""from __future__ import annotations
 
 from .{module} import router as {module}_router
-""")
+""",
+        )
 
         return self._result
 
     def _list_endpoint(self, module: str, Mod: str, spec: RESTSpec) -> str:
-        pagination = """
+        pagination = (
+            """
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-""" if spec.pagination else ""
+"""
+            if spec.pagination
+            else ""
+        )
         return f'''@router.get("/")
 async def list_{module}s(
     {pagination}):

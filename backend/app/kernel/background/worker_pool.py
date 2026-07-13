@@ -2,9 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List, Optional
-
-from backend.app.kernel.background.task_queue import Task
 
 logger = logging.getLogger("gula.kernel.background.worker")
 

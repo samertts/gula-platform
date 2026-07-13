@@ -45,11 +45,14 @@ class SBOMGenerator:
         if pyproject.exists():
             try:
                 import tomllib
+
                 data = tomllib.loads(pyproject.read_text())
                 deps = data.get("project", {}).get("dependencies", [])
                 for dep in deps:
                     name = dep.split(">")[0].split("=")[0].split("<")[0].split("[")[0].strip()
-                    version = dep.split("=")[-1].strip().strip("^~>=<\"'") if "=" in dep else "latest"
+                    version = (
+                        dep.split("=")[-1].strip().strip("^~>=<\"'") if "=" in dep else "latest"
+                    )
                     components.append(SBOMComponent(name=name, version=version))
             except Exception:
                 pass
@@ -71,12 +74,14 @@ class DependencyAuditor:
             )
             outdated = json.loads(result.stdout)
             for pkg in outdated:
-                issues.append({
-                    "name": pkg.get("name"),
-                    "current": pkg.get("version"),
-                    "latest": pkg.get("latest_version"),
-                    "type": "outdated",
-                })
+                issues.append(
+                    {
+                        "name": pkg.get("name"),
+                        "current": pkg.get("version"),
+                        "latest": pkg.get("latest_version"),
+                        "type": "outdated",
+                    }
+                )
         except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
             pass
         return issues

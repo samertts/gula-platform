@@ -1,11 +1,15 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Enum, Index
-from sqlalchemy.orm import relationship, backref
-from datetime import datetime, timezone, date as date_type
+from datetime import date as date_type
+from datetime import datetime
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy.orm import backref, relationship
+
+from app._compat import UTC, StrEnum
+
 from ..database import Base
-import enum
 
 
-class Gender(str, enum.Enum):
+class Gender(StrEnum):
     male = "M"
     female = "F"
 
@@ -27,13 +31,15 @@ class Patient(Base):
     # Stored as HMAC-SHA256 (prefix "fam:") so the raw number is never persisted.
     family_id_hash = Column(String(255), nullable=True, index=True)
     # Guardian — links a minor to their parent/guardian patient record.
-    guardian_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True)
+    guardian_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     full_name = Column(String(200), nullable=False)
     phone = Column(String(20), nullable=False, index=True)
     birth_date = Column(Date, nullable=True)
     gender = Column(String(1), nullable=True)
     email = Column(String(100), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     lab = relationship("Lab", back_populates="patients")
     orders = relationship("LabOrder", back_populates="patient", cascade="all, delete-orphan")
@@ -51,7 +57,9 @@ class Patient(Base):
         if not self.birth_date:
             return False
         today = date_type.today()
-        age = today.year - self.birth_date.year - (
-            (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+        age = (
+            today.year
+            - self.birth_date.year
+            - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
         )
         return age < 18

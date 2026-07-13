@@ -13,22 +13,29 @@ The scheduler is pull-based: an agent calls `claim_next_task(device)` and we
 return at most one task. This keeps the wire format simple and avoids any
 push-from-server pattern that would require persistent server→agent sockets.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import datetime, timedelta
+from typing import Any
 
-from sqlalchemy import and_, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
 from ..models.edge import EdgeDevice, EdgeEvent, EdgeTask
-from . import identity, policy as policy_mod, trust as trust_mod
+from . import identity
+from . import policy as policy_mod
+from . import trust as trust_mod
 from .config import (
-    ALLOWED_TASK_KINDS, EDGE_DISPATCH_GRACE_S, PRIVACY_MIN_TRUST,
+    ALLOWED_TASK_KINDS,
+    EDGE_DISPATCH_GRACE_S,
+    PRIVACY_MIN_TRUST,
 )
 
-
 # ── Errors ────────────────────────────────────────────────────────────────────
+
 
 class SchedulerError(ValueError):
     pass
@@ -36,21 +43,22 @@ class SchedulerError(ValueError):
 
 # ── Submit ────────────────────────────────────────────────────────────────────
 
+
 def submit_task(
     db: Session,
     *,
     lab_id: int,
     kind: str,
-    payload: Optional[dict[str, Any]] = None,
+    payload: dict[str, Any] | None = None,
     priority: int = 5,
     privacy_level: str = "standard",
-    required_caps: Optional[list[str]] = None,
+    required_caps: list[str] | None = None,
     min_trust: float = 0.0,
     timeout_s: int = 60,
     max_attempts: int = 3,
-    idempotency_key: Optional[str] = None,
-    expires_in_s: Optional[int] = None,
-    submitted_by_user_id: Optional[int] = None,
+    idempotency_key: str | None = None,
+    expires_in_s: int | None = None,
+    submitted_by_user_id: int | None = None,
 ) -> EdgeTask:
     """Enqueue a new edge task. Caller commits.
 
@@ -72,16 +80,17 @@ def submit_task(
     if idempotency_key:
         existing = (
             db.query(EdgeTask)
-              .filter(EdgeTask.lab_id == lab_id,
-                      EdgeTask.idempotency_key == idempotency_key,
-                      EdgeTask.status.in_(("pending", "dispatched", "running",
-                                           "completed")))
-              .first()
+            .filter(
+                EdgeTask.lab_id == lab_id,
+                EdgeTask.idempotency_key == idempotency_key,
+                EdgeTask.status.in_(("pending", "dispatched", "running", "completed")),
+            )
+            .first()
         )
         if existing is not None:
             return existing
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires_at = now + timedelta(seconds=expires_in_s) if expires_in_s else None
 
     task = EdgeTask(
@@ -106,18 +115,24 @@ def submit_task(
     # the session is configured with autoflush=False (the test fixture is).
     db.flush()
 
-    db.add(EdgeEvent(
-        lab_id=lab_id, event_type="task_submitted", severity="info",
-        actor_user_id=submitted_by_user_id,
-        details={"task_uid": task.task_uid, "kind": kind, "priority": priority},
-    ))
+    db.add(
+        EdgeEvent(
+            lab_id=lab_id,
+            event_type="task_submitted",
+            severity="info",
+            actor_user_id=submitted_by_user_id,
+            details={"task_uid": task.task_uid, "kind": kind, "priority": priority},
+        )
+    )
     return task
 
 
 # ── Routing checks ────────────────────────────────────────────────────────────
 
-def _device_matches_task(device: EdgeDevice, task: EdgeTask,
-                         pol: policy_mod.ResolvedPolicy) -> bool:
+
+def _device_matches_task(
+    device: EdgeDevice, task: EdgeTask, pol: policy_mod.ResolvedPolicy
+) -> bool:
     if not device.is_eligible():
         return False
     if device.lab_id != task.lab_id:
@@ -137,15 +152,17 @@ def _device_matches_task(device: EdgeDevice, task: EdgeTask,
 def _device_concurrency(db: Session, device: EdgeDevice) -> int:
     return (
         db.query(EdgeTask)
-          .filter(EdgeTask.device_id == device.device_id,
-                  EdgeTask.status.in_(("dispatched", "running")))
-          .count()
+        .filter(
+            EdgeTask.device_id == device.device_id, EdgeTask.status.in_(("dispatched", "running"))
+        )
+        .count()
     )
 
 
 # ── Claim (pull) ──────────────────────────────────────────────────────────────
 
-def claim_next_task(db: Session, device: EdgeDevice) -> Optional[EdgeTask]:
+
+def claim_next_task(db: Session, device: EdgeDevice) -> EdgeTask | None:
     """Atomically pick and assign the next eligible task for `device`.
 
     Uses SELECT ... FOR UPDATE SKIP LOCKED on Postgres so concurrent agents
@@ -159,16 +176,18 @@ def claim_next_task(db: Session, device: EdgeDevice) -> Optional[EdgeTask]:
     if _device_concurrency(db, device) >= pol.max_concurrent_per_device:
         return None
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Candidate tasks: pending, in this lab, not expired, ordered by priority.
     q = (
         db.query(EdgeTask)
-          .filter(EdgeTask.lab_id == device.lab_id,
-                  EdgeTask.status == "pending",
-                  or_(EdgeTask.expires_at.is_(None), EdgeTask.expires_at > now))
-          .order_by(EdgeTask.priority.asc(), EdgeTask.created_at.asc())
-          .limit(20)
+        .filter(
+            EdgeTask.lab_id == device.lab_id,
+            EdgeTask.status == "pending",
+            or_(EdgeTask.expires_at.is_(None), EdgeTask.expires_at > now),
+        )
+        .order_by(EdgeTask.priority.asc(), EdgeTask.created_at.asc())
+        .limit(20)
     )
 
     # Apply row locking only on dialects that support it. SQLAlchemy's SQLite
@@ -193,19 +212,26 @@ def claim_next_task(db: Session, device: EdgeDevice) -> Optional[EdgeTask]:
 
 # ── Complete / fail ───────────────────────────────────────────────────────────
 
+
 def complete_task(
-    db: Session, task: EdgeTask, *, result: Optional[dict],
+    db: Session,
+    task: EdgeTask,
+    *,
+    result: dict | None,
 ) -> None:
     task.status = "completed"
-    task.completed_at = datetime.now(timezone.utc)
+    task.completed_at = datetime.now(UTC)
     task.result = result or {}
     task.error = None
-    db.add(EdgeEvent(
-        lab_id=task.lab_id, device_id=task.device_id,
-        event_type="task_completed", severity="info",
-        details={"task_uid": task.task_uid,
-                 "duration_ms": _duration_ms(task)},
-    ))
+    db.add(
+        EdgeEvent(
+            lab_id=task.lab_id,
+            device_id=task.device_id,
+            event_type="task_completed",
+            severity="info",
+            details={"task_uid": task.task_uid, "duration_ms": _duration_ms(task)},
+        )
+    )
 
 
 def fail_task(db: Session, task: EdgeTask, *, error: str) -> None:
@@ -217,31 +243,43 @@ def fail_task(db: Session, task: EdgeTask, *, error: str) -> None:
         task.device_id = None
     else:
         task.status = "failed"
-        task.completed_at = datetime.now(timezone.utc)
-    db.add(EdgeEvent(
-        lab_id=task.lab_id, device_id=task.device_id,
-        event_type="task_failed", severity="warning",
-        details={"task_uid": task.task_uid, "attempt": task.attempts,
-                 "max_attempts": task.max_attempts, "error": error[:200]},
-    ))
+        task.completed_at = datetime.now(UTC)
+    db.add(
+        EdgeEvent(
+            lab_id=task.lab_id,
+            device_id=task.device_id,
+            event_type="task_failed",
+            severity="warning",
+            details={
+                "task_uid": task.task_uid,
+                "attempt": task.attempts,
+                "max_attempts": task.max_attempts,
+                "error": error[:200],
+            },
+        )
+    )
 
 
-def cancel_task(db: Session, task: EdgeTask, *, reason: str,
-                actor_user_id: Optional[int]) -> None:
+def cancel_task(db: Session, task: EdgeTask, *, reason: str, actor_user_id: int | None) -> None:
     if task.status in ("completed", "failed", "cancelled", "expired"):
         return
     task.status = "cancelled"
-    task.completed_at = datetime.now(timezone.utc)
+    task.completed_at = datetime.now(UTC)
     task.error = f"cancelled: {reason}"
-    db.add(EdgeEvent(
-        lab_id=task.lab_id, device_id=task.device_id,
-        event_type="task_cancelled", severity="info",
-        actor_user_id=actor_user_id,
-        details={"task_uid": task.task_uid, "reason": reason},
-    ))
+    db.add(
+        EdgeEvent(
+            lab_id=task.lab_id,
+            device_id=task.device_id,
+            event_type="task_cancelled",
+            severity="info",
+            actor_user_id=actor_user_id,
+            details={"task_uid": task.task_uid, "reason": reason},
+        )
+    )
 
 
 # ── Reaper ────────────────────────────────────────────────────────────────────
+
 
 def sweep_stale(db: Session) -> int:
     """Re-queue or fail tasks that were dispatched but never reported back.
@@ -249,12 +287,11 @@ def sweep_stale(db: Session) -> int:
     Called from a background loop. Returns count of tasks acted on.
     Caller commits.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stale = (
         db.query(EdgeTask)
-          .filter(EdgeTask.status.in_(("dispatched", "running")),
-                  EdgeTask.dispatched_at.isnot(None))
-          .all()
+        .filter(EdgeTask.status.in_(("dispatched", "running")), EdgeTask.dispatched_at.isnot(None))
+        .all()
     )
     n = 0
     for t in stale:
@@ -266,9 +303,8 @@ def sweep_stale(db: Session) -> int:
     # Expired tasks (TTL hit before pickup).
     expired = (
         db.query(EdgeTask)
-          .filter(EdgeTask.status == "pending",
-                  EdgeTask.expires_at.isnot(None))
-          .all()
+        .filter(EdgeTask.status == "pending", EdgeTask.expires_at.isnot(None))
+        .all()
     )
     for t in expired:
         if _ensure_aware(t.expires_at) >= now:
@@ -281,6 +317,7 @@ def sweep_stale(db: Session) -> int:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _ensure_aware(dt: datetime | None) -> datetime | None:
     """SQLite stores DATETIMEs naively; postgres returns tz-aware. Normalize
     so arithmetic against `datetime.now(timezone.utc)` always works.
@@ -288,11 +325,11 @@ def _ensure_aware(dt: datetime | None) -> datetime | None:
     if dt is None:
         return None
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt
 
 
-def _duration_ms(task: EdgeTask) -> Optional[int]:
+def _duration_ms(task: EdgeTask) -> int | None:
     a = _ensure_aware(task.dispatched_at)
     b = _ensure_aware(task.completed_at)
     if a is None or b is None:

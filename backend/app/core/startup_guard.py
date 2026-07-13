@@ -19,10 +19,10 @@ Hybrid Readiness (is_system_ready):
   This means the /health/ready probe stays red even after startup if the DB
   or Redis later disconnects — triggering a container restart automatically.
 """
+
 import asyncio
 import logging
 import time
-from typing import Optional
 
 logger = logging.getLogger("gula.startup")
 
@@ -45,6 +45,7 @@ def set_system_ready(ready: bool, reason: str = "ok") -> None:
 
 # ─── Hybrid Readiness Check ──────────────────────────────────────────────────
 
+
 def is_system_ready() -> tuple[bool, str]:
     """Return (ready: bool, reason: str).
 
@@ -63,6 +64,7 @@ def is_system_ready() -> tuple[bool, str]:
     # ── CRITICAL: Database ────────────────────────────────────────────────────
     try:
         from ..database import check_db_connection
+
         if not check_db_connection():
             return False, "database_unavailable"
     except Exception:
@@ -74,6 +76,7 @@ def is_system_ready() -> tuple[bool, str]:
     # automatically for rate-limiting and perm_version checks.
     try:
         from ..security.redis_client import cache as _redis
+
         _redis.set("_readiness_probe", "1", ex=10)
     except Exception:
         logger.warning(
@@ -89,8 +92,17 @@ def is_system_ready() -> tuple[bool, str]:
 # ─── Step 1: Config Validation ───────────────────────────────────────────────
 
 _WEAK_PATTERNS = (
-    "default", "change", "secret", "example", "test", "demo",
-    "gula_default", "changeme", "password", "12345", "abcdef",
+    "default",
+    "change",
+    "secret",
+    "example",
+    "test",
+    "demo",
+    "gula_default",
+    "changeme",
+    "password",
+    "12345",
+    "abcdef",
 )
 
 
@@ -101,7 +113,7 @@ def _is_weak(value: str) -> bool:
 
 def validate_config() -> None:
     """Fail fast if any required secret is missing or dangerously weak."""
-    from ..config import SECRET_KEY, ENCRYPTION_KEY, NID_HMAC_KEY, IS_PRODUCTION
+    from ..config import ENCRYPTION_KEY, IS_PRODUCTION, NID_HMAC_KEY, SECRET_KEY
 
     errors: list[str] = []
 
@@ -120,17 +132,18 @@ def validate_config() -> None:
     elif IS_PRODUCTION and _is_weak(ENCRYPTION_KEY):
         errors.append(
             "ENCRYPTION_KEY looks like a placeholder. Generate with: "
-            "python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            'python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
         )
     elif IS_PRODUCTION:
         # Validate it's actually a Fernet-compatible key (32 bytes, base64url, 44 chars)
         try:
             from cryptography.fernet import Fernet as _Fernet
+
             _Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
         except Exception:
             errors.append(
                 "ENCRYPTION_KEY is not a valid Fernet key (must be 44 base64url chars). "
-                "Run: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                'Run: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
             )
 
     if not NID_HMAC_KEY:
@@ -155,6 +168,7 @@ def validate_config() -> None:
 
 # ─── Step 2: DB Connectivity with Exponential Backoff ────────────────────────
 
+
 async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
     """
     Wait for DB to become reachable with smart per-error-type retry logic.
@@ -163,11 +177,13 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
     - "auth_failed"         → permanent, stop immediately (retrying won't help)
     - "ok"                  → success, return True
     """
-    from ..database import check_db_connection_detail, _DB_ACTION_MAP
     import os
+
+    from ..database import _DB_ACTION_MAP, check_db_connection_detail
 
     db_url = os.getenv("DATABASE_URL", "")
     from urllib.parse import urlparse
+
     parsed = urlparse(db_url)
     host = parsed.hostname or "unknown"
     port = parsed.port or 5432
@@ -180,7 +196,8 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
         if status == "ok":
             logger.info(
                 "[STARTUP GUARD] Database connection OK (attempt %d) — %s",
-                attempt + 1, detail,
+                attempt + 1,
+                detail,
             )
             return True
 
@@ -189,22 +206,30 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
             # Permanent misconfiguration — retrying will never help.
             logger.critical(
                 "[STARTUP GUARD] DB %s — action=stop_and_alert — stopping all retries. "
-                "Fix credentials/pg_hba.conf and redeploy. Detail: %s", status, detail,
+                "Fix credentials/pg_hba.conf and redeploy. Detail: %s",
+                status,
+                detail,
             )
             return False
 
         # Transient (retry / retry_with_backoff) — keep going
-        wait_sec = min(2 ** attempt, 30)
+        wait_sec = min(2**attempt, 30)
         logger.warning(
             "[STARTUP GUARD] DB not ready (attempt %d/%d, status=%s) — %s — retrying in %ds",
-            attempt + 1, max_retries, status, detail, wait_sec,
+            attempt + 1,
+            max_retries,
+            status,
+            detail,
+            wait_sec,
         )
         await asyncio.sleep(wait_sec)
 
     logger.critical(
         "[STARTUP GUARD] Database unreachable after %d attempts (host=%s:%s). "
         "Check DATABASE_URL and PostgreSQL container status.",
-        max_retries, host, port,
+        max_retries,
+        host,
+        port,
     )
     return False
 
@@ -232,10 +257,11 @@ async def check_migrations() -> None:
     - alembic_version is empty (migration ran but didn't complete)
     - Any required table is missing
     """
-    from ..database import engine
-    from sqlalchemy import text, inspect
+    from sqlalchemy import inspect, text
 
-    def _check() -> Optional[str]:
+    from ..database import engine
+
+    def _check() -> str | None:
         insp = inspect(engine)
 
         # Gate 1: alembic_version must exist — if it doesn't, `alembic upgrade head`
@@ -248,9 +274,7 @@ async def check_migrations() -> None:
 
         # Gate 2: version row must be present (incomplete migration aborted mid-run)
         with engine.connect() as conn:
-            row = conn.execute(
-                text("SELECT version_num FROM alembic_version LIMIT 1")
-            ).fetchone()
+            row = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).fetchone()
             if row is None:
                 return (
                     "alembic_version table exists but is empty — migration aborted mid-run. "
@@ -260,10 +284,7 @@ async def check_migrations() -> None:
         # Gate 3: every required table must exist
         missing = [t for t in _REQUIRED_TABLES if not insp.has_table(t)]
         if missing:
-            return (
-                f"Required tables missing after migrations: {missing}. "
-                "Run: alembic upgrade head"
-            )
+            return f"Required tables missing after migrations: {missing}. Run: alembic upgrade head"
 
         return None
 
@@ -276,6 +297,7 @@ async def check_migrations() -> None:
 
 
 # ─── Step 4: Seed Critical Data ──────────────────────────────────────────────
+
 
 async def seed_critical_data() -> None:
     """Run idempotent seed operations. Safe to call multiple times.
@@ -295,18 +317,16 @@ async def seed_critical_data() -> None:
 
     # ── NON-FATAL: catalog / admin / subscriptions / audit trigger ──────────
     for name, fn in [
-        ("test types catalog",      _run_seed_test_types),
-        ("master admin",            _run_ensure_master_admin),
-        ("default subscriptions",   _run_seed_default_subscriptions),
-        ("audit log trigger",       _run_ensure_audit_log_immutable),
+        ("test types catalog", _run_seed_test_types),
+        ("master admin", _run_ensure_master_admin),
+        ("default subscriptions", _run_seed_default_subscriptions),
+        ("audit log trigger", _run_ensure_audit_log_immutable),
     ]:
         try:
             logger.info("[STARTUP GUARD] Seeding %s...", name)
             await loop.run_in_executor(None, fn)
         except Exception as exc:
-            logger.error(
-                "[STARTUP GUARD] Seeding %s FAILED (non-fatal): %s", name, exc
-            )
+            logger.error("[STARTUP GUARD] Seeding %s FAILED (non-fatal): %s", name, exc)
 
     logger.info("[STARTUP GUARD] Critical data seeded OK")
 
@@ -317,21 +337,23 @@ def _run_perm_version_migration() -> None:
     Raises RuntimeError if lab_users doesn't exist so the caller can treat it
     as a fatal misconfiguration (migrations not applied) rather than swallowing it.
     """
+    from sqlalchemy import inspect, text
+
     from ..database import engine
-    from sqlalchemy import text, inspect
+
     insp = inspect(engine)
     if not insp.has_table("lab_users"):
         raise RuntimeError(
             "lab_users table does not exist — alembic upgrade head must run before seeding"
         )
     with engine.connect() as conn:
-        conn.execute(text(
-            "ALTER TABLE lab_users "
-            "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
-        ))
-        conn.execute(text(
-            "UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"
-        ))
+        conn.execute(
+            text(
+                "ALTER TABLE lab_users "
+                "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
+            )
+        )
+        conn.execute(text("UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"))
         conn.commit()
     logger.info("[STARTUP GUARD] perm_version column ensured")
 
@@ -340,31 +362,192 @@ def _run_seed_test_types() -> None:
     """Seed test types catalog if empty."""
     from ..database import SessionLocal
     from ..models.test_type import TestType
+
     db = SessionLocal()
     try:
         if db.query(TestType.id).first() is not None:
             return
         test_types = [
-            TestType(test_code="glucose",      test_name="Glucose (Fasting)",     test_name_ar="السكر (صائم)",             category="Chemistry",    unit="mg/dL",      normal_range_low=70,   normal_range_high=100),
-            TestType(test_code="hemoglobin",   test_name="Hemoglobin",            test_name_ar="الهيموغلوبين",             category="CBC",          unit="g/dL",       normal_range_low=12,   normal_range_high=17),
-            TestType(test_code="wbc",          test_name="White Blood Cells",     test_name_ar="كريات الدم البيضاء",       category="CBC",          unit="×10³/µL",    normal_range_low=4.0,  normal_range_high=11.0),
-            TestType(test_code="platelets",    test_name="Platelets",             test_name_ar="الصفائح الدموية",          category="CBC",          unit="×10³/µL",    normal_range_low=150,  normal_range_high=400),
-            TestType(test_code="creatinine",   test_name="Creatinine",            test_name_ar="الكرياتينين",              category="Kidney",       unit="mg/dL",      normal_range_low=0.6,  normal_range_high=1.3),
-            TestType(test_code="urea",         test_name="Urea (BUN)",            test_name_ar="اليوريا",                  category="Kidney",       unit="mg/dL",      normal_range_low=15,   normal_range_high=45),
-            TestType(test_code="cholesterol",  test_name="Total Cholesterol",     test_name_ar="الكوليسترول الكلي",        category="Lipid",        unit="mg/dL",      normal_range_low=0,    normal_range_high=200),
-            TestType(test_code="triglycerides",test_name="Triglycerides",         test_name_ar="الدهون الثلاثية",          category="Lipid",        unit="mg/dL",      normal_range_low=0,    normal_range_high=150),
-            TestType(test_code="alt",          test_name="ALT (SGPT)",            test_name_ar="إنزيم الكبد ALT",          category="Liver",        unit="U/L",        normal_range_low=0,    normal_range_high=40),
-            TestType(test_code="ast",          test_name="AST (SGOT)",            test_name_ar="إنزيم الكبد AST",          category="Liver",        unit="U/L",        normal_range_low=0,    normal_range_high=40),
-            TestType(test_code="tsh",          test_name="TSH",                   test_name_ar="هرمون الغدة الدرقية",       category="Thyroid",      unit="mIU/L",      normal_range_low=0.4,  normal_range_high=4.5),
-            TestType(test_code="potassium",    test_name="Potassium",             test_name_ar="البوتاسيوم",               category="Electrolytes", unit="mEq/L",      normal_range_low=3.5,  normal_range_high=5.0),
-            TestType(test_code="sodium",       test_name="Sodium",                test_name_ar="الصوديوم",                 category="Electrolytes", unit="mEq/L",      normal_range_low=135,  normal_range_high=145),
-            TestType(test_code="hba1c",        test_name="HbA1c",                 test_name_ar="السكر التراكمي",           category="Diabetes",     unit="%",          normal_range_low=0,    normal_range_high=5.7),
-            TestType(test_code="vitamin_d",    test_name="Vitamin D",             test_name_ar="فيتامين د",                category="Vitamins",     unit="ng/mL",      normal_range_low=20,   normal_range_high=100),
-            TestType(test_code="rbc",          test_name="Red Blood Cells",       test_name_ar="كريات الدم الحمراء",       category="CBC",          unit="×10⁶/µL",    normal_range_low=4.0,  normal_range_high=6.0),
-            TestType(test_code="mcv",          test_name="MCV",                   test_name_ar="حجم الكرية الوسطي",        category="CBC",          unit="fL",         normal_range_low=80,   normal_range_high=100),
-            TestType(test_code="ldl",          test_name="LDL Cholesterol",       test_name_ar="الكوليسترول الضار",        category="Lipid",        unit="mg/dL",      normal_range_low=0,    normal_range_high=130),
-            TestType(test_code="hdl",          test_name="HDL Cholesterol",       test_name_ar="الكوليسترول النافع",       category="Lipid",        unit="mg/dL",      normal_range_low=40,   normal_range_high=100),
-            TestType(test_code="uric_acid",    test_name="Uric Acid",             test_name_ar="حمض اليوريك",              category="Kidney",       unit="mg/dL",      normal_range_low=2.5,  normal_range_high=7.0),
+            TestType(
+                test_code="glucose",
+                test_name="Glucose (Fasting)",
+                test_name_ar="السكر (صائم)",
+                category="Chemistry",
+                unit="mg/dL",
+                normal_range_low=70,
+                normal_range_high=100,
+            ),
+            TestType(
+                test_code="hemoglobin",
+                test_name="Hemoglobin",
+                test_name_ar="الهيموغلوبين",
+                category="CBC",
+                unit="g/dL",
+                normal_range_low=12,
+                normal_range_high=17,
+            ),
+            TestType(
+                test_code="wbc",
+                test_name="White Blood Cells",
+                test_name_ar="كريات الدم البيضاء",
+                category="CBC",
+                unit="×10³/µL",
+                normal_range_low=4.0,
+                normal_range_high=11.0,
+            ),
+            TestType(
+                test_code="platelets",
+                test_name="Platelets",
+                test_name_ar="الصفائح الدموية",
+                category="CBC",
+                unit="×10³/µL",
+                normal_range_low=150,
+                normal_range_high=400,
+            ),
+            TestType(
+                test_code="creatinine",
+                test_name="Creatinine",
+                test_name_ar="الكرياتينين",
+                category="Kidney",
+                unit="mg/dL",
+                normal_range_low=0.6,
+                normal_range_high=1.3,
+            ),
+            TestType(
+                test_code="urea",
+                test_name="Urea (BUN)",
+                test_name_ar="اليوريا",
+                category="Kidney",
+                unit="mg/dL",
+                normal_range_low=15,
+                normal_range_high=45,
+            ),
+            TestType(
+                test_code="cholesterol",
+                test_name="Total Cholesterol",
+                test_name_ar="الكوليسترول الكلي",
+                category="Lipid",
+                unit="mg/dL",
+                normal_range_low=0,
+                normal_range_high=200,
+            ),
+            TestType(
+                test_code="triglycerides",
+                test_name="Triglycerides",
+                test_name_ar="الدهون الثلاثية",
+                category="Lipid",
+                unit="mg/dL",
+                normal_range_low=0,
+                normal_range_high=150,
+            ),
+            TestType(
+                test_code="alt",
+                test_name="ALT (SGPT)",
+                test_name_ar="إنزيم الكبد ALT",
+                category="Liver",
+                unit="U/L",
+                normal_range_low=0,
+                normal_range_high=40,
+            ),
+            TestType(
+                test_code="ast",
+                test_name="AST (SGOT)",
+                test_name_ar="إنزيم الكبد AST",
+                category="Liver",
+                unit="U/L",
+                normal_range_low=0,
+                normal_range_high=40,
+            ),
+            TestType(
+                test_code="tsh",
+                test_name="TSH",
+                test_name_ar="هرمون الغدة الدرقية",
+                category="Thyroid",
+                unit="mIU/L",
+                normal_range_low=0.4,
+                normal_range_high=4.5,
+            ),
+            TestType(
+                test_code="potassium",
+                test_name="Potassium",
+                test_name_ar="البوتاسيوم",
+                category="Electrolytes",
+                unit="mEq/L",
+                normal_range_low=3.5,
+                normal_range_high=5.0,
+            ),
+            TestType(
+                test_code="sodium",
+                test_name="Sodium",
+                test_name_ar="الصوديوم",
+                category="Electrolytes",
+                unit="mEq/L",
+                normal_range_low=135,
+                normal_range_high=145,
+            ),
+            TestType(
+                test_code="hba1c",
+                test_name="HbA1c",
+                test_name_ar="السكر التراكمي",
+                category="Diabetes",
+                unit="%",
+                normal_range_low=0,
+                normal_range_high=5.7,
+            ),
+            TestType(
+                test_code="vitamin_d",
+                test_name="Vitamin D",
+                test_name_ar="فيتامين د",
+                category="Vitamins",
+                unit="ng/mL",
+                normal_range_low=20,
+                normal_range_high=100,
+            ),
+            TestType(
+                test_code="rbc",
+                test_name="Red Blood Cells",
+                test_name_ar="كريات الدم الحمراء",
+                category="CBC",
+                unit="×10⁶/µL",
+                normal_range_low=4.0,
+                normal_range_high=6.0,
+            ),
+            TestType(
+                test_code="mcv",
+                test_name="MCV",
+                test_name_ar="حجم الكرية الوسطي",
+                category="CBC",
+                unit="fL",
+                normal_range_low=80,
+                normal_range_high=100,
+            ),
+            TestType(
+                test_code="ldl",
+                test_name="LDL Cholesterol",
+                test_name_ar="الكوليسترول الضار",
+                category="Lipid",
+                unit="mg/dL",
+                normal_range_low=0,
+                normal_range_high=130,
+            ),
+            TestType(
+                test_code="hdl",
+                test_name="HDL Cholesterol",
+                test_name_ar="الكوليسترول النافع",
+                category="Lipid",
+                unit="mg/dL",
+                normal_range_low=40,
+                normal_range_high=100,
+            ),
+            TestType(
+                test_code="uric_acid",
+                test_name="Uric Acid",
+                test_name_ar="حمض اليوريك",
+                category="Kidney",
+                unit="mg/dL",
+                normal_range_low=2.5,
+                normal_range_high=7.0,
+            ),
         ]
         db.add_all(test_types)
         db.commit()
@@ -376,6 +559,7 @@ def _run_seed_test_types() -> None:
 def _run_ensure_master_admin() -> None:
     """Create master admin on first startup if not exists."""
     from ..routes.admin import ensure_master_admin
+
     ensure_master_admin()
 
 
@@ -383,6 +567,7 @@ def _run_seed_default_subscriptions() -> None:
     """Ensure every active lab has a LabSubscription row — idempotent."""
     from ..database import SessionLocal
     from ..routes.tiers import seed_default_subscriptions
+
     db = SessionLocal()
     try:
         seed_default_subscriptions(db)
@@ -395,11 +580,14 @@ def _run_ensure_audit_log_immutable() -> None:
     Ensures audit records cannot be modified or deleted after creation.
     Safe to call multiple times (CREATE OR REPLACE + DROP IF EXISTS).
     """
-    from ..database import SessionLocal
     from sqlalchemy import text
+
+    from ..database import SessionLocal
+
     db = SessionLocal()
     try:
-        db.execute(text("""
+        db.execute(
+            text("""
             CREATE OR REPLACE FUNCTION prevent_audit_modification()
             RETURNS TRIGGER AS $$
             BEGIN
@@ -410,13 +598,16 @@ def _run_ensure_audit_log_immutable() -> None:
                 RETURN NULL;
             END;
             $$ LANGUAGE plpgsql;
-        """))
-        db.execute(text("""
+        """)
+        )
+        db.execute(
+            text("""
             DROP TRIGGER IF EXISTS audit_logs_immutable ON audit_logs;
             CREATE TRIGGER audit_logs_immutable
                 BEFORE UPDATE OR DELETE ON audit_logs
                 FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
-        """))
+        """)
+        )
         db.commit()
         logger.info("[STARTUP GUARD] Audit log immutability trigger applied")
     except Exception as e:
@@ -427,6 +618,7 @@ def _run_ensure_audit_log_immutable() -> None:
 
 
 # ─── Atomic Orchestrator ─────────────────────────────────────────────────────
+
 
 async def run_startup_guard() -> None:
     """Atomic startup validation chain.
@@ -449,17 +641,19 @@ async def run_startup_guard() -> None:
 
     critical_ok = False
     try:
-        validate_config()          # Step 1 — synchronous
+        validate_config()  # Step 1 — synchronous
 
         db_connected = await wait_for_db(max_retries=15, initial_delay=10)  # Step 2
         if not db_connected:
             # If DB is not connected after retries, the system will start in an unready state.
             # The global exception handler will return 503 for all requests.
-            logger.critical("[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state.")
+            logger.critical(
+                "[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state."
+            )
             # Do not exit early. Allow the process to continue, but system_ready will remain False.
             # The global exception handler will then return 503 for all requests.
             return
-        await check_migrations()           # Step 3 — migration state
+        await check_migrations()  # Step 3 — migration state
 
         # If all critical steps (config, DB, migrations) pass, then the system is ready.
         # The seed_critical_data step is now more resilient and won't prevent system_ready from being True.
@@ -471,7 +665,10 @@ async def run_startup_guard() -> None:
         try:
             await seed_critical_data()
         except Exception as e:
-            logger.error("[STARTUP GUARD] Critical data seeding FAILED: %s. System will start in potentially degraded state.", e)
+            logger.error(
+                "[STARTUP GUARD] Critical data seeding FAILED: %s. System will start in potentially degraded state.",
+                e,
+            )
 
         # Step 5 — Kernel bootstrap. The Kernel is the permanent runtime
         # foundation. If it fails, the system starts without kernel services.
@@ -482,7 +679,10 @@ async def run_startup_guard() -> None:
             await start_kernel()
             logger.info("[STARTUP GUARD] Kernel initialized successfully")
         except Exception as e:
-            logger.error("[STARTUP GUARD] Kernel initialization FAILED: %s. System will start without Kernel.", e)
+            logger.error(
+                "[STARTUP GUARD] Kernel initialization FAILED: %s. System will start without Kernel.",
+                e,
+            )
 
         critical_ok = True
 
@@ -499,7 +699,7 @@ async def run_startup_guard() -> None:
         # Instead, we keep system_ready = False. The readiness probe will keep returning 503.
         # This allows the container to stay alive and potentially recover if the external dependency (DB) comes back.
         # The global exception handler in main.py will handle requests by returning 503.
-        return # Do not re-raise, allow the process to continue in an unready state
+        return  # Do not re-raise, allow the process to continue in an unready state
 
     if not critical_ok:
         return

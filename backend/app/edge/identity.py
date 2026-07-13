@@ -7,6 +7,7 @@ Section 6 (Device Identity & Trust):
   - Heartbeats include a per-call signature over a server-issued nonce
   - Key rotation is supported via EDGE_TASK_SIGNING_KEY_PREV (verifier accepts both)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -17,7 +18,6 @@ import time
 from typing import Any
 
 from .config import get_task_signing_key
-
 
 # ── Device IDs ────────────────────────────────────────────────────────────────
 
@@ -50,6 +50,7 @@ def new_task_uid() -> str:
 
 # ── Public-key fingerprints ───────────────────────────────────────────────────
 
+
 def fingerprint_pem(public_key_pem: str) -> str:
     """Stable SHA-256 fingerprint of a PEM-encoded public key.
 
@@ -62,6 +63,7 @@ def fingerprint_pem(public_key_pem: str) -> str:
 
 
 # ── HMAC task signing ─────────────────────────────────────────────────────────
+
 
 def _canon_payload(payload: dict[str, Any]) -> bytes:
     """Stable JSON serialization for signing — sorted keys, no whitespace."""
@@ -77,10 +79,14 @@ def sign_task(task_uid: str, kind: str, payload: dict[str, Any] | None) -> str:
 
 
 def verify_task_signature(
-    task_uid: str, kind: str, payload: dict[str, Any] | None, sig: str,
+    task_uid: str,
+    kind: str,
+    payload: dict[str, Any] | None,
+    sig: str,
 ) -> bool:
     """Constant-time verification, accepts both current and previous keys."""
     import os as _os
+
     expected = sign_task(task_uid, kind, payload)
     if hmac.compare_digest(expected, sig):
         return True
@@ -95,6 +101,7 @@ def verify_task_signature(
 
 
 # ── Agent challenge / nonce ───────────────────────────────────────────────────
+
 
 def make_nonce() -> str:
     """Random 32-byte hex nonce. Issued at registration; agent must echo and

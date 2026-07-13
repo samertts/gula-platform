@@ -24,8 +24,7 @@ class BaseGenerator(ABC):
         self._result = GenerateResult()
 
     @abstractmethod
-    def generate(self, **kwargs: Any) -> GenerateResult:
-        ...
+    def generate(self, **kwargs: Any) -> GenerateResult: ...
 
     def _write(self, path: str | Path, content: str) -> None:
         full_path = self.target_dir / path

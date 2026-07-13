@@ -6,17 +6,18 @@ Public surface:
     from app.tasks.registry import task_handler, get_handler
     from app.tasks.worker   import TaskWorker
 """
-from .schema   import TaskPayload, TaskResult, TaskStatus
-from .queue    import task_queue
-from .registry import task_handler, get_handler
-from .worker   import TaskWorker
+
+from .queue import task_queue
+from .registry import get_handler, task_handler
+from .schema import TaskPayload, TaskResult, TaskStatus
+from .worker import TaskWorker
 
 __all__ = [
     "TaskPayload",
     "TaskResult",
     "TaskStatus",
-    "task_queue",
-    "task_handler",
-    "get_handler",
     "TaskWorker",
+    "get_handler",
+    "task_handler",
+    "task_queue",
 ]

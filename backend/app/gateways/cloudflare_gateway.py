@@ -42,28 +42,28 @@ from app.gateways.mode import AdapterMode, resolve_mode
 
 logger = logging.getLogger("gula.gateways.cloudflare")
 
-_gateway: "CloudflareGateway | None" = None
+_gateway: CloudflareGateway | None = None
 
-_ADAPTER_KEY    = "cloudflare"
+_ADAPTER_KEY = "cloudflare"
 _REQUIRED_CREDS = ("CF_API_TOKEN", "CF_ZONE_ID")
-_CF_API_BASE    = "https://api.cloudflare.com/client/v4"
+_CF_API_BASE = "https://api.cloudflare.com/client/v4"
 
 
 class CloudflareGateway(ExternalGateway):
-    name                      = "cloudflare"
-    trust_level               = DataTrustLevel.ENRICHMENT
-    timeout                   = 8.0
-    max_retries               = 1
-    calls_per_minute          = 30
+    name = "cloudflare"
+    trust_level = DataTrustLevel.ENRICHMENT
+    timeout = 8.0
+    max_retries = 1
+    calls_per_minute = 30
     circuit_failure_threshold = 3
-    circuit_recovery_timeout  = 120.0
-    cache_ttl                 = 120.0   # 2 min — zone state is quasi-static
-    stale_threshold           = 60.0
+    circuit_recovery_timeout = 120.0
+    cache_ttl = 120.0  # 2 min — zone state is quasi-static
+    stale_threshold = 60.0
 
     _SCHEMA = [
         FieldRule("configured", bool, required=True),
-        FieldRule("zone_id",    str,  required=False),
-        FieldRule("mode",       str,  required=True),
+        FieldRule("zone_id", str, required=False),
+        FieldRule("mode", str, required=True),
     ]
 
     def __init__(self) -> None:
@@ -79,17 +79,17 @@ class CloudflareGateway(ExternalGateway):
     def _stub_response(self) -> dict:
         return {
             "configured": False,
-            "zone_id":    os.getenv("CF_ZONE_ID", "") or "",
-            "mode":       "stub",
-            "message":    "Cloudflare credentials not active; using stub",
+            "zone_id": os.getenv("CF_ZONE_ID", "") or "",
+            "mode": "stub",
+            "message": "Cloudflare credentials not active; using stub",
         }
 
     def _live_response(self) -> dict:
-        token   = os.environ["CF_API_TOKEN"]
+        token = os.environ["CF_API_TOKEN"]
         zone_id = os.environ["CF_ZONE_ID"]
         headers = {
             "Authorization": f"Bearer {token}",
-            "Accept":        "application/json",
+            "Accept": "application/json",
         }
 
         # GET /zones/{zone_id} — the cheapest healthy-zone check there is
@@ -98,11 +98,11 @@ class CloudflareGateway(ExternalGateway):
         result = (zone or {}).get("result") or {}
         return {
             "configured": True,
-            "zone_id":    zone_id,
-            "mode":       "live",
-            "name":       result.get("name"),
-            "status":     result.get("status"),   # active/pending/...
-            "plan":       (result.get("plan") or {}).get("name"),
+            "zone_id": zone_id,
+            "mode": "live",
+            "name": result.get("name"),
+            "status": result.get("status"),  # active/pending/...
+            "plan": (result.get("plan") or {}).get("name"),
         }
 
     def _do_call(self, action: str, **kwargs: Any) -> Any:
@@ -115,12 +115,17 @@ class CloudflareGateway(ExternalGateway):
                 live = self._live_response()
                 logger.info(
                     "[SHADOW] gateway=%s action=%s stub=%r live=%r",
-                    self.name, action, stub, live,
+                    self.name,
+                    action,
+                    stub,
+                    live,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "[SHADOW] gateway=%s action=%s live_error=%s",
-                    self.name, action, exc,
+                    self.name,
+                    action,
+                    exc,
                 )
             return stub
 
@@ -140,7 +145,8 @@ def probe_cloudflare() -> ExternalDataResult:
     return gw.call(
         action="probe_zone",
         cache_key=CloudflareGateway._make_cache_key(
-            "cloudflare", zone_id=os.getenv("CF_ZONE_ID", ""),
+            "cloudflare",
+            zone_id=os.getenv("CF_ZONE_ID", ""),
         ),
         fallback={"configured": False, "mode": "fallback"},
     )

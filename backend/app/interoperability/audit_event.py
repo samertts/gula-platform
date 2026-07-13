@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+
+from app._compat import StrEnum
 
 
-class InteropAuditDisposition(str, Enum):
+class InteropAuditDisposition(StrEnum):
     SUCCESS = "success"
     FAILURE = "failure"
     CAPABILITY_DENIED = "capability_denied"

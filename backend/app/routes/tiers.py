@@ -11,35 +11,40 @@ Endpoints:
   PUT  /admin/tiers/{lab_id}        — platform admin: manually set tier
   POST /admin/tiers/flags/{lab_id}  — platform admin: set/remove feature flag
 """
+
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
+from ..core.feature_flags import (
+    _VALID_DEPLOYMENTS,
+    _VALID_SECURITY,
+    _VALID_TIERS,
+    get_lab_subscription_info,
+    get_tier_features,
+    get_tier_limits,
+    is_upgrade_valid,
+)
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
-from ..models.subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag
-from ..models.user import User
+from ..models.subscription import FeatureFlag, LabSubscription, UpgradeDemandScore, UpgradeRequest
 from ..security.dependencies import get_current_user
-from ..security.rbac import require_role
-from ..core.feature_flags import (
-    _TIER_FEATURES, get_tier_features, get_lab_subscription_info,
-    is_upgrade_valid, get_tier_limits, _VALID_TIERS,
-    _VALID_DEPLOYMENTS, _VALID_SECURITY,
-)
-from ..services.audit_service import log_action
 from ..security.rate_limit import get_client_ip
+from ..services.audit_service import log_action
 
 logger = logging.getLogger("gula.tiers")
 router = APIRouter(tags=["subscription"])
 
 
 # ─── Tier Catalog (public) ────────────────────────────────────────────────────
+
 
 @router.get("/tiers", summary="List available tiers and feature matrix")
 def list_tiers():
@@ -51,26 +56,29 @@ def list_tiers():
     for tier in ("starter", "growth", "enterprise"):
         limits = get_tier_limits(tier)
         features = sorted(get_tier_features(tier))
-        tiers.append({
-            "id": tier,
-            "name": {
-                "starter":    "Starter",
-                "growth":     "Growth",
-                "enterprise": "Enterprise",
-            }[tier],
-            "name_ar": {
-                "starter":    "البداية",
-                "growth":     "النمو",
-                "enterprise": "المؤسسات",
-            }[tier],
-            "monthly_price_usd": {"starter": 0, "growth": 49, "enterprise": 199}[tier],
-            "limits": limits,
-            "features": features,
-        })
+        tiers.append(
+            {
+                "id": tier,
+                "name": {
+                    "starter": "Starter",
+                    "growth": "Growth",
+                    "enterprise": "Enterprise",
+                }[tier],
+                "name_ar": {
+                    "starter": "البداية",
+                    "growth": "النمو",
+                    "enterprise": "المؤسسات",
+                }[tier],
+                "monthly_price_usd": {"starter": 0, "growth": 49, "enterprise": 199}[tier],
+                "limits": limits,
+                "features": features,
+            }
+        )
     return {"tiers": tiers}
 
 
 # ─── My Subscription ─────────────────────────────────────────────────────────
+
 
 @router.get("/tiers/my", summary="Current lab subscription info")
 def my_subscription(
@@ -85,11 +93,12 @@ def my_subscription(
 
 # ─── Upgrade Request (lab admin) ─────────────────────────────────────────────
 
+
 class UpgradeRequestBody(BaseModel):
     target_tier: str
-    target_deployment_mode: Optional[str] = None
-    target_security_level: Optional[str] = None
-    reason: Optional[str] = None
+    target_deployment_mode: str | None = None
+    target_security_level: str | None = None
+    reason: str | None = None
 
     @field_validator("target_tier")
     @classmethod
@@ -102,14 +111,18 @@ class UpgradeRequestBody(BaseModel):
     @classmethod
     def validate_deployment(cls, v):
         if v and v not in _VALID_DEPLOYMENTS:
-            raise ValueError(f"Invalid deployment_mode. Must be one of: {', '.join(sorted(_VALID_DEPLOYMENTS))}")
+            raise ValueError(
+                f"Invalid deployment_mode. Must be one of: {', '.join(sorted(_VALID_DEPLOYMENTS))}"
+            )
         return v
 
     @field_validator("target_security_level")
     @classmethod
     def validate_security(cls, v):
         if v and v not in _VALID_SECURITY:
-            raise ValueError(f"Invalid security_level. Must be one of: {', '.join(sorted(_VALID_SECURITY))}")
+            raise ValueError(
+                f"Invalid security_level. Must be one of: {', '.join(sorted(_VALID_SECURITY))}"
+            )
         return v
 
 
@@ -131,9 +144,7 @@ def request_upgrade(
         raise HTTPException(status_code=400, detail="No lab associated with this account")
 
     # Check current tier — validate it's actually an upgrade
-    sub = db.query(LabSubscription).filter(
-        LabSubscription.lab_id == current_user.lab_id
-    ).first()
+    sub = db.query(LabSubscription).filter(LabSubscription.lab_id == current_user.lab_id).first()
     current_tier = sub.tier if sub else "starter"
 
     if body.target_tier == current_tier:
@@ -159,9 +170,12 @@ def request_upgrade(
     _update_demand_score(current_user.lab_id, db)
 
     log_action(
-        db, action="upgrade_request", resource_type="subscription",
+        db,
+        action="upgrade_request",
+        resource_type="subscription",
         resource_id=current_user.lab_id,
-        user_id=current_user.id, user_role=current_user.role,
+        user_id=current_user.id,
+        user_role=current_user.role,
         details=f"Upgrade request: {current_tier}→{body.target_tier}",
         ip_address=get_client_ip(request),
     )
@@ -178,10 +192,11 @@ def request_upgrade(
 
 # ─── Citizen Demand Signal ───────────────────────────────────────────────────
 
+
 class DemandSignalBody(BaseModel):
     lab_id: int
     target_tier: str
-    reason: Optional[str] = None
+    reason: str | None = None
 
     @field_validator("target_tier")
     @classmethod
@@ -191,7 +206,9 @@ class DemandSignalBody(BaseModel):
         return v
 
 
-@router.post("/tiers/upgrade-demand", status_code=201, summary="Citizen signals demand for lab upgrade")
+@router.post(
+    "/tiers/upgrade-demand", status_code=201, summary="Citizen signals demand for lab upgrade"
+)
 def submit_upgrade_demand(
     body: DemandSignalBody,
     request: Request,
@@ -204,17 +221,20 @@ def submit_upgrade_demand(
     Rate-limited: 1 request per lab per user per 30 days.
     """
     # Verify the lab exists
-    lab = db.query(Lab).filter(Lab.id == body.lab_id, Lab.is_active == True).first()
+    lab = db.query(Lab).filter(Lab.id == body.lab_id, Lab.is_active).first()
     if not lab:
         raise HTTPException(status_code=404, detail="Lab not found")
 
     # Rate limit: has this user already requested this lab in the last 30 days?
-    from sqlalchemy import text
-    recent = db.query(UpgradeRequest).filter(
-        UpgradeRequest.lab_id == body.lab_id,
-        UpgradeRequest.requester_id == current_user.id,
-        UpgradeRequest.created_at >= datetime.now(timezone.utc).replace(day=1),
-    ).first()
+    recent = (
+        db.query(UpgradeRequest)
+        .filter(
+            UpgradeRequest.lab_id == body.lab_id,
+            UpgradeRequest.requester_id == current_user.id,
+            UpgradeRequest.created_at >= datetime.now(UTC).replace(day=1),
+        )
+        .first()
+    )
     if recent:
         raise HTTPException(
             status_code=429,
@@ -243,9 +263,12 @@ def submit_upgrade_demand(
     _update_demand_score(body.lab_id, db)
 
     log_action(
-        db, action="upgrade_demand", resource_type="subscription",
+        db,
+        action="upgrade_demand",
+        resource_type="subscription",
         resource_id=body.lab_id,
-        user_id=current_user.id, user_role=getattr(current_user, "role", "citizen"),
+        user_id=current_user.id,
+        user_role=getattr(current_user, "role", "citizen"),
         details=f"Citizen demand for {body.target_tier} (weight={weight})",
         ip_address=get_client_ip(request),
     )
@@ -259,6 +282,7 @@ def submit_upgrade_demand(
 
 
 # ─── Platform Admin: View Demands ────────────────────────────────────────────
+
 
 @router.get("/admin/tiers/demands", summary="Platform admin: top upgrade demand labs")
 def list_upgrade_demands(
@@ -280,25 +304,28 @@ def list_upgrade_demands(
     for s in scores:
         lab = db.query(Lab).filter(Lab.id == s.lab_id).first()
         sub = db.query(LabSubscription).filter(LabSubscription.lab_id == s.lab_id).first()
-        result.append({
-            "lab_id": s.lab_id,
-            "lab_name": lab.name if lab else "Unknown",
-            "current_tier": sub.tier if sub else "starter",
-            "weighted_score": round(s.weighted_score, 2),
-            "unique_requesters": s.unique_requesters,
-            "last_request_at": s.last_request_at.isoformat() if s.last_request_at else None,
-        })
+        result.append(
+            {
+                "lab_id": s.lab_id,
+                "lab_name": lab.name if lab else "Unknown",
+                "current_tier": sub.tier if sub else "starter",
+                "weighted_score": round(s.weighted_score, 2),
+                "unique_requesters": s.unique_requesters,
+                "last_request_at": s.last_request_at.isoformat() if s.last_request_at else None,
+            }
+        )
     return {"demands": result}
 
 
 # ─── Platform Admin: Set Tier ────────────────────────────────────────────────
+
 
 class SetTierBody(BaseModel):
     tier: str
     deployment_mode: str = "single"
     security_level: str = "standard"
     billing_cycle: str = "monthly"
-    notes: Optional[str] = None
+    notes: str | None = None
 
     @field_validator("tier")
     @classmethod
@@ -342,17 +369,17 @@ def set_lab_tier(
     limits = get_tier_limits(body.tier)
 
     if sub:
-        sub.tier             = body.tier
-        sub.deployment_mode  = body.deployment_mode
-        sub.security_level   = body.security_level
-        sub.billing_cycle    = body.billing_cycle
-        sub.notes            = body.notes
-        sub.max_patients     = limits["max_patients"]
-        sub.max_staff        = limits["max_staff"]
-        sub.max_branches     = limits["max_branches"]
-        sub.max_orders_per_day   = limits["max_orders_per_day"]
+        sub.tier = body.tier
+        sub.deployment_mode = body.deployment_mode
+        sub.security_level = body.security_level
+        sub.billing_cycle = body.billing_cycle
+        sub.notes = body.notes
+        sub.max_patients = limits["max_patients"]
+        sub.max_staff = limits["max_staff"]
+        sub.max_branches = limits["max_branches"]
+        sub.max_orders_per_day = limits["max_orders_per_day"]
         sub.max_ai_calls_per_day = limits["max_ai_calls_per_day"]
-        sub.updated_at       = datetime.now(timezone.utc)
+        sub.updated_at = datetime.now(UTC)
     else:
         sub = LabSubscription(
             lab_id=lab_id,
@@ -369,17 +396,22 @@ def set_lab_tier(
     db.query(UpgradeRequest).filter(
         UpgradeRequest.lab_id == lab_id,
         UpgradeRequest.status == "pending",
-    ).update({
-        "status": "fulfilled",
-        "reviewed_by": current_user.id,
-        "reviewed_at": datetime.now(timezone.utc),
-        "review_note": f"Tier set to {body.tier} by platform admin",
-    })
+    ).update(
+        {
+            "status": "fulfilled",
+            "reviewed_by": current_user.id,
+            "reviewed_at": datetime.now(UTC),
+            "review_note": f"Tier set to {body.tier} by platform admin",
+        }
+    )
 
     log_action(
-        db, action="set_tier", resource_type="subscription",
+        db,
+        action="set_tier",
+        resource_type="subscription",
         resource_id=lab_id,
-        user_id=current_user.id, user_role=current_user.role,
+        user_id=current_user.id,
+        user_role=current_user.role,
         details=f"Tier set: {body.tier} / {body.deployment_mode} / {body.security_level}",
         ip_address=get_client_ip(request),
     )
@@ -396,11 +428,12 @@ def set_lab_tier(
 
 # ─── Platform Admin: Feature Flag Override ───────────────────────────────────
 
+
 class FeatureFlagBody(BaseModel):
     feature_key: str
     is_enabled: bool
-    reason: Optional[str] = None
-    expires_at: Optional[str] = None  # ISO datetime string or None
+    reason: str | None = None
+    expires_at: str | None = None  # ISO datetime string or None
 
 
 @router.post("/admin/tiers/flags/{lab_id}", status_code=201, summary="Set feature flag for a lab")
@@ -430,15 +463,19 @@ def set_feature_flag(
             raise HTTPException(status_code=400, detail="Invalid expires_at format (use ISO 8601)")
 
     # Upsert feature flag
-    flag = db.query(FeatureFlag).filter(
-        FeatureFlag.lab_id == lab_id,
-        FeatureFlag.feature_key == body.feature_key,
-    ).first()
+    flag = (
+        db.query(FeatureFlag)
+        .filter(
+            FeatureFlag.lab_id == lab_id,
+            FeatureFlag.feature_key == body.feature_key,
+        )
+        .first()
+    )
 
     if flag:
         flag.is_enabled = body.is_enabled
-        flag.reason     = body.reason
-        flag.set_by     = current_user.id
+        flag.reason = body.reason
+        flag.set_by = current_user.id
         flag.expires_at = expires
     else:
         flag = FeatureFlag(
@@ -452,9 +489,12 @@ def set_feature_flag(
         db.add(flag)
 
     log_action(
-        db, action="set_feature_flag", resource_type="subscription",
+        db,
+        action="set_feature_flag",
+        resource_type="subscription",
         resource_id=lab_id,
-        user_id=current_user.id, user_role=current_user.role,
+        user_id=current_user.id,
+        user_role=current_user.role,
         details=f"Feature flag '{body.feature_key}' = {body.is_enabled} (expires={expires})",
         ip_address=get_client_ip(request),
     )
@@ -497,6 +537,7 @@ def list_feature_flags(
 
 # ─── Internal helper ─────────────────────────────────────────────────────────
 
+
 def _update_demand_score(lab_id: int, db: Session) -> None:
     """
     Recalculate UpgradeDemandScore after a new request.
@@ -505,26 +546,30 @@ def _update_demand_score(lab_id: int, db: Session) -> None:
     """
     import math
 
-    result = db.query(
-        func.sum(UpgradeRequest.weight).label("raw_score"),
-        func.count(UpgradeRequest.requester_id.distinct()).label("unique_requesters"),
-        func.max(UpgradeRequest.created_at).label("last_request_at"),
-    ).filter(
-        UpgradeRequest.lab_id == lab_id,
-        UpgradeRequest.status.in_(["pending", "approved"]),
-    ).one()
+    result = (
+        db.query(
+            func.sum(UpgradeRequest.weight).label("raw_score"),
+            func.count(UpgradeRequest.requester_id.distinct()).label("unique_requesters"),
+            func.max(UpgradeRequest.created_at).label("last_request_at"),
+        )
+        .filter(
+            UpgradeRequest.lab_id == lab_id,
+            UpgradeRequest.status.in_(["pending", "approved"]),
+        )
+        .one()
+    )
 
-    raw_score       = float(result.raw_score or 0)
-    unique          = int(result.unique_requesters or 0)
-    weighted_score  = raw_score * math.log2(unique + 2)
+    raw_score = float(result.raw_score or 0)
+    unique = int(result.unique_requesters or 0)
+    weighted_score = raw_score * math.log2(unique + 2)
 
     score = db.query(UpgradeDemandScore).filter(UpgradeDemandScore.lab_id == lab_id).first()
     if score:
-        score.raw_score         = raw_score
+        score.raw_score = raw_score
         score.unique_requesters = unique
-        score.weighted_score    = weighted_score
-        score.last_request_at   = result.last_request_at
-        score.updated_at        = datetime.now(timezone.utc)
+        score.weighted_score = weighted_score
+        score.last_request_at = result.last_request_at
+        score.updated_at = datetime.now(UTC)
     else:
         score = UpgradeDemandScore(
             lab_id=lab_id,
@@ -538,6 +583,7 @@ def _update_demand_score(lab_id: int, db: Session) -> None:
 
 # ─── Seed default subscriptions ──────────────────────────────────────────────
 
+
 def seed_default_subscriptions(db: Session) -> None:
     """
     Ensure every active lab has a LabSubscription row.
@@ -546,7 +592,7 @@ def seed_default_subscriptions(db: Session) -> None:
     labs_without_sub = (
         db.query(Lab)
         .outerjoin(LabSubscription, Lab.id == LabSubscription.lab_id)
-        .filter(LabSubscription.id == None, Lab.is_active == True)
+        .filter(LabSubscription.id is None, Lab.is_active)
         .all()
     )
     for lab in labs_without_sub:

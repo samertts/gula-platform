@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ast
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -45,7 +45,7 @@ class DDDValidator:
                             file=str(file.relative_to(self.project_root)),
                             line=node.lineno,
                             principle="UL",
-                            message=f"Class '{name}' uses anemic naming — prefer domain language over '{'/' .join(word for word in ['Manager', 'Util', 'Helper'] if word in name)}'",
+                            message=f"Class '{name}' uses anemic naming — prefer domain language over '{'/'.join(word for word in ['Manager', 'Util', 'Helper'] if word in name)}'",
                         )
                     )
 
@@ -54,7 +54,8 @@ class DDDValidator:
             if isinstance(node, ast.ClassDef):
                 if "ValueObject" in node.name or "value_object" in file.parts:
                     has_immutable = any(
-                        isinstance(n, ast.Assign) and any(
+                        isinstance(n, ast.Assign)
+                        and any(
                             isinstance(t, ast.Attribute) and t.attr == "__hash__"
                             for t in ast.walk(n)
                         )
@@ -94,14 +95,13 @@ class DDDValidator:
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
                     if not any(
-                        isinstance(n, ast.ClassDef) or
-                        (isinstance(n, ast.FunctionDef) and n.name == "__init__")
+                        isinstance(n, ast.ClassDef)
+                        or (isinstance(n, ast.FunctionDef) and n.name == "__init__")
                         for n in node.body
                     ):
                         pass
                     has_interface = any(
-                        isinstance(n, ast.Name) and n.id == "ABC"
-                        for n in ast.walk(node)
+                        isinstance(n, ast.Name) and n.id == "ABC" for n in ast.walk(node)
                     )
                     if "sqlalchemy" in file.read_text().lower() and not has_interface:
                         self.issues.append(
@@ -118,7 +118,9 @@ class DDDValidator:
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
                     event_has_timestamp = any(
-                        "occurred_at" in ast.dump(n) or "occurred_on" in ast.dump(n) or "timestamp" in ast.dump(n)
+                        "occurred_at" in ast.dump(n)
+                        or "occurred_on" in ast.dump(n)
+                        or "timestamp" in ast.dump(n)
                         for n in ast.walk(node)
                     )
                     if not event_has_timestamp:

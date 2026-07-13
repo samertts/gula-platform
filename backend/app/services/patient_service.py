@@ -92,15 +92,9 @@ def list_patients(
     }
 
 
-def get_patient_by_id(
-    db: Session, patient_id: int, lab_id: int
-) -> dict | None:
+def get_patient_by_id(db: Session, patient_id: int, lab_id: int) -> dict | None:
     """Get patient by ID."""
-    patient = (
-        db.query(Patient)
-        .filter(Patient.id == patient_id, Patient.lab_id == lab_id)
-        .first()
-    )
+    patient = db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()
     if not patient:
         return None
     return patient_to_dict(patient)
@@ -138,9 +132,7 @@ def create_patient(
     # Validate guardian exists in the same lab if provided
     if guardian_id is not None:
         guardian = (
-            db.query(Patient)
-            .filter(Patient.id == guardian_id, Patient.lab_id == lab_id)
-            .first()
+            db.query(Patient).filter(Patient.id == guardian_id, Patient.lab_id == lab_id).first()
         )
         if not guardian:
             return {"error": "Guardian patient not found in this lab", "status_code": 404}
@@ -191,11 +183,7 @@ def update_patient(
     ip_address: str | None = None,
 ) -> dict:
     """Update a patient."""
-    patient = (
-        db.query(Patient)
-        .filter(Patient.id == patient_id, Patient.lab_id == lab_id)
-        .first()
-    )
+    patient = db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()
     if not patient:
         return {"error": "Patient not found", "status_code": 404}
 
@@ -235,9 +223,7 @@ def update_patient(
     return {"message": "Patient updated", "patient": patient_to_dict(patient)}
 
 
-def get_family_members(
-    db: Session, family_id: str, lab_id: int
-) -> dict:
+def get_family_members(db: Session, family_id: str, lab_id: int) -> dict:
     """Return all patients sharing the same civil-registry family number."""
     import re
 
@@ -279,15 +265,9 @@ def get_family_members(
     }
 
 
-def get_patient_children(
-    db: Session, patient_id: int, lab_id: int
-) -> dict:
+def get_patient_children(db: Session, patient_id: int, lab_id: int) -> dict:
     """Return all minor patients (children) whose guardian is this patient."""
-    guardian = (
-        db.query(Patient)
-        .filter(Patient.id == patient_id, Patient.lab_id == lab_id)
-        .first()
-    )
+    guardian = db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()
     if not guardian:
         return {"error": "Patient not found", "status_code": 404}
 
@@ -330,18 +310,20 @@ def _check_duplicates(
 
     # Pre-filter by phone (exact match) first
     phone_matches = (
-        db.query(Patient)
-        .filter(Patient.lab_id == lab_id, Patient.phone == phone)
-        .limit(10)
-        .all()
+        db.query(Patient).filter(Patient.lab_id == lab_id, Patient.phone == phone).limit(10).all()
     )
 
     duplicates = []
     for p in phone_matches:
         score = match_score(
-            full_name, phone, birth_date,
-            p.full_name, p.phone, str(p.birth_date) if p.birth_date else "",
-            nid_hash, p.national_id_hash,
+            full_name,
+            phone,
+            birth_date,
+            p.full_name,
+            p.phone,
+            str(p.birth_date) if p.birth_date else "",
+            nid_hash,
+            p.national_id_hash,
         )
         if score >= 0.65:
             duplicates.append({"patient": patient_to_dict(p), "score": round(score, 2)})
@@ -360,9 +342,14 @@ def _check_duplicates(
 
             for p in name_matches:
                 score = match_score(
-                    full_name, phone, birth_date,
-                    p.full_name, p.phone, str(p.birth_date) if p.birth_date else "",
-                    nid_hash, p.national_id_hash,
+                    full_name,
+                    phone,
+                    birth_date,
+                    p.full_name,
+                    p.phone,
+                    str(p.birth_date) if p.birth_date else "",
+                    nid_hash,
+                    p.national_id_hash,
                 )
                 if score >= 0.65:
                     duplicates.append({"patient": patient_to_dict(p), "score": round(score, 2)})

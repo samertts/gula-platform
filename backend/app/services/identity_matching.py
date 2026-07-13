@@ -10,6 +10,7 @@ Iraqi-context identity reconciliation:
 The scoring is deterministic and pure (no DB access in the scoring path) so it
 can be unit-tested and benchmarked outside of a request cycle.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -17,7 +18,7 @@ import hmac
 import re
 import unicodedata
 from datetime import date, datetime
-from typing import Any, Iterable
+from typing import Any
 
 try:  # Optional — only needed by ``find_duplicates``.
     from sqlalchemy.orm import Session
@@ -29,7 +30,10 @@ except Exception:  # pragma: no cover - SQLAlchemy is always present in runtime
 
 # Hamza / alef variants → plain alef, ta-marbuta → ha, alef-maksura → ya, etc.
 _ARABIC_LETTER_MAP = {
-    "أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا",
+    "أ": "ا",
+    "إ": "ا",
+    "آ": "ا",
+    "ٱ": "ا",
     "ة": "ه",
     "ى": "ي",
     "ؤ": "و",
@@ -74,7 +78,7 @@ def normalize_arabic_name(name: str | None) -> str:
 # ─────────────────────────── Health ID generation ────────────────────────────
 
 _HID_PREFIX = "HID-"
-_HID_HASH_LEN = 8      # hex chars of the body
+_HID_HASH_LEN = 8  # hex chars of the body
 _HID_CHECKSUM_LEN = 2  # chars of the checksum
 # Base-32 alphabet (Crockford-like) — no 0/1/O/I to avoid transcription errors.
 _BASE32_ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -116,6 +120,7 @@ def generate_health_id(national_id: str) -> str:
     # scripts and unit tests without app config loaded.
     try:
         from ..config import NID_HMAC_KEY  # type: ignore
+
         digest = hmac.new(
             NID_HMAC_KEY.encode("utf-8"), cleaned.encode("utf-8"), hashlib.sha256
         ).hexdigest()
@@ -130,7 +135,7 @@ def verify_health_id(hid: str) -> bool:
     """Validate the structure + checksum of a previously issued HID."""
     if not hid or not hid.startswith(_HID_PREFIX):
         return False
-    parts = hid[len(_HID_PREFIX):].split("-")
+    parts = hid[len(_HID_PREFIX) :].split("-")
     if len(parts) != 2:
         return False
     body, checksum = parts
@@ -193,6 +198,7 @@ def _name_similarity(n1: str, n2: str) -> float:
 
     try:
         from .identity import jaro_winkler
+
         jw = jaro_winkler(n1, n2)
     except Exception:
         jw = 0.0
@@ -238,24 +244,16 @@ def calculate_match_score(citizen1: Any, citizen2: Any) -> float:
     mother = _equal_score(
         _get(citizen1, "mother_name"), _get(citizen2, "mother_name"), normalize=True
     )
-    gov = _equal_score(
-        _get(citizen1, "governorate"), _get(citizen2, "governorate"), normalize=True
-    )
+    gov = _equal_score(_get(citizen1, "governorate"), _get(citizen2, "governorate"), normalize=True)
 
-    score = (
-        W_NAME * name
-        + W_DOB * dob
-        + W_MOTHER * mother
-        + W_GOVERNORATE * gov
-    )
+    score = W_NAME * name + W_DOB * dob + W_MOTHER * mother + W_GOVERNORATE * gov
     return round(min(max(score, 0.0), 1.0), 4)
 
 
 # ─────────────────────────── Duplicate discovery ─────────────────────────────
 
-def find_duplicates(
-    db: "Session", citizen_data: Any, *, limit: int = 20
-) -> list[tuple[Any, float]]:
+
+def find_duplicates(db: Session, citizen_data: Any, *, limit: int = 20) -> list[tuple[Any, float]]:
     """Return (citizen, match_score) pairs ranked by descending score.
 
     Resolution order:
@@ -284,6 +282,7 @@ def find_duplicates(
     if national_id:
         try:
             from .identity import hash_national_id
+
             nid_hash = hash_national_id(str(national_id))
         except Exception:
             nid_hash = None
@@ -305,6 +304,7 @@ def find_duplicates(
     if birth_date:
         try:
             from sqlalchemy import extract
+
             candidates_q = candidates_q.filter(
                 extract("year", Patient.birth_date) == birth_date.year
             )
@@ -322,10 +322,10 @@ def find_duplicates(
 
 
 __all__ = [
-    "generate_health_id",
-    "verify_health_id",
-    "normalize_arabic_name",
+    "MATCH_THRESHOLD",
     "calculate_match_score",
     "find_duplicates",
-    "MATCH_THRESHOLD",
+    "generate_health_id",
+    "normalize_arabic_name",
+    "verify_health_id",
 ]

@@ -20,9 +20,9 @@ _IS_PRODUCTION = os.getenv("ENV", "production") == "production"
 _key = os.getenv("ENCRYPTION_KEY")
 if not _key:
     if _IS_PRODUCTION:
-        print("[GULA FATAL] ENCRYPTION_KEY not set in production.", file=sys.stderr)
         sys.exit(1)
     from cryptography.fernet import Fernet
+
     _key = Fernet.generate_key().decode()
     _logger.warning(
         "[SECURITY] ENCRYPTION_KEY not set — using ephemeral key. "

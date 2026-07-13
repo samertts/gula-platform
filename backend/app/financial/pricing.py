@@ -1,10 +1,10 @@
 """Financial Engine — Pricing Service.
 Calculates fees, applies discounts, enforces minimum billing.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
 MINIMUM_BILL: Decimal = Decimal("5000")  # IQD
 QUALITY_DISCOUNT_RATE: Decimal = Decimal("0.05")  # 5% discount for accredited labs

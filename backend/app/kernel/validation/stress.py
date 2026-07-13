@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
-from typing import Any, Dict, List, Optional
 
 from backend.app.kernel import Kernel
 
@@ -15,7 +13,6 @@ class StressTester:
         self.kernel = kernel
 
     async def run(self, iterations: int = 100) -> dict:
-        import time
         start = time.monotonic()
         for _ in range(iterations):
             _ = self.kernel.get_component("service_registry")

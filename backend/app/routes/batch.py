@@ -1,40 +1,41 @@
 """Batch operations - process multiple orders/results efficiently."""
+
 import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Optional, List
+
 from ..database import get_db
-from ..models.patient import Patient
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
 from ..models.lab_user import LabUser
+from ..models.patient import Patient
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
-from ..services.interpretation import get_flag
 from ..services.audit_service import log_action
-from ..config import BASE_URL
+from ..services.interpretation import get_flag
 
 router = APIRouter(prefix="/batch", tags=["batch"])
 
 
 class BatchResultItem(BaseModel):
     test_name: str
-    value: Optional[float] = None
-    value_text: Optional[str] = None
-    unit: Optional[str] = None
-    normal_range_low: Optional[float] = None
-    normal_range_high: Optional[float] = None
+    value: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
 
 
 class BatchOrderItem(BaseModel):
     patient_id: int
-    doctor_name: Optional[str] = None
-    results: List[BatchResultItem]
+    doctor_name: str | None = None
+    results: list[BatchResultItem]
 
 
 class BatchOrderRequest(BaseModel):
-    orders: List[BatchOrderItem]
+    orders: list[BatchOrderItem]
 
 
 @router.post("/orders", status_code=201)
@@ -50,11 +51,15 @@ def create_batch_orders(
         raise HTTPException(status_code=400, detail="Maximum 50 orders per batch")
 
     # Pre-validate all patient IDs in a single query
-    patient_ids = list(set(o.patient_id for o in data.orders))
-    existing_patients = db.query(Patient.id).filter(
-        Patient.id.in_(patient_ids),
-        Patient.lab_id == current_user.lab_id,
-    ).all()
+    patient_ids = list({o.patient_id for o in data.orders})
+    existing_patients = (
+        db.query(Patient.id)
+        .filter(
+            Patient.id.in_(patient_ids),
+            Patient.lab_id == current_user.lab_id,
+        )
+        .all()
+    )
     valid_ids = {p.id for p in existing_patients}
 
     created_orders = []
@@ -78,7 +83,11 @@ def create_batch_orders(
         critical_count = 0
         for item in order_data.results:
             flag = "unknown"
-            if item.value is not None and item.normal_range_low is not None and item.normal_range_high is not None:
+            if (
+                item.value is not None
+                and item.normal_range_low is not None
+                and item.normal_range_high is not None
+            ):
                 flag = get_flag(item.value, item.normal_range_low, item.normal_range_high)
 
             token = secrets.token_urlsafe(32)
@@ -101,12 +110,14 @@ def create_batch_orders(
             if flag == "critical":
                 critical_count += 1
 
-        created_orders.append({
-            "order_id": order.id,
-            "patient_id": order_data.patient_id,
-            "results_count": result_count,
-            "critical_count": critical_count,
-        })
+        created_orders.append(
+            {
+                "order_id": order.id,
+                "patient_id": order_data.patient_id,
+                "results_count": result_count,
+                "critical_count": critical_count,
+            }
+        )
 
     log_action(
         db,

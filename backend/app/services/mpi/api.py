@@ -8,7 +8,8 @@ Endpoints:
 All endpoints require authentication. Resolve enforces lab ownership:
 a user can only resolve patients in their own lab (ABAC via require_own_lab).
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from ...database import get_db
@@ -18,20 +19,24 @@ from ...security.consent_dep import require_consent
 from ...security.dependencies import get_current_user
 from ...security.rate_limit import rate_limit_user
 from ...security.rbac import require_own_lab, require_role
-
 from . import resolver as mpi_resolver
 from .models import Citizen, IdentityClaim
 from .schemas import (
-    CitizenResponse, MergeRequest, MergeResponse,
-    PendingReviewItem, PendingReviewPage, ResolveDecision,
-    ResolveRequest, ResolveResponse,
+    CitizenResponse,
+    MergeRequest,
+    MergeResponse,
+    PendingReviewItem,
+    PendingReviewPage,
+    ResolveDecision,
+    ResolveRequest,
+    ResolveResponse,
 )
-
 
 router = APIRouter(prefix="/mpi", tags=["mpi"])
 
 
 # ── POST /mpi/resolve ────────────────────────────────────────────────────────
+
 
 @router.post("/resolve", response_model=ResolveResponse, status_code=200)
 def resolve(
@@ -50,9 +55,11 @@ def resolve(
     require_own_lab(current_user, data.lab_id)
 
     # Sanity check: the LIMS patient exists and belongs to the declared lab
-    patient = (db.query(Patient)
-                 .filter(Patient.id == data.patient_id, Patient.lab_id == data.lab_id)
-                 .first())
+    patient = (
+        db.query(Patient)
+        .filter(Patient.id == data.patient_id, Patient.lab_id == data.lab_id)
+        .first()
+    )
     if patient is None:
         raise HTTPException(status_code=404, detail="patient not found in this lab")
 
@@ -90,12 +97,17 @@ def resolve(
 
 # ── GET /mpi/citizens/{ulid} ─────────────────────────────────────────────────
 
+
 @router.get("/citizens/{citizen_ulid}", response_model=CitizenResponse)
 def get_citizen(
     citizen_ulid: str,
-    current_user: LabUser = Depends(require_role(
-        "master_admin", "ministry_admin", "province_admin",
-    )),
+    current_user: LabUser = Depends(
+        require_role(
+            "master_admin",
+            "ministry_admin",
+            "province_admin",
+        )
+    ),
     db: Session = Depends(get_db),
 ) -> CitizenResponse:
     """Admin-only projection of a canonical citizen.
@@ -103,9 +115,7 @@ def get_citizen(
     Never exposes raw PII (name, phone, NID). The citizen's own portal
     uses a different endpoint after consent verification.
     """
-    citizen = (db.query(Citizen)
-                 .filter(Citizen.citizen_ulid == citizen_ulid)
-                 .first())
+    citizen = db.query(Citizen).filter(Citizen.citizen_ulid == citizen_ulid).first()
     if citizen is None:
         raise HTTPException(status_code=404, detail="citizen not found")
 
@@ -128,12 +138,16 @@ def get_citizen(
 
 # ── POST /mpi/merge ──────────────────────────────────────────────────────────
 
+
 @router.post("/merge", response_model=MergeResponse, status_code=200)
 def manual_merge(
     data: MergeRequest,
-    current_user: LabUser = Depends(require_role(
-        "master_admin", "ministry_admin",
-    )),
+    current_user: LabUser = Depends(
+        require_role(
+            "master_admin",
+            "ministry_admin",
+        )
+    ),
     db: Session = Depends(get_db),
 ) -> MergeResponse:
     """Manually merge two citizens (master/ministry admin only).
@@ -164,13 +178,18 @@ def manual_merge(
 
 # ── GET /mpi/review — list ambiguous claims (0.70-0.90 score) ────────────────
 
+
 @router.get("/review", response_model=PendingReviewPage)
 def list_pending_review(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    current_user: LabUser = Depends(require_role(
-        "master_admin", "ministry_admin", "province_admin",
-    )),
+    current_user: LabUser = Depends(
+        require_role(
+            "master_admin",
+            "ministry_admin",
+            "province_admin",
+        )
+    ),
     db: Session = Depends(get_db),
 ) -> PendingReviewPage:
     """Admin queue of identity claims awaiting adjudication.
@@ -182,33 +201,39 @@ def list_pending_review(
     """
     base = db.query(IdentityClaim).filter(IdentityClaim.match_method == "pending_review")
     total = base.count()
-    rows = (base.order_by(IdentityClaim.created_at.asc())
-                .offset(offset).limit(limit).all())
+    rows = base.order_by(IdentityClaim.created_at.asc()).offset(offset).limit(limit).all()
 
     items: list[PendingReviewItem] = []
     for claim in rows:
         citizen = db.query(Citizen).filter(Citizen.id == claim.citizen_id).first()
-        items.append(PendingReviewItem(
-            claim_id=claim.id,
-            citizen_ulid=citizen.citizen_ulid if citizen else "",
-            lab_id=claim.lab_id,
-            local_patient_id=claim.local_patient_id,
-            match_score=float(claim.match_score) if claim.match_score is not None else None,
-            match_features=claim.match_features or {},
-            created_at=claim.created_at,
-        ))
+        items.append(
+            PendingReviewItem(
+                claim_id=claim.id,
+                citizen_ulid=citizen.citizen_ulid if citizen else "",
+                lab_id=claim.lab_id,
+                local_patient_id=claim.local_patient_id,
+                match_score=float(claim.match_score) if claim.match_score is not None else None,
+                match_features=claim.match_features or {},
+                created_at=claim.created_at,
+            )
+        )
     return PendingReviewPage(total=total, items=items)
 
 
 # ── POST /mpi/review/{claim_id}/decide — adjudicate a pending claim ──────────
 
+
 @router.post("/review/{claim_id}/decide", status_code=200)
 def decide_pending_review(
     claim_id: int,
     decision: ResolveDecision,
-    current_user: LabUser = Depends(require_role(
-        "master_admin", "ministry_admin", "province_admin",
-    )),
+    current_user: LabUser = Depends(
+        require_role(
+            "master_admin",
+            "ministry_admin",
+            "province_admin",
+        )
+    ),
     db: Session = Depends(get_db),
 ):
     """Confirm or reject an ambiguous claim.
@@ -222,7 +247,9 @@ def decide_pending_review(
     if claim is None:
         raise HTTPException(status_code=404, detail="claim not found")
     if claim.match_method != "pending_review":
-        raise HTTPException(status_code=409, detail=f"claim is not pending (method={claim.match_method})")
+        raise HTTPException(
+            status_code=409, detail=f"claim is not pending (method={claim.match_method})"
+        )
 
     if decision.decision == "confirm":
         claim.match_method = "manual"
@@ -231,10 +258,11 @@ def decide_pending_review(
         return {"claim_id": claim.id, "status": "confirmed", "match_method": claim.match_method}
 
     # reject → mint new citizen and rebind the claim
-    patient = (db.query(Patient)
-                 .filter(Patient.id == claim.local_patient_id,
-                         Patient.lab_id == claim.lab_id)
-                 .first())
+    patient = (
+        db.query(Patient)
+        .filter(Patient.id == claim.local_patient_id, Patient.lab_id == claim.lab_id)
+        .first()
+    )
     if patient is None:
         raise HTTPException(status_code=404, detail="underlying patient missing")
 
@@ -253,9 +281,11 @@ def decide_pending_review(
         local_patient_id=patient.id,
         name=patient.full_name,
         phone=patient.phone,
-        birth_year=by, birth_month=bm, birth_day=bd,
+        birth_year=by,
+        birth_month=bm,
+        birth_day=bd,
         gender=patient.gender,
-        national_id=None,   # reject path forces a new canonical; nid-exact would have auto-matched
+        national_id=None,  # reject path forces a new canonical; nid-exact would have auto-matched
         family_id=None,
         claimed_by_user_id=current_user.id,
     )
@@ -279,6 +309,7 @@ def decide_pending_review(
 # citizen, OR be the citizen themselves (owner bypass), OR supply the
 # emergency break-glass header as a doctor.
 
+
 @router.get("/citizens/{citizen_ulid}/access", response_model=CitizenResponse)
 def get_citizen_with_consent(
     citizen_ulid: str,
@@ -291,9 +322,7 @@ def get_citizen_with_consent(
     is the authorization model: this route is for doctors/labs acting on
     the subject's behalf with recorded consent, not for administrators.
     """
-    citizen = (db.query(Citizen)
-                 .filter(Citizen.citizen_ulid == citizen_ulid)
-                 .first())
+    citizen = db.query(Citizen).filter(Citizen.citizen_ulid == citizen_ulid).first()
     if citizen is None:
         raise HTTPException(status_code=404, detail="citizen not found")
 

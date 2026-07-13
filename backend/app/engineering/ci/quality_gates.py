@@ -50,7 +50,9 @@ class QualityGates:
         return self._run("pytest", "python", "-m", "pytest", "-x", "--tb=short", "-q")
 
     def run_coverage(self, min_pct: int = 80) -> GateResult:
-        return self._run("coverage", "python", "-m", "pytest", "--cov=.", "--cov-fail-under", str(min_pct))
+        return self._run(
+            "coverage", "python", "-m", "pytest", "--cov=.", "--cov-fail-under", str(min_pct)
+        )
 
     def run_bandit(self) -> GateResult:
         return self._run("bandit", "python", "-m", "bandit", "-r", "-ll", "-ii", ".")
@@ -61,15 +63,25 @@ class QualityGates:
     def run_radon_cc(self, max_complexity: int = 10) -> GateResult:
         return self._run(
             "radon_cc",
-            "python", "-m", "radon", "cc", ".",
-            "-s", "--min", str(max_complexity),
+            "python",
+            "-m",
+            "radon",
+            "cc",
+            ".",
+            "-s",
+            "--min",
+            str(max_complexity),
         )
 
     def run_py_compile(self) -> GateResult:
         return self._run("py_compile", "python", "-m", "py_compile", "app/main.py")
 
     def run_syntax_gate(self) -> GateResult:
-        result = self._run("syntax-check", "python", "-c", """
+        return self._run(
+            "syntax-check",
+            "python",
+            "-c",
+            """
 import py_compile
 import sys
 from pathlib import Path
@@ -82,8 +94,8 @@ for f in Path('app').rglob('*.py'):
 if errors:
     print('\\\\n'.join(errors))
     sys.exit(1)
-""")
-        return result
+""",
+        )
 
     def run_all(self) -> QualityReport:
         gates = [
@@ -100,6 +112,7 @@ if errors:
 
     def _run(self, name: str, *cmd: str) -> GateResult:
         import time
+
         start = time.monotonic()
         try:
             result = subprocess.run(

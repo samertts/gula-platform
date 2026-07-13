@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import inspect
 import logging
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+from typing import Any, TypeVar
 
-from backend.app.kernel.exceptions import CircularDependencyError, ServiceNotFoundError
+from backend.app.kernel.exceptions import ServiceNotFoundError
 from backend.app.kernel.types import ServiceDescriptor, ServiceLifecycle
 
 logger = logging.getLogger("gula.kernel.di")

@@ -18,9 +18,15 @@ from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/optimizer", tags=["System Optimizer"])
 
-_ADMIN_ROLES = frozenset({
-    "admin", "lab_admin", "province_admin", "ministry_admin", "master_admin",
-})
+_ADMIN_ROLES = frozenset(
+    {
+        "admin",
+        "lab_admin",
+        "province_admin",
+        "ministry_admin",
+        "master_admin",
+    }
+)
 
 
 def _require_admin(user) -> None:
@@ -41,29 +47,29 @@ def get_metrics(current_user=Depends(get_current_user)):
     _require_admin(current_user)
     snap = get_snapshot()
     return {
-        "status":       snap.overall_status,
+        "status": snap.overall_status,
         "collected_at": snap.collected_at,
         "cpu": {
-            "load_1m":      snap.cpu.load_1m,
-            "load_5m":      snap.cpu.load_5m,
-            "load_15m":     snap.cpu.load_15m,
-            "num_cpus":     snap.cpu.num_cpus,
+            "load_1m": snap.cpu.load_1m,
+            "load_5m": snap.cpu.load_5m,
+            "load_15m": snap.cpu.load_15m,
+            "num_cpus": snap.cpu.num_cpus,
             "load_per_cpu": snap.cpu.load_per_cpu,
-            "status":       snap.cpu.status,
+            "status": snap.cpu.status,
         },
         "memory": {
-            "total_mb":     snap.memory.total_mb,
-            "used_mb":      snap.memory.used_mb,
+            "total_mb": snap.memory.total_mb,
+            "used_mb": snap.memory.used_mb,
             "available_mb": snap.memory.available_mb,
-            "used_pct":     snap.memory.used_pct,
-            "status":       snap.memory.status,
+            "used_pct": snap.memory.used_pct,
+            "status": snap.memory.status,
         },
         "database": {
-            "pool_size":       snap.db.pool_size,
-            "checked_out":     snap.db.checked_out,
-            "overflow":        snap.db.overflow,
+            "pool_size": snap.db.pool_size,
+            "checked_out": snap.db.checked_out,
+            "overflow": snap.db.overflow,
             "utilization_pct": snap.db.utilization_pct,
-            "status":          snap.db.status,
+            "status": snap.db.status,
         },
     }
 

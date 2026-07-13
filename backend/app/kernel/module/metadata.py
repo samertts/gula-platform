@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from backend.app.kernel.types import ModuleDescriptor
 
@@ -16,6 +14,7 @@ class ModuleMetadataParser:
         metadata_file = module_path / "module.json"
         if metadata_file.exists():
             import json
+
             with open(metadata_file) as f:
                 data = json.load(f)
             return ModuleDescriptor(

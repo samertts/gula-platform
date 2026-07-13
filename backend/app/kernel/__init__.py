@@ -55,25 +55,26 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
+from backend.app.kernel.background.scheduler import Scheduler
+from backend.app.kernel.config.registry import ConfigurationRegistry
+from backend.app.kernel.event_bus.bus import EventBus
+from backend.app.kernel.features.flags import FeatureFlagManager
+from backend.app.kernel.gateway.discovery import ServiceDiscovery
+from backend.app.kernel.module.loader import ModuleLoader
+from backend.app.kernel.plugin.manager import PluginManager
 from backend.app.kernel.runtime.bootloader import Bootloader
+from backend.app.kernel.runtime.capability_registry import CapabilityRegistry
+from backend.app.kernel.runtime.context import ApplicationContext
+from backend.app.kernel.runtime.di_container import DIContainer
 from backend.app.kernel.runtime.lifecycle import LifecycleManager
 from backend.app.kernel.runtime.service_registry import ServiceRegistry
-from backend.app.kernel.runtime.capability_registry import CapabilityRegistry
-from backend.app.kernel.runtime.di_container import DIContainer
-from backend.app.kernel.runtime.context import ApplicationContext
-from backend.app.kernel.plugin.manager import PluginManager
-from backend.app.kernel.module.loader import ModuleLoader
-from backend.app.kernel.event_bus.bus import EventBus
-from backend.app.kernel.background.scheduler import Scheduler
-from backend.app.kernel.features.flags import FeatureFlagManager
-from backend.app.kernel.config.registry import ConfigurationRegistry
 from backend.app.kernel.tenant.registry import TenantRegistry
-from backend.app.kernel.gateway.discovery import ServiceDiscovery
 
 logger = logging.getLogger("gula.kernel")
 

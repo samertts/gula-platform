@@ -45,12 +45,12 @@ Flags are read-only-by-default. ``enable_*`` / ``disable_*`` calls are
 audit-emitted via ``sndhs_audit_logs`` so any production toggle is
 legally traceable.
 """
+
 from __future__ import annotations
 
 import logging
 import os
 import threading
-from typing import Optional
 
 log = logging.getLogger("gula.sndhs.flags")
 
@@ -69,6 +69,7 @@ def _read_env_bool(name: str, default: bool) -> bool:
 
 # ── Public flag readers ──────────────────────────────────────────────────────
 
+
 def visits_enabled() -> bool:
     with _lock:
         if "ENABLE_VISITS" in _overrides:
@@ -85,7 +86,8 @@ def national_id_enabled() -> bool:
 
 # ── Runtime toggles (admin-only) ─────────────────────────────────────────────
 
-def _set_override(name: str, value: Optional[bool]) -> None:
+
+def _set_override(name: str, value: bool | None) -> None:
     with _lock:
         if value is None:
             _overrides.pop(name, None)
@@ -94,17 +96,34 @@ def _set_override(name: str, value: Optional[bool]) -> None:
     log.warning("sndhs flag override: %s=%s", name, value)
 
 
-def enable_visits()           -> None: _set_override("ENABLE_VISITS", True)
-def disable_visits()          -> None: _set_override("ENABLE_VISITS", False)
-def reset_visits_override()   -> None: _set_override("ENABLE_VISITS", None)
-def enable_national_id()      -> None: _set_override("ENABLE_NATIONAL_ID", True)
-def disable_national_id()     -> None: _set_override("ENABLE_NATIONAL_ID", False)
-def reset_national_id_override() -> None: _set_override("ENABLE_NATIONAL_ID", None)
+def enable_visits() -> None:
+    _set_override("ENABLE_VISITS", True)
+
+
+def disable_visits() -> None:
+    _set_override("ENABLE_VISITS", False)
+
+
+def reset_visits_override() -> None:
+    _set_override("ENABLE_VISITS", None)
+
+
+def enable_national_id() -> None:
+    _set_override("ENABLE_NATIONAL_ID", True)
+
+
+def disable_national_id() -> None:
+    _set_override("ENABLE_NATIONAL_ID", False)
+
+
+def reset_national_id_override() -> None:
+    _set_override("ENABLE_NATIONAL_ID", None)
 
 
 # ── FastAPI helpers ──────────────────────────────────────────────────────────
 # Imported lazily so this module can be used in non-FastAPI contexts
 # (the backfill script, for instance).
+
 
 def require_visits():
     """FastAPI dependency. Returns None when ENABLE_VISITS is on,
@@ -121,6 +140,7 @@ def require_visits():
                     "message": "Visit-based endpoints are disabled in this deployment.",
                 },
             )
+
     return _dep
 
 
@@ -138,6 +158,7 @@ def require_national_id():
                     "message": "National-ID endpoints are disabled in this deployment.",
                 },
             )
+
     return _dep
 
 
@@ -145,6 +166,6 @@ def status_snapshot() -> dict[str, bool]:
     """Return the currently-effective values, useful for ``/health/status``
     and ``/admin/sndhs/flags``."""
     return {
-        "visits_enabled":      visits_enabled(),
+        "visits_enabled": visits_enabled(),
         "national_id_enabled": national_id_enabled(),
     }

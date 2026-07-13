@@ -1,26 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-from typing import Optional
+
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
 from ..security.auth import hash_password
+from ..security.dependencies import get_current_user
 from ..security.session import bump_perm_version
 
 router = APIRouter(prefix="/labs", tags=["labs"])
 
 
 class LabUpdate(BaseModel):
-    name: Optional[str] = None
-    city: Optional[str] = None
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    license_number: Optional[str] = None
-    lab_type: Optional[str] = None      # private | government | hospital | clinic
-    director_name: Optional[str] = None
-    website: Optional[str] = None
+    name: str | None = None
+    city: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    license_number: str | None = None
+    lab_type: str | None = None  # private | government | hospital | clinic
+    director_name: str | None = None
+    website: str | None = None
 
     @field_validator("lab_type")
     @classmethod
@@ -74,8 +74,8 @@ class CreateEmployeeRequest(BaseModel):
 
 
 class UpdateEmployeeRequest(BaseModel):
-    is_active: Optional[bool] = None
-    role: Optional[str] = None
+    is_active: bool | None = None
+    role: str | None = None
 
     @field_validator("role")
     @classmethod
@@ -171,7 +171,8 @@ def update_employee(
         role_or_status_changed = True
     if role_or_status_changed:
         bump_perm_version(
-            employee, db,
+            employee,
+            db,
             actor_id=current_user.id,
             actor_role=current_user.role,
             reason="employee_update",
@@ -194,8 +195,16 @@ def update_my_lab(
         raise HTTPException(status_code=404, detail="Lab not found")
 
     # Explicit field assignment (whitelist) instead of dynamic setattr
-    allowed_fields = {"name", "city", "address", "phone", "license_number",
-                      "lab_type", "director_name", "website"}
+    allowed_fields = {
+        "name",
+        "city",
+        "address",
+        "phone",
+        "license_number",
+        "lab_type",
+        "director_name",
+        "website",
+    }
     for field, value in data.model_dump(exclude_unset=True).items():
         if field in allowed_fields:
             if value is not None and isinstance(value, str):
@@ -205,15 +214,18 @@ def update_my_lab(
     db.commit()
     db.refresh(lab)
 
-    return {"message": "Lab updated", "lab": {
-        "id": lab.id,
-        "name": lab.name,
-        "license_number": lab.license_number,
-        "lab_type": lab.lab_type,
-        "director_name": lab.director_name,
-        "website": lab.website,
-        "city": lab.city,
-        "address": lab.address,
-        "phone": lab.phone,
-        "is_active": lab.is_active,
-    }}
+    return {
+        "message": "Lab updated",
+        "lab": {
+            "id": lab.id,
+            "name": lab.name,
+            "license_number": lab.license_number,
+            "lab_type": lab.lab_type,
+            "director_name": lab.director_name,
+            "website": lab.website,
+            "city": lab.city,
+            "address": lab.address,
+            "phone": lab.phone,
+            "is_active": lab.is_active,
+        },
+    }

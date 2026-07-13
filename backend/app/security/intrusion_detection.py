@@ -1,7 +1,7 @@
 """Intrusion detection with time-windowed tracking and memory safety."""
 
-import time
 import logging
+import time
 from collections import defaultdict
 
 logger = logging.getLogger("gula.security")
@@ -30,7 +30,9 @@ class IntrusionDetector:
         self._attempts[ip].append(now)
 
         if len(self._attempts[ip]) > self._max:
-            logger.warning("IP %s blocked: %d attempts in %ds", ip, len(self._attempts[ip]), self._window)
+            logger.warning(
+                "IP %s blocked: %d attempts in %ds", ip, len(self._attempts[ip]), self._window
+            )
             return "blocked"
         return "ok"
 
@@ -42,15 +44,18 @@ class IntrusionDetector:
         """Remove expired entries and cap memory usage."""
         self._last_cleanup = now
         # Remove expired IPs
-        expired = [ip for ip, times in self._attempts.items()
-                   if not times or (now - times[-1]) > self._window]
+        expired = [
+            ip
+            for ip, times in self._attempts.items()
+            if not times or (now - times[-1]) > self._window
+        ]
         for ip in expired:
             del self._attempts[ip]
 
         # If still too many tracked IPs, remove oldest entries
         if len(self._attempts) > MAX_TRACKED_IPS:
             sorted_ips = sorted(self._attempts.items(), key=lambda x: x[1][-1] if x[1] else 0)
-            for ip, _ in sorted_ips[:len(self._attempts) - MAX_TRACKED_IPS]:
+            for ip, _ in sorted_ips[: len(self._attempts) - MAX_TRACKED_IPS]:
                 del self._attempts[ip]
             logger.warning("Intrusion detector: evicted old IPs, tracking %d", len(self._attempts))
 

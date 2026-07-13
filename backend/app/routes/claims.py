@@ -11,14 +11,13 @@ current_user.lab_id (security invariant).
 """
 
 from decimal import Decimal
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models.claim import Claim, ClaimItem
+from ..models.claim import Claim
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services import claims_service
@@ -28,52 +27,54 @@ router = APIRouter(prefix="/claims", tags=["claims"])
 
 # ─── Pydantic schemas ─────────────────────────────────────────────────────────
 
+
 class ClaimItemCreate(BaseModel):
-    test_code:   str
-    description: Optional[str] = None
-    quantity:    int            = Field(default=1, ge=1)
-    unit_price:  Decimal        = Field(..., gt=0)
-    amount:      Decimal        = Field(..., gt=0)
+    test_code: str
+    description: str | None = None
+    quantity: int = Field(default=1, ge=1)
+    unit_price: Decimal = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0)
 
 
 class ClaimCreate(BaseModel):
-    patient_id:      int
-    order_id:        Optional[int]              = None
-    items:           List[ClaimItemCreate]      = Field(..., min_length=1)
-    idempotency_key: Optional[str]              = None
+    patient_id: int
+    order_id: int | None = None
+    items: list[ClaimItemCreate] = Field(..., min_length=1)
+    idempotency_key: str | None = None
 
 
 class ClaimItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id:          int
-    claim_id:    int
-    test_code:   str
-    description: Optional[str]
-    quantity:    int
-    unit_price:  Decimal
-    amount:      Decimal
+    id: int
+    claim_id: int
+    test_code: str
+    description: str | None
+    quantity: int
+    unit_price: Decimal
+    amount: Decimal
 
 
 class ClaimResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id:              int
-    lab_id:          int
-    patient_id:      int
-    order_id:        Optional[int]
-    status:          str
-    total_amount:    Optional[Decimal]
-    currency:        str
-    idempotency_key: Optional[str]
-    external_ref:    Optional[str]
-    submitted_at:    Optional[str]
-    created_at:      Optional[str]
-    updated_at:      Optional[str]
-    items:           List[ClaimItemResponse]
+    id: int
+    lab_id: int
+    patient_id: int
+    order_id: int | None
+    status: str
+    total_amount: Decimal | None
+    currency: str
+    idempotency_key: str | None
+    external_ref: str | None
+    submitted_at: str | None
+    created_at: str | None
+    updated_at: str | None
+    items: list[ClaimItemResponse]
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
 
 def _claim_to_response(claim: Claim) -> ClaimResponse:
     return ClaimResponse(
@@ -105,6 +106,7 @@ def _claim_to_response(claim: Claim) -> ClaimResponse:
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
+
 
 @router.post("", status_code=201, response_model=ClaimResponse)
 def create_claim(

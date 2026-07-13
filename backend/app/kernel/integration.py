@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING
 
 from backend.app.kernel import Kernel, KernelConfig
-from backend.app.kernel.runtime.context import request_id_var, tenant_id_var, correlation_id_var
-from backend.app.kernel.runtime.lifecycle import LifecycleComponent
 from backend.app.kernel.runtime.shutdown import ShutdownHandler
 
 if TYPE_CHECKING:
-    from fastapi import Request, Response
+    from fastapi import Request
 
 logger = logging.getLogger("gula.kernel.integration")
 
@@ -20,8 +17,7 @@ _kernel_ready: bool = False
 
 
 def get_kernel_config() -> KernelConfig:
-    import os
-    config = KernelConfig(
+    return KernelConfig(
         name=os.getenv("KERNEL_NAME", "gula-kernel"),
         version=os.getenv("APP_VERSION", "2.1.0"),
         environment=os.getenv("RUNTIME_ENV", "production"),
@@ -30,7 +26,8 @@ def get_kernel_config() -> KernelConfig:
         shutdown_timeout=float(os.getenv("KERNEL_SHUTDOWN_TIMEOUT", "30")),
         enable_plugins=os.getenv("KERNEL_ENABLE_PLUGINS", "true").lower() == "true",
         enable_event_bus=os.getenv("KERNEL_ENABLE_EVENT_BUS", "true").lower() == "true",
-        enable_background_processing=os.getenv("KERNEL_ENABLE_BACKGROUND", "true").lower() == "true",
+        enable_background_processing=os.getenv("KERNEL_ENABLE_BACKGROUND", "true").lower()
+        == "true",
         enable_feature_management=os.getenv("KERNEL_ENABLE_FEATURES", "true").lower() == "true",
         enable_config_engine=os.getenv("KERNEL_ENABLE_CONFIG", "true").lower() == "true",
         enable_multi_tenant=os.getenv("KERNEL_ENABLE_TENANT", "true").lower() == "true",
@@ -39,7 +36,6 @@ def get_kernel_config() -> KernelConfig:
         plugin_dir=os.getenv("KERNEL_PLUGIN_DIR", "/var/lib/gula/plugins"),
         module_dir=os.getenv("KERNEL_MODULE_DIR", "/var/lib/gula/modules"),
     )
-    return config
 
 
 def init_kernel() -> Kernel:
@@ -98,6 +94,7 @@ async def stop_kernel() -> None:
 
 async def warmup_kernel() -> None:
     import time
+
     logger.info("Warming up kernel")
     kernel = get_kernel()
     sr = kernel.get_component("service_registry")
@@ -110,7 +107,6 @@ async def warmup_kernel() -> None:
 
 
 def register_kernel_shutdown(handler_list: list) -> None:
-    error_handlers = handler_list or []
     kernel = get_kernel()
     sm = kernel.get_component("shutdown_manager")
     if not sm:
@@ -119,7 +115,6 @@ def register_kernel_shutdown(handler_list: list) -> None:
 
 
 def kernel_kill_switch_active() -> bool:
-    import os
     if os.getenv("KERNEL_KILL_SWITCH", "false").lower() == "true":
         return True
     kernel = get_kernel()
@@ -130,10 +125,7 @@ def kernel_kill_switch_active() -> bool:
 
 
 def kernel_degraded_mode() -> bool:
-    import os
-    if os.getenv("KERNEL_DEGRADED", "false").lower() == "true":
-        return True
-    return False
+    return os.getenv("KERNEL_DEGRADED", "false").lower() == "true"
 
 
 async def get_kernel_health() -> dict:

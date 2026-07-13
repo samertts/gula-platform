@@ -109,19 +109,27 @@ jobs:{jobs_block}{extra_steps_block}"""
       - run: pip install build
       - run: python -m build"""
         if spec.docker_registry:
-            steps += """
+            steps += (
+                """
       - name: Log in to registry
         uses: docker/login-action@v3
         with:
-          registry: """ + spec.docker_registry + """
-      - run: docker build -t """ + spec.docker_registry + """/${{ github.repository }}:${{ github.sha }} .
-      - run: docker push """ + spec.docker_registry + """/${{ github.repository }}:${{ github.sha }}"""
+          registry: """
+                + spec.docker_registry
+                + """
+      - run: docker build -t """
+                + spec.docker_registry
+                + """/${{ github.repository }}:${{ github.sha }} .
+      - run: docker push """
+                + spec.docker_registry
+                + """/${{ github.repository }}:${{ github.sha }}"""
+            )
         return steps
 
 
 class DockerGenerator(BaseGenerator):
     def generate(self, **kwargs: Any) -> GenerateResult:
-        name = kwargs.get("name", "app")
+        kwargs.get("name", "app")
         python_version = kwargs.get("python_version", "3.11-slim")
         port = kwargs.get("port", 8000)
         entrypoint = kwargs.get("entrypoint", "uvicorn app.main:app --host 0.0.0.0 --port {port}")
@@ -200,18 +208,18 @@ class ComposeGenerator(BaseGenerator):
             if image:
                 svc_lines.append(f"    image: {image}")
             if port:
-                svc_lines.append(f'    ports:')
+                svc_lines.append("    ports:")
                 svc_lines.append(f'      - "{port}"')
             if deps:
-                svc_lines.append(f"    depends_on:")
+                svc_lines.append("    depends_on:")
                 for d in deps:
                     svc_lines.append(f"      - {d}")
             if env:
-                svc_lines.append(f"    environment:")
+                svc_lines.append("    environment:")
                 for k, v in env.items():
                     svc_lines.append(f'      {k}: "{v}"')
             if vols:
-                svc_lines.append(f"    volumes:")
+                svc_lines.append("    volumes:")
                 for v in vols:
                     svc_lines.append(f"      - {v}")
             services_block += "\n".join(svc_lines) + "\n"
@@ -246,13 +254,18 @@ class KubernetesGenerator(BaseGenerator):
 
         self._ensure_dir("k8s")
 
-        self._write("k8s/namespace.yaml", f"""apiVersion: v1
+        self._write(
+            "k8s/namespace.yaml",
+            f"""apiVersion: v1
 kind: Namespace
 metadata:
   name: {namespace}
-""")
+""",
+        )
 
-        self._write("k8s/deployment.yaml", f"""apiVersion: apps/v1
+        self._write(
+            "k8s/deployment.yaml",
+            f"""apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {name}
@@ -293,9 +306,12 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-""")
+""",
+        )
 
-        self._write("k8s/service.yaml", f"""apiVersion: v1
+        self._write(
+            "k8s/service.yaml",
+            f"""apiVersion: v1
 kind: Service
 metadata:
   name: {name}
@@ -307,9 +323,12 @@ spec:
     - port: {port}
       targetPort: {port}
   type: ClusterIP
-""")
+""",
+        )
 
-        self._write("k8s/hpa.yaml", f"""apiVersion: autoscaling/v2
+        self._write(
+            "k8s/hpa.yaml",
+            f"""apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {name}
@@ -328,14 +347,19 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
-""")
+""",
+        )
 
         if include_postgres:
-            self._write("k8s/postgres.yaml", """apiVersion: apps/v1
+            self._write(
+                "k8s/postgres.yaml",
+                """apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
-  namespace: """ + namespace + """
+  namespace: """
+                + namespace
+                + """
 spec:
   serviceName: postgres
   replicas: 1
@@ -376,21 +400,28 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: """ + namespace + """
+  namespace: """
+                + namespace
+                + """
 spec:
   selector:
     app: postgres
   ports:
     - port: 5432
       targetPort: 5432
-""")
+""",
+            )
 
         if include_redis:
-            self._write("k8s/redis.yaml", """apiVersion: apps/v1
+            self._write(
+                "k8s/redis.yaml",
+                """apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis
-  namespace: """ + namespace + """
+  namespace: """
+                + namespace
+                + """
 spec:
   replicas: 1
   selector:
@@ -411,16 +442,21 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis
-  namespace: """ + namespace + """
+  namespace: """
+                + namespace
+                + """
 spec:
   selector:
     app: redis
   ports:
     - port: 6379
       targetPort: 6379
-""")
+""",
+            )
 
-        self._write("k8s/kustomization.yaml", f"""apiVersion: kustomize.config.k8s.io/v1beta1
+        self._write(
+            "k8s/kustomization.yaml",
+            f"""apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: {namespace}
 resources:
@@ -428,6 +464,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - hpa.yaml
-""")
+""",
+        )
 
         return self._result

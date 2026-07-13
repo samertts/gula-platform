@@ -19,36 +19,39 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
-from app.ai.approval import ApprovalStatus, PendingApproval, approval_store
+from app.ai.approval import PendingApproval, approval_store
 from app.ai.guardrails import AIGuardrailViolation
 
 logger = logging.getLogger("gula.ai.sandbox")
 
 # ─── Execution Result ─────────────────────────────────────────────────────────
 
+
 @dataclass
 class SandboxResult:
     approval_id: str
-    operation:   str
-    success:     bool
-    output:      Any
+    operation: str
+    success: bool
+    output: Any
     executed_at: float
     duration_ms: float
-    error:       str = ""
+    error: str = ""
 
 
 # ─── Operation Registry ───────────────────────────────────────────────────────
 
-_REGISTRY: Dict[str, Callable[[Dict[str, Any]], Any]] = {}
+_REGISTRY: dict[str, Callable[[dict[str, Any]], Any]] = {}
 
 
 def _register(operation: str) -> Callable:
     def decorator(fn: Callable) -> Callable:
         _REGISTRY[operation] = fn
         return fn
+
     return decorator
 
 
@@ -56,18 +59,19 @@ def _register(operation: str) -> Callable:
 # All handlers are read-only. They never write to the database.
 # Output must always be treated as a suggestion for physician review.
 
+
 @_register("suggest_interpretation")
-def _suggest_interpretation(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _suggest_interpretation(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Interpret a single lab result using the rules-based interpretation engine.
     Delegates to app.services.interpretation — deterministic, no ML involved.
     """
-    from app.services.interpretation import interpret_result, get_flag
+    from app.services.interpretation import get_flag, interpret_result
 
-    test_name   = payload.get("test_name", "")
-    value       = payload.get("value")
-    unit        = payload.get("unit", "")
-    normal_low  = payload.get("normal_low")
+    test_name = payload.get("test_name", "")
+    value = payload.get("value")
+    unit = payload.get("unit", "")
+    normal_low = payload.get("normal_low")
     normal_high = payload.get("normal_high")
 
     if value is None:
@@ -75,25 +79,25 @@ def _suggest_interpretation(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     value = float(value)
     interp = interpret_result(test_name, value, normal_low, normal_high)
-    flag   = get_flag(value, normal_low, normal_high, test_name)
+    flag = get_flag(value, normal_low, normal_high, test_name)
 
     return {
-        "test_name":           test_name,
-        "value":               value,
-        "unit":                unit,
-        "flag":                flag,
-        "status":              interp.get("status"),
-        "interpretation":      interp.get("interpretation"),
-        "interpretation_ar":   interp.get("interpretation_ar"),
-        "advice":              interp.get("advice"),
-        "advice_ar":           interp.get("advice_ar"),
-        "display_only":        True,
+        "test_name": test_name,
+        "value": value,
+        "unit": unit,
+        "flag": flag,
+        "status": interp.get("status"),
+        "interpretation": interp.get("interpretation"),
+        "interpretation_ar": interp.get("interpretation_ar"),
+        "advice": interp.get("advice"),
+        "advice_ar": interp.get("advice_ar"),
+        "display_only": True,
         "requires_doctor_review": flag in ("H", "L", "critical"),
     }
 
 
 @_register("analyze_order")
-def _analyze_order(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _analyze_order(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Run multi-test clinical pattern analysis on an order's results.
     Uses the rules-based clinical_intelligence engine (deterministic, not ML).
@@ -102,10 +106,10 @@ def _analyze_order(payload: Dict[str, Any]) -> Dict[str, Any]:
     Everything is display_only — no DB writes.
     """
     from app.services.clinical_intelligence import analyze_results, quick_flag_summary
-    from app.services.interpretation import interpret_result, get_flag
+    from app.services.interpretation import get_flag, interpret_result
 
-    order_id    = payload.get("order_id")
-    result_list: List[dict] = payload.get("result_list", [])
+    order_id = payload.get("order_id")
+    result_list: list[dict] = payload.get("result_list", [])
 
     # 1. Multi-test pattern analysis (sepsis, DKA, renal failure, etc.)
     patterns = analyze_results(result_list)
@@ -120,69 +124,71 @@ def _analyze_order(payload: Dict[str, Any]) -> Dict[str, Any]:
         if value is None:
             continue
         value = float(value)
-        test_name   = r.get("test_name", "")
-        normal_low  = r.get("normal_range_low")
+        test_name = r.get("test_name", "")
+        normal_low = r.get("normal_range_low")
         normal_high = r.get("normal_range_high")
 
         interp = interpret_result(test_name, value, normal_low, normal_high)
-        flag   = get_flag(value, normal_low, normal_high, test_name)
+        flag = get_flag(value, normal_low, normal_high, test_name)
 
-        interpretations.append({
-            "test_name":         test_name,
-            "value":             value,
-            "unit":              r.get("unit", ""),
-            "flag":              flag,
-            "status":            interp.get("status"),
-            "interpretation":    interp.get("interpretation"),
-            "interpretation_ar": interp.get("interpretation_ar"),
-            "advice":            interp.get("advice"),
-            "advice_ar":         interp.get("advice_ar"),
-        })
+        interpretations.append(
+            {
+                "test_name": test_name,
+                "value": value,
+                "unit": r.get("unit", ""),
+                "flag": flag,
+                "status": interp.get("status"),
+                "interpretation": interp.get("interpretation"),
+                "interpretation_ar": interp.get("interpretation_ar"),
+                "advice": interp.get("advice"),
+                "advice_ar": interp.get("advice_ar"),
+            }
+        )
 
     return {
-        "order_id":        order_id,
-        "patterns":        patterns,
-        "flag_summary":    flag_summary,
+        "order_id": order_id,
+        "patterns": patterns,
+        "flag_summary": flag_summary,
         "interpretations": interpretations,
-        "display_only":    True,
-        "source":          "rules_based_engine",
+        "display_only": True,
+        "source": "rules_based_engine",
     }
 
 
 @_register("summarize_history")
-def _summarize_history(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _summarize_history(payload: dict[str, Any]) -> dict[str, Any]:
     """Plain-text summary of patient history (display only)."""
-    order_count  = payload.get("order_count", 0)
+    order_count = payload.get("order_count", 0)
     recent_tests = payload.get("recent_tests", [])
     return {
-        "summary":      f"Patient has {order_count} orders. "
-                        f"Recent: {', '.join(recent_tests) or 'none'}",
+        "summary": f"Patient has {order_count} orders. Recent: {', '.join(recent_tests) or 'none'}",
         "display_only": True,
     }
 
 
 @_register("flag_anomaly")
-def _flag_anomaly(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _flag_anomaly(payload: dict[str, Any]) -> dict[str, Any]:
     """Suggest flagging a result for human review (does not write anything)."""
     return {
-        "flagged":                True,
-        "reason":                 payload.get("reason", "AI detected anomaly"),
-        "display_only":           False,
+        "flagged": True,
+        "reason": payload.get("reason", "AI detected anomaly"),
+        "display_only": False,
         "requires_doctor_review": True,
     }
 
 
 @_register("translate_report")
-def _translate_report(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _translate_report(payload: dict[str, Any]) -> dict[str, Any]:
     """Placeholder for bilingual report translation (ENRICHMENT only)."""
     return {
-        "translated":   payload.get("text", ""),
-        "language":     payload.get("target_language", "ar"),
+        "translated": payload.get("text", ""),
+        "language": payload.get("target_language", "ar"),
         "display_only": True,
     }
 
 
 # ─── Sandbox ─────────────────────────────────────────────────────────────────
+
 
 class AISandbox:
     """
@@ -198,12 +204,11 @@ class AISandbox:
     @staticmethod
     def execute(approval: PendingApproval) -> SandboxResult:
         start = time.monotonic()
-        op    = approval.suggestion.operation
+        op = approval.suggestion.operation
 
         if not approval.is_executable:
             raise AIGuardrailViolation(
-                f"Cannot execute approval {approval.id}: "
-                f"status={approval.status.value}"
+                f"Cannot execute approval {approval.id}: status={approval.status.value}"
             )
 
         if op not in _REGISTRY:
@@ -214,20 +219,23 @@ class AISandbox:
 
         logger.info(
             "[AI_SANDBOX] executing id=%s operation=%s entity=%s/%s approved_by=%s",
-            approval.id, op,
+            approval.id,
+            op,
             approval.suggestion.entity_type or "—",
             approval.suggestion.entity_id or "—",
             approval.reviewed_by or "—",
         )
 
         try:
-            output      = _REGISTRY[op](approval.suggestion.payload)
+            output = _REGISTRY[op](approval.suggestion.payload)
             duration_ms = (time.monotonic() - start) * 1000
             approval_store.mark_executed(approval.id)
 
             logger.info(
                 "[AI_SANDBOX] completed id=%s operation=%s duration_ms=%.1f",
-                approval.id, op, duration_ms,
+                approval.id,
+                op,
+                duration_ms,
             )
 
             return SandboxResult(
@@ -245,7 +253,10 @@ class AISandbox:
             duration_ms = (time.monotonic() - start) * 1000
             logger.error(
                 "[AI_SANDBOX] failed id=%s operation=%s error=%r duration_ms=%.1f",
-                approval.id, op, str(exc), duration_ms,
+                approval.id,
+                op,
+                str(exc),
+                duration_ms,
             )
             return SandboxResult(
                 approval_id=approval.id,

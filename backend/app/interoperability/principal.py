@@ -9,11 +9,12 @@ See ``docs/sovereign/phase16-interoperability/07-rbac-extensions.md``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+
+from app._compat import StrEnum
 
 
-class InteropRole(str, Enum):
+class InteropRole(StrEnum):
     READER = "INTEROP_READER"
     WRITER_LIMITED = "INTEROP_WRITER_LIMITED"
     REGULATOR_READ = "INTEROP_REGULATOR_READ"

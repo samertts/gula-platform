@@ -15,11 +15,20 @@ from jose import JWTError
 
 from shared.auth import (
     create_access_token as _shared_create_access_token,
+)
+from shared.auth import (
     create_refresh_token as _shared_create_refresh_token,
+)
+from shared.auth import (
     decode_access_token as _shared_decode_access_token,
+)
+from shared.auth import (
     hash_password as _shared_hash_password,
+)
+from shared.auth import (
     verify_password as _shared_verify_password,
 )
+
 from ..config import (
     JWT_ALGORITHM,
     JWT_EXPIRE_MINUTES,
@@ -30,13 +39,16 @@ from ..config import (
 
 # ── JWT Token Blacklist (revocation) ──────────────────────────────────────────
 
+
 def blacklist_token(jti: str, ttl_seconds: int) -> None:
     from .redis_client import cache
+
     cache.set(f"blacklist:jti:{jti}", "1", ex=ttl_seconds)
 
 
 def is_token_blacklisted(jti: str) -> bool:
     from .redis_client import cache
+
     return cache.get(f"blacklist:jti:{jti}") is not None
 
 

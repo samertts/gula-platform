@@ -1,14 +1,17 @@
 """Quality Control endpoints - Westgard rules for lab instrument validation."""
-import math
+
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
-from typing import Optional, List
-from datetime import datetime, timezone, timedelta
+
+from app._compat import UTC
+
 from ..database import get_db
-from ..models.quality_control import QualityControl
 from ..models.lab_user import LabUser
+from ..models.quality_control import QualityControl
 from ..security.dependencies import get_current_user
 
 router = APIRouter(prefix="/qc", tags=["quality-control"])
@@ -19,15 +22,15 @@ class QCSubmit(BaseModel):
     level: str  # low, normal, high
     expected_value: float
     measured_value: float
-    sd: Optional[float] = None
-    unit: Optional[str] = None
-    instrument_name: Optional[str] = None
-    lot_number: Optional[str] = None
-    notes: Optional[str] = None
+    sd: float | None = None
+    unit: str | None = None
+    instrument_name: str | None = None
+    lot_number: str | None = None
+    notes: str | None = None
 
 
 class QCBatchSubmit(BaseModel):
-    results: List[QCSubmit]
+    results: list[QCSubmit]
 
 
 def evaluate_westgard(measured: float, expected: float, sd: float) -> dict:
@@ -136,8 +139,8 @@ def submit_qc_batch(
 
 @router.get("")
 def list_qc(
-    test_code: Optional[str] = None,
-    status: Optional[str] = None,
+    test_code: str | None = None,
+    status: str | None = None,
     days: int = Query(7, ge=1, le=90),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -145,7 +148,7 @@ def list_qc(
     db: Session = Depends(get_db),
 ):
     """List QC results for the lab."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     query = db.query(QualityControl).filter(
         QualityControl.lab_id == current_user.lab_id,
         QualityControl.created_at >= cutoff,
@@ -171,33 +174,44 @@ def qc_summary(
     db: Session = Depends(get_db),
 ):
     """QC dashboard summary - pass/warning/fail counts by test."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    stats = db.query(
-        QualityControl.test_code,
-        func.count(QualityControl.id).label("total"),
-        func.count(func.nullif(QualityControl.status != "pass", False)).label("issues"),
-    ).filter(
-        QualityControl.lab_id == current_user.lab_id,
-        QualityControl.created_at >= cutoff,
-    ).group_by(QualityControl.test_code).all()
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    stats = (
+        db.query(
+            QualityControl.test_code,
+            func.count(QualityControl.id).label("total"),
+            func.count(func.nullif(QualityControl.status != "pass", False)).label("issues"),
+        )
+        .filter(
+            QualityControl.lab_id == current_user.lab_id,
+            QualityControl.created_at >= cutoff,
+        )
+        .group_by(QualityControl.test_code)
+        .all()
+    )
 
     summary = []
     for s in stats:
         pass_rate = ((s.total - s.issues) / s.total * 100) if s.total > 0 else 100
-        summary.append({
-            "test_code": s.test_code,
-            "total": s.total,
-            "issues": s.issues,
-            "pass_rate": round(pass_rate, 1),
-            "status": "good" if pass_rate >= 95 else "review" if pass_rate >= 80 else "critical",
-        })
+        summary.append(
+            {
+                "test_code": s.test_code,
+                "total": s.total,
+                "issues": s.issues,
+                "pass_rate": round(pass_rate, 1),
+                "status": "good"
+                if pass_rate >= 95
+                else "review"
+                if pass_rate >= 80
+                else "critical",
+            }
+        )
 
     return {
         "period_days": days,
         "tests": summary,
-        "overall_pass_rate": round(
-            sum(s["pass_rate"] for s in summary) / len(summary), 1
-        ) if summary else 100,
+        "overall_pass_rate": round(sum(s["pass_rate"] for s in summary) / len(summary), 1)
+        if summary
+        else 100,
     }
 
 

@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timezone, datetime, timedelta
+from datetime import datetime, timedelta
+
+from app._compat import UTC
 
 from ..database import SessionLocal
 from ..models.edge import EdgeDevice, EdgeEvent
@@ -68,7 +70,7 @@ async def edge_maintenance_loop(interval_s: int = 30) -> None:
 
 
 def _mark_offline_devices(db) -> int:
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=EDGE_HEARTBEAT_TIMEOUT_S)
+    cutoff = datetime.now(UTC) - timedelta(seconds=EDGE_HEARTBEAT_TIMEOUT_S)
     devices = (
         db.query(EdgeDevice)
         .filter(

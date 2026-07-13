@@ -24,10 +24,6 @@ IS_PRODUCTION = ENV == "production"
 # isolated by default.
 RUNTIME_MODE = os.getenv("RUNTIME_MODE", "api").lower()
 if RUNTIME_MODE not in {"api", "worker", "test", "cli"}:
-    print(
-        f"[GULA FATAL] Invalid RUNTIME_MODE={RUNTIME_MODE!r}. Allowed: api | worker | test | cli",
-        file=sys.stderr,
-    )
     sys.exit(1)
 
 IS_WORKER_RUNTIME = RUNTIME_MODE == "worker"
@@ -68,7 +64,6 @@ PLATFORM_NAME_AR = "منصة غولا الصحية"
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 if not DATABASE_URL:
     if IS_PRODUCTION:
-        print("[GULA FATAL] DATABASE_URL must be set in production.", file=sys.stderr)
         sys.exit(1)
     # Dev-only fallback: use local postgres without hardcoded password
     DATABASE_URL = "postgresql://postgres@localhost:5432/gula"
@@ -101,16 +96,10 @@ def _is_weak_secret(value: str) -> bool:
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 if not SECRET_KEY:
     if IS_PRODUCTION:
-        print("[GULA FATAL] SECRET_KEY must be set in production.", file=sys.stderr)
         sys.exit(1)
     SECRET_KEY = secrets.token_urlsafe(64)
     logger.warning("SECRET_KEY not set - using random key. Sessions won't survive restarts.")
 elif IS_PRODUCTION and _is_weak_secret(SECRET_KEY):
-    print(
-        "[GULA FATAL] SECRET_KEY contains a weak/default pattern. "
-        "Set a strong random value in .env (e.g. `openssl rand -hex 64`).",
-        file=sys.stderr,
-    )
     sys.exit(1)
 
 JWT_ALGORITHM = "HS256"
@@ -126,7 +115,6 @@ JWT_EXPIRE_HOURS = JWT_EXPIRE_MINUTES // 60 or 1  # kept for cookie max_age calc
 REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET", "")
 if not REFRESH_TOKEN_SECRET:
     if IS_PRODUCTION:
-        print("[GULA FATAL] REFRESH_TOKEN_SECRET must be set in production.", file=sys.stderr)
         sys.exit(1)
     # Dev fallback: derive from SECRET_KEY (not suitable for production)
     REFRESH_TOKEN_SECRET = f"refresh_{SECRET_KEY}"
@@ -140,15 +128,9 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 if not ENCRYPTION_KEY:
     if IS_PRODUCTION:
-        print("[GULA FATAL] ENCRYPTION_KEY must be set in production.", file=sys.stderr)
         sys.exit(1)
     logger.warning("ENCRYPTION_KEY not set. Set it in .env for production.")
 elif IS_PRODUCTION and _is_weak_secret(ENCRYPTION_KEY):
-    print(
-        "[GULA FATAL] ENCRYPTION_KEY contains a weak/default pattern. "
-        'Generate with: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"',
-        file=sys.stderr,
-    )
     sys.exit(1)
 
 # ─── National ID HMAC ────────────────────────────────────────────────────────
@@ -156,7 +138,6 @@ elif IS_PRODUCTION and _is_weak_secret(ENCRYPTION_KEY):
 NID_HMAC_KEY = os.getenv("NID_HMAC_KEY", "")
 if not NID_HMAC_KEY:
     if IS_PRODUCTION:
-        print("[GULA FATAL] NID_HMAC_KEY must be set in production.", file=sys.stderr)
         sys.exit(1)
     NID_HMAC_KEY = ENCRYPTION_KEY or SECRET_KEY
     logger.warning("NID_HMAC_KEY not set. Set a stable key in .env for production.")
@@ -304,7 +285,9 @@ KERNEL_ENABLE_GATEWAY = os.getenv("KERNEL_ENABLE_GATEWAY", "true").lower() == "t
 # Returns the shared AppConfig dataclass for use by new code.
 # Legacy globals above remain for backward compatibility.
 
+
 def get_shared_config():
     """Return the canonical AppConfig from shared.config.loader."""
     from shared.config import load_config as _load
+
     return _load()

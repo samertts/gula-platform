@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from dataclasses import dataclass
 
 from backend.app.kernel.event_bus.events import Event
 
@@ -27,7 +25,7 @@ class RetryQueue:
         self._backoff_base = 1.0
 
     def enqueue(self, entry: RetryEntry) -> None:
-        entry.next_retry_at = time.time() + (self._backoff_base * (2 ** entry.retry_count))
+        entry.next_retry_at = time.time() + (self._backoff_base * (2**entry.retry_count))
         self._entries.append(entry)
 
     def dequeue_ready(self) -> list[RetryEntry]:

@@ -41,13 +41,16 @@ class EventDrivenValidator:
                 mutable_field = False
                 for child in node.body:
                     if isinstance(child, ast.AnnAssign) and child.value:
-                        if isinstance(child.value, ast.List) or isinstance(child.value, ast.Dict):
+                        if isinstance(child.value, (ast.List, ast.Dict)):
                             mutable_field = True
                     if isinstance(child, ast.Assign):
                         for target in child.targets:
                             if isinstance(target, ast.Name):
                                 for ancestor in ast.walk(tree):
-                                    if isinstance(ancestor, ast.FunctionDef) and ancestor.name == "__post_init__":
+                                    if (
+                                        isinstance(ancestor, ast.FunctionDef)
+                                        and ancestor.name == "__post_init__"
+                                    ):
                                         pass
                 if mutable_field:
                     self.issues.append(
@@ -64,8 +67,22 @@ class EventDrivenValidator:
             if isinstance(node, ast.ClassDef):
                 name = node.name
                 if "Event" in name:
-                    if not (name.endswith("Event") or name.endswith("ed") or name.endswith("en")):
-                        if not any(word in name for word in ["Created", "Updated", "Deleted", "Submitted", "Approved", "Rejected", "Completed", "Failed", "Started", "Finished"]):
+                    if not (name.endswith(("Event", "ed", "en"))):
+                        if not any(
+                            word in name
+                            for word in [
+                                "Created",
+                                "Updated",
+                                "Deleted",
+                                "Submitted",
+                                "Approved",
+                                "Rejected",
+                                "Completed",
+                                "Failed",
+                                "Started",
+                                "Finished",
+                            ]
+                        ):
                             self.issues.append(
                                 EventDrivenIssue(
                                     file=str(file.relative_to(self.project_root)),

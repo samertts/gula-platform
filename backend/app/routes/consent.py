@@ -14,6 +14,7 @@ MVP policy
 - Revoke: the subject may always revoke; master/ministry admins may too.
 - Check: any authenticated actor can check if THEY have consent.
 """
+
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -26,36 +27,38 @@ from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_user
 from ..services import consent_service
 from ..services.consent_service import (
-    ALLOWED_SCOPES, MAX_CONSENT_HOURS, ConsentError,
+    ALLOWED_SCOPES,
+    MAX_CONSENT_HOURS,
+    ConsentError,
 )
-
 
 router = APIRouter(prefix="/consent", tags=["consent"])
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
+
 class GrantRequest(BaseModel):
-    gpid:             str = Field(..., min_length=26, max_length=26,
-                                  description="Subject citizen_ulid")
-    grantee_id:       str = Field(..., min_length=3, max_length=64,
-                                  description="Actor being authorized (e.g. 'user:42')")
-    scope:            str = Field(..., min_length=3, max_length=64)
+    gpid: str = Field(..., min_length=26, max_length=26, description="Subject citizen_ulid")
+    grantee_id: str = Field(
+        ..., min_length=3, max_length=64, description="Actor being authorized (e.g. 'user:42')"
+    )
+    scope: str = Field(..., min_length=3, max_length=64)
     expires_in_hours: int = Field(..., ge=1, le=MAX_CONSENT_HOURS)
 
 
 class GrantResponse(BaseModel):
     consent_id: str
-    gpid:       str
+    gpid: str
     grantee_id: str
-    scope:      str
+    scope: str
     expires_at: datetime
 
 
 class RevokeRequest(BaseModel):
-    gpid:       str = Field(..., min_length=26, max_length=26)
+    gpid: str = Field(..., min_length=26, max_length=26)
     grantee_id: str = Field(..., min_length=3, max_length=64)
-    scope:      str = Field(..., min_length=3, max_length=64)
+    scope: str = Field(..., min_length=3, max_length=64)
 
 
 class RevokeResponse(BaseModel):
@@ -63,8 +66,8 @@ class RevokeResponse(BaseModel):
 
 
 class CheckResponse(BaseModel):
-    allowed:    bool
-    scope:      str
+    allowed: bool
+    scope: str
     expires_at: datetime | None = None
 
 
@@ -80,6 +83,7 @@ def _user_owns_gpid(user: LabUser, gpid: str) -> bool:
 
 # ── POST /consent/grant ──────────────────────────────────────────────────────
 
+
 @router.post("/grant", response_model=GrantResponse, status_code=201)
 def grant(
     data: GrantRequest,
@@ -94,15 +98,15 @@ def grant(
     rate_limit_user(request, current_user.id, max_per_minute=30)
 
     if data.scope not in ALLOWED_SCOPES:
-        raise HTTPException(status_code=400,
-                            detail=f"scope '{data.scope}' is not allowed")
+        raise HTTPException(status_code=400, detail=f"scope '{data.scope}' is not allowed")
 
-    if not (_user_owns_gpid(current_user, data.gpid)
-            or current_user.role in _ADMIN_GRANT_ROLES):
+    if not (_user_owns_gpid(current_user, data.gpid) or current_user.role in _ADMIN_GRANT_ROLES):
         raise HTTPException(
             status_code=403,
-            detail={"error": "grant_forbidden",
-                    "message": "Only the subject or platform admin may grant consent."},
+            detail={
+                "error": "grant_forbidden",
+                "message": "Only the subject or platform admin may grant consent.",
+            },
         )
 
     try:
@@ -131,6 +135,7 @@ def grant(
 
 # ── POST /consent/revoke ──────────────────────────────────────────────────────
 
+
 @router.post("/revoke", response_model=RevokeResponse)
 def revoke(
     data: RevokeRequest,
@@ -141,12 +146,13 @@ def revoke(
     """Revoke an active consent. Subject or platform admin only."""
     rate_limit_user(request, current_user.id, max_per_minute=30)
 
-    if not (_user_owns_gpid(current_user, data.gpid)
-            or current_user.role in _ADMIN_GRANT_ROLES):
+    if not (_user_owns_gpid(current_user, data.gpid) or current_user.role in _ADMIN_GRANT_ROLES):
         raise HTTPException(
             status_code=403,
-            detail={"error": "revoke_forbidden",
-                    "message": "Only the subject or platform admin may revoke consent."},
+            detail={
+                "error": "revoke_forbidden",
+                "message": "Only the subject or platform admin may revoke consent.",
+            },
         )
 
     revoked = consent_service.revoke_consent(
@@ -164,6 +170,7 @@ def revoke(
 
 # ── GET /consent/check ────────────────────────────────────────────────────────
 
+
 @router.get("/check", response_model=CheckResponse)
 def check(
     gpid: str,
@@ -174,7 +181,10 @@ def check(
     """Does the current actor hold active consent for (gpid, scope)?"""
     actor_id = f"user:{current_user.id}"
     row = consent_service.check_active_consent(
-        db, gpid=gpid, grantee_id=actor_id, scope=scope,
+        db,
+        gpid=gpid,
+        grantee_id=actor_id,
+        scope=scope,
     )
     if row is None:
         return CheckResponse(allowed=False, scope=scope)

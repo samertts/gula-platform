@@ -3,11 +3,13 @@
 Returns whether the platform needs first-time setup (no users exist yet).
 Used by the login page to auto-show the registration tab on first run.
 """
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
+from ..config import IS_PRODUCTION
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..config import IS_PRODUCTION
 
 router = APIRouter(tags=["setup"])
 

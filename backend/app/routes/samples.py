@@ -1,18 +1,17 @@
 """Sample collection and tracking endpoints."""
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Optional
-from datetime import datetime, timezone
 
 from ..database import get_db
-from ..models.sample import Sample
+from ..domain.order_state import assert_not_locked
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
+from ..models.sample import Sample
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
 from ..services.audit_service import log_action
-from ..domain.order_state import assert_not_locked
 
 router = APIRouter(prefix="/samples", tags=["samples"])
 
@@ -20,19 +19,29 @@ router = APIRouter(prefix="/samples", tags=["samples"])
 class SampleCreate(BaseModel):
     order_id: int
     sample_type: str  # blood, urine, stool, swab, serum, plasma
-    collected_by: Optional[str] = None
-    notes: Optional[str] = None
-    storage_location: Optional[str] = None
+    collected_by: str | None = None
+    notes: str | None = None
+    storage_location: str | None = None
 
 
 class SampleUpdate(BaseModel):
-    status: Optional[str] = None  # collected, received, processing, analyzed, rejected
-    rejection_reason: Optional[str] = None
-    notes: Optional[str] = None
-    storage_location: Optional[str] = None
+    status: str | None = None  # collected, received, processing, analyzed, rejected
+    rejection_reason: str | None = None
+    notes: str | None = None
+    storage_location: str | None = None
 
 
-VALID_SAMPLE_TYPES = ["blood", "urine", "stool", "swab", "serum", "plasma", "csf", "sputum", "other"]
+VALID_SAMPLE_TYPES = [
+    "blood",
+    "urine",
+    "stool",
+    "swab",
+    "serum",
+    "plasma",
+    "csf",
+    "sputum",
+    "other",
+]
 VALID_STATUSES = ["collected", "received", "processing", "analyzed", "rejected"]
 
 
@@ -43,10 +52,14 @@ def create_sample(
     db: Session = Depends(get_db),
 ):
     """Register a new sample for an order."""
-    order = db.query(LabOrder).filter(
-        LabOrder.id == data.order_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    order = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == data.order_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -77,7 +90,7 @@ def create_sample(
 def list_samples(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
-    status: Optional[str] = None,
+    status: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
 ):
@@ -100,10 +113,15 @@ def get_sample(
     db: Session = Depends(get_db),
 ):
     """Get sample by barcode."""
-    sample = db.query(Sample).join(LabOrder).filter(
-        Sample.barcode == barcode,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    sample = (
+        db.query(Sample)
+        .join(LabOrder)
+        .filter(
+            Sample.barcode == barcode,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not sample:
         raise HTTPException(status_code=404, detail="Sample not found")
     return sample_to_dict(sample)
@@ -118,10 +136,15 @@ def update_sample(
     db: Session = Depends(get_db),
 ):
     """Update sample status (workflow tracking)."""
-    sample = db.query(Sample).join(LabOrder).filter(
-        Sample.barcode == barcode,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    sample = (
+        db.query(Sample)
+        .join(LabOrder)
+        .filter(
+            Sample.barcode == barcode,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not sample:
         raise HTTPException(status_code=404, detail="Sample not found")
 
@@ -135,7 +158,9 @@ def update_sample(
             raise HTTPException(status_code=400, detail="Invalid status")
         if data.status == "rejected":
             if not data.rejection_reason or not data.rejection_reason.strip():
-                raise HTTPException(status_code=400, detail="Rejection reason required when rejecting a sample")
+                raise HTTPException(
+                    status_code=400, detail="Rejection reason required when rejecting a sample"
+                )
         sample.status = data.status
 
     if data.rejection_reason is not None:
@@ -153,7 +178,7 @@ def update_sample(
         user_id=current_user.id,
         user_role=current_user.role,
         details=f"Sample {barcode} status: {data.status or 'unchanged'}"
-                + (f" reason: {data.rejection_reason}" if data.status == "rejected" else ""),
+        + (f" reason: {data.rejection_reason}" if data.status == "rejected" else ""),
         ip_address=get_client_ip(request),
     )
 

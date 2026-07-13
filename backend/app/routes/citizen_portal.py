@@ -23,30 +23,36 @@ Security
 - Results are always scoped to citizen's own phone/national-id hash
 - No cross-citizen data access is possible
 """
+
 import hashlib
 import hmac as _hmac
 import logging
 import time as _time
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy import desc
 from sqlalchemy.orm import Session, joinedload
 
+from app._compat import UTC
+
+from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS
 from ..database import get_db
-from ..models.user import User
-from ..models.patient import Patient
-from ..models.lab_order import LabOrder
 from ..models.lab import Lab
+from ..models.lab_order import LabOrder
+from ..models.patient import Patient
+from ..models.user import User
 from ..security.auth import (
-    verify_password, create_token, create_refresh_token,
-    blacklist_token, decode_token, decode_refresh_token,
+    blacklist_token,
+    create_refresh_token,
+    create_token,
+    decode_refresh_token,
+    decode_token,
+    verify_password,
 )
 from ..security.rate_limit import rate_limit_auth
 from ..services.audit_service import log_action
-from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, NID_HMAC_KEY
 
 logger = logging.getLogger("gula.citizen")
 
@@ -55,9 +61,10 @@ router = APIRouter(prefix="/citizen", tags=["citizen-portal"])
 
 # ─────────────────────────── Schemas ─────────────────────────────────────────
 
+
 class CitizenLoginRequest(BaseModel):
-    identifier: str   # email or phone — frontend sends both
-    email: Optional[str] = None
+    identifier: str  # email or phone — frontend sends both
+    email: str | None = None
     password: str
 
     @field_validator("identifier", "email", mode="before")
@@ -68,12 +75,14 @@ class CitizenLoginRequest(BaseModel):
 
 # ─────────────────────────── Helpers ──────────────────────────────────────────
 
+
 def _current_citizen(request: Request, db: Session) -> User:
     """Extract and validate citizen JWT from cookie.  Raises 401 if invalid."""
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     from ..security.auth import decode_token, is_token_blacklisted
+
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Token invalid or expired")
@@ -81,11 +90,15 @@ def _current_citizen(request: Request, db: Session) -> User:
         raise HTTPException(status_code=401, detail="Token revoked")
     if payload.get("role") != "citizen":
         raise HTTPException(status_code=403, detail="Citizen access only")
-    user = db.query(User).filter(
-        User.id == payload["user_id"],
-        User.role == "citizen",
-        User.is_active == True,
-    ).first()
+    user = (
+        db.query(User)
+        .filter(
+            User.id == payload["user_id"],
+            User.role == "citizen",
+            User.is_active,
+        )
+        .first()
+    )
     if not user:
         raise HTTPException(status_code=401, detail="Account not found or deactivated")
     return user
@@ -101,14 +114,15 @@ def _citizen_patients(citizen: User, db: Session) -> list[Patient]:
     if not filters:
         return []
     from sqlalchemy import or_
+
     return db.query(Patient).filter(or_(*filters)).all()
 
 
-def _flag_label(flag: Optional[str]) -> str:
+def _flag_label(flag: str | None) -> str:
     return {"H": "مرتفع", "L": "منخفض", "critical": "حرج"}.get(flag or "", "طبيعي")
 
 
-def _status_label(status: Optional[str]) -> str:
+def _status_label(status: str | None) -> str:
     return {
         "pending": "معلق",
         "completed": "منجز",
@@ -118,6 +132,7 @@ def _status_label(status: Optional[str]) -> str:
 
 
 # ─────────────────────────── Auth Endpoints ───────────────────────────────────
+
 
 @router.post("/login")
 def citizen_login(
@@ -135,13 +150,17 @@ def citizen_login(
     identifier = identifier.strip().lower()
 
     # Look up by email first, then phone
-    citizen: Optional[User] = None
+    citizen: User | None = None
     if "@" in identifier:
-        citizen = db.query(User).filter(
-            User.email == identifier,
-            User.role == "citizen",
-            User.is_active == True,
-        ).first()
+        citizen = (
+            db.query(User)
+            .filter(
+                User.email == identifier,
+                User.role == "citizen",
+                User.is_active,
+            )
+            .first()
+        )
     else:
         # Phone lookup — normalize to digits-only, then exact match.
         # Using LIKE with user input allows SQL wildcard injection (%/_).
@@ -149,14 +168,21 @@ def citizen_login(
         phone_digits = "".join(c for c in identifier if c.isdigit())
         # Try both the full digits string and the version without leading country prefix
         # (e.g., stored as "07001234567" and lookup as "7001234567" after stripping 0)
-        phone_short  = phone_digits.lstrip("0") if phone_digits else ""
-        citizen = db.query(User).filter(
-            User.phone.in_([phone_digits, phone_short]) if phone_short else User.phone == phone_digits,
-            User.role == "citizen",
-            User.is_active == True,
-        ).first()
+        phone_short = phone_digits.lstrip("0") if phone_digits else ""
+        citizen = (
+            db.query(User)
+            .filter(
+                User.phone.in_([phone_digits, phone_short])
+                if phone_short
+                else User.phone == phone_digits,
+                User.role == "citizen",
+                User.is_active,
+            )
+            .first()
+        )
 
     from ..security.auth import _DUMMY_HASH
+
     password_ok = verify_password(
         data.password,
         citizen.password_hash if citizen else _DUMMY_HASH,
@@ -186,7 +212,7 @@ def citizen_login(
     refresh_token = create_refresh_token(payload)
 
     # Update last_login
-    citizen.last_login = datetime.now(timezone.utc)
+    citizen.last_login = datetime.now(UTC)
     log_action(
         db,
         action="citizen_login",
@@ -199,8 +225,16 @@ def citizen_login(
     db.commit()
 
     cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": IS_PRODUCTION}
-    response.set_cookie("access_token", access_token, max_age=JWT_EXPIRE_MINUTES * 60, path="/", **cookie_kwargs)
-    response.set_cookie("refresh_token", refresh_token, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400, path="/", **cookie_kwargs)
+    response.set_cookie(
+        "access_token", access_token, max_age=JWT_EXPIRE_MINUTES * 60, path="/", **cookie_kwargs
+    )
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+        **cookie_kwargs,
+    )
 
     return {
         "id": citizen.id,
@@ -228,6 +262,7 @@ def citizen_logout(request: Request, response: Response, db: Session = Depends(g
 
 
 # ─────────────────────────── Data Endpoints ───────────────────────────────────
+
 
 @router.get("/profile")
 def citizen_profile(request: Request, db: Session = Depends(get_db)):
@@ -287,26 +322,28 @@ def citizen_results(
     for order in orders:
         lab_name = lab_map.get(order.lab_id, "مختبر")
         for r in order.results:
-            all_results.append({
-                "id": r.id,
-                "test_name": r.test_name,
-                "value": r.value,
-                "value_text": r.value_text,
-                "unit": r.unit,
-                "reference_low": r.normal_range_low,
-                "reference_high": r.normal_range_high,
-                "flag": _flag_label(r.flag),
-                "flag_code": r.flag,
-                "status": order.status,
-                "order_id": order.id,
-                "lab_name": lab_name,
-                "collected_at": order.created_at.isoformat() if order.created_at else None,
-                "result_token": r.token,
-                "is_validated": order.status == "validated",
-            })
+            all_results.append(
+                {
+                    "id": r.id,
+                    "test_name": r.test_name,
+                    "value": r.value,
+                    "value_text": r.value_text,
+                    "unit": r.unit,
+                    "reference_low": r.normal_range_low,
+                    "reference_high": r.normal_range_high,
+                    "flag": _flag_label(r.flag),
+                    "flag_code": r.flag,
+                    "status": order.status,
+                    "order_id": order.id,
+                    "lab_name": lab_name,
+                    "collected_at": order.created_at.isoformat() if order.created_at else None,
+                    "result_token": r.token,
+                    "is_validated": order.status == "validated",
+                }
+            )
 
     total = len(all_results)
-    page = all_results[offset: offset + limit]
+    page = all_results[offset : offset + limit]
     return {"results": page, "total": total, "offset": offset, "limit": limit}
 
 
@@ -346,19 +383,21 @@ def citizen_orders(
     result = []
     for o in orders:
         tests = [{"name": r.test_name, "flag": r.flag} for r in o.results]
-        result.append({
-            "id": o.id,
-            "order_number": f"ORD-{o.id:06d}",
-            "status": o.status,
-            "status_label": _status_label(o.status),
-            "lab_name": lab_map.get(o.lab_id, "مختبر"),
-            "doctor_name": o.doctor_name,
-            "tests": tests,
-            "test_names": " • ".join(r.test_name for r in o.results),
-            "result_count": len(o.results),
-            "created_at": o.created_at.isoformat() if o.created_at else None,
-            "validated_at": o.validated_at.isoformat() if o.validated_at else None,
-        })
+        result.append(
+            {
+                "id": o.id,
+                "order_number": f"ORD-{o.id:06d}",
+                "status": o.status,
+                "status_label": _status_label(o.status),
+                "lab_name": lab_map.get(o.lab_id, "مختبر"),
+                "doctor_name": o.doctor_name,
+                "tests": tests,
+                "test_names": " • ".join(r.test_name for r in o.results),
+                "result_count": len(o.results),
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+                "validated_at": o.validated_at.isoformat() if o.validated_at else None,
+            }
+        )
 
     return {"orders": result, "total": total, "offset": offset, "limit": limit}
 
@@ -406,12 +445,14 @@ def citizen_health_record(request: Request, db: Session = Depends(get_db)):
 
     for order in orders:
         lab_name = f"مختبر #{order.lab_id}"
-        timeline.append({
-            "date": order.created_at.date().isoformat() if order.created_at else None,
-            "lab": lab_name,
-            "tests": len(order.results),
-            "status": _status_label(order.status),
-        })
+        timeline.append(
+            {
+                "date": order.created_at.date().isoformat() if order.created_at else None,
+                "lab": lab_name,
+                "tests": len(order.results),
+                "status": _status_label(order.status),
+            }
+        )
         for r in order.results:
             key = r.test_name.lower().strip()
             if key not in latest_per_test:
@@ -422,11 +463,18 @@ def citizen_health_record(request: Request, db: Session = Depends(get_db)):
                     "unit": r.unit,
                     "flag": r.flag,
                     "date": order.created_at.date().isoformat() if order.created_at else None,
-                    "reference": f"{r.normal_range_low}–{r.normal_range_high}" if r.normal_range_low is not None else None,
+                    "reference": f"{r.normal_range_low}–{r.normal_range_high}"
+                    if r.normal_range_low is not None
+                    else None,
                 }
             if r.flag in ("H", "L", "critical"):
-                item = {"name": r.test_name, "value": r.value, "unit": r.unit, "flag": r.flag,
-                        "date": order.created_at.date().isoformat() if order.created_at else None}
+                item = {
+                    "name": r.test_name,
+                    "value": r.value,
+                    "unit": r.unit,
+                    "flag": r.flag,
+                    "date": order.created_at.date().isoformat() if order.created_at else None,
+                }
                 if r.flag == "critical":
                     critical.append(item)
                 else:
@@ -441,5 +489,5 @@ def citizen_health_record(request: Request, db: Session = Depends(get_db)):
         "abnormal_flags": abnormal[:20],
         "critical_flags": critical[:20],
         "timeline": timeline[:30],
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }

@@ -23,20 +23,20 @@ Eviction policy (prevents unbounded memory growth):
   - MAX_LOCAL_SECONDS caps how long an entry lives locally even without
     an explicit unblock() — prevents permanent bans surviving restarts.
 """
+
 from __future__ import annotations
 
 import logging
 import threading
 import time
-from typing import Optional
 
 from ..security.redis_client import cache
 
 logger = logging.getLogger("gula.firewall")
 
-_PREFIX          = "fw:blocked:"
-_DEFAULT_TTL     = 3600    # 1 hour (Redis TTL)
-MAX_LOCAL_SIZE   = 5_000   # max IPs in local store before eviction
+_PREFIX = "fw:blocked:"
+_DEFAULT_TTL = 3600  # 1 hour (Redis TTL)
+MAX_LOCAL_SIZE = 5_000  # max IPs in local store before eviction
 MAX_LOCAL_SECONDS = 3_600  # local entries expire after at most 1 hour
 
 
@@ -74,6 +74,7 @@ def _evict_oldest() -> None:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def block(ip: str, ttl: int = _DEFAULT_TTL, reason: str = "unspecified") -> None:
     """Block an IP for `ttl` seconds (default 1 hour).
 
@@ -104,7 +105,9 @@ def block(ip: str, ttl: int = _DEFAULT_TTL, reason: str = "unspecified") -> None
 
     logger.warning(
         "[FIREWALL] Blocked IP %s | reason=%s | ttl=%s",
-        ip, reason, f"{ttl}s" if ttl > 0 else "permanent",
+        ip,
+        reason,
+        f"{ttl}s" if ttl > 0 else "permanent",
     )
 
 
@@ -132,9 +135,9 @@ def allowed(ip: str) -> bool:
     with _local_lock:
         entry = _local.get(ip)
         if entry is not None:
-            reason, exp = entry
+            _reason, exp = entry
             if exp > now:
-                return False       # locally blocked, not yet expired
+                return False  # locally blocked, not yet expired
             # Expired locally — remove it and continue to Redis check
             del _local[ip]
 
@@ -143,12 +146,13 @@ def allowed(ip: str) -> bool:
     except Exception as exc:
         logger.warning(
             "[FIREWALL] Redis read failed for allowed(%s): %s — local-only",
-            ip, exc,
+            ip,
+            exc,
         )
         return True  # IP not in local store → allow (avoid global lockout)
 
 
-def block_reason(ip: str) -> Optional[str]:
+def block_reason(ip: str) -> str | None:
     """Return the reason an IP was blocked, or None if not blocked."""
     now = time.monotonic()
     with _local_lock:

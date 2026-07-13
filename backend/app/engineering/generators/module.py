@@ -45,12 +45,17 @@ class ModuleGenerator(BaseGenerator):
                 self._ensure_dir(sub)
                 (self.target_dir / sub / "__init__.py").touch()
 
-        self._write(f"{module}/__init__.py", f"""from __future__ import annotations
+        self._write(
+            f"{module}/__init__.py",
+            f"""from __future__ import annotations
 
 \"\"\"{spec.name} Module: {spec.description}\"\"\"
-""")
+""",
+        )
 
-        self._write(f"{module}/domain/entities/{module}.py", f"""from __future__ import annotations
+        self._write(
+            f"{module}/domain/entities/{module}.py",
+            f"""from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -61,10 +66,13 @@ class {Mod}:
     id: int | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-""")
+""",
+        )
 
         if spec.has_events:
-            self._write(f"{module}/domain/events.py", f"""from __future__ import annotations
+            self._write(
+                f"{module}/domain/events.py",
+                f"""from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -86,10 +94,13 @@ class {Mod}Updated:
 class {Mod}Deleted:
     {module}_id: int
     occurred_at: datetime = datetime.utcnow()
-""")
+""",
+            )
 
         if spec.has_commands:
-            self._write(f"{module}/application/commands/create_{module}.py", f"""from __future__ import annotations
+            self._write(
+                f"{module}/application/commands/create_{module}.py",
+                f"""from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -107,10 +118,13 @@ class Update{Mod}:
 @dataclass
 class Delete{Mod}:
     id: int
-""")
+""",
+            )
 
         if spec.has_queries:
-            self._write(f"{module}/application/queries/get_{module}.py", f"""from __future__ import annotations
+            self._write(
+                f"{module}/application/queries/get_{module}.py",
+                f"""from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -124,9 +138,12 @@ class Get{Mod}:
 class List{Mod}s:
     skip: int = 0
     limit: int = 100
-""")
+""",
+            )
 
-        self._write(f"{module}/application/services/{module}_service.py", f"""from __future__ import annotations
+        self._write(
+            f"{module}/application/services/{module}_service.py",
+            f"""from __future__ import annotations
 
 from typing import Optional
 
@@ -134,9 +151,12 @@ from typing import Optional
 class {Mod}Service:
     def __init__(self) -> None:
         pass
-""")
+""",
+        )
 
-        self._write(f"{module}/application/dtos.py", f"""from __future__ import annotations
+        self._write(
+            f"{module}/application/dtos.py",
+            f"""from __future__ import annotations
 
 from datetime import datetime
 
@@ -158,9 +178,12 @@ class {Mod}Response(BaseModel):
 
     class Config:
         from_attributes = True
-""")
+""",
+        )
 
-        self._write(f"{module}/application/interfaces.py", f"""from __future__ import annotations
+        self._write(
+            f"{module}/application/interfaces.py",
+            f"""from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -170,9 +193,12 @@ class {Mod}Repository(ABC):
     @abstractmethod
     async def get(self, id: int) -> Optional[...]:
         ...
-""")
+""",
+        )
 
-        self._write(f"{module}/infrastructure/repositories/{module}_repository.py", f"""from __future__ import annotations
+        self._write(
+            f"{module}/infrastructure/repositories/{module}_repository.py",
+            f"""from __future__ import annotations
 
 from typing import Optional
 
@@ -183,13 +209,17 @@ class {Mod}RepositoryImpl:
 
     async def get(self, id: int) -> Optional[...]:
         return None
-""")
+""",
+        )
 
-        self._write(f"{module}/presentation/routes.py", f"""from __future__ import annotations
+        self._write(
+            f"{module}/presentation/routes.py",
+            f"""from __future__ import annotations
 
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/{module}s", tags=["{Mod}"])
-""")
+""",
+        )
 
         return self._result

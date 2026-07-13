@@ -1,5 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
-from datetime import datetime, timezone
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, Integer, String
+
+from app._compat import UTC
+
 from ..database import Base
 
 
@@ -20,4 +24,4 @@ class TestType(Base):
     interpretation_low_ar = Column(String(500), nullable=True)
     interpretation_normal_ar = Column(String(500), nullable=True)
     interpretation_high_ar = Column(String(500), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

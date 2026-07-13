@@ -16,12 +16,13 @@ All public functions raise HTTPException(429) with standardised headers:
 """
 
 import ipaddress
-import os
-import math
-import time
 import logging
-from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse
+import math
+import os
+import time
+
+from fastapi import HTTPException, Request
+
 from .redis_client import cache
 
 logger = logging.getLogger("gula.rate_limit")
@@ -103,7 +104,7 @@ def _check(
         if cache.get(f"block:{client_ip}"):
             return False, 0, int(time.time()) + window_seconds
 
-    bucket   = math.floor(time.time() / window_seconds)
+    bucket = math.floor(time.time() / window_seconds)
     reset_ts = (bucket + 1) * window_seconds
     full_key = f"rl:{key}:{bucket}"
 
@@ -127,9 +128,9 @@ def _check(
 
 def _rl_headers(limit: int, remaining: int, reset_ts: int) -> dict:
     return {
-        "X-RateLimit-Limit":     str(limit),
+        "X-RateLimit-Limit": str(limit),
         "X-RateLimit-Remaining": str(remaining),
-        "X-RateLimit-Reset":     str(reset_ts),
+        "X-RateLimit-Reset": str(reset_ts),
     }
 
 
@@ -146,6 +147,7 @@ def _raise_429(detail: str, limit: int, reset_ts: int) -> None:
 
 
 # ── Public helpers ────────────────────────────────────────────────────────────
+
 
 def rate_limit_public(request: Request, max_per_minute: int = 30) -> None:
     """Rate limit for public endpoints (result links) — keyed by IP."""
@@ -191,7 +193,8 @@ def rate_limit_admin(request: Request, user_id: int, max_per_minute: int = 20) -
     if not ok:
         _raise_429(
             f"Admin rate limit exceeded. Maximum {max_per_minute} operations per minute.",
-            max_per_minute, reset,
+            max_per_minute,
+            reset,
         )
 
     ok, _, reset = _check(f"admin:ip:{client_ip}", 60, 60, request)

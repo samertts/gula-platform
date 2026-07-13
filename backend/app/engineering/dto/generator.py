@@ -40,9 +40,7 @@ class DTOGenerator(BaseGenerator):
         field_lines = []
         for f in spec.fields:
             opt = " | None = None" if not f.required else ""
-            if f.default is not None and f.required:
-                default = f" = {f.default!r}"
-            elif f.default is not None:
+            if (f.default is not None and f.required) or f.default is not None:
                 default = f" = {f.default!r}"
             else:
                 default = ""

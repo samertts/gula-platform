@@ -1,11 +1,7 @@
 from __future__ import annotations
 
 import logging
-import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
-
-from backend.app.kernel.background.task_queue import Task
+from dataclasses import dataclass
 
 logger = logging.getLogger("gula.kernel.background.job_retry")
 
@@ -33,4 +29,4 @@ class JobRetry:
 
     def get_backoff(self, task_id: str) -> float:
         count = self._retry_counts.get(task_id, 0)
-        return self._policy.backoff_base * (self._policy.backoff_multiplier ** count)
+        return self._policy.backoff_base * (self._policy.backoff_multiplier**count)

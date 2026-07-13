@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+
 from ..gateways.insurance_gateway import check_insurance
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user

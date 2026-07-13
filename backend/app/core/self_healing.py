@@ -22,6 +22,7 @@ Degradation Levels (escalating severity):
   L2_READ_ONLY   → POST/PUT/DELETE/PATCH rejected (DB circuit opened)
   L3_CRITICAL_ONLY → only health + auth + kill-switch paths pass (DB storm)
 """
+
 import asyncio
 import logging
 import threading
@@ -38,10 +39,11 @@ logger = logging.getLogger("gula.self_healing")
 
 # ─── Circuit Breaker ─────────────────────────────────────────────────────────
 
+
 class CircuitState(Enum):
-    CLOSED = "closed"       # Normal — requests pass through
-    OPEN = "open"           # Failed — requests rejected immediately
-    HALF_OPEN = "half_open" # Recovery probe in progress
+    CLOSED = "closed"  # Normal — requests pass through
+    OPEN = "open"  # Failed — requests rejected immediately
+    HALF_OPEN = "half_open"  # Recovery probe in progress
 
 
 class CircuitBreaker:
@@ -59,7 +61,7 @@ class CircuitBreaker:
 
         self._state = CircuitState.CLOSED
         self._failure_count = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._lock = threading.Lock()
 
     @property
@@ -88,7 +90,8 @@ class CircuitBreaker:
             if self._state != CircuitState.CLOSED:
                 logger.info(
                     "[CIRCUIT BREAKER] %s: %s → CLOSED (recovered)",
-                    self.name, self._state.value,
+                    self.name,
+                    self._state.value,
                 )
             self._state = CircuitState.CLOSED
             self._failure_count = 0
@@ -103,7 +106,8 @@ class CircuitBreaker:
                 if self._state != CircuitState.OPEN:
                     logger.error(
                         "[CIRCUIT BREAKER] %s: → OPEN after %d failures",
-                        self.name, self._failure_count,
+                        self.name,
+                        self._failure_count,
                     )
                 self._state = CircuitState.OPEN
 
@@ -136,6 +140,7 @@ class CircuitBreaker:
 
 # ─── Degradation Level ────────────────────────────────────────────────────────
 
+
 class DegradationLevel(Enum):
     """Ordered severity levels for graceful degradation.
 
@@ -147,13 +152,15 @@ class DegradationLevel(Enum):
     L2_READ_ONLY   → write mutations rejected; reads pass (DB circuit opened)
     L3_CRITICAL_ONLY → only a small set of critical paths pass (DB storm)
     """
-    NONE            = 0
-    L1_CACHE_HEAVY  = 1
-    L2_READ_ONLY    = 2
+
+    NONE = 0
+    L1_CACHE_HEAVY = 1
+    L2_READ_ONLY = 2
     L3_CRITICAL_ONLY = 3
 
 
 # ─── Shared System Health State ──────────────────────────────────────────────
+
 
 class SystemHealth:
     """Singleton that holds circuit breakers and degradation level."""
@@ -208,7 +215,9 @@ class SystemHealth:
             self._degradation_level = level
             logger.error(
                 "[SELF-HEALING] Degradation %s → %s: %s",
-                current.name, level.name, reason,
+                current.name,
+                level.name,
+                reason,
             )
 
     def exit_degraded_mode(self) -> None:
@@ -229,15 +238,16 @@ class SystemHealth:
           Redis open → L1_CACHE_HEAVY (cache unavailable; DB still serves reads)
           All closed → exit to NONE (unless already at L2/L3 via explicit trigger)
         """
-        db_open    = self.db_circuit.is_open()
+        db_open = self.db_circuit.is_open()
         redis_open = self.redis_circuit.is_open()
 
         if db_open:
             self.enter_degraded_mode("DB circuit open", DegradationLevel.L2_READ_ONLY)
         elif redis_open:
             # DB alive but Redis down → cache unavailable → L1 (writes still pass)
-            self.enter_degraded_mode("Redis circuit open — cache unavailable",
-                                     DegradationLevel.L1_CACHE_HEAVY)
+            self.enter_degraded_mode(
+                "Redis circuit open — cache unavailable", DegradationLevel.L1_CACHE_HEAVY
+            )
         else:
             # All circuits closed — this means the RecoveryWorker confirmed that
             # DB and Redis are both reachable again.  Exit from any level back to NONE.
@@ -247,11 +257,11 @@ class SystemHealth:
     def to_dict(self) -> dict:
         lv = self.degradation_level
         return {
-            "degraded_mode":      self.degraded,
-            "degradation_level":  lv.name,
-            "degradation_value":  lv.value,
+            "degraded_mode": self.degraded,
+            "degradation_level": lv.name,
+            "degradation_value": lv.value,
             "circuits": {
-                "db":    self.db_circuit.to_dict(),
+                "db": self.db_circuit.to_dict(),
                 "redis": self.redis_circuit.to_dict(),
             },
         }
@@ -263,10 +273,12 @@ health = SystemHealth()
 
 # ─── DB / Redis wrappers with circuit-breaker recording ──────────────────────
 
+
 def checked_db_connection() -> bool:
     """Run DB ping and record result in the circuit breaker."""
     try:
         from ..database import check_db_connection
+
         ok = check_db_connection()
         if ok:
             health.db_circuit.record_success()
@@ -285,6 +297,7 @@ def checked_redis_connection() -> bool:
     """Run Redis ping and record result in the circuit breaker."""
     try:
         from ..security.redis_client import cache as _redis
+
         _redis.ping()
         health.redis_circuit.record_success()
         return True
@@ -298,23 +311,27 @@ def checked_redis_connection() -> bool:
 # ─── Degraded Mode Middleware ─────────────────────────────────────────────────
 
 # Paths that bypass ALL degradation checks (healthz + liveness always reachable)
-_ALWAYS_ALLOWED: frozenset[str] = frozenset({
-    "/health",
-    "/health/ready",
-    "/health/live",
-})
+_ALWAYS_ALLOWED: frozenset[str] = frozenset(
+    {
+        "/health",
+        "/health/ready",
+        "/health/live",
+    }
+)
 
 # Paths allowed even in L3_CRITICAL_ONLY — the minimum viable platform surface
-_CRITICAL_PATHS: frozenset[str] = frozenset({
-    "/health",
-    "/health/ready",
-    "/health/live",
-    "/health/status",
-    "/auth/login",
-    "/auth/refresh",
-    "/admin/kill-switch/deactivate",  # operator must always be able to recover
-    "/metrics/prom",                  # Prometheus scraping must continue
-})
+_CRITICAL_PATHS: frozenset[str] = frozenset(
+    {
+        "/health",
+        "/health/ready",
+        "/health/live",
+        "/health/status",
+        "/auth/login",
+        "/auth/refresh",
+        "/admin/kill-switch/deactivate",  # operator must always be able to recover
+        "/metrics/prom",  # Prometheus scraping must continue
+    }
+)
 
 # HTTP methods that are safe in L2 read-only mode
 _SAFE_METHODS: frozenset[str] = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -324,14 +341,11 @@ _LEVEL_MESSAGES: dict[DegradationLevel, tuple[str, str]] = {
     DegradationLevel.L2_READ_ONLY: (
         "System is in read-only mode (database unavailable). "
         "Write operations are temporarily suspended.",
-        "النظام في وضع القراءة فقط (قاعدة البيانات غير متاحة). "
-        "عمليات الكتابة معلّقة مؤقتاً.",
+        "النظام في وضع القراءة فقط (قاعدة البيانات غير متاحة). عمليات الكتابة معلّقة مؤقتاً.",
     ),
     DegradationLevel.L3_CRITICAL_ONLY: (
-        "System is under critical load (database storm). "
-        "Only essential endpoints are reachable.",
-        "النظام تحت ضغط حرج (عاصفة قاعدة البيانات). "
-        "المسارات الحيوية فقط متاحة.",
+        "System is under critical load (database storm). Only essential endpoints are reachable.",
+        "النظام تحت ضغط حرج (عاصفة قاعدة البيانات). المسارات الحيوية فقط متاحة.",
     ),
 }
 
@@ -367,11 +381,11 @@ class DegradedModeMiddleware(BaseHTTPMiddleware):
                     status_code=503,
                     headers={"Retry-After": "30", "X-Degradation-Level": "L2_READ_ONLY"},
                     content={
-                        "detail":               msg,
-                        "detail_ar":            msg_ar,
-                        "degraded":             True,
-                        "degradation_level":    "L2_READ_ONLY",
-                        "retry_after_seconds":  30,
+                        "detail": msg,
+                        "detail_ar": msg_ar,
+                        "degraded": True,
+                        "degradation_level": "L2_READ_ONLY",
+                        "retry_after_seconds": 30,
                     },
                 )
             return await call_next(request)
@@ -383,11 +397,11 @@ class DegradedModeMiddleware(BaseHTTPMiddleware):
                     status_code=503,
                     headers={"Retry-After": "60", "X-Degradation-Level": "L3_CRITICAL_ONLY"},
                     content={
-                        "detail":               msg,
-                        "detail_ar":            msg_ar,
-                        "degraded":             True,
-                        "degradation_level":    "L3_CRITICAL_ONLY",
-                        "retry_after_seconds":  60,
+                        "detail": msg,
+                        "detail_ar": msg_ar,
+                        "degraded": True,
+                        "degradation_level": "L3_CRITICAL_ONLY",
+                        "retry_after_seconds": 60,
                     },
                 )
             return await call_next(request)
@@ -396,6 +410,7 @@ class DegradedModeMiddleware(BaseHTTPMiddleware):
 
 
 # ─── Background Recovery Worker ──────────────────────────────────────────────
+
 
 class RecoveryWorker:
     """Async background task that probes failed services and resets circuits."""
@@ -415,10 +430,7 @@ class RecoveryWorker:
             except Exception:
                 logger.exception("[RECOVERY WORKER] Unexpected error during probe")
 
-            interval = (
-                cls._DEGRADED_POLL_INTERVAL if health.degraded
-                else cls._POLL_INTERVAL
-            )
+            interval = cls._DEGRADED_POLL_INTERVAL if health.degraded else cls._POLL_INTERVAL
             await asyncio.sleep(interval)
 
     @classmethod

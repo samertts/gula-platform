@@ -1,8 +1,12 @@
 """Security status and health check endpoints."""
+
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, text
-from datetime import datetime, timezone, timedelta
+
+from app._compat import UTC
 
 from ..database import get_db
 from ..models.audit_log import AuditLog
@@ -21,24 +25,39 @@ def security_status(
     if current_user.role not in ("master_admin", "admin"):
         return {"status": "secure", "message": "Detailed security info requires admin access"}
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     last_24h = now - timedelta(hours=24)
 
     # Recent security events
-    login_attempts = db.query(func.count(AuditLog.id)).filter(
-        AuditLog.action == "login",
-        AuditLog.created_at >= last_24h,
-    ).scalar() or 0
+    login_attempts = (
+        db.query(func.count(AuditLog.id))
+        .filter(
+            AuditLog.action == "login",
+            AuditLog.created_at >= last_24h,
+        )
+        .scalar()
+        or 0
+    )
 
-    failed_logins = db.query(func.count(AuditLog.id)).filter(
-        AuditLog.action == "login_failed",
-        AuditLog.created_at >= last_24h,
-    ).scalar() or 0
+    failed_logins = (
+        db.query(func.count(AuditLog.id))
+        .filter(
+            AuditLog.action == "login_failed",
+            AuditLog.created_at >= last_24h,
+        )
+        .scalar()
+        or 0
+    )
 
-    result_views = db.query(func.count(AuditLog.id)).filter(
-        AuditLog.action == "view_result",
-        AuditLog.created_at >= last_24h,
-    ).scalar() or 0
+    result_views = (
+        db.query(func.count(AuditLog.id))
+        .filter(
+            AuditLog.action == "view_result",
+            AuditLog.created_at >= last_24h,
+        )
+        .scalar()
+        or 0
+    )
 
     return {
         "status": "secure",

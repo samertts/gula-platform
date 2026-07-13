@@ -11,8 +11,8 @@ that is not present in the current schema — wiring the model into
 ``create_all`` on fresh deployments.  Add the import once the matching
 Alembic revision lands.
 """
-from datetime import datetime, timezone
-from typing import Optional
+
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import (
@@ -28,8 +28,9 @@ from sqlalchemy import (
     Text,
 )
 
-from ..database import Base
+from app._compat import UTC
 
+from ..database import Base
 
 TEST_RESULT_STATUSES = ("pending", "completed", "verified", "rejected")
 ABNORMALITY_DIRECTIONS = ("high", "low", "normal")
@@ -68,46 +69,46 @@ class TestResult(Base):
     )
 
     # ── Test identification (LOINC) ─────────────────────────────────────────
-    test_code    = Column(String(30),  nullable=False)
+    test_code = Column(String(30), nullable=False)
     test_name_en = Column(String(200), nullable=False)
     test_name_ar = Column(String(200), nullable=False)
-    category     = Column(String(50),  nullable=True)  # hematology, chemistry, hormones…
+    category = Column(String(50), nullable=True)  # hematology, chemistry, hormones…
 
     # ── Result ──────────────────────────────────────────────────────────────
-    result_value  = Column(Float,       nullable=True)
-    result_text   = Column(String(200), nullable=True)   # positive / negative / …
-    unit          = Column(String(20),  nullable=True)
-    reference_min = Column(Float,       nullable=True)
-    reference_max = Column(Float,       nullable=True)
+    result_value = Column(Float, nullable=True)
+    result_text = Column(String(200), nullable=True)  # positive / negative / …
+    unit = Column(String(20), nullable=True)
+    reference_min = Column(Float, nullable=True)
+    reference_max = Column(Float, nullable=True)
 
     # ── Status ──────────────────────────────────────────────────────────────
-    status                = Column(String(20), nullable=False, default="pending")
-    is_critical           = Column(Boolean,    nullable=False, default=False)
-    is_abnormal           = Column(Boolean,    nullable=False, default=False)
+    status = Column(String(20), nullable=False, default="pending")
+    is_critical = Column(Boolean, nullable=False, default=False)
+    is_abnormal = Column(Boolean, nullable=False, default=False)
     abnormality_direction = Column(String(10), nullable=True)  # high / low / normal
 
     # ── Timing ──────────────────────────────────────────────────────────────
     sample_collected_at = Column(DateTime(timezone=True), nullable=False)
     result_completed_at = Column(DateTime(timezone=True), nullable=True)
-    verified_at         = Column(DateTime(timezone=True), nullable=True)
-    verified_by         = Column(String(200), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    verified_by = Column(String(200), nullable=True)
 
     # ── Tracking ────────────────────────────────────────────────────────────
-    sample_barcode     = Column(String(64),  nullable=False, unique=True, index=True)
+    sample_barcode = Column(String(64), nullable=False, unique=True, index=True)
     ordering_physician = Column(String(200), nullable=True)
-    clinical_notes     = Column(Text,        nullable=True)
+    clinical_notes = Column(Text, nullable=True)
 
     # ── Audit timestamps ────────────────────────────────────────────────────
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 
@@ -117,30 +118,30 @@ class TestResult(Base):
 class TestResultCreate(BaseModel):
     """Payload accepted by ``POST /test-results``."""
 
-    citizen_id:   int = Field(..., ge=1)
-    lab_id:       int = Field(..., ge=1)
-    device_id:    Optional[int] = Field(default=None, ge=1)
+    citizen_id: int = Field(..., ge=1)
+    lab_id: int = Field(..., ge=1)
+    device_id: int | None = Field(default=None, ge=1)
 
-    test_code:    str = Field(..., min_length=1, max_length=30)
+    test_code: str = Field(..., min_length=1, max_length=30)
     test_name_en: str = Field(..., min_length=1, max_length=200)
     test_name_ar: str = Field(..., min_length=1, max_length=200)
-    category:     Optional[str] = Field(default=None, max_length=50)
+    category: str | None = Field(default=None, max_length=50)
 
-    result_value:  Optional[float] = None
-    result_text:   Optional[str]   = Field(default=None, max_length=200)
-    unit:          Optional[str]   = Field(default=None, max_length=20)
-    reference_min: Optional[float] = None
-    reference_max: Optional[float] = None
+    result_value: float | None = None
+    result_text: str | None = Field(default=None, max_length=200)
+    unit: str | None = Field(default=None, max_length=20)
+    reference_min: float | None = None
+    reference_max: float | None = None
 
-    status:                str  = Field(default="pending")
-    is_critical:           bool = False
-    is_abnormal:           bool = False
-    abnormality_direction: Optional[str] = None
+    status: str = Field(default="pending")
+    is_critical: bool = False
+    is_abnormal: bool = False
+    abnormality_direction: str | None = None
 
     sample_collected_at: datetime
-    sample_barcode:      str = Field(..., min_length=1, max_length=64)
-    ordering_physician:  Optional[str] = Field(default=None, max_length=200)
-    clinical_notes:      Optional[str] = None
+    sample_barcode: str = Field(..., min_length=1, max_length=64)
+    ordering_physician: str | None = Field(default=None, max_length=200)
+    clinical_notes: str | None = None
 
     @field_validator("status")
     @classmethod
@@ -151,11 +152,9 @@ class TestResultCreate(BaseModel):
 
     @field_validator("abnormality_direction")
     @classmethod
-    def _check_direction(cls, v: Optional[str]) -> Optional[str]:
+    def _check_direction(cls, v: str | None) -> str | None:
         if v is not None and v not in ABNORMALITY_DIRECTIONS:
-            raise ValueError(
-                f"abnormality_direction must be one of {ABNORMALITY_DIRECTIONS}"
-            )
+            raise ValueError(f"abnormality_direction must be one of {ABNORMALITY_DIRECTIONS}")
         return v
 
 
@@ -164,35 +163,35 @@ class TestResultRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id:           int
-    citizen_id:   int
-    lab_id:       int
-    device_id:    Optional[int] = None
+    id: int
+    citizen_id: int
+    lab_id: int
+    device_id: int | None = None
 
-    test_code:    str
+    test_code: str
     test_name_en: str
     test_name_ar: str
-    category:     Optional[str] = None
+    category: str | None = None
 
-    result_value:  Optional[float] = None
-    result_text:   Optional[str]   = None
-    unit:          Optional[str]   = None
-    reference_min: Optional[float] = None
-    reference_max: Optional[float] = None
+    result_value: float | None = None
+    result_text: str | None = None
+    unit: str | None = None
+    reference_min: float | None = None
+    reference_max: float | None = None
 
-    status:                str
-    is_critical:           bool
-    is_abnormal:           bool
-    abnormality_direction: Optional[str] = None
+    status: str
+    is_critical: bool
+    is_abnormal: bool
+    abnormality_direction: str | None = None
 
     sample_collected_at: datetime
-    result_completed_at: Optional[datetime] = None
-    verified_at:         Optional[datetime] = None
-    verified_by:         Optional[str] = None
+    result_completed_at: datetime | None = None
+    verified_at: datetime | None = None
+    verified_by: str | None = None
 
-    sample_barcode:     str
-    ordering_physician: Optional[str] = None
-    clinical_notes:     Optional[str] = None
+    sample_barcode: str
+    ordering_physician: str | None = None
+    clinical_notes: str | None = None
 
     created_at: datetime
     updated_at: datetime
@@ -203,16 +202,16 @@ class TestResultBrief(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id:           int
-    test_code:    str
+    id: int
+    test_code: str
     test_name_en: str
     test_name_ar: str
-    result_value: Optional[float] = None
-    result_text:  Optional[str]   = None
-    unit:         Optional[str]   = None
-    status:       str
-    is_abnormal:  bool
-    is_critical:  bool
+    result_value: float | None = None
+    result_text: str | None = None
+    unit: str | None = None
+    status: str
+    is_abnormal: bool
+    is_critical: bool
     sample_collected_at: datetime
 
 
@@ -227,18 +226,14 @@ class TestResultForCitizen(BaseModel):
 
     id: int = Field(..., serialization_alias="المعرف")
     test_name_ar: str = Field(..., serialization_alias="اسم_التحليل")
-    result_value: Optional[float] = Field(default=None, serialization_alias="القيمة")
-    result_text:  Optional[str]   = Field(default=None, serialization_alias="النتيجة")
-    unit:         Optional[str]   = Field(default=None, serialization_alias="الوحدة")
-    reference_min: Optional[float] = Field(default=None, serialization_alias="الحد_الأدنى")
-    reference_max: Optional[float] = Field(default=None, serialization_alias="الحد_الأعلى")
-    status:      str  = Field(..., serialization_alias="الحالة")
+    result_value: float | None = Field(default=None, serialization_alias="القيمة")
+    result_text: str | None = Field(default=None, serialization_alias="النتيجة")
+    unit: str | None = Field(default=None, serialization_alias="الوحدة")
+    reference_min: float | None = Field(default=None, serialization_alias="الحد_الأدنى")
+    reference_max: float | None = Field(default=None, serialization_alias="الحد_الأعلى")
+    status: str = Field(..., serialization_alias="الحالة")
     is_abnormal: bool = Field(..., serialization_alias="غير_طبيعي")
     is_critical: bool = Field(..., serialization_alias="حرج")
-    abnormality_direction: Optional[str] = Field(
-        default=None, serialization_alias="اتجاه_الانحراف"
-    )
+    abnormality_direction: str | None = Field(default=None, serialization_alias="اتجاه_الانحراف")
     sample_collected_at: datetime = Field(..., serialization_alias="تاريخ_العينة")
-    result_completed_at: Optional[datetime] = Field(
-        default=None, serialization_alias="تاريخ_النتيجة"
-    )
+    result_completed_at: datetime | None = Field(default=None, serialization_alias="تاريخ_النتيجة")

@@ -24,27 +24,26 @@ This module contains NO database access and NO side effects — it is a
 pure function of its inputs. That makes it unit-testable and safe to call
 inside tight loops across hundreds of candidates.
 """
+
 from dataclasses import dataclass, field
-from typing import Optional
 
 from ..identity import jaro_winkler, normalize_name
 
-
 # ── Weights (keep in sync with docs in architecture/FOUNDATION.md §6) ────────
-W_PHONE        = 0.30
-W_DOB_EXACT    = 0.25
-W_DOB_SWAP     = 0.10
-W_NAME_HIGH    = 0.25   # JW ≥ 0.95
-W_NAME_MID     = 0.15   # JW ≥ 0.85
-W_GENDER       = 0.05
-W_FAMILY       = 0.15
+W_PHONE = 0.30
+W_DOB_EXACT = 0.25
+W_DOB_SWAP = 0.10
+W_NAME_HIGH = 0.25  # JW ≥ 0.95
+W_NAME_MID = 0.15  # JW ≥ 0.85
+W_GENDER = 0.05
+W_FAMILY = 0.15
 
-NAME_JW_HIGH   = 0.95
-NAME_JW_MID    = 0.85
+NAME_JW_HIGH = 0.95
+NAME_JW_MID = 0.85
 
 # Decision thresholds (exposed for resolver + tests)
-THRESHOLD_AUTO    = 0.90
-THRESHOLD_REVIEW  = 0.70
+THRESHOLD_AUTO = 0.90
+THRESHOLD_REVIEW = 0.70
 
 
 @dataclass
@@ -57,14 +56,15 @@ class IdentityProfile:
       - `nid_hash`       is the output of identity.hash_national_id()
       - `family_id_hash` is the output of identity.hash_family_id()
     """
-    name_canonical:  str
-    phone_last10:    Optional[str] = None
-    birth_year:      Optional[int] = None
-    birth_month:     Optional[int] = None
-    birth_day:       Optional[int] = None
-    gender:          Optional[str] = None
-    nid_hash:        Optional[str] = None
-    family_id_hash:  Optional[str] = None
+
+    name_canonical: str
+    phone_last10: str | None = None
+    birth_year: int | None = None
+    birth_month: int | None = None
+    birth_day: int | None = None
+    gender: str | None = None
+    nid_hash: str | None = None
+    family_id_hash: str | None = None
 
 
 @dataclass
@@ -74,16 +74,17 @@ class Candidate:
     We carry only the columns the matcher needs — constructed in resolver.py
     from the blocking query result.
     """
-    id:              int
-    citizen_ulid:    str
-    name_canonical:  str
-    phone_last10:    Optional[str]
-    birth_year:      Optional[int]
-    birth_month:     Optional[int]
-    birth_day:       Optional[int]
-    gender:          Optional[str]
-    nid_hash:        Optional[str]
-    family_id_hash:  Optional[str]
+
+    id: int
+    citizen_ulid: str
+    name_canonical: str
+    phone_last10: str | None
+    birth_year: int | None
+    birth_month: int | None
+    birth_day: int | None
+    gender: str | None
+    nid_hash: str | None
+    family_id_hash: str | None
 
 
 @dataclass
@@ -93,8 +94,9 @@ class MatchResult:
     `features` is a dict like {"name_jw": 0.97, "phone": True, ...} — stored
     on IdentityClaim.match_features for audit / debugging.
     """
-    score:    float
-    method:   str                     # 'nid_exact' | 'probabilistic'
+
+    score: float
+    method: str  # 'nid_exact' | 'probabilistic'
     features: dict = field(default_factory=dict)
 
 
@@ -122,17 +124,20 @@ def score(profile: IdentityProfile, candidate: Candidate) -> MatchResult:
             total += W_PHONE
 
     # ── Birth date (exact | day↔month swap | miss) ───────────────────────────
-    if (profile.birth_year and candidate.birth_year
-            and profile.birth_year == candidate.birth_year):
-        exact = (profile.birth_month == candidate.birth_month
-                 and profile.birth_day == candidate.birth_day
-                 and profile.birth_month is not None)
+    if profile.birth_year and candidate.birth_year and profile.birth_year == candidate.birth_year:
+        exact = (
+            profile.birth_month == candidate.birth_month
+            and profile.birth_day == candidate.birth_day
+            and profile.birth_month is not None
+        )
         if exact:
             features["dob"] = "exact"
             total += W_DOB_EXACT
-        elif (profile.birth_month == candidate.birth_day
-              and profile.birth_day  == candidate.birth_month
-              and profile.birth_month is not None):
+        elif (
+            profile.birth_month == candidate.birth_day
+            and profile.birth_day == candidate.birth_month
+            and profile.birth_month is not None
+        ):
             features["dob"] = "swap"
             total += W_DOB_SWAP
         else:
@@ -182,11 +187,17 @@ def classify(score_value: float) -> str:
     return "no_match"
 
 
-def build_profile(*, name: str, phone_last10: Optional[str] = None,
-                  birth_year: Optional[int] = None, birth_month: Optional[int] = None,
-                  birth_day: Optional[int] = None, gender: Optional[str] = None,
-                  nid_hash: Optional[str] = None,
-                  family_id_hash: Optional[str] = None) -> IdentityProfile:
+def build_profile(
+    *,
+    name: str,
+    phone_last10: str | None = None,
+    birth_year: int | None = None,
+    birth_month: int | None = None,
+    birth_day: int | None = None,
+    gender: str | None = None,
+    nid_hash: str | None = None,
+    family_id_hash: str | None = None,
+) -> IdentityProfile:
     """Convenience constructor that normalizes the name.
 
     The rest of the fields are expected to be already normalized by the

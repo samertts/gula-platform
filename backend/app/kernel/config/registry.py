@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from backend.app.kernel.config.validation import ConfigurationValidator
-from backend.app.kernel.config.secrets import SecretsLoader
 from backend.app.kernel.config.reload import RuntimeReloader
+from backend.app.kernel.config.secrets import SecretsLoader
+from backend.app.kernel.config.validation import ConfigurationValidator
 from backend.app.kernel.config.versioned import VersionedConfiguration
 
 logger = logging.getLogger("gula.kernel.config.registry")

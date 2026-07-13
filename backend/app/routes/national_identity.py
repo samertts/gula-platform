@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
 from ..gateways.national_identity_gateway import verify_national_id
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user

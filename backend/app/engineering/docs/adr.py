@@ -41,7 +41,9 @@ class ADRGenerator(BaseGenerator):
                 pros = alt.get("pros", "")
                 cons = alt.get("cons", "")
                 alt_lines.append(f"### {name}\n\n{desc}\n\n- Pros: {pros}\n- Cons: {cons}")
-            alternatives_section = "## Considered Alternatives\n\n" + "\n\n".join(alt_lines) + "\n\n"
+            alternatives_section = (
+                "## Considered Alternatives\n\n" + "\n\n".join(alt_lines) + "\n\n"
+            )
 
         content = f"""# ADR-{num}: {spec.title}
 
@@ -88,17 +90,25 @@ class ArchitectureGenerator(BaseGenerator):
 
         comps_section = ""
         if components:
-            comps_section = "## Components\n\n" + "\n".join(
-                f"- **{c.get('name', 'Component')}** ({c.get('layer', 'application')}): {c.get('description', '')}"
-                for c in components
-            ) + "\n\n"
+            comps_section = (
+                "## Components\n\n"
+                + "\n".join(
+                    f"- **{c.get('name', 'Component')}** ({c.get('layer', 'application')}): {c.get('description', '')}"
+                    for c in components
+                )
+                + "\n\n"
+            )
 
         rels_section = ""
         if relations:
-            rels_section = "## Data Flow\n\n```mermaid\nflowchart TD\n" + "\n".join(
-                f"    {r['from']}[{r['from']}] -->|{r.get('label', '')}| {r['to']}[{r['to']}]"
-                for r in relations
-            ) + "\n```\n\n"
+            rels_section = (
+                "## Data Flow\n\n```mermaid\nflowchart TD\n"
+                + "\n".join(
+                    f"    {r['from']}[{r['from']}] -->|{r.get('label', '')}| {r['to']}[{r['to']}]"
+                    for r in relations
+                )
+                + "\n```\n\n"
+            )
 
         content = f"""# {system_name} Architecture
 

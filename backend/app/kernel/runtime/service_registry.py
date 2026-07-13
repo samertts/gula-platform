@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 from backend.app.kernel.exceptions import ServiceAlreadyRegisteredError, ServiceNotFoundError
 
@@ -21,7 +21,8 @@ class ServiceRegistry:
         singleton: bool = True,
         metadata: dict | None = None,
     ) -> None:
-        if name in self._services:
+        existing = self._services.get(name)
+        if existing is not None:
             raise ServiceAlreadyRegisteredError(name)
         self._services[name] = instance
         self._metadata[name] = metadata or {}

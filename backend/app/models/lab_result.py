@@ -1,8 +1,12 @@
-import secrets
 import hashlib
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+import secrets
+from datetime import datetime, timedelta
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone, timedelta
+
+from app._compat import UTC
+
 from ..database import Base
 
 
@@ -16,14 +20,16 @@ def hash_token(token: str) -> str:
 
 
 def default_expiry():
-    return datetime.now(timezone.utc) + timedelta(days=90)
+    return datetime.now(UTC) + timedelta(days=90)
 
 
 class LabResult(Base):
     __tablename__ = "lab_results"
 
     id = Column(Integer, primary_key=True, index=True)
-    order_id = Column(Integer, ForeignKey("lab_orders.id", ondelete="CASCADE"), nullable=False, index=True)
+    order_id = Column(
+        Integer, ForeignKey("lab_orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     test_type_id = Column(Integer, ForeignKey("test_types.id", ondelete="SET NULL"), nullable=True)
     test_name = Column(String(200), nullable=False)
     value = Column(Float, nullable=True)
@@ -35,7 +41,7 @@ class LabResult(Base):
     token = Column(String(64), unique=True, nullable=False, default=generate_token, index=True)
     token_hash = Column(String(64), unique=True, nullable=True, index=True)
     expires_at = Column(DateTime(timezone=True), default=default_expiry, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # Version of the clinical engine that last evaluated this result.
     # Populated when evaluate_result() / evaluate_order() is called after save.

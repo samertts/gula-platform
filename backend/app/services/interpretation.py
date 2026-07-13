@@ -1139,7 +1139,7 @@ INTERPRETATIONS = {
 
 
 def interpret_result(
-    test_name: str, value: float, normal_low: float = None, normal_high: float = None
+    test_name: str, value: float, normal_low: float | None = None, normal_high: float | None = None
 ) -> dict:
     """
     Interpret a lab result and return explanation + advice.
@@ -1203,7 +1203,9 @@ def _interpret_with_rules(interp: dict, value: float) -> dict:
     }
 
 
-def _interpret_generic(value: float, normal_low: float = None, normal_high: float = None) -> dict:
+def _interpret_generic(
+    value: float, normal_low: float | None = None, normal_high: float | None = None
+) -> dict:
     """Generic interpretation when no specific rules exist."""
     if normal_low is not None and normal_high is not None:
         if value < normal_low:
@@ -1240,7 +1242,10 @@ def _interpret_generic(value: float, normal_low: float = None, normal_high: floa
 
 
 def get_flag(
-    value: float, normal_low: float = None, normal_high: float = None, test_name: str = None
+    value: float,
+    normal_low: float | None = None,
+    normal_high: float | None = None,
+    test_name: str | None = None,
 ) -> str:
     """Return flag for result: H, L, normal, or critical.
 

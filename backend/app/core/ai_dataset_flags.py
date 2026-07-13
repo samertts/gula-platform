@@ -33,6 +33,7 @@ or stored — the schema does not have columns for them. See
 ``docs/ai/AI_ARCHITECTURE_CONSTRAINTS.md`` for the full data-protection
 contract.
 """
+
 from __future__ import annotations
 
 import logging
@@ -77,17 +78,33 @@ def _set_override(name: str, value: bool | None) -> None:
     log.warning("ai_dataset flag override: %s=%s", name, value)
 
 
-def enable_dataset()       -> None: _set_override("ENABLE_AI_DATASET",  True)
-def disable_dataset()      -> None: _set_override("ENABLE_AI_DATASET",  False)
-def reset_dataset_override() -> None: _set_override("ENABLE_AI_DATASET",  None)
-def enable_feedback()      -> None: _set_override("ENABLE_AI_FEEDBACK", True)
-def disable_feedback()     -> None: _set_override("ENABLE_AI_FEEDBACK", False)
-def reset_feedback_override() -> None: _set_override("ENABLE_AI_FEEDBACK", None)
+def enable_dataset() -> None:
+    _set_override("ENABLE_AI_DATASET", True)
+
+
+def disable_dataset() -> None:
+    _set_override("ENABLE_AI_DATASET", False)
+
+
+def reset_dataset_override() -> None:
+    _set_override("ENABLE_AI_DATASET", None)
+
+
+def enable_feedback() -> None:
+    _set_override("ENABLE_AI_FEEDBACK", True)
+
+
+def disable_feedback() -> None:
+    _set_override("ENABLE_AI_FEEDBACK", False)
+
+
+def reset_feedback_override() -> None:
+    _set_override("ENABLE_AI_FEEDBACK", None)
 
 
 def status_snapshot() -> dict[str, bool]:
     return {
-        "ai_dataset_enabled":  ai_dataset_enabled(),
+        "ai_dataset_enabled": ai_dataset_enabled(),
         "ai_feedback_enabled": ai_feedback_enabled(),
     }
 
@@ -106,6 +123,7 @@ def require_dataset():
                     "message": "AI interaction dataset collection is disabled in this deployment.",
                 },
             )
+
     return _dep
 
 
@@ -123,4 +141,5 @@ def require_feedback():
                     "message": "AI feedback collection is disabled in this deployment.",
                 },
             )
+
     return _dep

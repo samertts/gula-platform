@@ -15,18 +15,19 @@ Outbreak detection with two complementary algorithms:
 Neither algorithm accounts for seasonality or population size — this service
 is an early-warning flag, not a definitive epidemiological analysis.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Sequence
-
+from collections.abc import Sequence
 
 _ABNORMAL_FLAGS = {"H", "L", "critical", "high", "low"}
 
 
 def _count_abnormal(records: Sequence[dict], test_code: str) -> int:
     return sum(
-        1 for r in records
+        1
+        for r in records
         if (not test_code or str(r.get("test_code", "")).lower() == test_code.lower())
         and str(r.get("flag", "")).strip() in _ABNORMAL_FLAGS
     )
@@ -67,31 +68,31 @@ def detect_outbreak(
     """
     if not results:
         return {
-            "status":   "normal",
+            "status": "normal",
             "observed": 0,
             "expected": baseline_per_day * window_days,
-            "ratio":    0.0,
-            "z_score":  None,
-            "method":   "ratio",
-            "message":  "No data provided.",
+            "ratio": 0.0,
+            "z_score": None,
+            "method": "ratio",
+            "message": "No data provided.",
         }
 
     observed = _count_abnormal(results, test_code)
     expected = baseline_per_day * window_days
-    ratio    = round(observed / expected, 2) if expected > 0 else 0.0
+    ratio = round(observed / expected, 2) if expected > 0 else 0.0
 
     # ── Z-score path ───────────────────────────────────────────────────────────
     z_score: float | None = None
     method = "ratio"
 
     if history and len(history) >= 7:
-        n    = len(history)
+        n = len(history)
         mean = sum(history) / n
-        std  = math.sqrt(sum((x - mean) ** 2 for x in history) / n)
+        std = math.sqrt(sum((x - mean) ** 2 for x in history) / n)
 
         if std > 0:
             z_score = round((observed - mean) / std, 2)
-            method  = "z_score"
+            method = "z_score"
 
             if z_score >= z_threshold:
                 status = "alert"
@@ -109,18 +110,15 @@ def detect_outbreak(
                 )
             else:
                 status = "normal"
-                msg = (
-                    f"No outbreak signal (z-score): {observed} abnormal results, "
-                    f"z={z_score:.1f}."
-                )
+                msg = f"No outbreak signal (z-score): {observed} abnormal results, z={z_score:.1f}."
             return {
-                "status":   status,
+                "status": status,
                 "observed": observed,
                 "expected": round(mean, 2),
-                "ratio":    ratio,
-                "z_score":  z_score,
-                "method":   method,
-                "message":  msg,
+                "ratio": ratio,
+                "z_score": z_score,
+                "method": method,
+                "message": msg,
             }
 
     # ── Ratio path (fallback / primary when no history) ────────────────────────
@@ -145,11 +143,11 @@ def detect_outbreak(
         )
 
     return {
-        "status":   status,
+        "status": status,
         "observed": observed,
         "expected": expected,
-        "ratio":    ratio,
-        "z_score":  z_score,
-        "method":   method,
-        "message":  msg,
+        "ratio": ratio,
+        "z_score": z_score,
+        "method": method,
+        "message": msg,
     }

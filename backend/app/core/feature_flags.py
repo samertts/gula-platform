@@ -32,103 +32,118 @@ Tier Matrix (source of truth):
 │   air_gapped    → all external APIs disabled            │
 └─────────────────────────────────────────────────────────┘
 """
+
 from __future__ import annotations
+
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
+
+from app._compat import UTC
 
 logger = logging.getLogger("gula.features")
 
 # ── Tier definitions ─────────────────────────────────────────────────────────
 
 _TIER_FEATURES: dict[str, frozenset[str]] = {
-    "starter": frozenset({
-        "patient_management",
-        "basic_results",
-        "sample_tracking",
-        "pdf_reports",
-        "qr_codes",
-        "notifications",
-        "audit_log",
-        "mobile_access",
-    }),
-    "growth": frozenset({
-        "patient_management",
-        "basic_results",
-        "sample_tracking",
-        "pdf_reports",
-        "qr_codes",
-        "notifications",
-        "audit_log",
-        "mobile_access",
-        # growth additions
-        "quality_control",
-        "batch_import",
-        "batch_export",
-        "ehr_integration",
-        "advanced_analytics",
-        "critical_alerts",
-        "insurance_integration",
-        "national_id_lookup",
-        "device_results",
-    }),
-    "enterprise": frozenset({
-        "patient_management",
-        "basic_results",
-        "sample_tracking",
-        "pdf_reports",
-        "qr_codes",
-        "notifications",
-        "audit_log",
-        "mobile_access",
-        "quality_control",
-        "batch_import",
-        "batch_export",
-        "ehr_integration",
-        "advanced_analytics",
-        "critical_alerts",
-        "insurance_integration",
-        "national_id_lookup",
-        "device_results",
-        # enterprise additions
-        "multi_branch",
-        "government_reporting",
-        "ai_interpretation",
-        "ai_anomaly_detection",
-        "ai_epidemiology",
-        "custom_branding",
-        "api_access",
-        "sla_guarantee",
-        "white_label",
-        "priority_support",
-    }),
+    "starter": frozenset(
+        {
+            "patient_management",
+            "basic_results",
+            "sample_tracking",
+            "pdf_reports",
+            "qr_codes",
+            "notifications",
+            "audit_log",
+            "mobile_access",
+        }
+    ),
+    "growth": frozenset(
+        {
+            "patient_management",
+            "basic_results",
+            "sample_tracking",
+            "pdf_reports",
+            "qr_codes",
+            "notifications",
+            "audit_log",
+            "mobile_access",
+            # growth additions
+            "quality_control",
+            "batch_import",
+            "batch_export",
+            "ehr_integration",
+            "advanced_analytics",
+            "critical_alerts",
+            "insurance_integration",
+            "national_id_lookup",
+            "device_results",
+        }
+    ),
+    "enterprise": frozenset(
+        {
+            "patient_management",
+            "basic_results",
+            "sample_tracking",
+            "pdf_reports",
+            "qr_codes",
+            "notifications",
+            "audit_log",
+            "mobile_access",
+            "quality_control",
+            "batch_import",
+            "batch_export",
+            "ehr_integration",
+            "advanced_analytics",
+            "critical_alerts",
+            "insurance_integration",
+            "national_id_lookup",
+            "device_results",
+            # enterprise additions
+            "multi_branch",
+            "government_reporting",
+            "ai_interpretation",
+            "ai_anomaly_detection",
+            "ai_epidemiology",
+            "custom_branding",
+            "api_access",
+            "sla_guarantee",
+            "white_label",
+            "priority_support",
+        }
+    ),
 }
 
 # ── Deployment mode overrides ────────────────────────────────────────────────
 _DEPLOYMENT_EXTRAS: dict[str, frozenset[str]] = {
-    "single":        frozenset(),
-    "multi_branch":  frozenset({"multi_branch", "cross_branch_reports"}),
-    "government":    frozenset({"government_reporting", "compliance_dashboard", "ministry_integration"}),
+    "single": frozenset(),
+    "multi_branch": frozenset({"multi_branch", "cross_branch_reports"}),
+    "government": frozenset(
+        {"government_reporting", "compliance_dashboard", "ministry_integration"}
+    ),
 }
 
 # ── Security level overrides ─────────────────────────────────────────────────
 _SECURITY_EXTRAS: dict[str, frozenset[str]] = {
-    "standard":      frozenset(),
+    "standard": frozenset(),
     "high_security": frozenset({"two_factor_required", "audit_chain", "session_timeout_short"}),
-    "air_gapped":    frozenset({"two_factor_required", "audit_chain", "session_timeout_short", "air_gapped_mode"}),
+    "air_gapped": frozenset(
+        {"two_factor_required", "audit_chain", "session_timeout_short", "air_gapped_mode"}
+    ),
 }
 
 # Features blocked in air-gapped mode (no external calls)
-_AIR_GAPPED_BLOCKED: frozenset[str] = frozenset({
-    "ai_interpretation",
-    "ai_anomaly_detection",
-    "ai_epidemiology",
-    "ehr_integration",
-    "insurance_integration",
-    "national_id_lookup",
-    "ministry_integration",
-    "notifications",   # external push notifications
-})
+_AIR_GAPPED_BLOCKED: frozenset[str] = frozenset(
+    {
+        "ai_interpretation",
+        "ai_anomaly_detection",
+        "ai_epidemiology",
+        "ehr_integration",
+        "insurance_integration",
+        "national_id_lookup",
+        "ministry_integration",
+        "notifications",  # external push notifications
+    }
+)
 
 # Tier ordering for upgrade validation
 _TIER_ORDER = {"starter": 0, "growth": 1, "enterprise": 2}
@@ -137,7 +152,9 @@ _VALID_DEPLOYMENTS = frozenset({"single", "multi_branch", "government"})
 _VALID_SECURITY = frozenset({"standard", "high_security", "air_gapped"})
 
 
-def get_tier_features(tier: str, deployment_mode: str = "single", security_level: str = "standard") -> frozenset[str]:
+def get_tier_features(
+    tier: str, deployment_mode: str = "single", security_level: str = "standard"
+) -> frozenset[str]:
     """
     Return the full feature set for a given (tier, deployment_mode, security_level) combo.
     Applies deployment and security overrides on top of tier base.
@@ -167,25 +184,29 @@ def resolve_lab_features(lab_id: int, db) -> frozenset[str]:
     This is the authoritative check — call this in every route that gates features.
     Result is NOT cached here; cache in Redis at the route level if needed.
     """
-    from ..models.subscription import LabSubscription, FeatureFlag
+    from ..models.subscription import FeatureFlag, LabSubscription
 
-    sub = db.query(LabSubscription).filter(
-        LabSubscription.lab_id == lab_id,
-        LabSubscription.is_active == True,
-    ).first()
+    sub = (
+        db.query(LabSubscription)
+        .filter(
+            LabSubscription.lab_id == lab_id,
+            LabSubscription.is_active,
+        )
+        .first()
+    )
 
     if sub is None:
         # No subscription → default to starter/single/standard
         tier, deployment, security = "starter", "single", "standard"
     else:
-        tier       = sub.tier or "starter"
+        tier = sub.tier or "starter"
         deployment = sub.deployment_mode or "single"
-        security   = sub.security_level or "standard"
+        security = sub.security_level or "standard"
 
     features = set(get_tier_features(tier, deployment, security))
 
     # Apply per-lab FeatureFlag overrides
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     flags = db.query(FeatureFlag).filter(FeatureFlag.lab_id == lab_id).all()
     for flag in flags:
         # Skip expired flags
@@ -213,7 +234,8 @@ def require_feature(feature: str, lab_id: int, db):
     if feature not in features:
         logger.warning(
             "[FEATURE GATE] lab_id=%s blocked from feature '%s' (not in tier)",
-            lab_id, feature,
+            lab_id,
+            feature,
         )
         raise HTTPException(
             status_code=403,
@@ -239,10 +261,14 @@ def get_lab_subscription_info(lab_id: int, db) -> dict:
     """
     from ..models.subscription import LabSubscription
 
-    sub = db.query(LabSubscription).filter(
-        LabSubscription.lab_id == lab_id,
-        LabSubscription.is_active == True,
-    ).first()
+    sub = (
+        db.query(LabSubscription)
+        .filter(
+            LabSubscription.lab_id == lab_id,
+            LabSubscription.is_active,
+        )
+        .first()
+    )
 
     if sub is None:
         return {
@@ -254,7 +280,7 @@ def get_lab_subscription_info(lab_id: int, db) -> dict:
         }
 
     features = resolve_lab_features(lab_id, db)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     is_trial = bool(sub.trial_ends_at and sub.trial_ends_at > now)
 
     return {
@@ -289,8 +315,26 @@ def is_upgrade_valid(current_tier: str, target_tier: str) -> bool:
 def get_tier_limits(tier: str) -> dict:
     """Return the default resource limits for a tier."""
     limits = {
-        "starter":    {"max_patients": 500,   "max_staff": 5,  "max_branches": 1, "max_orders_per_day": 100,  "max_ai_calls_per_day": 0},
-        "growth":     {"max_patients": 5000,  "max_staff": 20, "max_branches": 1, "max_orders_per_day": 1000, "max_ai_calls_per_day": 0},
-        "enterprise": {"max_patients": 99999, "max_staff": 999,"max_branches": 50,"max_orders_per_day": 99999,"max_ai_calls_per_day": 500},
+        "starter": {
+            "max_patients": 500,
+            "max_staff": 5,
+            "max_branches": 1,
+            "max_orders_per_day": 100,
+            "max_ai_calls_per_day": 0,
+        },
+        "growth": {
+            "max_patients": 5000,
+            "max_staff": 20,
+            "max_branches": 1,
+            "max_orders_per_day": 1000,
+            "max_ai_calls_per_day": 0,
+        },
+        "enterprise": {
+            "max_patients": 99999,
+            "max_staff": 999,
+            "max_branches": 50,
+            "max_orders_per_day": 99999,
+            "max_ai_calls_per_day": 500,
+        },
     }
     return limits.get(tier, limits["starter"])

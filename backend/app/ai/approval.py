@@ -22,10 +22,9 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, Optional
 
-from app.ai.guardrails import AISuggestion, AIOperationType
+from app._compat import StrEnum
+from app.ai.guardrails import AIOperationType, AISuggestion
 
 logger = logging.getLogger("gula.ai.approval")
 
@@ -33,37 +32,33 @@ logger = logging.getLogger("gula.ai.approval")
 TTL_SECONDS = 1800
 
 
-class ApprovalStatus(str, Enum):
-    PENDING  = "pending"
+class ApprovalStatus(StrEnum):
+    PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
-    EXPIRED  = "expired"
+    EXPIRED = "expired"
     EXECUTED = "executed"
 
 
 @dataclass
 class PendingApproval:
-    id:           str
-    suggestion:   AISuggestion
-    status:       ApprovalStatus = ApprovalStatus.PENDING
-    submitted_at: float          = field(default_factory=time.time)
-    reviewed_at:  Optional[float] = None
-    reviewed_by:  Optional[str]   = None   # user email / id
-    rejection_reason: str         = ""
+    id: str
+    suggestion: AISuggestion
+    status: ApprovalStatus = ApprovalStatus.PENDING
+    submitted_at: float = field(default_factory=time.time)
+    reviewed_at: float | None = None
+    reviewed_by: str | None = None  # user email / id
+    rejection_reason: str = ""
 
     @property
     def is_expired(self) -> bool:
         return (
-            self.status == ApprovalStatus.PENDING
-            and time.time() - self.submitted_at > TTL_SECONDS
+            self.status == ApprovalStatus.PENDING and time.time() - self.submitted_at > TTL_SECONDS
         )
 
     @property
     def is_executable(self) -> bool:
-        return (
-            self.status == ApprovalStatus.APPROVED
-            and not self.is_expired
-        )
+        return self.status == ApprovalStatus.APPROVED and not self.is_expired
 
 
 class ApprovalStore:
@@ -75,7 +70,7 @@ class ApprovalStore:
     """
 
     def __init__(self) -> None:
-        self._store: Dict[str, PendingApproval] = {}
+        self._store: dict[str, PendingApproval] = {}
 
     def submit(self, suggestion: AISuggestion) -> PendingApproval:
         """
@@ -93,7 +88,8 @@ class ApprovalStore:
             )
             logger.debug(
                 "[AI_APPROVAL] auto-approved display_only id=%s operation=%s",
-                approval.id, suggestion.operation,
+                approval.id,
+                suggestion.operation,
             )
             return approval
 
@@ -125,13 +121,15 @@ class ApprovalStore:
                 f"Approval {approval_id} is not pending (status={approval.status.value})"
             )
 
-        approval.status      = ApprovalStatus.APPROVED
+        approval.status = ApprovalStatus.APPROVED
         approval.reviewed_at = time.time()
         approval.reviewed_by = approver
 
         logger.info(
             "[AI_APPROVAL] approved id=%s operation=%s by=%s",
-            approval_id, approval.suggestion.operation, approver,
+            approval_id,
+            approval.suggestion.operation,
+            approver,
         )
         return approval
 
@@ -143,14 +141,17 @@ class ApprovalStore:
                 f"Approval {approval_id} is not pending (status={approval.status.value})"
             )
 
-        approval.status           = ApprovalStatus.REJECTED
-        approval.reviewed_at      = time.time()
-        approval.reviewed_by      = approver
+        approval.status = ApprovalStatus.REJECTED
+        approval.reviewed_at = time.time()
+        approval.reviewed_by = approver
         approval.rejection_reason = reason
 
         logger.info(
             "[AI_APPROVAL] rejected id=%s operation=%s by=%s reason=%r",
-            approval_id, approval.suggestion.operation, approver, reason,
+            approval_id,
+            approval.suggestion.operation,
+            approver,
+            reason,
         )
         return approval
 
@@ -158,7 +159,7 @@ class ApprovalStore:
         approval = self._get_or_raise(approval_id)
         approval.status = ApprovalStatus.EXECUTED
 
-    def get(self, approval_id: str) -> Optional[PendingApproval]:
+    def get(self, approval_id: str) -> PendingApproval | None:
         approval = self._store.get(approval_id)
         if approval and approval.is_expired:
             approval.status = ApprovalStatus.EXPIRED

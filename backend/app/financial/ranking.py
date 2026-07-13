@@ -1,11 +1,11 @@
 """Financial Engine — Lab Ranking Service.
 Scores and ranks labs for the patient-facing directory.
 """
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -15,10 +15,10 @@ class LabRanking:
     quality_score: float = 0.0
     avg_rating: float = 0.0
     review_count: int = 0
-    distance_km: Optional[float] = None
+    distance_km: float | None = None
     price_level: int = 2  # 1=cheap, 2=medium, 3=expensive
     monthly_volume: int = 0
-    response_time_minutes: Optional[int] = None
+    response_time_minutes: int | None = None
     accredited: bool = False
     score: float = 0.0
     rank: int = 0
@@ -33,7 +33,7 @@ _VOLUME_WEIGHT = 0.10
 _MAX_DISTANCE_KM = 50.0
 
 
-def _normalize_distance(distance_km: Optional[float]) -> float:
+def _normalize_distance(distance_km: float | None) -> float:
     if distance_km is None:
         return 0.5  # neutral score
     normalized = 1.0 - min(distance_km, _MAX_DISTANCE_KM) / _MAX_DISTANCE_KM
@@ -50,7 +50,7 @@ def _normalize_volume(monthly_volume: int) -> float:
     return min(math.log10(monthly_volume) / 3.0, 1.0)
 
 
-def _normalize_response_time(response_time_minutes: Optional[int]) -> float:
+def _normalize_response_time(response_time_minutes: int | None) -> float:
     if response_time_minutes is None:
         return 0.5
     return max(0.0, 1.0 - response_time_minutes / 120.0)
@@ -64,11 +64,11 @@ def compute_score(ranking: LabRanking) -> float:
     volume_norm = _normalize_volume(ranking.monthly_volume)
 
     score = (
-        quality_norm * _QUALITY_WEIGHT +
-        rating_norm * _RATING_WEIGHT +
-        distance_norm * _DISTANCE_WEIGHT +
-        price_norm * _PRICE_WEIGHT +
-        volume_norm * _VOLUME_WEIGHT
+        quality_norm * _QUALITY_WEIGHT
+        + rating_norm * _RATING_WEIGHT
+        + distance_norm * _DISTANCE_WEIGHT
+        + price_norm * _PRICE_WEIGHT
+        + volume_norm * _VOLUME_WEIGHT
     )
     # Accreditation bonus
     if ranking.accredited:

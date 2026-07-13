@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
-
-from backend.app.kernel.types import PluginDescriptor
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.app.kernel import Kernel

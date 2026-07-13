@@ -50,9 +50,7 @@ class ModuleLoadError(KernelError):
 
 class ModuleVersionConflict(KernelError):
     def __init__(self, name: str, required: str, found: str):
-        super().__init__(
-            f"Module '{name}' requires version {required}, found {found}"
-        )
+        super().__init__(f"Module '{name}' requires version {required}, found {found}")
 
 
 class EventPublishError(KernelError):
@@ -73,9 +71,7 @@ class TenantNotFoundError(KernelError):
 
 class QuotaExceededError(KernelError):
     def __init__(self, tenant_id: str, resource: str, limit: int):
-        super().__init__(
-            f"Tenant '{tenant_id}' exceeded quota for '{resource}': {limit}"
-        )
+        super().__init__(f"Tenant '{tenant_id}' exceeded quota for '{resource}': {limit}")
 
 
 class CircuitBreakerOpenError(KernelError):

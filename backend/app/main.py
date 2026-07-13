@@ -5,10 +5,14 @@ import sys
 import time
 import uuid
 from contextlib import asynccontextmanager, suppress
-from datetime import datetime, timezone
+from datetime import datetime
+
+from app._compat import UTC
 
 # Ensure canonical shared library is on the Python path
-_SHARED_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "shared")
+_SHARED_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "shared"
+)
 if os.path.isdir(_SHARED_PATH) and _SHARED_PATH not in sys.path:
     sys.path.insert(0, os.path.dirname(_SHARED_PATH))  # parent dir so 'import shared' works
 
@@ -79,7 +83,7 @@ from .models import (  # noqa: F401, E402
     TestType,
     User,
 )
-from .models.outbox import OutboxEvent  # noqa: F401, E402  register OutboxEvent with Base metadata
+from .models.outbox import OutboxEvent  # noqa: E402  register OutboxEvent with Base metadata
 
 # Schema management: create_all is safe and idempotent (checkfirst=True by default).
 # It creates missing tables without touching existing data.
@@ -844,7 +848,7 @@ async def _health_alert_loop():
                         f"Issues: {', '.join(issues) or 'none'}\n"
                         f"DB: {db_ms}ms  Redis: {red_ms}ms  "
                         f"Mem: {rss_mb}MB  Queue: {queue_backlog}\n"
-                        f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                        f"{datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC"
                     ),
                     "grade": grade,
                     "prev_grade": _prev_grade,
@@ -1071,7 +1075,7 @@ def health():
         "degradation_level": sys_health.degradation_level.name,
         "circuits": sys_health.to_dict()["circuits"],
         "pool": pool,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -1153,7 +1157,7 @@ def health_status():
         "degraded_mode": sys_h.get("degraded", False),
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -1296,7 +1300,7 @@ def health_deep():
         "circuits": circuits,
         "check_duration_ms": total_ms,
         "version": APP_VERSION,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "auto_repair": (
             lambda: __import__("app.core.auto_repair", fromlist=["auto_repair"]).auto_repair.stats()
         )(),
@@ -1312,10 +1316,9 @@ async def kernel_health():
     Bypasses all middlewares so it is always reachable.
     """
     try:
-        from .kernel.integration import get_kernel_health, is_kernel_ready
+        from .kernel.integration import get_kernel_health
 
-        health = await get_kernel_health()
-        return health
+        return await get_kernel_health()
     except Exception as e:
         return {
             "status": "error",
@@ -1363,6 +1366,3 @@ def list_test_types():
         return result
     finally:
         db.close()
-
-
-

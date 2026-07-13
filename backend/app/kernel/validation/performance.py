@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
 
 from backend.app.kernel import Kernel
 
@@ -15,7 +14,6 @@ class PerformanceValidator:
 
     def validate(self) -> list[dict]:
         issues = []
-        import time
         start = time.monotonic()
         _ = self.kernel.get_component("service_registry")
         elapsed = (time.monotonic() - start) * 1000

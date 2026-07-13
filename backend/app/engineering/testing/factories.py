@@ -23,12 +23,12 @@ from datetime import datetime
 
 {chr(10).join(factory_classes)}
 '''
-        self._write(f"factories.py", content)
+        self._write("factories.py", content)
 
         return self._result
 
     def _factory_class(self, entity: str) -> str:
-        return f'''
+        return f"""
 class {entity}Factory(factory.Factory):
     class Meta:
         model = "models.{entity.lower()}.{entity}"
@@ -37,4 +37,4 @@ class {entity}Factory(factory.Factory):
     name = factory.Faker("name")
     created_at = factory.LazyFunction(datetime.utcnow)
     updated_at = factory.LazyFunction(datetime.utcnow)
-'''
+"""

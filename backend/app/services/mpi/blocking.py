@@ -17,10 +17,10 @@ Complement: the blocking index in models.py is composite
 (name_blocking_key, birth_year, gender) so candidates are pre-filtered
 by three signals at once.
 """
+
 import re
 
 from ..identity import normalize_name
-
 
 _BLOCKING_KEY_LEN = 5  # 4 chars of surname + 1 char of given
 
@@ -55,7 +55,7 @@ def blocking_key(full_name: str) -> str:
         t = tokens[0]
         key = (t[:4] + t[:1]).ljust(_BLOCKING_KEY_LEN, "_")
     else:
-        given   = tokens[0]
+        given = tokens[0]
         surname = tokens[-1]
         key = (surname[:4] + given[:1]).ljust(_BLOCKING_KEY_LEN, "_")
 

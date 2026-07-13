@@ -38,27 +38,27 @@ from app.gateways.mode import AdapterMode, resolve_mode
 
 logger = logging.getLogger("gula.gateways.national_identity")
 
-_gateway: "NationalIdentityGateway | None" = None
+_gateway: NationalIdentityGateway | None = None
 
 _VALID_ID_LENGTHS = {12, 16}
-_ADAPTER_KEY      = "nid"
-_REQUIRED_CREDS   = ("MOI_NID_API_URL", "MOI_NID_API_KEY")
+_ADAPTER_KEY = "nid"
+_REQUIRED_CREDS = ("MOI_NID_API_URL", "MOI_NID_API_KEY")
 
 
 class NationalIdentityGateway(ExternalGateway):
-    name                      = "national_identity"
-    trust_level               = DataTrustLevel.NON_CRITICAL
-    timeout                   = 10.0
-    max_retries               = 2
-    calls_per_minute          = 20
+    name = "national_identity"
+    trust_level = DataTrustLevel.NON_CRITICAL
+    timeout = 10.0
+    max_retries = 2
+    calls_per_minute = 20
     circuit_failure_threshold = 3
-    circuit_recovery_timeout  = 120.0
-    cache_ttl                 = 300.0
-    stale_threshold           = 120.0
+    circuit_recovery_timeout = 120.0
+    cache_ttl = 300.0
+    stale_threshold = 120.0
 
     _SCHEMA = [
-        FieldRule("valid",  bool, required=True),
-        FieldRule("source", str,  required=True),
+        FieldRule("valid", bool, required=True),
+        FieldRule("source", str, required=True),
     ]
 
     def __init__(self) -> None:
@@ -75,19 +75,19 @@ class NationalIdentityGateway(ExternalGateway):
     def _stub_response(self, national_id: str) -> dict:
         if len(national_id) not in _VALID_ID_LENGTHS:
             return {
-                "valid":   False,
-                "source":  "stub_local_validation",
+                "valid": False,
+                "source": "stub_local_validation",
                 "message": "Invalid ID length",
             }
         return {
-            "valid":   True,
-            "source":  "stub_local_validation",
+            "valid": True,
+            "source": "stub_local_validation",
             "message": "Awaiting MoI production credential",
         }
 
     def _live_response(self, national_id: str) -> dict:
         base = os.environ["MOI_NID_API_URL"].rstrip("/")
-        key  = os.environ["MOI_NID_API_KEY"]
+        key = os.environ["MOI_NID_API_KEY"]
         return self._http(
             "post",
             f"{base}/api/id/verify",
@@ -107,12 +107,17 @@ class NationalIdentityGateway(ExternalGateway):
                 live = self._live_response(national_id)
                 logger.info(
                     "[SHADOW] gateway=%s action=%s stub=%r live=%r",
-                    self.name, action, stub, live,
+                    self.name,
+                    action,
+                    stub,
+                    live,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "[SHADOW] gateway=%s action=%s live_error=%s",
-                    self.name, action, exc,
+                    self.name,
+                    action,
+                    exc,
                 )
             return stub
 

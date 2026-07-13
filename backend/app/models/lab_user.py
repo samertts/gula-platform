@@ -1,6 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+
+from app._compat import UTC
+
 from ..database import Base
 
 
@@ -15,7 +19,7 @@ class LabUser(Base):
     role = Column(String(50), default="staff", index=True)
     is_active = Column(Boolean, default=True, index=True)
     perm_version = Column(Integer, default=1, nullable=False)  # bump on role/permission change
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # ── Extended fields (migration: 20250322_roles_hierarchy) ─────────────────
     # national_id_hash: HMAC-SHA256 of the user's national ID — used to link
