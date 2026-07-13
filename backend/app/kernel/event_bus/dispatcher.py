@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Callable
 
@@ -13,12 +14,20 @@ class EventDispatcher:
         for handler in handlers:
             try:
                 result = handler(event)
-                if hasattr(result, "__await__"):
-                    import asyncio
-
-                    asyncio.ensure_future(result)
+                if asyncio.iscoroutine(result):
+                    task = asyncio.create_task(result)
+                    task.add_done_callback(self._on_handler_complete)
             except Exception as e:
                 logger.error(
                     "Event handler failed",
                     extra={"event": event.name, "handler": handler.__name__, "error": str(e)},
                 )
+
+    @staticmethod
+    def _on_handler_complete(task: asyncio.Task) -> None:
+        exc = task.exception()
+        if exc:
+            logger.error(
+                "Async event handler raised an exception",
+                extra={"error": str(exc)},
+            )

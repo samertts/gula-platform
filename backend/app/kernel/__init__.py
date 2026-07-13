@@ -103,6 +103,7 @@ class KernelConfig:
     enable_feature_management: bool = True
     enable_config_engine: bool = True
     enable_multi_tenant: bool = True
+    enable_modules: bool = True
     enable_internal_gateway: bool = True
     data_dir: str = "/var/lib/gula/kernel"
     plugin_dir: str = "/var/lib/gula/plugins"

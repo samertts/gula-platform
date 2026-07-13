@@ -47,8 +47,3 @@ class ApplicationContext:
 
     def clear(self) -> None:
         self._attributes.clear()
-
-
-request_id_var = contextvars.ContextVar("kernel_request_id", default="")
-tenant_id_var = contextvars.ContextVar("kernel_tenant_id", default="")
-correlation_id_var = contextvars.ContextVar("kernel_correlation_id", default="")

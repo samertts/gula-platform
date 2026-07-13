@@ -57,7 +57,7 @@ class TestStressEventBus:
         assert count == 100_000
         assert elapsed < 15.0, f"100k events took {elapsed:.2f}s (limit 15s)"
 
-    def test_concurrent_publishers(self, kernel: Kernel):
+    async def test_concurrent_publishers(self, kernel: Kernel):
         eb = EventBus(kernel)
         count = 0
 
@@ -72,7 +72,7 @@ class TestStressEventBus:
                 eb.publish(Event(name="concurrent.test", data={"i": i}))
 
         start = time.monotonic()
-        asyncio.run(asyncio.gather(*[publish_batch(100) for _ in range(10)]))
+        await asyncio.gather(*[publish_batch(100) for _ in range(10)])
         elapsed = time.monotonic() - start
         assert count == 1000
         assert elapsed < 3.0, f"Concurrent publish took {elapsed:.2f}s (limit 3s)"
