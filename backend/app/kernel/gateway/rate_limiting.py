@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import logging
 import time
-from collections import deque
-from typing import Dict, Optional
-
-from backend.app.kernel.exceptions import RateLimitExceededError
 
 logger = logging.getLogger("gula.kernel.gateway.rate_limiting")
 
@@ -19,7 +15,6 @@ class RateLimiter:
         self._limits[key] = (max_requests, window_seconds)
 
     def check(self, key: str) -> bool:
-        import time
         limit = self._limits.get(key)
         if not limit:
             return True

@@ -35,15 +35,11 @@ def validate_manifest(domain: TrustDomain) -> None:
         if not isinstance(op, str) or not op:
             raise ManifestError("allowed_operations must be non-empty strings")
     if domain.failure_policy.mode is not FailureMode.FAIL_CLOSED:
-        raise ManifestError(
-            "failure_policy.mode must be fail_closed for sovereign adapters"
-        )
+        raise ManifestError("failure_policy.mode must be fail_closed for sovereign adapters")
     if domain.failure_policy.max_retries < 0:
         raise ManifestError("failure_policy.max_retries must be >= 0")
     if domain.failure_policy.circuit_open_threshold_failures < 1:
-        raise ManifestError(
-            "failure_policy.circuit_open_threshold_failures must be >= 1"
-        )
+        raise ManifestError("failure_policy.circuit_open_threshold_failures must be >= 1")
     if domain.tenancy_mode is TenancyMode.NATIONAL_AGGREGATOR:
         # National aggregators must NOT carry inbound patient-class data;
         # they receive de-identified flows only.
@@ -55,6 +51,4 @@ def validate_manifest(domain: TrustDomain) -> None:
                 + ", ".join(sorted(leakage))
             )
     if domain.require_jwe_for_classes - domain.data_classes_in - domain.data_classes_out:
-        raise ManifestError(
-            "require_jwe_for_classes must reference declared data classes"
-        )
+        raise ManifestError("require_jwe_for_classes must reference declared data classes")

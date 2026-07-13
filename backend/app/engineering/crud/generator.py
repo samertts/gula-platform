@@ -52,7 +52,18 @@ class CRUDGenerator(BaseGenerator):
     def _generate_entity(
         self, module: str, spec: EntitySpec, table: str, fields: list[EntityField]
     ) -> None:
-        lines = ["from __future__ import annotations", "", "from datetime import datetime", "from typing import Optional", "from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text", "from sqlalchemy.orm import declarative_base", "", "Base = declarative_base()", "", ""]
+        lines = [
+            "from __future__ import annotations",
+            "",
+            "from datetime import datetime",
+            "from typing import Optional",
+            "from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text",
+            "from sqlalchemy.orm import declarative_base",
+            "",
+            "Base = declarative_base()",
+            "",
+            "",
+        ]
         audit = """
     created_at: datetime = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: datetime = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -70,7 +81,9 @@ class CRUDGenerator(BaseGenerator):
             default = f", default={f.default}" if f.default is not None else ""
             unique = ", unique=True" if f.unique else ""
             index = ", index=True" if f.indexed else ""
-            lines.append(f"    {f.name}: {f.type} = Column({col_type}{nullable}{default}{unique}{index})")
+            lines.append(
+                f"    {f.name}: {f.type} = Column({col_type}{nullable}{default}{unique}{index})"
+            )
         if spec.audit_fields:
             for line in audit.strip("\n").split("\n"):
                 lines.append(line)
@@ -180,7 +193,7 @@ class {spec.name}Create(BaseModel):
 
 
 class {spec.name}Update(BaseModel):
-{chr(10).join(f'    {f.name}: Optional[{f.type}] = None' for f in fields)}
+{chr(10).join(f"    {f.name}: Optional[{f.type}] = None" for f in fields)}
 
 
 class {spec.name}Response(BaseModel):

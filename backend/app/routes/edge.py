@@ -31,33 +31,46 @@ The agent endpoints rely on a per-device token issued at registration
 (JWT-style, signed with EDGE_TASK_SIGNING_KEY). They never accept a normal
 user JWT and never call get_current_user.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
 from ..database import get_db
-from ..models.lab_user import LabUser
-from ..models.edge import (
-    EdgeDevice, EdgeEvent, EdgeModel, EdgeModelAssignment, EdgePolicy, EdgeTask,
-)
-from ..security.dependencies import get_current_user
-from ..security.rate_limit import rate_limit_user, rate_limit_public
 from ..edge import (
     config as edge_config,
+)
+from ..edge import (
     governance,
     identity,
-    policy as policy_mod,
     registry,
     scheduler,
+)
+from ..edge import (
+    policy as policy_mod,
+)
+from ..edge import (
     telemetry as tele,
+)
+from ..edge import (
     trust as trust_mod,
 )
-
+from ..models.edge import (
+    EdgeDevice,
+    EdgeEvent,
+    EdgeModel,
+    EdgeTask,
+)
+from ..models.lab_user import LabUser
+from ..security.dependencies import get_current_user
+from ..security.rate_limit import rate_limit_public, rate_limit_user
 
 router = APIRouter(prefix="/edge", tags=["edge"])
 
@@ -66,156 +79,158 @@ router = APIRouter(prefix="/edge", tags=["edge"])
 # Schemas
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class RegisterDeviceRequest(BaseModel):
     public_key_pem: str = Field(..., min_length=80, max_length=8000)
-    role_mode:      str = Field("personal", pattern="^(personal|clinic|enterprise)$")
-    display_name:   Optional[str] = Field(None, max_length=200)
-    agent_version:  Optional[str] = Field(None, max_length=32)
-    os_platform:    Optional[str] = Field(None, max_length=64)
-    capabilities:   Optional[dict[str, Any]] = None
-    attestation_blob: Optional[str] = Field(None, max_length=8000)
+    role_mode: str = Field("personal", pattern="^(personal|clinic|enterprise)$")
+    display_name: str | None = Field(None, max_length=200)
+    agent_version: str | None = Field(None, max_length=32)
+    os_platform: str | None = Field(None, max_length=64)
+    capabilities: dict[str, Any] | None = None
+    attestation_blob: str | None = Field(None, max_length=8000)
 
 
 class RegisterDeviceResponse(BaseModel):
-    device_id:       str
-    status:          str
-    role_mode:       str
-    trust_score:     float
+    device_id: str
+    status: str
+    role_mode: str
+    trust_score: float
     cert_fingerprint: str
-    agent_token:     str  # bearer for /edge/agent/* calls
-    nonce:           str  # echo-and-sign on first heartbeat
+    agent_token: str  # bearer for /edge/agent/* calls
+    nonce: str  # echo-and-sign on first heartbeat
 
 
 class DeviceSummary(BaseModel):
-    device_id:    str
-    display_name: Optional[str]
-    role_mode:    str
-    status:       str
-    trust_score:  float
-    last_seen_at: Optional[datetime]
-    agent_version: Optional[str]
+    device_id: str
+    display_name: str | None
+    role_mode: str
+    status: str
+    trust_score: float
+    last_seen_at: datetime | None
+    agent_version: str | None
 
 
 class DeviceDetail(DeviceSummary):
-    capabilities:    Optional[dict[str, Any]]
-    registered_at:   datetime
-    revoked_at:      Optional[datetime]
-    quarantined_at:  Optional[datetime]
-    kill_switched:   bool
-    latest_telemetry: Optional[dict[str, Any]] = None
+    capabilities: dict[str, Any] | None
+    registered_at: datetime
+    revoked_at: datetime | None
+    quarantined_at: datetime | None
+    kill_switched: bool
+    latest_telemetry: dict[str, Any] | None = None
 
 
 class TaskSubmitRequest(BaseModel):
-    kind:            str = Field(..., min_length=3, max_length=64)
-    payload:         Optional[dict[str, Any]] = None
-    priority:        int = Field(5, ge=1, le=10)
-    privacy_level:   str = Field("standard", pattern="^(standard|sensitive|phi)$")
-    required_caps:   Optional[list[str]] = None
-    min_trust:       float = Field(0.0, ge=0.0, le=100.0)
-    timeout_s:       int = Field(60, ge=5, le=600)
-    max_attempts:    int = Field(3, ge=1, le=10)
-    idempotency_key: Optional[str] = Field(None, max_length=80)
-    expires_in_s:    Optional[int] = Field(None, ge=10, le=86400)
+    kind: str = Field(..., min_length=3, max_length=64)
+    payload: dict[str, Any] | None = None
+    priority: int = Field(5, ge=1, le=10)
+    privacy_level: str = Field("standard", pattern="^(standard|sensitive|phi)$")
+    required_caps: list[str] | None = None
+    min_trust: float = Field(0.0, ge=0.0, le=100.0)
+    timeout_s: int = Field(60, ge=5, le=600)
+    max_attempts: int = Field(3, ge=1, le=10)
+    idempotency_key: str | None = Field(None, max_length=80)
+    expires_in_s: int | None = Field(None, ge=10, le=86400)
 
 
 class TaskSummary(BaseModel):
-    task_uid:    str
-    kind:        str
-    status:      str
-    priority:    int
+    task_uid: str
+    kind: str
+    status: str
+    priority: int
     privacy_level: str
-    device_id:   Optional[str]
-    attempts:    int
-    created_at:  datetime
-    completed_at: Optional[datetime]
+    device_id: str | None
+    attempts: int
+    created_at: datetime
+    completed_at: datetime | None
 
 
 class TaskDetail(TaskSummary):
-    payload:    Optional[dict[str, Any]]
-    result:     Optional[dict[str, Any]]
-    error:      Optional[str]
-    timeout_s:  int
+    payload: dict[str, Any] | None
+    result: dict[str, Any] | None
+    error: str | None
+    timeout_s: int
     max_attempts: int
 
 
 class PolicyView(BaseModel):
     max_concurrent_per_device: int
-    max_devices_per_lab:       int
-    idle_only:                 bool
-    battery_floor_pct:         int
-    cpu_cap_pct:               int
-    ram_cap_mb:                int
-    allow_kinds:               Optional[list[str]]
-    deny_kinds:                Optional[list[str]]
-    min_trust_score:           float
-    offline_queue_max:         int
-    kill_switch:               bool
+    max_devices_per_lab: int
+    idle_only: bool
+    battery_floor_pct: int
+    cpu_cap_pct: int
+    ram_cap_mb: int
+    allow_kinds: list[str] | None
+    deny_kinds: list[str] | None
+    min_trust_score: float
+    offline_queue_max: int
+    kill_switch: bool
 
 
 class PolicyUpdate(BaseModel):
-    max_concurrent_per_device: Optional[int] = Field(None, ge=1, le=64)
-    max_devices_per_lab:       Optional[int] = Field(None, ge=1, le=10000)
-    idle_only:                 Optional[bool] = None
-    battery_floor_pct:         Optional[int] = Field(None, ge=0, le=100)
-    cpu_cap_pct:               Optional[int] = Field(None, ge=10, le=100)
-    ram_cap_mb:                Optional[int] = Field(None, ge=128, le=131072)
-    allow_kinds:               Optional[list[str]] = None
-    deny_kinds:                Optional[list[str]] = None
-    min_trust_score:           Optional[float] = Field(None, ge=0.0, le=100.0)
-    offline_queue_max:         Optional[int] = Field(None, ge=10, le=100000)
-    kill_switch:               Optional[bool] = None
+    max_concurrent_per_device: int | None = Field(None, ge=1, le=64)
+    max_devices_per_lab: int | None = Field(None, ge=1, le=10000)
+    idle_only: bool | None = None
+    battery_floor_pct: int | None = Field(None, ge=0, le=100)
+    cpu_cap_pct: int | None = Field(None, ge=10, le=100)
+    ram_cap_mb: int | None = Field(None, ge=128, le=131072)
+    allow_kinds: list[str] | None = None
+    deny_kinds: list[str] | None = None
+    min_trust_score: float | None = Field(None, ge=0.0, le=100.0)
+    offline_queue_max: int | None = Field(None, ge=10, le=100000)
+    kill_switch: bool | None = None
 
 
 class HeartbeatRequest(BaseModel):
-    agent_version: Optional[str] = Field(None, max_length=32)
-    capabilities:  Optional[dict[str, Any]] = None
-    telemetry:     Optional[dict[str, Any]] = None
-    completed_task_uids: Optional[list[str]] = None  # for ack-style cleanup
+    agent_version: str | None = Field(None, max_length=32)
+    capabilities: dict[str, Any] | None = None
+    telemetry: dict[str, Any] | None = None
+    completed_task_uids: list[str] | None = None  # for ack-style cleanup
 
 
 class HeartbeatResponse(BaseModel):
-    server_time:   datetime
+    server_time: datetime
     next_heartbeat_s: int
-    task:          Optional[dict[str, Any]] = None
-    models:        list[dict[str, Any]] = Field(default_factory=list)
-    quarantined:   bool = False
+    task: dict[str, Any] | None = None
+    models: list[dict[str, Any]] = Field(default_factory=list)
+    quarantined: bool = False
     kill_switched: bool = False
 
 
 class TaskResultRequest(BaseModel):
     success: bool
-    result:  Optional[dict[str, Any]] = None
-    error:   Optional[str] = Field(None, max_length=2000)
-    duration_ms: Optional[int] = Field(None, ge=0, le=600_000)
+    result: dict[str, Any] | None = None
+    error: str | None = Field(None, max_length=2000)
+    duration_ms: int | None = Field(None, ge=0, le=600_000)
 
 
 class ModelRegisterRequest(BaseModel):
-    name:        str = Field(..., max_length=120)
-    version:     str = Field(..., max_length=40)
-    runtime:     str = Field("ollama", pattern="^(ollama|llamacpp|onnx|custom)$")
-    format:      str = Field("gguf", max_length=32)
-    quantization: Optional[str] = Field(None, max_length=32)
-    size_mb:     Optional[float] = Field(None, ge=0)
-    min_ram_mb:  Optional[float] = Field(None, ge=0)
-    min_vram_mb: Optional[float] = Field(None, ge=0)
-    sha256:      Optional[str] = Field(None, max_length=80)
-    source_url:  Optional[str] = Field(None, max_length=500)
-    metadata:    Optional[dict[str, Any]] = None
+    name: str = Field(..., max_length=120)
+    version: str = Field(..., max_length=40)
+    runtime: str = Field("ollama", pattern="^(ollama|llamacpp|onnx|custom)$")
+    format: str = Field("gguf", max_length=32)
+    quantization: str | None = Field(None, max_length=32)
+    size_mb: float | None = Field(None, ge=0)
+    min_ram_mb: float | None = Field(None, ge=0)
+    min_vram_mb: float | None = Field(None, ge=0)
+    sha256: str | None = Field(None, max_length=80)
+    source_url: str | None = Field(None, max_length=500)
+    metadata: dict[str, Any] | None = None
 
 
 class ModelStatusUpdate(BaseModel):
-    status:      str = Field(..., pattern="^(draft|canary|active|retired|blocked)$")
-    rollout_pct: Optional[float] = Field(None, ge=0.0, le=100.0)
+    status: str = Field(..., pattern="^(draft|canary|active|retired|blocked)$")
+    rollout_pct: float | None = Field(None, ge=0.0, le=100.0)
 
 
 class ModelAssignRequest(BaseModel):
-    lab_id:    Optional[int] = None
-    device_id: Optional[str] = Field(None, max_length=64)
+    lab_id: int | None = None
+    device_id: str | None = Field(None, max_length=64)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _kill_switch_guard() -> None:
     if not edge_config.EDGE_ENABLED:
@@ -225,8 +240,7 @@ def _kill_switch_guard() -> None:
 
 
 def _require_admin(user: LabUser) -> None:
-    if user.role not in ("admin", "lab_admin", "master_admin", "ministry_admin",
-                         "province_admin"):
+    if user.role not in ("admin", "lab_admin", "master_admin", "ministry_admin", "province_admin"):
         raise HTTPException(403, "Admin role required")
 
 
@@ -237,19 +251,27 @@ def _require_master(user: LabUser) -> None:
 
 def _device_summary(d: EdgeDevice) -> DeviceSummary:
     return DeviceSummary(
-        device_id=d.device_id, display_name=d.display_name,
-        role_mode=d.role_mode, status=d.status,
-        trust_score=d.trust_score, last_seen_at=d.last_seen_at,
+        device_id=d.device_id,
+        display_name=d.display_name,
+        role_mode=d.role_mode,
+        status=d.status,
+        trust_score=d.trust_score,
+        last_seen_at=d.last_seen_at,
         agent_version=d.agent_version,
     )
 
 
 def _task_summary(t: EdgeTask) -> TaskSummary:
     return TaskSummary(
-        task_uid=t.task_uid, kind=t.kind, status=t.status,
-        priority=t.priority, privacy_level=t.privacy_level,
-        device_id=t.device_id, attempts=t.attempts,
-        created_at=t.created_at, completed_at=t.completed_at,
+        task_uid=t.task_uid,
+        kind=t.kind,
+        status=t.status,
+        priority=t.priority,
+        privacy_level=t.privacy_level,
+        device_id=t.device_id,
+        attempts=t.attempts,
+        created_at=t.created_at,
+        completed_at=t.completed_at,
     )
 
 
@@ -260,18 +282,20 @@ def _task_summary(t: EdgeTask) -> TaskSummary:
 # Validates without a DB lookup, but must be re-checked against the device
 # row every call (via _resolve_agent_device).
 
-import hmac as _hmac
 import hashlib as _hashlib
+import hmac as _hmac
 
 
 def _make_agent_token(device: EdgeDevice) -> str:
-    msg = f"{device.device_id}|{device.cert_fingerprint}|{device.lab_id}".encode("utf-8")
+    msg = f"{device.device_id}|{device.cert_fingerprint}|{device.lab_id}".encode()
     sig = _hmac.new(edge_config.get_task_signing_key(), msg, _hashlib.sha256).hexdigest()
     return f"{device.device_id}.{sig}"
 
 
 def _resolve_agent_device(
-    db: Session, *, authorization: Optional[str],
+    db: Session,
+    *,
+    authorization: str | None,
 ) -> EdgeDevice:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Missing agent bearer token")
@@ -279,17 +303,14 @@ def _resolve_agent_device(
     if "." not in token:
         raise HTTPException(401, "Malformed agent token")
     device_id, sig = token.split(".", 1)
-    device = (
-        db.query(EdgeDevice).filter(EdgeDevice.device_id == device_id).first()
-    )
+    device = db.query(EdgeDevice).filter(EdgeDevice.device_id == device_id).first()
     if device is None:
         raise HTTPException(401, "Unknown device")
     expected = _make_agent_token(device).split(".", 1)[1]
     if not _hmac.compare_digest(expected, sig):
         # Cryptographic misbehavior — penalize and refuse.
         try:
-            trust_mod.adjust(db, device, reason="signature_failure",
-                             actor_user_id=None)
+            trust_mod.adjust(db, device, reason="signature_failure", actor_user_id=None)
             db.commit()
         except Exception:
             db.rollback()
@@ -303,8 +324,10 @@ def _resolve_agent_device(
 # Operator API — devices
 # ─────────────────────────────────────────────────────────────────────────────
 
-@router.post("/devices/register", response_model=RegisterDeviceResponse,
-             status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/devices/register", response_model=RegisterDeviceResponse, status_code=status.HTTP_201_CREATED
+)
 def register_device_endpoint(
     body: RegisterDeviceRequest,
     request: Request,
@@ -344,7 +367,7 @@ def register_device_endpoint(
 @router.get("/devices", response_model=list[DeviceSummary])
 def list_devices(
     request: Request,
-    status_filter: Optional[str] = Query(None, alias="status"),
+    status_filter: str | None = Query(None, alias="status"),
     user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -375,7 +398,7 @@ def get_device(
         latest_dict = {
             "ts": latest.ts.isoformat(),
             "cpu_pct": latest.cpu_pct,
-            "mem_mb":  latest.mem_mb,
+            "mem_mb": latest.mem_mb,
             "battery_pct": latest.battery_pct,
             "queue_depth": latest.queue_depth,
             "loaded_models": latest.loaded_models,
@@ -473,6 +496,7 @@ def device_kill_switch(
 # Operator API — tasks
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @router.post("/tasks", response_model=TaskDetail, status_code=status.HTTP_201_CREATED)
 def submit_task_endpoint(
     body: TaskSubmitRequest,
@@ -504,16 +528,19 @@ def submit_task_endpoint(
     db.refresh(t)
     return TaskDetail(
         **_task_summary(t).model_dump(),
-        payload=t.payload, result=t.result, error=t.error,
-        timeout_s=t.timeout_s, max_attempts=t.max_attempts,
+        payload=t.payload,
+        result=t.result,
+        error=t.error,
+        timeout_s=t.timeout_s,
+        max_attempts=t.max_attempts,
     )
 
 
 @router.get("/tasks", response_model=list[TaskSummary])
 def list_tasks(
     request: Request,
-    status_filter: Optional[str] = Query(None, alias="status"),
-    kind: Optional[str] = Query(None, max_length=64),
+    status_filter: str | None = Query(None, alias="status"),
+    kind: str | None = Query(None, max_length=64),
     limit: int = Query(100, ge=1, le=500),
     user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -540,16 +567,18 @@ def get_task(
     rate_limit_user(request, user.id, max_per_minute=240)
     t = (
         db.query(EdgeTask)
-          .filter(EdgeTask.task_uid == task_uid,
-                  EdgeTask.lab_id == user.lab_id)
-          .first()
+        .filter(EdgeTask.task_uid == task_uid, EdgeTask.lab_id == user.lab_id)
+        .first()
     )
     if t is None:
         raise HTTPException(404, "Task not found")
     return TaskDetail(
         **_task_summary(t).model_dump(),
-        payload=t.payload, result=t.result, error=t.error,
-        timeout_s=t.timeout_s, max_attempts=t.max_attempts,
+        payload=t.payload,
+        result=t.result,
+        error=t.error,
+        timeout_s=t.timeout_s,
+        max_attempts=t.max_attempts,
     )
 
 
@@ -565,9 +594,8 @@ def cancel_task_endpoint(
     rate_limit_user(request, user.id, max_per_minute=60)
     t = (
         db.query(EdgeTask)
-          .filter(EdgeTask.task_uid == task_uid,
-                  EdgeTask.lab_id == user.lab_id)
-          .first()
+        .filter(EdgeTask.task_uid == task_uid, EdgeTask.lab_id == user.lab_id)
+        .first()
     )
     if t is None:
         raise HTTPException(404, "Task not found")
@@ -579,6 +607,7 @@ def cancel_task_endpoint(
 # ─────────────────────────────────────────────────────────────────────────────
 # Operator API — policy & fleet
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @router.get("/policy", response_model=PolicyView)
 def get_lab_policy(
@@ -602,14 +631,22 @@ def update_lab_policy(
     _kill_switch_guard()
     _require_admin(user)
     rate_limit_user(request, user.id, max_per_minute=20)
-    fields = {k: v for k, v in body.model_dump(exclude_none=True).items()}
+    fields = dict(body.model_dump(exclude_none=True).items())
     policy_mod.upsert_policy(
-        db, lab_id=user.lab_id, actor_user_id=user.id, **fields,
+        db,
+        lab_id=user.lab_id,
+        actor_user_id=user.id,
+        **fields,
     )
-    db.add(EdgeEvent(
-        lab_id=user.lab_id, event_type="policy_updated", severity="info",
-        actor_user_id=user.id, details=fields,
-    ))
+    db.add(
+        EdgeEvent(
+            lab_id=user.lab_id,
+            event_type="policy_updated",
+            severity="info",
+            actor_user_id=user.id,
+            details=fields,
+        )
+    )
     db.commit()
     p = policy_mod.get_policy(db, user.lab_id)
     return PolicyView(**p.__dict__)
@@ -624,26 +661,27 @@ def fleet_summary_endpoint(
     _kill_switch_guard()
     rate_limit_user(request, user.id, max_per_minute=60)
     summary = tele.fleet_summary(db, lab_id=user.lab_id)
-    devices_total = (
-        db.query(EdgeDevice).filter(EdgeDevice.lab_id == user.lab_id).count()
-    )
+    devices_total = db.query(EdgeDevice).filter(EdgeDevice.lab_id == user.lab_id).count()
     pending_tasks = (
         db.query(EdgeTask)
-          .filter(EdgeTask.lab_id == user.lab_id,
-                  EdgeTask.status.in_(("pending", "dispatched", "running")))
-          .count()
+        .filter(
+            EdgeTask.lab_id == user.lab_id,
+            EdgeTask.status.in_(("pending", "dispatched", "running")),
+        )
+        .count()
     )
     return {
         **summary,
-        "devices_total":   devices_total,
-        "pending_tasks":   pending_tasks,
-        "kill_switched":   policy_mod.get_policy(db, user.lab_id).kill_switch,
+        "devices_total": devices_total,
+        "pending_tasks": pending_tasks,
+        "kill_switched": policy_mod.get_policy(db, user.lab_id).kill_switch,
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Operator API — model governance (master / ministry only)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @router.post("/models", status_code=status.HTTP_201_CREATED)
 def register_model_endpoint(
@@ -657,19 +695,25 @@ def register_model_endpoint(
     rate_limit_user(request, user.id, max_per_minute=20)
     try:
         m = governance.register_model(
-            db, name=body.name, version=body.version,
-            runtime=body.runtime, fmt=body.format,
-            quantization=body.quantization, size_mb=body.size_mb,
-            min_ram_mb=body.min_ram_mb, min_vram_mb=body.min_vram_mb,
-            sha256=body.sha256, source_url=body.source_url,
-            metadata_json=body.metadata, actor_user_id=user.id,
+            db,
+            name=body.name,
+            version=body.version,
+            runtime=body.runtime,
+            fmt=body.format,
+            quantization=body.quantization,
+            size_mb=body.size_mb,
+            min_ram_mb=body.min_ram_mb,
+            min_vram_mb=body.min_vram_mb,
+            sha256=body.sha256,
+            source_url=body.source_url,
+            metadata_json=body.metadata,
+            actor_user_id=user.id,
         )
     except governance.GovernanceError as e:
         raise HTTPException(400, str(e))
     db.commit()
     db.refresh(m)
-    return {"model_uid": m.model_uid, "status": m.status,
-            "rollout_pct": m.rollout_pct}
+    return {"model_uid": m.model_uid, "status": m.status, "rollout_pct": m.rollout_pct}
 
 
 @router.get("/models")
@@ -681,12 +725,19 @@ def list_models(
     _kill_switch_guard()
     rate_limit_user(request, user.id, max_per_minute=60)
     rows = db.query(EdgeModel).order_by(EdgeModel.created_at.desc()).all()
-    return [{
-        "model_uid": m.model_uid, "name": m.name, "version": m.version,
-        "runtime":   m.runtime,   "status": m.status,
-        "rollout_pct": m.rollout_pct, "size_mb": m.size_mb,
-        "created_at": m.created_at.isoformat(),
-    } for m in rows]
+    return [
+        {
+            "model_uid": m.model_uid,
+            "name": m.name,
+            "version": m.version,
+            "runtime": m.runtime,
+            "status": m.status,
+            "rollout_pct": m.rollout_pct,
+            "size_mb": m.size_mb,
+            "created_at": m.created_at.isoformat(),
+        }
+        for m in rows
+    ]
 
 
 @router.post("/models/{model_uid}/status")
@@ -702,14 +753,16 @@ def update_model_status(
     rate_limit_user(request, user.id, max_per_minute=20)
     try:
         m = governance.set_model_status(
-            db, model_uid=model_uid, status=body.status,
-            rollout_pct=body.rollout_pct, actor_user_id=user.id,
+            db,
+            model_uid=model_uid,
+            status=body.status,
+            rollout_pct=body.rollout_pct,
+            actor_user_id=user.id,
         )
     except governance.GovernanceError as e:
         raise HTTPException(400, str(e))
     db.commit()
-    return {"model_uid": m.model_uid, "status": m.status,
-            "rollout_pct": m.rollout_pct}
+    return {"model_uid": m.model_uid, "status": m.status, "rollout_pct": m.rollout_pct}
 
 
 @router.post("/models/{model_uid}/assign")
@@ -732,26 +785,28 @@ def assign_model_endpoint(
     rate_limit_user(request, user.id, max_per_minute=20)
     try:
         a = governance.assign_model(
-            db, model_uid=model_uid,
+            db,
+            model_uid=model_uid,
             lab_id=body.lab_id if body.lab_id is not None else user.lab_id,
-            device_id=body.device_id, actor_user_id=user.id,
+            device_id=body.device_id,
+            actor_user_id=user.id,
         )
     except governance.GovernanceError as e:
         raise HTTPException(400, str(e))
     db.commit()
-    return {"id": a.id, "model_uid": a.model_uid,
-            "lab_id": a.lab_id, "device_id": a.device_id}
+    return {"id": a.id, "model_uid": a.model_uid, "lab_id": a.lab_id, "device_id": a.device_id}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Agent API
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @router.post("/agent/heartbeat", response_model=HeartbeatResponse)
 def agent_heartbeat(
     body: HeartbeatRequest,
     request: Request,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -761,7 +816,8 @@ def agent_heartbeat(
 
     try:
         registry.heartbeat(
-            db, device_id=device.device_id,
+            db,
+            device_id=device.device_id,
             agent_version=body.agent_version,
             capabilities=body.capabilities,
         )
@@ -769,28 +825,26 @@ def agent_heartbeat(
         raise HTTPException(403, str(e))
 
     if body.telemetry:
-        tele.record(db, lab_id=device.lab_id,
-                    device_id=device.device_id, sample=body.telemetry)
+        tele.record(db, lab_id=device.lab_id, device_id=device.device_id, sample=body.telemetry)
 
     trust_mod.adjust(db, device, reason="heartbeat_ok", actor_user_id=None)
 
     pol = policy_mod.get_policy(db, device.lab_id)
 
     next_task_dict = None
-    if (device.status == "active" and not pol.kill_switch
-            and not device.kill_switched):
+    if device.status == "active" and not pol.kill_switch and not device.kill_switched:
         t = scheduler.claim_next_task(db, device)
         if t is not None:
             next_task_dict = {
-                "task_uid":      t.task_uid,
-                "kind":          t.kind,
-                "priority":      t.priority,
+                "task_uid": t.task_uid,
+                "kind": t.kind,
+                "priority": t.priority,
                 "privacy_level": t.privacy_level,
-                "payload":       t.payload,
-                "payload_sig":   t.payload_sig,
-                "timeout_s":     t.timeout_s,
-                "attempt":       t.attempts,
-                "max_attempts":  t.max_attempts,
+                "payload": t.payload,
+                "payload_sig": t.payload_sig,
+                "timeout_s": t.timeout_s,
+                "attempt": t.attempts,
+                "max_attempts": t.max_attempts,
             }
 
     models = governance.pick_models_for(db, device)
@@ -798,7 +852,7 @@ def agent_heartbeat(
     db.commit()
 
     return HeartbeatResponse(
-        server_time=datetime.now(timezone.utc),
+        server_time=datetime.now(UTC),
         next_heartbeat_s=max(15, edge_config.EDGE_HEARTBEAT_TIMEOUT_S // 4),
         task=next_task_dict,
         models=models,
@@ -812,7 +866,7 @@ def agent_task_result(
     task_uid: str,
     body: TaskResultRequest,
     request: Request,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -821,10 +875,12 @@ def agent_task_result(
     device = _resolve_agent_device(db, authorization=authorization)
     t = (
         db.query(EdgeTask)
-          .filter(EdgeTask.task_uid == task_uid,
-                  EdgeTask.lab_id == device.lab_id,
-                  EdgeTask.device_id == device.device_id)
-          .first()
+        .filter(
+            EdgeTask.task_uid == task_uid,
+            EdgeTask.lab_id == device.lab_id,
+            EdgeTask.device_id == device.device_id,
+        )
+        .first()
     )
     if t is None:
         raise HTTPException(404, "Task not found or not assigned to this device")
@@ -847,7 +903,7 @@ def agent_task_result(
 def agent_telemetry(
     sample: dict[str, Any],
     request: Request,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -862,11 +918,12 @@ def agent_telemetry(
 # Public health for the edge plane
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @router.get("/health")
 def edge_health():
     return {
-        "enabled":      edge_config.EDGE_ENABLED,
-        "kill_switch":  edge_config.EDGE_KILL_SWITCH,
+        "enabled": edge_config.EDGE_ENABLED,
+        "kill_switch": edge_config.EDGE_KILL_SWITCH,
         "heartbeat_timeout_s": edge_config.EDGE_HEARTBEAT_TIMEOUT_S,
         "telemetry_retention_days": edge_config.EDGE_TELEMETRY_RETENTION_DAYS,
         "allowed_kinds": sorted(edge_config.ALLOWED_TASK_KINDS),

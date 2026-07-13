@@ -3,9 +3,6 @@ from __future__ import annotations
 import logging
 import time
 from enum import Enum, auto
-from typing import Dict, Optional
-
-from backend.app.kernel.exceptions import CircuitBreakerOpenError
 
 logger = logging.getLogger("gula.kernel.gateway.circuit_breaker")
 
@@ -26,7 +23,6 @@ class CircuitBreaker:
         self.last_failure_time: float = 0.0
 
     def record_failure(self) -> None:
-        import time
         self.failure_count += 1
         self.last_failure_time = time.time()
         if self.failure_count >= self.failure_threshold:
@@ -38,7 +34,6 @@ class CircuitBreaker:
             self.state = CircuitState.CLOSED
 
     def can_proceed(self) -> bool:
-        import time
         if self.state == CircuitState.CLOSED:
             return True
         if self.state == CircuitState.OPEN:

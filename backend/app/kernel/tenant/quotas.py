@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
-
-from backend.app.kernel.exceptions import QuotaExceededError
 
 logger = logging.getLogger("gula.kernel.tenant.quotas")
 
@@ -31,6 +28,4 @@ class TenantQuotaManager:
     def increment_usage(self, tenant_id: str, resource: str, amount: int = 1) -> None:
         if tenant_id not in self._usage:
             self._usage[tenant_id] = {}
-        self._usage[tenant_id][resource] = (
-            self._usage[tenant_id].get(resource, 0) + amount
-        )
+        self._usage[tenant_id][resource] = self._usage[tenant_id].get(resource, 0) + amount

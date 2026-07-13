@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING
 
+from backend.app.kernel.plugin.dependencies import PluginDependencyResolver
+from backend.app.kernel.plugin.hot_reload import HotPluginReloader
 from backend.app.kernel.plugin.loader import PluginLoader
+from backend.app.kernel.plugin.marketplace import PluginMarketplaceInterface
+from backend.app.kernel.plugin.permissions import PluginPermissionManager
 from backend.app.kernel.plugin.registry import PluginRegistry
 from backend.app.kernel.plugin.sandbox import PluginSandbox
-from backend.app.kernel.plugin.permissions import PluginPermissionManager
-from backend.app.kernel.plugin.dependencies import PluginDependencyResolver
 from backend.app.kernel.plugin.version_manager import PluginVersionManager
-from backend.app.kernel.plugin.hot_reload import HotPluginReloader
-from backend.app.kernel.plugin.marketplace import PluginMarketplaceInterface
 from backend.app.kernel.types import PluginDescriptor
 
 if TYPE_CHECKING:

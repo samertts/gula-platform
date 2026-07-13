@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import contextvars
-import uuid
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.app.kernel import Kernel
@@ -11,12 +9,8 @@ if TYPE_CHECKING:
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "kernel_request_id", default=""
 )
-tenant_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "kernel_tenant_id", default=""
-)
-user_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "kernel_user_id", default=""
-)
+tenant_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("kernel_tenant_id", default="")
+user_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("kernel_user_id", default="")
 correlation_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "kernel_correlation_id", default=""
 )

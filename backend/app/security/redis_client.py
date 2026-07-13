@@ -10,29 +10,31 @@ Usage:
     value = cache.get("key")          # returns str | None
     cache.delete("key")
 """
+
 import logging
 import threading
 import time
-from typing import Optional
-from ..config import REDIS_URL, IS_PRODUCTION
+
+from ..config import IS_PRODUCTION, REDIS_URL
 
 logger = logging.getLogger("gula.redis")
 
 # ── In-memory fallback ────────────────────────────────────────────────────────
 
+
 class _MemoryStore:
     """Thread-safe in-memory key-value store with TTL support."""
 
     def __init__(self):
-        self._data: dict[str, tuple[str, Optional[float]]] = {}  # key → (value, expire_at)
+        self._data: dict[str, tuple[str, float | None]] = {}  # key → (value, expire_at)
         self._lock = threading.Lock()
 
-    def set(self, key: str, value, ex: Optional[int] = None) -> None:
+    def set(self, key: str, value, ex: int | None = None) -> None:
         expire_at = time.monotonic() + ex if ex else None
         with self._lock:
             self._data[key] = (str(value), expire_at)
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         with self._lock:
             entry = self._data.get(key)
             if entry is None:
@@ -69,6 +71,7 @@ class _MemoryStore:
 
 # ── Redis wrapper ─────────────────────────────────────────────────────────────
 
+
 class _RedisWrapper:
     """
     Thin wrapper around redis-py that exposes set/get/delete/incr/ping.
@@ -77,15 +80,16 @@ class _RedisWrapper:
 
     def __init__(self, url: str):
         import redis as _redis
+
         self._client = _redis.from_url(url, decode_responses=True, socket_timeout=1)
         # Verify connection at startup
         self._client.ping()
         logger.info("Redis connected: %s", url.split("@")[-1])
 
-    def set(self, key: str, value, ex: Optional[int] = None) -> None:
+    def set(self, key: str, value, ex: int | None = None) -> None:
         self._client.set(key, value, ex=ex)
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         return self._client.get(key)
 
     def delete(self, key: str) -> None:
@@ -105,6 +109,7 @@ class _RedisWrapper:
 
 # ── Public singleton ──────────────────────────────────────────────────────────
 
+
 def _build_cache():
     if REDIS_URL:
         try:
@@ -116,7 +121,8 @@ def _build_cache():
                 # The self-healing system will attempt to recover it.
                 logger.critical(
                     "[GULA CRITICAL] Redis is unreachable in production: %s. "
-                    "Falling back to in-memory store (degraded mode).", exc
+                    "Falling back to in-memory store (degraded mode).",
+                    exc,
                 )
             logger.warning("Redis unavailable (%s) — falling back to in-memory store", exc)
     else:

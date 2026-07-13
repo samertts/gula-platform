@@ -12,13 +12,26 @@ Boundary rules (see architecture/FOUNDATION.md §4):
   - Rows are never deleted; status transitions (active → merged/deceased).
   - Reads must follow the merged_into_id chain to the surviving record.
 """
-from datetime import datetime, timezone
+
+from datetime import datetime
 
 from sqlalchemy import (
-    BigInteger, Boolean, Column, DateTime, ForeignKey, Index, Integer,
-    JSON, Numeric, SmallInteger, String, UniqueConstraint,
+    JSON,
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    SmallInteger,
+    String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
+
+from app._compat import UTC
 
 from ...database import Base
 
@@ -28,6 +41,7 @@ class Citizen(Base):
 
     Externally identified by `citizen_ulid` (never by `id`, never by NID).
     """
+
     __tablename__ = "citizens"
     __table_args__ = (
         # Blocking index for probabilistic matching (name + dob + gender)
@@ -40,39 +54,44 @@ class Citizen(Base):
         # (SQLAlchemy's Index() doesn't express WHERE NOT NULL portably).
     )
 
-    id              = Column(BigInteger, primary_key=True, autoincrement=True)
-    citizen_ulid    = Column(String(26), nullable=False, unique=True, index=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    citizen_ulid = Column(String(26), nullable=False, unique=True, index=True)
 
     # Deterministic identity (strongest signal)
-    nid_hash        = Column(String(255), nullable=True)       # HMAC via hash_national_id()
-    nid_verified    = Column(Boolean, nullable=False, default=False)
+    nid_hash = Column(String(255), nullable=True)  # HMAC via hash_national_id()
+    nid_verified = Column(Boolean, nullable=False, default=False)
 
     # Probabilistic features
-    phone_last10    = Column(String(10), nullable=True)        # last 10 digits of E.164
-    birth_year      = Column(SmallInteger, nullable=True)
-    birth_month     = Column(SmallInteger, nullable=True)
-    birth_day       = Column(SmallInteger, nullable=True)
-    gender          = Column(String(1), nullable=True)          # 'M' / 'F'
+    phone_last10 = Column(String(10), nullable=True)  # last 10 digits of E.164
+    birth_year = Column(SmallInteger, nullable=True)
+    birth_month = Column(SmallInteger, nullable=True)
+    birth_day = Column(SmallInteger, nullable=True)
+    gender = Column(String(1), nullable=True)  # 'M' / 'F'
 
     # Name (normalized — never the raw submitted form)
-    name_canonical     = Column(String(255), nullable=False)
-    name_blocking_key  = Column(String(20),  nullable=False)
+    name_canonical = Column(String(255), nullable=False)
+    name_blocking_key = Column(String(20), nullable=False)
 
     # Family linkage (same hash as Patient.family_id_hash — reuses hash_family_id())
-    family_id_hash  = Column(String(255), nullable=True)
+    family_id_hash = Column(String(255), nullable=True)
 
     # Lifecycle
-    merged_into_id  = Column(BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True)
-    status          = Column(String(20), nullable=False, default="active")
-    version         = Column(Integer, nullable=False, default=1)
+    merged_into_id = Column(
+        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True
+    )
+    status = Column(String(20), nullable=False, default="active")
+    version = Column(Integer, nullable=False, default=1)
 
-    created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
-                             onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
     # Self-reference for merge chain (reads must follow to the survivor)
     merged_into = relationship("Citizen", remote_side=[id], foreign_keys=[merged_into_id])
-    claims      = relationship("IdentityClaim", back_populates="citizen", lazy="dynamic")
+    claims = relationship("IdentityClaim", back_populates="citizen", lazy="dynamic")
 
     def canonical(self) -> "Citizen":
         """Follow merged_into chain to the surviving citizen.
@@ -96,6 +115,7 @@ class IdentityClaim(Base):
     Exactly one claim per (lab_id, local_patient_id). Created by
     MPI resolver when the lab first registers a patient.
     """
+
     __tablename__ = "identity_claims"
     __table_args__ = (
         UniqueConstraint("lab_id", "local_patient_id", name="uq_identity_claims_lab_patient"),
@@ -104,18 +124,22 @@ class IdentityClaim(Base):
         Index("ix_identity_claims_method", "match_method"),
     )
 
-    id                = Column(BigInteger, primary_key=True, autoincrement=True)
-    citizen_id        = Column(BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False)
-    lab_id            = Column(Integer,    ForeignKey("labs.id",     ondelete="CASCADE"),  nullable=False)
-    local_patient_id  = Column(Integer,    ForeignKey("patients.id", ondelete="CASCADE"),  nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    citizen_id = Column(BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False)
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
+    local_patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False
+    )
 
-    match_method      = Column(String(20),      nullable=False)
+    match_method = Column(String(20), nullable=False)
     # 'nid_exact' | 'probabilistic' | 'manual' | 'pending_review'
-    match_score       = Column(Numeric(4, 3),   nullable=True)   # 0.000..1.000 (NULL for nid_exact)
-    match_features    = Column(JSON,            nullable=True)   # per-feature contributions for audit
+    match_score = Column(Numeric(4, 3), nullable=True)  # 0.000..1.000 (NULL for nid_exact)
+    match_features = Column(JSON, nullable=True)  # per-feature contributions for audit
 
-    claimed_by_user_id = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True)
-    created_at         = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    claimed_by_user_id = Column(
+        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     citizen = relationship("Citizen", back_populates="claims")
 
@@ -127,6 +151,7 @@ class MergeAudit(Base):
     is SHA-256 over (prev_hash || canonical_json(row)). Tampering is
     detectable by re-walking the chain.
     """
+
     __tablename__ = "mpi_merge_audit"
     __table_args__ = (
         Index("ix_merge_audit_primary", "primary_citizen_id"),
@@ -134,20 +159,26 @@ class MergeAudit(Base):
         Index("ix_merge_audit_occurred", "occurred_at"),
     )
 
-    id                    = Column(BigInteger, primary_key=True, autoincrement=True)
-    event_type            = Column(String(20), nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    event_type = Column(String(20), nullable=False)
     # 'auto_merge' | 'manual_merge' | 'split' | 'reassign' | 'create'
 
-    primary_citizen_id    = Column(BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False)
-    secondary_citizen_id  = Column(BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True)
+    primary_citizen_id = Column(
+        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False
+    )
+    secondary_citizen_id = Column(
+        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True
+    )
 
-    match_score           = Column(Numeric(4, 3), nullable=True)
-    match_features        = Column(JSON,           nullable=True)
-    decision_reason       = Column(String(500),    nullable=True)
+    match_score = Column(Numeric(4, 3), nullable=True)
+    match_features = Column(JSON, nullable=True)
+    decision_reason = Column(String(500), nullable=True)
 
-    decided_by_user_id    = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True)
-    occurred_at           = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    decided_by_user_id = Column(
+        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True
+    )
+    occurred_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # Hash chain
-    prev_hash             = Column(String(64), nullable=False)   # 64 hex chars
-    entry_hash            = Column(String(64), nullable=False, unique=True)
+    prev_hash = Column(String(64), nullable=False)  # 64 hex chars
+    entry_hash = Column(String(64), nullable=False, unique=True)

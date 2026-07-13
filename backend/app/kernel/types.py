@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Protocol, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 

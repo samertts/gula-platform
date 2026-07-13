@@ -34,6 +34,7 @@ class BanditScanner:
 
     def _parse_result(self, json_output: str) -> list[SecurityIssue]:
         import json
+
         try:
             data = json.loads(json_output)
             issues = []
@@ -72,6 +73,7 @@ class SemgrepScanner:
 
     def _parse_result(self, json_output: str) -> list[SecurityIssue]:
         import json
+
         try:
             data = json.loads(json_output)
             issues = []

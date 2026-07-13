@@ -38,13 +38,14 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
-from typing import Any, Optional
+from datetime import datetime, timedelta
+from typing import Any
 
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import get_db
 from app.security.dependencies import get_current_user
 
@@ -56,12 +57,13 @@ _KEY_TTL_HOURS = 24
 @dataclass
 class IdempotencyResult:
     """Passed to the route handler after the idempotency check."""
-    key:             str
-    is_duplicate:    bool
-    cached_response: Optional[Any]
-    _db:             Session
-    _lab_id:         Optional[int]
-    _endpoint:       str
+
+    key: str
+    is_duplicate: bool
+    cached_response: Any | None
+    _db: Session
+    _lab_id: int | None
+    _endpoint: str
 
     def cache(self, status_code: int, body: Any) -> None:
         """
@@ -79,9 +81,9 @@ class IdempotencyResult:
                     WHERE key = :key
                 """),
                 {
-                    "sc":   status_code,
+                    "sc": status_code,
                     "body": json.dumps(body, ensure_ascii=False, default=str),
-                    "key":  self.key,
+                    "key": self.key,
                 },
             )
             # Don't commit — let the caller's transaction handle it
@@ -90,7 +92,7 @@ class IdempotencyResult:
 
 
 def idempotency_check(
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> IdempotencyResult:
@@ -118,7 +120,7 @@ def idempotency_check(
     lab_id = getattr(current_user, "lab_id", None)
 
     # Compute cutoff in Python so the query works on both SQLite and PostgreSQL
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=_KEY_TTL_HOURS)
+    cutoff = datetime.now(UTC) - timedelta(hours=_KEY_TTL_HOURS)
 
     # Check for existing key
     row = db.execute(
@@ -133,7 +135,7 @@ def idempotency_check(
     ).fetchone()
 
     if row:
-        sc, body = row
+        _sc, body = row
         cached = json.loads(body) if body else None
         logger.info("[IDEMPOTENCY] duplicate request detected key=%s lab=%s", key, lab_id)
         return IdempotencyResult(
@@ -153,7 +155,7 @@ def idempotency_check(
                 VALUES (:key, :lab_id, :now)
                 ON CONFLICT (key) DO NOTHING
             """),
-            {"key": key, "lab_id": lab_id, "now": datetime.now(timezone.utc)},
+            {"key": key, "lab_id": lab_id, "now": datetime.now(UTC)},
         )
         db.flush()
     except Exception as exc:

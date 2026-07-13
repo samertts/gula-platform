@@ -32,7 +32,7 @@ import os
 import re
 import time
 from collections.abc import Callable
-from datetime import timezone, datetime
+from datetime import datetime
 from hashlib import sha256
 from typing import Any
 
@@ -42,6 +42,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.ai.approval import approval_store
 from app.ai.guardrails import AIGuardrailViolationError, ai_suggest
 from app.ai.sandbox import AISandbox
@@ -883,7 +884,7 @@ async def interpret_result_public(token: str) -> JSONResponse:
             if not result:
                 return None, None, None
 
-            if result.expires_at and result.expires_at < datetime.now(timezone.utc):
+            if result.expires_at and result.expires_at < datetime.now(UTC):
                 return None, None, None
 
             order_id = result.order_id
@@ -905,7 +906,7 @@ async def interpret_result_public(token: str) -> JSONResponse:
                 if patient:
                     age = None
                     if patient.birth_date:
-                        today = datetime.now(timezone.utc).date()
+                        today = datetime.now(UTC).date()
                         age = (
                             today.year
                             - patient.birth_date.year

@@ -20,12 +20,14 @@ from __future__ import annotations
 import asyncio
 import random
 import time
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Awaitable, Callable, TypeVar
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import TypeVar
+
+from app._compat import StrEnum
 
 
-class CircuitState(str, Enum):
+class CircuitState(StrEnum):
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
@@ -128,13 +130,11 @@ async def retry_with_backoff(
     for attempt in range(policy.max_retries + 1):
         try:
             return await op()
-        except BaseException as exc:  # noqa: BLE001 — caller decides retriable
+        except BaseException as exc:
             last = exc
             if attempt >= policy.max_retries or not is_retriable(exc):
                 raise
-            sleep_ms = (
-                rng.uniform(0, delay_ms) if policy.jitter else float(delay_ms)
-            )
+            sleep_ms = rng.uniform(0, delay_ms) if policy.jitter else float(delay_ms)
             await asyncio.sleep(sleep_ms / 1000.0)
             delay_ms = min(delay_ms * 2, policy.max_ms)
     # Defensive — unreachable because the loop always raises or returns.

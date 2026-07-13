@@ -1,14 +1,15 @@
 """Electronic Health Record endpoints - patient's unified health view."""
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
+
 from collections import defaultdict
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, joinedload
+
 from ..database import get_db
-from ..models.patient import Patient
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
-from ..models.lab import Lab
 from ..models.lab_user import LabUser
+from ..models.patient import Patient
 from ..security.dependencies import get_current_user
 
 router = APIRouter(prefix="/ehr", tags=["ehr"])
@@ -24,21 +25,31 @@ def get_patient_ehr(
 
     Returns all lab results organized by test type with trend data.
     """
-    patient = db.query(Patient).filter(
-        Patient.id == patient_id,
-        Patient.lab_id == current_user.lab_id,
-    ).first()
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.id == patient_id,
+            Patient.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
     # Get all orders with results - scoped to current lab to prevent cross-lab data leak
-    orders = db.query(LabOrder).filter(
-        LabOrder.patient_id == patient_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).options(
-        joinedload(LabOrder.results),
-        joinedload(LabOrder.lab),
-    ).order_by(LabOrder.created_at.desc()).all()
+    orders = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.patient_id == patient_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .options(
+            joinedload(LabOrder.results),
+            joinedload(LabOrder.lab),
+        )
+        .order_by(LabOrder.created_at.desc())
+        .all()
+    )
 
     # Organize results by test type for trends
     test_history = defaultdict(list)
@@ -63,11 +74,13 @@ def get_patient_ehr(
             all_records.append(record)
 
             if result.value is not None:
-                test_history[result.test_name].append({
-                    "value": result.value,
-                    "date": result.created_at.isoformat() if result.created_at else None,
-                    "flag": result.flag,
-                })
+                test_history[result.test_name].append(
+                    {
+                        "value": result.value,
+                        "date": result.created_at.isoformat() if result.created_at else None,
+                        "flag": result.flag,
+                    }
+                )
 
     # Summary stats
     total_tests = len(all_records)
@@ -100,31 +113,43 @@ def get_patient_summary(
     db: Session = Depends(get_db),
 ):
     """Quick health summary - latest value for each test type."""
-    patient = db.query(Patient).filter(
-        Patient.id == patient_id,
-        Patient.lab_id == current_user.lab_id,
-    ).first()
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.id == patient_id,
+            Patient.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
     # Get latest result for each unique test - scoped to current lab
-    results = db.query(LabResult).join(LabOrder).filter(
-        LabOrder.patient_id == patient_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).order_by(LabResult.created_at.desc()).all()
+    results = (
+        db.query(LabResult)
+        .join(LabOrder)
+        .filter(
+            LabOrder.patient_id == patient_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .order_by(LabResult.created_at.desc())
+        .all()
+    )
 
     seen_tests = set()
     latest = []
     for r in results:
         if r.test_name not in seen_tests:
             seen_tests.add(r.test_name)
-            latest.append({
-                "test_name": r.test_name,
-                "value": r.value,
-                "unit": r.unit,
-                "flag": r.flag,
-                "date": r.created_at.isoformat() if r.created_at else None,
-            })
+            latest.append(
+                {
+                    "test_name": r.test_name,
+                    "value": r.value,
+                    "unit": r.unit,
+                    "flag": r.flag,
+                    "date": r.created_at.isoformat() if r.created_at else None,
+                }
+            )
 
     return {
         "patient_name": patient.full_name,

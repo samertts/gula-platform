@@ -15,19 +15,19 @@ Usage:
 
 from shared.events import EventBus, events
 from shared.events.constants import (
+    ORDER_CANCELLED,
     ORDER_CREATED,
     ORDER_VALIDATED,
-    ORDER_CANCELLED,
     RESULT_CRITICAL,
     SAMPLE_REJECTED,
 )
 
 __all__ = [
-    "EventBus",
-    "events",
+    "ORDER_CANCELLED",
     "ORDER_CREATED",
     "ORDER_VALIDATED",
-    "ORDER_CANCELLED",
     "RESULT_CRITICAL",
     "SAMPLE_REJECTED",
+    "EventBus",
+    "events",
 ]

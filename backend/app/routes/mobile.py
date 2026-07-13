@@ -3,22 +3,38 @@ Mobile API - GULA Platform
 Endpoints optimized for Android and iOS applications.
 Supports token refresh, device registration, and mobile-friendly data.
 """
+
 import logging
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-from typing import Optional
 
+from app._compat import UTC
+
+from ..config import (
+    APP_NAME,
+    APP_VERSION,
+    IS_PRODUCTION,
+    JWT_EXPIRE_HOURS,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+)
 from ..database import get_db
-from ..models.lab_user import LabUser
 from ..models.lab import Lab
-from ..security.auth import decode_refresh_token, create_token, create_refresh_token, build_token_payload, verify_password, hash_password
+from ..models.lab_user import LabUser
+from ..security.auth import (
+    build_token_payload,
+    create_refresh_token,
+    create_token,
+    decode_refresh_token,
+    hash_password,
+    verify_password,
+)
 from ..security.dependencies import get_current_user
-from ..security.session import bump_perm_version, warm_perm_version, get_perm_version
-from ..security.rate_limit import rate_limit_auth, get_client_ip
+from ..security.rate_limit import get_client_ip, rate_limit_auth
+from ..security.session import bump_perm_version, get_perm_version
 from ..services.audit_service import log_action
-import os
-from ..config import APP_VERSION, APP_NAME, IS_PRODUCTION, JWT_EXPIRE_HOURS, REFRESH_TOKEN_EXPIRE_DAYS
 
 logger = logging.getLogger("gula.mobile")
 
@@ -27,8 +43,9 @@ router = APIRouter(prefix="/auth", tags=["mobile / auth"])
 
 # ─── Token Refresh ───────────────────────────────────────────────────────────
 
+
 class RefreshRequest(BaseModel):
-    refresh_token: Optional[str] = None
+    refresh_token: str | None = None
 
 
 @router.post("/refresh", summary="Refresh access token (mobile and web)")
@@ -64,17 +81,21 @@ def refresh_access_token(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    user = db.query(LabUser).filter(
-        LabUser.id == user_id,
-        LabUser.is_active == True,
-    ).first()
+    user = (
+        db.query(LabUser)
+        .filter(
+            LabUser.id == user_id,
+            LabUser.is_active,
+        )
+        .first()
+    )
 
     if not user:
         raise HTTPException(status_code=401, detail="User not found or deactivated")
 
     # Verify lab still active
     if user.role != "master_admin":
-        lab = db.query(Lab).filter(Lab.id == user.lab_id, Lab.is_active == True).first()
+        lab = db.query(Lab).filter(Lab.id == user.lab_id, Lab.is_active).first()
         if not lab:
             raise HTTPException(status_code=403, detail="Laboratory account deactivated")
 
@@ -95,8 +116,10 @@ def refresh_access_token(
     # ── Refresh token rotation: blacklist the OLD refresh token ──
     # Prevents reuse attacks: if this token is stolen, using it here
     # invalidates it for everyone — including the attacker.
-    from ..security.auth import blacklist_token as _blacklist
     import time as _time
+
+    from ..security.auth import blacklist_token as _blacklist
+
     _GRACE_SECONDS = 30  # allow network retries without forcing re-login
     old_jti = payload.get("jti")
     if old_jti:
@@ -118,12 +141,18 @@ def refresh_access_token(
     # Set updated httpOnly cookies for web clients
     cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": IS_PRODUCTION}
     response.set_cookie(
-        key="access_token", value=new_access_token,
-        max_age=JWT_EXPIRE_HOURS * 3600, path="/", **cookie_kwargs,
+        key="access_token",
+        value=new_access_token,
+        max_age=JWT_EXPIRE_HOURS * 3600,
+        path="/",
+        **cookie_kwargs,
     )
     response.set_cookie(
-        key="refresh_token", value=new_refresh_token,
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400, path="/", **cookie_kwargs,
+        key="refresh_token",
+        value=new_refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+        **cookie_kwargs,
     )
 
     return {
@@ -134,6 +163,7 @@ def refresh_access_token(
 
 
 # ─── Change Password ─────────────────────────────────────────────────────────
+
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -150,11 +180,14 @@ def change_password(
     if not verify_password(data.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="كلمة المرور الحالية غير صحيحة")
     if len(data.new_password) < 8:
-        raise HTTPException(status_code=400, detail="كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل")
+        raise HTTPException(
+            status_code=400, detail="كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل"
+        )
     current_user.password_hash = hash_password(data.new_password)
     # Invalidate all active sessions — user must log in again with new password
     bump_perm_version(
-        current_user, db,
+        current_user,
+        db,
         actor_id=current_user.id,
         actor_role=current_user.role,
         reason="password_change",
@@ -184,9 +217,9 @@ def get_app_info():
             "result_sharing": True,
             "qr_scan": True,
             "pdf_download": True,
-            "push_notifications": False,   # Coming soon
-            "biometric_auth": False,       # Coming soon
-            "offline_mode": False,         # Coming soon
+            "push_notifications": False,  # Coming soon
+            "biometric_auth": False,  # Coming soon
+            "offline_mode": False,  # Coming soon
             "critical_alerts": True,
         },
         "support": {
@@ -229,14 +262,16 @@ def get_current_user_profile(
             "city": lab.city if lab else None,
             "phone": lab.phone if lab else None,
             "is_active": lab.is_active if lab else False,
-        } if lab else None,
+        }
+        if lab
+        else None,
     }
 
 
 class DeviceTokenRequest(BaseModel):
     device_token: str
     platform: str  # "android" or "ios"
-    app_version: Optional[str] = None
+    app_version: str | None = None
 
     @field_validator("platform")
     @classmethod
@@ -253,7 +288,9 @@ class DeviceTokenRequest(BaseModel):
         return v
 
 
-@mobile_router.post("/register-device", status_code=201, summary="Register device for push notifications")
+@mobile_router.post(
+    "/register-device", status_code=201, summary="Register device for push notifications"
+)
 def register_device(
     data: DeviceTokenRequest,
     current_user: LabUser = Depends(get_current_user),
@@ -279,7 +316,9 @@ def register_device(
 
     logger.info(
         "Device registered: user=%d platform=%s version=%s",
-        current_user.id, data.platform, data.app_version,
+        current_user.id,
+        data.platform,
+        data.app_version,
     )
 
     return {
@@ -298,45 +337,53 @@ def mobile_stats(
     Returns key statistics for the mobile app dashboard.
     Optimized: single query returns all needed counts.
     """
-    from ..models.patient import Patient
-    from ..models.lab_order import LabOrder
-    from ..models.lab_result import LabResult
-    from sqlalchemy import func
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta
 
-    today = datetime.now(timezone.utc).date()
-    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    from sqlalchemy import func
+
+    from ..models.lab_order import LabOrder
+    from ..models.patient import Patient
+
+    today = datetime.now(UTC).date()
+    week_ago = datetime.now(UTC) - timedelta(days=7)
 
     lab_id = current_user.lab_id
 
-    total_patients = db.query(func.count(Patient.id)).filter(
-        Patient.lab_id == lab_id
-    ).scalar() or 0
+    total_patients = db.query(func.count(Patient.id)).filter(Patient.lab_id == lab_id).scalar() or 0
 
-    total_orders = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id
-    ).scalar() or 0
+    total_orders = db.query(func.count(LabOrder.id)).filter(LabOrder.lab_id == lab_id).scalar() or 0
 
-    orders_today = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id,
-        func.date(LabOrder.created_at) == today,
-    ).scalar() or 0
+    orders_today = (
+        db.query(func.count(LabOrder.id))
+        .filter(
+            LabOrder.lab_id == lab_id,
+            func.date(LabOrder.created_at) == today,
+        )
+        .scalar()
+        or 0
+    )
 
-    orders_this_week = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id,
-        LabOrder.created_at >= week_ago,
-    ).scalar() or 0
+    orders_this_week = (
+        db.query(func.count(LabOrder.id))
+        .filter(
+            LabOrder.lab_id == lab_id,
+            LabOrder.created_at >= week_ago,
+        )
+        .scalar()
+        or 0
+    )
 
     return {
         "total_patients": total_patients,
         "total_orders": total_orders,
         "orders_today": orders_today,
         "orders_this_week": orders_this_week,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
 
 def _role_ar(role: str) -> str:
     return {
@@ -350,9 +397,9 @@ def _role_ar(role: str) -> str:
 def _get_permissions(role: str) -> list[str]:
     base = ["view_patients", "view_results", "create_order"]
     if role in ("admin", "master_admin"):
-        return base + ["manage_users", "manage_lab", "view_audit_logs"]
+        return [*base, "manage_users", "manage_lab", "view_audit_logs"]
     if role == "technician":
-        return base + ["enter_results", "view_samples"]
+        return [*base, "enter_results", "view_samples"]
     return base
 
 

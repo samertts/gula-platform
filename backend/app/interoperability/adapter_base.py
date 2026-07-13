@@ -10,16 +10,18 @@ See ``docs/sovereign/phase16-interoperability/02-adapter-framework.md``.
 from __future__ import annotations
 
 import abc
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Mapping
+from typing import Any
+
+from app._compat import StrEnum
 
 from .audit_event import InteropAuditEvent
 from .principal import InteropPrincipal
 from .trust_domain import TrustDomain
 
 
-class AdapterStatus(str, Enum):
+class AdapterStatus(StrEnum):
     OK = "ok"
     DEGRADED = "degraded"
     UNAVAILABLE = "unavailable"
@@ -89,9 +91,7 @@ class AdapterBase(abc.ABC):
     def check_capability(self, operation: str) -> None:
         """Raise ``CapabilityDenied`` if ``operation`` is not in the manifest."""
         if not self.domain.permits(operation):
-            raise CapabilityDenied(
-                f"adapter {self.name!r} not permitted to perform {operation!r}"
-            )
+            raise CapabilityDenied(f"adapter {self.name!r} not permitted to perform {operation!r}")
 
     # ---- Lifecycle / health ---------------------------------------------
 

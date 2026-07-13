@@ -12,8 +12,11 @@ Call it whenever a user's access rights change:
   - password change
   - lab_id change
 """
+
 import logging
+
 from sqlalchemy.orm import Session
+
 from ..models.lab_user import LabUser
 from ..services.audit_service import log_action
 from .redis_client import cache
@@ -64,7 +67,11 @@ def bump_perm_version(
 
     logger.info(
         "perm_version bumped for user %d (%s): %d → %d [%s]",
-        user.id, user.email, old_version, new_version, reason,
+        user.id,
+        user.email,
+        old_version,
+        new_version,
+        reason,
     )
     return new_version
 

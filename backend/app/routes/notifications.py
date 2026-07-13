@@ -1,19 +1,20 @@
 """Notification endpoints - WhatsApp and SMS result delivery."""
+
 import urllib.parse
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-from typing import Optional
 
+from ..config import BASE_URL
 from ..database import get_db
-from ..models.lab_result import LabResult, hash_token
-from ..models.lab_order import LabOrder
-from ..models.patient import Patient
 from ..models.lab import Lab
+from ..models.lab_order import LabOrder
+from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
+from ..models.patient import Patient
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_user
-from ..config import BASE_URL
 
 router = APIRouter(prefix="/notify", tags=["notifications"])
 
@@ -39,10 +40,14 @@ def send_result_notification(
 ):
     """Generate notification link to send results to patient."""
     rate_limit_user(request, current_user.id, max_per_minute=20)
-    order = db.query(LabOrder).filter(
-        LabOrder.id == data.order_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    order = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == data.order_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -99,10 +104,14 @@ def notification_status(
     """Check if results for an order have been viewed."""
     from ..models.audit_log import AuditLog
 
-    order = db.query(LabOrder).filter(
-        LabOrder.id == order_id,
-        LabOrder.lab_id == current_user.lab_id,
-    ).first()
+    order = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == order_id,
+            LabOrder.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
 
 from backend.app.kernel.event_bus.events import Event
 
@@ -16,6 +15,7 @@ class EventDispatcher:
                 result = handler(event)
                 if hasattr(result, "__await__"):
                     import asyncio
+
                     asyncio.ensure_future(result)
             except Exception as e:
                 logger.error(

@@ -11,30 +11,32 @@ per-result operations that complement the order-centric /orders API:
     GET    /test-results/citizen/{health_id}      list results for a citizen
     GET    /test-results/citizen/{health_id}/timeline  values over time per test
 """
+
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone, date
-from typing import List, Optional
+from datetime import date, datetime
 
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session, joinedload
 
+from app._compat import UTC
+
+from ..core.events import RESULT_CRITICAL, events
 from ..database import get_db
 from ..domain.order_state import enforce_transition
-from ..core.events import events, RESULT_CRITICAL
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..models.sample import Sample, generate_barcode
 from ..models.test_type import TestType
-from ..services.critical_alerts import check_critical
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action
+from ..services.critical_alerts import check_critical
 from ..services.interpretation import get_flag, interpret_result
 
 router = APIRouter(prefix="/test-results", tags=["test-results"])
@@ -42,19 +44,21 @@ router = APIRouter(prefix="/test-results", tags=["test-results"])
 
 # ───────────────────────── schemas ─────────────────────────
 
+
 class TestResultCreate(BaseModel):
     """Input for POST /test-results/."""
+
     health_id: str = Field(..., min_length=3, max_length=20, description="Citizen health_id")
     test_name: str = Field(..., min_length=1, max_length=200)
-    test_code: Optional[str] = Field(None, max_length=50)
-    value: Optional[float] = None
-    value_text: Optional[str] = Field(None, max_length=200)
-    unit: Optional[str] = Field(None, max_length=20)
-    normal_range_low: Optional[float] = None
-    normal_range_high: Optional[float] = None
-    sample_type: Optional[str] = Field("blood", max_length=50)
-    doctor_name: Optional[str] = Field(None, max_length=200)
-    order_id: Optional[int] = Field(
+    test_code: str | None = Field(None, max_length=50)
+    value: float | None = None
+    value_text: str | None = Field(None, max_length=200)
+    unit: str | None = Field(None, max_length=20)
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
+    sample_type: str | None = Field("blood", max_length=50)
+    doctor_name: str | None = Field(None, max_length=200)
+    order_id: int | None = Field(
         None, description="Attach to an existing order; otherwise a new one is created."
     )
 
@@ -66,17 +70,19 @@ class TestResultCreate(BaseModel):
 
 class TestResultValidateRequest(BaseModel):
     """Input for POST /test-results/validate — reuses TestResultCreate subset."""
+
     test_name: str = Field(..., min_length=1, max_length=200)
-    test_code: Optional[str] = Field(None, max_length=50)
-    value: Optional[float] = None
-    unit: Optional[str] = Field(None, max_length=20)
-    normal_range_low: Optional[float] = None
-    normal_range_high: Optional[float] = None
+    test_code: str | None = Field(None, max_length=50)
+    value: float | None = None
+    unit: str | None = Field(None, max_length=20)
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
 
 
 # ───────────────────────── helpers ─────────────────────────
 
-def _derive_status(order: Optional[LabOrder]) -> str:
+
+def _derive_status(order: LabOrder | None) -> str:
     """Translate order state into a result-level status string.
 
     pending/completed → "pending"   (entered but not yet verified)
@@ -92,7 +98,7 @@ def _derive_status(order: Optional[LabOrder]) -> str:
     return "pending"
 
 
-def _result_dict(r: LabResult, patient: Optional[Patient] = None) -> dict:
+def _result_dict(r: LabResult, patient: Patient | None = None) -> dict:
     order = r.order
     interpretation = None
     if r.value is not None:
@@ -129,8 +135,7 @@ def _result_dict(r: LabResult, patient: Optional[Patient] = None) -> dict:
         "is_abnormal": is_abnormal,
         "status": _derive_status(order),
         "verified_by": order.validated_by if order else None,
-        "verified_at": order.validated_at.isoformat()
-            if order and order.validated_at else None,
+        "verified_at": order.validated_at.isoformat() if order and order.validated_at else None,
         "sample_barcode": sample_barcode,
         "result_token": r.token,
         "interpretation": interpretation,
@@ -140,18 +145,18 @@ def _result_dict(r: LabResult, patient: Optional[Patient] = None) -> dict:
 
 def _validate_payload(
     test_name: str,
-    value: Optional[float],
-    unit: Optional[str],
-    normal_low: Optional[float],
-    normal_high: Optional[float],
-    test_code: Optional[str],
+    value: float | None,
+    unit: str | None,
+    normal_low: float | None,
+    normal_high: float | None,
+    test_code: str | None,
     db: Session,
-) -> List[dict]:
+) -> list[dict]:
     """Return a list of warning dicts (empty if everything looks plausible)."""
-    warnings: List[dict] = []
+    warnings: list[dict] = []
 
     # Look up the canonical test definition (by code first, then by name).
-    tt: Optional[TestType] = None
+    tt: TestType | None = None
     if test_code:
         tt = db.query(TestType).filter(TestType.test_code == test_code).first()
     if tt is None:
@@ -159,64 +164,84 @@ def _validate_payload(
 
     # Unit mismatch
     if tt and unit and tt.unit and unit.strip() and unit.strip().lower() != tt.unit.lower():
-        warnings.append({
-            "code": "unit_mismatch",
-            "message": f"Unit '{unit}' does not match expected '{tt.unit}' for {test_name}.",
-            "expected": tt.unit,
-            "provided": unit,
-        })
+        warnings.append(
+            {
+                "code": "unit_mismatch",
+                "message": f"Unit '{unit}' does not match expected '{tt.unit}' for {test_name}.",
+                "expected": tt.unit,
+                "provided": unit,
+            }
+        )
 
     # Reference range inversion
     if normal_low is not None and normal_high is not None and normal_low > normal_high:
-        warnings.append({
-            "code": "range_inverted",
-            "message": "normal_range_low is greater than normal_range_high.",
-        })
+        warnings.append(
+            {
+                "code": "range_inverted",
+                "message": "normal_range_low is greater than normal_range_high.",
+            }
+        )
 
     # Value sanity
     if value is not None:
         if value < 0:
-            warnings.append({
-                "code": "negative_value",
-                "message": "Numeric lab value should not be negative.",
-            })
+            warnings.append(
+                {
+                    "code": "negative_value",
+                    "message": "Numeric lab value should not be negative.",
+                }
+            )
         # If we know the canonical range, flag extreme outliers (10× high / 0.1× low)
         ref_low = normal_low if normal_low is not None else (tt.normal_range_low if tt else None)
-        ref_high = normal_high if normal_high is not None else (tt.normal_range_high if tt else None)
+        ref_high = (
+            normal_high if normal_high is not None else (tt.normal_range_high if tt else None)
+        )
         if ref_high is not None and ref_high > 0 and value > ref_high * 10:
-            warnings.append({
-                "code": "implausibly_high",
-                "message": f"Value {value} is more than 10× the upper reference limit ({ref_high}).",
-            })
+            warnings.append(
+                {
+                    "code": "implausibly_high",
+                    "message": f"Value {value} is more than 10× the upper reference limit ({ref_high}).",
+                }
+            )
         if ref_low is not None and ref_low > 0 and value < ref_low * 0.1:
-            warnings.append({
-                "code": "implausibly_low",
-                "message": f"Value {value} is less than 10% of the lower reference limit ({ref_low}).",
-            })
+            warnings.append(
+                {
+                    "code": "implausibly_low",
+                    "message": f"Value {value} is less than 10% of the lower reference limit ({ref_low}).",
+                }
+            )
         # Critical value hint (informational — the client may want to confirm)
         crit = check_critical(test_name, value)
         if crit:
-            warnings.append({
-                "code": "critical_range",
-                "message": crit["message"],
-                "severity": crit["severity"],
-            })
+            warnings.append(
+                {
+                    "code": "critical_range",
+                    "message": crit["message"],
+                    "severity": crit["severity"],
+                }
+            )
 
     # Missing numeric value AND missing text — nothing to store
     if value is None and not tt:
-        warnings.append({
-            "code": "unknown_test",
-            "message": f"Test '{test_name}' is not in the reference catalog.",
-        })
+        warnings.append(
+            {
+                "code": "unknown_test",
+                "message": f"Test '{test_name}' is not in the reference catalog.",
+            }
+        )
 
     return warnings
 
 
 def _get_patient_scoped(db: Session, current_user: LabUser, health_id: str) -> Patient:
-    patient = db.query(Patient).filter(
-        Patient.health_id == health_id,
-        Patient.lab_id == current_user.lab_id,
-    ).first()
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.health_id == health_id,
+            Patient.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     return patient
@@ -225,13 +250,13 @@ def _get_patient_scoped(db: Session, current_user: LabUser, health_id: str) -> P
 def _fill_ranges_from_catalog(
     db: Session,
     test_name: str,
-    test_code: Optional[str],
-    normal_low: Optional[float],
-    normal_high: Optional[float],
-    unit: Optional[str],
-) -> tuple[Optional[float], Optional[float], Optional[str], Optional[TestType]]:
+    test_code: str | None,
+    normal_low: float | None,
+    normal_high: float | None,
+    unit: str | None,
+) -> tuple[float | None, float | None, str | None, TestType | None]:
     """Populate missing range/unit from the TestType catalog when available."""
-    tt: Optional[TestType] = None
+    tt: TestType | None = None
     if test_code:
         tt = db.query(TestType).filter(TestType.test_code == test_code).first()
     if tt is None:
@@ -247,6 +272,7 @@ def _fill_ranges_from_catalog(
 
 
 # ───────────────────────── endpoints ─────────────────────────
+
 
 @router.post("/", status_code=201)
 def create_test_result(
@@ -266,18 +292,26 @@ def create_test_result(
 
     # Pull any missing reference data from the catalog.
     normal_low, normal_high, unit, tt = _fill_ranges_from_catalog(
-        db, data.test_name, data.test_code,
-        data.normal_range_low, data.normal_range_high, data.unit,
+        db,
+        data.test_name,
+        data.test_code,
+        data.normal_range_low,
+        data.normal_range_high,
+        data.unit,
     )
 
     # Reuse an existing editable order or open a new one.
-    order: Optional[LabOrder] = None
+    order: LabOrder | None = None
     if data.order_id is not None:
-        order = db.query(LabOrder).filter(
-            LabOrder.id == data.order_id,
-            LabOrder.lab_id == current_user.lab_id,
-            LabOrder.patient_id == patient.id,
-        ).first()
+        order = (
+            db.query(LabOrder)
+            .filter(
+                LabOrder.id == data.order_id,
+                LabOrder.lab_id == current_user.lab_id,
+                LabOrder.patient_id == patient.id,
+            )
+            .first()
+        )
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
         if order.status in ("validated", "cancelled"):
@@ -299,7 +333,8 @@ def create_test_result(
     # Ensure at least one sample exists for this order (auto-generated barcode).
     existing_sample = (
         db.query(Sample).filter(Sample.order_id == order.id).first()
-        if data.order_id is not None else None
+        if data.order_id is not None
+        else None
     )
     if existing_sample is None:
         sample = Sample(
@@ -355,16 +390,19 @@ def create_test_result(
 
     # Fire critical-value event for downstream notifications.
     if flag == "critical" and data.value is not None:
-        events.emit(RESULT_CRITICAL, {
-            "order_id": order.id,
-            "result_id": result.id,
-            "patient_id": patient.id,
-            "patient_name": patient.full_name,
-            "patient_phone": patient.phone,
-            "test_name": data.test_name,
-            "value": data.value,
-            "lab_id": order.lab_id,
-        })
+        events.emit(
+            RESULT_CRITICAL,
+            {
+                "order_id": order.id,
+                "result_id": result.id,
+                "patient_id": patient.id,
+                "patient_name": patient.full_name,
+                "patient_phone": patient.phone,
+                "test_name": data.test_name,
+                "value": data.value,
+                "lab_id": order.lab_id,
+            },
+        )
 
     # Smart-analysis summary returned to the caller.
     analysis = {
@@ -372,11 +410,21 @@ def create_test_result(
         "is_critical": flag == "critical",
         "is_abnormal": flag in ("critical", "H", "L"),
         "interpretation": interpret_result(
-            data.test_name, data.value, normal_low, normal_high,
-        ) if data.value is not None else None,
+            data.test_name,
+            data.value,
+            normal_low,
+            normal_high,
+        )
+        if data.value is not None
+        else None,
         "warnings": _validate_payload(
-            data.test_name, data.value, unit, normal_low, normal_high,
-            data.test_code, db,
+            data.test_name,
+            data.value,
+            unit,
+            normal_low,
+            normal_high,
+            data.test_code,
+            db,
         ),
     }
 
@@ -398,15 +446,26 @@ def validate_test_result(
     """Pre-save sanity check: returns warnings without persisting anything."""
     rate_limit_user(request, current_user.id, max_per_minute=60)
     warnings = _validate_payload(
-        data.test_name, data.value, data.unit,
-        data.normal_range_low, data.normal_range_high,
-        data.test_code, db,
+        data.test_name,
+        data.value,
+        data.unit,
+        data.normal_range_low,
+        data.normal_range_high,
+        data.test_code,
+        db,
     )
     return {
-        "valid": not any(w["code"] in (
-            "unit_mismatch", "range_inverted", "negative_value",
-            "implausibly_high", "implausibly_low",
-        ) for w in warnings),
+        "valid": not any(
+            w["code"]
+            in (
+                "unit_mismatch",
+                "range_inverted",
+                "negative_value",
+                "implausibly_high",
+                "implausibly_low",
+            )
+            for w in warnings
+        ),
         "warnings": warnings,
     }
 
@@ -484,7 +543,7 @@ def verify_test_result(
 
     enforce_transition(order.status, "validated")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     rows = (
         db.query(LabOrder)
         .filter(LabOrder.id == order.id, LabOrder.locked_at.is_(None))
@@ -523,10 +582,10 @@ def verify_test_result(
 @router.get("/citizen/{health_id}")
 def list_citizen_results(
     health_id: str,
-    category: Optional[str] = Query(None, max_length=50),
-    date_from: Optional[date] = Query(None),
-    date_to: Optional[date] = Query(None),
-    is_abnormal: Optional[bool] = Query(None),
+    category: str | None = Query(None, max_length=50),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    is_abnormal: bool | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -556,25 +615,30 @@ def list_citizen_results(
     if category:
         q = q.filter(TestType.category == category)
     if date_from:
-        q = q.filter(LabResult.created_at >= datetime.combine(
-            date_from, datetime.min.time(), tzinfo=timezone.utc,
-        ))
+        q = q.filter(
+            LabResult.created_at
+            >= datetime.combine(
+                date_from,
+                datetime.min.time(),
+                tzinfo=UTC,
+            )
+        )
     if date_to:
-        q = q.filter(LabResult.created_at < datetime.combine(
-            date_to, datetime.max.time(), tzinfo=timezone.utc,
-        ))
+        q = q.filter(
+            LabResult.created_at
+            < datetime.combine(
+                date_to,
+                datetime.max.time(),
+                tzinfo=UTC,
+            )
+        )
     if is_abnormal is True:
         q = q.filter(LabResult.flag.in_(("critical", "H", "L")))
     elif is_abnormal is False:
         q = q.filter(sa.or_(LabResult.flag == "normal", LabResult.flag.is_(None)))
 
     total = q.count()
-    rows = (
-        q.order_by(LabResult.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    rows = q.order_by(LabResult.created_at.desc()).offset(skip).limit(limit).all()
 
     return {
         "patient": {
@@ -592,7 +656,7 @@ def list_citizen_results(
 @router.get("/citizen/{health_id}/timeline")
 def citizen_timeline(
     health_id: str,
-    category: Optional[str] = Query(None, max_length=50),
+    category: str | None = Query(None, max_length=50),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -634,24 +698,28 @@ def citizen_timeline(
     grouped: dict[str, dict] = {}
     for r in rows:
         tt = r.test_type
-        key = (tt.test_code if tt else r.test_name.lower().replace(" ", "_"))
+        key = tt.test_code if tt else r.test_name.lower().replace(" ", "_")
         if key not in grouped:
             grouped[key] = {
                 "test_code": tt.test_code if tt else None,
                 "test_name": r.test_name,
                 "category": tt.category if tt else None,
                 "unit": r.unit or (tt.unit if tt else None),
-                "normal_range_low": r.normal_range_low if r.normal_range_low is not None
-                    else (tt.normal_range_low if tt else None),
-                "normal_range_high": r.normal_range_high if r.normal_range_high is not None
-                    else (tt.normal_range_high if tt else None),
+                "normal_range_low": r.normal_range_low
+                if r.normal_range_low is not None
+                else (tt.normal_range_low if tt else None),
+                "normal_range_high": r.normal_range_high
+                if r.normal_range_high is not None
+                else (tt.normal_range_high if tt else None),
                 "points": [],
             }
-        grouped[key]["points"].append({
-            "date": r.created_at.isoformat() if r.created_at else None,
-            "value": r.value,
-            "flag": r.flag,
-        })
+        grouped[key]["points"].append(
+            {
+                "date": r.created_at.isoformat() if r.created_at else None,
+                "value": r.value,
+                "flag": r.flag,
+            }
+        )
 
     return {
         "patient": {

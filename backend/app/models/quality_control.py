@@ -1,7 +1,12 @@
 """Quality Control model for lab instrument QC tracking."""
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
+
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+
+from app._compat import UTC
+
 from ..database import Base
 
 
@@ -27,7 +32,7 @@ class QualityControl(Base):
     notes = Column(Text, nullable=True)
 
     performed_by = Column(String(200), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # passive_deletes=True lets the DB-level CASCADE (ondelete="CASCADE" on the
     # FK above) handle deletion without SQLAlchemy loading records into memory.

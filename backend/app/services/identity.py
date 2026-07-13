@@ -1,11 +1,13 @@
 """Arabic and multilingual name normalization for patient identity matching."""
-import re
-import hashlib
 
+import hashlib
+import re
 
 # Arabic character normalization map
 ARABIC_NORMALIZE = {
-    "أ": "ا", "إ": "ا", "آ": "ا",  # Alef variants → plain Alef
+    "أ": "ا",
+    "إ": "ا",
+    "آ": "ا",  # Alef variants → plain Alef
     "ة": "ه",  # Ta Marbuta → Ha
     "ى": "ي",  # Alef Maksura → Ya
     "ؤ": "و",  # Waw Hamza → Waw
@@ -13,7 +15,9 @@ ARABIC_NORMALIZE = {
 }
 
 # Common Arabic diacritics to remove
-ARABIC_DIACRITICS = re.compile(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]")
+ARABIC_DIACRITICS = re.compile(
+    r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]"
+)
 
 # English transliteration variants
 NAME_ALIASES = {
@@ -83,9 +87,16 @@ def normalize_name(name: str) -> str:
     return " ".join(normalized_parts)
 
 
-def match_score(p1_name: str, p1_phone: str, p1_birth: str,
-                p2_name: str, p2_phone: str, p2_birth: str,
-                p1_national_id_hash: str = None, p2_national_id_hash: str = None) -> float:
+def match_score(
+    p1_name: str,
+    p1_phone: str,
+    p1_birth: str,
+    p2_name: str,
+    p2_phone: str,
+    p2_birth: str,
+    p1_national_id_hash: str | None = None,
+    p2_national_id_hash: str | None = None,
+) -> float:
     """Calculate match score between two patient records.
 
     Returns a score from 0.0 to 1.0 indicating likelihood of same patient.
@@ -114,9 +125,8 @@ def match_score(p1_name: str, p1_phone: str, p1_birth: str,
             score += 0.35
 
     # Birth date matching
-    if p1_birth and p2_birth:
-        if str(p1_birth) == str(p2_birth):
-            score += 0.20
+    if p1_birth and p2_birth and str(p1_birth) == str(p2_birth):
+        score += 0.20
 
     return min(score, 1.0)
 
@@ -193,7 +203,7 @@ def jaro_winkler(s1: str, s2: str, prefix_weight: float = 0.1, max_prefix: int =
     if jaro < 0.7:  # Winkler: only apply prefix bonus for reasonably similar strings
         return jaro
     prefix_len = 0
-    for a, b in zip(s1, s2):
+    for a, b in zip(s1, s2, strict=False):
         if a == b and prefix_len < max_prefix:
             prefix_len += 1
         else:
@@ -207,7 +217,9 @@ def hash_national_id(national_id: str) -> str:
     Uses NID_HMAC_KEY (not SECRET_KEY) so hashes survive secret rotation.
     """
     import hmac
+
     from ..config import NID_HMAC_KEY
+
     cleaned = re.sub(r"[^\d]", "", national_id)
     if not cleaned:
         return ""
@@ -221,7 +233,9 @@ def hash_family_id(family_id: str) -> str:
     to prevent hash collisions with national IDs that share the same digit sequence.
     """
     import hmac
+
     from ..config import NID_HMAC_KEY
+
     cleaned = re.sub(r"[^\d]", "", family_id)
     if not cleaned:
         return ""

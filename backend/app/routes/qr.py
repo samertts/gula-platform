@@ -1,14 +1,17 @@
 import io
 import json
-from fastapi import APIRouter, Response, Depends, Request
+
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
+
 from shared.qr import generate_qr, generate_qr_image
+
 from ..config import BASE_URL
 from ..database import get_db
-from ..models.lab_result import LabResult, hash_token
-from ..models.lab_order import LabOrder
-from ..models.patient import Patient
 from ..models.lab import Lab
+from ..models.lab_order import LabOrder
+from ..models.lab_result import LabResult, hash_token
+from ..models.patient import Patient
 from ..security.rate_limit import rate_limit_public
 
 router = APIRouter(tags=["qr"])

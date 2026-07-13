@@ -1,5 +1,9 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text
-from datetime import datetime, timezone
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Integer, String, Text
+
+from app._compat import UTC
+
 from ..database import Base
 
 
@@ -14,7 +18,7 @@ class AuditLog(Base):
     resource_id = Column(Integer, nullable=True)
     details = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True)
     # SHA-256 hash chain: each entry hashes (prev_chain_hash + this record data).
     # Tamper-detection: any modification breaks the chain. NULL on legacy rows before migration.
     chain_hash = Column(String(64), nullable=True, index=True)

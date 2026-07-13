@@ -30,7 +30,9 @@ class PluginGenerator(BaseGenerator):
         self._ensure_dir(pkg)
         (self.target_dir / pkg / "__init__.py").touch()
 
-        self._write(f"{pkg}/plugin.py", f"""from __future__ import annotations
+        self._write(
+            f"{pkg}/plugin.py",
+            f"""from __future__ import annotations
 
 from typing import Any
 
@@ -61,12 +63,13 @@ class {P}Plugin:
 
     async def execute(self, action: str, **kwargs: Any) -> Any:
         return None
-""")
-
-        hooks_code = "\n".join(
-            f"    async def {hook}(self) -> None: pass" for hook in spec.hooks
+""",
         )
-        self._write(f"{pkg}/hooks.py", f"""from __future__ import annotations
+
+        hooks_code = "\n".join(f"    async def {hook}(self) -> None: pass" for hook in spec.hooks)
+        self._write(
+            f"{pkg}/hooks.py",
+            f"""from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
@@ -78,9 +81,12 @@ class {P}Hook(ABC):
 
 
 {hooks_code}
-""")
+""",
+        )
 
-        self._write(f"{pkg}/config.py", f"""from __future__ import annotations
+        self._write(
+            f"{pkg}/config.py",
+            f"""from __future__ import annotations
 
 from dataclasses import dataclass, field
 
@@ -89,9 +95,12 @@ from dataclasses import dataclass, field
 class {P}Config:
     enabled: bool = True
     settings: dict = field(default_factory=dict)
-""")
+""",
+        )
 
-        self._write(f"{pkg}/pyproject.toml", f"""[build-system]
+        self._write(
+            f"{pkg}/pyproject.toml",
+            f"""[build-system]
 requires = ["setuptools>=80", "wheel"]
 build-backend = "setuptools.build_meta"
 
@@ -101,15 +110,19 @@ version = "{spec.version}"
 description = "{spec.description}"
 requires-python = ">=3.11"
 dependencies = {spec.dependencies}
-""")
+""",
+        )
 
-        self._write("README.md", f"""# {spec.name}
+        self._write(
+            "README.md",
+            f"""# {spec.name}
 
 {spec.description}
 
 ## Hooks
 
-{chr(10).join(f'- `{h}`' for h in spec.hooks)}
-""")
+{chr(10).join(f"- `{h}`" for h in spec.hooks)}
+""",
+        )
 
         return self._result

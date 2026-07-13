@@ -19,7 +19,7 @@ router = APIRouter(prefix="/alerts", tags=["critical-alerts"])
 @router.get("")
 def get_critical_alerts(
     hours: int = Query(24, ge=1, le=168),
-    acknowledged: bool = None,
+    acknowledged: bool | None = None,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

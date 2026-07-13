@@ -27,9 +27,10 @@ Access policy, evaluated in this exact order:
   The dependency factory returns a callable that reads `gpid` from the path
   and emits an HTTPException(403, consent_required) on miss.
 """
+
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -93,11 +94,12 @@ def require_consent(
         current_user: LabUser = Depends(get_current_user),
         db: Session = Depends(get_db),
     ) -> LabUser:
-        gpid: Optional[str] = request.path_params.get(gpid_path_param)
+        gpid: str | None = request.path_params.get(gpid_path_param)
         if gpid is None:
             # Mis-wired route — fail closed.
-            raise HTTPException(status_code=500,
-                                detail=f"consent dep: missing path param {gpid_path_param}")
+            raise HTTPException(
+                status_code=500, detail=f"consent dep: missing path param {gpid_path_param}"
+            )
 
         actor_id = _actor_id_for(current_user)
         ip = request.client.host if request.client else None
@@ -105,8 +107,13 @@ def require_consent(
         # 1. Owner bypass
         if _is_owner(current_user, gpid):
             consent_service.log_access_decision(
-                db, actor_user_id=current_user.id, actor_role=current_user.role,
-                gpid=gpid, scope=scope, result="allow", reason="owner",
+                db,
+                actor_user_id=current_user.id,
+                actor_role=current_user.role,
+                gpid=gpid,
+                scope=scope,
+                result="allow",
+                reason="owner",
                 ip_address=ip,
             )
             return current_user
@@ -115,45 +122,73 @@ def require_consent(
         if _emergency_header(request):
             if current_user.role != "doctor":
                 consent_service.log_access_decision(
-                    db, actor_user_id=current_user.id, actor_role=current_user.role,
-                    gpid=gpid, scope=scope, result="deny",
+                    db,
+                    actor_user_id=current_user.id,
+                    actor_role=current_user.role,
+                    gpid=gpid,
+                    scope=scope,
+                    result="deny",
                     reason="emergency_requires_doctor_role",
-                    emergency=True, ip_address=ip,
+                    emergency=True,
+                    ip_address=ip,
                 )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail={"error": "emergency_access_denied",
-                            "message": "Emergency access requires doctor role."},
+                    detail={
+                        "error": "emergency_access_denied",
+                        "message": "Emergency access requires doctor role.",
+                    },
                 )
             consent_service.log_access_decision(
-                db, actor_user_id=current_user.id, actor_role=current_user.role,
-                gpid=gpid, scope=scope, result="allow",
+                db,
+                actor_user_id=current_user.id,
+                actor_role=current_user.role,
+                gpid=gpid,
+                scope=scope,
+                result="allow",
                 reason="emergency_break_glass",
-                emergency=True, ip_address=ip,
+                emergency=True,
+                ip_address=ip,
             )
             return current_user
 
         # 3. Normal check
         row = consent_service.check_active_consent(
-            db, gpid=gpid, grantee_id=actor_id, scope=scope,
+            db,
+            gpid=gpid,
+            grantee_id=actor_id,
+            scope=scope,
         )
         if row is None:
             consent_service.log_access_decision(
-                db, actor_user_id=current_user.id, actor_role=current_user.role,
-                gpid=gpid, scope=scope, result="deny",
-                reason="no_active_consent", ip_address=ip,
+                db,
+                actor_user_id=current_user.id,
+                actor_role=current_user.role,
+                gpid=gpid,
+                scope=scope,
+                result="deny",
+                reason="no_active_consent",
+                ip_address=ip,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail={"error": "consent_required",
-                        "message": "No active consent for this subject/scope.",
-                        "scope": scope, "gpid": gpid},
+                detail={
+                    "error": "consent_required",
+                    "message": "No active consent for this subject/scope.",
+                    "scope": scope,
+                    "gpid": gpid,
+                },
             )
 
         consent_service.log_access_decision(
-            db, actor_user_id=current_user.id, actor_role=current_user.role,
-            gpid=gpid, scope=scope, result="allow",
-            reason=f"consent_id={row.id}", ip_address=ip,
+            db,
+            actor_user_id=current_user.id,
+            actor_role=current_user.role,
+            gpid=gpid,
+            scope=scope,
+            result="allow",
+            reason=f"consent_id={row.id}",
+            ip_address=ip,
         )
         return current_user
 

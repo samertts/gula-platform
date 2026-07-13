@@ -1,12 +1,7 @@
 from __future__ import annotations
 
 import logging
-import time
-import uuid
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-
-from backend.app.kernel.event_bus.events import Event
+from dataclasses import dataclass
 
 logger = logging.getLogger("gula.kernel.event_bus.inbox")
 
@@ -24,9 +19,11 @@ class InboxMessage:
     def __post_init__(self):
         if not self.id:
             import uuid
+
             self.id = str(uuid.uuid4())
         if not self.created_at:
             import time
+
             self.created_at = time.time()
 
 

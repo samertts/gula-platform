@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
-import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger("gula.kernel.background.task_queue")
 
@@ -24,9 +21,11 @@ class Task:
     def __post_init__(self):
         if not self.id:
             import uuid
+
             self.id = str(uuid.uuid4())
         if not self.created_at:
             import time
+
             self.created_at = time.time()
 
 

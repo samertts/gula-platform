@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
 
-from backend.app.kernel.exceptions import CircularDependencyError
 from backend.app.kernel.types import PluginDescriptor
 
 logger = logging.getLogger("gula.kernel.plugin.dependencies")
@@ -13,15 +11,11 @@ class PluginDependencyResolver:
     def __init__(self):
         self._resolved: set[str] = set()
 
-    def validate(
-        self, descriptor: PluginDescriptor, existing: list[PluginDescriptor]
-    ) -> None:
+    def validate(self, descriptor: PluginDescriptor, existing: list[PluginDescriptor]) -> None:
         existing_names = {p.name for p in existing}
         for dep in descriptor.dependencies:
             if dep not in existing_names:
-                raise ValueError(
-                    f"Plugin '{descriptor.name}' requires '{dep}' which is not loaded"
-                )
+                raise ValueError(f"Plugin '{descriptor.name}' requires '{dep}' which is not loaded")
 
     def resolve_order(self, plugins: list[PluginDescriptor]) -> list[PluginDescriptor]:
         graph: dict[str, set[str]] = {}

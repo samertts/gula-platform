@@ -36,7 +36,11 @@ class KnowledgeGraphGenerator:
         self.edges = []
 
         for py_file in self.project_root.rglob("*.py"):
-            if "test" in py_file.parts or "__pycache__" in py_file.parts or ".venv" in py_file.parts:
+            if (
+                "test" in py_file.parts
+                or "__pycache__" in py_file.parts
+                or ".venv" in py_file.parts
+            ):
                 continue
             try:
                 tree = ast.parse(py_file.read_text())
@@ -61,7 +65,7 @@ class KnowledgeGraphGenerator:
         lines = ["# Knowledge Graph\n", "```mermaid\nflowchart TD\n"]
         for n in data["nodes"]:
             nid = n["id"].replace("-", "_").replace(".", "_").replace("/", "_")
-            lines.append(f"    {nid}[\"{n['name']}\\n({n['type']})\"]\n")
+            lines.append(f'    {nid}["{n["name"]}\\n({n["type"]})"]\n')
         for e in data["edges"]:
             src = e["source"].replace("-", "_").replace(".", "_").replace("/", "_")
             tgt = e["target"].replace("-", "_").replace(".", "_").replace("/", "_")
@@ -78,7 +82,34 @@ class KnowledgeGraphGenerator:
             if isinstance(node, ast.ClassDef):
                 docstring = ast.get_docstring(node) or ""
                 nid = f"{relative}:{node.lineno}:{node.name}"
-                ntype = "aggregate" if "Aggregate" in node.name else "value_object" if "Value" in node.name else "entity" if "Entity" in node.name else "service" if "Service" in node.name else "repository" if "Repository" in node.name else "controller" if "Controller" in node.name or "Router" in node.name or "Handler" in node.name else "event" if "Event" in node.name else "command" if "Command" in node.name else "query" if "Query" in node.name else "dto" if "DTO" in node.name or "Response" in node.name or "Create" in node.name or "Update" in node.name else "model" if "Model" in node.name else "class"
+                ntype = (
+                    "aggregate"
+                    if "Aggregate" in node.name
+                    else "value_object"
+                    if "Value" in node.name
+                    else "entity"
+                    if "Entity" in node.name
+                    else "service"
+                    if "Service" in node.name
+                    else "repository"
+                    if "Repository" in node.name
+                    else "controller"
+                    if "Controller" in node.name or "Router" in node.name or "Handler" in node.name
+                    else "event"
+                    if "Event" in node.name
+                    else "command"
+                    if "Command" in node.name
+                    else "query"
+                    if "Query" in node.name
+                    else "dto"
+                    if "DTO" in node.name
+                    or "Response" in node.name
+                    or "Create" in node.name
+                    or "Update" in node.name
+                    else "model"
+                    if "Model" in node.name
+                    else "class"
+                )
                 self.nodes.append(
                     KnowledgeNode(
                         id=nid,
@@ -95,7 +126,23 @@ class KnowledgeGraphGenerator:
                     continue
                 docstring = ast.get_docstring(node) or ""
                 nid = f"{relative}:{node.lineno}:{node.name}"
-                ntype = "endpoint" if any(d.attr == "get" or d.attr == "post" or d.attr == "put" or d.attr == "delete" or d.attr == "patch" for d in node.decorator_list if isinstance(d, ast.Attribute)) else "handler" if "handler" in node.name.lower() or "handle" in node.name.lower() else "use_case" if "use_case" in node.name.lower() else "function"
+                ntype = (
+                    "endpoint"
+                    if any(
+                        d.attr == "get"
+                        or d.attr == "post"
+                        or d.attr == "put"
+                        or d.attr == "delete"
+                        or d.attr == "patch"
+                        for d in node.decorator_list
+                        if isinstance(d, ast.Attribute)
+                    )
+                    else "handler"
+                    if "handler" in node.name.lower() or "handle" in node.name.lower()
+                    else "use_case"
+                    if "use_case" in node.name.lower()
+                    else "function"
+                )
                 self.nodes.append(
                     KnowledgeNode(
                         id=nid,
@@ -117,8 +164,13 @@ class KnowledgeGraphGenerator:
                 for child in node.body:
                     if isinstance(child, ast.Assign):
                         for target in child.targets:
-                            if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Call):
-                                if hasattr(target.value.func, "attr") and target.value.func.attr == "get":
+                            if isinstance(target, ast.Attribute) and isinstance(
+                                target.value, ast.Call
+                            ):
+                                if (
+                                    hasattr(target.value.func, "attr")
+                                    and target.value.func.attr == "get"
+                                ):
                                     pass
 
                 for child in ast.walk(node):

@@ -4,7 +4,7 @@ import importlib
 import importlib.util
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING
 
 from backend.app.kernel.exceptions import PluginLoadError
 from backend.app.kernel.types import PluginDescriptor
@@ -24,9 +24,7 @@ class PluginLoader:
         if not plugin_path.exists():
             raise PluginLoadError(path, "Plugin path does not exist")
 
-        spec = importlib.util.spec_from_file_location(
-            plugin_path.stem, plugin_path / "__init__.py"
-        )
+        spec = importlib.util.spec_from_file_location(plugin_path.stem, plugin_path / "__init__.py")
         if not spec or not spec.loader:
             raise PluginLoadError(path, "Cannot load plugin module")
 
@@ -38,7 +36,7 @@ class PluginLoader:
 
         plugin_class = module.Plugin
         instance = plugin_class()
-        descriptor = PluginDescriptor(
+        return PluginDescriptor(
             name=getattr(instance, "name", plugin_path.stem),
             version=getattr(instance, "version", "1.0.0"),
             path=str(plugin_path),
@@ -47,4 +45,3 @@ class PluginLoader:
             permissions=getattr(instance, "permissions", []),
             enabled=True,
         )
-        return descriptor

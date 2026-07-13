@@ -11,12 +11,12 @@ Valid transitions:
 Enforcement is done at the service layer (routes/results.py) so that
 no endpoint can bypass the rules regardless of how it is called.
 """
-from fastapi import HTTPException
 
+from fastapi import HTTPException
 
 # Canonical transition map.  Keys are current states; values are reachable targets.
 _TRANSITIONS: dict[str, list[str]] = {
-    "pending":   ["completed", "cancelled"],
+    "pending": ["completed", "cancelled"],
     "completed": ["validated", "cancelled"],
     "validated": [],
     "cancelled": [],

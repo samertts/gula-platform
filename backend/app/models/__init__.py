@@ -1,54 +1,62 @@
 from ..database import Base
-from .lab import Lab
-from .lab_user import LabUser
-from .user import User
-from .patient import Patient
-from .test_type import TestType
-from .lab_order import LabOrder
-from .lab_result import LabResult
-from .sample import Sample
-from .audit_log import AuditLog
-from .quality_control import QualityControl
-from .outbox import OutboxEvent
-from .subscription import LabSubscription, UpgradeRequest, UpgradeDemandScore, FeatureFlag
-from .consent import Consent
-from .edge import (
-    EdgeDevice, EdgeTask, EdgeTelemetry, EdgeModel,
-    EdgeModelAssignment, EdgePolicy, EdgeEvent,
-)
 from .ai_interaction import (
-    AIInteraction, AIRetrievalRef, AIFeedback, AIUnresolvedQuestion,
+    AIFeedback,
+    AIInteraction,
+    AIRetrievalRef,
+    AIUnresolvedQuestion,
     MedicalTerminologyNormalized,
 )
+from .audit_log import AuditLog
+from .consent import Consent
+from .edge import (
+    EdgeDevice,
+    EdgeEvent,
+    EdgeModel,
+    EdgeModelAssignment,
+    EdgePolicy,
+    EdgeTask,
+    EdgeTelemetry,
+)
+from .lab import Lab
+from .lab_order import LabOrder
+from .lab_result import LabResult
+from .lab_user import LabUser
+from .outbox import OutboxEvent
+from .patient import Patient
+from .quality_control import QualityControl
+from .sample import Sample
+from .subscription import FeatureFlag, LabSubscription, UpgradeDemandScore, UpgradeRequest
+from .test_type import TestType
+from .user import User
 
 __all__ = [
-    "Base",
-    "Lab",
-    "LabUser",
-    "User",
-    "Patient",
-    "TestType",
-    "LabOrder",
-    "LabResult",
-    "Sample",
+    "AIFeedback",
+    "AIInteraction",
+    "AIRetrievalRef",
+    "AIUnresolvedQuestion",
     "AuditLog",
-    "QualityControl",
-    "OutboxEvent",
-    "LabSubscription",
-    "UpgradeRequest",
-    "UpgradeDemandScore",
-    "FeatureFlag",
+    "Base",
     "Consent",
     "EdgeDevice",
-    "EdgeTask",
-    "EdgeTelemetry",
+    "EdgeEvent",
     "EdgeModel",
     "EdgeModelAssignment",
     "EdgePolicy",
-    "EdgeEvent",
-    "AIInteraction",
-    "AIRetrievalRef",
-    "AIFeedback",
-    "AIUnresolvedQuestion",
+    "EdgeTask",
+    "EdgeTelemetry",
+    "FeatureFlag",
+    "Lab",
+    "LabOrder",
+    "LabResult",
+    "LabSubscription",
+    "LabUser",
     "MedicalTerminologyNormalized",
+    "OutboxEvent",
+    "Patient",
+    "QualityControl",
+    "Sample",
+    "TestType",
+    "UpgradeDemandScore",
+    "UpgradeRequest",
+    "User",
 ]

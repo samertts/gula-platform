@@ -15,21 +15,21 @@ from app.gateways.base import (
     FieldRule,
     validate_schema,
 )
-from shared.notifications import NotificationSender, send_push, send_email, send_sms
+from shared.notifications import NotificationSender, send_email, send_push, send_sms
 
 _TELEGRAM_API = "https://api.telegram.org"
 
 
 class TelegramGateway(ExternalGateway):
-    name                      = "telegram"
-    trust_level               = DataTrustLevel.ENRICHMENT
-    timeout                   = 10.0
-    max_retries               = 2
-    calls_per_minute          = 30
+    name = "telegram"
+    trust_level = DataTrustLevel.ENRICHMENT
+    timeout = 10.0
+    max_retries = 2
+    calls_per_minute = 30
     circuit_failure_threshold = 5
-    circuit_recovery_timeout  = 60.0
-    cache_ttl                 = 0.0
-    stale_threshold           = 0.0
+    circuit_recovery_timeout = 60.0
+    cache_ttl = 0.0
+    stale_threshold = 0.0
 
     _SCHEMA = [
         FieldRule("ok", bool, required=True, allowed=[True]),
@@ -40,8 +40,8 @@ class TelegramGateway(ExternalGateway):
 
     def _do_call(self, action: str, **kwargs: Any) -> Any:
         bot_token: str = kwargs["bot_token"]
-        chat_id:   str = kwargs["chat_id"]
-        message:   str = kwargs["message"]
+        chat_id: str = kwargs["chat_id"]
+        message: str = kwargs["message"]
         url = f"{_TELEGRAM_API}/bot{bot_token}/sendMessage"
         return self._http("post", url, json={"chat_id": chat_id, "text": message})
 
@@ -63,10 +63,10 @@ def send_telegram(bot_token: str, chat_id: str, message: str) -> bool:
 
 
 __all__ = [
-    "TelegramGateway",
-    "send_telegram",
     "NotificationSender",
-    "send_push",
+    "TelegramGateway",
     "send_email",
+    "send_push",
     "send_sms",
+    "send_telegram",
 ]

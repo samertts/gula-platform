@@ -1,25 +1,34 @@
 import re
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+from ..config import NID_HMAC_KEY
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.user import User
-from ..security.auth import hash_password, create_token
+from ..security.auth import hash_password
 from ..security.dependencies import get_current_user
-from ..security.rate_limit import rate_limit_auth, get_client_ip
+from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..services.audit_service import log_action
-from ..services.mpi.models import Citizen
+from ..services.identity import hash_national_id as mpi_hash_nid
+from ..services.identity import normalize_name as mpi_normalize_name
 from ..services.mpi.blocking import blocking_key, phone_last10
-from ..services.identity import normalize_name as mpi_normalize_name, hash_national_id as mpi_hash_nid
-from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY
+from ..services.mpi.models import Citizen
 
 
-def _mint_citizen_from_self_registration(db: Session, *, full_name: str, phone: str,
-                                         birth_date: str = "", gender: str = "",
-                                         national_id: str = "") -> str | None:
+def _mint_citizen_from_self_registration(
+    db: Session,
+    *,
+    full_name: str,
+    phone: str,
+    birth_date: str = "",
+    gender: str = "",
+    national_id: str = "",
+) -> str | None:
     """Create (or link to) a canonical MPI Citizen for a self-registering user.
 
     Citizens exist as a national identity registry independent of any lab.
@@ -28,14 +37,17 @@ def _mint_citizen_from_self_registration(db: Session, *, full_name: str, phone: 
     lab visit. Returns the canonical citizen_ulid or None on failure
     (non-fatal; a reconciler can re-run).
     """
-    import secrets, time
+    import secrets
+    import time
+
     try:
         nid_h = mpi_hash_nid(national_id) if national_id else None
         if nid_h:
-            existing = (db.query(Citizen)
-                          .filter(Citizen.nid_hash == nid_h,
-                                  Citizen.status.in_(("active", "review")))
-                          .first())
+            existing = (
+                db.query(Citizen)
+                .filter(Citizen.nid_hash == nid_h, Citizen.status.in_(("active", "review")))
+                .first()
+            )
             if existing is not None:
                 return existing.canonical().citizen_ulid
 
@@ -43,6 +55,7 @@ def _mint_citizen_from_self_registration(db: Session, *, full_name: str, phone: 
         if birth_date:
             try:
                 from datetime import date as _date
+
                 d = _date.fromisoformat(birth_date)
                 by, bm, bd = d.year, d.month, d.day
             except ValueError:
@@ -55,7 +68,8 @@ def _mint_citizen_from_self_registration(db: Session, *, full_name: str, phone: 
         val = (ms << 80) | rand
         out = []
         for _ in range(26):
-            out.append(_CROCKFORD[val & 0x1F]); val >>= 5
+            out.append(_CROCKFORD[val & 0x1F])
+            val >>= 5
         ulid = "".join(reversed(out))
 
         citizen = Citizen(
@@ -63,7 +77,9 @@ def _mint_citizen_from_self_registration(db: Session, *, full_name: str, phone: 
             nid_hash=nid_h,
             nid_verified=False,
             phone_last10=phone_last10(phone),
-            birth_year=by, birth_month=bm, birth_day=bd,
+            birth_year=by,
+            birth_month=bm,
+            birth_day=bd,
             gender=(gender.upper()[:1] if gender else None),
             name_canonical=mpi_normalize_name(full_name),
             name_blocking_key=blocking_key(full_name),
@@ -76,23 +92,26 @@ def _mint_citizen_from_self_registration(db: Session, *, full_name: str, phone: 
     except Exception:
         return None
 
+
 router = APIRouter(tags=["auth"])
 
 # Roles that a lab admin is permitted to create for their own lab.
-_ALLOWED_STAFF_ROLES = frozenset({
-    "technician",  # مختبري — enters and validates results
-    "doctor",      # طبيب مشرف — reviews and authorises results
-    "receptionist",  # موظف استقبال — registers patients and orders
-    "staff",       # generic staff member
-})
+_ALLOWED_STAFF_ROLES = frozenset(
+    {
+        "technician",  # مختبري — enters and validates results
+        "doctor",  # طبيب مشرف — reviews and authorises results
+        "receptionist",  # موظف استقبال — registers patients and orders
+        "staff",  # generic staff member
+    }
+)
 
 
 class LabRegisterRequest(BaseModel):
     # Identity
     lab_name: str
-    license_number: str = ""           # رقم الترخيص الصحي
-    lab_type: str = "private"          # private | government | hospital | clinic
-    director_name: str = ""            # اسم المدير / المسؤول
+    license_number: str = ""  # رقم الترخيص الصحي
+    lab_type: str = "private"  # private | government | hospital | clinic
+    director_name: str = ""  # اسم المدير / المسؤول
     # Location
     city: str = ""
     address: str = ""
@@ -139,20 +158,26 @@ class LabRegisterRequest(BaseModel):
 
 
 @router.post("/register", status_code=201)
-def register_lab(data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+def register_lab(
+    data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)
+):
     rate_limit_auth(request)
 
     # Password strength validation
     if len(data.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     if data.password.isdigit() or data.password.isalpha():
-        raise HTTPException(status_code=400, detail="Password must contain both letters and numbers")
+        raise HTTPException(
+            status_code=400, detail="Password must contain both letters and numbers"
+        )
     if len(data.password) > 128:
         raise HTTPException(status_code=400, detail="Password too long")
 
     existing = db.query(LabUser).filter(LabUser.email == data.email).first()
     if existing:
-        raise HTTPException(status_code=409, detail="Registration failed. Please use a different email.")
+        raise HTTPException(
+            status_code=409, detail="Registration failed. Please use a different email."
+        )
 
     # Labs start INACTIVE — they must be approved by a platform admin before use.
     # This is required for a medical platform: we cannot allow unverified labs to
@@ -208,13 +233,14 @@ def register_lab(data: LabRegisterRequest, request: Request, response: Response,
 
 # ─── Citizen Self-Registration ────────────────────────────────────────────────
 
+
 class CitizenRegisterRequest(BaseModel):
     full_name: str
     phone: str
     email: str = ""
     password: str
     gender: str = ""
-    birth_date: str = ""   # ISO date string YYYY-MM-DD
+    birth_date: str = ""  # ISO date string YYYY-MM-DD
     national_id: str = ""  # raw NID, hashed server-side
 
     @field_validator("full_name")
@@ -253,7 +279,12 @@ class CitizenRegisterRequest(BaseModel):
 
 
 @router.post("/register/citizen", status_code=201)
-def register_citizen(data: CitizenRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+def register_citizen(
+    data: CitizenRegisterRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     rate_limit_auth(request)
 
     # Password validation
@@ -265,25 +296,34 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
     # Check for duplicate phone
     existing_phone = db.query(User).filter(User.phone == data.phone).first()
     if existing_phone:
-        raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
+        raise HTTPException(
+            status_code=409, detail="Registration failed. Please check your details."
+        )
 
     # Check for duplicate email if provided
     if data.email:
         existing_email = db.query(User).filter(User.email == data.email).first()
         if existing_email:
-            raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
+            raise HTTPException(
+                status_code=409, detail="Registration failed. Please check your details."
+            )
 
     # Hash NID using HMAC-SHA256 for privacy — use the same key as the rest of the app
     nid_hash = None
     if data.national_id:
-        import hmac
         import hashlib
-        nid_hash = hmac.new(NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256).hexdigest()
+        import hmac
+
+        nid_hash = hmac.new(
+            NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256
+        ).hexdigest()
 
         # Check for duplicate NID
         existing_nid = db.query(User).filter(User.national_id_hash == nid_hash).first()
         if existing_nid:
-            raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
+            raise HTTPException(
+                status_code=409, detail="Registration failed. Please check your details."
+            )
 
     citizen = User(
         email=data.email or None,
@@ -301,7 +341,9 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
     except IntegrityError:
         # DB UNIQUE constraints catch concurrent duplicate registrations (TOCTOU).
         db.rollback()
-        raise HTTPException(status_code=409, detail="Registration failed. Please check your details.")
+        raise HTTPException(
+            status_code=409, detail="Registration failed. Please check your details."
+        )
 
     # Citizen-first: canonical national identity exists before any lab visit.
     citizen_ulid = _mint_citizen_from_self_registration(
@@ -336,6 +378,7 @@ def register_citizen(data: CitizenRegisterRequest, request: Request, response: R
 # ─── Lab Staff Registration ───────────────────────────────────────────────────
 # Lab admins add technicians, doctors, and receptionists to their own lab.
 # No separate approval flow — the admin's lab must already be active.
+
 
 class StaffRegisterRequest(BaseModel):
     name: str
@@ -446,15 +489,16 @@ def register_staff(
 # Account starts active (can log in) but is_verified=False until approved
 # by a ministry/province admin. Verified doctors can be linked to labs later.
 
+
 class DoctorRegisterRequest(BaseModel):
     full_name: str
     email: str
     phone: str
     password: str
-    license_number: str        # رقم الإجازة الطبية — required
-    specialty: str = ""        # التخصص
-    workplace: str = ""        # جهة العمل الحالية (مستشفى / عيادة)
-    national_id: str = ""      # الرقم الوطني — hashed, optional
+    license_number: str  # رقم الإجازة الطبية — required
+    specialty: str = ""  # التخصص
+    workplace: str = ""  # جهة العمل الحالية (مستشفى / عيادة)
+    national_id: str = ""  # الرقم الوطني — hashed, optional
 
     @field_validator("full_name")
     @classmethod
@@ -538,10 +582,14 @@ def register_doctor(
         )
 
     # Duplicate license number check
-    if db.query(User).filter(
-        User.license_number == data.license_number,
-        User.role == "doctor",
-    ).first():
+    if (
+        db.query(User)
+        .filter(
+            User.license_number == data.license_number,
+            User.role == "doctor",
+        )
+        .first()
+    ):
         raise HTTPException(
             status_code=409,
             detail={
@@ -553,9 +601,12 @@ def register_doctor(
     # Hash national ID if provided
     nid_hash = None
     if data.national_id:
-        import hmac
         import hashlib
-        nid_hash = hmac.new(NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256).hexdigest()
+        import hmac
+
+        nid_hash = hmac.new(
+            NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256
+        ).hexdigest()
         if db.query(User).filter(User.national_id_hash == nid_hash).first():
             raise HTTPException(
                 status_code=409,
@@ -574,8 +625,8 @@ def register_doctor(
         license_number=data.license_number,
         specialty=data.specialty or None,
         national_id_hash=nid_hash,
-        is_active=True,      # can log in immediately
-        is_verified=False,   # full access after admin approval
+        is_active=True,  # can log in immediately
+        is_verified=False,  # full access after admin approval
     )
     db.add(doctor)
     db.flush()

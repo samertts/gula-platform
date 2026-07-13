@@ -15,51 +15,56 @@ Design:
   - The registry is declarative: adding a new gateway means adding one
     line to ``_REGISTRY``.
 """
+
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..gateways.base import CircuitState, ExternalGateway
 from ..gateways.cloudflare_gateway import (
-    get_cloudflare_gateway, probe_cloudflare,
+    get_cloudflare_gateway,
+    probe_cloudflare,
 )
 from ..gateways.insurance_gateway import (
-    get_insurance_gateway, check_insurance,
+    check_insurance,
+    get_insurance_gateway,
 )
 from ..gateways.national_identity_gateway import (
-    get_national_identity_gateway, verify_national_id,
+    get_national_identity_gateway,
+    verify_national_id,
 )
 from ..gateways.residency_gateway import (
-    get_residency_gateway, verify_residency,
+    get_residency_gateway,
+    verify_residency,
 )
 from ..models.lab_user import LabUser
 from ..security.rbac import require_role
 
-
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
 
-_PROBE_KWARGS: Dict[str, Dict[str, Any]] = {
+_PROBE_KWARGS: dict[str, dict[str, Any]] = {
     "national_identity": {"national_id": "000000000000"},
-    "insurance":         {"insurance_id": "probe-placeholder"},
-    "residency":         {"passport_no": "PROBE123"},
-    "cloudflare":        {},
+    "insurance": {"insurance_id": "probe-placeholder"},
+    "residency": {"passport_no": "PROBE123"},
+    "cloudflare": {},
 }
 
-_GETTERS: Dict[str, Callable[[], ExternalGateway]] = {
+_GETTERS: dict[str, Callable[[], ExternalGateway]] = {
     "national_identity": get_national_identity_gateway,
-    "insurance":         get_insurance_gateway,
-    "residency":         get_residency_gateway,
-    "cloudflare":        get_cloudflare_gateway,
+    "insurance": get_insurance_gateway,
+    "residency": get_residency_gateway,
+    "cloudflare": get_cloudflare_gateway,
 }
 
-_PROBES: Dict[str, Callable[[], Any]] = {
+_PROBES: dict[str, Callable[[], Any]] = {
     "national_identity": lambda: verify_national_id("000000000000"),
-    "insurance":         lambda: check_insurance("probe-placeholder"),
-    "residency":         lambda: verify_residency("PROBE123"),
-    "cloudflare":        probe_cloudflare,
+    "insurance": lambda: check_insurance("probe-placeholder"),
+    "residency": lambda: verify_residency("PROBE123"),
+    "cloudflare": probe_cloudflare,
 }
 
 
@@ -71,18 +76,19 @@ def _snapshot(name: str, gw: ExternalGateway) -> dict:
 
     circuit = gw._circuit  # introspection only; no mutation
     return {
-        "name":         name,
-        "trust_level":  gw.trust_level.value,
-        "mode":         mode_value,
-        "circuit":      circuit.state.value,
-        "healthy":      circuit.state is not CircuitState.OPEN,
-        "cache_size":   len(gw._cache),
-        "cache_ttl":    gw.cache_ttl,
-        "timeout":      gw.timeout,
+        "name": name,
+        "trust_level": gw.trust_level.value,
+        "mode": mode_value,
+        "circuit": circuit.state.value,
+        "healthy": circuit.state is not CircuitState.OPEN,
+        "cache_size": len(gw._cache),
+        "cache_ttl": gw.cache_ttl,
+        "timeout": gw.timeout,
     }
 
 
 # ── GET /integrations/status ─────────────────────────────────────────────────
+
 
 @router.get("/status")
 def integrations_status(
@@ -96,6 +102,7 @@ def integrations_status(
 
 # ── POST /integrations/{name}/probe ──────────────────────────────────────────
 
+
 @router.post("/{name}/probe")
 def integrations_probe(
     name: str,
@@ -107,15 +114,15 @@ def integrations_probe(
 
     try:
         result = _PROBES[name]()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=502, detail=f"probe failed: {exc}") from exc
 
     # Result is ExternalDataResult — reduce to safe dict
     return {
-        "name":                  name,
-        "source":                result.source,
-        "is_stale":              result.is_stale,
+        "name": name,
+        "source": result.source,
+        "is_stale": result.is_stale,
         "requires_verification": result.requires_verification,
-        "trust_level":           result.trust_level.value,
-        "data":                  result.data,
+        "trust_level": result.trust_level.value,
+        "data": result.data,
     }

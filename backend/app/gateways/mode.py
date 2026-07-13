@@ -21,19 +21,21 @@ Per-adapter selection, with a global default:
   GULA_ADAPTER_MODE_RESIDENCY=stub
   GULA_ADAPTER_MODE_CLOUDFLARE=live
 """
+
 from __future__ import annotations
 
 import logging
 import os
-from enum import Enum
-from typing import Iterable
+from collections.abc import Iterable
+
+from app._compat import StrEnum
 
 logger = logging.getLogger("gula.gateways.mode")
 
 
-class AdapterMode(str, Enum):
-    STUB   = "stub"
-    LIVE   = "live"
+class AdapterMode(StrEnum):
+    STUB = "stub"
+    LIVE = "live"
     SHADOW = "shadow"
 
 
@@ -63,7 +65,8 @@ def resolve_mode(adapter_key: str, required_credentials: Iterable[str] = ()) -> 
     except ValueError:
         logger.warning(
             "gula.adapter.mode.invalid adapter=%s value=%r — falling back to STUB",
-            adapter_key, raw,
+            adapter_key,
+            raw,
         )
         return AdapterMode.STUB
 
@@ -74,7 +77,9 @@ def resolve_mode(adapter_key: str, required_credentials: Iterable[str] = ()) -> 
     if missing:
         logger.warning(
             "gula.adapter.mode.downgrade adapter=%s requested=%s missing=%s — falling back to STUB",
-            adapter_key, mode.value, ",".join(missing),
+            adapter_key,
+            mode.value,
+            ",".join(missing),
         )
         return AdapterMode.STUB
 

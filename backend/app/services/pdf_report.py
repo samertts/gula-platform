@@ -7,23 +7,31 @@ Arabic text handling:
 
 Both are required for correct Arabic rendering in ReportLab.
 """
-import io
-import os
-import logging
-import qrcode
-from datetime import datetime, timezone
 
+import io
+import logging
+import os
+from datetime import datetime
+
+import qrcode
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.platypus import (
-    SimpleDocTemplate, Table, TableStyle,
-    Paragraph, Spacer, Image, HRFlowable,
-)
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import (
+    HRFlowable,
+    Image,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+
+from app._compat import UTC
 
 logger = logging.getLogger("gula.pdf")
 
@@ -40,7 +48,7 @@ _FONT_SEARCH_PATHS = [
     "/usr/share/fonts/noto/NotoSans-Regular.ttf",
 ]
 
-_ARABIC_FONT = "Helvetica"   # Fallback if no Arabic font found
+_ARABIC_FONT = "Helvetica"  # Fallback if no Arabic font found
 _ARABIC_FONT_BOLD = "Helvetica-Bold"
 _ARABIC_AVAILABLE = False
 
@@ -67,6 +75,7 @@ def _ar(text: str) -> str:
     try:
         import arabic_reshaper
         from bidi.algorithm import get_display
+
         reshaped = arabic_reshaper.reshape(str(text))
         return get_display(reshaped)
     except ImportError:
@@ -80,6 +89,7 @@ def _hijri_date(dt: datetime) -> str:
     """
     try:
         from hijri_converter import convert
+
         h = convert.Gregorian(dt.year, dt.month, dt.day).to_hijri()
         return f"{h.day}/{h.month}/{h.year} هـ"
     except (ImportError, Exception):
@@ -88,27 +98,42 @@ def _hijri_date(dt: datetime) -> str:
 
 # ─── Status flag mappings ─────────────────────────────────────────────────────
 _FLAG_EN = {
-    "normal": "Normal", "N": "Normal",
-    "high": "High ↑", "H": "High ↑",
-    "low": "Low ↓", "L": "Low ↓",
-    "critical_high": "CRITICAL HIGH ↑↑", "HH": "CRITICAL HIGH ↑↑",
-    "critical_low": "CRITICAL LOW ↓↓", "LL": "CRITICAL LOW ↓↓",
+    "normal": "Normal",
+    "N": "Normal",
+    "high": "High ↑",
+    "H": "High ↑",
+    "low": "Low ↓",
+    "L": "Low ↓",
+    "critical_high": "CRITICAL HIGH ↑↑",
+    "HH": "CRITICAL HIGH ↑↑",
+    "critical_low": "CRITICAL LOW ↓↓",
+    "LL": "CRITICAL LOW ↓↓",
     "critical": "CRITICAL",
 }
 _FLAG_AR = {
-    "normal": "طبيعي", "N": "طبيعي",
-    "high": "مرتفع ↑", "H": "مرتفع ↑",
-    "low": "منخفض ↓", "L": "منخفض ↓",
-    "critical_high": "بالغ الارتفاع ↑↑", "HH": "بالغ الارتفاع ↑↑",
-    "critical_low": "بالغ الانخفاض ↓↓", "LL": "بالغ الانخفاض ↓↓",
+    "normal": "طبيعي",
+    "N": "طبيعي",
+    "high": "مرتفع ↑",
+    "H": "مرتفع ↑",
+    "low": "منخفض ↓",
+    "L": "منخفض ↓",
+    "critical_high": "بالغ الارتفاع ↑↑",
+    "HH": "بالغ الارتفاع ↑↑",
+    "critical_low": "بالغ الانخفاض ↓↓",
+    "LL": "بالغ الانخفاض ↓↓",
     "critical": "حرج",
 }
 _FLAG_COLORS = {
-    "normal": colors.HexColor("#16a34a"), "N": colors.HexColor("#16a34a"),
-    "high": colors.HexColor("#ef4444"), "H": colors.HexColor("#ef4444"),
-    "low": colors.HexColor("#3b82f6"), "L": colors.HexColor("#3b82f6"),
-    "critical_high": colors.HexColor("#dc2626"), "HH": colors.HexColor("#dc2626"),
-    "critical_low": colors.HexColor("#dc2626"), "LL": colors.HexColor("#dc2626"),
+    "normal": colors.HexColor("#16a34a"),
+    "N": colors.HexColor("#16a34a"),
+    "high": colors.HexColor("#ef4444"),
+    "H": colors.HexColor("#ef4444"),
+    "low": colors.HexColor("#3b82f6"),
+    "L": colors.HexColor("#3b82f6"),
+    "critical_high": colors.HexColor("#dc2626"),
+    "HH": colors.HexColor("#dc2626"),
+    "critical_low": colors.HexColor("#dc2626"),
+    "LL": colors.HexColor("#dc2626"),
     "critical": colors.HexColor("#dc2626"),
 }
 
@@ -125,9 +150,12 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
     """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        topMargin=15 * mm, bottomMargin=15 * mm,
-        leftMargin=15 * mm, rightMargin=15 * mm,
+        buffer,
+        pagesize=A4,
+        topMargin=15 * mm,
+        bottomMargin=15 * mm,
+        leftMargin=15 * mm,
+        rightMargin=15 * mm,
     )
 
     # ─── Styles ───────────────────────────────────────────────────────────────
@@ -136,32 +164,55 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
     def style(name, **kwargs):
         return ParagraphStyle(name=name, **kwargs)
 
-    s_title = style("GulaCenterTitle", fontName=_ARABIC_FONT_BOLD,
-                    fontSize=22, alignment=TA_CENTER, spaceAfter=2,
-                    textColor=colors.HexColor("#1e40af"))
-    s_subtitle = style("GulaSubtitle", fontName=_ARABIC_FONT,
-                       fontSize=10, alignment=TA_CENTER, textColor=colors.grey)
+    s_title = style(
+        "GulaCenterTitle",
+        fontName=_ARABIC_FONT_BOLD,
+        fontSize=22,
+        alignment=TA_CENTER,
+        spaceAfter=2,
+        textColor=colors.HexColor("#1e40af"),
+    )
+    s_subtitle = style(
+        "GulaSubtitle",
+        fontName=_ARABIC_FONT,
+        fontSize=10,
+        alignment=TA_CENTER,
+        textColor=colors.grey,
+    )
     s_normal = style("GulaNormal", fontName=_ARABIC_FONT, fontSize=9)
     s_right = style("GulaRight", fontName=_ARABIC_FONT, fontSize=9, alignment=TA_RIGHT)
     s_center = style("GulaCenter", fontName=_ARABIC_FONT, fontSize=9, alignment=TA_CENTER)
 
-    s_small = style("GulaSmall", fontName=_ARABIC_FONT, fontSize=7,
-                    textColor=colors.grey)
-    s_disclaimer = style("GulaDisclaimer", fontName=_ARABIC_FONT, fontSize=7,
-                         textColor=colors.grey, alignment=TA_CENTER)
-    s_arabic = style("GulaArabic", fontName=_ARABIC_FONT, fontSize=9,
-                     alignment=TA_RIGHT, rightIndent=0)
-    s_section = style("GulaSection", fontName=_ARABIC_FONT_BOLD, fontSize=10,
-                      textColor=colors.HexColor("#1e40af"), spaceBefore=4, spaceAfter=2)
+    s_small = style("GulaSmall", fontName=_ARABIC_FONT, fontSize=7, textColor=colors.grey)
+    s_disclaimer = style(
+        "GulaDisclaimer",
+        fontName=_ARABIC_FONT,
+        fontSize=7,
+        textColor=colors.grey,
+        alignment=TA_CENTER,
+    )
+    s_arabic = style(
+        "GulaArabic", fontName=_ARABIC_FONT, fontSize=9, alignment=TA_RIGHT, rightIndent=0
+    )
+    s_section = style(
+        "GulaSection",
+        fontName=_ARABIC_FONT_BOLD,
+        fontSize=10,
+        textColor=colors.HexColor("#1e40af"),
+        spaceBefore=4,
+        spaceAfter=2,
+    )
 
     elements = []
 
     # ─── Header ───────────────────────────────────────────────────────────────
     elements.append(Paragraph("GULA", s_title))
-    elements.append(Paragraph(
-        _ar("منصة غولا الصحية - تقرير نتائج المختبر") + " | Smart Health Platform",
-        s_subtitle,
-    ))
+    elements.append(
+        Paragraph(
+            _ar("منصة غولا الصحية - تقرير نتائج المختبر") + " | Smart Health Platform",
+            s_subtitle,
+        )
+    )
     elements.append(Spacer(1, 3 * mm))
     elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#1e40af")))
     elements.append(Spacer(1, 5 * mm))
@@ -199,30 +250,36 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
         [
             Paragraph(f"<b>Date / التاريخ:</b> {gregorian_date}", s_normal),
             Paragraph(
-                (_ar(f"التاريخ الهجري: {hijri_date_str}") if hijri_date_str else "") +
-                (f" / Doctor: {doctor}" if doctor else ""),
+                (_ar(f"التاريخ الهجري: {hijri_date_str}") if hijri_date_str else "")
+                + (f" / Doctor: {doctor}" if doctor else ""),
                 s_right,
             ),
         ],
     ]
     info_table = Table(info_rows, colWidths=[W * 0.55, W * 0.45])
-    info_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-    ]))
+    info_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
     elements.append(info_table)
     elements.append(Spacer(1, 6 * mm))
 
     # ─── Results Table ────────────────────────────────────────────────────────
-    elements.append(Paragraph(
-        _ar("نتائج التحاليل") + " / Lab Results",
-        s_section,
-    ))
+    elements.append(
+        Paragraph(
+            _ar("نتائج التحاليل") + " / Lab Results",
+            s_section,
+        )
+    )
 
     results = data.get("results", [])
     headers = [
@@ -248,7 +305,9 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
 
     for i, r in enumerate(results, start=1):
         flag = r.get("flag", "") or ""
-        value = str(r.get("value", "")) if r.get("value") is not None else (r.get("value_text") or "-")
+        value = (
+            str(r.get("value", "")) if r.get("value") is not None else (r.get("value_text") or "-")
+        )
         unit = r.get("unit") or ""
         low = r.get("normal_range_low")
         high = r.get("normal_range_high")
@@ -284,22 +343,28 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
     elements.append(Spacer(1, 5 * mm))
 
     # ─── Clinical Interpretations (if any) ───────────────────────────────────
-    interps = [(r.get("test_name"), r.get("interpretation")) for r in results if r.get("interpretation")]
+    interps = [
+        (r.get("test_name"), r.get("interpretation")) for r in results if r.get("interpretation")
+    ]
     if interps:
-        elements.append(Paragraph(
-            _ar("ملاحظات سريرية") + " / Clinical Notes",
-            s_section,
-        ))
+        elements.append(
+            Paragraph(
+                _ar("ملاحظات سريرية") + " / Clinical Notes",
+                s_section,
+            )
+        )
         for test_name, interp in interps:
             ar_interp = interp.get("interpretation_ar") or interp.get("interpretation", "")
             en_interp = interp.get("interpretation", "")
             advice_ar = interp.get("advice_ar") or interp.get("advice", "")
 
-            elements.append(Paragraph(
-                f"<b>{test_name}:</b> {en_interp}"
-                + (f" — {_ar(ar_interp)}" if ar_interp and _ARABIC_AVAILABLE else ""),
-                s_small,
-            ))
+            elements.append(
+                Paragraph(
+                    f"<b>{test_name}:</b> {en_interp}"
+                    + (f" — {_ar(ar_interp)}" if ar_interp and _ARABIC_AVAILABLE else ""),
+                    s_small,
+                )
+            )
             if advice_ar and _ARABIC_AVAILABLE:
                 elements.append(Paragraph(_ar(advice_ar), s_arabic))
             elements.append(Spacer(1, 1 * mm))
@@ -317,39 +382,48 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
     qr_image = Image(qr_buf, width=28 * mm, height=28 * mm)
 
     scan_text = (
-        _ar("امسح الرمز لعرض النتائج إلكترونياً") +
-        f"<br/>Scan QR to view results online<br/>"
+        _ar("امسح الرمز لعرض النتائج إلكترونياً") + f"<br/>Scan QR to view results online<br/>"
         f"<font size='7' color='grey'>{result_url}</font>"
     )
     qr_row = Table(
         [[qr_image, Paragraph(scan_text, s_normal)]],
         colWidths=[33 * mm, W - 38 * mm],
     )
-    qr_row.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (1, 0), (1, 0), 8),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-    ]))
+    qr_row.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (1, 0), (1, 0), 8),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+            ]
+        )
+    )
     elements.append(qr_row)
     elements.append(Spacer(1, 5 * mm))
 
     # ─── Footer ───────────────────────────────────────────────────────────────
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e2e8f0")))
     elements.append(Spacer(1, 2 * mm))
-    elements.append(Paragraph(
-        _ar("هذا التقرير لأغراض إعلامية فقط وليس تشخيصاً طبياً. يرجى مراجعة طبيبك."),
-        s_disclaimer,
-    ))
-    elements.append(Paragraph(
-        "This report is for informational purposes only. Not a medical diagnosis. Consult your doctor.",
-        s_disclaimer,
-    ))
+    elements.append(
+        Paragraph(
+            _ar("هذا التقرير لأغراض إعلامية فقط وليس تشخيصاً طبياً. يرجى مراجعة طبيبك."),
+            s_disclaimer,
+        )
+    )
+    elements.append(
+        Paragraph(
+            "This report is for informational purposes only. Not a medical diagnosis. Consult your doctor.",
+            s_disclaimer,
+        )
+    )
     elements.append(Spacer(1, 1 * mm))
-    elements.append(Paragraph(
-        f"Generated by GULA Platform — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC",
-        s_disclaimer,
-    ))
+    elements.append(
+        Paragraph(
+            f"Generated by GULA Platform — {datetime.now(UTC).strftime('%Y-%m-%d %H:%M')} UTC",
+            s_disclaimer,
+        )
+    )
 
     doc.build(elements)
     buffer.seek(0)

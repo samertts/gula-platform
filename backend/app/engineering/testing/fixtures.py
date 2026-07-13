@@ -27,7 +27,7 @@ import pytest
 
 {chr(10).join(fixtures)}
 '''
-        self._write(f"conftest.py", content)
+        self._write("conftest.py", content)
 
         return self._result
 

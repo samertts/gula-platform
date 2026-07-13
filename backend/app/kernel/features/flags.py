@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 
 from backend.app.kernel.features.capabilities import CapabilityFlagManager
 from backend.app.kernel.features.experimental import ExperimentalFeatureManager
+from backend.app.kernel.features.kill_switch import EmergencyKillSwitch
 from backend.app.kernel.features.regional import RegionalFeatureManager
 from backend.app.kernel.features.tenant_features import TenantFeatureManager
-from backend.app.kernel.features.kill_switch import EmergencyKillSwitch
 
 logger = logging.getLogger("gula.kernel.features")
 
@@ -44,10 +43,7 @@ class FeatureFlagManager:
             return False
         if not flag.enabled:
             return False
-        for dep in (flag.dependencies or []):
-            if not self.is_enabled(dep):
-                return False
-        return True
+        return all(self.is_enabled(dep) for dep in flag.dependencies or [])
 
     def enable(self, name: str) -> None:
         flag = self._flags.get(name)

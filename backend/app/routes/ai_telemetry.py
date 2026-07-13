@@ -29,25 +29,30 @@ otherwise). The feedback endpoint additionally requires
 ``ENABLE_AI_FEEDBACK=true``. ``GET /api/ai/dataset/status`` is always
 reachable so operators can inspect the flag state.
 """
+
 from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.core.ai_dataset_flags import (
-    ai_dataset_enabled, ai_feedback_enabled,
-    require_dataset, require_feedback, status_snapshot,
+    require_dataset,
+    require_feedback,
+    status_snapshot,
 )
 from app.database import get_db
 from app.models.ai_interaction import (
-    AIFeedback, AIInteraction, AIRetrievalRef, AIUnresolvedQuestion,
+    AIFeedback,
+    AIInteraction,
+    AIRetrievalRef,
+    AIUnresolvedQuestion,
 )
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
@@ -58,22 +63,29 @@ router = APIRouter(prefix="/api/ai", tags=["AI Dataset (Phase 3+4)"])
 
 
 # ── Validation constants ────────────────────────────────────────────────────
-MAX_PROMPT_LEN   = 8_000
+MAX_PROMPT_LEN = 8_000
 MAX_RESPONSE_LEN = 16_000
-MAX_NOTES_LEN    = 2_000
+MAX_NOTES_LEN = 2_000
 MAX_REFS_PER_REQUEST = 50
 MAX_SESSION_ID_LEN = 128
 
 # Allowed values — keep narrow on purpose. Adding new ones is an explicit
 # product decision (analytics / RAG-training pipelines key off these).
 FEEDBACK_SIGNALS = {
-    "helpful", "not_helpful", "unclear", "need_doctor",
+    "helpful",
+    "not_helpful",
+    "unclear",
+    "need_doctor",
     "incorrect_interpretation",
 }
 
 INTENT_VALUES = {
-    "interpret_result", "explain_biomarker", "navigate", "educational",
-    "decision_support", "unknown",
+    "interpret_result",
+    "explain_biomarker",
+    "navigate",
+    "educational",
+    "decision_support",
+    "unknown",
 }
 
 STATUS_VALUES = {"ok", "error", "guardrail_blocked", "escalated"}
@@ -86,51 +98,57 @@ RISK_LEVEL_SET = set(RISK_LEVELS)
 # rather than at the DB layer so the analytics surface stays clean. Adding a
 # new flag is a one-line product decision.
 SAFETY_FLAG_VALUES = {
-    "pii_detected", "prompt_injection_suspected", "off_topic",
-    "policy_violation", "low_confidence", "stale_knowledge",
-    "non_medical_query", "ambiguous_query",
+    "pii_detected",
+    "prompt_injection_suspected",
+    "off_topic",
+    "policy_violation",
+    "low_confidence",
+    "stale_knowledge",
+    "non_medical_query",
+    "ambiguous_query",
 }
 MAX_SAFETY_FLAGS = 16
 
 
 # ── Pydantic schemas ────────────────────────────────────────────────────────
 
+
 class RetrievalRefIn(BaseModel):
-    source:     Optional[str]   = Field(None, max_length=64)
-    doc_id:     Optional[str]   = Field(None, max_length=128)
-    doc_title:  Optional[str]   = Field(None, max_length=256)
-    chunk_text: Optional[str]   = Field(None, max_length=4_000)
-    similarity: Optional[float] = Field(None, ge=0.0, le=1.0)
-    rank:       Optional[int]   = Field(None, ge=0, le=10_000)
+    source: str | None = Field(None, max_length=64)
+    doc_id: str | None = Field(None, max_length=128)
+    doc_title: str | None = Field(None, max_length=256)
+    chunk_text: str | None = Field(None, max_length=4_000)
+    similarity: float | None = Field(None, ge=0.0, le=1.0)
+    rank: int | None = Field(None, ge=0, le=10_000)
 
 
 class InteractionIn(BaseModel):
     anonymous_session_id: str = Field(..., min_length=1, max_length=MAX_SESSION_ID_LEN)
-    language:           Optional[str] = Field(None, max_length=8)
-    region:             Optional[str] = Field(None, max_length=64)
-    intent:             Optional[str] = Field(None, max_length=64)
-    prompt:             Optional[str] = Field(None, max_length=MAX_PROMPT_LEN)
-    prompt_redacted:    bool          = False
-    response:           Optional[str] = Field(None, max_length=MAX_RESPONSE_LEN)
-    response_model:     Optional[str] = Field(None, max_length=64)
-    retrieval_strategy: Optional[str] = Field(None, max_length=64)
-    retrieval_refs:     Optional[List[RetrievalRefIn]] = None
-    biomarkers:         Optional[List[str]] = None
-    latency_ms:         Optional[int] = Field(None, ge=0, le=600_000)
-    status:             str           = Field("ok", max_length=20)
-    error_code:         Optional[str] = Field(None, max_length=64)
+    language: str | None = Field(None, max_length=8)
+    region: str | None = Field(None, max_length=64)
+    intent: str | None = Field(None, max_length=64)
+    prompt: str | None = Field(None, max_length=MAX_PROMPT_LEN)
+    prompt_redacted: bool = False
+    response: str | None = Field(None, max_length=MAX_RESPONSE_LEN)
+    response_model: str | None = Field(None, max_length=64)
+    retrieval_strategy: str | None = Field(None, max_length=64)
+    retrieval_refs: list[RetrievalRefIn] | None = None
+    biomarkers: list[str] | None = None
+    latency_ms: int | None = Field(None, ge=0, le=600_000)
+    status: str = Field("ok", max_length=20)
+    error_code: str | None = Field(None, max_length=64)
 
     # Directive §8 — AI safety layer
-    confidence_score:       Optional[float] = Field(None, ge=0.0, le=1.0)
-    risk_level:             Optional[str]   = Field(None, max_length=32)
-    escalation_recommended: bool            = False
+    confidence_score: float | None = Field(None, ge=0.0, le=1.0)
+    risk_level: str | None = Field(None, max_length=32)
+    escalation_recommended: bool = False
 
     # Directive §14 — hallucination control
-    retrieval_used:      Optional[bool] = None
-    source_quality:      Optional[float] = Field(None, ge=0.0, le=1.0)
-    unsupported_claims:  Optional[int]  = Field(None, ge=0, le=1_000)
-    fallback_generation: bool           = False
-    safety_flags:        Optional[List[str]] = None
+    retrieval_used: bool | None = None
+    source_quality: float | None = Field(None, ge=0.0, le=1.0)
+    unsupported_claims: int | None = Field(None, ge=0, le=1_000)
+    fallback_generation: bool = False
+    safety_flags: list[str] | None = None
 
 
 class InteractionOut(BaseModel):
@@ -143,18 +161,19 @@ class FeedbackIn(BaseModel):
     interaction_id: str
     anonymous_session_id: str = Field(..., min_length=1, max_length=MAX_SESSION_ID_LEN)
     signal: str
-    notes:  Optional[str] = Field(None, max_length=MAX_NOTES_LEN)
+    notes: str | None = Field(None, max_length=MAX_NOTES_LEN)
 
 
 class UnresolvedIn(BaseModel):
-    interaction_id: Optional[str] = None
-    anonymous_session_id: Optional[str] = Field(None, max_length=MAX_SESSION_ID_LEN)
+    interaction_id: str | None = None
+    anonymous_session_id: str | None = Field(None, max_length=MAX_SESSION_ID_LEN)
     question: str = Field(..., min_length=1, max_length=MAX_PROMPT_LEN)
-    language: Optional[str] = Field(None, max_length=8)
-    category: Optional[str] = Field(None, max_length=64)
+    language: str | None = Field(None, max_length=8)
+    category: str | None = Field(None, max_length=64)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
+
 
 def _parse_uuid(s: str, field: str) -> uuid.UUID:
     try:
@@ -167,10 +186,11 @@ def _parse_uuid(s: str, field: str) -> uuid.UUID:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ── POST /api/ai/interactions ───────────────────────────────────────────────
+
 
 @router.post(
     "/interactions",
@@ -191,8 +211,9 @@ def log_interaction(
         )
     # Intent is free-form for forward compatibility but we warn on unknowns.
     if payload.intent and payload.intent not in INTENT_VALUES:
-        logger.info("ai.dataset.intent.unknown intent=%s lab_id=%s",
-                    payload.intent, current_user.lab_id)
+        logger.info(
+            "ai.dataset.intent.unknown intent=%s lab_id=%s", payload.intent, current_user.lab_id
+        )
 
     if payload.risk_level is not None and payload.risk_level not in RISK_LEVEL_SET:
         raise HTTPException(
@@ -221,9 +242,11 @@ def log_interaction(
         if unknown:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"code": "INVALID_SAFETY_FLAG",
-                        "unknown": unknown,
-                        "allowed": sorted(SAFETY_FLAG_VALUES)},
+                detail={
+                    "code": "INVALID_SAFETY_FLAG",
+                    "unknown": unknown,
+                    "allowed": sorted(SAFETY_FLAG_VALUES),
+                },
             )
 
     refs = payload.retrieval_refs or []
@@ -236,9 +259,7 @@ def log_interaction(
     # Hallucination-control consistency: if retrieval_used is True but no
     # refs were attached AND no retrieval_strategy supplied, that's a
     # contradictory log — surface it rather than silently persisting.
-    if (payload.retrieval_used is True
-            and not refs
-            and not payload.retrieval_strategy):
+    if payload.retrieval_used is True and not refs and not payload.retrieval_strategy:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "RETRIEVAL_USED_WITHOUT_EVIDENCE"},
@@ -278,17 +299,19 @@ def log_interaction(
     db.flush()  # surface FK / constraint issues before we attach refs
 
     for r in refs:
-        db.add(AIRetrievalRef(
-            id=uuid.uuid4(),
-            interaction_id=interaction.id,
-            source=r.source,
-            doc_id=r.doc_id,
-            doc_title=r.doc_title,
-            chunk_text=r.chunk_text,
-            similarity=r.similarity,
-            rank=r.rank,
-            created_at=now,
-        ))
+        db.add(
+            AIRetrievalRef(
+                id=uuid.uuid4(),
+                interaction_id=interaction.id,
+                source=r.source,
+                doc_id=r.doc_id,
+                doc_title=r.doc_title,
+                chunk_text=r.chunk_text,
+                similarity=r.similarity,
+                rank=r.rank,
+                created_at=now,
+            )
+        )
 
     db.commit()
     return InteractionOut(
@@ -300,6 +323,7 @@ def log_interaction(
 
 # ── POST /api/ai/interactions/{id}/refs ─────────────────────────────────────
 
+
 @router.post(
     "/interactions/{interaction_id}/refs",
     status_code=status.HTTP_201_CREATED,
@@ -308,7 +332,7 @@ def log_interaction(
 )
 def append_retrieval_refs(
     interaction_id: str,
-    refs: List[RetrievalRefIn],
+    refs: list[RetrievalRefIn],
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -322,32 +346,35 @@ def append_retrieval_refs(
     # Tenant isolation: caller must own the interaction.
     interaction = (
         db.query(AIInteraction)
-        .filter(AIInteraction.id == iid,
-                AIInteraction.lab_id == current_user.lab_id)
+        .filter(AIInteraction.id == iid, AIInteraction.lab_id == current_user.lab_id)
         .first()
     )
     if interaction is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail={"code": "INTERACTION_NOT_FOUND"})
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"}
+        )
 
     now = _now()
     for r in refs:
-        db.add(AIRetrievalRef(
-            id=uuid.uuid4(),
-            interaction_id=iid,
-            source=r.source,
-            doc_id=r.doc_id,
-            doc_title=r.doc_title,
-            chunk_text=r.chunk_text,
-            similarity=r.similarity,
-            rank=r.rank,
-            created_at=now,
-        ))
+        db.add(
+            AIRetrievalRef(
+                id=uuid.uuid4(),
+                interaction_id=iid,
+                source=r.source,
+                doc_id=r.doc_id,
+                doc_title=r.doc_title,
+                chunk_text=r.chunk_text,
+                similarity=r.similarity,
+                rank=r.rank,
+                created_at=now,
+            )
+        )
     db.commit()
     return {"appended": len(refs)}
 
 
 # ── POST /api/ai/feedback ───────────────────────────────────────────────────
+
 
 @router.post(
     "/feedback",
@@ -363,21 +390,20 @@ def submit_feedback(
     if payload.signal not in FEEDBACK_SIGNALS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "INVALID_SIGNAL",
-                    "allowed": sorted(FEEDBACK_SIGNALS)},
+            detail={"code": "INVALID_SIGNAL", "allowed": sorted(FEEDBACK_SIGNALS)},
         )
 
     iid = _parse_uuid(payload.interaction_id, "interaction_id")
 
     interaction = (
         db.query(AIInteraction)
-        .filter(AIInteraction.id == iid,
-                AIInteraction.lab_id == current_user.lab_id)
+        .filter(AIInteraction.id == iid, AIInteraction.lab_id == current_user.lab_id)
         .first()
     )
     if interaction is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail={"code": "INTERACTION_NOT_FOUND"})
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"}
+        )
 
     fb = AIFeedback(
         id=uuid.uuid4(),
@@ -395,6 +421,7 @@ def submit_feedback(
 
 # ── POST /api/ai/unresolved ─────────────────────────────────────────────────
 
+
 @router.post(
     "/unresolved",
     status_code=status.HTTP_201_CREATED,
@@ -406,19 +433,19 @@ def log_unresolved(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    iid_uuid: Optional[uuid.UUID] = None
+    iid_uuid: uuid.UUID | None = None
     if payload.interaction_id:
         iid_uuid = _parse_uuid(payload.interaction_id, "interaction_id")
         # If linked, ensure caller owns it (tenant isolation).
         exists = (
             db.query(AIInteraction.id)
-            .filter(AIInteraction.id == iid_uuid,
-                    AIInteraction.lab_id == current_user.lab_id)
+            .filter(AIInteraction.id == iid_uuid, AIInteraction.lab_id == current_user.lab_id)
             .first()
         )
         if exists is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail={"code": "INTERACTION_NOT_FOUND"})
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"}
+            )
 
     q = AIUnresolvedQuestion(
         id=uuid.uuid4(),
@@ -438,6 +465,7 @@ def log_unresolved(
 
 # ── GET /api/ai/dataset/summary ─────────────────────────────────────────────
 
+
 @router.get(
     "/dataset/summary",
     dependencies=[Depends(require_dataset())],
@@ -450,20 +478,16 @@ def dataset_summary(
     lab_id = current_user.lab_id
 
     total_interactions = (
-        db.query(func.count(AIInteraction.id))
-        .filter(AIInteraction.lab_id == lab_id)
-        .scalar() or 0
+        db.query(func.count(AIInteraction.id)).filter(AIInteraction.lab_id == lab_id).scalar() or 0
     )
     total_feedback = (
-        db.query(func.count(AIFeedback.id))
-        .filter(AIFeedback.lab_id == lab_id)
-        .scalar() or 0
+        db.query(func.count(AIFeedback.id)).filter(AIFeedback.lab_id == lab_id).scalar() or 0
     )
     open_unresolved = (
         db.query(func.count(AIUnresolvedQuestion.id))
-        .filter(AIUnresolvedQuestion.lab_id == lab_id,
-                AIUnresolvedQuestion.status == "open")
-        .scalar() or 0
+        .filter(AIUnresolvedQuestion.lab_id == lab_id, AIUnresolvedQuestion.status == "open")
+        .scalar()
+        or 0
     )
     feedback_breakdown = dict(
         db.query(AIFeedback.signal, func.count(AIFeedback.id))
@@ -476,33 +500,30 @@ def dataset_summary(
     # All filters tenant-scoped on lab_id.
     risk_breakdown = dict(
         db.query(AIInteraction.risk_level, func.count(AIInteraction.id))
-        .filter(AIInteraction.lab_id == lab_id,
-                AIInteraction.risk_level.isnot(None))
+        .filter(AIInteraction.lab_id == lab_id, AIInteraction.risk_level.isnot(None))
         .group_by(AIInteraction.risk_level)
         .all()
     )
     escalation_count = (
         db.query(func.count(AIInteraction.id))
-        .filter(AIInteraction.lab_id == lab_id,
-                AIInteraction.escalation_recommended.is_(True))
-        .scalar() or 0
+        .filter(AIInteraction.lab_id == lab_id, AIInteraction.escalation_recommended.is_(True))
+        .scalar()
+        or 0
     )
     fallback_count = (
         db.query(func.count(AIInteraction.id))
-        .filter(AIInteraction.lab_id == lab_id,
-                AIInteraction.fallback_generation.is_(True))
-        .scalar() or 0
+        .filter(AIInteraction.lab_id == lab_id, AIInteraction.fallback_generation.is_(True))
+        .scalar()
+        or 0
     )
     avg_confidence = (
         db.query(func.avg(AIInteraction.confidence_score))
-        .filter(AIInteraction.lab_id == lab_id,
-                AIInteraction.confidence_score.isnot(None))
+        .filter(AIInteraction.lab_id == lab_id, AIInteraction.confidence_score.isnot(None))
         .scalar()
     )
     avg_source_quality = (
         db.query(func.avg(AIInteraction.source_quality))
-        .filter(AIInteraction.lab_id == lab_id,
-                AIInteraction.source_quality.isnot(None))
+        .filter(AIInteraction.lab_id == lab_id, AIInteraction.source_quality.isnot(None))
         .scalar()
     )
     return {
@@ -522,6 +543,7 @@ def dataset_summary(
 
 # ── GET /api/ai/dataset/status (always available) ───────────────────────────
 
+
 @router.get(
     "/dataset/status",
     summary="Inspect AI-dataset feature-flag state",
@@ -529,7 +551,7 @@ def dataset_summary(
 def dataset_status():
     snap = status_snapshot()
     return {
-        "ai_dataset_enabled":  snap["ai_dataset_enabled"],
+        "ai_dataset_enabled": snap["ai_dataset_enabled"],
         "ai_feedback_enabled": snap["ai_feedback_enabled"],
         # Surface for orchestrator dashboards.
         "phase": "production_launch_2026_05_11",

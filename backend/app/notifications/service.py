@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Optional
-
-from shared.notifications.sender import get_sender
-from shared.notifications.template import render_template
+from dataclasses import dataclass
+from typing import Any
 
 from shared.circuit_breaker import CircuitBreaker
+from shared.notifications.sender import get_sender
+from shared.notifications.template import render_template
 
 logger = logging.getLogger("gula.notifications")
 
@@ -17,8 +16,8 @@ class NotificationResult:
     success: bool
     channel: str
     recipient: str
-    error: Optional[str] = None
-    audit_log_id: Optional[int] = None
+    error: str | None = None
+    audit_log_id: int | None = None
 
 
 class NotificationService:
@@ -66,7 +65,10 @@ class NotificationService:
                 result = sender.send_push(to, subject, body, template_data)
             else:
                 return NotificationResult(
-                    success=False, channel=channel, recipient=to, error=f"Unknown channel: {channel}"
+                    success=False,
+                    channel=channel,
+                    recipient=to,
+                    error=f"Unknown channel: {channel}",
                 )
 
             if result:
@@ -79,9 +81,7 @@ class NotificationService:
         except Exception as exc:
             self._circuit_breaker.record_failure()
             logger.error("[NOTIFICATION] %s delivery failed to %s: %s", channel, to, exc)
-            return NotificationResult(
-                success=False, channel=channel, recipient=to, error=str(exc)
-            )
+            return NotificationResult(success=False, channel=channel, recipient=to, error=str(exc))
 
     def send_email(self, to: str, subject: str, body: str) -> NotificationResult:
         return self.send("email", to, subject=subject, body=body)
@@ -89,7 +89,9 @@ class NotificationService:
     def send_sms(self, to: str, body: str) -> NotificationResult:
         return self.send("sms", to, body=body)
 
-    def send_push(self, token: str, title: str, body: str, data: dict[str, Any] | None = None) -> NotificationResult:
+    def send_push(
+        self, token: str, title: str, body: str, data: dict[str, Any] | None = None
+    ) -> NotificationResult:
         return self.send("push", token, subject=title, body=body, template_data=data)
 
     def send_whatsapp(self, to: str, body: str) -> NotificationResult:
@@ -97,6 +99,7 @@ class NotificationService:
 
     def send_telegram(self, bot_token: str, chat_id: str, message: str) -> NotificationResult:
         from .telegram import send_telegram
+
         result = send_telegram(bot_token, chat_id, message)
         if result:
             self._circuit_breaker.record_success()
@@ -116,9 +119,14 @@ class NotificationService:
         rendered = render_template(template_id, channel, data)
         if rendered is None:
             return NotificationResult(
-                success=False, channel=channel, recipient=to, error=f"Template not found: {template_id}"
+                success=False,
+                channel=channel,
+                recipient=to,
+                error=f"Template not found: {template_id}",
             )
-        return self.send(channel, to, subject=rendered.get("subject", ""), body=rendered.get("body", ""))
+        return self.send(
+            channel, to, subject=rendered.get("subject", ""), body=rendered.get("body", "")
+        )
 
 
 _service: NotificationService | None = None
@@ -132,7 +140,7 @@ def get_service() -> NotificationService:
 
 
 __all__ = [
-    "NotificationService",
     "NotificationResult",
+    "NotificationService",
     "get_service",
 ]

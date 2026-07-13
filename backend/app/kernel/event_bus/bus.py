@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from backend.app.kernel.event_bus.dispatcher import EventDispatcher
-from backend.app.kernel.event_bus.store import EventStore
-from backend.app.kernel.event_bus.outbox import OutboxPattern
-from backend.app.kernel.event_bus.inbox import InboxPattern
-from backend.app.kernel.event_bus.retry_queue import RetryQueue
 from backend.app.kernel.event_bus.dead_letter_queue import DeadLetterQueue
-from backend.app.kernel.event_bus.replay import EventReplay
-from backend.app.kernel.event_bus.versioning import EventVersioning
+from backend.app.kernel.event_bus.dispatcher import EventDispatcher
 from backend.app.kernel.event_bus.events import Event
+from backend.app.kernel.event_bus.inbox import InboxPattern
+from backend.app.kernel.event_bus.outbox import OutboxPattern
+from backend.app.kernel.event_bus.replay import EventReplay
+from backend.app.kernel.event_bus.retry_queue import RetryQueue
+from backend.app.kernel.event_bus.store import EventStore
+from backend.app.kernel.event_bus.versioning import EventVersioning
 
 if TYPE_CHECKING:
     from backend.app.kernel import Kernel

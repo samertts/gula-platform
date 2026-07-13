@@ -14,13 +14,16 @@ Usage:
     # Safe call that returns a default on failure (never raises)
     result = safe_call(risky_operation, default=None)
 """
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
 import logging
 import time
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 logger = logging.getLogger("gula.resilience")
 
@@ -28,20 +31,21 @@ T = TypeVar("T")
 
 # ── Retry configuration defaults ─────────────────────────────────────────────
 _DEFAULT_MAX_ATTEMPTS = 3
-_DEFAULT_BASE_DELAY   = 0.5   # seconds
-_DEFAULT_MAX_DELAY    = 30.0  # seconds cap
-_DEFAULT_BACKOFF      = 2.0   # exponential multiplier
+_DEFAULT_BASE_DELAY = 0.5  # seconds
+_DEFAULT_MAX_DELAY = 30.0  # seconds cap
+_DEFAULT_BACKOFF = 2.0  # exponential multiplier
 
 
 # ── Sync retry decorator ──────────────────────────────────────────────────────
 
+
 def retry(
     max_attempts: int = _DEFAULT_MAX_ATTEMPTS,
-    base_delay:   float = _DEFAULT_BASE_DELAY,
-    max_delay:    float = _DEFAULT_MAX_DELAY,
-    backoff:      float = _DEFAULT_BACKOFF,
-    exceptions:   tuple = (Exception,),
-    on_retry:     Callable | None = None,
+    base_delay: float = _DEFAULT_BASE_DELAY,
+    max_delay: float = _DEFAULT_MAX_DELAY,
+    backoff: float = _DEFAULT_BACKOFF,
+    exceptions: tuple = (Exception,),
+    on_retry: Callable | None = None,
 ):
     """Decorator: retry a synchronous function on failure with exponential backoff.
 
@@ -58,6 +62,7 @@ def retry(
         def fetch_nid(nid: str) -> dict:
             return requests.get(f"{NID_API}/lookup/{nid}").json()
     """
+
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(fn)
         def wrapper(*args, **kwargs) -> T:
@@ -71,34 +76,41 @@ def retry(
                     if attempt == max_attempts:
                         logger.error(
                             "[RETRY] %s failed after %d attempts: %s",
-                            fn.__qualname__, max_attempts, exc,
+                            fn.__qualname__,
+                            max_attempts,
+                            exc,
                         )
                         raise
                     sleep_for = min(delay, max_delay)
                     logger.warning(
                         "[RETRY] %s attempt %d/%d failed: %s — retrying in %.1fs",
-                        fn.__qualname__, attempt, max_attempts, exc, sleep_for,
+                        fn.__qualname__,
+                        attempt,
+                        max_attempts,
+                        exc,
+                        sleep_for,
                     )
                     if on_retry:
-                        try:
+                        with contextlib.suppress(Exception):
                             on_retry(attempt, exc)
-                        except Exception:
-                            pass
                     time.sleep(sleep_for)
                     delay *= backoff
             raise last_exc  # unreachable, satisfies type checker
+
         return wrapper
+
     return decorator
 
 
 # ── Async retry decorator ─────────────────────────────────────────────────────
 
+
 def retry_async(
     max_attempts: int = _DEFAULT_MAX_ATTEMPTS,
-    base_delay:   float = _DEFAULT_BASE_DELAY,
-    max_delay:    float = _DEFAULT_MAX_DELAY,
-    backoff:      float = _DEFAULT_BACKOFF,
-    exceptions:   tuple = (Exception,),
+    base_delay: float = _DEFAULT_BASE_DELAY,
+    max_delay: float = _DEFAULT_MAX_DELAY,
+    backoff: float = _DEFAULT_BACKOFF,
+    exceptions: tuple = (Exception,),
 ):
     """Decorator: retry an async function on failure with exponential backoff.
 
@@ -110,6 +122,7 @@ def retry_async(
                 r.raise_for_status()
                 return r.json()
     """
+
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         async def wrapper(*args, **kwargs) -> Any:
@@ -123,22 +136,31 @@ def retry_async(
                     if attempt == max_attempts:
                         logger.error(
                             "[RETRY-ASYNC] %s failed after %d attempts: %s",
-                            fn.__qualname__, max_attempts, exc,
+                            fn.__qualname__,
+                            max_attempts,
+                            exc,
                         )
                         raise
                     sleep_for = min(delay, max_delay)
                     logger.warning(
                         "[RETRY-ASYNC] %s attempt %d/%d failed: %s — retrying in %.1fs",
-                        fn.__qualname__, attempt, max_attempts, exc, sleep_for,
+                        fn.__qualname__,
+                        attempt,
+                        max_attempts,
+                        exc,
+                        sleep_for,
                     )
                     await asyncio.sleep(sleep_for)
                     delay *= backoff
             raise last_exc
+
         return wrapper
+
     return decorator
 
 
 # ── Safe call (never raises) ──────────────────────────────────────────────────
+
 
 def safe_call(fn: Callable[..., T], *args, default: T | None = None, **kwargs) -> T | None:
     """Call fn(*args, **kwargs) and return default on ANY exception.
@@ -167,6 +189,7 @@ async def safe_call_async(fn: Callable[..., Any], *args, default: Any = None, **
 
 # ── Timeout wrapper ───────────────────────────────────────────────────────────
 
+
 def call_with_timeout(fn: Callable[..., T], *args, timeout: float = 5.0, **kwargs) -> T:
     """Call fn with a wall-clock timeout using threading.
 
@@ -178,17 +201,17 @@ def call_with_timeout(fn: Callable[..., T], *args, timeout: float = 5.0, **kwarg
         result = call_with_timeout(fetch_residency_data, nid, timeout=3.0)
     """
     import concurrent.futures
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(fn, *args, **kwargs)
         try:
             return future.result(timeout=timeout)
         except concurrent.futures.TimeoutError:
-            raise TimeoutError(
-                f"{fn.__qualname__} timed out after {timeout}s"
-            )
+            raise TimeoutError(f"{fn.__qualname__} timed out after {timeout}s")
 
 
 # ── Bulkhead (concurrency limiter for external calls) ────────────────────────
+
 
 class Bulkhead:
     """Limit concurrent calls to an external service to prevent cascade failures.
@@ -207,11 +230,11 @@ class Bulkhead:
         pass
 
     def __init__(self, max_concurrent: int, name: str = "bulkhead"):
-        self._sem   = asyncio.Semaphore(max_concurrent) if False else None
-        self._max   = max_concurrent
+        self._sem = asyncio.Semaphore(max_concurrent) if False else None
+        self._max = max_concurrent
         self._count = 0
-        self._name  = name
-        self._lock  = __import__("threading").Lock()
+        self._name = name
+        self._lock = __import__("threading").Lock()
 
     def __enter__(self):
         with self._lock:
@@ -247,7 +270,7 @@ class Bulkhead:
 # ── Pre-configured bulkheads for external services ───────────────────────────
 # Import these in route handlers to limit concurrent external calls.
 
-nid_gateway_gate       = Bulkhead(max_concurrent=10, name="nid_gateway")
-insurance_gateway_gate = Bulkhead(max_concurrent=5,  name="insurance_gateway")
-residency_gateway_gate = Bulkhead(max_concurrent=5,  name="residency_gateway")
-ai_service_gate        = Bulkhead(max_concurrent=20, name="ai_service")
+nid_gateway_gate = Bulkhead(max_concurrent=10, name="nid_gateway")
+insurance_gateway_gate = Bulkhead(max_concurrent=5, name="insurance_gateway")
+residency_gateway_gate = Bulkhead(max_concurrent=5, name="residency_gateway")
+ai_service_gate = Bulkhead(max_concurrent=20, name="ai_service")

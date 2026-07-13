@@ -16,15 +16,16 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
 # Core chain computation available in shared.audit if needed for future use
 # from shared.audit import AuditService, compute_chain_hash, create_audit_entry
-
 from ..config import NID_HMAC_KEY as _CONFIG_NID_HMAC_KEY
 from ..models.audit_log import AuditLog
 
@@ -40,10 +41,6 @@ _ANCHOR_KEY_VERSION = int(os.getenv("ANCHOR_KEY_VERSION", "1"))
 _raw_anchor_key = os.getenv("NID_HMAC_KEY", "")
 if not _raw_anchor_key:
     if not _CONFIG_NID_HMAC_KEY:
-        print(
-            "[GULA FATAL] NID_HMAC_KEY must be set in environment for audit anchor HMAC.",
-            file=sys.stderr,
-        )
         sys.exit(1)
     _raw_anchor_key = _CONFIG_NID_HMAC_KEY
     logger.warning(
@@ -56,7 +53,7 @@ _KEY_TAG = f"v{_ANCHOR_KEY_VERSION}"
 
 
 def _current_anchor_file() -> Path:
-    month_tag = datetime.now(timezone.utc).strftime("%Y-%m")
+    month_tag = datetime.now(UTC).strftime("%Y-%m")
     return _ANCHOR_DIR / f"audit_anchors_{month_tag}.log"
 
 
@@ -109,7 +106,7 @@ def _write_anchor(entry_id: int, chain_hash: str) -> None:
     try:
         anchor_file = _current_anchor_file()
         anchor_file.parent.mkdir(parents=True, exist_ok=True)
-        data = f"{_KEY_TAG}|{datetime.now(timezone.utc).isoformat()}|{entry_id}|{chain_hash}"
+        data = f"{_KEY_TAG}|{datetime.now(UTC).isoformat()}|{entry_id}|{chain_hash}"
         sig = _anchor_hmac(data)
         with open(anchor_file, "a", encoding="utf-8") as f:
             f.write(f"{data}|{sig}\n")
@@ -178,11 +175,11 @@ def log_action(
     db: Session,
     action: str,
     resource_type: str,
-    resource_id: int = None,
-    user_id: int = None,
-    user_role: str = None,
-    details: str = None,
-    ip_address: str = None,
+    resource_id: int | None = None,
+    user_id: int | None = None,
+    user_role: str | None = None,
+    details: str | None = None,
+    ip_address: str | None = None,
 ):
     """Log an action to the tamper-evident audit trail. Delegates chain hash
     computation to shared.audit while maintaining backend anchor files."""
@@ -194,7 +191,7 @@ def log_action(
         resource_id=resource_id,
         details=details,
         ip_address=ip_address,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db.add(entry)
     db.flush()

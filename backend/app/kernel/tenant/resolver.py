@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional
-
-from backend.app.kernel.exceptions import TenantNotFoundError
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.app.kernel.tenant.registry import TenantRegistry

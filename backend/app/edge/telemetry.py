@@ -7,13 +7,15 @@ Operators access aggregate stats via /edge/devices/{id}/telemetry — which
 reads from this module's helpers, not raw queries. Keeps the SQL surface
 small and tenant-isolation easier to audit.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import datetime, timedelta
+from typing import Any
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+from app._compat import UTC
 
 from ..models.edge import EdgeTelemetry
 from .config import EDGE_TELEMETRY_RETENTION_DAYS
@@ -25,54 +27,69 @@ def record(db: Session, *, lab_id: int, device_id: str, sample: dict[str, Any]) 
     Unknown fields in `sample` are ignored — only known columns are written.
     """
     allowed = {
-        "cpu_pct", "mem_mb", "mem_total_mb", "gpu_pct", "battery_pct",
-        "on_battery", "idle_s", "net_up_kbps", "net_down_kbps",
-        "loaded_models", "queue_depth", "agent_uptime_s",
-        "task_completed_total", "task_failed_total",
+        "cpu_pct",
+        "mem_mb",
+        "mem_total_mb",
+        "gpu_pct",
+        "battery_pct",
+        "on_battery",
+        "idle_s",
+        "net_up_kbps",
+        "net_down_kbps",
+        "loaded_models",
+        "queue_depth",
+        "agent_uptime_s",
+        "task_completed_total",
+        "task_failed_total",
     }
     cleaned = {k: v for k, v in sample.items() if k in allowed}
     row = EdgeTelemetry(
         lab_id=lab_id,
         device_id=device_id,
-        ts=datetime.now(timezone.utc),
+        ts=datetime.now(UTC),
         **cleaned,
     )
     db.add(row)
 
 
-def latest(db: Session, *, device_id: str, lab_id: int) -> Optional[EdgeTelemetry]:
+def latest(db: Session, *, device_id: str, lab_id: int) -> EdgeTelemetry | None:
     return (
         db.query(EdgeTelemetry)
-          .filter(EdgeTelemetry.device_id == device_id,
-                  EdgeTelemetry.lab_id == lab_id)
-          .order_by(EdgeTelemetry.ts.desc())
-          .first()
+        .filter(EdgeTelemetry.device_id == device_id, EdgeTelemetry.lab_id == lab_id)
+        .order_by(EdgeTelemetry.ts.desc())
+        .first()
     )
 
 
 def history(
-    db: Session, *, device_id: str, lab_id: int, hours: int = 6, limit: int = 720,
+    db: Session,
+    *,
+    device_id: str,
+    lab_id: int,
+    hours: int = 6,
+    limit: int = 720,
 ) -> list[EdgeTelemetry]:
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, min(hours, 720)))
+    cutoff = datetime.now(UTC) - timedelta(hours=max(1, min(hours, 720)))
     return (
         db.query(EdgeTelemetry)
-          .filter(EdgeTelemetry.device_id == device_id,
-                  EdgeTelemetry.lab_id == lab_id,
-                  EdgeTelemetry.ts >= cutoff)
-          .order_by(EdgeTelemetry.ts.desc())
-          .limit(limit)
-          .all()
+        .filter(
+            EdgeTelemetry.device_id == device_id,
+            EdgeTelemetry.lab_id == lab_id,
+            EdgeTelemetry.ts >= cutoff,
+        )
+        .order_by(EdgeTelemetry.ts.desc())
+        .limit(limit)
+        .all()
     )
 
 
 def fleet_summary(db: Session, *, lab_id: int) -> dict[str, Any]:
     """Aggregate snapshot — used by the operator dashboard."""
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+    cutoff = datetime.now(UTC) - timedelta(minutes=10)
     rows = (
         db.query(EdgeTelemetry)
-          .filter(EdgeTelemetry.lab_id == lab_id,
-                  EdgeTelemetry.ts >= cutoff)
-          .all()
+        .filter(EdgeTelemetry.lab_id == lab_id, EdgeTelemetry.ts >= cutoff)
+        .all()
     )
     if not rows:
         return {"online_devices": 0, "avg_cpu_pct": 0.0, "avg_mem_mb": 0.0}
@@ -105,10 +122,8 @@ def sweep_old(db: Session) -> int:
 
     Returns the number of rows removed.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(days=EDGE_TELEMETRY_RETENTION_DAYS)
+    cutoff = datetime.now(UTC) - timedelta(days=EDGE_TELEMETRY_RETENTION_DAYS)
     deleted = (
-        db.query(EdgeTelemetry)
-          .filter(EdgeTelemetry.ts < cutoff)
-          .delete(synchronize_session=False)
+        db.query(EdgeTelemetry).filter(EdgeTelemetry.ts < cutoff).delete(synchronize_session=False)
     )
     return int(deleted or 0)

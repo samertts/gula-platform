@@ -23,6 +23,7 @@ DEVICE_HMAC_KEY      : Required in production for HMAC + replay protection.
 ALLOWED_DEVICE_IDS   : Comma-separated whitelist of known device IDs.
 REPLAY_WINDOW_SECONDS: Max age of a valid message (default 120 s = 2 min).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -34,18 +35,17 @@ import time
 logger = logging.getLogger("gula.device_gateway")
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-_MAX_VALUE   = 1_000_000.0
-_MIN_VALUE   = -1_000_000.0
+_MAX_VALUE = 1_000_000.0
+_MIN_VALUE = -1_000_000.0
 _MAX_STR_LEN = 100
 
-_DEVICE_HMAC_KEY: str  = os.getenv("DEVICE_HMAC_KEY", "")
-_ALLOWED_IDS_RAW: str  = os.getenv("ALLOWED_DEVICE_IDS", "")
+_DEVICE_HMAC_KEY: str = os.getenv("DEVICE_HMAC_KEY", "")
+_ALLOWED_IDS_RAW: str = os.getenv("ALLOWED_DEVICE_IDS", "")
 _ALLOWED_DEVICE_IDS: set[str] = (
-    {d.strip() for d in _ALLOWED_IDS_RAW.split(",") if d.strip()}
-    if _ALLOWED_IDS_RAW else set()
+    {d.strip() for d in _ALLOWED_IDS_RAW.split(",") if d.strip()} if _ALLOWED_IDS_RAW else set()
 )
 _REPLAY_WINDOW: int = int(os.getenv("REPLAY_WINDOW_SECONDS", "120"))
-_NONCE_PREFIX   = "dgw:nonce:"
+_NONCE_PREFIX = "dgw:nonce:"
 
 if not _DEVICE_HMAC_KEY:
     logger.warning(
@@ -56,6 +56,7 @@ if not _DEVICE_HMAC_KEY:
 
 # ── Exceptions ─────────────────────────────────────────────────────────────────
 
+
 class DeviceInputError(ValueError):
     """Raised when a device result payload fails type/range validation."""
 
@@ -65,6 +66,7 @@ class DeviceAuthError(PermissionError):
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _compute_signature(
     device_id: str, sample_id: str, test: str, value: float, timestamp: int
@@ -92,13 +94,15 @@ def _check_replay(nonce: str, device_id: str) -> None:
     except Exception as exc:
         logger.warning(
             "[DEVICE_GATEWAY] Redis nonce check failed for device=%s: %s — replay protection degraded",
-            device_id, exc,
+            device_id,
+            exc,
         )
         # If Redis is down we cannot enforce uniqueness — log and continue.
         # This is acceptable because HMAC already authenticates the message.
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def receive_device_result(
     sample_id: str,
@@ -188,7 +192,8 @@ def receive_device_result(
         if not hmac.compare_digest(expected, signature):
             logger.warning(
                 "[DEVICE_GATEWAY] Invalid signature device_id=%s sample=%s",
-                device_id, sample_id,
+                device_id,
+                sample_id,
             )
             raise DeviceAuthError("Invalid message signature — possible forgery")
 
@@ -199,13 +204,16 @@ def receive_device_result(
 
     logger.debug(
         "[DEVICE] Accepted — device=%s sample=%s test=%s value=%s",
-        device_id or "unset", sample_id, test, numeric_value,
+        device_id or "unset",
+        sample_id,
+        test,
+        numeric_value,
     )
 
     return {
-        "sample":    sample_id,
-        "test":      test,
-        "value":     numeric_value,
+        "sample": sample_id,
+        "test": test,
+        "value": numeric_value,
         "device_id": device_id or "unknown",
-        "status":    "received",
+        "status": "received",
     }

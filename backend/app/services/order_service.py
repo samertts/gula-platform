@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, joinedload
 
+from app._compat import UTC
+
 from ..config import BASE_URL
 from ..core.events import ORDER_CANCELLED, ORDER_CREATED, ORDER_VALIDATED, RESULT_CRITICAL, events
 from ..domain.order_state import enforce_transition
@@ -235,7 +237,9 @@ def _generate_unique_token(db: Session) -> tuple[str, str]:
     return token, token_h
 
 
-def _build_sharing_links(patient_phone: str | None, patient_name: str | None, result_links: list) -> dict:
+def _build_sharing_links(
+    patient_phone: str | None, patient_name: str | None, result_links: list
+) -> dict:
     """Build WhatsApp and SMS sharing links."""
     whatsapp_link = None
     sms_link = None
@@ -332,11 +336,7 @@ def create_order(
             return json.loads(cached)
 
     # Validate patient exists
-    patient = (
-        db.query(Patient)
-        .filter(Patient.id == patient_id, Patient.lab_id == lab_id)
-        .first()
-    )
+    patient = db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()
     if not patient:
         return {"error": "Patient not found", "status_code": 404}
 
@@ -377,8 +377,10 @@ def create_order(
             and item.get("normal_range_high") is not None
         ):
             flag = get_flag(
-                item["value"], item["normal_range_low"], item["normal_range_high"],
-                test_name=item["test_name"]
+                item["value"],
+                item["normal_range_low"],
+                item["normal_range_high"],
+                test_name=item["test_name"],
             )
 
         token, token_h = _generate_unique_token(db)
@@ -435,16 +437,19 @@ def create_order(
 
     # Emit events
     _emit_order_events(
-        order, patient.full_name, patient.phone,
-        len(results_data), user_id, critical_alerts
+        order, patient.full_name, patient.phone, len(results_data), user_id, critical_alerts
     )
 
     return response_body
 
 
-def get_order_by_id(db: Session, order_id: int, lab_id: int, user_role: str, user_id: int) -> dict | None:
+def get_order_by_id(
+    db: Session, order_id: int, lab_id: int, user_role: str, user_id: int
+) -> dict | None:
     """Get a single order by ID."""
-    order = _base_order_query(db, user_role, user_id, lab_id).filter(LabOrder.id == order_id).first()
+    order = (
+        _base_order_query(db, user_role, user_id, lab_id).filter(LabOrder.id == order_id).first()
+    )
     if not order:
         return None
     return order_to_dict(order)
@@ -463,6 +468,7 @@ def list_orders(
     query = _base_order_query(db, user_role, user_id, lab_id)
     if search and search.strip():
         import sqlalchemy as sa
+
         term = f"%{search.strip()}%"
         query = query.join(LabOrder.patient).filter(
             sa.or_(
@@ -488,12 +494,14 @@ def validate_order(
     ip_address: str | None = None,
 ) -> dict:
     """Validate and lock an order."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     if user_role not in {"admin", "master_admin", "doctor"}:
         return {"error": "Only admin or doctor can validate orders", "status_code": 403}
 
-    order = _base_order_query(db, user_role, user_id, lab_id).filter(LabOrder.id == order_id).first()
+    order = (
+        _base_order_query(db, user_role, user_id, lab_id).filter(LabOrder.id == order_id).first()
+    )
     if not order:
         return {"error": "Order not found", "status_code": 404}
 
@@ -502,7 +510,7 @@ def validate_order(
 
     enforce_transition(order.status, "validated")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     rows_updated = (
         db.query(LabOrder)
         .filter(LabOrder.id == order_id, LabOrder.locked_at.is_(None))
@@ -554,7 +562,9 @@ def cancel_order(
     ip_address: str | None = None,
 ) -> dict:
     """Cancel an order."""
-    order = _base_order_query(db, user_role, user_id, lab_id).filter(LabOrder.id == order_id).first()
+    order = (
+        _base_order_query(db, user_role, user_id, lab_id).filter(LabOrder.id == order_id).first()
+    )
     if not order:
         return {"error": "Order not found", "status_code": 404}
 
@@ -587,14 +597,14 @@ def cancel_order(
 
 def get_public_result(db: Session, token: str, ip_address: str | None = None) -> dict:
     """Get public result by token."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     token_h = hash_token(token)
     result = db.query(LabResult).filter(LabResult.token_hash == token_h).first()
     if not result:
         return {"error": "Result not found", "status_code": 404}
 
-    if result.expires_at and result.expires_at < datetime.now(timezone.utc):
+    if result.expires_at and result.expires_at < datetime.now(UTC):
         return {"error": "Result link has expired", "status_code": 410}
 
     order = (
@@ -666,14 +676,14 @@ def get_public_result(db: Session, token: str, ip_address: str | None = None) ->
 def download_result_pdf(db: Session, token: str, ip_address: str | None = None) -> dict:
     """Download result as PDF."""
     import re
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     token_h = hash_token(token)
     result = db.query(LabResult).filter(LabResult.token_hash == token_h).first()
     if not result:
         return {"error": "Result not found", "status_code": 404}
 
-    if result.expires_at and result.expires_at < datetime.now(timezone.utc):
+    if result.expires_at and result.expires_at < datetime.now(UTC):
         return {"error": "Result link has expired", "status_code": 410}
 
     order = (
@@ -744,15 +754,9 @@ def download_result_pdf(db: Session, token: str, ip_address: str | None = None) 
     return {"pdf_bytes": pdf_bytes, "filename": filename}
 
 
-def get_patient_history_by_id(
-    db: Session, patient_id: int, lab_id: int
-) -> dict | None:
+def get_patient_history_by_id(db: Session, patient_id: int, lab_id: int) -> dict | None:
     """Get complete test history for a patient."""
-    patient = (
-        db.query(Patient)
-        .filter(Patient.id == patient_id, Patient.lab_id == lab_id)
-        .first()
-    )
+    patient = db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()
     if not patient:
         return None
 
@@ -809,9 +813,7 @@ def get_patient_history_by_id(
     }
 
 
-def get_patient_history_by_phone(
-    db: Session, phone: str, name: str | None = None
-) -> dict:
+def get_patient_history_by_phone(db: Session, phone: str, name: str | None = None) -> dict:
     """Get patient test history by phone number."""
     import hmac as _hmac
 

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING
 
-from backend.app.kernel.gateway.routing import InternalRouter
-from backend.app.kernel.gateway.health_routing import HealthRouter
 from backend.app.kernel.gateway.circuit_breaker import CircuitBreakerManager
+from backend.app.kernel.gateway.health_routing import HealthRouter
 from backend.app.kernel.gateway.rate_limiting import RateLimiter
+from backend.app.kernel.gateway.routing import InternalRouter
 from backend.app.kernel.gateway.validation import RequestValidator
 
 if TYPE_CHECKING:

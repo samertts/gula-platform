@@ -14,7 +14,6 @@ from backend.app.engineering.generators.project import ProjectGenerator, Project
 from backend.app.engineering.validation.clean_arch import CleanArchitectureValidator
 from backend.app.engineering.validation.solid import SOLIDValidator
 
-
 PACKAGE = "backend.app.engineering"
 
 
@@ -84,7 +83,7 @@ def main() -> None:
     doctor.add_argument("--dir", default=".", help="Project root directory")
 
     # gula info
-    info = sub.add_parser("info", help="Show platform info")
+    sub.add_parser("info", help="Show platform info")
 
     args = parser.parse_args()
 
@@ -177,8 +176,13 @@ def _add_generate_rest(sub: argparse._SubParsersAction) -> None:
     p.add_argument("name", help="Resource name")
     p.add_argument("--dir", default=".", help="Target directory")
     p.add_argument("--prefix", default="", help="URL prefix")
-    p.add_argument("--operations", nargs="*", default=["list", "get", "create", "update", "delete"],
-                   choices=["list", "get", "create", "update", "delete"], help="Operations to include")
+    p.add_argument(
+        "--operations",
+        nargs="*",
+        default=["list", "get", "create", "update", "delete"],
+        choices=["list", "get", "create", "update", "delete"],
+        help="Operations to include",
+    )
 
 
 def _add_generate_openapi(sub: argparse._SubParsersAction) -> None:
@@ -200,8 +204,13 @@ def _add_generate_repository(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("repository", help="Generate repository")
     p.add_argument("name", help="Entity name")
     p.add_argument("--dir", default=".", help="Target directory")
-    p.add_argument("--methods", nargs="*", default=["get", "list", "create", "update", "delete", "count"],
-                   choices=["get", "list", "create", "update", "delete", "count"], help="Repository methods")
+    p.add_argument(
+        "--methods",
+        nargs="*",
+        default=["get", "list", "create", "update", "delete", "count"],
+        choices=["get", "list", "create", "update", "delete", "count"],
+        help="Repository methods",
+    )
 
 
 def _add_generate_cqrs(sub: argparse._SubParsersAction) -> None:
@@ -216,8 +225,13 @@ def _add_generate_tests(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("tests", help="Generate tests")
     p.add_argument("module", help="Module name")
     p.add_argument("--dir", default=".", help="Target directory")
-    p.add_argument("--types", nargs="*", default=["unit"],
-                   choices=["unit", "integration", "performance", "security"], help="Test types")
+    p.add_argument(
+        "--types",
+        nargs="*",
+        default=["unit"],
+        choices=["unit", "integration", "performance", "security"],
+        help="Test types",
+    )
     p.add_argument("--entities", nargs="*", default=[], help="Entities for fixtures/factories")
 
 
@@ -225,8 +239,12 @@ def _add_generate_adr(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("adr", help="Generate ADR")
     p.add_argument("title", help="ADR title")
     p.add_argument("--dir", default=".", help="Target directory")
-    p.add_argument("--status", default="proposed", choices=["proposed", "accepted", "deprecated", "superseded"],
-                   help="ADR status")
+    p.add_argument(
+        "--status",
+        default="proposed",
+        choices=["proposed", "accepted", "deprecated", "superseded"],
+        help="ADR status",
+    )
     p.add_argument("--context", default="", help="Context")
     p.add_argument("--decision", default="", help="Decision")
 
@@ -242,8 +260,12 @@ def _add_generate_diagram(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("diagram", help="Generate diagram")
     p.add_argument("title", help="Diagram title")
     p.add_argument("--dir", default=".", help="Target directory")
-    p.add_argument("--type", default="flowchart", choices=["flowchart", "sequence", "class", "c4", "plantuml"],
-                   help="Diagram type")
+    p.add_argument(
+        "--type",
+        default="flowchart",
+        choices=["flowchart", "sequence", "class", "c4", "plantuml"],
+        help="Diagram type",
+    )
 
 
 def _add_generate_ci(sub: argparse._SubParsersAction) -> None:
@@ -260,8 +282,11 @@ def _add_generate_docker(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--name", default="app", help="App name")
     p.add_argument("--python", default="3.11-slim", help="Python version")
     p.add_argument("--port", type=int, default=8000, help="Exposed port")
-    p.add_argument("--entrypoint", default="uvicorn app.main:app --host 0.0.0.0 --port {port}",
-                   help="Container entrypoint")
+    p.add_argument(
+        "--entrypoint",
+        default="uvicorn app.main:app --host 0.0.0.0 --port {port}",
+        help="Container entrypoint",
+    )
     p.add_argument("--multi-stage", action="store_true", help="Use multi-stage build")
 
 
@@ -286,7 +311,9 @@ def _handle_new(args: argparse.Namespace) -> None:
     target = Path(args.dir).resolve()
 
     if args.new_type == "project":
-        spec = ProjectSpec(name=args.name, description=args.description, version=getattr(args, 'version', '0.1.0'))
+        spec = ProjectSpec(
+            name=args.name, description=args.description, version=getattr(args, "version", "0.1.0")
+        )
         gen = ProjectGenerator(target_dir=target)
         result = gen.generate(spec=spec)
         _print_result("Project", result)
@@ -364,7 +391,6 @@ def _handle_generate(args: argparse.Namespace) -> None:
 
 
 def _do_generate_microservice(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.generators.microservice import MicroserviceGenerator, MicroserviceSpec
     spec = MicroserviceSpec(name=args.name, description=args.description, port=args.port)
     gen = MicroserviceGenerator(target_dir=target)
     result = gen.generate(spec=spec)
@@ -373,7 +399,7 @@ def _do_generate_microservice(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_crud(args: argparse.Namespace, target: Path) -> None:
     fields = []
-    if hasattr(args, 'fields') and args.fields:
+    if hasattr(args, "fields") and args.fields:
         for f in args.fields:
             if ":" in f:
                 name, typ = f.split(":", 1)
@@ -390,6 +416,7 @@ def _do_generate_crud(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_rest(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.rest.generator import RESTGenerator, RESTSpec
+
     spec = RESTSpec(name=args.name, prefix=args.prefix, operations=args.operations)
     gen = RESTGenerator(target_dir=target)
     result = gen.generate(spec=spec)
@@ -398,6 +425,7 @@ def _do_generate_rest(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_openapi(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.openapi.generator import OpenAPIGenerator, OpenAPISpec
+
     spec = OpenAPISpec(title=args.title, version=args.version, description=args.description)
     gen = OpenAPIGenerator(target_dir=target)
     result = gen.generate(spec=spec)
@@ -405,9 +433,10 @@ def _do_generate_openapi(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_dto(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.dto.generator import DTOGenerator, DTOSpec, DTOField
+    from backend.app.engineering.dto.generator import DTOField, DTOGenerator, DTOSpec
+
     fields = []
-    if hasattr(args, 'fields') and args.fields:
+    if hasattr(args, "fields") and args.fields:
         for f in args.fields:
             if ":" in f:
                 name, typ = f.split(":", 1)
@@ -422,6 +451,7 @@ def _do_generate_dto(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_repository(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.repository.generator import RepositoryGenerator, RepositorySpec
+
     spec = RepositorySpec(name=args.name, methods=args.methods)
     gen = RepositoryGenerator(target_dir=target)
     result = gen.generate(spec=spec)
@@ -430,6 +460,7 @@ def _do_generate_repository(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_cqrs(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.cqrs.generator import CQRSGenerator, CQRSSpec
+
     spec = CQRSSpec(name=args.name, commands=args.commands, queries=args.queries)
     gen = CQRSGenerator(target_dir=target)
     result = gen.generate(spec=spec)
@@ -437,10 +468,13 @@ def _do_generate_cqrs(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_tests(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.testing.unit import UnitTestGenerator, IntegrationTestGenerator
-    from backend.app.engineering.testing.performance import PerformanceTestGenerator, SecurityTestGenerator
-    from backend.app.engineering.testing.fixtures import FixturesGenerator
     from backend.app.engineering.testing.factories import FactoriesGenerator
+    from backend.app.engineering.testing.fixtures import FixturesGenerator
+    from backend.app.engineering.testing.performance import (
+        PerformanceTestGenerator,
+        SecurityTestGenerator,
+    )
+    from backend.app.engineering.testing.unit import IntegrationTestGenerator, UnitTestGenerator
 
     entities = args.entities or [args.module.title()]
 
@@ -473,6 +507,7 @@ def _do_generate_tests(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_adr(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.docs.adr import ADRGenerator, ADRSpec
+
     spec = ADRSpec(
         title=args.title,
         status=args.status,
@@ -486,6 +521,7 @@ def _do_generate_adr(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_architecture(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.docs.adr import ArchitectureGenerator
+
     gen = ArchitectureGenerator(target_dir=target)
     result = gen.generate(name=args.name, description=args.description)
     _print_result("Architecture Docs", result)
@@ -493,6 +529,7 @@ def _do_generate_architecture(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_diagram(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.docs.mermaid import MermaidGenerator, PlantUMLGenerator
+
     if args.type == "plantuml":
         gen = PlantUMLGenerator(target_dir=target)
     else:
@@ -502,7 +539,11 @@ def _do_generate_diagram(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_ci(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.deployment.github_actions import GitHubActionsGenerator, GitHubActionsSpec
+    from backend.app.engineering.deployment.github_actions import (
+        GitHubActionsGenerator,
+        GitHubActionsSpec,
+    )
+
     spec = GitHubActionsSpec(
         name=args.name,
         python_version=args.python,
@@ -515,6 +556,7 @@ def _do_generate_ci(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_docker(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.deployment.github_actions import DockerGenerator
+
     gen = DockerGenerator(target_dir=target)
     result = gen.generate(
         name=args.name,
@@ -528,6 +570,7 @@ def _do_generate_docker(args: argparse.Namespace, target: Path) -> None:
 
 def _do_generate_compose(target: Path) -> None:
     from backend.app.engineering.deployment.github_actions import ComposeGenerator
+
     gen = ComposeGenerator(target_dir=target)
     result = gen.generate()
     _print_result("Docker Compose", result)
@@ -535,6 +578,7 @@ def _do_generate_compose(target: Path) -> None:
 
 def _do_generate_kubernetes(args: argparse.Namespace, target: Path) -> None:
     from backend.app.engineering.deployment.github_actions import KubernetesGenerator
+
     gen = KubernetesGenerator(target_dir=target)
     result = gen.generate(
         name=args.name,
@@ -568,7 +612,9 @@ def _handle_validate(args: argparse.Namespace) -> None:
             print("  ✓ No SOLID principle violations found.")
         else:
             for issue in issues:
-                print(f"  [{issue.severity}] {issue.file}:{issue.line} [{issue.principle}] {issue.message}")
+                print(
+                    f"  [{issue.severity}] {issue.file}:{issue.line} [{issue.principle}] {issue.message}"
+                )
             print(f"\n  Found {len(issues)} issues.")
 
     elif args.type == "ddd":
@@ -587,9 +633,13 @@ def _validate_ddd(root: Path) -> None:
         if "test" in py_file.parts or "__pycache__" in py_file.parts:
             continue
         content = py_file.read_text()
-        if "class" in content:
-            if "domain" in py_file.parts and "entity" not in py_file.parts and "value_object" not in py_file.parts and "event" not in py_file.parts:
-                issues.append(f"{py_file.relative_to(root)}: Domain file in unexpected location")
+        if "class" in content and (
+            "domain" in py_file.parts
+            and "entity" not in py_file.parts
+            and "value_object" not in py_file.parts
+            and "event" not in py_file.parts
+        ):
+            issues.append(f"{py_file.relative_to(root)}: Domain file in unexpected location")
 
     if not issues:
         print("  ✓ DDD structure validation passed.")
@@ -607,7 +657,9 @@ def _validate_cqrs(root: Path) -> None:
         content = py_file.read_text()
         if "class" in content and "Repository" in content and "Command" in content:
             if "command" not in py_file.parts:
-                issues.append(f"{py_file.relative_to(root)}: Repository found outside commands context")
+                issues.append(
+                    f"{py_file.relative_to(root)}: Repository found outside commands context"
+                )
 
     if not issues:
         print("  ✓ CQRS structure validation passed.")
@@ -678,6 +730,7 @@ def _handle_doctor(args: argparse.Namespace) -> None:
     print(f"  CI: {'Found' if github.exists() else 'Not found'}")
 
     import importlib
+
     checks = ["ruff", "pytest", "mypy", "coverage", "bandit"]
     for check in checks:
         try:
@@ -704,9 +757,9 @@ def _handle_info() -> None:
 
 
 def _print_result(name: str, result: object) -> None:
-    files = getattr(result, 'files_created', [])
-    skipped = getattr(result, 'files_skipped', [])
-    errors = getattr(result, 'errors', [])
+    files = getattr(result, "files_created", [])
+    skipped = getattr(result, "files_skipped", [])
+    errors = getattr(result, "errors", [])
     print(f"  {name}: {len(files)} files created")
     if skipped:
         print(f"  {len(skipped)} files skipped (already exist)")

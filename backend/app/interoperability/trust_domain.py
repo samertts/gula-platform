@@ -12,10 +12,11 @@ and ``03-trust-boundaries.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+
+from app._compat import StrEnum
 
 
-class InstitutionType(str, Enum):
+class InstitutionType(StrEnum):
     MINISTRY = "ministry"
     INSURER = "insurer"
     HOSPITAL = "hospital"
@@ -28,13 +29,13 @@ class InstitutionType(str, Enum):
     EDGE = "edge"
 
 
-class TenancyMode(str, Enum):
+class TenancyMode(StrEnum):
     SINGLE_TENANT_PROXY = "single_tenant_proxy"
     MULTI_TENANT_AGGREGATOR = "multi_tenant_aggregator"
     NATIONAL_AGGREGATOR = "national_aggregator"
 
 
-class FailureMode(str, Enum):
+class FailureMode(StrEnum):
     FAIL_CLOSED = "fail_closed"
 
 

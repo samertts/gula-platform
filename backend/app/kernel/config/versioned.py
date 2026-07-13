@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 
 logger = logging.getLogger("gula.kernel.config.versioned")
 
@@ -18,6 +16,7 @@ class ConfigVersion:
     def __post_init__(self):
         if not self.created_at:
             import time
+
             self.created_at = time.time()
 
 

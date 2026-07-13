@@ -19,6 +19,7 @@ Run with::
 
     RUNTIME_MODE=worker FEATURE_BACKGROUND_TASKS=true python -m app.worker
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,20 +29,20 @@ import sys
 
 from .config import (
     APP_VERSION,
+    IS_PRODUCTION,
     IS_WORKER_RUNTIME,
     RUNTIME_MODE,
     background_tasks_enabled,
 )
 from .core.logging_config import configure_logging
-from .config import IS_PRODUCTION
 
 configure_logging(is_production=IS_PRODUCTION, log_level="INFO")
 logger = logging.getLogger("gula.worker")
 
 # ── Crash-isolated loop wrapper ───────────────────────────────────────────────
 
-_RESTART_BASE_DELAY_S  = 5.0
-_RESTART_MAX_DELAY_S   = 120.0
+_RESTART_BASE_DELAY_S = 5.0
+_RESTART_MAX_DELAY_S = 120.0
 
 
 async def _resilient_loop(coro_factory, name: str) -> None:
@@ -64,23 +65,25 @@ async def _resilient_loop(coro_factory, name: str) -> None:
             logger.info("Loop [%s] cancelled", name)
             raise
         except Exception as exc:
-            logger.error("Loop [%s] crashed: %s — restarting in %.0fs",
-                         name, exc, delay, exc_info=True)
+            logger.error(
+                "Loop [%s] crashed: %s — restarting in %.0fs", name, exc, delay, exc_info=True
+            )
             await asyncio.sleep(delay)
             delay = min(delay * 2, _RESTART_MAX_DELAY_S)
 
 
 # ── Main worker coroutine ─────────────────────────────────────────────────────
 
+
 async def _run_worker() -> None:
     """Spawn every maintenance loop + task worker and wait for shutdown."""
     # Lazy imports — these touch the DB engine and we want config validation
     # (RUNTIME_MODE check) to fail fast before we open any pools.
-    from .services.outbox_service import OutboxWorker
-    from .core.self_healing import RecoveryWorker
     from .core.auto_repair import auto_repair as _auto_repair
+    from .core.self_healing import RecoveryWorker
     from .database import restore_db_window_from_redis
-    from .main import _health_alert_loop, _adaptive_concurrency_loop
+    from .main import _adaptive_concurrency_loop, _health_alert_loop
+    from .services.outbox_service import OutboxWorker
     from .tasks.queue import task_queue
     from .tasks.worker import TaskWorker
 
@@ -120,8 +123,7 @@ async def _run_worker() -> None:
             name="task-worker",
         ),
     ]
-    logger.info("Worker spawned %d loops: %s",
-                len(tasks), [t.get_name() for t in tasks])
+    logger.info("Worker spawned %d loops: %s", len(tasks), [t.get_name() for t in tasks])
 
     stop = asyncio.Event()
 
@@ -147,20 +149,12 @@ async def _run_worker() -> None:
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     if not IS_WORKER_RUNTIME:
-        print(
-            f"[GULA FATAL] app.worker requires RUNTIME_MODE=worker "
-            f"(got {RUNTIME_MODE!r}). Refusing to start.",
-            file=sys.stderr,
-        )
         sys.exit(2)
 
     if not background_tasks_enabled():
-        print(
-            "[GULA FATAL] FEATURE_BACKGROUND_TASKS must be true to run the worker.",
-            file=sys.stderr,
-        )
         sys.exit(2)
 
     asyncio.run(_run_worker())

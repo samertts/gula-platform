@@ -4,9 +4,11 @@ import logging
 import os
 import threading
 import time
+
 from sqlalchemy import create_engine, event, text
-from sqlalchemy.orm import sessionmaker, declarative_base
-from .config import DATABASE_URL, IS_PRODUCTION
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+from .config import DATABASE_URL
 
 logger = logging.getLogger("gula.database")
 
@@ -14,12 +16,13 @@ logger = logging.getLogger("gula.database")
 # Set by middleware / auth dependency so every DB error log carries full context:
 #   request_id + endpoint   ← set by RequestIDMiddleware
 #   user_id + lab_id        ← set by get_current_user dependency (authenticated routes)
-_request_id_var: contextvars.ContextVar[str]       = contextvars.ContextVar("request_id", default="")
-_endpoint_var:   contextvars.ContextVar[str]       = contextvars.ContextVar("endpoint",   default="")
-_user_id_var:    contextvars.ContextVar[int | None] = contextvars.ContextVar("user_id",   default=None)
-_lab_id_var:     contextvars.ContextVar[int | None] = contextvars.ContextVar("lab_id",    default=None)
+_request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
+_endpoint_var: contextvars.ContextVar[str] = contextvars.ContextVar("endpoint", default="")
+_user_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("user_id", default=None)
+_lab_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("lab_id", default=None)
 
 # ── Sliding window event tracker ─────────────────────────────────────────────
+
 
 class _SlidingWindow:
     """Thread-safe circular buffer of (timestamp, event_type) entries.
@@ -27,11 +30,12 @@ class _SlidingWindow:
     Allows querying how many events of a given type occurred in the last
     N seconds — distinguishes a brief burst from a sustained outage.
     """
+
     def __init__(self, max_age_s: int = 300, max_size: int = 1000):
-        self._lock      = threading.Lock()
+        self._lock = threading.Lock()
         self._events: collections.deque = collections.deque()
-        self._max_age   = max_age_s
-        self._max_size  = max_size
+        self._max_age = max_age_s
+        self._max_size = max_size
 
     def record(self, event_type: str) -> None:
         now = time.monotonic()
@@ -64,16 +68,15 @@ class _SlidingWindow:
         monotonic clock resets to 0 on each new process.
         """
         import json
-        wall_now  = time.time()
-        mono_now  = time.monotonic()
-        offset    = wall_now - mono_now          # monotonic → wall-clock
-        cutoff    = mono_now - self._max_age
+
+        wall_now = time.time()
+        mono_now = time.monotonic()
+        offset = wall_now - mono_now  # monotonic → wall-clock
+        cutoff = mono_now - self._max_age
         with self._lock:
-            payload = json.dumps([
-                (ts + offset, etype)
-                for ts, etype in self._events
-                if ts >= cutoff
-            ])
+            payload = json.dumps(
+                [(ts + offset, etype) for ts, etype in self._events if ts >= cutoff]
+            )
         try:
             redis_client.set(key, payload, ex=self._max_age + 60)
         except Exception:
@@ -90,10 +93,11 @@ class _SlidingWindow:
         internal use.  Silently no-ops if Redis is empty or unavailable.
         """
         import json
+
         wall_now = time.time()
         mono_now = time.monotonic()
-        offset   = mono_now - wall_now           # wall-clock → monotonic
-        cutoff   = mono_now - self._max_age
+        offset = mono_now - wall_now  # wall-clock → monotonic
+        cutoff = mono_now - self._max_age
         try:
             raw = redis_client.get(key)
             if raw is None:
@@ -128,45 +132,48 @@ db_window = _SlidingWindow(max_age_s=300)
 # ── Per-error-type counters (thread-safe, process-lifetime) ──────────────────
 _counter_lock = threading.Lock()
 _db_error_counts: dict[str, int] = {
-    "refused":    0,
+    "refused": 0,
     "auth_failed": 0,
-    "timeout":    0,
-    "error":      0,
+    "timeout": 0,
+    "error": 0,
 }
+
 
 def get_db_error_counts() -> dict[str, int]:
     """Return a snapshot of cumulative DB error counts by type."""
     with _counter_lock:
         return dict(_db_error_counts)
 
+
 def get_db_window_snapshot(window_s: int = 300) -> dict:
     """Return sliding-window stats for the last window_s seconds."""
     snap = db_window.snapshot(window_s)
     return {
-        "window_s":         window_s,
-        "refused":          snap.get("refused",    0),
-        "auth_failed":      snap.get("auth_failed", 0),
-        "timeout":          snap.get("timeout",    0),
-        "ok":               snap.get("ok",         0),
-        "refused_per_min":  db_window.rate_per_minute("refused",   window_s),
-        "timeout_per_min":  db_window.rate_per_minute("timeout",   window_s),
+        "window_s": window_s,
+        "refused": snap.get("refused", 0),
+        "auth_failed": snap.get("auth_failed", 0),
+        "timeout": snap.get("timeout", 0),
+        "ok": snap.get("ok", 0),
+        "refused_per_min": db_window.rate_per_minute("refused", window_s),
+        "timeout_per_min": db_window.rate_per_minute("timeout", window_s),
     }
+
 
 # ── Error → Action mapping ────────────────────────────────────────────────────
 _DB_ACTION_MAP: dict[str, str] = {
-    "refused":     "retry",
-    "timeout":     "retry_with_backoff",
+    "refused": "retry",
+    "timeout": "retry_with_backoff",
     "auth_failed": "stop_and_alert",
-    "error":       "retry_with_backoff",
+    "error": "retry_with_backoff",
 }
 
 # ── Circuit escalation thresholds ────────────────────────────────────────────
 # refused storm (TCP-level: postgres not reachable)
-_CIRCUIT_OPEN_THRESHOLD   = int(os.getenv("DB_CIRCUIT_OPEN_THRESHOLD",   "20"))  # refused/5min → L2
+_CIRCUIT_OPEN_THRESHOLD = int(os.getenv("DB_CIRCUIT_OPEN_THRESHOLD", "20"))  # refused/5min → L2
 _SYSTEM_DEGRADE_THRESHOLD = int(os.getenv("DB_SYSTEM_DEGRADE_THRESHOLD", "50"))  # refused/5min → L3
 # timeout storm (network delay / DB overloaded — TEST 6 / TEST 10 scenario)
-_TIMEOUT_L1_THRESHOLD     = int(os.getenv("DB_TIMEOUT_L1_THRESHOLD",      "5"))  # timeouts/5min → L1
-_TIMEOUT_L2_THRESHOLD     = int(os.getenv("DB_TIMEOUT_L2_THRESHOLD",     "15"))  # timeouts/5min → L2
+_TIMEOUT_L1_THRESHOLD = int(os.getenv("DB_TIMEOUT_L1_THRESHOLD", "5"))  # timeouts/5min → L1
+_TIMEOUT_L2_THRESHOLD = int(os.getenv("DB_TIMEOUT_L2_THRESHOLD", "15"))  # timeouts/5min → L2
 
 # ── Connection Pool Sizing ────────────────────────────────────────────────────
 # PostgreSQL default max_connections = 100.
@@ -176,21 +183,25 @@ _TIMEOUT_L2_THRESHOLD     = int(os.getenv("DB_TIMEOUT_L2_THRESHOLD",     "15")) 
 #
 # Formula used: 2 workers × (5 base + 15 overflow) = 40 total.
 # Configurable via env vars for larger deployments.
-_WORKERS       = int(os.getenv("WEB_CONCURRENCY", "2"))
-_POOL_SIZE     = max(2, int(os.getenv("DB_POOL_SIZE",    "5")))   # per worker
-_MAX_OVERFLOW  = max(0, int(os.getenv("DB_MAX_OVERFLOW", "10")))  # per worker
-_POOL_TIMEOUT  = int(os.getenv("DB_POOL_TIMEOUT",  "10"))
-_POOL_RECYCLE  = int(os.getenv("DB_POOL_RECYCLE", "1800"))
-_STMT_TIMEOUT  = os.getenv("DB_STMT_TIMEOUT", "30s")
+_WORKERS = int(os.getenv("WEB_CONCURRENCY", "2"))
+_POOL_SIZE = max(2, int(os.getenv("DB_POOL_SIZE", "5")))  # per worker
+_MAX_OVERFLOW = max(0, int(os.getenv("DB_MAX_OVERFLOW", "10")))  # per worker
+_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "10"))
+_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+_STMT_TIMEOUT = os.getenv("DB_STMT_TIMEOUT", "30s")
 
 logger.debug(
     "DB pool config: %d workers × (%d base + %d overflow) = %d max connections",
-    _WORKERS, _POOL_SIZE, _MAX_OVERFLOW, _WORKERS * (_POOL_SIZE + _MAX_OVERFLOW),
+    _WORKERS,
+    _POOL_SIZE,
+    _MAX_OVERFLOW,
+    _WORKERS * (_POOL_SIZE + _MAX_OVERFLOW),
 )
 
 _IS_SQLITE = DATABASE_URL.startswith("sqlite")
 if _IS_SQLITE:
     from sqlalchemy.pool import StaticPool
+
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},
@@ -208,6 +219,7 @@ else:
         connect_args={"connect_timeout": 5},
         echo=False,
     )
+
 
 # Set statement timeout + work_mem per connection (PostgreSQL only)
 @event.listens_for(engine, "connect")
@@ -229,6 +241,7 @@ Base = declarative_base()
 # Block edge_* table access from API/test/CLI runtimes. No-op inside worker.
 try:
     from .core.runtime_guard import install_edge_access_guard
+
     install_edge_access_guard(engine)
 except Exception as _guard_exc:
     logger.warning("Edge-access guard not installed: %s", _guard_exc)
@@ -289,13 +302,15 @@ def check_db_connection_detail() -> tuple[str, str]:
 
         if "connection refused" in msg or "could not connect" in msg:
             status = "refused"
-            detail = f"TCP connection refused to {host}:{port} — postgres not listening or wrong host"
+            detail = (
+                f"TCP connection refused to {host}:{port} — postgres not listening or wrong host"
+            )
         elif "password authentication failed" in msg or "authentication failed" in msg:
             status = "auth_failed"
             detail = f"authentication rejected by {host}:{port} — check POSTGRES_PASSWORD"
         elif "no pg_hba.conf entry" in msg:
             status = "auth_failed"
-            detail = f"pg_hba.conf rejected connection from this host — check pg_hba.conf subnet"
+            detail = "pg_hba.conf rejected connection from this host — check pg_hba.conf subnet"
         elif "timeout" in msg or "timed out" in msg:
             status = "timeout"
             detail = f"connection to {host}:{port} timed out"
@@ -312,23 +327,25 @@ def check_db_connection_detail() -> tuple[str, str]:
         # ── Full correlation context ──────────────────────────────────────────
         # Gathered from ContextVars — propagated by middleware (request_id,
         # endpoint) and by get_current_user dependency (user_id, lab_id).
-        req_id   = _request_id_var.get("")
+        req_id = _request_id_var.get("")
         endpoint = _endpoint_var.get("")
-        user_id  = _user_id_var.get(None)
-        lab_id   = _lab_id_var.get(None)
+        user_id = _user_id_var.get(None)
+        lab_id = _lab_id_var.get(None)
 
         logger.error(
             "[DB] connection %s — action=%s — %s",
-            status, action, detail,
+            status,
+            action,
+            detail,
             extra={
-                "db_host":    host,
-                "db_port":    port,
-                "db_status":  status,
-                "action":     action,
-                "request_id": req_id  or None,
-                "endpoint":   endpoint or None,
-                "user_id":    user_id,
-                "lab_id":     lab_id,
+                "db_host": host,
+                "db_port": port,
+                "db_status": status,
+                "action": action,
+                "request_id": req_id or None,
+                "endpoint": endpoint or None,
+                "user_id": user_id,
+                "lab_id": lab_id,
             },
         )
 
@@ -356,7 +373,8 @@ def check_db_connection_detail() -> tuple[str, str]:
 def _trigger_slow_db(timeout_count: int) -> None:
     """Enter L1_CACHE_HEAVY when DB is reachable but slow (TEST 6 — high latency)."""
     try:
-        from .core.self_healing import health, DegradationLevel
+        from .core.self_healing import DegradationLevel, health
+
         health.enter_degraded_mode(
             f"DB timeouts {timeout_count}/5min (threshold={_TIMEOUT_L1_THRESHOLD}) "
             "— DB alive but slow, preferring cache",
@@ -374,13 +392,15 @@ def _trigger_slow_db(timeout_count: int) -> None:
 def _trigger_circuit_open(refused_or_timeout_count: int) -> None:
     """Force-open the DB circuit breaker + enter L2_READ_ONLY on sustained error storm."""
     try:
-        from .core.self_healing import health, CircuitState, DegradationLevel
+        from .core.self_healing import CircuitState, DegradationLevel, health
+
         if health.db_circuit.state != CircuitState.OPEN:
             for _ in range(health.db_circuit.failure_threshold):
                 health.db_circuit.record_failure()
             logger.error(
                 "[DB] Circuit OPENED after %d errors in 5min (threshold=%d)",
-                refused_or_timeout_count, _CIRCUIT_OPEN_THRESHOLD,
+                refused_or_timeout_count,
+                _CIRCUIT_OPEN_THRESHOLD,
             )
         # Escalate to L2: writes blocked, reads still pass
         health.enter_degraded_mode(
@@ -394,7 +414,8 @@ def _trigger_circuit_open(refused_or_timeout_count: int) -> None:
 def _trigger_system_degradation(refused_count: int) -> None:
     """Escalate to L3_CRITICAL_ONLY when DB is continuously unreachable (storm)."""
     try:
-        from .core.self_healing import health, DegradationLevel
+        from .core.self_healing import DegradationLevel, health
+
         health.enter_degraded_mode(
             f"DB refused {refused_count} times in 5min (threshold={_SYSTEM_DEGRADE_THRESHOLD}) "
             "— critical-only mode active",
@@ -415,6 +436,7 @@ def restore_db_window_from_redis() -> None:
     """
     try:
         from .security.redis_client import cache
+
         db_window.restore_from_redis(cache)
     except Exception as exc:
         logger.warning("[DB] Sliding window restore skipped: %s", exc)
@@ -426,6 +448,7 @@ def persist_db_window_to_redis() -> None:
     """
     try:
         from .security.redis_client import cache
+
         db_window.persist_to_redis(cache)
     except Exception as exc:
         logger.warning("[DB] Sliding window persist skipped: %s", exc)
@@ -447,8 +470,8 @@ def get_pool_status() -> dict:
             return 0
 
     return {
-        "pool_size":   _call("size"),
+        "pool_size": _call("size"),
         "checked_out": _call("checkedout"),
-        "overflow":    _call("overflow"),
-        "checked_in":  _call("checkedin"),
+        "overflow": _call("overflow"),
+        "checked_in": _call("checkedin"),
     }

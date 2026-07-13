@@ -5,29 +5,28 @@ Official SDK: https://aistudio.google.com/apikey
 Priority: SDK (google-generativeai) → raw HTTP fallback.
 The fallback keeps existing deployments working if the package is not yet installed.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
-from typing import Optional
 
 import httpx
 
 logger = logging.getLogger("gula.google_ai")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-_API_KEY         = os.getenv("GEMINI_API_KEY", "")
-_CLINICAL_MODEL  = os.getenv("GEMINI_CLINICAL_MODEL", "gemini-2.0-flash")
-_CHAT_MODEL      = os.getenv("GEMINI_CHAT_MODEL",     "gemini-2.0-flash")
+_API_KEY = os.getenv("GEMINI_API_KEY", "")
+_CLINICAL_MODEL = os.getenv("GEMINI_CLINICAL_MODEL", "gemini-2.0-flash")
+_CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash")
 _CLINICAL_TOKENS = int(os.getenv("GEMINI_CLINICAL_MAX_TOKENS", "500"))
-_CHAT_TOKENS     = int(os.getenv("GEMINI_CHAT_MAX_TOKENS",     "600"))
-_TIMEOUT         = float(os.getenv("AI_BUDGET_SECONDS", "6"))
+_CHAT_TOKENS = int(os.getenv("GEMINI_CHAT_MAX_TOKENS", "600"))
+_TIMEOUT = float(os.getenv("AI_BUDGET_SECONDS", "6"))
 
 # REST endpoint (fallback when SDK is not installed)
 _REST_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "{model}:generateContent?key={key}"
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 )
 
 # ── SDK bootstrap (optional dependency) ──────────────────────────────────────
@@ -37,12 +36,14 @@ _sdk_available = False
 if _API_KEY:
     try:
         import google.generativeai as genai  # type: ignore[import]
+
         genai.configure(api_key=_API_KEY)
         _genai = genai
         _sdk_available = True
         logger.info(
             "[GoogleAI] SDK ready — clinical=%s chat=%s",
-            _CLINICAL_MODEL, _CHAT_MODEL,
+            _CLINICAL_MODEL,
+            _CHAT_MODEL,
         )
     except ImportError:
         logger.info(
@@ -66,12 +67,13 @@ _CHAT_SYSTEM = (
 
 _SAFETY_SETTINGS = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-    {"category": "HARM_CATEGORY_HARASSMENT",        "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH",       "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
 ]
 
 
 # ── Public helpers ────────────────────────────────────────────────────────────
+
 
 def is_configured() -> bool:
     """True when an API key is present (SDK or HTTP both usable)."""
@@ -84,6 +86,7 @@ def sdk_available() -> bool:
 
 
 # ── Clinical interpretation ───────────────────────────────────────────────────
+
 
 async def generate_clinical(prompt: str) -> str:
     """
@@ -136,7 +139,8 @@ async def _http_clinical(prompt: str) -> str:
 
 # ── Assistant chat ────────────────────────────────────────────────────────────
 
-async def generate_chat(message: str, context: Optional[str] = None) -> str:
+
+async def generate_chat(message: str, context: str | None = None) -> str:
     """
     Generate an assistant chat reply for lab staff.
 
@@ -151,7 +155,7 @@ async def generate_chat(message: str, context: Optional[str] = None) -> str:
     return await _http_chat(message, context)
 
 
-async def _sdk_chat(message: str, context: Optional[str] = None) -> str:
+async def _sdk_chat(message: str, context: str | None = None) -> str:
     loop = asyncio.get_event_loop()
 
     system = _CHAT_SYSTEM
@@ -176,16 +180,14 @@ async def _sdk_chat(message: str, context: Optional[str] = None) -> str:
     return await loop.run_in_executor(None, _call)
 
 
-async def _http_chat(message: str, context: Optional[str] = None) -> str:
+async def _http_chat(message: str, context: str | None = None) -> str:
     system = _CHAT_SYSTEM
     if context:
         system += f"\nالصفحة الحالية: {context}"
 
     url = _REST_URL.format(model=_CHAT_MODEL, key=_API_KEY)
     payload = {
-        "contents": [
-            {"role": "user", "parts": [{"text": f"{system}\n\n---\n{message}"}]}
-        ],
+        "contents": [{"role": "user", "parts": [{"text": f"{system}\n\n---\n{message}"}]}],
         "generationConfig": {"temperature": 0.5, "maxOutputTokens": _CHAT_TOKENS},
         "safetySettings": _SAFETY_SETTINGS,
     }
@@ -201,14 +203,15 @@ async def _http_chat(message: str, context: Optional[str] = None) -> str:
 
 # ── Provider metadata ─────────────────────────────────────────────────────────
 
+
 def provider_info() -> dict:
     return {
-        "name":            "gemini",
-        "type":            "cloud",
-        "source":          "aistudio.google.com",
-        "configured":      is_configured(),
-        "sdk_available":   sdk_available(),
-        "clinical_model":  _CLINICAL_MODEL,
-        "chat_model":      _CHAT_MODEL,
-        "cost":            "free tier (1500 req/day, 15 req/min)",
+        "name": "gemini",
+        "type": "cloud",
+        "source": "aistudio.google.com",
+        "configured": is_configured(),
+        "sdk_available": sdk_available(),
+        "clinical_model": _CLINICAL_MODEL,
+        "chat_model": _CHAT_MODEL,
+        "cost": "free tier (1500 req/day, 15 req/min)",
     }

@@ -36,7 +36,9 @@ class DuplicateDetector:
                     if lines >= self.min_lines:
                         code_hash = self._hash_node(node)
                         if code_hash:
-                            blocks[code_hash].append((str(py_file.relative_to(self.project_root)), node.lineno))
+                            blocks[code_hash].append(
+                                (str(py_file.relative_to(self.project_root)), node.lineno)
+                            )
 
         duplicates = []
         for code_hash, locations in blocks.items():
@@ -47,7 +49,7 @@ class DuplicateDetector:
                     try:
                         content = fp.read_text().split("\n")
                         start = locations[0][1]
-                        lines_of_code = len(content[start:start + 20])
+                        lines_of_code = len(content[start : start + 20])
                     except Exception:
                         lines_of_code = 0
                 duplicates.append(
@@ -85,15 +87,26 @@ class DeadCodeDetector:
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     name = node.name
                     refs = defined.get(name, [])
-                    is_defined_here = [r for r in refs if r[0] == str(py_file.relative_to(self.project_root))]
-                    is_used_elsewhere = [r for r in refs if r[0] != str(py_file.relative_to(self.project_root))]
-                    if len(is_defined_here) == 1 and not is_used_elsewhere and not name.startswith("test_") and not name.startswith("__"):
-                        dead.append({
-                            "file": str(py_file.relative_to(self.project_root)),
-                            "line": node.lineno,
-                            "name": name,
-                            "type": "unused_function",
-                        })
+                    is_defined_here = [
+                        r for r in refs if r[0] == str(py_file.relative_to(self.project_root))
+                    ]
+                    is_used_elsewhere = [
+                        r for r in refs if r[0] != str(py_file.relative_to(self.project_root))
+                    ]
+                    if (
+                        len(is_defined_here) == 1
+                        and not is_used_elsewhere
+                        and not name.startswith("test_")
+                        and not name.startswith("__")
+                    ):
+                        dead.append(
+                            {
+                                "file": str(py_file.relative_to(self.project_root)),
+                                "line": node.lineno,
+                                "name": name,
+                                "type": "unused_function",
+                            }
+                        )
         return dead
 
     def _collect_definitions(self) -> dict[str, list[tuple[str, int]]]:
@@ -107,5 +120,7 @@ class DeadCodeDetector:
                 continue
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    defs[node.name].append((str(py_file.relative_to(self.project_root)), node.lineno))
+                    defs[node.name].append(
+                        (str(py_file.relative_to(self.project_root)), node.lineno)
+                    )
         return defs

@@ -75,7 +75,8 @@ class TestChaosDIContainer:
 
 
 class TestChaosEventBus:
-    def test_survives_handler_exception(self, kernel: Kernel, event_bus: EventBus):
+    def test_survives_handler_exception(self, kernel: Kernel):
+        event_bus = EventBus(kernel)
         received = []
 
         def failing_handler(event):
@@ -92,7 +93,8 @@ class TestChaosEventBus:
             pass
         assert len(received) == 1
 
-    def test_survives_massive_event_load(self, kernel: Kernel, event_bus: EventBus):
+    def test_survives_massive_event_load(self, kernel: Kernel):
+        event_bus = EventBus(kernel)
         count = 0
 
         def handler(event):

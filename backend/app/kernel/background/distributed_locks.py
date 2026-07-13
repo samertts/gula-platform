@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
-import uuid
-from typing import Dict, Optional, Set
 
 logger = logging.getLogger("gula.kernel.background.locks")
 

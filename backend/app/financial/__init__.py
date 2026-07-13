@@ -24,9 +24,9 @@ Until those modules exist, NOTHING imports this package, and the engine has
 zero runtime impact on the production monolith.
 """
 
-from app.config import ENABLE_FINANCIAL_ENGINE, ENABLE_ADS
+from app.config import ENABLE_ADS, ENABLE_FINANCIAL_ENGINE
 
-__all__ = ["ENABLE_FINANCIAL_ENGINE", "ENABLE_ADS", "is_enabled", "ads_enabled"]
+__all__ = ["ENABLE_ADS", "ENABLE_FINANCIAL_ENGINE", "ads_enabled", "is_enabled"]
 
 
 def is_enabled() -> bool:

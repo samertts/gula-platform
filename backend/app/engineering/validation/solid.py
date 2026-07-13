@@ -55,7 +55,11 @@ class SOLIDValidator:
 
     def _check_open_closed(self, file: Path, cls: ast.ClassDef) -> None:
         for node in cls.body:
-            if isinstance(node, ast.FunctionDef) and node.name.startswith("__") and "type" in node.name.lower():
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name.startswith("__")
+                and "type" in node.name.lower()
+            ):
                 for child in ast.walk(node):
                     if isinstance(child, ast.If):
                         for if_node in ast.walk(child):
@@ -89,13 +93,12 @@ class SOLIDValidator:
 
     def _check_interface_segregation(self, file: Path, cls: ast.ClassDef) -> None:
         for node in cls.body:
-            if isinstance(node, ast.FunctionDef):
-                if any(
-                    isinstance(n, ast.Raise) and "raise" in ast.dump(n)
-                    for n in ast.walk(node)
-                    if isinstance(n, ast.Raise)
-                ):
-                    pass  # Too noisy to flag every raise
+            if isinstance(node, ast.FunctionDef) and any(
+                isinstance(n, ast.Raise) and "raise" in ast.dump(n)
+                for n in ast.walk(node)
+                if isinstance(n, ast.Raise)
+            ):
+                pass  # Too noisy to flag every raise
 
     def _check_dependency_inversion(self, file: Path, cls: ast.ClassDef) -> None:
         for node in cls.body:

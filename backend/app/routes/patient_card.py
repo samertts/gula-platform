@@ -15,6 +15,7 @@ Security invariants enforced here:
 - Every card view, scan, and history fetch is written to the audit log.
 - Rate limits cap abuse at 60 requests/min/user (history is heavier — 30/min).
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -37,17 +38,18 @@ from ..services.patient_card import (
     verify_card_token,
 )
 
-
 router = APIRouter(prefix="/patient-card", tags=["patient-card"])
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
+
 
 class ScanRequest(BaseModel):
     token: str = Field(..., min_length=10, max_length=200)
 
 
 # ── Card retrieval ───────────────────────────────────────────────────────────
+
 
 @router.get("/{patient_id}")
 def get_patient_card(
@@ -59,9 +61,7 @@ def get_patient_card(
     """Return the patient card payload + a freshly-signed QR token."""
     rate_limit_user(request, current_user.id, max_per_minute=60)
 
-    patient = lookup_patient_for_lab(
-        db, patient_id=patient_id, lab_id=current_user.lab_id
-    )
+    patient = lookup_patient_for_lab(db, patient_id=patient_id, lab_id=current_user.lab_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -96,9 +96,7 @@ def get_patient_card_qr(
     intercepted image with an expired token cannot be reused indefinitely."""
     rate_limit_user(request, current_user.id, max_per_minute=60)
 
-    patient = lookup_patient_for_lab(
-        db, patient_id=patient_id, lab_id=current_user.lab_id
-    )
+    patient = lookup_patient_for_lab(db, patient_id=patient_id, lab_id=current_user.lab_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -108,6 +106,7 @@ def get_patient_card_qr(
 
 
 # ── Scan ─────────────────────────────────────────────────────────────────────
+
 
 @router.post("/scan")
 def scan_patient_card(
@@ -155,9 +154,7 @@ def scan_patient_card(
         db.commit()
         raise HTTPException(status_code=403, detail="Card belongs to a different lab")
 
-    patient = lookup_patient_for_lab(
-        db, patient_id=patient_id, lab_id=current_user.lab_id
-    )
+    patient = lookup_patient_for_lab(db, patient_id=patient_id, lab_id=current_user.lab_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -177,6 +174,7 @@ def scan_patient_card(
 
 # ── Full history ─────────────────────────────────────────────────────────────
 
+
 @router.get("/{patient_id}/history")
 def get_patient_full_history(
     patient_id: int,
@@ -188,9 +186,7 @@ def get_patient_full_history(
     """Aggregate the patient's full visit/result timeline within the lab."""
     rate_limit_user(request, current_user.id, max_per_minute=30)
 
-    patient = lookup_patient_for_lab(
-        db, patient_id=patient_id, lab_id=current_user.lab_id
-    )
+    patient = lookup_patient_for_lab(db, patient_id=patient_id, lab_id=current_user.lab_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -280,9 +276,7 @@ def get_patient_card_print(
 
     rate_limit_user(request, current_user.id, max_per_minute=30)
 
-    patient = lookup_patient_for_lab(
-        db, patient_id=patient_id, lab_id=current_user.lab_id
-    )
+    patient = lookup_patient_for_lab(db, patient_id=patient_id, lab_id=current_user.lab_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 

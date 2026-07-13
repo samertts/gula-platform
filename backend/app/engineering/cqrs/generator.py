@@ -25,8 +25,8 @@ class CQRSGenerator(BaseGenerator):
         if spec is None:
             spec = CQRSSpec(name=kwargs.get("name", "unnamed"))
 
-        module = spec.name.lower()
-        Mod = spec.name[0].upper() + spec.name[1:]
+        spec.name.lower()
+        spec.name[0].upper() + spec.name[1:]
 
         self._ensure_dir("commands")
         self._ensure_dir("queries")
@@ -37,7 +37,9 @@ class CQRSGenerator(BaseGenerator):
 
         for cmd in spec.commands:
             Cmd = cmd[0].upper() + cmd[1:]
-            self._write(f"commands/{cmd}.py", f"""from __future__ import annotations
+            self._write(
+                f"commands/{cmd}.py",
+                f"""from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -45,10 +47,13 @@ from dataclasses import dataclass
 @dataclass
 class {Cmd}Command:
     pass
-""")
+""",
+            )
 
             if spec.command_handlers:
-                self._write(f"handlers/{cmd}_handler.py", f"""from __future__ import annotations
+                self._write(
+                    f"handlers/{cmd}_handler.py",
+                    f"""from __future__ import annotations
 
 from commands.{cmd} import {Cmd}Command
 
@@ -56,11 +61,14 @@ from commands.{cmd} import {Cmd}Command
 class {Cmd}CommandHandler:
     async def handle(self, command: {Cmd}Command) -> None:
         pass
-""")
+""",
+                )
 
         for qry in spec.queries:
             Qry = qry[0].upper() + qry[1:]
-            self._write(f"queries/{qry}.py", f"""from __future__ import annotations
+            self._write(
+                f"queries/{qry}.py",
+                f"""from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
@@ -74,10 +82,13 @@ class {Qry}Query:
 @dataclass
 class {Qry}Result:
     data: Any = None
-""")
+""",
+            )
 
             if spec.query_handlers:
-                self._write(f"handlers/{qry}_handler.py", f"""from __future__ import annotations
+                self._write(
+                    f"handlers/{qry}_handler.py",
+                    f"""from __future__ import annotations
 
 from queries.{qry} import {Qry}Query, {Qry}Result
 
@@ -85,10 +96,13 @@ from queries.{qry} import {Qry}Query, {Qry}Result
 class {Qry}QueryHandler:
     async def handle(self, query: {Qry}Query) -> {Qry}Result:
         return {Qry}Result()
-""")
+""",
+                )
 
         if spec.bus:
-            self._write("bus.py", f"""from __future__ import annotations
+            self._write(
+                "bus.py",
+                """from __future__ import annotations
 
 from typing import Any, Callable
 
@@ -98,7 +112,7 @@ from handlers import *
 
 
 class CommandBus:
-    _handlers: dict[type, Callable] = {{}}
+    _handlers: dict[type, Callable] = {}
 
     @classmethod
     def register(cls, command_type: type, handler: Callable) -> None:
@@ -107,12 +121,12 @@ class CommandBus:
     async def dispatch(self, command: Any) -> Any:
         handler = self._handlers.get(type(command))
         if handler is None:
-            raise ValueError(f"No handler registered for {{type(command).__name__}}")
+            raise ValueError(f"No handler registered for {type(command).__name__}")
         return await handler(command)
 
 
 class QueryBus:
-    _handlers: dict[type, Callable] = {{}}
+    _handlers: dict[type, Callable] = {}
 
     @classmethod
     def register(cls, query_type: type, handler: Callable) -> None:
@@ -121,12 +135,15 @@ class QueryBus:
     async def ask(self, query: Any) -> Any:
         handler = self._handlers.get(type(query))
         if handler is None:
-            raise ValueError(f"No handler registered for {{type(query).__name__}}")
+            raise ValueError(f"No handler registered for {type(query).__name__}")
         return await handler(query)
-""")
+""",
+            )
 
         if spec.decorators:
-            self._write("decorators.py", f"""from __future__ import annotations
+            self._write(
+                "decorators.py",
+                """from __future__ import annotations
 
 import functools
 from typing import Any, Callable, TypeVar
@@ -152,6 +169,7 @@ def query_handler(query_type: type) -> Callable[[F], F]:
         wrapper._query_type = query_type
         return wrapper
     return decorator
-""")
+""",
+            )
 
         return self._result

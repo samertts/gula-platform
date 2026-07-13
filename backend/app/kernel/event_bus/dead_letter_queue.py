@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 
 from backend.app.kernel.event_bus.events import Event
 
@@ -20,6 +18,7 @@ class DeadLetterEntry:
     def __post_init__(self):
         if not self.failed_at:
             import time
+
             self.failed_at = time.time()
 
 

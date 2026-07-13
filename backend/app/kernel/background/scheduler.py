@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING
 
 from backend.app.kernel.background.cron import CronEngine
+from backend.app.kernel.background.distributed_locks import DistributedLockManager
+from backend.app.kernel.background.job_retry import JobRetry
+from backend.app.kernel.background.priority_queue import PriorityQueue
 from backend.app.kernel.background.task_queue import TaskQueue
 from backend.app.kernel.background.worker_pool import WorkerPool
-from backend.app.kernel.background.job_retry import JobRetry
-from backend.app.kernel.background.distributed_locks import DistributedLockManager
-from backend.app.kernel.background.priority_queue import PriorityQueue
 
 if TYPE_CHECKING:
     from backend.app.kernel import Kernel

@@ -6,18 +6,22 @@ GET /metrics/prom   — Prometheus text format (Bearer token or no-auth in dev)
 The JSON endpoint now uses SQL aggregate queries (no more Python-loop over all
 orders) — constant-time regardless of data volume.
 """
+
 import time
-from datetime import datetime, date, timezone
+from datetime import date, datetime
+
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import PlainTextResponse
-from sqlalchemy import text, func, case
+from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session
 
-from ..database import get_db
-from ..models.lab_user import LabUser
-from ..models.lab_order import LabOrder
-from ..security.dependencies import get_current_user
+from app._compat import UTC
+
 from ..config import IS_PRODUCTION
+from ..database import get_db
+from ..models.lab_order import LabOrder
+from ..models.lab_user import LabUser
+from ..security.dependencies import get_current_user
 
 router = APIRouter(tags=["metrics"])
 
@@ -53,6 +57,7 @@ def _ping_db_detail() -> tuple[str, float]:
     status: 'ok' | 'refused' | 'auth_failed' | 'timeout' | 'error'
     """
     from ..database import check_db_connection_detail
+
     t0 = time.perf_counter()
     status, _ = check_db_connection_detail()
     ms = round((time.perf_counter() - t0) * 1000, 1)
@@ -62,6 +67,7 @@ def _ping_db_detail() -> tuple[str, float]:
 def _ping_redis() -> tuple[bool, float]:
     try:
         from ..security.redis_client import cache
+
         t0 = time.perf_counter()
         cache.ping()
         return True, round((time.perf_counter() - t0) * 1000, 1)
@@ -75,32 +81,27 @@ def _order_stats(db: Session, lab_id: int | None) -> dict:
 
     q = db.query(
         func.count(LabOrder.id).label("total"),
+        func.count(case((func.date(LabOrder.created_at) == today, LabOrder.id))).label("today"),
+        func.count(case((LabOrder.status == "validated", LabOrder.id))).label("validated_total"),
         func.count(
-            case((func.date(LabOrder.created_at) == today, LabOrder.id))
-        ).label("today"),
-        func.count(
-            case((LabOrder.status == "validated", LabOrder.id))
-        ).label("validated_total"),
-        func.count(
-            case((
-                (LabOrder.status == "validated") &
-                (func.date(LabOrder.validated_at) == today),
-                LabOrder.id,
-            ))
+            case(
+                (
+                    (LabOrder.status == "validated") & (func.date(LabOrder.validated_at) == today),
+                    LabOrder.id,
+                )
+            )
         ).label("validated_today"),
-        func.count(
-            case((LabOrder.status == "pending", LabOrder.id))
-        ).label("pending"),
+        func.count(case((LabOrder.status == "pending", LabOrder.id))).label("pending"),
     )
     if lab_id is not None:
         q = q.filter(LabOrder.lab_id == lab_id)
     row = q.one()
     return {
-        "orders_total":    row.total,
-        "orders_today":    row.today,
+        "orders_total": row.total,
+        "orders_today": row.today,
         "validated_total": row.validated_total,
         "validated_today": row.validated_today,
-        "pending":         row.pending,
+        "pending": row.pending,
     }
 
 
@@ -116,21 +117,21 @@ def get_metrics(
     - Everyone else: scoped to their lab_id
     """
     db_status, db_ms = _ping_db_detail()
-    red_ok, red_ms   = _ping_redis()
+    red_ok, red_ms = _ping_redis()
 
     is_wide = current_user.role in _WIDE_ROLES
     stats = _order_stats(db, lab_id=None if is_wide else current_user.lab_id)
     uptime_s = int(time.time() - _START)
 
     return {
-        "uptime_s":   uptime_s,
-        "uptime_h":   round(uptime_s / 3600, 2),
-        "memory_mb":  _rss_mb(),
-        "db":         {"status": db_status, "ok": db_status == "ok", "ping_ms": db_ms},
-        "redis":      {"ok": red_ok, "ping_ms": red_ms},
-        "stats":      stats,
-        "scope":      "platform" if is_wide else "lab",
-        "timestamp":  datetime.now(timezone.utc).isoformat(),
+        "uptime_s": uptime_s,
+        "uptime_h": round(uptime_s / 3600, 2),
+        "memory_mb": _rss_mb(),
+        "db": {"status": db_status, "ok": db_status == "ok", "ping_ms": db_ms},
+        "redis": {"ok": red_ok, "ping_ms": red_ms},
+        "stats": stats,
+        "scope": "platform" if is_wide else "lab",
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -149,13 +150,14 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     Open (no auth) in development so Prometheus can scrape without credentials.
     """
     import os
+
     token = os.getenv("METRICS_BEARER_TOKEN", "")
     if token and IS_PRODUCTION:
         auth = request.headers.get("Authorization", "")
         if auth != f"Bearer {token}":
             return Response(status_code=401, content="Unauthorized")
 
-    db_ok, db_ms   = _ping_db(db)
+    db_ok, db_ms = _ping_db(db)
     red_ok, red_ms = _ping_redis()
     rss = _rss_mb()
     uptime_s = int(time.time() - _START)
@@ -169,13 +171,14 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     # Outbox queue backlog (undelivered async events)
     queue_backlog = 0
     try:
-        from ..models.outbox import OutboxEvent  # noqa: F811
         from ..database import SessionLocal
+        from ..models.outbox import OutboxEvent
+
         _db2 = SessionLocal()
         try:
-            queue_backlog = _db2.query(OutboxEvent).filter(
-                OutboxEvent.processed_at.is_(None)
-            ).count()
+            queue_backlog = (
+                _db2.query(OutboxEvent).filter(OutboxEvent.processed_at.is_(None)).count()
+            )
         finally:
             _db2.close()
     except Exception:
@@ -228,6 +231,7 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
 
     try:
         from ..main import ConcurrencyLimitMiddleware
+
         lines.append(f"gula_active_requests {ConcurrencyLimitMiddleware._active}")
     except Exception:
         lines.append("gula_active_requests 0")
@@ -240,6 +244,7 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     #   timeout > N     → WARNING  (DB overloaded)
     try:
         from ..database import get_db_error_counts
+
         ec = get_db_error_counts()
         lines += [
             "",
@@ -267,6 +272,7 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     # enabling ratio-based Prometheus alerts that ignore ancient history.
     try:
         from ..database import get_db_window_snapshot
+
         win = get_db_window_snapshot(window_s=300)
         total_events = max(win["ok"] + win["refused"] + win["timeout"], 1)
         lines += [
@@ -289,6 +295,7 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     # ── Control Layer metrics ────────────────────────────────────────────────
     try:
         from ..core.policy_engine import policy_engine
+
         ps = policy_engine.stats()
         lines += [
             "",
@@ -305,6 +312,7 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
 
     try:
         from ..core.auto_repair import auto_repair
+
         total_repairs = sum(v["triggered"] for v in auto_repair.stats().values())
         lines += [
             "",
@@ -318,6 +326,7 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     try:
         from ..core.kill_switch import is_kill_switch_active
         from ..core.self_healing import health as _sh
+
         lines += [
             "",
             "# HELP gula_kill_switch_active Kill switch state (1=active, 0=inactive)",

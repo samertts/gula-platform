@@ -17,6 +17,7 @@ should not block an HTTP request. Raising loudly when an API process touches
 them surfaces accidental coupling immediately instead of silently degrading
 request latency.
 """
+
 from __future__ import annotations
 
 import logging
@@ -75,13 +76,15 @@ def install_edge_access_guard(engine) -> None:
         return
 
     @event.listens_for(engine, "before_cursor_execute")
-    def _block_edge_access(conn, cursor, statement, parameters, context, executemany):  # noqa: D401
+    def _block_edge_access(conn, cursor, statement, parameters, context, executemany):
         offender = _statement_touches_edge_table(statement)
         if offender is None:
             return
         logger.error(
             "Runtime isolation violation: %s touched in RUNTIME_MODE=%s — statement=%r",
-            offender, RUNTIME_MODE, statement[:200],
+            offender,
+            RUNTIME_MODE,
+            statement[:200],
         )
         raise RuntimeIsolationError(
             f"Access to {offender} is forbidden outside the worker runtime "

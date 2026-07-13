@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from typing import TYPE_CHECKING, Any
-
-from backend.app.kernel.exceptions import KernelError
 
 if TYPE_CHECKING:
     from backend.app.kernel import Kernel
@@ -43,19 +40,16 @@ class Bootloader:
     async def _phase_validate_environment(self) -> None:
         logger.info("Boot phase: validate environment")
         self._start_time = time.monotonic()
-        import sys
 
-        if sys.version_info < (3, 10):
-            raise RuntimeError("Python 3.10+ required")
         self._boot_sequence.append(("validate_environment", time.monotonic()))
 
     async def _phase_initialize_core_components(self) -> None:
         logger.info("Boot phase: initialize core components")
-        from backend.app.kernel.runtime.lifecycle import LifecycleManager
+        from backend.app.kernel.runtime.capability_registry import CapabilityRegistry
         from backend.app.kernel.runtime.context import ApplicationContext
         from backend.app.kernel.runtime.di_container import DIContainer
+        from backend.app.kernel.runtime.lifecycle import LifecycleManager
         from backend.app.kernel.runtime.service_registry import ServiceRegistry
-        from backend.app.kernel.runtime.capability_registry import CapabilityRegistry
 
         context = ApplicationContext(self.kernel)
         self.kernel.register_component("application_context", context)

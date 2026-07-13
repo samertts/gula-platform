@@ -17,30 +17,30 @@ Risk factors:
   - Reversibility (irreversible adds +2)
   - Recency (last similar action < 5min adds +1)
 """
+
 from __future__ import annotations
 
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger("gula.risk")
 
 
 @dataclass
 class RiskAssessment:
-    score:       int              # 0–10
-    level:       str              # "low" | "medium" | "high" | "critical"
-    factors:     list[str]        # human-readable breakdown
-    action:      str
-    recommended: str              # "allow" | "warn" | "block"
+    score: int  # 0–10
+    level: str  # "low" | "medium" | "high" | "critical"
+    factors: list[str]  # human-readable breakdown
+    action: str
+    recommended: str  # "allow" | "warn" | "block"
 
     def to_dict(self) -> dict:
         return {
-            "score":       self.score,
-            "level":       self.level,
-            "factors":     self.factors,
-            "action":      self.action,
+            "score": self.score,
+            "level": self.level,
+            "factors": self.factors,
+            "action": self.action,
             "recommended": self.recommended,
         }
 
@@ -51,7 +51,7 @@ _recent_actions: dict[str, float] = {}  # action_type → last_ts
 
 def compute_risk(
     action: str,
-    context: Optional[dict] = None,
+    context: dict | None = None,
 ) -> RiskAssessment:
     """
     Compute risk score for an action.
@@ -64,9 +64,9 @@ def compute_risk(
       frequency:      int  — how many times in the last hour
       dry_run:        bool — simulation only
     """
-    ctx      = context or {}
-    score    = 0
-    factors  = []
+    ctx = context or {}
+    score = 0
+    factors = []
 
     env = ctx.get("env", "production")
 
@@ -110,7 +110,7 @@ def compute_risk(
     last_ts = _recent_actions.get(action, 0)
     if last_ts and (time.time() - last_ts) < 300:
         score += 1
-        factors.append(f"+1 repeated within 5 min")
+        factors.append("+1 repeated within 5 min")
     _recent_actions[action] = time.time()
 
     # ── Clamp and classify ───────────────────────────────────────────────────
@@ -137,6 +137,11 @@ def compute_risk(
 
 def assess_repair(repair_name: str, env: str = "production", frequency: int = 0) -> RiskAssessment:
     """Quick scorer for auto_repair actions."""
-    return compute_risk("auto_repair." + repair_name, {
-        "env": env, "reversible": True, "frequency": frequency,
-    })
+    return compute_risk(
+        "auto_repair." + repair_name,
+        {
+            "env": env,
+            "reversible": True,
+            "frequency": frequency,
+        },
+    )

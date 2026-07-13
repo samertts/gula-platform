@@ -5,7 +5,6 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 
 @dataclass
@@ -35,7 +34,9 @@ class CHANGELOGAutomator:
     def __init__(self, project_root: Path | str):
         self.project_root = Path(project_root)
 
-    def generate_from_git(self, since_tag: str | None = None, output_path: str = "CHANGELOG.md") -> list[ChangelogEntry]:
+    def generate_from_git(
+        self, since_tag: str | None = None, output_path: str = "CHANGELOG.md"
+    ) -> list[ChangelogEntry]:
         entries = self._parse_git_log(since_tag)
         content = self._format_changelog(entries)
         path = Path(output_path)
@@ -52,7 +53,9 @@ class CHANGELOGAutomator:
             entries = self._parse_git_log()
         return self._format_changelog(entries)
 
-    def write(self, entries: list[ChangelogEntry] | None = None, output_path: str = "CHANGELOG.md") -> None:
+    def write(
+        self, entries: list[ChangelogEntry] | None = None, output_path: str = "CHANGELOG.md"
+    ) -> None:
         content = self.generate(entries)
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,7 +81,12 @@ class CHANGELOGAutomator:
                 if not line or "|" not in line:
                     continue
                 parts = line.split("|", 3)
-                sha, msg, author, date = parts[0], parts[1], parts[2], parts[3] if len(parts) > 3 else ""
+                sha, msg, author, date = (
+                    parts[0],
+                    parts[1],
+                    parts[2],
+                    parts[3] if len(parts) > 3 else "",
+                )
 
                 entry = self._parse_commit_message(msg)
                 entry.sha = sha[:8]
@@ -190,7 +198,7 @@ class ADRAutomator:
         if not decisions:
             return
 
-        content = f"""# Architecture Decision Log
+        content = """# Architecture Decision Log
 
 This log lists architectural decisions for the project.
 
@@ -216,9 +224,7 @@ class ReleaseNotesAutomator:
         self.project_root = Path(project_root)
 
     def generate(self, version: str, previous_version: str | None = None) -> ReleaseNote:
-        entries = CHANGELOGAutomator(self.project_root)._parse_git_log(
-            since_tag=previous_version
-        )
+        entries = CHANGELOGAutomator(self.project_root)._parse_git_log(since_tag=previous_version)
 
         note = ReleaseNote(
             version=version,

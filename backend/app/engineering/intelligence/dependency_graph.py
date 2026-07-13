@@ -24,7 +24,11 @@ class DependencyGraphGenerator:
         graph: dict[str, DependencyNode] = {}
 
         for py_file in sorted(self.project_root.rglob("*.py")):
-            if "test" in py_file.parts or "__pycache__" in py_file.parts or ".venv" in py_file.parts:
+            if (
+                "test" in py_file.parts
+                or "__pycache__" in py_file.parts
+                or ".venv" in py_file.parts
+            ):
                 continue
             relative = str(py_file.relative_to(self.project_root))
             if relative not in graph:
@@ -52,7 +56,7 @@ class DependencyGraphGenerator:
             for imp in node.imports:
                 imp_path = imp.replace(".", "/") + ".py"
                 for other_name in graph:
-                    if other_name.endswith(imp_path) or other_name.endswith(imp + "/__init__.py"):
+                    if other_name.endswith((imp_path, imp + "/__init__.py")):
                         if name not in graph[other_name].imported_by:
                             graph[other_name].imported_by.append(name)
 
@@ -86,8 +90,10 @@ class DependencyGraphGenerator:
             for imp in node.imports[:5]:
                 imp_path = imp.replace(".", "/") + ".py"
                 for other_name in graph:
-                    if other_name.endswith(imp_path) or other_name.endswith(imp + "/__init__.py"):
-                        safe_other = other_name.replace("-", "_").replace(".", "_").replace("/", "_")
+                    if other_name.endswith((imp_path, imp + "/__init__.py")):
+                        safe_other = (
+                            other_name.replace("-", "_").replace(".", "_").replace("/", "_")
+                        )
                         lines.append(f"    {safe_name} --> {safe_other}\n")
                         break
         lines.append("```\n")
@@ -102,7 +108,7 @@ class DependencyGraphGenerator:
             for imp in node.imports:
                 imp_path = imp.replace(".", "/") + ".py"
                 for other_name in graph:
-                    if other_name.endswith(imp_path) or other_name.endswith(imp + "/__init__.py"):
+                    if other_name.endswith((imp_path, imp + "/__init__.py")):
                         adj[name].append(other_name)
                         break
 

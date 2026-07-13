@@ -7,22 +7,24 @@ All queries are scoped to the requesting lab's tenant (lab_id isolation).
 Redis caching: 5-minute TTL for trend data (heavy aggregation queries).
 Cache key format: stats:{lab_id}:{endpoint}:{params_hash}
 """
+
 import hashlib
 import json
 import logging
 import os
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, case, and_, text
+from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session
+
+from app._compat import UTC
 
 from ..database import get_db
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
-from ..models.patient import Patient
 from ..models.lab_user import LabUser
+from ..models.patient import Patient
 from ..security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.stats")
@@ -38,6 +40,7 @@ def _get_redis():
     """Return a Redis client or None if Redis is not configured."""
     try:
         import redis as _redis
+
         url = os.getenv("REDIS_URL") or os.getenv("REDIS_URI")
         if not url:
             host = os.getenv("REDIS_HOST", "localhost")
@@ -49,7 +52,7 @@ def _get_redis():
         return None
 
 
-def _cache_get(key: str) -> Optional[dict]:
+def _cache_get(key: str) -> dict | None:
     r = _get_redis()
     if not r:
         return None
@@ -79,6 +82,7 @@ def _cache_key(lab_id: int, endpoint: str, **params) -> str:
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
+
 @router.get("/trends/daily")
 def daily_trends(
     days: int = Query(30, ge=1, le=365, description="Number of past days to include"),
@@ -96,15 +100,14 @@ def daily_trends(
     if cached:
         return cached
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     # PostgreSQL-specific time-zone aware DATE grouping.
     # Falls back to empty series on SQLite (used in unit tests) — production
     # always runs PostgreSQL so the real query always executes there.
     try:
-        rows = (
-            db.execute(
-                text("""
+        rows = db.execute(
+            text("""
                     SELECT
                         DATE(lo.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad') AS day,
                         COUNT(DISTINCT lo.id)          AS orders,
@@ -118,10 +121,8 @@ def daily_trends(
                     GROUP BY day
                     ORDER BY day ASC
                 """),
-                {"lab_id": lab_id, "cutoff": cutoff},
-            )
-            .fetchall()
-        )
+            {"lab_id": lab_id, "cutoff": cutoff},
+        ).fetchall()
         series = [
             {
                 "date": str(r[0]),
@@ -133,7 +134,9 @@ def daily_trends(
             for r in rows
         ]
     except Exception:
-        logger.debug("daily_trends: raw SQL unsupported on this DB dialect — returning empty series")
+        logger.debug(
+            "daily_trends: raw SQL unsupported on this DB dialect — returning empty series"
+        )
         series = []
 
     result = {"days": days, "series": series, "data_points": len(series)}
@@ -158,7 +161,7 @@ def test_frequency(
     if cached:
         return cached
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     rows = (
         db.query(
@@ -166,7 +169,9 @@ def test_frequency(
             func.count(LabResult.id).label("count"),
             func.avg(LabResult.value).label("avg_value"),
             func.count(case((LabResult.flag == "critical", LabResult.id))).label("critical_count"),
-            func.count(case((LabResult.flag.in_(["H", "L", "critical"]), LabResult.id))).label("abnormal_count"),
+            func.count(case((LabResult.flag.in_(["H", "L", "critical"]), LabResult.id))).label(
+                "abnormal_count"
+            ),
         )
         .join(LabOrder)
         .filter(
@@ -212,7 +217,7 @@ def flag_distribution(
     if cached:
         return cached
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     rows = (
         db.query(
@@ -262,13 +267,12 @@ def patient_growth(
     if cached:
         return cached
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     # PostgreSQL-specific DATE_TRUNC — falls back to empty series on SQLite.
     try:
-        rows = (
-            db.execute(
-                text("""
+        rows = db.execute(
+            text("""
                     SELECT
                         DATE_TRUNC('week', created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad') AS week_start,
                         COUNT(*) AS new_patients
@@ -278,14 +282,14 @@ def patient_growth(
                     GROUP BY week_start
                     ORDER BY week_start ASC
                 """),
-                {"lab_id": lab_id, "cutoff": cutoff},
-            )
-            .fetchall()
-        )
+            {"lab_id": lab_id, "cutoff": cutoff},
+        ).fetchall()
         series = [{"week_start": str(r[0]), "new_patients": r[1]} for r in rows]
         total_new = sum(r[1] for r in rows)
     except Exception:
-        logger.debug("patient_growth: raw SQL unsupported on this DB dialect — returning empty series")
+        logger.debug(
+            "patient_growth: raw SQL unsupported on this DB dialect — returning empty series"
+        )
         series = []
         total_new = 0
 
@@ -313,7 +317,7 @@ def stats_summary(
     if cached:
         return cached
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=today_start.weekday())
     month_start = today_start.replace(day=1)
@@ -321,29 +325,37 @@ def stats_summary(
     total_patients = db.query(func.count(Patient.id)).filter(Patient.lab_id == lab_id).scalar() or 0
     total_orders = db.query(func.count(LabOrder.id)).filter(LabOrder.lab_id == lab_id).scalar() or 0
     total_tests = (
-        db.query(func.count(LabResult.id))
-        .join(LabOrder)
-        .filter(LabOrder.lab_id == lab_id)
-        .scalar() or 0
+        db.query(func.count(LabResult.id)).join(LabOrder).filter(LabOrder.lab_id == lab_id).scalar()
+        or 0
     )
     total_critical = (
         db.query(func.count(LabResult.id))
         .join(LabOrder)
         .filter(LabOrder.lab_id == lab_id, LabResult.flag == "critical")
-        .scalar() or 0
+        .scalar()
+        or 0
     )
 
-    orders_today = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id, LabOrder.created_at >= today_start
-    ).scalar() or 0
+    orders_today = (
+        db.query(func.count(LabOrder.id))
+        .filter(LabOrder.lab_id == lab_id, LabOrder.created_at >= today_start)
+        .scalar()
+        or 0
+    )
 
-    orders_week = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id, LabOrder.created_at >= week_start
-    ).scalar() or 0
+    orders_week = (
+        db.query(func.count(LabOrder.id))
+        .filter(LabOrder.lab_id == lab_id, LabOrder.created_at >= week_start)
+        .scalar()
+        or 0
+    )
 
-    orders_month = db.query(func.count(LabOrder.id)).filter(
-        LabOrder.lab_id == lab_id, LabOrder.created_at >= month_start
-    ).scalar() or 0
+    orders_month = (
+        db.query(func.count(LabOrder.id))
+        .filter(LabOrder.lab_id == lab_id, LabOrder.created_at >= month_start)
+        .scalar()
+        or 0
+    )
 
     critical_today = (
         db.query(func.count(LabResult.id))
@@ -353,7 +365,8 @@ def stats_summary(
             LabResult.flag == "critical",
             LabResult.created_at >= today_start,
         )
-        .scalar() or 0
+        .scalar()
+        or 0
     )
 
     result = {
@@ -392,13 +405,12 @@ def turnaround_times(
     if cached:
         return cached
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     # PostgreSQL-specific PERCENTILE_CONT + EXTRACT EPOCH — falls back on SQLite.
     try:
-        row = (
-            db.execute(
-                text("""
+        row = db.execute(
+            text("""
                     SELECT
                         AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60)  AS avg_minutes,
                         MIN(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60)  AS min_minutes,
@@ -413,10 +425,8 @@ def turnaround_times(
                       AND created_at >= :cutoff
                       AND updated_at > created_at
                 """),
-                {"lab_id": lab_id, "cutoff": cutoff},
-            )
-            .fetchone()
-        )
+            {"lab_id": lab_id, "cutoff": cutoff},
+        ).fetchone()
         result = {
             "days": days,
             "avg_minutes": round(row[0], 1) if row[0] else None,

@@ -15,12 +15,13 @@ Usage (in app/worker.py):
     await worker.run()        # runs until cancelled
     await worker.run_once()   # processes one batch (useful in tests)
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from .queue import _InMemoryQueue, _RedisTaskQueue
 from .registry import get_handler
@@ -38,9 +39,9 @@ class TaskWorker:
         *,
         poll_timeout_s: int = 5,
     ) -> None:
-        self._queue          = queue
+        self._queue = queue
         self._poll_timeout_s = poll_timeout_s
-        self._running        = False
+        self._running = False
 
     # ── Public interface ─────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ class TaskWorker:
         finally:
             self._running = False
 
-    async def run_once(self) -> Optional[TaskResult]:
+    async def run_once(self) -> TaskResult | None:
         """Drain exactly one task (or return None if queue is empty).
 
         Useful for synchronous test scenarios that enqueue a single task and
@@ -115,17 +116,19 @@ class TaskWorker:
 
         except Exception as exc:
             duration_ms = (time.monotonic() - t0) * 1000
-            error_msg   = f"{type(exc).__name__}: {exc}"
+            error_msg = f"{type(exc).__name__}: {exc}"
             logger.warning(
                 "Task %s (%s) failed (attempt %d/%d) — %s",
-                task.task_id, task.type, task.retry_count + 1, task.max_retries, error_msg,
+                task.task_id,
+                task.type,
+                task.retry_count + 1,
+                task.max_retries,
+                error_msg,
             )
             await self._queue.ack(task.task_id)
             return await self._retry_or_dead_letter(task, error_msg)
 
-    async def _retry_or_dead_letter(
-        self, task: TaskPayload, error: str
-    ) -> TaskResult:
+    async def _retry_or_dead_letter(self, task: TaskPayload, error: str) -> TaskResult:
         next_task = task.next_attempt()
         if next_task.exhausted:
             await self._queue.dead_letter(next_task, error)
@@ -136,10 +139,13 @@ class TaskWorker:
                 attempt=next_task.retry_count,
             )
 
-        backoff = min(2.0 ** next_task.retry_count, _MAX_BACKOFF_S)
+        backoff = min(2.0**next_task.retry_count, _MAX_BACKOFF_S)
         logger.info(
             "Task %s retrying in %.0fs (attempt %d/%d)",
-            task.task_id, backoff, next_task.retry_count, task.max_retries,
+            task.task_id,
+            backoff,
+            next_task.retry_count,
+            task.max_retries,
         )
         await asyncio.sleep(backoff)
         await self._queue.enqueue(next_task)

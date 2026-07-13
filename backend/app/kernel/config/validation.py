@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
-
-from backend.app.kernel.exceptions import ConfigurationError
+from typing import Any
 
 logger = logging.getLogger("gula.kernel.config.validation")
 

@@ -2,15 +2,19 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from backend.app.kernel.integration import get_kernel, get_kernel_health, is_kernel_ready, kernel_kill_switch_active
+from backend.app.kernel.integration import (
+    get_kernel,
+    get_kernel_health,
+    is_kernel_ready,
+    kernel_kill_switch_active,
+)
 
 router = APIRouter(prefix="/kernel", tags=["kernel"])
 
 
 @router.get("/status")
 async def kernel_status():
-    health = await get_kernel_health()
-    return health
+    return await get_kernel_health()
 
 
 @router.get("/services")
@@ -37,7 +41,14 @@ async def kernel_capabilities():
         return {"capabilities": []}
     caps = []
     for c in cr.list_capabilities():
-        caps.append({"name": c.name, "version": c.version, "enabled": c.enabled, "description": c.description})
+        caps.append(
+            {
+                "name": c.name,
+                "version": c.version,
+                "enabled": c.enabled,
+                "description": c.description,
+            }
+        )
     return {"capabilities": caps, "count": len(caps)}
 
 
@@ -115,7 +126,9 @@ async def kernel_dead_letter_queue():
         return {"entries": [], "count": 0}
     entries = []
     for entry in eb.dead_letter_queue.list_all():
-        entries.append({"event_id": entry.event.id, "event_name": entry.event.name, "reason": entry.reason})
+        entries.append(
+            {"event_id": entry.event.id, "event_name": entry.event.name, "reason": entry.reason}
+        )
     return {"entries": entries, "count": len(entries)}
 
 
@@ -129,7 +142,9 @@ async def kernel_tenants():
         return {"tenants": [], "count": 0}
     tenants = []
     for t in tr.list_tenants():
-        tenants.append({"id": t.id, "name": t.name, "slug": t.slug, "plan": t.plan, "active": t.active})
+        tenants.append(
+            {"id": t.id, "name": t.name, "slug": t.slug, "plan": t.plan, "active": t.active}
+        )
     return {"tenants": tenants, "count": len(tenants)}
 
 

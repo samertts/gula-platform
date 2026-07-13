@@ -41,16 +41,19 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
+
+from app._compat import StrEnum
 
 logger = logging.getLogger("gula.external_api")
 
 
 # ─── Data Trust Classification ────────────────────────────────────────────────
 
-class DataTrustLevel(str, Enum):
+
+class DataTrustLevel(StrEnum):
     """
     Classifies what a piece of external data may influence.
 
@@ -63,12 +66,14 @@ class DataTrustLevel(str, Enum):
     CRITICAL     — Anything that could influence a clinical decision.
                    ALWAYS blocked from external sources. No exceptions.
     """
-    ENRICHMENT    = "enrichment"
-    NON_CRITICAL  = "non_critical"
-    CRITICAL      = "critical"
+
+    ENRICHMENT = "enrichment"
+    NON_CRITICAL = "non_critical"
+    CRITICAL = "critical"
 
 
 # ─── External Data Result ─────────────────────────────────────────────────────
+
 
 @dataclass
 class ExternalDataResult:
@@ -77,34 +82,37 @@ class ExternalDataResult:
     Callers must inspect ``trust_level`` and ``requires_verification``
     before using the data in any decision.
     """
-    data:                  Any
-    source:                str           # "api" | "cache" | "fallback" | "shadow_blocked"
-    trust_level:           DataTrustLevel
-    gateway:               str
-    action:                str
-    timestamp:             float = field(default_factory=time.time)
-    is_stale:              bool  = False
-    requires_verification: bool  = False
-    cache_age_seconds:     float = 0.0
+
+    data: Any
+    source: str  # "api" | "cache" | "fallback" | "shadow_blocked"
+    trust_level: DataTrustLevel
+    gateway: str
+    action: str
+    timestamp: float = field(default_factory=time.time)
+    is_stale: bool = False
+    requires_verification: bool = False
+    cache_age_seconds: float = 0.0
 
     def as_dict(self) -> dict:
         return {
-            "data":                  self.data,
-            "source":                self.source,
-            "trust_level":           self.trust_level.value,
-            "gateway":               self.gateway,
-            "action":                self.action,
-            "timestamp":             self.timestamp,
-            "is_stale":              self.is_stale,
+            "data": self.data,
+            "source": self.source,
+            "trust_level": self.trust_level.value,
+            "gateway": self.gateway,
+            "action": self.action,
+            "timestamp": self.timestamp,
+            "is_stale": self.is_stale,
             "requires_verification": self.requires_verification,
-            "cache_age_seconds":     self.cache_age_seconds,
+            "cache_age_seconds": self.cache_age_seconds,
         }
 
 
 # ─── Validation ───────────────────────────────────────────────────────────────
 
+
 class ValidationError(ValueError):
     """Raised when an external response fails schema or range checks."""
+
     def __init__(self, reason: str):
         self.reason = reason
         super().__init__(f"External data validation failed: {reason}")
@@ -113,15 +121,16 @@ class ValidationError(ValueError):
 @dataclass
 class FieldRule:
     """Declares one required field and its optional value constraints."""
-    name:        str
-    type:        type
-    required:    bool           = True
-    allowed:     Optional[List] = None   # whitelist of allowed values
-    min_value:   Optional[float] = None
-    max_value:   Optional[float] = None
+
+    name: str
+    type: type
+    required: bool = True
+    allowed: list | None = None  # whitelist of allowed values
+    min_value: float | None = None
+    max_value: float | None = None
 
 
-def validate_schema(data: Any, rules: List[FieldRule], context: str = "") -> None:
+def validate_schema(data: Any, rules: list[FieldRule], context: str = "") -> None:
     """
     Strict schema validator.  Raises ValidationError on the first violation.
     Used by gateways to reject unexpected external shapes before they touch logic.
@@ -163,20 +172,21 @@ def validate_schema(data: Any, rules: List[FieldRule], context: str = "") -> Non
 
 # ─── Circuit Breaker ──────────────────────────────────────────────────────────
 
+
 class CircuitState(Enum):
-    CLOSED    = "closed"
-    OPEN      = "open"
+    CLOSED = "closed"
+    OPEN = "open"
     HALF_OPEN = "half_open"
 
 
 @dataclass
 class CircuitBreaker:
-    failure_threshold: int   = 5
-    recovery_timeout:  float = 60.0
+    failure_threshold: int = 5
+    recovery_timeout: float = 60.0
 
-    _state:             CircuitState = field(default=CircuitState.CLOSED, init=False, repr=False)
-    _failure_count:     int          = field(default=0,   init=False, repr=False)
-    _last_failure_time: float        = field(default=0.0, init=False, repr=False)
+    _state: CircuitState = field(default=CircuitState.CLOSED, init=False, repr=False)
+    _failure_count: int = field(default=0, init=False, repr=False)
+    _last_failure_time: float = field(default=0.0, init=False, repr=False)
 
     @property
     def state(self) -> CircuitState:
@@ -204,6 +214,7 @@ class CircuitBreaker:
 
 # ─── Rate Limiter ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class SlidingWindowRateLimiter:
     calls_per_minute: int = 60
@@ -222,10 +233,11 @@ class SlidingWindowRateLimiter:
 
 # ─── Cache Entry ──────────────────────────────────────────────────────────────
 
+
 @dataclass
 class CacheEntry:
-    value:      Any
-    stored_at:  float  # time.monotonic() at storage time
+    value: Any
+    stored_at: float  # time.monotonic() at storage time
     wall_clock: float  # time.time() at storage time — for freshness display
     expires_at: float  # time.monotonic() deadline
 
@@ -240,6 +252,7 @@ class CacheEntry:
 
 # ─── Errors ───────────────────────────────────────────────────────────────────
 
+
 class ExternalGatewayError(Exception):
     """Raised when an external gateway call fails after all safeguards."""
 
@@ -252,6 +265,7 @@ class ClinicalDataViolation(RuntimeError):
 
 
 # ─── Base Gateway ─────────────────────────────────────────────────────────────
+
 
 class ExternalGateway:
     """
@@ -281,25 +295,23 @@ class ExternalGateway:
     """
 
     # ── Class-level defaults (override in subclasses) ─────────────────────────
-    name:                      str            = "external"
-    trust_level:               DataTrustLevel = DataTrustLevel.NON_CRITICAL
-    timeout:                   float          = 10.0
-    max_retries:               int            = 2
-    calls_per_minute:          int            = 60
-    circuit_failure_threshold: int            = 5
-    circuit_recovery_timeout:  float          = 60.0
-    cache_ttl:                 float          = 300.0
-    stale_threshold:           float          = 60.0   # seconds before "recently cached" becomes "stale"
+    name: str = "external"
+    trust_level: DataTrustLevel = DataTrustLevel.NON_CRITICAL
+    timeout: float = 10.0
+    max_retries: int = 2
+    calls_per_minute: int = 60
+    circuit_failure_threshold: int = 5
+    circuit_recovery_timeout: float = 60.0
+    cache_ttl: float = 300.0
+    stale_threshold: float = 60.0  # seconds before "recently cached" becomes "stale"
 
     def __init__(self) -> None:
         self._circuit = CircuitBreaker(
             failure_threshold=self.circuit_failure_threshold,
             recovery_timeout=self.circuit_recovery_timeout,
         )
-        self._rate_limiter = SlidingWindowRateLimiter(
-            calls_per_minute=self.calls_per_minute
-        )
-        self._cache: Dict[str, CacheEntry] = {}
+        self._rate_limiter = SlidingWindowRateLimiter(calls_per_minute=self.calls_per_minute)
+        self._cache: dict[str, CacheEntry] = {}
 
     # ── Clinical Guard ────────────────────────────────────────────────────────
 
@@ -317,7 +329,7 @@ class ExternalGateway:
 
     # ── Cache helpers ─────────────────────────────────────────────────────────
 
-    def _cache_get(self, key: str) -> Optional[CacheEntry]:
+    def _cache_get(self, key: str) -> CacheEntry | None:
         entry = self._cache.get(key)
         if entry is None:
             return None
@@ -345,17 +357,16 @@ class ExternalGateway:
 
     def _audit(
         self,
-        action:      str,
-        success:     bool,
+        action: str,
+        success: bool,
         duration_ms: float,
-        source:      str = "api",
-        details:     str = "",
+        source: str = "api",
+        details: str = "",
     ) -> None:
         lvl = logging.INFO if success else logging.WARNING
         logger.log(
             lvl,
-            "[EXTERNAL_API] gateway=%s trust=%s action=%s success=%s "
-            "source=%s duration_ms=%.1f%s",
+            "[EXTERNAL_API] gateway=%s trust=%s action=%s success=%s source=%s duration_ms=%.1f%s",
             self.name,
             self.trust_level.value,
             action,
@@ -396,7 +407,7 @@ class ExternalGateway:
 
     def call_shadow(
         self,
-        action:        str,
+        action: str,
         internal_data: Any,
         **call_kwargs: Any,
     ) -> ExternalDataResult:
@@ -411,12 +422,17 @@ class ExternalGateway:
             external = self._do_call(action, **call_kwargs)
             logger.info(
                 "[SHADOW] gateway=%s action=%s external=%r internal=%r",
-                self.name, action, external, internal_data,
+                self.name,
+                action,
+                external,
+                internal_data,
             )
         except Exception as exc:
             logger.warning(
                 "[SHADOW] gateway=%s action=%s external_error=%r",
-                self.name, action, str(exc),
+                self.name,
+                action,
+                str(exc),
             )
 
         return ExternalDataResult(
@@ -432,10 +448,10 @@ class ExternalGateway:
 
     def call(
         self,
-        action:     str,
+        action: str,
         *,
-        cache_key:  Optional[str] = None,
-        fallback:   Optional[Any] = None,
+        cache_key: str | None = None,
+        fallback: Any | None = None,
         **call_kwargs: Any,
     ) -> ExternalDataResult:
         """
@@ -460,10 +476,7 @@ class ExternalGateway:
 
         # 2. Circuit breaker
         if not self._circuit.is_allowed:
-            self._audit(
-                action, False, 0.0, "circuit_open",
-                f"state={self._circuit.state.value}"
-            )
+            self._audit(action, False, 0.0, "circuit_open", f"state={self._circuit.state.value}")
             return self._fallback_result(action, fallback, "circuit_open")
 
         # 3. Cache — return with freshness metadata
@@ -472,8 +485,13 @@ class ExternalGateway:
             if entry is not None:
                 age = entry.age_seconds
                 is_stale = age > self.stale_threshold
-                self._audit(action, True, (time.monotonic() - start) * 1000,
-                            "cache", f"age={age:.0f}s stale={is_stale}")
+                self._audit(
+                    action,
+                    True,
+                    (time.monotonic() - start) * 1000,
+                    "cache",
+                    f"age={age:.0f}s stale={is_stale}",
+                )
                 return ExternalDataResult(
                     data=entry.value,
                     source="cache",
@@ -504,7 +522,9 @@ class ExternalGateway:
             self._audit(action, False, duration_ms, "api", str(exc))
             logger.error(
                 "[EXTERNAL_API] VALIDATION_REJECTED gateway=%s action=%s reason=%s",
-                self.name, action, exc.reason,
+                self.name,
+                action,
+                exc.reason,
             )
             return self._fallback_result(action, fallback, "validation_rejected")
 
@@ -529,9 +549,9 @@ class ExternalGateway:
 
     def _fallback_result(
         self,
-        action:  str,
-        fallback: Optional[Any],
-        source:  str,
+        action: str,
+        fallback: Any | None,
+        source: str,
     ) -> ExternalDataResult:
         if fallback is None:
             raise ExternalGatewayError(

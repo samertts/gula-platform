@@ -11,17 +11,16 @@ Idempotency:
 
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
 from ..models.claim import Claim, ClaimItem
 from ..models.patient import Patient
-from ..models.outbox import OutboxEvent
 from ..services.outbox_service import emit_to_outbox
 
 logger = logging.getLogger("gula.claims")
@@ -29,13 +28,14 @@ logger = logging.getLogger("gula.claims")
 
 # ─── Create ───────────────────────────────────────────────────────────────────
 
+
 def create_claim(
     db: Session,
     lab_id: int,
     patient_id: int,
-    items: List[dict],
-    order_id: Optional[int] = None,
-    idempotency_key: Optional[str] = None,
+    items: list[dict],
+    order_id: int | None = None,
+    idempotency_key: str | None = None,
 ) -> Claim:
     """
     Create a new insurance claim in 'draft' status.
@@ -56,7 +56,9 @@ def create_claim(
             .first()
         )
         if existing:
-            logger.info("[CLAIMS] Idempotent return for key=%s claim_id=%d", idempotency_key, existing.id)
+            logger.info(
+                "[CLAIMS] Idempotent return for key=%s claim_id=%d", idempotency_key, existing.id
+            )
             return existing
 
     # ── Security: verify patient belongs to this lab ──────────────────────────
@@ -88,23 +90,31 @@ def create_claim(
     db.flush()  # get claim.id before adding items
 
     for item in items:
-        db.add(ClaimItem(
-            claim_id=claim.id,
-            test_code=item["test_code"],
-            description=item.get("description"),
-            quantity=int(item.get("quantity", 1)),
-            unit_price=Decimal(str(item["unit_price"])),
-            amount=Decimal(str(item["amount"])),
-        ))
+        db.add(
+            ClaimItem(
+                claim_id=claim.id,
+                test_code=item["test_code"],
+                description=item.get("description"),
+                quantity=int(item.get("quantity", 1)),
+                unit_price=Decimal(str(item["unit_price"])),
+                amount=Decimal(str(item["amount"])),
+            )
+        )
 
     db.commit()
     db.refresh(claim)
-    logger.info("[CLAIMS] Created claim_id=%d lab_id=%d patient_id=%d total=%s",
-                claim.id, lab_id, patient_id, total)
+    logger.info(
+        "[CLAIMS] Created claim_id=%d lab_id=%d patient_id=%d total=%s",
+        claim.id,
+        lab_id,
+        patient_id,
+        total,
+    )
     return claim
 
 
 # ─── Validate ─────────────────────────────────────────────────────────────────
+
 
 def validate_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
     """
@@ -135,7 +145,7 @@ def validate_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
             )
 
     claim.status = "validated"
-    claim.updated_at = datetime.now(timezone.utc)
+    claim.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(claim)
     logger.info("[CLAIMS] Validated claim_id=%d lab_id=%d", claim_id, lab_id)
@@ -143,6 +153,7 @@ def validate_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
 
 
 # ─── Submit ───────────────────────────────────────────────────────────────────
+
 
 def submit_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
     """
@@ -156,7 +167,7 @@ def submit_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
     if claim.status != "validated":
         raise ValueError(f"Claim {claim_id} is in status '{claim.status}', expected 'validated'")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     claim.status = "submitted"
     claim.submitted_at = now
     claim.updated_at = now
@@ -192,11 +203,14 @@ def submit_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
 
     db.commit()
     db.refresh(claim)
-    logger.info("[CLAIMS] Submitted claim_id=%d lab_id=%d total=%s", claim_id, lab_id, claim.total_amount)
+    logger.info(
+        "[CLAIMS] Submitted claim_id=%d lab_id=%d total=%s", claim_id, lab_id, claim.total_amount
+    )
     return claim
 
 
 # ─── Get ──────────────────────────────────────────────────────────────────────
+
 
 def get_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
     """
@@ -207,6 +221,7 @@ def get_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
 
 
 # ─── Internal helpers ─────────────────────────────────────────────────────────
+
 
 def _get_claim_or_raise(db: Session, claim_id: int, lab_id: int) -> Claim:
     """Load claim filtered by lab_id — enforces multi-tenant isolation."""

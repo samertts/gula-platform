@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
 
 logger = logging.getLogger("gula.kernel.startup")
 

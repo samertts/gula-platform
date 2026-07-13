@@ -10,12 +10,26 @@ from __future__ import annotations
 
 from shared.rbac import (
     EXTENDED_ALL_PERMISSIONS as ALL_PERMISSIONS,
+)
+from shared.rbac import (
     EXTENDED_ROLE_LEVELS as ROLE_LEVELS,
+)
+from shared.rbac import (
     EXTENDED_ROLE_PERMISSIONS as ROLE_PERMISSIONS,
+)
+from shared.rbac import (
     EXTENDED_VALID_ROLES as VALID_ROLES,
+)
+from shared.rbac import (
     can_manage_role as _shared_can_manage_role,
+)
+from shared.rbac import (
     get_permissions_for_role as _shared_get_permissions,
+)
+from shared.rbac import (
     get_role_level as _shared_get_role_level,
+)
+from shared.rbac import (
     has_permission_str,
 )
 
@@ -54,6 +68,7 @@ def can_manage_user(actor, target_user) -> bool:
 def require_role(*allowed_roles):
     """FastAPI dependency: require the user to have one of the listed roles."""
     from fastapi import Depends, HTTPException
+
     from .dependencies import get_current_user
 
     def checker(current_user=Depends(get_current_user)):
@@ -65,6 +80,7 @@ def require_role(*allowed_roles):
 
 
 # ── ABAC: Attribute-Based Access Control ──────────────────────────────────────
+
 
 def require_own_lab(current_user, resource_lab_id: int) -> None:
     from fastapi import HTTPException
@@ -86,28 +102,35 @@ def require_own_lab(current_user, resource_lab_id: int) -> None:
 
 def require_feature_for_lab(feature: str, lab_id: int, db) -> None:
     from ..core.feature_flags import require_feature
+
     require_feature(feature, lab_id, db)
 
 
 def assert_lab_within_limit(limit_field: str, current_count: int, lab_id: int, db) -> None:
     from fastapi import HTTPException
+
     from ..models.subscription import LabSubscription
 
-    sub = db.query(LabSubscription).filter(
-        LabSubscription.lab_id == lab_id,
-        LabSubscription.is_active == True,
-    ).first()
+    sub = (
+        db.query(LabSubscription)
+        .filter(
+            LabSubscription.lab_id == lab_id,
+            LabSubscription.is_active,
+        )
+        .first()
+    )
 
     if sub is None:
         from ..core.feature_flags import get_tier_limits
+
         limits = get_tier_limits("starter")
     else:
         limits = {
-            "max_patients":        sub.max_patients,
-            "max_staff":           sub.max_staff,
-            "max_branches":        sub.max_branches,
-            "max_orders_per_day":  sub.max_orders_per_day,
-            "max_ai_calls_per_day":sub.max_ai_calls_per_day,
+            "max_patients": sub.max_patients,
+            "max_staff": sub.max_staff,
+            "max_branches": sub.max_branches,
+            "max_orders_per_day": sub.max_orders_per_day,
+            "max_ai_calls_per_day": sub.max_ai_calls_per_day,
         }
 
     limit_value = limits.get(limit_field, 0)

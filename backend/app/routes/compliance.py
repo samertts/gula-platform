@@ -18,12 +18,14 @@ import os
 import subprocess
 import sys
 import time
-from datetime import timezone, datetime
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+from app._compat import UTC
 
 from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, NID_HMAC_KEY
 from ..database import get_db
@@ -133,7 +135,7 @@ def system_info(current_user: LabUser = Depends(get_current_user)):
             "support": "support@gula-platform.org",
             "website": "https://gula-platform.org",
         },
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -172,7 +174,7 @@ def audit_summary(
         "lab_id": current_user.lab_id,
         "total_audit_events": total_events,
         "actions_breakdown": {a.action: a.count for a in actions},
-        "report_generated_at": datetime.now(timezone.utc).isoformat(),
+        "report_generated_at": datetime.now(UTC).isoformat(),
         "note": "Audit logs include all create, update, view, login, and admin actions",
         "note_ar": "سجلات التدقيق تشمل جميع عمليات الإنشاء والتحديث والعرض وتسجيل الدخول والإدارة",
     }
@@ -635,8 +637,8 @@ def get_dhis2_aggregate(
 
     return {
         "dataSet": "GULA_LAB_AGGREGATE",
-        "completeDate": datetime.now(timezone.utc).date().isoformat(),
-        "period": datetime.now(timezone.utc).strftime("%Y%m"),
+        "completeDate": datetime.now(UTC).date().isoformat(),
+        "period": datetime.now(UTC).strftime("%Y%m"),
         "orgUnit": f"LAB_{current_user.lab_id}",
         "dataValues": data_values,
         "summary": {
@@ -664,7 +666,7 @@ def get_dhis2_aggregate(
         "metadata": {
             "format": "DHIS2 dataValueSets",
             "version": "2.40",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "platform": "GULA Medical Laboratory Platform",
             "note": "Aggregate statistics only - no patient PII included",
             "note_ar": "إحصائيات تجميعية فقط - لا تشمل بيانات المرضى الشخصية",
@@ -696,7 +698,7 @@ def audit_integrity(
 
     result = verify_audit_chain(db, limit=min(limit, 5000))
     result["lab_id"] = current_user.lab_id
-    result["checked_at"] = datetime.now(timezone.utc).isoformat()
+    result["checked_at"] = datetime.now(UTC).isoformat()
     result["note"] = (
         "Hash chain verification: each entry's chain_hash = "
         "SHA-256(previous_chain_hash + record_data). "
@@ -754,7 +756,7 @@ def security_report(
     return {
         "report_type": "Security Posture Report",
         "report_type_ar": "تقرير وضع الأمان",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "platform_version": APP_VERSION,
         "environment": "production" if IS_PRODUCTION else "development",
         "authentication": {
@@ -831,7 +833,7 @@ def time_sync_status():
     Government auditors use this to verify the server clock is trustworthy.
     No authentication required — time info is not sensitive.
     """
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
 
     # Maximum acceptable clock offset before raising a drift warning (2 seconds)
     max_offset_seconds = 2.0
@@ -943,7 +945,7 @@ def system_status(
     if current_user.role not in ("admin", "master_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # ─── Database health ───────────────────────────────────────────────────
     db_ok = False
@@ -1182,7 +1184,7 @@ def _read_restore_test() -> dict | None:
 
         # Human "tested ago" label
         tested_at = datetime.fromisoformat(data["tested_at"].replace("Z", "+00:00"))
-        delta_seconds = int((datetime.now(timezone.utc) - tested_at).total_seconds())
+        delta_seconds = int((datetime.now(UTC) - tested_at).total_seconds())
         if delta_seconds < 3600:
             ago = f"{delta_seconds // 60} دقيقة"
         elif delta_seconds < 86400:

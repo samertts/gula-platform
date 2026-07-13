@@ -83,7 +83,7 @@ class Test{module.title().replace("_", "")}Performance:
 class SecurityTestGenerator(BaseGenerator):
     def generate(self, **kwargs: Any) -> GenerateResult:
         module = kwargs.get("module", "app")
-        auth_token = kwargs.get("auth_token", "test-token")
+        kwargs.get("auth_token", "test-token")
 
         content = f'''"""Security tests for {module}."""
 from __future__ import annotations

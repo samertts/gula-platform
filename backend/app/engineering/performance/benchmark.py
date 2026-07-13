@@ -24,7 +24,11 @@ class PerformanceBenchmark:
         start = time.monotonic()
         try:
             subprocess.run(
-                ["python", "-c", f"import importlib; importlib.import_module('{module_path.split(':')[0]}')"],
+                [
+                    "python",
+                    "-c",
+                    f"import importlib; importlib.import_module('{module_path.split(':')[0]}')",
+                ],
                 capture_output=True,
                 text=True,
                 cwd=str(self.project_root),

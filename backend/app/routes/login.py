@@ -1,18 +1,27 @@
 import hashlib
 import hmac
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
+
+from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.user import User
-from ..security.auth import verify_password, create_token, create_refresh_token, build_token_payload, blacklist_token
-from ..security.auth import decode_token, decode_refresh_token
-from ..security.rate_limit import rate_limit_auth, get_client_ip
-from ..security.session import warm_perm_version, bump_perm_version
+from ..security.auth import (
+    blacklist_token,
+    build_token_payload,
+    create_refresh_token,
+    create_token,
+    decode_refresh_token,
+    decode_token,
+    verify_password,
+)
+from ..security.rate_limit import get_client_ip, rate_limit_auth
+from ..security.session import bump_perm_version, warm_perm_version
 from ..services.audit_service import log_action
-from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, NID_HMAC_KEY
 
 logger = logging.getLogger("gula.auth")
 
@@ -37,24 +46,33 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     email = data.email
 
     # ── Try lab staff / admin first ────────────────────────────────────────────
-    lab_user = db.query(LabUser).filter(
-        LabUser.email == email,
-        LabUser.is_active == True,
-    ).first()
+    lab_user = (
+        db.query(LabUser)
+        .filter(
+            LabUser.email == email,
+            LabUser.is_active,
+        )
+        .first()
+    )
 
     # ── Fallback: citizen account ──────────────────────────────────────────────
     citizen = None
     if not lab_user:
-        citizen = db.query(User).filter(
-            User.email == email,
-            User.is_active == True,
-        ).first()
+        citizen = (
+            db.query(User)
+            .filter(
+                User.email == email,
+                User.is_active,
+            )
+            .first()
+        )
 
     user = lab_user or citizen
 
     # Always call verify_password to prevent user-enumeration via timing.
     # When user is None we verify against a dummy hash (constant time).
     from ..security.auth import _DUMMY_HASH  # defined alongside pwd_context
+
     password_ok = verify_password(
         data.password,
         user.password_hash if user else _DUMMY_HASH,
@@ -76,7 +94,8 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     lab = None
     if lab_user:
         from ..models.lab import Lab
-        lab = db.query(Lab).filter(Lab.id == lab_user.lab_id, Lab.is_active == True).first()
+
+        lab = db.query(Lab).filter(Lab.id == lab_user.lab_id, Lab.is_active).first()
         if not lab and lab_user.role != "master_admin":
             log_action(
                 db,
@@ -196,7 +215,8 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         user = db.query(LabUser).filter(LabUser.id == user_id).first()
         if user:
             bump_perm_version(
-                user, db,
+                user,
+                db,
                 actor_id=user_id,
                 actor_role=user.role,
                 reason="logout",

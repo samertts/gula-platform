@@ -19,6 +19,7 @@ The IdentityClaim UNIQUE(lab_id, local_patient_id) constraint makes
 this operation idempotent — re-calling resolve for the same LIMS
 patient returns the existing claim.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,22 +28,26 @@ import os
 import secrets
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
 from ..identity import (
-    hash_family_id, hash_national_id, normalize_name,
+    hash_family_id,
+    hash_national_id,
+    normalize_name,
 )
 from .blocking import blocking_key, phone_last10
 from .matcher import (
-    THRESHOLD_AUTO, THRESHOLD_REVIEW,
-    Candidate, build_profile, classify, score,
+    Candidate,
+    build_profile,
+    classify,
+    score,
 )
 from .models import Citizen, IdentityClaim, MergeAudit
-
 
 # ── ULID (Crockford base32, 26 chars) ────────────────────────────────────────
 # Implemented inline to avoid adding a dependency.
@@ -66,17 +71,19 @@ def _ulid() -> str:
 
 # ── Result object ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ResolveOutcome:
-    citizen:       Citizen
-    claim:         IdentityClaim
-    created:       bool            # True if a new Citizen was minted
-    match_method:  str             # 'nid_exact' | 'probabilistic' | 'pending_review' | 'new'
-    match_score:   Optional[float]
-    features:      dict
+    citizen: Citizen
+    claim: IdentityClaim
+    created: bool  # True if a new Citizen was minted
+    match_method: str  # 'nid_exact' | 'probabilistic' | 'pending_review' | 'new'
+    match_score: float | None
+    features: dict
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _canonical_json(row_dict: dict) -> str:
     """Deterministic JSON encoding for hash-chain continuity."""
@@ -85,35 +92,35 @@ def _canonical_json(row_dict: dict) -> str:
 
 def _last_audit_hash(db: Session) -> str:
     """Fetch the previous merge-audit entry_hash, or genesis zeros."""
-    row = (db.query(MergeAudit)
-             .order_by(MergeAudit.id.desc())
-             .limit(1)
-             .first())
+    row = db.query(MergeAudit).order_by(MergeAudit.id.desc()).limit(1).first()
     if row is None:
         return "0" * 64
     return row.entry_hash
 
 
-def _write_audit(db: Session, *,
-                 event_type: str,
-                 primary: Citizen,
-                 secondary: Optional[Citizen],
-                 match_score_val: Optional[float],
-                 features: dict,
-                 reason: str,
-                 decided_by_user_id: Optional[int]) -> MergeAudit:
+def _write_audit(
+    db: Session,
+    *,
+    event_type: str,
+    primary: Citizen,
+    secondary: Citizen | None,
+    match_score_val: float | None,
+    features: dict,
+    reason: str,
+    decided_by_user_id: int | None,
+) -> MergeAudit:
     """Append a hash-chained audit row. Caller commits the transaction."""
     prev = _last_audit_hash(db)
     row_dict = {
-        "event_type":          event_type,
-        "primary_citizen_id":  primary.id,
+        "event_type": event_type,
+        "primary_citizen_id": primary.id,
         "secondary_citizen_id": secondary.id if secondary else None,
-        "match_score":         match_score_val,
-        "match_features":      features,
-        "decision_reason":     reason,
-        "decided_by_user_id":  decided_by_user_id,
-        "occurred_at":         datetime.now(timezone.utc).isoformat(),
-        "prev_hash":           prev,
+        "match_score": match_score_val,
+        "match_features": features,
+        "decision_reason": reason,
+        "decided_by_user_id": decided_by_user_id,
+        "occurred_at": datetime.now(UTC).isoformat(),
+        "prev_hash": prev,
     }
     entry_hash = hashlib.sha256((prev + _canonical_json(row_dict)).encode()).hexdigest()
 
@@ -159,14 +166,14 @@ def resolve_identity(
     lab_id: int,
     local_patient_id: int,
     name: str,
-    phone: Optional[str] = None,
-    birth_year: Optional[int] = None,
-    birth_month: Optional[int] = None,
-    birth_day: Optional[int] = None,
-    gender: Optional[str] = None,
-    national_id: Optional[str] = None,   # RAW — hashed here, never persisted
-    family_id: Optional[str] = None,     # RAW — hashed here, never persisted
-    claimed_by_user_id: Optional[int] = None,
+    phone: str | None = None,
+    birth_year: int | None = None,
+    birth_month: int | None = None,
+    birth_day: int | None = None,
+    gender: str | None = None,
+    national_id: str | None = None,  # RAW — hashed here, never persisted
+    family_id: str | None = None,  # RAW — hashed here, never persisted
+    claimed_by_user_id: int | None = None,
 ) -> ResolveOutcome:
     """Resolve (or create) the canonical citizen for a LIMS patient.
 
@@ -174,9 +181,9 @@ def resolve_identity(
     returns the existing claim without re-scoring.
     """
     # ── Idempotency: existing claim? ─────────────────────────────────────────
-    existing_claim = (db.query(IdentityClaim)
-                        .filter_by(lab_id=lab_id, local_patient_id=local_patient_id)
-                        .first())
+    existing_claim = (
+        db.query(IdentityClaim).filter_by(lab_id=lab_id, local_patient_id=local_patient_id).first()
+    )
     if existing_claim is not None:
         citizen = db.query(Citizen).filter(Citizen.id == existing_claim.citizen_id).first()
         # Follow merge chain — if the canonical has been absorbed, return the survivor
@@ -186,16 +193,18 @@ def resolve_identity(
             claim=existing_claim,
             created=False,
             match_method=existing_claim.match_method,
-            match_score=float(existing_claim.match_score) if existing_claim.match_score is not None else None,
+            match_score=float(existing_claim.match_score)
+            if existing_claim.match_score is not None
+            else None,
             features=existing_claim.match_features or {},
         )
 
     # ── Normalize inputs ─────────────────────────────────────────────────────
     name_canonical = normalize_name(name)
-    phone_norm     = phone_last10(phone)
-    nid_hash       = hash_national_id(national_id) if national_id else None
-    family_hash    = hash_family_id(family_id) if family_id else None
-    bkey           = blocking_key(name)
+    phone_norm = phone_last10(phone)
+    nid_hash = hash_national_id(national_id) if national_id else None
+    family_hash = hash_family_id(family_id) if family_id else None
+    bkey = blocking_key(name)
 
     profile = build_profile(
         name=name,
@@ -209,15 +218,17 @@ def resolve_identity(
     )
 
     # ── Fast path: deterministic NID lookup ──────────────────────────────────
-    best_candidate: Optional[Citizen] = None
+    best_candidate: Citizen | None = None
     best_score = 0.0
     best_features: dict = {}
     best_method = "probabilistic"
 
     if nid_hash:
-        hit = (db.query(Citizen)
-                 .filter(Citizen.nid_hash == nid_hash, Citizen.status.in_(("active", "review")))
-                 .first())
+        hit = (
+            db.query(Citizen)
+            .filter(Citizen.nid_hash == nid_hash, Citizen.status.in_(("active", "review")))
+            .first()
+        )
         if hit is not None:
             best_candidate = hit.canonical()
             best_score = 1.0
@@ -226,26 +237,35 @@ def resolve_identity(
 
     # ── Probabilistic path: block → score ────────────────────────────────────
     if best_candidate is None:
-        q = (db.query(Citizen)
-               .filter(Citizen.status.in_(("active", "review")))
-               .filter(Citizen.name_blocking_key == bkey))
+        q = (
+            db.query(Citizen)
+            .filter(Citizen.status.in_(("active", "review")))
+            .filter(Citizen.name_blocking_key == bkey)
+        )
         if birth_year is not None:
-            q = q.filter(or_(Citizen.birth_year.is_(None),
-                             and_(Citizen.birth_year >= birth_year - 1,
-                                  Citizen.birth_year <= birth_year + 1)))
+            q = q.filter(
+                or_(
+                    Citizen.birth_year.is_(None),
+                    and_(
+                        Citizen.birth_year >= birth_year - 1, Citizen.birth_year <= birth_year + 1
+                    ),
+                )
+            )
         if gender:
-            q = q.filter(or_(Citizen.gender.is_(None),
-                             Citizen.gender == gender.upper()))
+            q = q.filter(or_(Citizen.gender.is_(None), Citizen.gender == gender.upper()))
 
         candidates = q.limit(_MAX_CANDIDATES).all()
 
         # Fallback: if blocking returned nothing AND we have a phone, try phone
         if not candidates and phone_norm:
-            candidates = (db.query(Citizen)
-                            .filter(Citizen.status.in_(("active", "review")),
-                                    Citizen.phone_last10 == phone_norm)
-                            .limit(_MAX_CANDIDATES)
-                            .all())
+            candidates = (
+                db.query(Citizen)
+                .filter(
+                    Citizen.status.in_(("active", "review")), Citizen.phone_last10 == phone_norm
+                )
+                .limit(_MAX_CANDIDATES)
+                .all()
+            )
 
         for c in candidates:
             survivor = c.canonical()
@@ -330,6 +350,7 @@ def resolve_identity(
 
 # ── Manual merge (admin only — endpoint calls this) ──────────────────────────
 
+
 def merge_citizens(
     db: Session,
     *,
@@ -350,14 +371,12 @@ def merge_citizens(
     if primary_ulid == secondary_ulid:
         raise ValueError("cannot merge a citizen with itself")
 
-    primary = (db.query(Citizen)
-                 .filter(Citizen.citizen_ulid == primary_ulid)
-                 .with_for_update()
-                 .first())
-    secondary = (db.query(Citizen)
-                   .filter(Citizen.citizen_ulid == secondary_ulid)
-                   .with_for_update()
-                   .first())
+    primary = (
+        db.query(Citizen).filter(Citizen.citizen_ulid == primary_ulid).with_for_update().first()
+    )
+    secondary = (
+        db.query(Citizen).filter(Citizen.citizen_ulid == secondary_ulid).with_for_update().first()
+    )
     if primary is None or secondary is None:
         raise ValueError("citizen not found")
     if primary.status != "active":
@@ -369,7 +388,7 @@ def merge_citizens(
     secondary.status = "merged"
     secondary.version += 1
 
-    audit = _write_audit(
+    return _write_audit(
         db,
         event_type="manual_merge",
         primary=primary,
@@ -379,4 +398,3 @@ def merge_citizens(
         reason=reason[:500],
         decided_by_user_id=decided_by_user_id,
     )
-    return audit

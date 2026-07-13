@@ -37,27 +37,27 @@ from app.gateways.mode import AdapterMode, resolve_mode
 
 logger = logging.getLogger("gula.gateways.residency")
 
-_gateway: "ResidencyGateway | None" = None
+_gateway: ResidencyGateway | None = None
 
-_ADAPTER_KEY     = "residency"
-_REQUIRED_CREDS  = ("RESIDENCY_API_URL", "RESIDENCY_API_KEY")
-_PASSPORT_RE     = re.compile(r"^[A-Z0-9]{6,12}$", re.IGNORECASE)
+_ADAPTER_KEY = "residency"
+_REQUIRED_CREDS = ("RESIDENCY_API_URL", "RESIDENCY_API_KEY")
+_PASSPORT_RE = re.compile(r"^[A-Z0-9]{6,12}$", re.IGNORECASE)
 
 
 class ResidencyGateway(ExternalGateway):
-    name                      = "residency"
-    trust_level               = DataTrustLevel.NON_CRITICAL
-    timeout                   = 10.0
-    max_retries               = 2
-    calls_per_minute          = 20
+    name = "residency"
+    trust_level = DataTrustLevel.NON_CRITICAL
+    timeout = 10.0
+    max_retries = 2
+    calls_per_minute = 20
     circuit_failure_threshold = 3
-    circuit_recovery_timeout  = 120.0
-    cache_ttl                 = 600.0
-    stale_threshold           = 300.0
+    circuit_recovery_timeout = 120.0
+    cache_ttl = 600.0
+    stale_threshold = 300.0
 
     _SCHEMA = [
-        FieldRule("valid",  bool, required=True),
-        FieldRule("source", str,  required=True),
+        FieldRule("valid", bool, required=True),
+        FieldRule("source", str, required=True),
     ]
 
     def __init__(self) -> None:
@@ -73,21 +73,21 @@ class ResidencyGateway(ExternalGateway):
     def _stub_response(self, passport_no: str, nationality: str | None) -> dict:
         if not passport_no or not _PASSPORT_RE.match(passport_no):
             return {
-                "valid":   False,
-                "source":  "stub_local_validation",
+                "valid": False,
+                "source": "stub_local_validation",
                 "message": "Invalid passport format",
             }
         return {
-            "valid":       True,
-            "source":      "stub_local_validation",
+            "valid": True,
+            "source": "stub_local_validation",
             "nationality": (nationality or "unknown").upper(),
-            "status":      "pending_verification",
-            "message":     "Awaiting residency directorate credential",
+            "status": "pending_verification",
+            "message": "Awaiting residency directorate credential",
         }
 
     def _live_response(self, passport_no: str, nationality: str | None) -> dict:
         base = os.environ["RESIDENCY_API_URL"].rstrip("/")
-        key  = os.environ["RESIDENCY_API_KEY"]
+        key = os.environ["RESIDENCY_API_KEY"]
         return self._http(
             "post",
             f"{base}/api/residency/verify",
@@ -108,12 +108,17 @@ class ResidencyGateway(ExternalGateway):
                 live = self._live_response(passport_no, nationality)
                 logger.info(
                     "[SHADOW] gateway=%s action=%s stub=%r live=%r",
-                    self.name, action, stub, live,
+                    self.name,
+                    action,
+                    stub,
+                    live,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "[SHADOW] gateway=%s action=%s live_error=%s",
-                    self.name, action, exc,
+                    self.name,
+                    action,
+                    exc,
                 )
             return stub
 
@@ -133,7 +138,9 @@ def verify_residency(passport_no: str, nationality: str | None = None) -> Extern
     return gw.call(
         action="verify_residency",
         cache_key=ResidencyGateway._make_cache_key(
-            "residency", passport_no=passport_no, nationality=nationality or "",
+            "residency",
+            passport_no=passport_no,
+            nationality=nationality or "",
         ),
         fallback={"valid": False, "source": "fallback"},
         passport_no=passport_no,

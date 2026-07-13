@@ -20,10 +20,12 @@ Usage:
     await task_queue.enqueue(TaskPayload(type="send_notification",
                                          payload={"user_id": 42}))
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 logger = logging.getLogger("gula.task_registry")
 
@@ -33,12 +35,14 @@ _REGISTRY: dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {}
 
 def task_handler(task_type: str):
     """Register an async function as the handler for ``task_type``."""
+
     def decorator(fn: Callable) -> Callable:
         if task_type in _REGISTRY:
             logger.warning("task_handler: overwriting existing handler for %r", task_type)
         _REGISTRY[task_type] = fn
         logger.debug("Registered task handler: %r → %s", task_type, fn.__qualname__)
         return fn
+
     return decorator
 
 

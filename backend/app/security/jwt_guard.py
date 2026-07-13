@@ -1,7 +1,8 @@
 """JWT Guard - validates Authorization header tokens."""
 
-from fastapi import Request, HTTPException
-from jose import jwt, JWTError
+from fastapi import HTTPException, Request
+from jose import JWTError, jwt
+
 from ..config import SECRET_KEY
 
 
