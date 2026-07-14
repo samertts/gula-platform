@@ -7,6 +7,13 @@ from .ai_interaction import (
     MedicalTerminologyNormalized,
 )
 from .audit_log import AuditLog
+    AIFeedback,
+    AIInteraction,
+    AIRetrievalRef,
+    AIUnresolvedQuestion,
+    MedicalTerminologyNormalized,
+)
+from .audit_log import AuditLog
 from .consent import Consent
 from .edge import (
     EdgeDevice,
@@ -18,6 +25,7 @@ from .edge import (
     EdgeTelemetry,
 )
 from .lab import Lab
+from .organization import Appointment, Facility, Organization
 from .lab_order import LabOrder
 from .lab_result import LabResult
 from .lab_user import LabUser

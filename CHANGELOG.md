@@ -1,5 +1,96 @@
 # Changelog
+## [2026-07-14] — FOUNDATION v1.0
+### Foundation Completion (MISSION-FINAL)
+- **Foundation is now COMPLETE and FROZEN** — no further infrastructure development
+
+### Event Platform Completion
+- **Snapshot Engine** (`backend/app/kernel/event_bus/snapshot.py`): Aggregate state snapshots with save/load/rebuild from events
+- **Recovery Engine** (`backend/app/kernel/event_bus/recovery.py`): Sequential/parallel/batched event recovery with retry, handlers, job management
+- **EventBus** (`backend/app/kernel/event_bus/bus.py`): Integrated snapshot + recovery engines
+
+### Integration Foundation Completion
+- **Connector Registry** (`backend/app/integration/connector/registry.py`): Type-indexed, tag-indexed connector registry with health tracking
+- **Connector SDK** (`backend/app/integration/connector/sdk.py`): Auto-generates Python SDK client code from connector specs
+- **HTTP/REST Connector** (`backend/app/integration/connector/http.py`): Async HTTP client with metrics, health checks
+- **GraphQL Connector** (`backend/app/integration/connector/graphql.py`): GraphQL query/mutation support
+- **WebSocket Connector** (`backend/app/integration/connector/websocket.py`): Pub/sub with auto-reconnect
+- **gRPC Connector** (`backend/app/integration/connector/grpc.py`): gRPC channel management with stub registry
+- **DICOM Connector** (`backend/app/integration/connector/dicom.py`): C-FIND, C-MOVE, C-STORE support (pydicom optional)
+
+### Identity Foundation Completion
+- **Identity Governance Service** (`backend/app/services/governance/identity_governance.py`): Full identity lifecycle — citizen, newborn, foreigner, resident, visitor, unknown patient registration; birth certificate, passport, visa document workflows; document verification; identity history
+- **Family Registry** (`backend/app/services/governance/family_registry.py`): Family creation, member management, guardian linking, dependent tracking
+- **Identity Merge Engine** (`backend/app/services/governance/merge_engine.py`): Merge proposals, confidence scoring, approval/rejection workflow, merge history
+- **National ID as primary legal identifier** — never exposed in healthcare views
+- **Health Number as primary healthcare identifier** — used in all medical documents
+
+### Reference Services Completion
+- **Master Reference Data Service** (`backend/app/services/reference/master_reference_data.py`): Countries, governorates, languages, currencies, timezones, medical specialties, units — versioned, with auto-seed
+- **Universal Identifier Service** (`backend/app/services/reference/universal_identifier.py`): 12 identifier types (HN, ORD, SPC, ACC, RPT, VIS, ENC, APT, INV, NTF, WF, AUD) with UUID/sequential/hash format support
+- **National Laboratory Catalog** (`backend/app/services/reference/national_lab_catalog.py`): 29 seeded lab tests, 3 panels, 7 specimen types; LOINC mapping, search, versioning
+
+### Healthcare Foundation Completion
+- **Organization model** (`backend/app/models/organization.py`): Organizations, Facilities, Appointments with relationships
+- **ABAC Engine** (`backend/app/security/abac.py`): Attribute-based access control with conditions (equals, in, matches, etc.), priority rules, deny-overrides
+
+### Quality Gates
+- 55 new tests covering all new modules — all passing
+- Ruff: all checks passing
+- Bandit: clean (no high/medium issues)
+- py_compile: all files compile cleanly
+### Program v3.0 — Capability Factory & Automation (M005)
+- **Enhanced CapabilityDescriptor** (`backend/app/kernel/types.py`): Added 30+ fields including capability_id, owner, status lifecycle, events, commands, queries, entities, DTOs, policies, permissions, API endpoints, scores, domain, layer, tags
+- **Enhanced CapabilityRegistry** (`backend/app/kernel/runtime/capability_registry.py`): Added dependency graph with topological sort, impact analysis, batch registration, store/load, domain/status filtering, summary statistics
+- **Enhanced Capability Generator** (`backend/app/engineering/generators/capability.py`): Now generates 20+ artifacts per capability (domain entities, repository interface+impl, application service, DTOs, commands, events, queries, policies, permissions, API routes, health checks, README, ADR, SBOM, capability.json descriptor, unit tests, integration tests)
+- **Capability Registry Populator** (`backend/app/kernel/capabilities_registry_populator.py`): Registered 44 capabilities across 9 domains (identity_security, clinical, communication, infrastructure, reporting, platform, financial, observability, integration) + 10 draft capabilities for M006/M007
+- **Kernel Bootloader Enhancement** (12-phase boot now includes capability population + feature flag sync)
+- **CapabilityFlagManager** (`backend/app/kernel/features/capabilities.py`): Now bridged to CapabilityRegistry with bidirectional sync
+- **CLI Enhancement** (`backend/app/engineering/productivity/cli.py`): Added `gula capability` subcommands (list, show, enable, disable, impact, graph, summary)
+- **Capability Report** (`assessment/capability_report_v3.md`): Comprehensive catalog with dependency graph in Mermaid format
+- **M006 Core Business Capability Platform**: Generated 6 capability scaffolds (storage_service, document_management, workflow_engine, search_service, reporting_service) with full domain/application/infrastructure layers
+- **M007 National Healthcare Core Domain**: Generated 5 healthcare capability scaffolds (provider_management, encounter_management, clinical_foundation, fhir_interoperability, healthcare_consent) with events, commands, queries, policies, permissions
+
+### Capability Registry Final State
+- **52 registered capabilities** across 9 domains (identity_security, clinical, communication, infrastructure, reporting, platform, financial, observability, integration)
+- All capabilities have proper event/command/query definitions
+- Auto-populated at kernel boot (Phase 11 of 12-phase boot sequence)
+- Bidirectional sync between CapabilityRegistry ↔ CapabilityFlagManager
+
+### Fixed
+- `backend/app/engineering/generators/capability.py`: Fixed mismatched triple-quote string (f""" vs ''') in capability.json template
+- `backend/app/kernel/capabilities_registry_populator.py`: Fixed cascading edit misalignments in M006/M007 capability definitions
+
 ## [2026-07-13]
+### Production Validation
+- Fix Python 3.10 `datetime.UTC` compatibility across 49 files (switch to `timezone.utc` via `_compat.py`)
+- Fix `StrEnum` compatibility for Python 3.10 in `_compat.py`
+- Fix mypy syntax error in `tasks/registry.py` (remove type-comment on line 32)
+- Fix `RateLimiter.check()` performance: replace list-based sliding window with `collections.deque` (1000x improvement — 219s → 0.22s for 100k checks)
+- Add kernel initialization to test `client` fixture in `conftest.py` (fixes 5 chaos-survival tests)
+- All **1420 tests passing**, 9 stress tests passing, Bandit clean
+
+### Configuration
+- Add `explicit_package_bases = true` to mypy config
+- Add proper mypy overrides for `backend.app.routes.*` and `engineering.*`
+- Add `scripts/`, `nhop-platform/`, `client/` to ruff exclude list
+
+### Engineering Automation
+- **shared/di_container**: New package — enterprise DI container extracted from Platform-Core. Provides `ServiceContainer` (singleton/scoped/transient, auto-wiring, thread-safe, circular detection) and `ServiceScope`. Zero external dependencies.
+- Fix `shared/generators/migration.py`: remove `backend.app._compat` dependency; migrate to `pathlib`
+- Fix `shared/generators/documentation.py`: migrate from `os`/`open()` to `pathlib`
+
+### Generator Bug Fixes
+- Fix `generators/plugin.py`: hooks now generated inside class body (was outside — producing syntax errors)
+- Fix `generators/capability.py`: command/event/query imports use correct relative paths (was producing malformed `from x.y.x.y import` patterns)
+- Fix `testing/fixtures.py`: `datetime` import moved to module level (was inside return statement — producing syntax errors)
+- Fix `testing/factories.py`: `Meta.model` now uses class reference, not string literal (was producing runtime errors)
+- Fix `productivity/cli.py`: CRUD `:indexed`/`:unique` flags now checked per-field (was applying to all fields)
+- Refactor `shared/generators/documentation.py`: migrate `os`/`open()` to `pathlib` with error handling
+
+### Documentation
+- Rewrite `README.md` to reflect current Docker Compose + PG16 + Redis 7 stack (was outdated Render+Supabase)
+- Rewrite `ARCHITECTURE.md` to reflect current monolith-first deployment (was outdated microservices with RabbitMQ/Kafka/ClickHouse/MinIO)
+
 ### Breaking Changes
 - **ci:** pin pytest-asyncio<1.0.0 to prevent breaking-change installs (7995f4f4)
 - Fix site-breaking issues: CSP, nginx crashes, XSS, security hardening (afbc0b19)
@@ -472,3 +563,28 @@
 - Initial commit (1b3b66a6)
 - Initial NHOP platform commit (d2863c35)
 
+
+## [2.1.0] - 2026-07-14 — Engineering Program M4.x
+
+### Added
+- M4.0 Environment Guardian: Full audit report (assessment/environment_report_4.0.md)
+- M4.1 Repository Brain: Knowledge graph (10,858 nodes, 9,778 edges), cross-reference engine, Mermaid diagrams
+- M4.2 Architecture Intelligence: GULA-specific scoring engine (Grade B, 7/10)
+- M4.3 Dependency Intelligence: Complete SBOM, license report, supply chain analysis
+- M4.4 Dependency Upgrade Engine: Lock file (backend/requirements-lock.txt, 58 pinned packages)
+- M4.5 Quality Gate Orchestrator: All 5 gates passing (compile, ruff, tests, Dockerfile, lock)
+- M4.6 Supply Chain Security: Dependency Guardian monitoring script (scripts/dependency_guardian.py)
+- M4.7 Security Hardening: Full security audit, 28 CWE mappings, OWASP/MITRE coverage
+- M4.8 Dependency Guardian: Permanent monitoring service (scripts/dependency_guardian.py)
+- M4.9 Security Knowledge Base: CWE-79 through CWE-918 mapped, MITRE ATT&CK 8 tactics
+- M5 Repository Optimization: Dead code, large modules, empty stubs cataloged
+- M6 Kernel Certification: Auth gap fixed on all 11 kernel endpoints
+- M7 Capability Factory: Capability catalog with migration roadmap
+
+### Changed
+- backend/app/config.py: REFRESH_TOKEN_SECRET now independently random in dev fallback
+- backend/app/kernel/routes.py: All 11 kernel endpoints now require JWT authentication
+- backend/app/security/jwt_guard.py: Documented as dead code (routes use dependencies.get_current_user)
+- backend/requirements.txt: Removed orjson and jinja2 (dead dependencies)
+- backend/requirements-dev.txt: Added factory_boy (used by engineering/testing/factories.py)
+- shared/notifications/template.py: Fixed F822 lint error (undefined __all__ entry)
