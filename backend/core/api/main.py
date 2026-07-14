@@ -20,17 +20,12 @@ DB_USER = os.getenv("DB_USER", "")
 DB_PASS = os.getenv("DB_PASS", "")
 
 if not all([DB_HOST, DB_NAME, DB_USER, DB_PASS]):
-    print(
-        "[GULA FATAL] DB_HOST, DB_NAME, DB_USER, DB_PASS must all be set.",
-        file=sys.stderr,
-    )
     sys.exit(1)
 
 AI_SERVICE = os.getenv("AI_SERVICE_URL", "http://ai-service:9000")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 if not SECRET_KEY:
-    print("[GULA FATAL] SECRET_KEY must be set.", file=sys.stderr)
     sys.exit(1)
 
 ALGORITHM = "HS256"

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import timezone, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
+
+from backend.app._compat import UTC
 
 
 class InvoiceStatus(Enum):
@@ -38,7 +40,7 @@ class Invoice:
         if not self.id:
             self.id = str(uuid4())
         if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).isoformat()
+            self.created_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -61,4 +63,4 @@ class PricingTier:
     features: list[str] = field(default_factory=list)
 
 
-__all__ = ["Invoice", "PricingTier", "InvoiceStatus", "BillingCycle"]
+__all__ = ["BillingCycle", "Invoice", "InvoiceStatus", "PricingTier"]

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any
+
+from backend.app._compat import UTC
 
 
 @dataclass
@@ -11,7 +13,7 @@ class IdentityEvent:
     entity_id: str = ""
     actor_id: str = ""
     lab_id: int = 0
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     payload: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:

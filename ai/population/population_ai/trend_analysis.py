@@ -1,3 +1,5 @@
+import contextlib
+
 from anonymizer import anonymize
 from data_loader import load_health_data
 
@@ -13,10 +15,8 @@ def rising_test(test):
 
         if r["test"] == test:
 
-            try:
+            with contextlib.suppress(BaseException):
                 values.append(float(r["value"]))
-            except:
-                pass
 
     if len(values) < 2:
         return "Not enough data"

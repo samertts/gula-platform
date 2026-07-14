@@ -26,10 +26,10 @@ Blast radius: zero. No production code touched.
 """
 from __future__ import annotations
 
-import os
-import sys
-import re
 import json
+import os
+import re
+import sys
 
 os.environ["RUNTIME_MODE"] = "test"
 os.environ["FEATURE_BACKGROUND_TASKS"] = "false"
@@ -43,7 +43,6 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
 
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
@@ -136,7 +135,7 @@ class TestStructuredLogging:
         bind_log_context(request_id="rid-1", user_id=42, lab_id=7)
 
     def test_get_request_id_returns_string(self):
-        from app.core.logging_config import get_request_id, bind_log_context
+        from app.core.logging_config import bind_log_context, get_request_id
         bind_log_context(request_id="explicit-trace-id")
         rid = get_request_id()
         assert isinstance(rid, str)
@@ -151,6 +150,7 @@ class TestStructuredLogging:
     def test_json_formatter_produces_valid_json(self):
         """The _JSONFormatter must emit parseable JSON for log aggregators."""
         import logging
+
         from app.core.logging_config import _JSONFormatter
         formatter = _JSONFormatter()
         record = logging.LogRecord(
@@ -185,7 +185,7 @@ class TestDbCorrelationContextVars:
 
     def test_correlation_vars_have_default_none(self):
         """Default value must be safe (None) so unbound contexts don't crash."""
-        from app.database import _request_id_var, _endpoint_var
+        from app.database import _endpoint_var, _request_id_var
         # Reading without a binding should not raise
         try:
             rid = _request_id_var.get()

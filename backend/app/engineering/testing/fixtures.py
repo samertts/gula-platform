@@ -15,15 +15,19 @@ class FixturesGenerator(BaseGenerator):
         for entity in entities:
             fixtures.append(self._entity_fixture(entity, use_faker))
 
+        datetime_import = "from datetime import datetime"
+        faker_import = "from faker import Faker" if use_faker else ""
+        faker_instance = "faker = Faker()" if use_faker else ""
         content = f'''"""Test fixtures for {module}."""
 from __future__ import annotations
 
 from typing import Any, AsyncGenerator, Generator
 
 import pytest
-{"from faker import Faker" if use_faker else ""}
+{datetime_import}
+{faker_import}
 
-{"faker = Faker()" if use_faker else ""}
+{faker_instance}
 
 {chr(10).join(fixtures)}
 '''
@@ -33,17 +37,15 @@ import pytest
 
     def _entity_fixture(self, entity: str, use_faker: bool) -> str:
         entity_lower = entity.lower()
-        fake_attrs = ""
+        fake_body = ""
         if use_faker:
-            fake_attrs = f"""
-    return {entity}(
+            fake_body = f"""{entity}(
         id=faker.random_int(min=1, max=99999),
         name=faker.name(),
         created_at=datetime.utcnow(),
     )"""
         else:
-            fake_attrs = f"""
-    return {entity}(
+            fake_body = f"""{entity}(
         id=1,
         name="test-{entity_lower}",
         created_at=datetime.utcnow(),
@@ -53,7 +55,7 @@ import pytest
 @pytest.fixture
 def {entity_lower}_factory() -> Any:
     """Factory fixture for {entity}."""
-    from datetime import datetime{fake_attrs}
+    return {fake_body}
 
 
 @pytest.fixture

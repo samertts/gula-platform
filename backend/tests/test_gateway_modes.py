@@ -11,7 +11,6 @@ import os
 import sys
 import types
 
-
 # ─── Env + stub app.config so identity.py imports work standalone ──────────
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 

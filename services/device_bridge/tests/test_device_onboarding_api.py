@@ -1,9 +1,8 @@
-from fastapi.testclient import TestClient
-
 import app.main as main
 from app.core.connection_pool import ConnectionPool
 from app.core.device_manager import DeviceManager
 from app.security.auth import DEFAULT_API_KEY
+from fastapi.testclient import TestClient
 
 
 class FakeConnector:

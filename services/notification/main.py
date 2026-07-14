@@ -3,14 +3,13 @@ GULA Platform - Notification Service
 Handles alerts, notifications via RabbitMQ consumer
 """
 
-import os
-import logging
-import asyncio
 import json
+import logging
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, generate_latest
 from starlette.responses import Response
 
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +34,9 @@ def process_alert(message: dict):
 
 def consume_alerts():
     """Consume alerts from RabbitMQ."""
-    import pika, time
+    import time
+
+    import pika
     while True:
         try:
             params = pika.URLParameters(RABBITMQ_URL)

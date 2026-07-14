@@ -9,6 +9,7 @@ Access levels:
 
 import hashlib
 import hmac
+import json
 import logging
 import os
 
@@ -267,7 +268,7 @@ def list_pending_labs(
     limit: int = Query(default=50, le=200),
 ):
     """List labs pending activation (registered but not yet approved)."""
-    query = db.query(Lab).filter(not Lab.is_active)
+    query = db.query(Lab).filter(Lab.is_active == False)
 
     if actor.role == "province_admin" and actor.province_id:
         lab_ids_in_province = [
@@ -1077,7 +1078,13 @@ def kill_switch_activate(
 
     result = ks_activate(reason=body.reason, propagate=True)
     log_action(
-        db, "kill_switch_activate", admin.id, admin.lab_id, {"reason": body.reason}, admin.id
+        db,
+        action="kill_switch_activate",
+        resource_type="system",
+        resource_id=None,
+        user_id=admin.id,
+        user_role=admin.role,
+        details=json.dumps({"reason": body.reason}),
     )
     db.commit()
     logger.critical(
@@ -1097,7 +1104,13 @@ def kill_switch_deactivate(
 
     result = ks_deactivate(reason=body.reason, propagate=True)
     log_action(
-        db, "kill_switch_deactivate", admin.id, admin.lab_id, {"reason": body.reason}, admin.id
+        db,
+        action="kill_switch_deactivate",
+        resource_type="system",
+        resource_id=None,
+        user_id=admin.id,
+        user_role=admin.role,
+        details=json.dumps({"reason": body.reason}),
     )
     db.commit()
     logger.warning(

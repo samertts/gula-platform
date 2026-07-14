@@ -1,275 +1,59 @@
-🚀 GULA Platform — Production Specification (Ultimate)
+# GULA Platform
 
----
+Arabic-first healthcare platform for Iraqi medical laboratories.
 
-🎯 Objective
+## Stack
 
-Deploy a production-grade backend system with:
+| Component | Technology |
+|-----------|-----------|
+| Backend | FastAPI (Python 3.11+) — Gunicorn + Uvicorn |
+| Database | PostgreSQL 16 (SQLAlchemy async) |
+| Cache | Redis 7 |
+| Gateway | nginx (api-gateway) |
+| Auth | JWT (HS256) + RBAC (9 roles x 13 permissions) |
+| Frontend | React + Firebase (frontend-v2/) or tRPC SPA (client/) |
+| Device Bridge | LabLink-Core (ASTM/HL7 instrument integration) |
 
-- ≥ 99% availability
-- Deterministic startup (no race conditions)
-- Zero manual post-deploy steps
-- Stateless architecture
-- Strict failure isolation
-- Controlled resource & concurrency usage
+## Quick Start
 
----
+```bash
+make up              # Start full stack
+make health          # Check liveness
+make logs-backend    # Tail backend logs
+make shell           # Bash into backend container
+```
 
-🧠 Architecture
+## Development
 
-Client / Frontend
-↓
-Render (FastAPI API — stateless)
-↓
-Supabase (PostgreSQL — single source of truth)
+```bash
+# Run tests
+cd backend && python -m pytest tests/ -v
 
----
+# Lint
+ruff check backend/app/
 
-🧰 Technology Stack
+# Type check
+mypy backend/app/
+```
 
-- FastAPI (async API layer)
-- PostgreSQL (Supabase)
-- SQLAlchemy (pooled connections)
-- Gunicorn + Uvicorn workers
-- Docker (immutable runtime)
-- Render (deployment)
+See `CLAUDE.md` for the full developer guide, architecture, migration policy, and quality gates.
 
----
+## Architecture (Monolith-First)
 
-⚙️ Environment Variables
+```
+Internet → nginx (TLS) → api-gateway → gula-backend (FastAPI) → PostgreSQL 16 + Redis 7
+```
 
-Required (hard fail if missing)
+The backend monolith in `backend/app/` is the production deployment target.
+A parallel microservices tree (`services/`) exists for future decomposition.
 
-DATABASE_URL=postgresql://user:pass@host:5432/postgres?sslmode=require
-ENCRYPTION_KEY=44-character Fernet key
-SECRET_KEY=32+ char random
-REFRESH_TOKEN_SECRET=32+ char random
-NID_HMAC_KEY=32+ char random
+## Key Documents
 
----
+- `CLAUDE.md` — Developer guide, architecture, invariants, commands
+- `CHANGELOG.md` — Release history
+- `docs/` — ADRs, SNDHS spec, architecture docs
+- `ARCHITECTURE.md` — Architecture overview
 
-Optional (with enforced defaults)
+## Project Status
 
-AI_BUDGET_SECONDS=6
-MAX_CONCURRENT_REQUESTS=50
-DB_POOL_SIZE=5
-DB_MAX_OVERFLOW=10
-WEB_CONCURRENCY=2
-
----
-
-🚀 Deployment
-
-Platform: Render
-Runtime: Docker
-Port: 10000
-
----
-
-🔥 Deterministic Startup (Strict)
-
-alembic upgrade head && \
-gunicorn -k uvicorn.workers.UvicornWorker app.main:app \
---workers ${WEB_CONCURRENCY:-2} \
---bind 0.0.0.0:10000 \
---timeout 45 \
---graceful-timeout 30 \
---max-requests 1000 \
---max-requests-jitter 100
-
----
-
-🧪 Health & Readiness
-
-GET /health
-→ process alive only
-
-GET /health/ready
-→ DB connected + pool ready
-
----
-
-🗄️ Database (Strict)
-
-- Supabase only
-- SSL required
-- No localhost
-
----
-
-Connection Pool (MANDATORY)
-
-- pool_size ≤ 5
-- max_overflow ≤ 10
-- pool_timeout ≤ 30s
-- pool_recycle ≤ 1800s
-- pool_pre_ping=True
-
----
-
-Startup Retry (Required)
-
-- max retries: 5
-- exponential backoff
-- failure → NOT READY (no crash loop)
-
----
-
-⚙️ Concurrency Control (CRITICAL)
-
-System MUST enforce:
-
-semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-
-All DB / AI calls go through it
-
----
-
-⏱️ Timeout Enforcement
-
-All external calls MUST use:
-
-asyncio.wait_for(..., timeout=AI_BUDGET_SECONDS)
-
----
-
-🚦 Backpressure Strategy
-
-If concurrency exceeded:
-
-- reject request (429)
-- do NOT queue infinitely
-
----
-
-🧠 Request Lifecycle Control
-
-Middleware MUST include:
-
-- request_id generation
-- latency tracking
-- structured logging
-
----
-
-📊 Logging (MANDATORY)
-
-JSON logs including:
-
-- request_id
-- path
-- method
-- status
-- latency_ms
-- error_type
-
----
-
-🔒 Security
-
-- ENV only secrets
-- no hardcoded credentials
-- Fernet encryption
-- SSL DB required
-
----
-
-🔄 Failure Handling
-
-DB failure
-
-- retry on startup
-- fail readiness
-
-AI failure
-
-- max retry = 1
-- timeout enforced
-
-overload
-
-- reject requests
-- prevent DB exhaustion
-
----
-
-🧯 Graceful Shutdown
-
-System MUST:
-
-- handle SIGTERM
-- complete in-flight requests
-- close DB connections
-
----
-
-📉 Memory Safety
-
-Gunicorn MUST use:
-
-- max-requests
-- jitter
-
-to prevent leaks
-
----
-
-🚫 Non-Negotiable Rules
-
-- ❌ No SQLite
-- ❌ No localhost
-- ❌ No Redis (MVP)
-- ❌ No blocking I/O
-- ❌ No background tasks in API
-- ❌ No manual deploy steps
-
----
-
-📊 Operational Guarantees
-
-Valid ONLY if:
-
-- no crash ≥ 60 min
-- API latency < 2s
-- AI latency < 6s
-- no pool exhaustion
-- no unhandled exceptions
-
----
-
-❗ Critical Failures (Must NOT happen)
-
-- DB exhaustion
-- infinite retries
-- hanging requests
-- silent migration failure
-- partial startup
-
----
-
-🔄 Future Extensions
-
-- Redis (rate limit + cache)
-- background workers
-- queue system
-- horizontal scaling
-
----
-
-📌 Status
-
-Production-Ready (Hardened — Safe for real traffic)
-
----
-
-🧠 Final Directive
-
-System must behave as:
-
-- Stateless
-- Backpressure-aware
-- Timeout-controlled
-- Failure-isolated
-- Horizontally scalable
-
----
+Production-ready. Serving Iraqi medical laboratories.

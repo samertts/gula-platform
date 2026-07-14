@@ -54,7 +54,9 @@ def test_card_token_roundtrip():
 
 def test_card_token_rejects_tampered_signature():
     from app.services.patient_card import (
-        CardTokenError, issue_card_token, verify_card_token,
+        CardTokenError,
+        issue_card_token,
+        verify_card_token,
     )
 
     token = issue_card_token(patient_id=1, lab_id=1)
@@ -67,7 +69,9 @@ def test_card_token_rejects_tampered_signature():
 
 def test_card_token_rejects_expired():
     from app.services.patient_card import (
-        CardTokenError, issue_card_token, verify_card_token,
+        CardTokenError,
+        issue_card_token,
+        verify_card_token,
     )
 
     # ttl_seconds is clamped to a minimum of 60 (which still expires in our test)
@@ -78,7 +82,7 @@ def test_card_token_rejects_expired():
 
     expired_body = f"1.1.{int(time.time()) - 10}".encode("ascii")
     expired_b64 = base64.urlsafe_b64encode(expired_body).rstrip(b"=").decode()
-    from app.services.patient_card import _sign  # noqa: PLC2701 — internal use OK in tests
+    from app.services.patient_card import _sign
     sig = _sign(expired_body)
     expired_token = f"{expired_b64}.{sig}"
 
@@ -103,10 +107,11 @@ def test_card_token_malformed_inputs():
 @pytest.fixture()
 def lab_with_patient(db, make_lab, make_lab_user):
     """A lab + admin + a patient with one validated order and 2 results."""
-    from app.models.patient import Patient
+    from datetime import date
+
     from app.models.lab_order import LabOrder
     from app.models.lab_result import LabResult, generate_token, hash_token
-    from datetime import date
+    from app.models.patient import Patient
 
     lab = make_lab(name="MainLab")
     user = make_lab_user(lab_id=lab.id, role="admin")
@@ -281,8 +286,9 @@ def test_print_card_returns_html_with_qr(client, lab_with_patient):
 
 def test_print_card_escapes_html_in_name(client, db, make_lab, make_lab_user):
     """Patient name must be HTML-escaped to block XSS via the printable card."""
-    from app.models.patient import Patient
     from datetime import date
+
+    from app.models.patient import Patient
 
     lab = make_lab(name="EscapeLab")
     user = make_lab_user(lab_id=lab.id, role="admin")

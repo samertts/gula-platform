@@ -23,14 +23,16 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
-from app.services.identity import jaro_winkler, jaro_similarity, normalize_name
+from app.services.identity import jaro_similarity, jaro_winkler, normalize_name
 from app.services.mpi.blocking import blocking_key, phone_last10
 from app.services.mpi.matcher import (
-    THRESHOLD_AUTO, THRESHOLD_REVIEW,
-    Candidate, build_profile, classify, score,
+    THRESHOLD_AUTO,
+    THRESHOLD_REVIEW,
+    Candidate,
+    build_profile,
+    classify,
+    score,
 )
-
 
 # ─── Jaro-Winkler ────────────────────────────────────────────────────────────
 
@@ -157,15 +159,15 @@ class TestPhoneLast10:
 # ─── Matcher scoring ─────────────────────────────────────────────────────────
 
 def _make_candidate(**overrides) -> Candidate:
-    base = dict(
-        id=1,
-        citizen_ulid="01HKX" + "0" * 21,
-        name_canonical="mohammed ali hussein",
-        phone_last10="7901234567",
-        birth_year=1990, birth_month=5, birth_day=12,
-        gender="M",
-        nid_hash=None, family_id_hash=None,
-    )
+    base = {
+        "id": 1,
+        "citizen_ulid": "01HKX" + "0" * 21,
+        "name_canonical": "mohammed ali hussein",
+        "phone_last10": "7901234567",
+        "birth_year": 1990, "birth_month": 5, "birth_day": 12,
+        "gender": "M",
+        "nid_hash": None, "family_id_hash": None,
+    }
     base.update(overrides)
     return Candidate(**base)
 

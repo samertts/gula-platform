@@ -14,19 +14,19 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///test_db_adaptive.db")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-db-adaptive-tests")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 # Import after env setup
 from app.database import (
+    _CIRCUIT_OPEN_THRESHOLD,
+    _SYSTEM_DEGRADE_THRESHOLD,
     _SlidingWindow,
     db_window,
     get_db_error_counts,
     get_db_window_snapshot,
-    _CIRCUIT_OPEN_THRESHOLD,
-    _SYSTEM_DEGRADE_THRESHOLD,
 )
-
 
 # =============================================================================
 # _SlidingWindow tests
@@ -102,7 +102,7 @@ class TestSlidingWindow:
 
     def test_max_size_drops_oldest(self):
         w = _SlidingWindow(max_age_s=300, max_size=5)
-        for i in range(10):
+        for _i in range(10):
             w.record("ok")
         # Only 5 should be kept (circular buffer)
         assert w.count("ok") <= 5
@@ -207,8 +207,9 @@ class TestTriggerCircuitOpen:
 
     def test_trigger_circuit_open_is_idempotent_when_already_open(self):
         """Should not double-open an already-open circuit."""
+        from unittest.mock import MagicMock, patch
+
         from app.database import _trigger_circuit_open
-        from unittest.mock import patch, MagicMock
 
         mock_health = MagicMock()
 
@@ -222,8 +223,9 @@ class TestTriggerCircuitOpen:
 
     def test_trigger_circuit_open_opens_closed_circuit(self):
         """When circuit is CLOSED, repeated record_failure calls should open it."""
+        from unittest.mock import MagicMock, patch
+
         from app.database import _trigger_circuit_open
-        from unittest.mock import patch, MagicMock
 
         mock_health = MagicMock()
 
@@ -281,7 +283,7 @@ class TestThresholdConstants:
 class TestCorrelationContextVars:
 
     def test_request_id_var_default_empty(self):
-        from app.database import _request_id_var, _endpoint_var
+        from app.database import _endpoint_var, _request_id_var
         assert _request_id_var.get("") == ""
         assert _endpoint_var.get("") == ""
 

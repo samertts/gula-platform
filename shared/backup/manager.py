@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import gzip
-import io
 import logging
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import timezone, datetime
-from typing import Any
+from datetime import datetime
+
+from backend.app._compat import UTC
 
 logger = logging.getLogger("gula.backup")
 
@@ -28,7 +28,7 @@ class FullBackup(BackupStrategy):
     db_name: str = "gula"
 
     def backup(self, destination: str) -> str:
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         filename = f"{destination}/{self.db_name}_{timestamp}.sql.gz"
         cmd = [
             "pg_dump",
@@ -78,7 +78,7 @@ class TableBackup(BackupStrategy):
     def backup(self, destination: str) -> str:
         if not self.tables:
             raise ValueError("No tables specified for backup")
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         filename = f"{destination}/tables_{timestamp}.sql.gz"
         for table in self.tables:
             cmd = ["pg_dump", "--no-owner", "--no-acl", "--table", table, self.db_url]

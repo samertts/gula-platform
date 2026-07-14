@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
@@ -60,7 +60,7 @@ ROLE_PERMISSIONS: dict[Role, list[Permission]] = {
         Permission.MANAGE_LAB, Permission.MANAGE_USERS, Permission.VIEW_AUDIT, Permission.VIEW_METRICS,
         Permission.ACCESS_DOCS,
     ],
-    Role.MASTER_ADMIN: [p for p in Permission],
+    Role.MASTER_ADMIN: list(Permission),
     Role.MINISTRY: [
         Permission.READ_PATIENT, Permission.READ_ORDER, Permission.READ_RESULT,
         Permission.VIEW_METRICS, Permission.VIEW_AUDIT,
@@ -103,4 +103,4 @@ class AccessPolicy:
         return self.user.has_permission(Permission.MANAGE_LAB)
 
 
-__all__ = ["User", "Role", "Permission", "AccessPolicy", "ROLE_PERMISSIONS"]
+__all__ = ["ROLE_PERMISSIONS", "AccessPolicy", "Permission", "Role", "User"]

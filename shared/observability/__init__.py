@@ -1,13 +1,13 @@
 from .tracer import (
-    Tracer,
-    trace,
-    get_tracer,
     TraceContext,
+    Tracer,
+    get_tracer,
+    trace,
 )
 
 __all__ = [
-    "Tracer",
-    "trace",
-    "get_tracer",
     "TraceContext",
+    "Tracer",
+    "get_tracer",
+    "trace",
 ]

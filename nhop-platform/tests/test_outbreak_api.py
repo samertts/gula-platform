@@ -2,19 +2,20 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from app.api.v1.outbreak import router as outbreak_router
+from app.core.database import Base, get_db
+from app.models.antibiotic_sensitivity import AntibioticSensitivity
+from app.models.audit_log import AuditLog
+from app.models.citizen import Citizen
+from app.models.disease_case import DiseaseCase
+from app.models.lab_test import LabTest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.v1.outbreak import router as outbreak_router
-from app.core.database import Base, get_db
-from app.models.antibiotic_sensitivity import AntibioticSensitivity  # noqa: F401
-from app.models.audit_log import AuditLog  # noqa: F401
-from app.models.citizen import Citizen  # noqa: F401
-from app.models.disease_case import DiseaseCase
-from app.models.lab_test import LabTest  # noqa: F401
+from backend.app._compat import UTC
 
 
 @pytest.fixture()
@@ -41,7 +42,7 @@ def client():
     app.dependency_overrides[get_db] = _override_get_db
 
     # Seed one critical-level outbreak.
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with Session() as seed:
         for i in range(60):
             seed.add(DiseaseCase(

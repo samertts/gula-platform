@@ -3,7 +3,8 @@ from __future__ import annotations
 import re
 import secrets
 import string
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 
 def slugify(text: str) -> str:

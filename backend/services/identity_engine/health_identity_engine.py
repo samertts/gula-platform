@@ -9,6 +9,5 @@ def create_health_id(name, phone, national_id):
     if similar:
         return {"warning": "possible duplicate", "matches": similar}
 
-    citizen = register_citizen(name, phone, national_id)
+    return register_citizen(name, phone, national_id)
 
-    return citizen

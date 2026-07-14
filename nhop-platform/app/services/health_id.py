@@ -6,12 +6,13 @@ of entropy — sufficient that a uniqueness check plus one retry is effectively
 never expected to collide at national scale.
 """
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from ..models.citizen import Citizen
+from backend.app._compat import UTC
 
+from ..models.citizen import Citizen
 
 _ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"   # Crockford base32
 _SUFFIX_LEN = 8
@@ -29,7 +30,7 @@ def generate_health_id(db: Session) -> str:
     existing row. At ~1.1e12 possibilities per year, collisions are effectively
     impossible in practice.
     """
-    year = datetime.now(timezone.utc).year
+    year = datetime.now(UTC).year
     for _ in range(_MAX_ATTEMPTS):
         hid = f"HID-{year}-{_random_suffix()}"
         exists = db.query(Citizen.id).filter(Citizen.health_id == hid).first()

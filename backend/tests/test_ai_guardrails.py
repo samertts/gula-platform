@@ -46,21 +46,19 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
+from app.ai.approval import (
+    ApprovalStatus,
+    ApprovalStore,
+)
 from app.ai.guardrails import (
-    AISuggestion,
-    AIOperationType,
-    AIGuardrailViolation,
-    ai_suggest,
     _ABSOLUTELY_BLOCKED,
     _SUGGESTABLE,
+    AIGuardrailViolation,
+    AIOperationType,
+    AISuggestion,
+    ai_suggest,
 )
-from app.ai.approval import (
-    ApprovalStore,
-    ApprovalStatus,
-)
-from app.ai.sandbox import AISandbox, _REGISTRY
-
+from app.ai.sandbox import _REGISTRY, AISandbox
 
 # ─── Phase 5.A — Absolutely blocked operations ───────────────────────────────
 
@@ -280,7 +278,7 @@ class TestSandboxHandlersReadOnly:
 
     def test_registered_operations_are_subset_of_suggestable(self):
         """Only _SUGGESTABLE operations should be in the sandbox registry."""
-        for op in _REGISTRY.keys():
+        for op in _REGISTRY:
             assert op in _SUGGESTABLE, (
                 f"Sandbox registered an operation {op!r} that is not in "
                 f"_SUGGESTABLE — possible privilege expansion."

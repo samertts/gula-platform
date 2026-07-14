@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.kernel.integration import (
     get_kernel,
@@ -8,17 +8,18 @@ from backend.app.kernel.integration import (
     is_kernel_ready,
     kernel_kill_switch_active,
 )
+from backend.app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/kernel", tags=["kernel"])
 
 
 @router.get("/status")
-async def kernel_status():
+async def kernel_status(_user=Depends(get_current_user)):
     return await get_kernel_health()
 
 
 @router.get("/services")
-async def kernel_services():
+async def kernel_services(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -32,7 +33,7 @@ async def kernel_services():
 
 
 @router.get("/capabilities")
-async def kernel_capabilities():
+async def kernel_capabilities(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -53,7 +54,7 @@ async def kernel_capabilities():
 
 
 @router.get("/plugins")
-async def kernel_plugins():
+async def kernel_plugins(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -67,7 +68,7 @@ async def kernel_plugins():
 
 
 @router.get("/modules")
-async def kernel_modules():
+async def kernel_modules(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -81,7 +82,7 @@ async def kernel_modules():
 
 
 @router.get("/config")
-async def kernel_config():
+async def kernel_config(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -105,7 +106,7 @@ async def kernel_config():
 
 
 @router.get("/events/outbox")
-async def kernel_outbox():
+async def kernel_outbox(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -117,7 +118,7 @@ async def kernel_outbox():
 
 
 @router.get("/events/dlq")
-async def kernel_dead_letter_queue():
+async def kernel_dead_letter_queue(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -133,7 +134,7 @@ async def kernel_dead_letter_queue():
 
 
 @router.get("/tenants")
-async def kernel_tenants():
+async def kernel_tenants(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -149,7 +150,7 @@ async def kernel_tenants():
 
 
 @router.get("/locks")
-async def kernel_locks():
+async def kernel_locks(_user=Depends(get_current_user)):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -160,5 +161,5 @@ async def kernel_locks():
 
 
 @router.get("/kill-switch")
-async def kernel_kill_switch():
+async def kernel_kill_switch(_user=Depends(get_current_user)):
     return {"active": kernel_kill_switch_active()}

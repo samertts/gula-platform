@@ -38,16 +38,15 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
 from app.core.self_healing import (
+    CircuitState,
     DegradationLevel,
     health,
-    CircuitState,
 )
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
-from app.security.auth import hash_password, create_token
+from app.security.auth import create_token, hash_password
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
@@ -164,8 +163,8 @@ class TestAuditWriteFailureMode:
 
     def test_log_action_never_silently_skips(self, db, monkeypatch):
         """A direct invocation must always reach _compute_chain_hash."""
-        from app.services import audit_service
         from app.models.audit_log import AuditLog
+        from app.services import audit_service
 
         before = db.query(AuditLog).count()
         audit_service.log_action(
@@ -187,7 +186,7 @@ class TestAIFailsClosedRegardlessOfState:
 
     def test_blocked_op_rejected_at_l3(self):
         """Even when the system is L3_CRITICAL_ONLY, AI cannot escalate."""
-        from app.ai.guardrails import ai_suggest, AIGuardrailViolation
+        from app.ai.guardrails import AIGuardrailViolation, ai_suggest
 
         health.enter_degraded_mode("test", DegradationLevel.L3_CRITICAL_ONLY)
         # The guardrail check is in __post_init__ — independent of state
@@ -196,7 +195,7 @@ class TestAIFailsClosedRegardlessOfState:
 
     def test_blocked_op_rejected_during_circuit_open(self):
         """When DB circuit is open, blocked ops still rejected."""
-        from app.ai.guardrails import ai_suggest, AIGuardrailViolation
+        from app.ai.guardrails import AIGuardrailViolation, ai_suggest
 
         cb = getattr(health, "db_circuit", None) or getattr(health, "db_breaker", None)
         if cb is not None:

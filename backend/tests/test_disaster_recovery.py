@@ -28,9 +28,9 @@ Blast radius: zero. No production code modified.
 from __future__ import annotations
 
 import os
-import sys
-import re
 import pathlib
+import re
+import sys
 
 os.environ["RUNTIME_MODE"] = "test"
 os.environ["FEATURE_BACKGROUND_TASKS"] = "false"
@@ -44,19 +44,17 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
 from app.models.audit_log import AuditLog
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
 from app.security.auth import hash_password
 from app.services.audit_service import (
+    _GENESIS_HASH,
+    _compute_chain_hash,
     log_action,
     verify_audit_chain,
-    _compute_chain_hash,
-    _GENESIS_HASH,
 )
-
 
 MIGRATIONS_DIR = pathlib.Path(__file__).parent.parent / "migrations" / "versions"
 
@@ -216,7 +214,8 @@ class TestAnchorFileFormat:
 
     def test_anchor_hmac_helpers_loadable(self):
         from app.services.audit_service import (
-            _anchor_hmac, _verify_anchor_hmac,
+            _anchor_hmac,
+            _verify_anchor_hmac,
         )
         # Round-trip: produce + verify
         payload = "v1|2026-05-08T12:00:00Z|42|deadbeef"

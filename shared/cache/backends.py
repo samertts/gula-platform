@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import threading
 import time
@@ -103,10 +104,8 @@ class RedisBackend(CacheBackend):
             return False
 
     def close(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self._sync().close()
-        except Exception:
-            pass
 
 
 _cache_instance: CacheBackend | None = None
@@ -120,8 +119,5 @@ def get_cache(redis_url: str | None = None) -> CacheBackend:
     with _cache_lock:
         if _cache_instance is not None:
             return _cache_instance
-        if redis_url:
-            _cache_instance = RedisBackend(redis_url)
-        else:
-            _cache_instance = MemoryBackend()
+        _cache_instance = RedisBackend(redis_url) if redis_url else MemoryBackend()
     return _cache_instance

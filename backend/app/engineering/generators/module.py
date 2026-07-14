@@ -27,7 +27,7 @@ class ModuleGenerator(BaseGenerator):
             spec = ModuleSpec(name=kwargs.get("name", "unnamed"))
 
         module = spec.name.lower().replace(" ", "_")
-        Mod = spec.name[0].upper() + spec.name[1:]
+        mod = spec.name[0].upper() + spec.name[1:]
 
         layers = [
             ("domain", ["entities", "events", "value_objects", "exceptions"]),
@@ -62,7 +62,7 @@ from datetime import datetime
 
 
 @dataclass
-class {Mod}:
+class {mod}:
     id: int | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
@@ -79,19 +79,19 @@ from datetime import datetime
 
 
 @dataclass
-class {Mod}Created:
+class {mod}Created:
     {module}_id: int
     occurred_at: datetime = datetime.utcnow()
 
 
 @dataclass
-class {Mod}Updated:
+class {mod}Updated:
     {module}_id: int
     occurred_at: datetime = datetime.utcnow()
 
 
 @dataclass
-class {Mod}Deleted:
+class {mod}Deleted:
     {module}_id: int
     occurred_at: datetime = datetime.utcnow()
 """,
@@ -106,17 +106,17 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Create{Mod}:
+class Create{mod}:
     pass
 
 
 @dataclass
-class Update{Mod}:
+class Update{mod}:
     id: int
 
 
 @dataclass
-class Delete{Mod}:
+class Delete{mod}:
     id: int
 """,
             )
@@ -130,12 +130,12 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Get{Mod}:
+class Get{mod}:
     id: int
 
 
 @dataclass
-class List{Mod}s:
+class List{mod}s:
     skip: int = 0
     limit: int = 100
 """,
@@ -148,7 +148,7 @@ class List{Mod}s:
 from typing import Optional
 
 
-class {Mod}Service:
+class {mod}Service:
     def __init__(self) -> None:
         pass
 """,
@@ -163,15 +163,15 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class {Mod}Create(BaseModel):
+class {mod}Create(BaseModel):
     pass
 
 
-class {Mod}Update(BaseModel):
+class {mod}Update(BaseModel):
     pass
 
 
-class {Mod}Response(BaseModel):
+class {mod}Response(BaseModel):
     id: int
     created_at: datetime
     updated_at: datetime
@@ -189,7 +189,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 
-class {Mod}Repository(ABC):
+class {mod}Repository(ABC):
     @abstractmethod
     async def get(self, id: int) -> Optional[...]:
         ...
@@ -203,7 +203,7 @@ class {Mod}Repository(ABC):
 from typing import Optional
 
 
-class {Mod}RepositoryImpl:
+class {mod}RepositoryImpl:
     def __init__(self) -> None:
         pass
 
@@ -218,7 +218,7 @@ class {Mod}RepositoryImpl:
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="/{module}s", tags=["{Mod}"])
+router = APIRouter(prefix="/{module}s", tags=["{mod}"])
 """,
         )
 

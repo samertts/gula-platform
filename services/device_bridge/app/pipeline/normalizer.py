@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app.pipeline.parser_engine import ParsedResult
 
+from backend.app._compat import UTC
 
 TEST_NAME_MAP = {
     "HEMOGLOBIN": "Hemoglobin",
@@ -43,6 +44,6 @@ class Normalizer:
             value=data.value,
             unit=data.unit,
             reference_range=reference_range,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             status="final",
         )

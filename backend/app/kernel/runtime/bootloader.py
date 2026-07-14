@@ -30,6 +30,8 @@ class Bootloader:
         await self._phase_initialize_background()
         await self._phase_initialize_tenant()
         await self._phase_initialize_gateway()
+        await self._phase_initialize_feature_management()
+        await self._phase_populate_capabilities()
 
         elapsed = time.monotonic() - self._start_time
         logger.info(
@@ -40,6 +42,15 @@ class Bootloader:
     async def _phase_validate_environment(self) -> None:
         logger.info("Boot phase: validate environment")
         self._start_time = time.monotonic()
+
+        required_dirs = [
+            self.kernel.config.data_dir,
+            self.kernel.config.plugin_dir,
+            self.kernel.config.module_dir,
+        ]
+        for d in required_dirs:
+            if d and not __import__("os").path.exists(d):
+                logger.warning("Kernel directory does not exist: %s", d)
 
         self._boot_sequence.append(("validate_environment", time.monotonic()))
 
@@ -65,6 +76,15 @@ class Bootloader:
 
         lifecycle = LifecycleManager()
         self.kernel.register_component("lifecycle_manager", lifecycle)
+
+        from backend.app.kernel.runtime.startup import StartupManager
+        from backend.app.kernel.runtime.shutdown import ShutdownManager
+
+        startup_manager = StartupManager()
+        self.kernel.register_component("startup_manager", startup_manager)
+
+        shutdown_manager = ShutdownManager()
+        self.kernel.register_component("shutdown_manager", shutdown_manager)
 
         self._boot_sequence.append(("core_components", time.monotonic()))
 
@@ -138,3 +158,39 @@ class Bootloader:
             sd = ServiceDiscovery(self.kernel)
             self.kernel.register_component("service_discovery", sd)
         self._boot_sequence.append(("initialize_gateway", time.monotonic()))
+
+    async def _phase_initialize_feature_management(self) -> None:
+        logger.info("Boot phase: initialize feature management")
+        if self.kernel.config.enable_feature_management:
+            from backend.app.kernel.features.capabilities import CapabilityFlagManager
+            from backend.app.kernel.features.flags import FeatureFlagManager
+
+            ffm = FeatureFlagManager(self.kernel)
+            self.kernel.register_component("feature_flag_manager", ffm)
+
+            cr = self.kernel.get_component("capability_registry")
+            cfm = CapabilityFlagManager(registry=cr)
+            self.kernel.register_component("capability_flag_manager", cfm)
+            logger.info("Feature flag manager initialized")
+        self._boot_sequence.append(("initialize_feature_management", time.monotonic()))
+
+    async def _phase_populate_capabilities(self) -> None:
+        logger.info("Boot phase: populate capability registry")
+        cr = self.kernel.get_component("capability_registry")
+        if cr:
+            from backend.app.kernel.capabilities_registry_populator import populate_registry
+
+            count = populate_registry(cr)
+            logger.info(
+                "Capability registry populated",
+                extra={"count": count},
+            )
+
+            cfm = self.kernel.get_component("capability_flag_manager")
+            if cfm:
+                synced = cfm.sync_from_registry()
+                logger.info(
+                    "Capability flag manager synced",
+                    extra={"synced": synced},
+                )
+        self._boot_sequence.append(("populate_capabilities", time.monotonic()))

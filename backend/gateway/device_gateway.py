@@ -1,4 +1,3 @@
-import json
 import os
 import socket
 
@@ -42,23 +41,20 @@ def run_server():
     s.bind((HOST, PORT))
     s.listen(5)
 
-    print("Device Gateway Running on port", PORT)
 
     while True:
 
-        conn, addr = s.accept()
+        conn, _addr = s.accept()
 
         data = conn.recv(1024).decode()
 
-        print("Received:", data)
 
         parsed = parse_message(data)
 
         if parsed:
 
-            status = send_result(parsed)
+            send_result(parsed)
 
-            print("Forwarded to API:", status)
 
         conn.close()
 

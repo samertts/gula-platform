@@ -29,15 +29,15 @@ _REPO_ROOT = os.path.dirname(_BACKEND_DIR)
 sys.path.insert(0, _BACKEND_DIR)
 sys.path.insert(0, _REPO_ROOT)
 
+import contextlib
+
 import pytest
+from app.database import Base, get_db
+from app.security.auth import create_token, hash_password
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
-
-from app.database import Base, get_db
-from app.security.auth import hash_password, create_token
-
 
 # ── DB fixture ────────────────────────────────────────────────────────────────
 
@@ -51,21 +51,21 @@ def db_engine():
         poolclass=StaticPool,
     )
     # Import every model so Base.metadata knows about all tables
-    import app.models.lab           # noqa: F401
-    import app.models.lab_user      # noqa: F401
-    import app.models.user          # noqa: F401
-    import app.models.patient       # noqa: F401
-    import app.models.lab_order     # noqa: F401
-    import app.models.lab_result    # noqa: F401
-    import app.models.audit_log     # noqa: F401
-    import app.models.sample        # noqa: F401
-    import app.models.quality_control  # noqa: F401
-    import app.models.consent       # noqa: F401
-    import app.models.outbox        # noqa: F401
-    import app.models.subscription  # noqa: F401
-    import app.models.claim         # noqa: F401
-    import app.models.edge          # noqa: F401
-    from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
+    import app.models.audit_log
+    import app.models.claim
+    import app.models.consent
+    import app.models.edge
+    import app.models.lab
+    import app.models.lab_order
+    import app.models.lab_result
+    import app.models.lab_user
+    import app.models.outbox
+    import app.models.patient
+    import app.models.quality_control
+    import app.models.sample
+    import app.models.subscription
+    import app.models.user
+    from app.services.mpi.models import Citizen, IdentityClaim
     Base.metadata.create_all(engine)
     yield engine
     Base.metadata.drop_all(engine)
@@ -96,9 +96,10 @@ def client(db, db_engine, monkeypatch):
     Without all three, a test could silently hit the real (or CI) database
     even though `get_db` was overridden, breaking isolation.
     """
-    from app.main import app
-    import app.database as _database
     import app.core.startup_guard as _guard
+    import app.database as _database
+    from app.kernel.integration import boot_kernel, init_kernel, stop_kernel
+    from app.main import app
     from sqlalchemy.orm import sessionmaker
 
     def _override_get_db():
@@ -118,12 +119,16 @@ def client(db, db_engine, monkeypatch):
     # run_startup_guard() has `if system_ready: return` at the top, so setting
     # it True here causes startup validation to be skipped entirely in tests.
     _guard.system_ready = True
+    import asyncio
+    init_kernel()
+    asyncio.run(boot_kernel())
     try:
         with TestClient(app, raise_server_exceptions=True) as c:
             yield c
     finally:
         _guard.system_ready = False
         app.dependency_overrides.clear()
+        asyncio.run(stop_kernel())
 
 
 # ── Test isolation: clear cross-test global state ────────────────────────────
@@ -145,10 +150,8 @@ def _reset_global_caches():
             cache._data.clear()
         client = getattr(cache, "_client", None)
         if client is not None:
-            try:
+            with contextlib.suppress(Exception):
                 client.flushdb()
-            except Exception:
-                pass
 
     _clear()
     yield

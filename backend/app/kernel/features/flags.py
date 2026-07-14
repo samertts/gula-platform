@@ -26,7 +26,8 @@ class FeatureFlag:
 
 
 class FeatureFlagManager:
-    def __init__(self):
+    def __init__(self, kernel=None):
+        self.kernel = kernel
         self._flags: dict[str, FeatureFlag] = {}
         self.capabilities = CapabilityFlagManager()
         self.experimental = ExperimentalFeatureManager()

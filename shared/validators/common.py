@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 _IRAQI_NID_PATTERN = re.compile(r"^\d{10,14}$")
 _IRAQI_PHONE_PATTERN = re.compile(r"^(?:\+964|0)(?:7[0-9]{8}|[1-6][0-9]{7})$")

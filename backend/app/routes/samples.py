@@ -48,6 +48,7 @@ VALID_STATUSES = ["collected", "received", "processing", "analyzed", "rejected"]
 @router.post("", status_code=201)
 def create_sample(
     data: SampleCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -77,6 +78,19 @@ def create_sample(
         storage_location=data.storage_location,
     )
     db.add(sample)
+    db.flush()
+
+    log_action(
+        db,
+        action="create",
+        resource_type="sample",
+        resource_id=sample.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"Sample type={data.sample_type} for order {data.order_id}",
+        ip_address=get_client_ip(request),
+    )
+
     db.commit()
     db.refresh(sample)
 

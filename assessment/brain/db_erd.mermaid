@@ -1,0 +1,83 @@
+# Database Entity Relationship Diagram — GULA Platform
+
+erDiagram
+    labs ||--o{ lab_users : "has"
+    labs ||--o{ lab_orders : "owns"
+    labs ||--o{ lab_results : "owns"
+    labs ||--o{ patients : "manages"
+    labs ||--o{ samples : "tracks"
+
+    patients ||--o{ lab_orders : "requests"
+    patients ||--o{ lab_results : "has"
+    patients ||--o{ consent : "grants"
+
+    lab_orders ||--o{ lab_results : "contains"
+    lab_orders ||--o{ samples : "references"
+    lab_orders ||--o{ outbox_events : "generates"
+
+    lab_results ||--o{ audit_logs : "audited_by"
+    lab_results ||--o{ test_results : "includes"
+
+    test_types ||--o{ lab_results : "defines"
+    test_types ||--o{ quality_control : "tracks"
+
+    lab_users ||--o{ audit_logs : "performs"
+    lab_users ||--o{ outbox_events : "triggers"
+
+    subscription ||--o{ labs : "tiers"
+    claim ||--o{ lab_results : "references"
+    consent ||--o{ patients : "protects"
+    
+    visits ||--o{ lab_orders : "sndhs_links"
+    ai_interactions ||--o{ lab_results : "analyzes"
+    ai_interactions ||--o{ quality_control : "monitors"
+
+    labs {
+        uuid id PK
+        string name
+        string type
+        string license_number
+        string director_name
+        jsonb address
+        jsonb contact
+        jsonb settings
+        timestamp created_at
+    }
+
+    patients {
+        uuid id PK
+        string first_name
+        string father_name
+        string last_name
+        string phone UK
+        date date_of_birth
+        string national_id UK "encrypted"
+        string sndhs_health_id
+        jsonb metadata
+        timestamp created_at
+    }
+
+    lab_orders {
+        uuid id PK
+        uuid lab_id FK
+        uuid patient_id FK
+        uuid visit_id FK "nullable"
+        string status "state machine"
+        string priority
+        jsonb test_types
+        jsonb metadata
+        integer version
+        timestamp created_at
+    }
+
+    lab_results {
+        uuid id PK
+        uuid order_id FK
+        uuid patient_id FK
+        uuid test_type_id FK
+        string result_value
+        string unit
+        string status
+        integer version "optimistic lock"
+        timestamp created_at
+    }

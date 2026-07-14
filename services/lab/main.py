@@ -3,18 +3,19 @@ GULA Platform - Lab Service
 Manages laboratories, devices, and lab operations
 """
 
-import os
 import logging
+import os
 import sys
+
 sys.path.insert(0, "/app/shared")
 
-from fastapi import FastAPI, HTTPException, Depends, Request
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
 from datetime import datetime
+
 import asyncpg
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from pydantic import BaseModel
 from starlette.responses import Response
 
 logging.basicConfig(level=logging.INFO)
@@ -42,17 +43,17 @@ async def get_db():
 
 class LaboratoryCreate(BaseModel):
     lab_name: str
-    city: Optional[str] = None
-    region: Optional[str] = None
-    contact_phone: Optional[str] = None
-    email: Optional[str] = None
+    city: str | None = None
+    region: str | None = None
+    contact_phone: str | None = None
+    email: str | None = None
 
 
 class LaboratoryResponse(BaseModel):
     id: int
     lab_name: str
-    city: Optional[str]
-    region: Optional[str]
+    city: str | None
+    region: str | None
     status: str
     created_at: datetime
 
@@ -94,7 +95,7 @@ async def create_laboratory(lab: LaboratoryCreate):
         return dict(row)
 
 
-@app.get("/laboratories", response_model=List[LaboratoryResponse])
+@app.get("/laboratories", response_model=list[LaboratoryResponse])
 async def list_laboratories(skip: int = 0, limit: int = 100):
     pool = await get_db()
     async with pool.acquire() as conn:

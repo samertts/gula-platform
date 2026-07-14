@@ -14,7 +14,7 @@ import os
 import sys
 import time
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -114,10 +114,10 @@ class TestPolicyEngine(unittest.TestCase):
 
     def test_unknown_action_default_deny(self):
         """Unregistered action types get CRITICAL/denied (default-deny)."""
-        from app.core.policy_engine import ActionType
         # We can't easily add unknown enums, but we can test the code path
         # by temporarily removing from _POLICY_TABLE
         from app.core import policy_engine as pe
+        from app.core.policy_engine import ActionType
         backup = dict(pe._POLICY_TABLE)
         pe._POLICY_TABLE.pop(self.ActionType.AUTO_REPAIR)
         try:
@@ -187,7 +187,7 @@ class TestDecisionGuard(unittest.TestCase):
         pe_mod.policy_engine = self._orig_engine
 
     def test_guard_raises_on_blocked(self):
-        from app.core.decision_guard import guard, PolicyViolation
+        from app.core.decision_guard import PolicyViolation, guard
         from app.core.policy_engine import ActionType
         with self.assertRaises(PolicyViolation) as ctx:
             guard(ActionType.CODE_CHANGE, {})
@@ -219,18 +219,18 @@ class TestDecisionGuard(unittest.TestCase):
         self.assertIn("auto_repair: pool_recycle", decision.reason)
 
     def test_guard_repair_blocked_by_kill_switch(self):
-        from app.core.decision_guard import guard_repair, PolicyViolation
+        from app.core.decision_guard import PolicyViolation, guard_repair
         with patch("app.core.kill_switch.is_kill_switch_active", return_value=True):
             with self.assertRaises(PolicyViolation):
                 guard_repair("memory_gc")
 
     def test_guard_ai_fix_always_blocked(self):
-        from app.core.decision_guard import guard_ai_fix, PolicyViolation
+        from app.core.decision_guard import PolicyViolation, guard_ai_fix
         with self.assertRaises(PolicyViolation):
             guard_ai_fix("backend/app/main.py")
 
     def test_guard_ai_commit_always_blocked(self):
-        from app.core.decision_guard import guard_ai_commit, PolicyViolation
+        from app.core.decision_guard import PolicyViolation, guard_ai_commit
         with self.assertRaises(PolicyViolation):
             guard_ai_commit("fix: improve performance")
 
@@ -241,7 +241,7 @@ class TestDecisionGuard(unittest.TestCase):
         self.assertIn("scale to 3 replicas", decision.reason)
 
     def test_policy_violation_contains_action(self):
-        from app.core.decision_guard import guard, PolicyViolation
+        from app.core.decision_guard import PolicyViolation, guard
         from app.core.policy_engine import ActionType
         try:
             guard(ActionType.AUDIT_DELETE, {})
@@ -311,16 +311,16 @@ class TestRiskEngine(unittest.TestCase):
         self.assertEqual(assessment.recommended, "allow")
 
     def test_recency_adds_1_when_repeated_within_5_min(self):
-        from app.core.risk_engine import compute_risk
         import app.core.risk_engine as re_mod
+        from app.core.risk_engine import compute_risk
         action = "auto_repair.gc_recency_test"
         re_mod._recent_actions[action] = time.time() - 60  # 1 min ago
         assessment = compute_risk(action, {"env": "development"})
         self.assertTrue(any("repeated within" in f for f in assessment.factors))
 
     def test_recency_ignored_when_older_than_5_min(self):
-        from app.core.risk_engine import compute_risk
         import app.core.risk_engine as re_mod
+        from app.core.risk_engine import compute_risk
         action = "auto_repair.gc_old"
         re_mod._recent_actions[action] = time.time() - 400  # 6+ min ago
         assessment = compute_risk(action, {"env": "development"})
@@ -433,8 +433,8 @@ class TestKillSwitch(unittest.TestCase):
             mock_cache.set.assert_called_once_with("gula:kill_switch", "1", ex=86400)
 
     def test_deactivate_deletes_redis_key(self):
-        from app.core.kill_switch import deactivate
         import app.core.kill_switch as ks
+        from app.core.kill_switch import deactivate
         ks._in_memory_active = True
         with patch("app.security.redis_client.cache") as mock_cache:
             mock_cache.delete.return_value = True
@@ -487,8 +487,8 @@ class TestKillSwitch(unittest.TestCase):
 class TestControlLayerIntegration(unittest.TestCase):
 
     def setUp(self):
-        from app.core.policy_engine import PolicyEngine
         import app.core.policy_engine as pe_mod
+        from app.core.policy_engine import PolicyEngine
         self._orig_engine = pe_mod.policy_engine
         pe_mod.policy_engine = PolicyEngine()
 
@@ -511,7 +511,7 @@ class TestControlLayerIntegration(unittest.TestCase):
 
     def test_full_flow_kill_switch_stops_allowed_action(self):
         """Even an allowed action is stopped when kill switch is on."""
-        from app.core.decision_guard import guard, PolicyViolation
+        from app.core.decision_guard import PolicyViolation, guard
         from app.core.policy_engine import ActionType
         with patch("app.core.kill_switch.is_kill_switch_active", return_value=True):
             with self.assertRaises(PolicyViolation):
@@ -519,9 +519,9 @@ class TestControlLayerIntegration(unittest.TestCase):
 
     def test_frequency_exhaustion_then_manual_kill_switch(self):
         """After frequency limit, kill switch gives a clearer message."""
+        import app.core.policy_engine as pe_mod
         from app.core.decision_guard import check
         from app.core.policy_engine import ActionType
-        import app.core.policy_engine as pe_mod
 
         # Exhaust frequency limit
         for _ in range(10):

@@ -19,6 +19,8 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from app._compat import UTC
+
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///test_consent.db")
 os.environ.setdefault("SECRET_KEY", "test-secret-consent-" + "x" * 32)
@@ -29,17 +31,15 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
+from app.database import Base
+from app.models.audit_log import AuditLog
+from app.models.consent import Consent
+from app.models.lab_user import LabUser
+from app.security.consent_dep import require_consent
+from app.services import consent_service
 from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from app.database import Base
-from app.models.consent import Consent
-from app.models.audit_log import AuditLog  # noqa: F401  register with Base
-from app.models.lab_user import LabUser  # noqa: F401  register FK target
-from app.services import consent_service
-from app.security.consent_dep import require_consent
-
 
 # ── In-memory test DB ─────────────────────────────────────────────────────────
 
@@ -126,8 +126,8 @@ def test_expired_consent_denies(db):
         grantee_id="user:42",
         scope="read:citizen",
         status="active",
-        expires_at=datetime.now(timezone.utc) - timedelta(minutes=5),
-        created_at=datetime.now(timezone.utc) - timedelta(hours=2),
+        expires_at=datetime.now(UTC) - timedelta(minutes=5),
+        created_at=datetime.now(UTC) - timedelta(hours=2),
     )
     db.add(row)
     db.commit()

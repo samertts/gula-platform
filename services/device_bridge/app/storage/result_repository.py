@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
 
 from app.pipeline.normalizer import NormalizedResult
 from app.storage.db import InMemoryDB
+
+from backend.app._compat import UTC
 
 
 class ResultRepository:
@@ -48,7 +50,7 @@ class ResultRepository:
                 "raw_data": raw_data,
                 "status": status,
                 "error_message": error_message,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -67,7 +69,7 @@ class ResultRepository:
             {
                 "event_type": event_type,
                 "payload": payload,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -87,7 +89,7 @@ class LogRepository:
             "raw_data": entry.get("raw_data", ""),
             "status": entry.get("status", ""),
             "error_message": entry.get("error_message", ""),
-            "timestamp": entry.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            "timestamp": entry.get("timestamp", datetime.now(UTC).isoformat()),
         }
         self.db.logs.append(payload)
 

@@ -546,9 +546,9 @@ class TestClinicalIntelligence:
     def test_all_patterns_have_arabic(self):
         """All patterns must have Arabic name and message."""
         for p in self.patterns:
-            assert "name_ar" in p and p["name_ar"], f"Pattern {p['id']} missing name_ar"
-            assert "message_ar" in p and p["message_ar"], f"Pattern {p['id']} missing message_ar"
-            assert "action_ar" in p and p["action_ar"], f"Pattern {p['id']} missing action_ar"
+            assert p.get("name_ar"), f"Pattern {p['id']} missing name_ar"
+            assert p.get("message_ar"), f"Pattern {p['id']} missing message_ar"
+            assert p.get("action_ar"), f"Pattern {p['id']} missing action_ar"
 
 
 # ─── Stats API Endpoints ──────────────────────────────────────────────────────

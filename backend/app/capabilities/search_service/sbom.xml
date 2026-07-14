@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.5" version="1">
+    <metadata>
+        <component type="library">
+            <name>search_service</name>
+            <version>1.0.0</version>
+            <description>Unified search platform: full-text search across patients, orders, results, documents with filters, ranking, suggestions, indexing, permissions-aware</description>
+        </component>
+    </metadata>
+    <components>
+        <component type="library">
+            <name>capability-framework</name>
+            <version>1.0.0</version>
+        </component>
+    </components>
+</bom>

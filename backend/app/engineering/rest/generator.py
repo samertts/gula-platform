@@ -28,23 +28,23 @@ class RESTGenerator(BaseGenerator):
             spec = RESTSpec(name=kwargs.get("name", "resource"))
 
         module = spec.name.lower()
-        Mod = spec.name[0].upper() + spec.name[1:]
+        mod = spec.name[0].upper() + spec.name[1:]
         prefix = spec.prefix or f"/api/{spec.version}/{module}s"
-        tags = spec.tags or [Mod]
+        tags = spec.tags or [mod]
 
         handlers = []
         if "list" in spec.operations:
-            handlers.append(self._list_endpoint(module, Mod, spec))
+            handlers.append(self._list_endpoint(module, mod, spec))
         if "get" in spec.operations:
-            handlers.append(self._get_endpoint(module, Mod))
+            handlers.append(self._get_endpoint(module, mod))
         if "create" in spec.operations:
-            handlers.append(self._create_endpoint(module, Mod))
+            handlers.append(self._create_endpoint(module, mod))
         if "update" in spec.operations:
-            handlers.append(self._update_endpoint(module, Mod))
+            handlers.append(self._update_endpoint(module, mod))
         if "delete" in spec.operations:
-            handlers.append(self._delete_endpoint(module, Mod))
+            handlers.append(self._delete_endpoint(module, mod))
 
-        content = f'''"""REST API for {Mod}."""
+        content = f'''"""REST API for {mod}."""
 from __future__ import annotations
 
 from typing import Any
@@ -67,7 +67,7 @@ from .{module} import router as {module}_router
 
         return self._result
 
-    def _list_endpoint(self, module: str, Mod: str, spec: RESTSpec) -> str:
+    def _list_endpoint(self, module: str, mod: str, spec: RESTSpec) -> str:
         pagination = (
             """
     skip: int = Query(0, ge=0),
@@ -79,44 +79,44 @@ from .{module} import router as {module}_router
         return f'''@router.get("/")
 async def list_{module}s(
     {pagination}):
-    """List all {Mod}s."""
+    """List all {mod}s."""
     return {{"items": [], "total": 0}}
 
 
 '''
 
-    def _get_endpoint(self, module: str, Mod: str) -> str:
+    def _get_endpoint(self, module: str, mod: str) -> str:
         return f'''@router.get("/{{{module}_id}}")
 async def get_{module}({module}_id: int):
-    """Get a {Mod} by ID."""
-    raise HTTPException(status_code=404, detail="{Mod} not found")
+    """Get a {mod} by ID."""
+    raise HTTPException(status_code=404, detail="{mod} not found")
 
 
 '''
 
-    def _create_endpoint(self, module: str, Mod: str) -> str:
+    def _create_endpoint(self, module: str, mod: str) -> str:
         return f'''@router.post("/", status_code=201)
 async def create_{module}(payload: dict[str, Any]):
-    """Create a new {Mod}."""
+    """Create a new {mod}."""
     return payload
 
 
 '''
 
-    def _update_endpoint(self, module: str, Mod: str) -> str:
+    def _update_endpoint(self, module: str, mod: str) -> str:
         return f'''@router.put("/{{{module}_id}}")
 async def update_{module}({module}_id: int, payload: dict[str, Any]):
-    """Update a {Mod}."""
-    raise HTTPException(status_code=404, detail="{Mod} not found")
+    """Update a {mod}."""
+    raise HTTPException(status_code=404, detail="{mod} not found")
 
 
 '''
 
-    def _delete_endpoint(self, module: str, Mod: str) -> str:
+    def _delete_endpoint(self, module: str, mod: str) -> str:
         return f'''@router.delete("/{{{module}_id}}", status_code=204)
 async def delete_{module}({module}_id: int):
-    """Delete a {Mod}."""
-    raise HTTPException(status_code=404, detail="{Mod} not found")
+    """Delete a {mod}."""
+    raise HTTPException(status_code=404, detail="{mod} not found")
 
 
 '''

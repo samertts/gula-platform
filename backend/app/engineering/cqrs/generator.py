@@ -36,7 +36,7 @@ class CQRSGenerator(BaseGenerator):
         (self.target_dir / "handlers" / "__init__.py").touch()
 
         for cmd in spec.commands:
-            Cmd = cmd[0].upper() + cmd[1:]
+            cmd_cap = cmd[0].upper() + cmd[1:]
             self._write(
                 f"commands/{cmd}.py",
                 f"""from __future__ import annotations
@@ -45,7 +45,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class {Cmd}Command:
+class {cmd_cap}Command:
     pass
 """,
             )
@@ -55,17 +55,17 @@ class {Cmd}Command:
                     f"handlers/{cmd}_handler.py",
                     f"""from __future__ import annotations
 
-from commands.{cmd} import {Cmd}Command
+from commands.{cmd} import {cmd_cap}Command
 
 
-class {Cmd}CommandHandler:
-    async def handle(self, command: {Cmd}Command) -> None:
+class     {cmd_cap}CommandHandler:
+    async def handle(self, command: {cmd_cap}Command) -> None:
         pass
 """,
                 )
 
         for qry in spec.queries:
-            Qry = qry[0].upper() + qry[1:]
+            qry_cap = qry[0].upper() + qry[1:]
             self._write(
                 f"queries/{qry}.py",
                 f"""from __future__ import annotations
@@ -75,12 +75,12 @@ from typing import Any
 
 
 @dataclass
-class {Qry}Query:
+class {qry_cap}Query:
     pass
 
 
 @dataclass
-class {Qry}Result:
+class {qry_cap}Result:
     data: Any = None
 """,
             )
@@ -90,12 +90,12 @@ class {Qry}Result:
                     f"handlers/{qry}_handler.py",
                     f"""from __future__ import annotations
 
-from queries.{qry} import {Qry}Query, {Qry}Result
+from queries.{qry} import {qry_cap}Query, {qry_cap}Result
 
 
-class {Qry}QueryHandler:
-    async def handle(self, query: {Qry}Query) -> {Qry}Result:
-        return {Qry}Result()
+class {qry_cap}QueryHandler:
+    async def handle(self, query: {qry_cap}Query) -> {qry_cap}Result:
+        return {qry_cap}Result()
 """,
                 )
 

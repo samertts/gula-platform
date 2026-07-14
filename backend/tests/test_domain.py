@@ -22,10 +22,11 @@ os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
-import pytest
 from unittest.mock import MagicMock
-from fastapi import HTTPException
 
+import pytest
+from app._compat import UTC
+from fastapi import HTTPException
 
 # =============================================================================
 # 1. ORDER STATE MACHINE
@@ -113,7 +114,7 @@ class TestOrderStateMachine:
     def test_locked_order_raises_423(self):
         from datetime import datetime, timezone
         with pytest.raises(HTTPException) as exc:
-            self._not_locked(locked_at=datetime.now(timezone.utc))
+            self._not_locked(locked_at=datetime.now(UTC))
         assert exc.value.status_code == 423
 
     # ── assert_not_cancelled ───────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -51,4 +51,4 @@ class APIError:
     request_id: str = ""
 
 
-__all__ = ["APIResponse", "PaginatedResponse", "APIError"]
+__all__ = ["APIError", "APIResponse", "PaginatedResponse"]

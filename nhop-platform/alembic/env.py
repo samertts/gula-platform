@@ -9,14 +9,12 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
+import app.models  # noqa: F401  — register models with Base.metadata
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-from sqlalchemy.ext.asyncio import AsyncEngine
-
 from app.config import settings
 from app.core.database import Base
-
-import app.models  # noqa: F401  — register models with Base.metadata
+from sqlalchemy import engine_from_config, pool
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DB_URL)

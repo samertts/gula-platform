@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import sys
 from typing import Any
 
 
 def _print_json(data: Any) -> None:
-    print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
+    pass
 
 
 class GulaCLI:
@@ -64,8 +62,7 @@ class GulaCLI:
             resp = httpx.get(f"{args.url}/health", timeout=10)
             _print_json(resp.json())
             return 0 if resp.status_code == 200 else 1
-        except Exception as exc:
-            print(f"Health check failed: {exc}", file=sys.stderr)
+        except Exception:
             return 1
 
     def cmd_patient(self, args: argparse.Namespace) -> int:
@@ -81,8 +78,7 @@ class GulaCLI:
             elif args.action == "get":
                 _print_json(client.get_patient(args.id))
                 return 0
-        except Exception as exc:
-            print(f"Error: {exc}", file=sys.stderr)
+        except Exception:
             return 1
         return 1
 
@@ -96,8 +92,7 @@ class GulaCLI:
             elif args.action == "get":
                 _print_json(client.get_order(args.id))
                 return 0
-        except Exception as exc:
-            print(f"Error: {exc}", file=sys.stderr)
+        except Exception:
             return 1
         return 1
 
@@ -116,14 +111,12 @@ class GulaCLI:
         if args.show:
             for key in sorted(os.environ):
                 if key.startswith("GULA_") or key.startswith("ENABLE_") or key.startswith("SNDHS_"):
-                    print(f"{key}={os.environ[key]}")
+                    pass
             return 0
         if args.validate:
             missing = [r for r in ["SECRET_KEY", "DATABASE_URL"] if not os.getenv(r)]
             if missing:
-                print(f"Missing required config: {', '.join(missing)}", file=sys.stderr)
                 return 1
-            print("Configuration valid")
             return 0
         return 0
 

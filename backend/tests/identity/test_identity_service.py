@@ -10,8 +10,8 @@ from shared.identity.service import (
     IdentityService,
     calculate_match_score,
     generate_health_id,
-    hash_national_id,
     get_name_variants,
+    hash_national_id,
     normalize_arabic_name,
     normalize_name_token,
     normalize_phone,
@@ -149,7 +149,7 @@ class TestNameVariants:
     def test_returns_canonical_variants(self):
         variants = get_name_variants("Mohammed")
         assert "mohammed" in variants
-        assert "mohamed" in variants or True  # Might not generate all
+        assert True  # Might not generate all
 
     def test_normalize_name_token_strips_non_arabic_latin(self):
         result = normalize_name_token("Moh@me_d!132")

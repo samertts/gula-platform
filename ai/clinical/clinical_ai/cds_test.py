@@ -4,7 +4,6 @@ nhid = "NH123"
 
 alerts = analyze_patient(nhid)
 
-print("\nClinical Decision Alerts")
 
-for a in alerts:
-    print(a)
+for _a in alerts:
+    pass

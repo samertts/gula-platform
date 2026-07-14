@@ -1,16 +1,15 @@
 """Pydantic v2 schemas for the outbreak detection API."""
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
-
 
 Severity = Literal["info", "warning", "critical"]
 
 
 class OutbreakAlert(BaseModel):
     disease_code: str
-    disease_name: Optional[str] = None
+    disease_name: str | None = None
     province: str
     current_count: int = Field(..., ge=0, description="Positives in the last 24h")
     baseline_avg: float = Field(..., ge=0, description="Avg 24h count over the 30d window")
@@ -41,7 +40,7 @@ class HeatmapResponse(BaseModel):
 class ResistancePair(BaseModel):
     bacterium: str
     antibiotic: str
-    province: Optional[str] = None
+    province: str | None = None
     tested: int = Field(..., ge=1)
     resistant: int = Field(..., ge=0)
     resistance_rate: float = Field(..., ge=0.0, le=1.0)
@@ -49,6 +48,6 @@ class ResistancePair(BaseModel):
 
 class ResistanceResponse(BaseModel):
     generated_at: datetime
-    province_filter: Optional[str] = None
+    province_filter: str | None = None
     total_pairs: int
     pairs: list[ResistancePair]

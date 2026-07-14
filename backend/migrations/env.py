@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 os.environ.setdefault("ENV", "test")
 
 # ── Import models so their tables are visible to autogenerate ─────────────────
-from app.database import Base                                    # noqa: E402
-from app.models import (                                         # noqa: E402, F401
+from app.database import Base
+from app.models import (
     Lab, LabUser, User, Patient, TestType,
     LabOrder, LabResult, AuditLog, Sample, QualityControl,
 )

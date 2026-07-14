@@ -20,7 +20,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import date
 
 import pytest
-
 from app.services.identity_matching import (
     MATCH_THRESHOLD,
     calculate_match_score,
@@ -29,7 +28,6 @@ from app.services.identity_matching import (
     normalize_arabic_name,
     verify_health_id,
 )
-
 
 # ──────────────────────── normalize_arabic_name ──────────────────────────────
 

@@ -1,11 +1,11 @@
 from .checker import (
+    ComponentHealth,
     HealthChecker,
     HealthStatus,
-    ComponentHealth,
 )
 
 __all__ = [
+    "ComponentHealth",
     "HealthChecker",
     "HealthStatus",
-    "ComponentHealth",
 ]

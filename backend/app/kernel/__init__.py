@@ -8,7 +8,7 @@ module. Nothing should bypass the Kernel.
 Architecture
 ------------
 Kernel (singleton)
-├── Bootloader        — 10-phase boot sequence
+├── Bootloader        — 12-phase boot sequence
 ├── LifecycleManager  — component start/stop lifecycle
 ├── ServiceRegistry   — named service locator
 ├── CapabilityRegistry— feature capability registration
@@ -44,6 +44,9 @@ The Kernel is automatically booted during platform startup inside
 run_startup_guard() (backend/app/core/startup_guard.py) as Step 5 of the
 startup validation chain, after DB/migrations/seed data are confirmed ready.
 
+The CapabilityRegistry is auto-populated during boot phase 11 with all
+platform capabilities defined in capabilities_registry_populator.py.
+
 Access the Kernel from anywhere:
     from backend.app.kernel.integration import get_kernel
     kernel = get_kernel()
@@ -52,29 +55,13 @@ Access the Kernel from anywhere:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from backend.app.kernel.background.scheduler import Scheduler
-from backend.app.kernel.config.registry import ConfigurationRegistry
-from backend.app.kernel.event_bus.bus import EventBus
-from backend.app.kernel.features.flags import FeatureFlagManager
-from backend.app.kernel.gateway.discovery import ServiceDiscovery
-from backend.app.kernel.module.loader import ModuleLoader
-from backend.app.kernel.plugin.manager import PluginManager
 from backend.app.kernel.runtime.bootloader import Bootloader
-from backend.app.kernel.runtime.capability_registry import CapabilityRegistry
-from backend.app.kernel.runtime.context import ApplicationContext
-from backend.app.kernel.runtime.di_container import DIContainer
-from backend.app.kernel.runtime.lifecycle import LifecycleManager
-from backend.app.kernel.runtime.service_registry import ServiceRegistry
-from backend.app.kernel.tenant.registry import TenantRegistry
 
 logger = logging.getLogger("gula.kernel")
 

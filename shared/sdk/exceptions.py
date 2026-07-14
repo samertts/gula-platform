@@ -22,4 +22,4 @@ class ServerError(GulaError):
     pass
 
 
-__all__ = ["GulaError", "AuthenticationError", "NotFoundError", "ValidationError", "RateLimitError", "ServerError"]
+__all__ = ["AuthenticationError", "GulaError", "NotFoundError", "RateLimitError", "ServerError", "ValidationError"]

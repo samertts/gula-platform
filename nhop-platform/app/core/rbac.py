@@ -17,7 +17,7 @@ import enum
 from fastapi import Header, HTTPException, status
 
 
-class Role(str, enum.Enum):
+class Role(enum.StrEnum):
     CITIZEN   = "CITIZEN"
     LAB       = "LAB"
     DOCTOR    = "DOCTOR"

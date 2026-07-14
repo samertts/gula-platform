@@ -1,16 +1,14 @@
 """Pydantic v2 schemas for the citizen registry API."""
 from datetime import date, datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 
 # ─── National ID validator (Iraqi civil registry: 12 digits) ────────────────
 _NID_MIN = 10
 _NID_MAX = 14
 
 
-def _validate_nid(v: Optional[str]) -> Optional[str]:
+def _validate_nid(v: str | None) -> str | None:
     if v is None:
         return v
     v = v.strip()
@@ -27,19 +25,19 @@ def _validate_nid(v: Optional[str]) -> Optional[str]:
 
 class CitizenBase(BaseModel):
     full_name:   str  = Field(..., min_length=2, max_length=200)
-    mother_name: Optional[str] = Field(default=None, max_length=200)
-    birth_date:  Optional[date] = None
-    gender:      Optional[str]  = Field(default=None, pattern=r"^[MFmf]$")
-    phone:       Optional[str]  = Field(default=None, max_length=30)
-    email:       Optional[str]  = Field(default=None, max_length=120)
+    mother_name: str | None = Field(default=None, max_length=200)
+    birth_date:  date | None = None
+    gender:      str | None  = Field(default=None, pattern=r"^[MFmf]$")
+    phone:       str | None  = Field(default=None, max_length=30)
+    email:       str | None  = Field(default=None, max_length=120)
 
-    province: Optional[str] = Field(default=None, max_length=80)
-    district: Optional[str] = Field(default=None, max_length=120)
-    address:  Optional[str] = Field(default=None, max_length=500)
+    province: str | None = Field(default=None, max_length=80)
+    district: str | None = Field(default=None, max_length=120)
+    address:  str | None = Field(default=None, max_length=500)
 
-    chronic_diseases: Optional[list[str]] = None
-    allergies:        Optional[list[str]] = None
-    blood_type:       Optional[str] = Field(default=None, max_length=5)
+    chronic_diseases: list[str] | None = None
+    allergies:        list[str] | None = None
+    blood_type:       str | None = Field(default=None, max_length=5)
 
     @field_validator("gender")
     @classmethod
@@ -48,7 +46,7 @@ class CitizenBase(BaseModel):
 
 
 class CitizenCreate(CitizenBase):
-    national_id: Optional[str] = Field(default=None, description="Civil registry ID")
+    national_id: str | None = Field(default=None, description="Civil registry ID")
 
     _nid = field_validator("national_id")(_validate_nid)
 
@@ -57,18 +55,18 @@ class CitizenUpdate(BaseModel):
     """PUT payload. national_id and health_id are immutable and rejected."""
     model_config = ConfigDict(extra="forbid")
 
-    full_name:   Optional[str] = Field(default=None, min_length=2, max_length=200)
-    mother_name: Optional[str] = Field(default=None, max_length=200)
-    birth_date:  Optional[date] = None
-    gender:      Optional[str]  = Field(default=None, pattern=r"^[MFmf]$")
-    phone:       Optional[str]  = Field(default=None, max_length=30)
-    email:       Optional[str]  = Field(default=None, max_length=120)
-    province:    Optional[str]  = Field(default=None, max_length=80)
-    district:    Optional[str]  = Field(default=None, max_length=120)
-    address:     Optional[str]  = Field(default=None, max_length=500)
-    chronic_diseases: Optional[list[str]] = None
-    allergies:        Optional[list[str]] = None
-    blood_type:       Optional[str] = Field(default=None, max_length=5)
+    full_name:   str | None = Field(default=None, min_length=2, max_length=200)
+    mother_name: str | None = Field(default=None, max_length=200)
+    birth_date:  date | None = None
+    gender:      str | None  = Field(default=None, pattern=r"^[MFmf]$")
+    phone:       str | None  = Field(default=None, max_length=30)
+    email:       str | None  = Field(default=None, max_length=120)
+    province:    str | None  = Field(default=None, max_length=80)
+    district:    str | None  = Field(default=None, max_length=120)
+    address:     str | None  = Field(default=None, max_length=500)
+    chronic_diseases: list[str] | None = None
+    allergies:        list[str] | None = None
+    blood_type:       str | None = Field(default=None, max_length=5)
 
     @field_validator("gender")
     @classmethod
@@ -81,7 +79,7 @@ class CitizenRead(CitizenBase):
 
     id:          int
     health_id:   str
-    national_id: Optional[str]
+    national_id: str | None
     created_at:  datetime
     updated_at:  datetime
 
@@ -105,10 +103,10 @@ class LabTestRead(BaseModel):
 
     id:           int
     test_name:    str
-    result_value: Optional[str]
-    result_unit:  Optional[str]
+    result_value: str | None
+    result_unit:  str | None
     status:       str
-    lab_name:     Optional[str]
+    lab_name:     str | None
     performed_at: datetime
 
 

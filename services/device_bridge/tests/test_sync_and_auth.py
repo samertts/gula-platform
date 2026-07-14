@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from app.main import app
 from app.security.auth import DEFAULT_API_KEY
+from fastapi.testclient import TestClient
 
 
 def test_auth_required() -> None:

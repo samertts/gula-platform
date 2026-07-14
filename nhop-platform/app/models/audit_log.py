@@ -4,10 +4,12 @@ Every mutation of a citizen record, plus sensitive reads (summary view),
 must produce a row here. Rows are never updated or deleted from application
 code.
 """
-from datetime import datetime, timezone
+from datetime import datetime
 
-from sqlalchemy import DateTime, Index, Integer, JSON, String
+from sqlalchemy import JSON, DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.app._compat import UTC
 
 from ..core.database import Base
 
@@ -29,6 +31,6 @@ class AuditLog(Base):
 
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )

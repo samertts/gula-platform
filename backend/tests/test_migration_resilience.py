@@ -31,11 +31,10 @@ is already failing — this file does not duplicate that detection.
 """
 from __future__ import annotations
 
-import re
 import pathlib
+import re
 
 import pytest
-
 
 MIGRATIONS_DIR = pathlib.Path(__file__).parent.parent / "migrations" / "versions"
 

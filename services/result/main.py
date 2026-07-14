@@ -7,16 +7,17 @@ Executive Order 13: Store files in MinIO, not database
 Executive Order 18: Kafka pipeline → Population AI
 """
 
-import os
-import logging
+import contextlib
 import json
-from fastapi import FastAPI, HTTPException, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
+import logging
+import os
 from datetime import datetime
+
 import asyncpg
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from pydantic import BaseModel
 from starlette.responses import Response
 
 logging.basicConfig(level=logging.INFO)
@@ -87,12 +88,12 @@ def send_to_clickhouse(result_data: dict):
         import requests
 
         # Validate and cast types to prevent SQL injection
-        order_id = int(result_data.get('order_id', 0))
-        test_name = str(result_data.get('test_name', ''))[:255]
-        value = str(result_data.get('value', ''))[:255]
-        numeric_value = float(result_data.get('numeric_value') or 0)
-        is_abnormal = 1 if result_data.get('is_abnormal') else 0
-        lab_id = int(result_data.get('lab_id', 0))
+        order_id = int(result_data.get("order_id", 0))
+        test_name = str(result_data.get("test_name", ""))[:255]
+        value = str(result_data.get("value", ""))[:255]
+        numeric_value = float(result_data.get("numeric_value") or 0)
+        is_abnormal = 1 if result_data.get("is_abnormal") else 0
+        lab_id = int(result_data.get("lab_id", 0))
 
         # Use ClickHouse JSONEachRow format to avoid SQL injection entirely
         import json as _json
@@ -145,19 +146,17 @@ def send_to_kafka(result_data: dict):
         logger.warning(f"[ResultService] Kafka publish failed (non-critical): {e}")
     finally:
         if producer:
-            try:
+            with contextlib.suppress(Exception):
                 producer.close()
-            except Exception:
-                pass
 
 
 class ResultCreate(BaseModel):
     order_id: int
-    sample_id: Optional[int] = None
-    parameter_id: Optional[int] = None
+    sample_id: int | None = None
+    parameter_id: int | None = None
     value: str
-    numeric_value: Optional[float] = None
-    unit: Optional[str] = None
+    numeric_value: float | None = None
+    unit: str | None = None
     is_abnormal: bool = False
 
 

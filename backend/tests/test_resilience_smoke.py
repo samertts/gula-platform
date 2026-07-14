@@ -42,16 +42,15 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
 from app.core.self_healing import (
+    _ALWAYS_ALLOWED,
+    _CRITICAL_PATHS,
+    _SAFE_METHODS,
     CircuitBreaker,
     CircuitState,
     DegradationLevel,
     SystemHealth,
     health,
-    _CRITICAL_PATHS,
-    _ALWAYS_ALLOWED,
-    _SAFE_METHODS,
 )
 
 
@@ -238,7 +237,7 @@ class TestCriticalPathCoverage:
 
     def test_safe_methods_are_idempotent_only(self):
         """SAFE_METHODS in L2 read-only mode must be true HTTP idempotent verbs."""
-        assert _SAFE_METHODS == frozenset({"GET", "HEAD", "OPTIONS"})
+        assert frozenset({"GET", "HEAD", "OPTIONS"}) == _SAFE_METHODS
 
 
 # ─── Phase 8.E — Concurrency-limit clinical exemption ────────────────────────

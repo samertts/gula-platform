@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os
 import logging
 import subprocess
 import time
@@ -76,7 +75,7 @@ def auto_heal_system():
     backend_health = get_container_health(BACKEND_CONTAINER)
 
     if backend_health == "healthy":
-        logger.info(f"System is healthy. No action needed.")
+        logger.info("System is healthy. No action needed.")
         return
 
     logger.warning(f"Backend container '{BACKEND_CONTAINER}' is not healthy (status: {backend_health}). Analyzing logs...")

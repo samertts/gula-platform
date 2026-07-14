@@ -29,7 +29,6 @@ from typing import Any
 
 logger = logging.getLogger("gula.task_registry")
 
-# type: task_type → async callable(payload: dict) → Any
 _REGISTRY: dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {}
 
 

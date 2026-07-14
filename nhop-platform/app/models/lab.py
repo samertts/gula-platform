@@ -1,6 +1,6 @@
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
@@ -14,17 +14,19 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from backend.app._compat import UTC
+
 from .base import Base
 
 
-class LabType(str, enum.Enum):
+class LabType(enum.StrEnum):
     governmental = "governmental"
     private = "private"
     academic = "academic"
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Lab(Base):

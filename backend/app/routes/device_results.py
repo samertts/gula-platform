@@ -69,6 +69,12 @@ def receive_device_results(
 
     order = db.query(LabOrder).filter(LabOrder.id == sample.order_id).first()
 
+    from ..domain.order_state import assert_not_locked, assert_not_cancelled, enforce_transition
+
+    assert_not_locked(order)
+    assert_not_cancelled(order)
+    enforce_transition(order.status, "completed")
+
     created = []
     for item in data.results:
         flag = None

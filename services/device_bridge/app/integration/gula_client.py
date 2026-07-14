@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 import httpx
-
 from app.pipeline.normalizer import NormalizedResult
 
 logger = logging.getLogger("lablink.gula")

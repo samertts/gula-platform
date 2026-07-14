@@ -15,11 +15,12 @@ The state file is encrypted with a key derived from a per-device secret
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import stat
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from cryptography.fernet import Fernet
 
@@ -35,7 +36,7 @@ class AgentState:
         self.state_file = self.dir / "state.bin"
         self.key_file   = self.dir / "state.key"
         self._cipher    = self._load_or_create_cipher()
-        self._cache: Optional[dict[str, Any]] = None
+        self._cache: dict[str, Any] | None = None
 
     # ── private ───────────────────────────────────────────────────────────────
 
@@ -44,10 +45,8 @@ class AgentState:
             return Fernet(self.key_file.read_bytes())
         key = Fernet.generate_key()
         self.key_file.write_bytes(key)
-        try:
+        with contextlib.suppress(OSError):
             os.chmod(self.key_file, stat.S_IRUSR | stat.S_IWUSR)
-        except OSError:
-            pass
         return Fernet(key)
 
     def _read(self) -> dict[str, Any]:
@@ -66,10 +65,8 @@ class AgentState:
     def _write(self, data: dict[str, Any]) -> None:
         blob = self._cipher.encrypt(json.dumps(data).encode("utf-8"))
         self.state_file.write_bytes(blob)
-        try:
+        with contextlib.suppress(OSError):
             os.chmod(self.state_file, stat.S_IRUSR | stat.S_IWUSR)
-        except OSError:
-            pass
         self._cache = data
 
     # ── public ────────────────────────────────────────────────────────────────

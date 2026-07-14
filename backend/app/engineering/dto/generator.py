@@ -35,7 +35,7 @@ class DTOGenerator(BaseGenerator):
             spec = DTOSpec(name=kwargs.get("name", "Entity"))
 
         module = spec.name.lower()
-        Mod = spec.name[0].upper() + spec.name[1:]
+        mod = spec.name[0].upper() + spec.name[1:]
 
         field_lines = []
         for f in spec.fields:
@@ -50,13 +50,13 @@ class DTOGenerator(BaseGenerator):
         parts = []
 
         if spec.generate_create:
-            parts.append(f"""class {Mod}Create(BaseModel):
+            parts.append(f"""class {mod}Create(BaseModel):
 {chr(10).join(field_lines)}
 """)
 
         if spec.generate_update:
             update_lines = [f"    {f.name}: {f.type} | None = None" for f in spec.fields]
-            parts.append(f"""class {Mod}Update(BaseModel):
+            parts.append(f"""class {mod}Update(BaseModel):
 {chr(10).join(update_lines)}
 """)
 
@@ -68,14 +68,14 @@ class DTOGenerator(BaseGenerator):
             if spec.include_timestamps:
                 resp_fields.append("    created_at: datetime")
                 resp_fields.append("    updated_at: datetime")
-            parts.append(f"""class {Mod}Response(BaseModel):
+            parts.append(f"""class {mod}Response(BaseModel):
 {chr(10).join(resp_fields)}
 
     class Config:
         from_attributes = True
 """)
 
-        content = f'''"""DTOs for {Mod}."""
+        content = f'''\"\"\"DTOs for {mod}.\"\"\"
 from __future__ import annotations
 
 from datetime import datetime

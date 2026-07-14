@@ -15,8 +15,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///test_stability.db")
 os.environ.setdefault("SECRET_KEY", "test-secret-stability")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 def _run_async(coro):
@@ -55,7 +56,7 @@ class TestHysteresis:
 
     def test_latency_in_gap_does_not_exit_l1(self):
         """Latency between exit and enter thresholds must NOT trigger exit from L1."""
-        from app.core.auto_repair import RepairEngine, _DB_LATENCY_WARN
+        from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
         h = _fresh_health()
         h.enter_degraded_mode("slow", DegradationLevel.L1_CACHE_HEAVY)
@@ -144,7 +145,7 @@ class TestWindowBasedEscalation:
 
     def test_single_timeout_does_not_escalate(self):
         """1 timeout must NOT trigger L1 — threshold is > 1."""
-        from app.database import _SlidingWindow, _TIMEOUT_L1_THRESHOLD
+        from app.database import _TIMEOUT_L1_THRESHOLD, _SlidingWindow
         assert _TIMEOUT_L1_THRESHOLD > 1, (
             f"_TIMEOUT_L1_THRESHOLD={_TIMEOUT_L1_THRESHOLD} — single error causes L1. "
             "This is too sensitive for production."
@@ -157,7 +158,8 @@ class TestWindowBasedEscalation:
     def test_window_counts_only_recent_events(self):
         """Events older than max_age_s must not count toward threshold."""
         import json
-        from app.database import _SlidingWindow, _TIMEOUT_L1_THRESHOLD
+
+        from app.database import _TIMEOUT_L1_THRESHOLD, _SlidingWindow
         w = _SlidingWindow(max_age_s=10)  # very short window for test
         for _ in range(_TIMEOUT_L1_THRESHOLD + 5):
             w.record("timeout")
@@ -169,7 +171,7 @@ class TestWindowBasedEscalation:
 
     def test_escalation_resets_after_window_expires(self):
         """After the window expires, fresh events start clean."""
-        from app.database import _SlidingWindow, _TIMEOUT_L1_THRESHOLD
+        from app.database import _TIMEOUT_L1_THRESHOLD, _SlidingWindow
         w = _SlidingWindow(max_age_s=5)
         # Fill up to threshold
         for _ in range(_TIMEOUT_L1_THRESHOLD):
@@ -195,7 +197,7 @@ class TestFlappingKiller:
 
     def test_ten_slow_fast_cycles_no_oscillation(self):
         """10 alternating slow/fast poll results should NOT cause NONE↔L1 flapping."""
-        from app.core.auto_repair import RepairEngine, _DB_LATENCY_WARN
+        from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
         h = _fresh_health()
         engine = RepairEngine()
@@ -231,7 +233,7 @@ class TestFlappingKiller:
 
     def test_truly_fast_latency_exits_l1(self):
         """Only latency well below exit threshold (0.7×WARN) should exit L1."""
-        from app.core.auto_repair import RepairEngine, _DB_LATENCY_WARN
+        from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
         h = _fresh_health()
         h.enter_degraded_mode("slow", DegradationLevel.L1_CACHE_HEAVY)
@@ -266,7 +268,7 @@ class TestRecoveryCorrectness:
 
     def test_l2_stays_l2_after_latency_recovery(self):
         """Fast latency while in L2 must NOT auto-exit (circuit still open)."""
-        from app.core.auto_repair import RepairEngine, _DB_LATENCY_WARN
+        from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
         h = _fresh_health()
         h.enter_degraded_mode("circuit open", DegradationLevel.L2_READ_ONLY)
@@ -363,7 +365,7 @@ class TestCascadingFailure:
         assert h.degradation_level == DegradationLevel.L1_CACHE_HEAVY
 
         # DB slow (L1 trigger from timeout)
-        from app.database import _trigger_slow_db, _TIMEOUT_L1_THRESHOLD
+        from app.database import _TIMEOUT_L1_THRESHOLD, _trigger_slow_db
         with patch("app.core.self_healing.health", h):
             _trigger_slow_db(_TIMEOUT_L1_THRESHOLD)
 
@@ -376,7 +378,7 @@ class TestCascadingFailure:
         h = _fresh_health()
         h.enter_degraded_mode("redis down", DegradationLevel.L1_CACHE_HEAVY)
 
-        from app.database import _trigger_circuit_open, _CIRCUIT_OPEN_THRESHOLD
+        from app.database import _CIRCUIT_OPEN_THRESHOLD, _trigger_circuit_open
         with patch("app.core.self_healing.health", h):
             _trigger_circuit_open(_CIRCUIT_OPEN_THRESHOLD + 1)
 
@@ -390,7 +392,7 @@ class TestCascadingFailure:
         h = _fresh_health()
         h.enter_degraded_mode("circuit open", DegradationLevel.L2_READ_ONLY)
 
-        from app.database import _trigger_system_degradation, _SYSTEM_DEGRADE_THRESHOLD
+        from app.database import _SYSTEM_DEGRADE_THRESHOLD, _trigger_system_degradation
         with patch("app.core.self_healing.health", h):
             _trigger_system_degradation(_SYSTEM_DEGRADE_THRESHOLD + 10)
 
@@ -412,7 +414,7 @@ class TestCascadingFailure:
             h.db_circuit.record_failure()
         h.update_degraded_state()
 
-        from app.database import _trigger_system_degradation, _SYSTEM_DEGRADE_THRESHOLD
+        from app.database import _SYSTEM_DEGRADE_THRESHOLD, _trigger_system_degradation
         with patch("app.core.self_healing.health", h):
             _trigger_system_degradation(_SYSTEM_DEGRADE_THRESHOLD + 5)
 

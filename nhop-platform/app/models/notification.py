@@ -10,16 +10,18 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, Index, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.app._compat import UTC
 
 from .base import Base
 
 
-class NotificationType(str, enum.Enum):
+class NotificationType(enum.StrEnum):
     critical_result = "critical_result"
     abnormal_result = "abnormal_result"
     reminder = "reminder"
@@ -27,7 +29,7 @@ class NotificationType(str, enum.Enum):
     qc_alert = "qc_alert"
 
 
-class NotificationPriority(str, enum.Enum):
+class NotificationPriority(enum.StrEnum):
     low = "low"
     medium = "medium"
     high = "high"
@@ -35,7 +37,7 @@ class NotificationPriority(str, enum.Enum):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Notification(Base):

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -8,6 +10,8 @@ from ..models.lab_user import LabUser
 from .auth import decode_token, is_token_blacklisted
 from .rbac import get_permissions_for_role
 from .session import get_perm_version
+
+logger = logging.getLogger("gula.security.auth")
 
 security = HTTPBearer(auto_error=False)
 
@@ -40,6 +44,7 @@ def get_current_user(
     # Reject revoked tokens (logout, forced expiry)
     jti = payload.get("jti")
     if jti and is_token_blacklisted(jti):
+        logger.warning("Token revoked jti=%s user_id=%s", jti, payload.get("user_id"))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked"
         )
@@ -62,6 +67,10 @@ def get_current_user(
     token_perm_ver = int(payload.get("perm_ver", 1))
     authoritative_ver = get_perm_version(user.id, user.perm_version or 1)
     if token_perm_ver != authoritative_ver:
+        logger.warning(
+            "Permission version mismatch user=%s token_perm_ver=%s authoritative=%s",
+            user.id, token_perm_ver, authoritative_ver,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Permissions updated — please log in again",

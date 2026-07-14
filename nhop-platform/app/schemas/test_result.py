@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -15,12 +14,12 @@ class TestResultBase(BaseModel):
     test_name: str = Field(..., min_length=1, max_length=200)
     category: ResultCategory = ResultCategory.other
 
-    value_numeric: Optional[float] = None
-    value_text: Optional[str] = Field(default=None, max_length=400)
-    unit: Optional[str] = Field(default=None, max_length=40)
+    value_numeric: float | None = None
+    value_text: str | None = Field(default=None, max_length=400)
+    unit: str | None = Field(default=None, max_length=40)
 
-    reference_min: Optional[float] = None
-    reference_max: Optional[float] = None
+    reference_min: float | None = None
+    reference_max: float | None = None
 
     @field_validator("test_code")
     @classmethod
@@ -31,7 +30,7 @@ class TestResultBase(BaseModel):
 class TestResultCreate(TestResultBase):
     health_id: str = Field(..., min_length=1, max_length=20)
     lab_id: UUID
-    performed_at: Optional[datetime] = None
+    performed_at: datetime | None = None
 
 
 class TestResultValidateRequest(TestResultBase):
@@ -48,8 +47,8 @@ class TestResultValidateResponse(BaseModel):
     is_valid: bool
     is_critical: bool
     is_abnormal: bool
-    direction: Optional[str] = None
-    interpretation_ar: Optional[str] = None
+    direction: str | None = None
+    interpretation_ar: str | None = None
     warnings: list[ValidationWarning] = Field(default_factory=list)
 
 
@@ -63,16 +62,16 @@ class TestResultRead(TestResultBase):
 
     is_abnormal: bool
     is_critical: bool
-    direction: Optional[str] = None
-    interpretation_ar: Optional[str] = None
-    warnings: Optional[list] = None
+    direction: str | None = None
+    interpretation_ar: str | None = None
+    warnings: list | None = None
     status: ResultStatus
 
     performed_at: datetime
     received_at: datetime
-    reported_at: Optional[datetime] = None
-    verified_by: Optional[str] = None
-    verified_at: Optional[datetime] = None
+    reported_at: datetime | None = None
+    verified_by: str | None = None
+    verified_at: datetime | None = None
     created_at: datetime
 
 
@@ -90,19 +89,19 @@ class TestResultVerifyRequest(BaseModel):
 
 class TimelinePoint(BaseModel):
     performed_at: datetime
-    value_numeric: Optional[float] = None
-    value_text: Optional[str] = None
-    unit: Optional[str] = None
+    value_numeric: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
     is_abnormal: bool
     is_critical: bool
-    reference_min: Optional[float] = None
-    reference_max: Optional[float] = None
+    reference_min: float | None = None
+    reference_max: float | None = None
 
 
 class TimelineSeries(BaseModel):
     test_code: str
     test_name: str
-    unit: Optional[str] = None
+    unit: str | None = None
     points: list[TimelinePoint]
 
 

@@ -2,7 +2,8 @@
 from fastapi import FastAPI
 
 from .api.v1 import api_router
-from .core.database import Base as CoreBase, engine
+from .core.database import Base as CoreBase
+from .core.database import engine
 
 
 def create_app() -> FastAPI:

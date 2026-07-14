@@ -80,13 +80,13 @@ class KnowledgeGraph:
 
         def dfs(current: str, target: str, path: list[str]) -> None:
             if current == target:
-                paths.append(path + [current])
+                paths.append([*path, current])
                 return
             if current in visited:
                 return
             visited.add(current)
             for neighbor in adjacency.get(current, []):
-                dfs(neighbor, target, path + [current])
+                dfs(neighbor, target, [*path, current])
             visited.remove(current)
 
         dfs(start, end, [])
@@ -186,4 +186,4 @@ def generate_report(kg: KnowledgeGraph) -> str:
     return "\n".join(lines)
 
 
-__all__ = ["KnowledgeNode", "KnowledgeEdge", "KnowledgeGraph", "build_gula_knowledge_graph", "generate_report"]
+__all__ = ["KnowledgeEdge", "KnowledgeGraph", "KnowledgeNode", "build_gula_knowledge_graph", "generate_report"]

@@ -5,10 +5,10 @@ Run with: python -m pytest backend/tests/ -v
 """
 
 import os
+import secrets
 import sys
 import time
-import secrets
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # Set ENV=development before any app imports
 os.environ.setdefault("ENV", "development")
@@ -149,7 +149,7 @@ class TestEncryption:
 
     def test_encrypt_and_decrypt(self):
         """Should encrypt and decrypt correctly."""
-        from app.security.encryption import encrypt, decrypt
+        from app.security.encryption import decrypt, encrypt
         original = "sensitive data - بيانات حساسة"
         encrypted = encrypt(original)
         assert encrypted != original
@@ -165,8 +165,8 @@ class TestEncryption:
 
     def test_decrypt_wrong_data_raises(self):
         """Decrypting invalid data should raise exception."""
-        from app.security.encryption import decrypt
         import pytest
+        from app.security.encryption import decrypt
         with pytest.raises(Exception):
             decrypt("not-encrypted-data")
 
@@ -234,8 +234,9 @@ class TestConfig:
 
     def test_app_version_format(self):
         """App version should be in semver format."""
-        from app.config import APP_VERSION
         import re
+
+        from app.config import APP_VERSION
         assert re.match(r"^\d+\.\d+\.\d+$", APP_VERSION), f"Invalid version: {APP_VERSION}"
 
     def test_platform_name_arabic(self):
@@ -283,6 +284,7 @@ class TestSecurityControls:
     def test_no_tmp_file_in_admin_setup(self):
         """Admin setup code should NOT write to /tmp."""
         import inspect
+
         from app.routes import admin
         source = inspect.getsource(admin.ensure_master_admin)
         assert "/tmp/.gula_admin_pw" not in source, (
@@ -334,15 +336,15 @@ class TestInputValidation:
 
     def test_patient_name_length_validation(self):
         """Patient name should reject too-short names."""
-        from app.routes.patients import PatientCreate
         import pytest
+        from app.routes.patients import PatientCreate
         with pytest.raises(Exception):
             PatientCreate(full_name="A", phone="07901234567")  # name too short
 
     def test_patient_phone_validation(self):
         """Patient phone should only accept Iraqi numbers."""
-        from app.routes.patients import PatientCreate
         import pytest
+        from app.routes.patients import PatientCreate
         # Valid Iraqi number
         p = PatientCreate(full_name="Test Name", phone="07901234567")
         assert p.phone == "07901234567"
@@ -352,15 +354,15 @@ class TestInputValidation:
 
     def test_patient_gender_validation(self):
         """Gender should only accept valid values."""
-        from app.routes.patients import PatientCreate
         import pytest
+        from app.routes.patients import PatientCreate
         with pytest.raises(Exception):
             PatientCreate(full_name="Test Name", phone="07901234567", gender="unknown")
 
     def test_patient_birth_date_future_rejected(self):
         """Future birth dates should be rejected."""
-        from app.routes.patients import PatientCreate
         import pytest
+        from app.routes.patients import PatientCreate
         with pytest.raises(Exception):
             PatientCreate(
                 full_name="Test Name",
@@ -370,8 +372,8 @@ class TestInputValidation:
 
     def test_email_validation(self):
         """Invalid email should be rejected."""
-        from app.routes.patients import PatientCreate
         import pytest
+        from app.routes.patients import PatientCreate
         with pytest.raises(Exception):
             PatientCreate(
                 full_name="Test Name",

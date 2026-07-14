@@ -350,7 +350,7 @@ def register_device_endpoint(
             attestation_blob=body.attestation_blob,
         )
     except registry.RegistryError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     db.commit()
     db.refresh(device)
     return RegisterDeviceResponse(
@@ -468,7 +468,7 @@ def reinstate_device(
     try:
         registry.reinstate(db, d, actor_user_id=user.id)
     except registry.RegistryError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     db.commit()
     return {"device_id": device_id, "status": d.status}
 
@@ -523,7 +523,7 @@ def submit_task_endpoint(
             submitted_by_user_id=user.id,
         )
     except scheduler.SchedulerError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     db.commit()
     db.refresh(t)
     return TaskDetail(
@@ -710,7 +710,7 @@ def register_model_endpoint(
             actor_user_id=user.id,
         )
     except governance.GovernanceError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     db.commit()
     db.refresh(m)
     return {"model_uid": m.model_uid, "status": m.status, "rollout_pct": m.rollout_pct}
@@ -760,7 +760,7 @@ def update_model_status(
             actor_user_id=user.id,
         )
     except governance.GovernanceError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     db.commit()
     return {"model_uid": m.model_uid, "status": m.status, "rollout_pct": m.rollout_pct}
 
@@ -792,7 +792,7 @@ def assign_model_endpoint(
             actor_user_id=user.id,
         )
     except governance.GovernanceError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     db.commit()
     return {"id": a.id, "model_uid": a.model_uid, "lab_id": a.lab_id, "device_id": a.device_id}
 
@@ -822,7 +822,7 @@ def agent_heartbeat(
             capabilities=body.capabilities,
         )
     except registry.RegistryError as e:
-        raise HTTPException(403, str(e))
+        raise HTTPException(403, str(e)) from e
 
     if body.telemetry:
         tele.record(db, lab_id=device.lab_id, device_id=device.device_id, sample=body.telemetry)

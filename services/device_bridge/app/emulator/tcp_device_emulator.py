@@ -128,7 +128,6 @@ class TCPDeviceEmulator:
 if __name__ == "__main__":
     emulator = TCPDeviceEmulator(host="127.0.0.1", port=5000)
     emulator.start()
-    print("TCP ASTM emulator running on 127.0.0.1:5000")
     try:
         while True:
             time.sleep(1)

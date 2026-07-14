@@ -1,5 +1,6 @@
 import redis
 
+
 def get_cache():
 
     return redis.Redis(

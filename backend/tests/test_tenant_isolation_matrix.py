@@ -36,17 +36,16 @@ os.environ.setdefault("REDIS_URL", "")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import pytest
 from datetime import datetime, timezone
 
+import pytest
 from app.models.lab import Lab
-from app.models.lab_user import LabUser
-from app.models.patient import Patient
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
+from app.models.lab_user import LabUser
+from app.models.patient import Patient
 from app.models.sample import Sample
-from app.security.auth import hash_password, create_token
-
+from app.security.auth import create_token, hash_password
 
 # ─── Fixtures: two-lab universe ───────────────────────────────────────────────
 

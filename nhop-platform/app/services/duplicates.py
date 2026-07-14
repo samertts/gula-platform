@@ -19,13 +19,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..models.citizen import Citizen
-
 
 DUPLICATE_CONFLICT_THRESHOLD = 0.85
 _MAX_CANDIDATES = 200
@@ -60,11 +58,10 @@ def _normalize_name(name: str) -> str:
     # Collapse alef variants and taa-marbuta / haa for Arabic, plus whitespace
     s = s.replace("أ", "ا").replace("إ", "ا").replace("آ", "ا")
     s = s.replace("ى", "ي").replace("ة", "ه")
-    s = re.sub(r"\s+", " ", s)
-    return s
+    return re.sub(r"\s+", " ", s)
 
 
-def _phone_last10(phone: Optional[str]) -> Optional[str]:
+def _phone_last10(phone: str | None) -> str | None:
     if not phone:
         return None
     digits = re.sub(r"\D", "", phone)
@@ -114,7 +111,7 @@ def _jaro(s1: str, s2: str) -> float:
 def _jaro_winkler(s1: str, s2: str, p: float = 0.1) -> float:
     j = _jaro(s1, s2)
     prefix = 0
-    for a, b in zip(s1, s2):
+    for a, b in zip(s1, s2, strict=False):
         if a == b and prefix < 4:
             prefix += 1
         else:
@@ -128,11 +125,11 @@ def find_duplicates(
     db: Session,
     *,
     full_name: str,
-    birth_date: Optional[date] = None,
-    phone: Optional[str] = None,
-    mother_name: Optional[str] = None,
-    national_id: Optional[str] = None,
-    exclude_health_id: Optional[str] = None,
+    birth_date: date | None = None,
+    phone: str | None = None,
+    mother_name: str | None = None,
+    national_id: str | None = None,
+    exclude_health_id: str | None = None,
 ) -> list[DuplicateHit]:
     """Return candidates that likely refer to the same person, score-descending.
 

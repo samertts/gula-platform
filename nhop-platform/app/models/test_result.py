@@ -10,9 +10,10 @@ from __future__ import annotations
 import enum
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Enum,
@@ -20,23 +21,24 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from backend.app._compat import UTC
+
 from .base import Base
 
 
-class ResultStatus(str, enum.Enum):
+class ResultStatus(enum.StrEnum):
     pending = "pending"
     final = "final"
     verified = "verified"
     rejected = "rejected"
 
 
-class ResultCategory(str, enum.Enum):
+class ResultCategory(enum.StrEnum):
     hematology = "hematology"
     biochemistry = "biochemistry"
     microbiology = "microbiology"
@@ -49,12 +51,12 @@ class ResultCategory(str, enum.Enum):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def generate_sample_barcode() -> str:
     """12-char barcode: yymmdd + 6 hex chars (collision probability ≈ 1e-7 per day)."""
-    stamp = datetime.now(timezone.utc).strftime("%y%m%d")
+    stamp = datetime.now(UTC).strftime("%y%m%d")
     suffix = secrets.token_hex(3).upper()
     return f"{stamp}{suffix}"
 
@@ -138,6 +140,6 @@ class TestResult(Base):
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
 
-    lab: Mapped["Lab"] = relationship(  # noqa: F821
+    lab: Mapped[Lab] = relationship(  # noqa: F821
         "Lab", back_populates="test_results"
     )

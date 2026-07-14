@@ -47,4 +47,4 @@ def set_locale(locale: str) -> None:
     _global = Localization(locale)
 
 
-__all__ = ["Localization", "t", "set_locale"]
+__all__ = ["Localization", "set_locale", "t"]

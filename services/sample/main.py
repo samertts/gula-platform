@@ -3,16 +3,16 @@ GULA Platform - Sample Service
 Executive Order 5: Audit on SampleCollected
 """
 
-import os
-import logging
 import json
+import logging
+import os
+from datetime import datetime
+
+import asyncpg
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, generate_latest
 from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime
-import asyncpg
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 
 logging.basicConfig(level=logging.INFO)
@@ -56,17 +56,17 @@ def publish_event(event_type: str, payload: dict):
 
 class SampleCreate(BaseModel):
     order_id: int
-    barcode: Optional[str] = None
+    barcode: str | None = None
     sample_type: str
-    collected_by: Optional[int] = None
-    notes: Optional[str] = None
+    collected_by: int | None = None
+    notes: str | None = None
 
 
 class SampleResponse(BaseModel):
     id: int
     sample_uuid: str
     order_id: int
-    barcode: Optional[str]
+    barcode: str | None
     sample_type: str
     status: str
     collection_time: datetime

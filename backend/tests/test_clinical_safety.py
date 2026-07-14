@@ -48,8 +48,8 @@ from app.models.lab import Lab
 from app.models.lab_order import LabOrder
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
-from app.services.critical_alerts import CRITICAL_THRESHOLDS, check_critical
 from app.security.auth import create_token, hash_password
+from app.services.critical_alerts import CRITICAL_THRESHOLDS, check_critical
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:

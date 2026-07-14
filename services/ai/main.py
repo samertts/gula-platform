@@ -5,16 +5,16 @@ Executive Order 4: No external AI providers
 Executive Order 19: Multi-tier AI (Operational, Clinical, Population)
 """
 
-import os
 import logging
-import requests
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, List
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
-from starlette.responses import Response
+import os
 import time
+
+import requests
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from pydantic import BaseModel
+from starlette.responses import Response
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,8 +58,8 @@ REQUEST_LATENCY = Histogram("ai_request_duration_seconds", "AI request duration"
 class AIRequest(BaseModel):
     prompt: str
     tier: str = "operational"   # operational | clinical | population
-    context: Optional[dict] = None
-    max_tokens: Optional[int] = 1024
+    context: dict | None = None
+    max_tokens: int | None = 1024
 
 
 class AIResponse(BaseModel):
@@ -70,7 +70,7 @@ class AIResponse(BaseModel):
     latency_ms: float
 
 
-def call_ollama(prompt: str, system_prompt: str = None, max_tokens: int = 1024) -> str:
+def call_ollama(prompt: str, system_prompt: str | None = None, max_tokens: int = 1024) -> str:
     """Call local Ollama AI. No external providers allowed."""
     url = f"{OLLAMA_HOST}/api/generate"
 
@@ -188,7 +188,7 @@ async def analyze(req: AIRequest):
             provider="ollama",
             latency_ms=latency_ms,
         )
-    except Exception as e:
+    except Exception:
         REQUEST_COUNT.labels(tier=tier, status="error").inc()
         raise
 

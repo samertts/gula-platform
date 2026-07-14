@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import time
-from collections import defaultdict
 from threading import Lock
 from typing import Any
 
@@ -60,7 +59,7 @@ class Histogram:
         self.name = name
         self.help_text = help_text
         self.buckets = sorted(buckets or [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0])
-        self._counts: dict[float, float] = {b: 0.0 for b in self.buckets}
+        self._counts: dict[float, float] = dict.fromkeys(self.buckets, 0.0)
         self._total: float = 0.0
         self._sum: float = 0.0
         self._lock = Lock()

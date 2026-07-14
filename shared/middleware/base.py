@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-from shared.logging import bind_log_context, get_request_id
+from shared.logging import bind_log_context
 
 logger = logging.getLogger("gula.middleware")
 

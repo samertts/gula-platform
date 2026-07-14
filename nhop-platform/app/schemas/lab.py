@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -14,10 +13,10 @@ class LabBase(BaseModel):
     license_number: str = Field(..., max_length=100)
     lab_type: LabType
     province: str = Field(..., max_length=100)
-    district: Optional[str] = Field(default=None, max_length=100)
-    address: Optional[str] = Field(default=None, max_length=500)
-    phone: Optional[str] = Field(default=None, max_length=30)
-    email: Optional[EmailStr] = None
+    district: str | None = Field(default=None, max_length=100)
+    address: str | None = Field(default=None, max_length=500)
+    phone: str | None = Field(default=None, max_length=30)
+    email: EmailStr | None = None
     is_active: bool = True
 
 
@@ -52,8 +51,8 @@ class LabDeviceBase(BaseModel):
     model: str = Field(..., max_length=100)
     serial_number: str = Field(..., max_length=100)
     is_calibrated: bool = True
-    last_calibration: Optional[datetime] = None
-    next_calibration: Optional[datetime] = None
+    last_calibration: datetime | None = None
+    next_calibration: datetime | None = None
     is_active: bool = True
 
 

@@ -98,6 +98,8 @@ def create_order_route(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    rate_limit_user(request, current_user.id, max_per_minute=30)
+
     results_data = [
         {
             "test_name": r.test_name,
@@ -179,6 +181,8 @@ def validate_order_route(
     Race-condition protection: uses an atomic UPDATE WHERE locked_at IS NULL
     so that two simultaneous validation requests cannot both succeed.
     """
+    rate_limit_user(request, current_user.id, max_per_minute=20)
+
     result = _validate_order(
         db=db,
         order_id=order_id,
@@ -202,6 +206,8 @@ def cancel_order_route(
     db: Session = Depends(get_db),
 ):
     """Cancel an order.  Validated (locked) orders cannot be cancelled."""
+    rate_limit_user(request, current_user.id, max_per_minute=20)
+
     result = _cancel_order(
         db=db,
         order_id=order_id,

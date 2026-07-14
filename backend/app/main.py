@@ -35,7 +35,7 @@ from .config import (
 
 # Configure structured JSON logging (production) or text logging (dev)
 from .core.logging_config import bind_log_context, configure_logging
-from .database import Base, check_db_connection, engine, get_pool_status  # noqa: F401
+from .database import check_db_connection, engine, get_pool_status
 
 configure_logging(
     is_production=IS_PRODUCTION,

@@ -32,9 +32,9 @@ def app_client(tmp_path, monkeypatch):
         if mod.startswith("app.") or mod == "app":
             sys.modules.pop(mod)
 
-    from app.core.database import Base, engine  # noqa: WPS433
-    from app import models  # noqa: F401, WPS433  (populate metadata)
-    from app.main import app  # noqa: WPS433
+    from app import models
+    from app.core.database import Base, engine
+    from app.main import app
 
     Base.metadata.create_all(engine)
 
@@ -52,14 +52,14 @@ def make_citizen():
     def _make(session, *, health_id="HID-TEST-001", **overrides):
         from app.models.citizen import Citizen
 
-        defaults = dict(
-            health_id=health_id,
-            full_name="مريض اختبار",
-            gender="M",
-            province="Baghdad",
-            chronic_diseases=[],
-            allergies=[],
-        )
+        defaults = {
+            "health_id": health_id,
+            "full_name": "مريض اختبار",
+            "gender": "M",
+            "province": "Baghdad",
+            "chronic_diseases": [],
+            "allergies": [],
+        }
         defaults.update(overrides)
         citizen = Citizen(**defaults)
         session.add(citizen)
@@ -75,14 +75,14 @@ def make_lab():
     def _make(session, **overrides):
         from app.models.lab import Lab, LabType
 
-        defaults = dict(
-            id=uuid.uuid4(),
-            name="مختبر اختبار",
-            license_number=f"LIC-{uuid.uuid4().hex[:8]}",
-            lab_type=LabType.private,
-            province="Baghdad",
-            is_active=True,
-        )
+        defaults = {
+            "id": uuid.uuid4(),
+            "name": "مختبر اختبار",
+            "license_number": f"LIC-{uuid.uuid4().hex[:8]}",
+            "lab_type": LabType.private,
+            "province": "Baghdad",
+            "is_active": True,
+        }
         defaults.update(overrides)
         lab = Lab(**defaults)
         session.add(lab)
@@ -98,20 +98,20 @@ def make_result():
     def _make(session, *, citizen_id, lab_id, test_code="HGB", **overrides):
         from app.models.test_result import ResultCategory, ResultStatus, TestResult
 
-        defaults = dict(
-            id=uuid.uuid4(),
-            citizen_id=citizen_id,
-            lab_id=lab_id,
-            sample_barcode=uuid.uuid4().hex[:12].upper(),
-            test_code=test_code,
-            test_name=test_code,
-            category=ResultCategory.other,
-            value_numeric=14.0,
-            unit="g/dL",
-            is_abnormal=False,
-            is_critical=False,
-            status=ResultStatus.final,
-        )
+        defaults = {
+            "id": uuid.uuid4(),
+            "citizen_id": citizen_id,
+            "lab_id": lab_id,
+            "sample_barcode": uuid.uuid4().hex[:12].upper(),
+            "test_code": test_code,
+            "test_name": test_code,
+            "category": ResultCategory.other,
+            "value_numeric": 14.0,
+            "unit": "g/dL",
+            "is_abnormal": False,
+            "is_critical": False,
+            "status": ResultStatus.final,
+        }
         defaults.update(overrides)
         row = TestResult(**defaults)
         session.add(row)

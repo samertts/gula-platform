@@ -13,12 +13,11 @@ NOT add clinical rules here without a clinician sign-off.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable, Optional
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
-
 
 # ─── Reference tables ───────────────────────────────────────────────────────
 #
@@ -64,7 +63,7 @@ _TEST_CATALOG: dict[str, dict] = {
 }
 
 
-def _resolve(test_code: str) -> Optional[dict]:
+def _resolve(test_code: str) -> dict | None:
     code = (test_code or "").strip().upper()
     entry = _TEST_CATALOG.get(code)
     if entry and "alias" in entry:
@@ -86,8 +85,8 @@ class ValidationResult:
     is_valid: bool = True
     is_critical: bool = False
     is_abnormal: bool = False
-    direction: Optional[str] = None  # 'low' | 'high' | 'normal'
-    interpretation_ar: Optional[str] = None
+    direction: str | None = None  # 'low' | 'high' | 'normal'
+    interpretation_ar: str | None = None
     warnings: list[Warning] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -104,7 +103,7 @@ class ValidationResult:
 @dataclass
 class ComparisonResult:
     trend: str  # 'rising' | 'falling' | 'stable' | 'insufficient_data'
-    delta_percent: Optional[float]
+    delta_percent: float | None
     previous_values: list[tuple]  # (performed_at, value)
     warnings: list[Warning] = field(default_factory=list)
 
@@ -113,10 +112,10 @@ class ComparisonResult:
 
 def validate_result(
     test_code: str,
-    value: Optional[float],
-    unit: Optional[str] = None,
-    reference_min: Optional[float] = None,
-    reference_max: Optional[float] = None,
+    value: float | None,
+    unit: str | None = None,
+    reference_min: float | None = None,
+    reference_max: float | None = None,
 ) -> ValidationResult:
     """Check a single numeric result against the reference catalog.
 
@@ -205,7 +204,7 @@ def validate_result(
 def compare_with_history(
     citizen_id: int,
     test_code: str,
-    new_value: Optional[float],
+    new_value: float | None,
     db: Session,
     *,
     lookback: int = 5,
@@ -245,10 +244,7 @@ def compare_with_history(
                                 previous_values=[])
 
     prev_value = previous[0][1]
-    if prev_value == 0:
-        delta_pct = None
-    else:
-        delta_pct = (new_value - prev_value) / abs(prev_value) * 100.0
+    delta_pct = None if prev_value == 0 else (new_value - prev_value) / abs(prev_value) * 100.0
 
     # Trend over the full window: compare new_value to mean of previous.
     mean_prev = sum(v for _, v in previous) / len(previous)
@@ -342,10 +338,10 @@ _AR_TEMPLATES: dict[str, tuple[str, str, str]] = {
 
 def get_arabic_interpretation(
     test_code: str,
-    value: Optional[float],
-    ref_min: Optional[float],
-    ref_max: Optional[float],
-) -> Optional[str]:
+    value: float | None,
+    ref_min: float | None,
+    ref_max: float | None,
+) -> str | None:
     """Return a one-line Arabic plain-language interpretation."""
     if value is None or ref_min is None or ref_max is None:
         return None
@@ -459,7 +455,7 @@ def check_drug_interaction(
     test_results: dict,
     db: Session,
     *,
-    medications: Optional[Iterable[str]] = None,
+    medications: Iterable[str] | None = None,
 ) -> list[Alert]:
     """Apply the rule-based drug/result interaction table.
 

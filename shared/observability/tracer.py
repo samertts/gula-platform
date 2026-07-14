@@ -4,8 +4,7 @@ import logging
 import time
 import uuid
 from contextvars import ContextVar
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 logger = logging.getLogger("gula.observability")
 
@@ -63,7 +62,7 @@ def trace(name: str):
     def decorator(fn):
         def wrapper(*args, **kwargs):
             tracer = get_tracer()
-            ctx = tracer.start_span(name)
+            tracer.start_span(name)
             start = time.time()
             try:
                 return fn(*args, **kwargs)

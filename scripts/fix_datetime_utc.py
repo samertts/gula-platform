@@ -10,7 +10,6 @@ from pathlib import Path
 
 def fix_file(filepath: Path) -> bool:
     content = filepath.read_text()
-    original = content
 
     # Pattern 1: `from datetime import UTC, datetime, timedelta`
     # Pattern 2: `from datetime import datetime, timedelta, UTC` (any order)
@@ -49,21 +48,17 @@ def fix_file(filepath: Path) -> bool:
 def main(root: str) -> None:
     root_path = Path(root)
     if not root_path.is_dir():
-        print(f"Error: {root} is not a directory")
         sys.exit(1)
 
     files = list(root_path.rglob("*.py"))
     fixed = 0
     for fpath in sorted(files):
         if fix_file(fpath):
-            print(f"  Fixed: {fpath.relative_to(root_path.parent)}")
             fixed += 1
 
-    print(f"\nFixed {fixed} file(s)")
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 scripts/fix_datetime_utc.py <directory>")
         sys.exit(1)
     main(sys.argv[1])

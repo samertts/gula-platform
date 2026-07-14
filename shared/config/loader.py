@@ -3,9 +3,8 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any
 
-_WEAK_PATTERNS: list[re.Pattern] = [
+_WEAK_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^(change|secret|password|key|test|weak|default)", re.IGNORECASE),
     re.compile(r"^(abc|123|qwerty)", re.IGNORECASE),
     re.compile(r"^[a-z]{1,8}$", re.IGNORECASE),
@@ -16,10 +15,7 @@ _WEAK_PATTERNS: list[re.Pattern] = [
 def _is_weak_secret(value: str | None) -> bool:
     if not value or len(value) < 16:
         return True
-    for pattern in _WEAK_PATTERNS:
-        if pattern.match(value):
-            return True
-    return False
+    return any(pattern.match(value) for pattern in _WEAK_PATTERNS)
 
 
 @dataclass

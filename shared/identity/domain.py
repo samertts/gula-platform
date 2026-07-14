@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from enum import Enum
-from typing import Optional
+
+from backend.app._compat import UTC
 
 
 class Gender(Enum):
@@ -62,8 +63,8 @@ class IdentityDocument:
     value: str
     issuing_country: str = "IQ"
     verified: bool = False
-    verified_at: Optional[datetime] = None
-    expires_at: Optional[date] = None
+    verified_at: datetime | None = None
+    expires_at: date | None = None
 
     def is_expired(self) -> bool:
         if self.expires_at is None:
@@ -78,7 +79,7 @@ class PatientIdentity:
     national_id_hash: str = ""
     name: PersonName = field(default_factory=PersonName)
     gender: Gender = Gender.UNKNOWN
-    date_of_birth: Optional[date] = None
+    date_of_birth: date | None = None
     phone: str = ""
     email: str = ""
     address: str = ""
@@ -88,9 +89,9 @@ class PatientIdentity:
     status: IdentityStatus = IdentityStatus.ACTIVE
     lab_id: int = 0
     is_deceased: bool = False
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    merged_into_id: Optional[str] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    merged_into_id: str | None = None
     metadata: dict = field(default_factory=dict)
 
     def has_valid_national_id(self) -> bool:
@@ -101,7 +102,7 @@ class PatientIdentity:
     def _has_any_document_of_type(self, dtype: IdentityDocumentType) -> bool:
         return any(d.type == dtype for d in self.documents)
 
-    def age(self) -> Optional[int]:
+    def age(self) -> int | None:
         if self.date_of_birth is None:
             return None
         today = date.today()

@@ -6,14 +6,9 @@ def dashboard():
 
     stats = test_frequency()
 
-    print("\nPopulation Health Dashboard")
-    print("----------------------------")
 
-    for test, count in stats.items():
+    for test, _count in stats.items():
 
-        print(test, "tests:", count)
 
-        trend = rising_test(test)
+        rising_test(test)
 
-        print("Trend:", trend)
-        print()

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from backend.app._compat import UTC
+
 
 def test_order_tests_requires_doctor_role(app_client, make_citizen):
     client, Session = app_client
@@ -75,7 +77,7 @@ def test_order_tests_skips_tests_performed_in_last_7_days(
             citizen_id=citizen.id,
             lab_id=lab.id,
             test_code="HGB",
-            performed_at=datetime.now(timezone.utc) - timedelta(days=2),
+            performed_at=datetime.now(UTC) - timedelta(days=2),
         )
         citizen_hid = citizen.health_id
 
@@ -107,7 +109,7 @@ def test_order_tests_all_duplicate_returns_409(
             citizen_id=citizen.id,
             lab_id=lab.id,
             test_code="HGB",
-            performed_at=datetime.now(timezone.utc) - timedelta(days=1),
+            performed_at=datetime.now(UTC) - timedelta(days=1),
         )
         citizen_hid = citizen.health_id
 
@@ -136,7 +138,7 @@ def test_order_tests_includes_test_older_than_7_days(
             citizen_id=citizen.id,
             lab_id=lab.id,
             test_code="HGB",
-            performed_at=datetime.now(timezone.utc) - timedelta(days=15),
+            performed_at=datetime.now(UTC) - timedelta(days=15),
         )
         citizen_hid = citizen.health_id
 
@@ -207,7 +209,7 @@ def test_patient_timeline_returns_ordered_points(
                 s, citizen_id=citizen.id, lab_id=lab.id,
                 test_code="HBA1C", test_name="HbA1c",
                 value_numeric=6.0 + idx, unit="%",
-                performed_at=datetime.now(timezone.utc) - timedelta(days=days),
+                performed_at=datetime.now(UTC) - timedelta(days=days),
             )
         citizen_hid = citizen.health_id
 

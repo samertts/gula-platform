@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
-from sqlalchemy.orm import declared_attr
+from backend.app._compat import UTC
+from sqlalchemy import Boolean, Column, DateTime, Integer
 
 
 class TimestampMixin:
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
 
 class SoftDeleteMixin:

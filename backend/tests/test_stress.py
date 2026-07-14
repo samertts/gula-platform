@@ -414,7 +414,7 @@ class TestClinicalScenarios:
             ("hemoglobin",  6.0, 12.0,  17.0, "critical"),  # critically low
             ("platelets",  50.0, 150.0, 400.0, "L"),
         ]
-        for test, val, low, high, expected_flag in scenarios:
+        for test, val, low, high, _expected_flag in scenarios:
             flag = get_flag(val, low, high, test.capitalize())
             interp = interpret_result(test, val, low, high)
             assert flag in ("H", "L", "critical"), f"{test}={val}: expected abnormal, got {flag}"

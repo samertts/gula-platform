@@ -1,11 +1,11 @@
 from .generator import (
+    PDFTemplate,
     generate_pdf,
     generate_result_pdf,
-    PDFTemplate,
 )
 
 __all__ = [
+    "PDFTemplate",
     "generate_pdf",
     "generate_result_pdf",
-    "PDFTemplate",
 ]

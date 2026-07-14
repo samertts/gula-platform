@@ -22,14 +22,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import platform
 import time
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
-from .runtime import Runtime, make_runtime
+from .runtime import Runtime
 from .security import ALLOWED_KINDS, MAX_PAYLOAD_BYTES
 from .state import AgentState
 
@@ -162,7 +161,7 @@ class EdgeAgent:
                 task_uid, success=True, result=result,
                 duration_ms=int((time.perf_counter() - t0) * 1000),
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._counters["failed"] += 1
             await self._report_result(task_uid, success=False,
                                       error=f"runtime timeout after {timeout_s}s")
@@ -172,9 +171,9 @@ class EdgeAgent:
                                       error=f"runtime error: {exc}")
 
     async def _report_result(self, task_uid: str, *, success: bool,
-                             result: Optional[dict] = None,
-                             error: Optional[str] = None,
-                             duration_ms: Optional[int] = None) -> None:
+                             result: dict | None = None,
+                             error: str | None = None,
+                             duration_ms: int | None = None) -> None:
         body = {"success": success, "result": result, "error": error,
                 "duration_ms": duration_ms}
         try:

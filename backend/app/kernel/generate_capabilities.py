@@ -1,0 +1,174 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from backend.app.engineering.generators.capability import (
+    CapabilityGenerator,
+    CapabilitySpec,
+    EntityField,
+)
+
+
+def generate_all_capabilities() -> None:
+    base_dir = Path("backend/app/capabilities")
+    gen = CapabilityGenerator(target_dir=base_dir)
+
+    capabilities = [
+        CapabilitySpec(
+            name="storage_service",
+            description="Unified storage layer: local filesystem, S3 compatible, MinIO, Azure Blob, Google Cloud Storage with versioning and encryption",
+            domain="infrastructure",
+            layer="infrastructure",
+            owner="platform-team",
+            commands=["store_file", "retrieve_file", "delete_file", "list_files"],
+            events=["FileStored", "FileRetrieved", "FileDeleted"],
+            queries=["list_files", "get_file_metadata"],
+            policies=["storage_quota", "encryption_required", "retention_policy"],
+            permissions=["storage.read", "storage.write", "storage.delete", "storage.admin"],
+            dependencies=["encryption_service"],
+            tags=["storage", "s3", "minio"],
+        ),
+        CapabilitySpec(
+            name="document_management",
+            description="Document management: attachments, PDF generation, OCR, image processing, preview, digital signature, metadata, versioning, document search",
+            domain="infrastructure",
+            layer="application",
+            owner="platform-team",
+            entities=[EntityField(name="document_id"), EntityField(name="filename"), EntityField(name="mime_type"), EntityField(name="size")],
+            commands=["upload_document", "delete_document", "sign_document", "ocr_document"],
+            events=["DocumentUploaded", "DocumentDeleted", "DocumentSigned", "DocumentOcrCompleted"],
+            queries=["search_documents", "get_document", "list_document_versions"],
+            policies=["document_retention", "allowed_mime_types", "max_file_size"],
+            permissions=["document.read", "document.write", "document.delete", "document.sign", "document.admin"],
+            dependencies=["storage_service", "authentication", "audit_logging"],
+            tags=["document", "attachment", "pdf"],
+        ),
+        CapabilitySpec(
+            name="workflow_engine",
+            description="Generic workflow engine: approvals, states, transitions, business rules, timers, escalations, notifications, audit trail",
+            domain="infrastructure",
+            layer="application",
+            owner="platform-team",
+            entities=[EntityField(name="workflow_id"), EntityField(name="state"), EntityField(name="assignee")],
+            commands=["create_workflow", "transition", "escalate", "cancel_workflow"],
+            events=["WorkflowCreated", "WorkflowTransitioned", "WorkflowCompleted", "WorkflowEscalated", "WorkflowCancelled"],
+            queries=["get_workflow", "list_workflows", "get_pending_tasks"],
+            policies=["escalation_policy", "sla_policy", "assignment_policy"],
+            permissions=["workflow.create", "workflow.read", "workflow.transition", "workflow.admin"],
+            dependencies=["notification_service", "audit_logging"],
+            tags=["workflow", "bpm", "approval"],
+        ),
+        CapabilitySpec(
+            name="search_service",
+            description="Unified search platform: full-text search across patients, orders, results, documents with filters, ranking, suggestions, indexing, permissions-aware",
+            domain="infrastructure",
+            layer="application",
+            owner="platform-team",
+            commands=["index_document", "reindex", "delete_index"],
+            events=["DocumentIndexed", "IndexRebuilt"],
+            queries=["search", "suggest", "get_search_stats"],
+            policies=["search_quota", "indexing_schedule"],
+            permissions=["search.execute", "search.admin"],
+            dependencies=["authentication"],
+            tags=["search", "elasticsearch", "fulltext"],
+        ),
+        CapabilitySpec(
+            name="reporting_service",
+            description="Enterprise reporting: dashboards, charts, PDF reports, Excel exports, CSV exports, scheduled reports, distribution via email",
+            domain="reporting",
+            layer="application",
+            owner="platform-team",
+            commands=["generate_report", "schedule_report", "export_report"],
+            events=["ReportGenerated", "ReportScheduled", "ReportExported"],
+            queries=["list_reports", "get_report_status", "get_report_data"],
+            policies=["report_schedule", "export_limit"],
+            permissions=["report.read", "report.create", "report.schedule", "report.admin"],
+            dependencies=["analytics", "pdf_reporting"],
+            tags=["reporting", "dashboard", "bi"],
+        ),
+        CapabilitySpec(
+            name="provider_management",
+            description="Healthcare provider management: doctors, nurses, technicians, pharmacists, licensing, specialties, schedules, availability, permissions",
+            domain="clinical",
+            layer="application",
+            owner="platform-team",
+            entities=[EntityField(name="provider_id"), EntityField(name="provider_type"), EntityField(name="license")],
+            commands=["register_provider", "update_license", "deactivate_provider"],
+            events=["ProviderRegistered", "LicenseUpdated", "ProviderDeactivated"],
+            queries=["search_providers", "get_provider", "list_by_specialty"],
+            policies=["license_validation", "credentialing"],
+            permissions=["provider.read", "provider.create", "provider.update", "provider.admin"],
+            dependencies=["authentication", "authorization_rbac"],
+            tags=["provider", "workforce", "doctor"],
+        ),
+        CapabilitySpec(
+            name="encounter_management",
+            description="Clinical encounter management: outpatient, emergency, inpatient, home visit, telemedicine, referral, admission, discharge, transfer, clinical notes",
+            domain="clinical",
+            layer="application",
+            owner="platform-team",
+            entities=[EntityField(name="encounter_id"), EntityField(name="encounter_type"), EntityField(name="status")],
+            commands=["create_encounter", "admit", "discharge", "transfer", "add_clinical_note"],
+            events=["EncounterCreated", "PatientAdmitted", "PatientDischarged", "PatientTransferred", "NoteAdded"],
+            queries=["get_encounter", "list_encounters", "get_patient_timeline"],
+            policies=["encounter_validation", "discharge_checklist"],
+            permissions=["encounter.read", "encounter.create", "encounter.update", "encounter.admin"],
+            dependencies=["patient_management", "provider_management"],
+            tags=["encounter", "admission", "clinical"],
+        ),
+        CapabilitySpec(
+            name="clinical_foundation",
+            description="Clinical data foundation: diagnoses, problems, allergies, medications, procedures, observations, vitals, immunizations, clinical history",
+            domain="clinical",
+            layer="application",
+            owner="platform-team",
+            commands=["add_diagnosis", "add_medication", "record_vitals", "add_allergy"],
+            events=["DiagnosisAdded", "MedicationPrescribed", "VitalsRecorded", "AllergyRecorded"],
+            queries=["get_clinical_history", "get_active_problems", "get_medication_list"],
+            policies=["medication_validation", "allergy_check"],
+            permissions=["clinical.read", "clinical.write", "clinical.admin"],
+            dependencies=["patient_management", "encounter_management"],
+            tags=["clinical", "diagnosis", "medication"],
+        ),
+        CapabilitySpec(
+            name="fhir_interoperability",
+            description="FHIR/HL7 interoperability: FHIR R4 resources, HL7 v2 messages, LOINC coding, SNOMED CT, ICD-10, ICD-11 ready, UCUM units, IHE profiles, terminology services",
+            domain="integration",
+            layer="infrastructure",
+            owner="platform-team",
+            commands=["convert_to_fhir", "convert_from_hl7", "validate_resource"],
+            events=["FhirResourceCreated", "Hl7MessageReceived", "TerminologyUpdated"],
+            queries=["search_fhir", "read_fhir_resource", "expand_value_set", "lookup_code"],
+            policies=["fhir_validation", "code_system_mapping"],
+            permissions=["fhir.read", "fhir.write", "fhir.admin", "terminology.read"],
+            dependencies=["patient_management", "clinical_foundation"],
+            tags=["fhir", "hl7", "interoperability", "loinc", "snomed"],
+        ),
+        CapabilitySpec(
+            name="healthcare_consent",
+            description="Healthcare-specific consent: patient privacy preferences, access policies, break-glass emergency override, purpose of use enforcement, granular data sharing controls",
+            domain="identity_security",
+            layer="application",
+            owner="platform-team",
+            commands=["grant_consent", "revoke_consent", "break_glass"],
+            events=["ConsentGranted", "ConsentRevoked", "BreakGlassActivated"],
+            queries=["check_consent", "get_consent_history", "get_active_consents"],
+            policies=["break_glass_audit", "purpose_limitation", "minimum_necessary"],
+            permissions=["consent.read", "consent.write", "consent.break_glass", "consent.admin"],
+            dependencies=["consent_management", "patient_management"],
+            tags=["consent", "privacy", "hipaa", "gdpr"],
+        ),
+    ]
+
+    total_files = 0
+    for spec in capabilities:
+        print(f"  Generating capability: {spec.name} ({spec.domain})")
+        result = gen.generate(spec=spec)
+        total_files += len(result.files_created)
+        print(f"    -> {len(result.files_created)} files created")
+
+    print(f"\n  Total: {len(capabilities)} capabilities, {total_files} files created")
+
+
+if __name__ == "__main__":
+    generate_all_capabilities()

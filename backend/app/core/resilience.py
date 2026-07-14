@@ -207,7 +207,7 @@ def call_with_timeout(fn: Callable[..., T], *args, timeout: float = 5.0, **kwarg
         try:
             return future.result(timeout=timeout)
         except concurrent.futures.TimeoutError:
-            raise TimeoutError(f"{fn.__qualname__} timed out after {timeout}s")
+            raise TimeoutError(f"{fn.__qualname__} timed out after {timeout}s") from None
 
 
 # ── Bulkhead (concurrency limiter for external calls) ────────────────────────

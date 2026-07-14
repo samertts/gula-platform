@@ -160,7 +160,7 @@ def receive_device_result(
     try:
         numeric_value = float(value)
     except (TypeError, ValueError):
-        raise DeviceInputError(f"value must be numeric, got: {value!r}")
+        raise DeviceInputError(f"value must be numeric, got: {value!r}") from None
     if not (_MIN_VALUE <= numeric_value <= _MAX_VALUE):
         raise DeviceInputError(
             f"value {numeric_value} is outside allowed range [{_MIN_VALUE}, {_MAX_VALUE}]"
