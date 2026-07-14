@@ -2,7 +2,6 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-
 from app.models.antibiotic_sensitivity import AntibioticSensitivity
 from app.models.disease_case import DiseaseCase
 from app.services.outbreak_detection import (
@@ -13,8 +12,9 @@ from app.services.outbreak_detection import (
     get_resistance_report,
 )
 
+from backend.app._compat import UTC
 
-FROZEN_NOW = datetime(2026, 4, 19, 12, 0, tzinfo=timezone.utc)
+FROZEN_NOW = datetime(2026, 4, 19, 12, 0, tzinfo=UTC)
 
 
 def _mk_case(db, *, disease, province, hours_ago, positive=True, name=None):

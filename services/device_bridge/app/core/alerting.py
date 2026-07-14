@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
+
+from backend.app._compat import UTC
 
 
 class AlertManager:
@@ -13,7 +15,7 @@ class AlertManager:
                 "severity": severity,
                 "message": message,
                 "device_id": device_id,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 

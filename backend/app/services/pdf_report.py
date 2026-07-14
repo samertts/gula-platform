@@ -159,7 +159,7 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
     )
 
     # ─── Styles ───────────────────────────────────────────────────────────────
-    W = doc.width
+    w = doc.width
 
     def style(name, **kwargs):
         return ParagraphStyle(name=name, **kwargs)
@@ -256,7 +256,7 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
             ),
         ],
     ]
-    info_table = Table(info_rows, colWidths=[W * 0.55, W * 0.45])
+    info_table = Table(info_rows, colWidths=[w * 0.55, w * 0.45])
     info_table.setStyle(
         TableStyle(
             [
@@ -336,7 +336,7 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
 
     result_table = Table(
         table_data,
-        colWidths=[W * 0.26, W * 0.14, W * 0.14, W * 0.24, W * 0.22],
+        colWidths=[w * 0.26, w * 0.14, w * 0.14, w * 0.24, w * 0.22],
     )
     result_table.setStyle(TableStyle(table_styles))
     elements.append(result_table)
@@ -387,7 +387,7 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
     )
     qr_row = Table(
         [[qr_image, Paragraph(scan_text, s_normal)]],
-        colWidths=[33 * mm, W - 38 * mm],
+        colWidths=[33 * mm, w - 38 * mm],
     )
     qr_row.setStyle(
         TableStyle(

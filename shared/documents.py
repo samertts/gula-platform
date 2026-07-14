@@ -4,9 +4,11 @@ import hashlib
 import logging
 import mimetypes
 import os
-from datetime import timezone, datetime
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
+
+from backend.app._compat import UTC
 
 logger = logging.getLogger("gula.documents")
 
@@ -25,7 +27,7 @@ class DocumentMetadata:
         self.mime_type = mime_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
         self.size_bytes = size_bytes
         self.tags = tags or []
-        self.created_at = datetime.now(timezone.utc)
+        self.created_at = datetime.now(UTC)
         self.checksum: str = ""
 
     def to_dict(self) -> dict[str, Any]:

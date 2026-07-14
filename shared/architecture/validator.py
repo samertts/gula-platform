@@ -5,7 +5,6 @@ import logging
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
 
 logger = logging.getLogger("gula.architecture")
 
@@ -144,4 +143,4 @@ validator.add_rule(ArchitectureRule("no-circular-imports", "Detect circular impo
 validator.add_rule(ArchitectureRule("no-services-to-backend", "Services must not import from backend", _check_no_services_import_backend))
 validator.add_rule(ArchitectureRule("shared-no-backend", "Shared library must not import from backend", _check_shared_no_backend))
 
-__all__ = ["ArchitectureRule", "ValidationResult", "ArchitectureValidator", "validator"]
+__all__ = ["ArchitectureRule", "ArchitectureValidator", "ValidationResult", "validator"]

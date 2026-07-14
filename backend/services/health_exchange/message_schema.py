@@ -1,6 +1,6 @@
 def create_lab_result_message(nhid, test, value, date):
 
-    message = {
+    return {
         "type": "lab_result",
         "nhid": nhid,
         "test": test,
@@ -8,4 +8,3 @@ def create_lab_result_message(nhid, test, value, date):
         "date": date,
     }
 
-    return message

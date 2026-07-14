@@ -11,15 +11,13 @@ from __future__ import annotations
 import asyncio
 import threading
 
-import pytest
-
 import app.config as gula_config
+import pytest
 from app.core.runtime_guard import (
     RuntimeIsolationError,
     assert_worker_runtime,
     is_edge_table,
 )
-
 
 # ── 1. Config flags resolve to test/strict profile ───────────────────────────
 
@@ -95,9 +93,9 @@ def test_no_unexpected_threads_after_startup(client):
 
 def test_edge_access_guard_blocks_raw_sql():
     """Any statement referencing edge_* must be rejected from the test runtime."""
+    from app.core.runtime_guard import install_edge_access_guard
     from sqlalchemy import create_engine, text
     from sqlalchemy.pool import StaticPool
-    from app.core.runtime_guard import install_edge_access_guard
 
     # Use a private engine so that installing the guard here does not pollute
     # the shared db_engine fixture and cause RuntimeIsolationError during
@@ -110,9 +108,8 @@ def test_edge_access_guard_blocks_raw_sql():
     )
     install_edge_access_guard(guard_engine)
 
-    with pytest.raises(RuntimeIsolationError):
-        with guard_engine.connect() as conn:
-            conn.execute(text("SELECT 1 FROM edge_signals LIMIT 1"))
+    with pytest.raises(RuntimeIsolationError), guard_engine.connect() as conn:
+        conn.execute(text("SELECT 1 FROM edge_signals LIMIT 1"))
 
     guard_engine.dispose()
 

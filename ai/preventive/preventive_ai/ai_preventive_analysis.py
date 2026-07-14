@@ -1,6 +1,5 @@
-from preventive_engine import suggest_tests
-
 from health_record_engine.record_reader import get_patient_history
+from preventive_engine import suggest_tests
 
 
 def smart_preventive_plan(nhid, age, gender):

@@ -3,10 +3,12 @@
 Each row represents a single bacterium/antibiotic pair tested in one lab.
 Aggregating across rows yields the national resistance report.
 """
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.app._compat import UTC
 
 from ..core.database import Base
 
@@ -36,7 +38,7 @@ class AntibioticSensitivity(Base):
 
     tested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
         index=True,
     )

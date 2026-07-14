@@ -11,7 +11,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 
 router = APIRouter(tags=["dashboard"])
 
@@ -50,7 +50,7 @@ def greeting(current_user: LabUser = Depends(get_current_user)):
 
 @router.get("/dashboard")
 def dashboard(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     lab_id = current_user.lab_id

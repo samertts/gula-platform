@@ -1,9 +1,9 @@
-from .pagination import PaginatedResponse, PageParams
+from .pagination import PageParams, PaginatedResponse
 from .response import APIResponse, ErrorResponse
 
 __all__ = [
-    "PaginatedResponse",
-    "PageParams",
     "APIResponse",
     "ErrorResponse",
+    "PageParams",
+    "PaginatedResponse",
 ]

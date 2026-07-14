@@ -1,8 +1,8 @@
-from shared.observability import Tracer, TraceContext, get_tracer, trace
+from shared.observability import TraceContext, Tracer, get_tracer, trace
 
 __all__ = [
-    "Tracer",
     "TraceContext",
+    "Tracer",
     "get_tracer",
     "trace",
 ]

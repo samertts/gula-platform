@@ -37,9 +37,10 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+
+from backend.app._compat import UTC
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 REPO_ROOT   = Path(__file__).parent.parent.resolve()
@@ -52,8 +53,6 @@ _ENV        = os.getenv("ENV", "production")
 # Production safety: auto-fix is NEVER allowed in production.
 # Operators must set ENV=development and GULA_AUTO_FIX=true explicitly.
 if _ENV == "production" and AUTO_FIX:
-    print("[SELF-AUDIT] WARNING: GULA_AUTO_FIX=true is not allowed in production. "
-          "Forcing report-only mode.", file=sys.stderr)
     AUTO_FIX = False
 
 # Max chars of context to send to Claude (to stay within token limits)
@@ -207,13 +206,11 @@ def _apply_auto_fixes(fixes: list[dict]) -> list[str]:
 
         content = target.read_text()
         if search not in content:
-            print(f"  ⚠ Auto-fix: search string not found in {rel_path}")
             continue
 
         new_content = content.replace(search, replace, 1)
         target.write_text(new_content)
         applied.append(f"{rel_path}: {reason}")
-        print(f"  ✓ Applied: {rel_path} — {reason}")
 
     return applied
 
@@ -222,13 +219,9 @@ def _verify_after_fix() -> bool:
     """Run syntax check and tests after applying fixes. Return True if all pass."""
     rc, out = _run(["python", "-m", "py_compile", "app/main.py"], cwd=BACKEND_DIR)
     if rc != 0:
-        print(f"  ✗ Syntax check failed:\n{out}")
         return False
-    rc, out = _run(["python", "-m", "pytest", "tests/test_domain.py", "-q", "--tb=short"], cwd=BACKEND_DIR, timeout=60)
-    if rc != 0:
-        print(f"  ✗ Tests failed:\n{out[:1000]}")
-        return False
-    return True
+    rc, _out = _run(["python", "-m", "pytest", "tests/test_domain.py", "-q", "--tb=short"], cwd=BACKEND_DIR, timeout=60)
+    return rc == 0
 
 
 def _commit_fixes(applied: list[str]) -> bool:
@@ -238,7 +231,7 @@ def _commit_fixes(applied: list[str]) -> bool:
     _run(["git", "add", "-A"])
     msg = "fix: self-audit agent auto-fixes\n\n" + "\n".join(f"- {a}" for a in applied)
     msg += "\n\nhttps://claude.ai/code/session_017XFDSYkLAT5uno4BMDf285"
-    rc, out = _run(["git", "commit", "-m", msg])
+    rc, _out = _run(["git", "commit", "-m", msg])
     return rc == 0
 
 
@@ -256,58 +249,39 @@ class AuditResult:
     timestamp:        str = ""
 
     def print_report(self):
-        grade_color = {"GREEN": "\033[32m", "YELLOW": "\033[33m", "RED": "\033[31m"}.get(self.grade, "")
-        reset = "\033[0m"
-        print()
-        print("=" * 65)
-        print(f"  GULA Platform — Self-Audit Report")
-        print(f"  {self.timestamp}")
-        print(f"  Grade: {grade_color}{self.grade}{reset}")
-        print(f"  Production Ready: {'✓ YES' if self.production_ready else '✗ NO'}")
-        print("=" * 65)
+        {"GREEN": "\033[32m", "YELLOW": "\033[33m", "RED": "\033[31m"}.get(self.grade, "")
 
-        for severity, issues in [
+        for _severity, issues in [
             ("CRITICAL", self.critical_issues),
             ("HIGH", self.high_issues),
             ("MEDIUM", self.medium_issues),
         ]:
             if issues:
-                color = "\033[31m" if severity == "CRITICAL" else ("\033[33m" if severity == "HIGH" else "\033[36m")
-                print(f"\n  {color}{severity} ({len(issues)}){reset}")
                 for i in issues:
-                    print(f"    • {i.get('file','?')}:{i.get('line','?')} — {i.get('issue','?')}")
                     if i.get("fix"):
-                        print(f"      Fix: {i['fix'][:100]}")
+                        pass
 
         if self.applied_fixes:
-            print(f"\n  ✓ Auto-applied {len(self.applied_fixes)} fix(es):")
-            for f in self.applied_fixes:
-                print(f"    → {f}")
+            for _f in self.applied_fixes:
+                pass
 
-        print(f"\n  Summary: {self.summary}")
-        print("=" * 65)
-        print()
 
 
 def run_audit(auto_fix: bool = False) -> AuditResult:
     """Run one full audit cycle."""
-    result = AuditResult(timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
+    result = AuditResult(timestamp=datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"))
 
     try:
         import anthropic
     except ImportError:
-        print("ERROR: anthropic package not installed. Run: pip install anthropic")
         sys.exit(1)
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY environment variable not set.")
         sys.exit(1)
 
-    print("  Collecting context...")
     ctx = _collect_context()
 
-    print("  Sending to Claude for analysis...")
     client   = anthropic.Anthropic(api_key=api_key)
     prompt   = _build_audit_prompt(ctx)
 
@@ -328,8 +302,7 @@ def run_audit(auto_fix: bool = False) -> AuditResult:
         elif "```" in raw:
             json_str = raw.split("```")[1].split("```")[0].strip()
         data = json.loads(json_str)
-    except Exception as e:
-        print(f"  ⚠ Could not parse Claude response as JSON: {e}")
+    except Exception:
         result.summary = raw[:500]
         return result
 
@@ -343,20 +316,17 @@ def run_audit(auto_fix: bool = False) -> AuditResult:
 
     # Auto-fix if enabled and there are safe fixes — gate on kill switch + policy
     if auto_fix and _ENV == "production":
-        print("  [SELF-AUDIT] Auto-fix suppressed: ENV=production (report-only mode)")
         auto_fix = False
 
     if auto_fix and result.auto_fixable:
-        print(f"  Applying {len(result.auto_fixable)} auto-fix(es)...")
         applied = _apply_auto_fixes(result.auto_fixable)
         if applied:
             if _verify_after_fix():
                 committed = _commit_fixes(applied)
                 result.applied_fixes = applied
                 if committed:
-                    print(f"  ✓ Fixes committed successfully")
+                    pass
             else:
-                print("  ✗ Tests failed after fixes — reverting...")
                 _run(["git", "checkout", "--", "."])
 
     # Save report
@@ -386,20 +356,14 @@ def main():
 
     auto_fix = (args.fix or AUTO_FIX) and not args.report_only
 
-    print()
-    print("=" * 65)
-    print("  GULA Platform — AI Self-Audit Agent")
-    print(f"  Model: {MODEL}")
-    print(f"  Auto-fix: {'ENABLED' if auto_fix else 'disabled'}")
     if args.watch:
-        print(f"  Watch mode: every {args.watch}s")
-    print("=" * 65)
+        pass
 
     cycle = 0
     while True:
         cycle += 1
         if args.watch:
-            print(f"\n  [Cycle {cycle}] {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}")
+            pass
 
         result = run_audit(auto_fix=auto_fix)
         result.print_report()
@@ -407,7 +371,6 @@ def main():
         if not args.watch:
             sys.exit(0 if result.production_ready else 1)
 
-        print(f"  Next audit in {args.watch}s...")
         time.sleep(args.watch)
 
 

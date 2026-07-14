@@ -1,20 +1,15 @@
 """Batch operations - process multiple orders/results efficiently."""
 
-import secrets
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models.lab_order import LabOrder
-from ..models.lab_result import LabResult, hash_token
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
-from ..services.audit_service import log_action
-from ..services.interpretation import get_flag
+from ..services.order_service import create_order
 
 router = APIRouter(prefix="/batch", tags=["batch"])
 
@@ -45,8 +40,7 @@ def create_batch_orders(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Create multiple orders at once - significantly faster than individual API calls.
-    Useful for end-of-day batch processing or device integration."""
+    """Create multiple orders at once."""
     if len(data.orders) > 50:
         raise HTTPException(status_code=400, detail="Maximum 50 orders per batch")
 
@@ -64,70 +58,47 @@ def create_batch_orders(
 
     created_orders = []
     errors = []
+    all_critical_alerts = []
 
     for i, order_data in enumerate(data.orders):
         if order_data.patient_id not in valid_ids:
             errors.append({"index": i, "error": f"Patient {order_data.patient_id} not found"})
             continue
 
-        order = LabOrder(
-            patient_id=order_data.patient_id,
+        result = create_order(
+            db=db,
             lab_id=current_user.lab_id,
-            doctor_name=order_data.doctor_name,
-            status="completed",
+            user_id=current_user.id,
+            user_role=current_user.role,
+            patient_id=order_data.patient_id,
+            doctor_name=order_data.doctor_name or "",
+            doctor_user_id=None,
+            results_data=[
+                {
+                    "test_name": item.test_name,
+                    "value": item.value,
+                    "value_text": item.value_text,
+                    "unit": item.unit,
+                    "normal_range_low": item.normal_range_low,
+                    "normal_range_high": item.normal_range_high,
+                }
+                for item in order_data.results
+            ],
+            ip_address=get_client_ip(request),
+            idempotency_key=None,
         )
-        db.add(order)
-        db.flush()
 
-        result_count = 0
-        critical_count = 0
-        for item in order_data.results:
-            flag = "unknown"
-            if (
-                item.value is not None
-                and item.normal_range_low is not None
-                and item.normal_range_high is not None
-            ):
-                flag = get_flag(item.value, item.normal_range_low, item.normal_range_high)
-
-            token = secrets.token_urlsafe(32)
-            token_h = hash_token(token)
-
-            result = LabResult(
-                order_id=order.id,
-                test_name=item.test_name,
-                value=item.value,
-                value_text=item.value_text,
-                unit=item.unit,
-                normal_range_low=item.normal_range_low,
-                normal_range_high=item.normal_range_high,
-                flag=flag,
-                token=token,
-                token_hash=token_h,
-            )
-            db.add(result)
-            result_count += 1
-            if flag == "critical":
-                critical_count += 1
-
+        order_critical = result.get("critical_alerts")
         created_orders.append(
             {
-                "order_id": order.id,
+                "order_id": result["order"]["id"],
                 "patient_id": order_data.patient_id,
-                "results_count": result_count,
-                "critical_count": critical_count,
+                "results_count": len(order_data.results),
+                "critical_count": len(order_critical) if order_critical else 0,
             }
         )
-
-    log_action(
-        db,
-        action="batch_create",
-        resource_type="lab_order",
-        user_id=current_user.id,
-        user_role=current_user.role,
-        details=f"Batch created {len(created_orders)} orders with {sum(o['results_count'] for o in created_orders)} results",
-        ip_address=get_client_ip(request),
-    )
+        if order_critical:
+            all_critical_alerts.extend(order_critical)
 
     db.commit()
 
@@ -144,4 +115,5 @@ def create_batch_orders(
             "errors": len(errors),
         },
         "critical_alert": total_critical > 0,
+        "critical_alerts": all_critical_alerts if all_critical_alerts else None,
     }

@@ -29,11 +29,10 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
 from app.models.subscription import LabSubscription
-from app.security.auth import hash_password, create_token
+from app.security.auth import create_token, hash_password
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
@@ -69,7 +68,7 @@ class TestPublicCatalog:
         body = client.get("/tiers").json()
         import json as _json
         blob = _json.dumps(body)
-        for forbidden in ("lab_id", "subscription_id", "is_active", "expires_at",
+        for _forbidden in ("lab_id", "subscription_id", "is_active", "expires_at",
                           "monthly_price_usd"):
             # monthly_price_usd is fine in the catalog; ensure nothing else
             # leaks
@@ -249,7 +248,7 @@ class TestTierFeatureMatrix:
         """Air-gapped security level must remove every feature that calls
         external services — regardless of tier. This is a hard contract:
         an enterprise lab in air-gapped mode does NOT regain ai_interpretation."""
-        from app.core.feature_flags import get_tier_features, _AIR_GAPPED_BLOCKED
+        from app.core.feature_flags import _AIR_GAPPED_BLOCKED, get_tier_features
         feats = get_tier_features("enterprise", "single", "air_gapped")
         for blocked in _AIR_GAPPED_BLOCKED:
             assert blocked not in feats, (
@@ -257,7 +256,7 @@ class TestTierFeatureMatrix:
             )
 
     def test_unknown_tier_falls_back_to_starter(self):
-        from app.core.feature_flags import get_tier_features, _TIER_FEATURES
+        from app.core.feature_flags import _TIER_FEATURES, get_tier_features
         # Defensive: get_tier_features() defaults to starter for unknown tiers
         feats = get_tier_features("nonexistent_tier")
         assert feats == _TIER_FEATURES["starter"]

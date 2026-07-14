@@ -4,9 +4,6 @@ import logging
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel, Field
-
 from app.core.alerting import AlertManager
 from app.core.device_manager import DeviceManager
 from app.core.device_onboarding import DeviceFingerprint, DeviceOnboardingDirector
@@ -19,6 +16,8 @@ from app.pipeline.parser_engine import ASTMParser
 from app.security.auth import verify_api_key
 from app.storage.db import InMemoryDB
 from app.storage.result_repository import ResultRepository
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
 

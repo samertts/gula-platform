@@ -30,6 +30,7 @@ def move_sample(sample_id, unit, device, operator, minutes):
     samples[sample_id]["time_remaining"] = minutes
 
     log(sample_id, f"Moved to {unit} / {device}")
+    return None
 
 def complete_sample(sample_id):
 
@@ -56,18 +57,9 @@ def show_all_samples():
 
     for s in samples:
 
-        data = samples[s]
+        samples[s]
 
-        print("--------------------------------")
 
-        print("Sample:", s)
-        print("Patient:", data["patient"])
-        print("Test:", data["test"])
-        print("Unit:", data["unit"])
-        print("Device:", data["device"])
-        print("Operator:", data["operator"])
-        print("Status:", data["status"])
-        print("Remaining:", data["time_remaining"])
 
 # مثال تشغيل
 

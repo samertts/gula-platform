@@ -57,6 +57,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
+import contextlib
 
 
 revision      = "20260511_0001"
@@ -268,8 +269,6 @@ def downgrade() -> None:
         if _table_exists(tbl):
             for idx in idx_names:
                 if _index_exists(idx):
-                    try:
+                    with contextlib.suppress(Exception):
                         op.drop_index(idx, table_name=tbl)
-                    except Exception:
-                        pass
             op.drop_table(tbl)

@@ -11,7 +11,6 @@ will be swapped for the real auth dependency once it lands.
 """
 from __future__ import annotations
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -30,7 +29,6 @@ from ...services.notification import (
     unread_count,
 )
 
-
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
@@ -44,7 +42,7 @@ def _require_user_id(request: Request) -> str:
     return user_id
 
 
-def _client_ip(request: Request) -> Optional[str]:
+def _client_ip(request: Request) -> str | None:
     if request.client:
         return request.client.host
     return None

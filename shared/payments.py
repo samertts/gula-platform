@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
-from datetime import timezone, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
+
+from backend.app._compat import UTC
 
 logger = logging.getLogger("gula.payments")
 
@@ -37,13 +39,13 @@ class Payment:
         self.description = description
         self.lab_id = lab_id
         self.status = PaymentStatus.PENDING
-        self.created_at = datetime.now(timezone.utc)
+        self.created_at = datetime.now(UTC)
         self.processed_at: datetime | None = None
         self.reference: str = ""
 
     def complete(self, reference: str = "") -> None:
         self.status = PaymentStatus.COMPLETED
-        self.processed_at = datetime.now(timezone.utc)
+        self.processed_at = datetime.now(UTC)
         self.reference = reference
 
     def fail(self) -> None:
@@ -85,4 +87,4 @@ class PaymentGateway:
         return [p for p in self._transactions.values() if p.lab_id == lab_id]
 
 
-__all__ = ["PaymentStatus", "PaymentMethod", "Payment", "PaymentGateway"]
+__all__ = ["Payment", "PaymentGateway", "PaymentMethod", "PaymentStatus"]

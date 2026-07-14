@@ -6,14 +6,16 @@ Run with: python -m pytest backend/tests/test_resilience.py -v
 Tests are self-contained - no database or external services required.
 """
 
-import os
-import sys
-import time
-import secrets
 import hashlib
+import os
+import secrets
+import sys
 import threading
-from unittest.mock import patch, MagicMock
+import time
 from collections import defaultdict
+from unittest.mock import MagicMock, patch
+
+from app._compat import UTC
 
 # Set ENV=development before any app imports to prevent sys.exit
 os.environ.setdefault("ENV", "development")
@@ -29,7 +31,7 @@ class TestDatabaseResilience:
         """check_db_connection should return False, not crash, when DB is down."""
         from app.database import check_db_connection
         # Mock engine to simulate connection failure
-        with patch('app.database.engine') as mock_engine:
+        with patch("app.database.engine") as mock_engine:
             mock_conn = MagicMock()
             mock_conn.__enter__ = MagicMock(side_effect=Exception("Connection refused"))
             mock_conn.__exit__ = MagicMock(return_value=False)
@@ -40,7 +42,7 @@ class TestDatabaseResilience:
     def test_check_db_connection_returns_true_on_success(self):
         """check_db_connection returns True when DB is available."""
         from app.database import check_db_connection
-        with patch('app.database.engine') as mock_engine:
+        with patch("app.database.engine") as mock_engine:
             mock_conn = MagicMock()
             mock_conn.__enter__ = MagicMock(return_value=mock_conn)
             mock_conn.__exit__ = MagicMock(return_value=False)
@@ -169,11 +171,11 @@ class TestDataIntegrity:
     def test_xss_payloads_are_strings(self):
         """Verify XSS payloads don't crash string processing."""
         xss_payloads = [
-            '<script>alert(1)</script>',
+            "<script>alert(1)</script>",
             '"><img src=x onerror=alert(1)>',
             "'; DROP TABLE patients; --",
             '{{constructor.constructor("return this")()}}',
-            '\x00\x01\x02null bytes',
+            "\x00\x01\x02null bytes",
         ]
         for payload in xss_payloads:
             assert isinstance(str(payload), str)
@@ -199,8 +201,8 @@ class TestDataIntegrity:
 
     def test_token_hash_different_for_different_tokens(self):
         """Different tokens should produce different hashes."""
-        t1 = hashlib.sha256("token-a".encode()).hexdigest()
-        t2 = hashlib.sha256("token-b".encode()).hexdigest()
+        t1 = hashlib.sha256(b"token-a").hexdigest()
+        t2 = hashlib.sha256(b"token-b").hexdigest()
         assert t1 != t2
 
     def test_barcode_generation_format(self):
@@ -219,7 +221,7 @@ class TestDataIntegrity:
         for _ in range(100):
             b = f"SMP-{secrets.token_hex(6).upper()}"
             hex_part = b[4:]
-            assert re.match(r'^[A-F0-9]+$', hex_part), f"Invalid hex: {hex_part}"
+            assert re.match(r"^[A-F0-9]+$", hex_part), f"Invalid hex: {hex_part}"
 
 
 # ===== 4. CONFIGURATION SAFETY =====
@@ -229,7 +231,7 @@ class TestConfigSafety:
 
     def test_config_loads_in_development(self):
         """Config should load without crash in development mode."""
-        from app.config import APP_VERSION, APP_NAME
+        from app.config import APP_NAME, APP_VERSION
         assert APP_VERSION
         assert APP_NAME
 
@@ -241,16 +243,16 @@ class TestConfigSafety:
     def test_config_has_required_fields(self):
         """Config module should expose all required settings."""
         from app import config
-        required = ['DATABASE_URL', 'SECRET_KEY', 'APP_NAME', 'APP_VERSION',
-                     'JWT_ALGORITHM', 'JWT_EXPIRE_HOURS', 'ENCRYPTION_KEY',
-                     'RESULT_TOKEN_LENGTH', 'RESULT_LINK_EXPIRE_DAYS']
+        required = ["DATABASE_URL", "SECRET_KEY", "APP_NAME", "APP_VERSION",
+                     "JWT_ALGORITHM", "JWT_EXPIRE_HOURS", "ENCRYPTION_KEY",
+                     "RESULT_TOKEN_LENGTH", "RESULT_LINK_EXPIRE_DAYS"]
         for attr in required:
             assert hasattr(config, attr), f"Missing config: {attr}"
 
     def test_production_blocks_without_secrets(self):
         """Production mode should refuse to start without secrets."""
         # This test verifies the safety behavior exists
-        from app.config import IS_PRODUCTION, ENV
+        from app.config import ENV, IS_PRODUCTION
         # In CI, ENV may be "test" or "development" — both are non-production
         assert ENV in ("development", "test"), f"Expected non-production ENV, got {ENV!r}"
         assert IS_PRODUCTION is False
@@ -304,12 +306,11 @@ class TestGreetingEdgeCases:
         """Mirror of the backend greeting logic for testing."""
         if 5 <= iraq_hour < 12:
             return "صباح الخير"
-        elif 12 <= iraq_hour < 17:
+        if 12 <= iraq_hour < 17:
             return "مساء الخير"
-        elif 17 <= iraq_hour < 21:
+        if 17 <= iraq_hour < 21:
             return "مساء النور"
-        else:
-            return "أهلاً"
+        return "أهلاً"
 
     def test_greeting_morning(self):
         assert self._arabic_greeting(5) == "صباح الخير"
@@ -360,54 +361,54 @@ class TestModelIndexes:
         """LabOrder should have indexes on status, lab_id, created_at."""
         from app.models.lab_order import LabOrder
         cols = LabOrder.__table__.columns
-        assert cols['status'].index is True, "lab_orders.status missing index"
-        assert cols['lab_id'].index is True, "lab_orders.lab_id missing index"
-        assert cols['patient_id'].index is True, "lab_orders.patient_id missing index"
-        assert cols['created_at'].index is True, "lab_orders.created_at missing index"
+        assert cols["status"].index is True, "lab_orders.status missing index"
+        assert cols["lab_id"].index is True, "lab_orders.lab_id missing index"
+        assert cols["patient_id"].index is True, "lab_orders.patient_id missing index"
+        assert cols["created_at"].index is True, "lab_orders.created_at missing index"
 
     def test_lab_user_indexes(self):
         """LabUser should have indexes on email, is_active, role, lab_id."""
         from app.models.lab_user import LabUser
         cols = LabUser.__table__.columns
-        assert cols['email'].index is True, "lab_users.email missing index"
-        assert cols['is_active'].index is True, "lab_users.is_active missing index"
-        assert cols['role'].index is True, "lab_users.role missing index"
-        assert cols['lab_id'].index is True, "lab_users.lab_id missing index"
+        assert cols["email"].index is True, "lab_users.email missing index"
+        assert cols["is_active"].index is True, "lab_users.is_active missing index"
+        assert cols["role"].index is True, "lab_users.role missing index"
+        assert cols["lab_id"].index is True, "lab_users.lab_id missing index"
 
     def test_lab_result_flag_index(self):
         """LabResult should have index on flag column."""
         from app.models.lab_result import LabResult
         cols = LabResult.__table__.columns
-        assert cols['flag'].index is True, "lab_results.flag missing index"
+        assert cols["flag"].index is True, "lab_results.flag missing index"
 
     def test_audit_log_indexes(self):
         """AuditLog should have indexes on user_id, action, created_at."""
         from app.models.audit_log import AuditLog
         cols = AuditLog.__table__.columns
-        assert cols['user_id'].index is True, "audit_logs.user_id missing index"
-        assert cols['action'].index is True, "audit_logs.action missing index"
-        assert cols['created_at'].index is True, "audit_logs.created_at missing index"
+        assert cols["user_id"].index is True, "audit_logs.user_id missing index"
+        assert cols["action"].index is True, "audit_logs.action missing index"
+        assert cols["created_at"].index is True, "audit_logs.created_at missing index"
 
     def test_sample_indexes(self):
         """Sample should have indexes on order_id, status, barcode."""
         from app.models.sample import Sample
         cols = Sample.__table__.columns
-        assert cols['order_id'].index is True, "samples.order_id missing index"
-        assert cols['status'].index is True, "samples.status missing index"
-        assert cols['barcode'].index is True, "samples.barcode missing index"
+        assert cols["order_id"].index is True, "samples.order_id missing index"
+        assert cols["status"].index is True, "samples.status missing index"
+        assert cols["barcode"].index is True, "samples.barcode missing index"
 
     def test_quality_control_indexes(self):
         """QualityControl should have indexes on lab_id, test_code."""
         from app.models.quality_control import QualityControl
         cols = QualityControl.__table__.columns
-        assert cols['lab_id'].index is True, "quality_controls.lab_id missing index"
-        assert cols['test_code'].index is True, "quality_controls.test_code missing index"
+        assert cols["lab_id"].index is True, "quality_controls.lab_id missing index"
+        assert cols["test_code"].index is True, "quality_controls.test_code missing index"
 
     def test_lab_is_active_index(self):
         """Lab should have index on is_active."""
         from app.models.lab import Lab
         cols = Lab.__table__.columns
-        assert cols['is_active'].index is True, "labs.is_active missing index"
+        assert cols["is_active"].index is True, "labs.is_active missing index"
 
 
 # ===== 8. EDGE CASES & BOUNDARY CONDITIONS =====
@@ -417,7 +418,7 @@ class TestEdgeCases:
 
     def test_empty_string_handling(self):
         """Empty strings should not crash processing."""
-        assert "" == "".strip()
+        assert "".strip() == ""
         assert len("") == 0
 
     def test_very_long_input(self):
@@ -464,7 +465,7 @@ class TestEdgeCases:
 
     def test_zero_and_negative_values(self):
         """Medical values can be zero or negative (rare but valid)."""
-        values = [0, 0.0, -0.1, 999999.99, float('inf')]
+        values = [0, 0.0, -0.1, 999999.99, float("inf")]
         for v in values:
             assert isinstance(v, (int, float))
 
@@ -472,13 +473,13 @@ class TestEdgeCases:
         """Date handling shouldn't crash on edge cases."""
         from datetime import datetime, timezone
         # Far past
-        dt = datetime(1900, 1, 1, tzinfo=timezone.utc)
+        dt = datetime(1900, 1, 1, tzinfo=UTC)
         assert dt.isoformat() is not None
         # Far future
-        dt = datetime(2099, 12, 31, tzinfo=timezone.utc)
+        dt = datetime(2099, 12, 31, tzinfo=UTC)
         assert dt.isoformat() is not None
         # Now
-        dt = datetime.now(timezone.utc)
+        dt = datetime.now(UTC)
         assert dt.isoformat() is not None
 
 

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("gula.notifications.template")
@@ -101,5 +99,4 @@ __all__ = [
     "get_template",
     "register_template",
     "render_template",
-    "NotificationMessage",
 ]

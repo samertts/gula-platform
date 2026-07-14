@@ -1,5 +1,5 @@
-from shared.generators.module import ModuleGenerator
-from shared.generators.migration import MigrationGenerator
 from shared.generators.documentation import DocumentationGenerator
+from shared.generators.migration import MigrationGenerator
+from shared.generators.module import ModuleGenerator
 
-__all__ = ["ModuleGenerator", "MigrationGenerator", "DocumentationGenerator"]
+__all__ = ["DocumentationGenerator", "MigrationGenerator", "ModuleGenerator"]

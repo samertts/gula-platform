@@ -71,6 +71,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
+import contextlib
 
 
 revision      = "20260511_0002"
@@ -154,14 +155,10 @@ def downgrade() -> None:
 
     for idx in ("ix_ai_interactions_escalation", "ix_ai_interactions_risk_level"):
         if _index_exists(idx):
-            try:
+            with contextlib.suppress(Exception):
                 op.drop_index(idx, table_name=_TABLE)
-            except Exception:
-                pass
 
     for name, _ in reversed(_NEW_COLUMNS):
         if _has_column(_TABLE, name):
-            try:
+            with contextlib.suppress(Exception):
                 op.drop_column(_TABLE, name)
-            except Exception:
-                pass

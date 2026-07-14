@@ -1,11 +1,11 @@
 from .printer import (
+    PrintJob,
     print_label,
     print_report,
-    PrintJob,
 )
 
 __all__ = [
+    "PrintJob",
     "print_label",
     "print_report",
-    "PrintJob",
 ]

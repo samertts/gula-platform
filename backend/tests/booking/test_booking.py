@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from app._compat import UTC
 
 from shared.booking import BookingEngine, BookingStatus
 from shared.domain.booking import Appointment, AppointmentStatus
@@ -101,14 +102,14 @@ class TestAppointment:
 class TestBookingEngine:
     def test_book_creates_appointment(self):
         engine = BookingEngine()
-        apt = engine.book("P001", 1, datetime.now(timezone.utc))
+        apt = engine.book("P001", 1, datetime.now(UTC))
         assert apt.patient_id == "P001"
         assert apt.status == AppointmentStatus.PENDING
         assert engine.count() == 1
 
     def test_get_returns_appointment(self):
         engine = BookingEngine()
-        apt = engine.book("P001", 1, datetime.now(timezone.utc))
+        apt = engine.book("P001", 1, datetime.now(UTC))
         fetched = engine.get(apt.id)
         assert fetched is not None
         assert fetched.id == apt.id
@@ -119,20 +120,20 @@ class TestBookingEngine:
 
     def test_confirm_transitions_to_confirmed(self):
         engine = BookingEngine()
-        apt = engine.book("P001", 1, datetime.now(timezone.utc))
+        apt = engine.book("P001", 1, datetime.now(UTC))
         engine.confirm(apt.id)
         assert engine.get(apt.id).status == AppointmentStatus.CONFIRMED
 
     def test_cancel_transitions_to_cancelled(self):
         engine = BookingEngine()
-        apt = engine.book("P001", 1, datetime.now(timezone.utc))
+        apt = engine.book("P001", 1, datetime.now(UTC))
         engine.cancel(apt.id, reason="Patient request")
         assert engine.get(apt.id).status == AppointmentStatus.CANCELLED
         assert engine.get(apt.id).notes == "Patient request"
 
     def test_complete_workflow(self):
         engine = BookingEngine()
-        apt = engine.book("P001", 1, datetime.now(timezone.utc))
+        apt = engine.book("P001", 1, datetime.now(UTC))
         engine.confirm(apt.id)
         engine.check_in(apt.id)
         engine.start(apt.id)
@@ -141,30 +142,30 @@ class TestBookingEngine:
 
     def test_list_by_patient(self):
         engine = BookingEngine()
-        engine.book("P001", 1, datetime.now(timezone.utc))
-        engine.book("P001", 2, datetime.now(timezone.utc))
-        engine.book("P002", 1, datetime.now(timezone.utc))
+        engine.book("P001", 1, datetime.now(UTC))
+        engine.book("P001", 2, datetime.now(UTC))
+        engine.book("P002", 1, datetime.now(UTC))
         assert len(engine.list_by_patient("P001")) == 2
         assert len(engine.list_by_patient("P002")) == 1
 
     def test_list_by_lab(self):
         engine = BookingEngine()
-        engine.book("P001", 1, datetime.now(timezone.utc))
-        engine.book("P002", 1, datetime.now(timezone.utc))
-        engine.book("P003", 2, datetime.now(timezone.utc))
+        engine.book("P001", 1, datetime.now(UTC))
+        engine.book("P002", 1, datetime.now(UTC))
+        engine.book("P003", 2, datetime.now(UTC))
         assert len(engine.list_by_lab(1)) == 2
         assert len(engine.list_by_lab(2)) == 1
 
     def test_get_available_slots(self):
         engine = BookingEngine()
-        today = datetime.now(timezone.utc)
+        today = datetime.now(UTC)
         slots = engine.get_available_slots(1, today)
         assert len(slots) > 0
         assert all(isinstance(s, str) for s in slots)
 
     def test_get_available_slots_excludes_booked(self):
         engine = BookingEngine()
-        today = datetime.now(timezone.utc)
+        today = datetime.now(UTC)
         slot_time = today.replace(hour=9, minute=0, second=0, microsecond=0)
         engine.book("P001", 1, slot_time)
         slots = engine.get_available_slots(1, today)
@@ -172,14 +173,14 @@ class TestBookingEngine:
 
     def test_mark_no_show(self):
         engine = BookingEngine()
-        apt = engine.book("P001", 1, datetime.now(timezone.utc))
+        apt = engine.book("P001", 1, datetime.now(UTC))
         engine.confirm(apt.id)
         engine.mark_no_show(apt.id)
         assert engine.get(apt.id).status == AppointmentStatus.NO_SHOW
 
     def test_list_by_date(self):
         engine = BookingEngine()
-        today = datetime.now(timezone.utc)
+        today = datetime.now(UTC)
         engine.book("P001", 1, today)
         engine.book("P002", 1, today + timedelta(days=1))
         assert len(engine.list_by_date(1, today)) == 1

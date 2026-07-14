@@ -4,6 +4,7 @@ This package now re-exports from the canonical ``shared/`` library.
 All new code should import directly from ``shared``.
 """
 import warnings
+
 warnings.warn(
     "services/shared/ is deprecated. Import from 'shared' instead.",
     DeprecationWarning,
@@ -16,8 +17,8 @@ from shared.messaging import MessageBroker
 
 __all__ = [
     "AuditService",
-    "create_audit_entry",
     "CircuitBreaker",
     "CircuitState",
     "MessageBroker",
+    "create_audit_entry",
 ]

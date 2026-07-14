@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger("gula.pdf")
 
@@ -28,8 +28,14 @@ def generate_result_pdf(
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image,
+        Image,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
     )
+
     from shared.qr import generate_qr_image
 
     tpl = template or PDFTemplate()
@@ -74,9 +80,9 @@ def generate_pdf(
     title: str = "GULA Report",
 ) -> bytes:
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4)

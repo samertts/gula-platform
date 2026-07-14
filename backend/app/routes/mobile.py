@@ -120,10 +120,10 @@ def refresh_access_token(
 
     from ..security.auth import blacklist_token as _blacklist
 
-    _GRACE_SECONDS = 30  # allow network retries without forcing re-login
+    _grace_seconds = 30  # allow network retries without forcing re-login
     old_jti = payload.get("jti")
     if old_jti:
-        remaining = int((payload["exp"] - _time.time()) + _GRACE_SECONDS)
+        remaining = int((payload["exp"] - _time.time()) + _grace_seconds)
         if remaining > 0:
             _blacklist(old_jti, min(remaining, REFRESH_TOKEN_EXPIRE_DAYS * 86400))
 

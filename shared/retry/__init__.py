@@ -1,19 +1,19 @@
 from .decorators import (
+    Bulkhead,
+    BulkheadFullError,
+    call_with_timeout,
     retry,
     retry_async,
     safe_call,
     safe_call_async,
-    call_with_timeout,
-    Bulkhead,
-    BulkheadFullError,
 )
 
 __all__ = [
+    "Bulkhead",
+    "BulkheadFullError",
+    "call_with_timeout",
     "retry",
     "retry_async",
     "safe_call",
     "safe_call_async",
-    "call_with_timeout",
-    "Bulkhead",
-    "BulkheadFullError",
 ]

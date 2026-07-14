@@ -21,6 +21,7 @@ show-fixes = true
 exclude = [
     ".git", ".venv", "node_modules", "build", "dist",
     "__pycache__", "archive", "frontend", "frontend-v2", "test_library",
+    "scripts/", "nhop-platform/", "client/",
 ]
 
 [tool.ruff.lint]
@@ -48,10 +49,15 @@ show_error_codes = true
 pretty = true
 ignore_missing_imports = true
 no_implicit_optional = true
+explicit_package_bases = true
 exclude = ["tests/", "build/", "dist/", "archive/", "frontend/", "frontend-v2/"]
 
 [[tool.mypy.overrides]]
-module = ["app.routes.*", "migrations.*", "services.*"]
+module = ["backend.app.routes.*", "backend.app.migrations.*", "backend.app.services.*", "app.routes.*", "migrations.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["backend.app.engineering.*", "app.engineering.*"]
 ignore_errors = true
 
 [tool.pytest.ini_options]

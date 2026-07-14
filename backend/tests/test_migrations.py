@@ -13,10 +13,10 @@ These run in < 1s with zero external dependencies — safe to run anywhere.
 Run:
   cd backend && python -m pytest tests/test_migrations.py -v
 """
+import importlib.util
+import pathlib
 import re
 import sys
-import pathlib
-import importlib.util
 
 MIGRATIONS_DIR = pathlib.Path(__file__).parent.parent / "migrations" / "versions"
 
@@ -27,7 +27,7 @@ def _read_migration_meta(path: pathlib.Path) -> dict:
     """Extract revision/down_revision from a migration file without importing it."""
     src = path.read_text()
     rev_match = re.search(r'^revision\s*=\s*["\']([^"\']+)["\']', src, re.M)
-    down_match = re.search(r'^down_revision\s*=\s*([^\n]+)', src, re.M)
+    down_match = re.search(r"^down_revision\s*=\s*([^\n]+)", src, re.M)
 
     revision = rev_match.group(1) if rev_match else None
 
@@ -195,6 +195,6 @@ def test_chain_reachable_from_root():
     all_revs = {m["revision"] for m in migs}
     unreachable = all_revs - visited
     assert not unreachable, (
-        f"Unreachable migrations (not in the chain from root):\n"
+        "Unreachable migrations (not in the chain from root):\n"
         + "\n".join(f"  {r}" for r in sorted(unreachable))
     )

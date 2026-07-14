@@ -25,7 +25,7 @@ class PluginGenerator(BaseGenerator):
             spec = PluginSpec(name=kwargs.get("name", "unnamed-plugin"))
 
         pkg = spec.name.lower().replace("-", "_").replace(" ", "_")
-        P = spec.name[0].upper() + spec.name[1:]
+        p_cap = spec.name[0].upper() + spec.name[1:]
 
         self._ensure_dir(pkg)
         (self.target_dir / pkg / "__init__.py").touch()
@@ -37,7 +37,7 @@ class PluginGenerator(BaseGenerator):
 from typing import Any
 
 
-class {P}Plugin:
+class {p_cap}Plugin:
     \"\"\"Plugin: {spec.description}\"\"\"
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -74,13 +74,12 @@ class {P}Plugin:
 from abc import ABC, abstractmethod
 
 
-class {P}Hook(ABC):
+class {p_cap}Hook(ABC):
     @abstractmethod
     async def execute(self) -> None:
         ...
 
-
-{hooks_code}
+    {hooks_code.replace(chr(10), chr(10) + "    ")}
 """,
         )
 
@@ -92,7 +91,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class {P}Config:
+class {p_cap}Config:
     enabled: bool = True
     settings: dict = field(default_factory=dict)
 """,

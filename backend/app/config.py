@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 import logging
 import os
 import secrets
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from shared.config.loader import AppConfig
 
 logger = logging.getLogger("gula.config")
 
@@ -116,10 +122,10 @@ REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET", "")
 if not REFRESH_TOKEN_SECRET:
     if IS_PRODUCTION:
         sys.exit(1)
-    # Dev fallback: derive from SECRET_KEY (not suitable for production)
-    REFRESH_TOKEN_SECRET = f"refresh_{SECRET_KEY}"
+    # Dev fallback: generate an independent random key
+    REFRESH_TOKEN_SECRET = secrets.token_urlsafe(64)
     logger.warning(
-        "REFRESH_TOKEN_SECRET not set - derived from SECRET_KEY. Set it in .env for production."
+        "REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production."
     )
 
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
@@ -286,7 +292,7 @@ KERNEL_ENABLE_GATEWAY = os.getenv("KERNEL_ENABLE_GATEWAY", "true").lower() == "t
 # Legacy globals above remain for backward compatibility.
 
 
-def get_shared_config():
+def get_shared_config() -> AppConfig:
     """Return the canonical AppConfig from shared.config.loader."""
     from shared.config import load_config as _load
 

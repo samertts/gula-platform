@@ -13,7 +13,6 @@ Route order matters: the static ``/search`` path is declared before the
 ``/{health_id}`` dynamic path so FastAPI does not treat "search" as a
 health_id.
 """
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import desc, or_
@@ -23,18 +22,22 @@ from ...core.database import get_db
 from ...models.citizen import Citizen
 from ...models.lab_test import LabTest
 from ...schemas.citizen import (
-    CitizenCreate, CitizenRead, CitizenSearchResult, CitizenSummary,
-    CitizenUpdate, DuplicateMatch, LabTestRead,
+    CitizenCreate,
+    CitizenRead,
+    CitizenSearchResult,
+    CitizenSummary,
+    CitizenUpdate,
+    DuplicateMatch,
+    LabTestRead,
 )
 from ...services.audit import log_action
 from ...services.duplicates import DUPLICATE_CONFLICT_THRESHOLD, find_duplicates
 from ...services.health_id import generate_health_id
 
-
 router = APIRouter(prefix="/citizens", tags=["citizens"])
 
 
-def _actor_id(request: Request) -> Optional[str]:
+def _actor_id(request: Request) -> str | None:
     """Best-effort actor identifier for audit log entries.
 
     In the full integration this will read the authenticated user from the
@@ -44,7 +47,7 @@ def _actor_id(request: Request) -> Optional[str]:
     return request.headers.get("X-Actor-Id")
 
 
-def _client_ip(request: Request) -> Optional[str]:
+def _client_ip(request: Request) -> str | None:
     if request.client:
         return request.client.host
     return None
@@ -139,8 +142,8 @@ def register_citizen(
 @router.get("/search", response_model=CitizenSearchResult)
 def search_citizens(
     request: Request,
-    q:        Optional[str] = Query(default=None, description="Name or national_id substring"),
-    province: Optional[str] = Query(default=None, max_length=80),
+    q:        str | None = Query(default=None, description="Name or national_id substring"),
+    province: str | None = Query(default=None, max_length=80),
     skip:     int = Query(0, ge=0),
     limit:    int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),

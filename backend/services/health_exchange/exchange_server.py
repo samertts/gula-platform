@@ -1,5 +1,4 @@
 from flask import Flask, jsonify, request
-
 from health_record_engine.record_manager import add_test_result
 
 app = Flask(__name__)

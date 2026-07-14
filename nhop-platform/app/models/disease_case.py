@@ -9,10 +9,12 @@ separate declarative base (``models.base.Base``) while this table lives on
 the registry base (``core.database.Base``); the two run in independent
 engines today and a cross-base FK would break fresh-DB bootstrap.
 """
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.app._compat import UTC
 
 from ..core.database import Base
 
@@ -43,7 +45,7 @@ class DiseaseCase(Base):
 
     reported_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
         index=True,
     )

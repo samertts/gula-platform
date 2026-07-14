@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import datetime
+from typing import Any
+
+from backend.app._compat import UTC
 
 
 @dataclass(slots=True)
@@ -26,7 +29,7 @@ class SyncEngine:
             device_id=device_id,
             payload=payload,
             version=version,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
         existing = self._queue.get(item_id)
         if existing is None or incoming.version >= existing.version:

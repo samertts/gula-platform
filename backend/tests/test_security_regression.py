@@ -26,6 +26,8 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 
+from app._compat import UTC
+
 os.environ["RUNTIME_MODE"] = "test"
 os.environ["FEATURE_BACKGROUND_TASKS"] = "false"
 os.environ.setdefault("ENV", "test")
@@ -38,21 +40,20 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-from jose import jwt as jose_jwt
-
-from app.config import SECRET_KEY, JWT_ALGORITHM
+from app.config import JWT_ALGORITHM, SECRET_KEY
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
 from app.security.auth import (
-    create_token,
-    decode_token,
+    build_token_payload,
     create_refresh_token,
+    create_token,
     decode_refresh_token,
+    decode_token,
     hash_password,
     verify_password,
-    build_token_payload,
 )
+from jose import jwt as jose_jwt
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
@@ -80,7 +81,7 @@ class TestStaleTokenRejection:
         # Forge an already-expired token
         payload = {
             "user_id": 1, "lab_id": 1, "role": "admin",
-            "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+            "exp": datetime.now(UTC) - timedelta(hours=1),
             "type": "access",
             "jti": "fake-jti",
         }
@@ -91,7 +92,7 @@ class TestStaleTokenRejection:
         from app.config import REFRESH_TOKEN_SECRET
         payload = {
             "user_id": 1, "lab_id": 1, "role": "admin",
-            "exp": datetime.now(timezone.utc) - timedelta(days=60),
+            "exp": datetime.now(UTC) - timedelta(days=60),
             "type": "refresh",
             "jti": "fake-jti",
         }
@@ -153,7 +154,7 @@ class TestSignatureTampering:
         bad = jose_jwt.encode(
             {
                 "user_id": 1, "lab_id": 1, "role": "admin",
-                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+                "exp": datetime.now(UTC) + timedelta(hours=1),
                 "type": "access",
                 "jti": "fake",
             },
@@ -176,7 +177,7 @@ class TestSignatureTampering:
         bad = jose_jwt.encode(
             {
                 "user_id": 1, "lab_id": 1, "role": "master_admin",
-                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+                "exp": datetime.now(UTC) + timedelta(hours=1),
                 "type": "access",
                 "jti": "fake",
             },
@@ -316,7 +317,7 @@ class TestUserEnumerationResistance:
         assert auth._DUMMY_HASH.startswith("$2")  # bcrypt prefix
 
     def test_dummy_hash_does_not_match_real_passwords(self):
-        from app.security.auth import _DUMMY_HASH, verify_password
+        from app.security.auth import _DUMMY_HASH
         assert verify_password("admin", _DUMMY_HASH) is False
         assert verify_password("password", _DUMMY_HASH) is False
         assert verify_password("", _DUMMY_HASH) is False
@@ -335,7 +336,7 @@ class TestAlgorithmConfusionResistance:
             bad = jose_jwt.encode(
                 {
                     "user_id": 1, "lab_id": 1, "role": "admin",
-                    "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+                    "exp": datetime.now(UTC) + timedelta(hours=1),
                     "type": "access",
                 },
                 key="",

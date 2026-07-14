@@ -1,13 +1,13 @@
 from .base import (
+    MaxBodySizeMiddleware,
     RequestIDMiddleware,
     RequestTimingMiddleware,
     SecurityHeadersMiddleware,
-    MaxBodySizeMiddleware,
 )
 
 __all__ = [
+    "MaxBodySizeMiddleware",
     "RequestIDMiddleware",
     "RequestTimingMiddleware",
     "SecurityHeadersMiddleware",
-    "MaxBodySizeMiddleware",
 ]

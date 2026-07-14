@@ -21,6 +21,8 @@ import os
 import sys
 from datetime import datetime, timedelta, timezone
 
+from app._compat import UTC
+
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production-" + "x" * 32)
@@ -31,28 +33,26 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
+from app.core.feature_flags import (
+    can_lab_access,
+    get_tier_features,
+    get_tier_limits,
+    is_upgrade_valid,
+    require_feature,
+    resolve_lab_features,
+)
+from app.database import Base
+from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from fastapi import HTTPException
-
-from app.database import Base
-from app.core.feature_flags import (
-    get_tier_features,
-    is_upgrade_valid,
-    get_tier_limits,
-    resolve_lab_features,
-    require_feature,
-    can_lab_access,
-)
-
 
 # ── Shared DB fixture (subscription model needed) ─────────────────────────────
 
 @pytest.fixture()
 def db():
-    import app.models.lab           # noqa: F401
-    import app.models.lab_user      # noqa: F401
-    import app.models.subscription  # noqa: F401
+    import app.models.lab
+    import app.models.lab_user
+    import app.models.subscription
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -262,7 +262,7 @@ class TestResolveLabFeatures:
 
     def test_per_lab_flag_can_add_feature(self, db):
         from app.models.lab import Lab
-        from app.models.subscription import LabSubscription, FeatureFlag
+        from app.models.subscription import FeatureFlag, LabSubscription
 
         lab = Lab(name="Flag Add Lab", is_active=True)
         db.add(lab)
@@ -279,7 +279,7 @@ class TestResolveLabFeatures:
 
     def test_per_lab_flag_can_remove_feature(self, db):
         from app.models.lab import Lab
-        from app.models.subscription import LabSubscription, FeatureFlag
+        from app.models.subscription import FeatureFlag, LabSubscription
 
         lab = Lab(name="Flag Remove Lab", is_active=True)
         db.add(lab)
@@ -298,7 +298,7 @@ class TestResolveLabFeatures:
 
     def test_expired_flag_is_ignored(self, db):
         from app.models.lab import Lab
-        from app.models.subscription import LabSubscription, FeatureFlag
+        from app.models.subscription import FeatureFlag, LabSubscription
 
         lab = Lab(name="Expired Flag Lab", is_active=True)
         db.add(lab)
@@ -306,7 +306,7 @@ class TestResolveLabFeatures:
         sub = LabSubscription(lab_id=lab.id, tier="starter", is_active=True)
         db.add(sub)
         # Expired flag for a premium feature — should be ignored
-        past = datetime.now(timezone.utc) - timedelta(days=1)
+        past = datetime.now(UTC) - timedelta(days=1)
         flag = FeatureFlag(
             lab_id=lab.id,
             feature_key="ai_interpretation",

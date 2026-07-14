@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -168,6 +167,14 @@ class QualityControl:
 
 
 __all__ = [
-    "Citizen", "LabOrder", "LabResult", "Visit", "QualityControl",
-    "Gender", "OrderStatus", "ResultFlag", "SampleType", "TestStatus",
+    "Citizen",
+    "Gender",
+    "LabOrder",
+    "LabResult",
+    "OrderStatus",
+    "QualityControl",
+    "ResultFlag",
+    "SampleType",
+    "TestStatus",
+    "Visit",
 ]

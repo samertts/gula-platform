@@ -1,15 +1,15 @@
 from .backends import (
-    StorageBackend,
     LocalStorage,
-    S3Storage,
     R2Storage,
+    S3Storage,
+    StorageBackend,
     get_storage,
 )
 
 __all__ = [
-    "StorageBackend",
     "LocalStorage",
-    "S3Storage",
     "R2Storage",
+    "S3Storage",
+    "StorageBackend",
     "get_storage",
 ]

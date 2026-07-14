@@ -25,8 +25,9 @@ def generate_barcode_image(
     width: int = 300,
     height: int = 100,
 ) -> bytes:
-    import barcode
     from barcode.writer import ImageWriter
+
+    import barcode
     try:
         Code128 = barcode.get_barcode_class("code128")
         b = Code128(code, writer=ImageWriter())

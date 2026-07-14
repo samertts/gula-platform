@@ -1,7 +1,7 @@
-from .engine import PolicyEngine, Policy, PolicyRule
+from .engine import Policy, PolicyEngine, PolicyRule
 
 __all__ = [
-    "PolicyEngine",
     "Policy",
+    "PolicyEngine",
     "PolicyRule",
 ]

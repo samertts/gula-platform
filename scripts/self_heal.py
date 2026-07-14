@@ -37,13 +37,14 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import requests
 import urllib3
+
+from backend.app._compat import UTC
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -110,7 +111,7 @@ def log_incident(inc: Incident) -> None:
 def _compose(args: list[str], timeout: int = 60) -> bool:
     try:
         r = subprocess.run(
-            ["docker", "compose"] + args,
+            ["docker", "compose", *args],
             capture_output=True, text=True,
             timeout=timeout, cwd=str(COMPOSE_DIR),
         )
@@ -137,7 +138,7 @@ def service_running(name: str) -> bool:
 
 # ── HTTP helpers ──────────────────────────────────────────────────────────────
 
-def _get(path: str, timeout: int = HEALTH_TIMEOUT) -> Optional[dict]:
+def _get(path: str, timeout: int = HEALTH_TIMEOUT) -> dict | None:
     try:
         r = requests.get(f"{BASE_URL}{path}", timeout=timeout, verify=False)
         if r.status_code == 200:
@@ -333,10 +334,9 @@ def execute(decision: Decision, dry_run: bool = False) -> list[str]:
             taken.append("safe_mode_activated")
             log.warning("SAFE MODE ACTIVATED — writes may return 503 until cleared")
 
-        elif action == "clear_safe_mode":
-            if SAFE_MODE_FILE.exists():
-                SAFE_MODE_FILE.unlink()
-                taken.append("safe_mode_cleared")
+        elif action == "clear_safe_mode" and SAFE_MODE_FILE.exists():
+            SAFE_MODE_FILE.unlink()
+            taken.append("safe_mode_cleared")
 
     return taken
 
@@ -401,7 +401,7 @@ def run_cycle(dry_run: bool = False) -> int:
     One detection → diagnosis → action → verify cycle.
     Returns count of unresolved incidents.
     """
-    ts = datetime.now(timezone.utc).isoformat()
+    ts = datetime.now(UTC).isoformat()
     signals = detect()
 
     failures = [s for s in signals if not s.ok]

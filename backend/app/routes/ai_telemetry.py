@@ -182,7 +182,7 @@ def _parse_uuid(s: str, field: str) -> uuid.UUID:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "INVALID_UUID", "field": field},
-        )
+        ) from None
 
 
 def _now() -> datetime:

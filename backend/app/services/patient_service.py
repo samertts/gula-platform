@@ -159,6 +159,17 @@ def create_patient(
         db, patient, national_id, family_id, user_id, lab_id
     )
 
+    log_action(
+        db,
+        action="create",
+        resource_type="patient",
+        resource_id=patient.id,
+        user_id=user_id,
+        user_role=user_role,
+        details=f"Created patient {patient.full_name} (phone={phone})",
+        ip_address=ip_address,
+    )
+
     db.commit()
     db.refresh(patient)
 

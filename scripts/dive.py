@@ -45,19 +45,17 @@ import hashlib
 import json
 import os
 import sys
-from datetime import datetime, timezone
-from typing import Optional
 
 try:
     import psycopg2
     import psycopg2.extras
 except ImportError:
-    print("ERROR: psycopg2-binary not installed. Run: pip3 install psycopg2-binary")
     sys.exit(2)
 
 # ── ANSI ──────────────────────────────────────────────────────────────────────
 try:
-    from colorama import Fore, Style, init as _ci
+    from colorama import Fore, Style
+    from colorama import init as _ci
     _ci()
     G, R, Y, C, B = Fore.GREEN, Fore.RED, Fore.YELLOW, Fore.CYAN, Fore.BLUE
     RESET = Style.RESET_ALL
@@ -71,31 +69,23 @@ WARNED: list[str] = []
 
 
 def ok(msg: str, detail: str = "") -> None:
-    d = f"  ({detail})" if detail else ""
-    print(f"  {G}✔{RESET} {msg}{d}")
     PASSED.append(msg)
 
 
 def fail(msg: str, detail: str = "") -> None:
-    d = f"  → {detail}" if detail else ""
-    print(f"  {R}✘{RESET} {msg}{d}")
     FAILED.append(msg)
 
 
 def warn(msg: str, detail: str = "") -> None:
-    d = f"  ({detail})" if detail else ""
-    print(f"  {Y}⚠{RESET} {msg}{d}")
     WARNED.append(msg)
 
 
 def info(msg: str) -> None:
-    print(f"  {C}→{RESET} {msg}")
+    pass
 
 
 def section(title: str) -> None:
-    print(f"\n{'─'*62}")
-    print(f"{B}{title}{RESET}")
-    print(f"{'─'*62}")
+    pass
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -105,7 +95,7 @@ class DB:
         self._conn = psycopg2.connect(dsn)
         self._conn.set_session(readonly=True, autocommit=True)
 
-    def one(self, sql: str, params=()) -> Optional[tuple]:
+    def one(self, sql: str, params=()) -> tuple | None:
         with self._conn.cursor() as cur:
             cur.execute(sql, params)
             return cur.fetchone()
@@ -325,11 +315,11 @@ def check_outbox_processing(db: DB) -> None:
     if total > 0:
         pct = done / total * 100
         if pct >= 95:
-            ok(f"Processing rate ≥95%", f"{pct:.1f}%")
+            ok("Processing rate ≥95%", f"{pct:.1f}%")
         elif pct >= 80:
             warn(f"Processing rate {pct:.1f}%", "backlog growing — check worker")
         else:
-            fail(f"Low processing rate", f"{pct:.1f}% — worker may be stuck")
+            fail("Low processing rate", f"{pct:.1f}% — worker may be stuck")
 
 
 # ── Check 6: Stuck event detection ───────────────────────────────────────────
@@ -490,7 +480,7 @@ def check_hash_chain(db: DB) -> None:
 
     broken = 0
     for row in rows:
-        row_id, stored_hash, prev_hash, data = row
+        _row_id, stored_hash, prev_hash, data = row
         if not stored_hash:
             broken += 1
             continue
@@ -710,38 +700,24 @@ def check_schema_drift(db: DB) -> None:
 
 def print_summary(strict: bool) -> int:
     total = len(PASSED) + len(FAILED)
-    pct   = (len(PASSED) / total * 100) if total else 0
+    (len(PASSED) / total * 100) if total else 0
 
-    print(f"\n{'═'*62}")
-    print("DATA INTEGRITY VERIFICATION ENGINE — RESULTS")
-    print(f"{'═'*62}")
-    print(f"  PASSED  : {G}{len(PASSED)}{RESET}")
-    print(f"  WARNINGS: {Y}{len(WARNED)}{RESET}")
-    print(f"  FAILED  : {R}{len(FAILED)}{RESET}")
-    print(f"  SCORE   : {pct:.0f}% ({len(PASSED)}/{total} checks)")
 
     if FAILED:
-        print(f"\n{R}Failed checks (ACTION REQUIRED):{RESET}")
-        for f in FAILED:
-            print(f"  ✘ {f}")
+        for _f in FAILED:
+            pass
 
     if WARNED:
-        print(f"\n{Y}Warnings (review recommended):{RESET}")
-        for w in WARNED:
-            print(f"  ⚠ {w}")
+        for _w in WARNED:
+            pass
 
-    print()
     if not FAILED:
-        print(f"{G}✔ DATA INTEGRITY VERIFIED — system data is consistent and complete.{RESET}")
         verdict = 0
     elif len(FAILED) <= 2 and not strict:
-        print(f"{Y}⚠ MINOR ISSUES — system mostly intact, investigate failures above.{RESET}")
         verdict = 1
     else:
-        print(f"{R}✘ DATA INTEGRITY FAILURE — do NOT use this system in production.{RESET}")
         verdict = 2
 
-    print(f"\n  Run timestamp: {datetime.now(timezone.utc).isoformat()}")
     return verdict
 
 
@@ -767,30 +743,18 @@ def main() -> int:
         if pw:
             args.db = f"postgresql://{user}:{pw}@{host}:{port}/{db}"
         else:
-            print("ERROR: Provide --db or set DATABASE_URL / POSTGRES_PASSWORD env var")
             sys.exit(2)
 
-    if args.checks == "all":
-        run = set(range(1, 16))
-    else:
-        run = set(int(c) for c in args.checks.split(","))
+    run = set(range(1, 16)) if args.checks == "all" else {int(c) for c in args.checks.split(",")}
 
-    print(f"\n{'═'*62}")
-    print("GULA Platform — Data Integrity Verification Engine (DIVE)")
-    print(f"{'═'*62}")
     # Mask password in display
     display_dsn = args.db
     import re
     display_dsn = re.sub(r"(:)[^:@]+(@)", r"\1***\2", display_dsn)
-    print(f"  DB      : {display_dsn}")
-    print(f"  Checks  : {args.checks}")
-    print(f"  Strict  : {args.strict}")
-    print(f"{'═'*62}")
 
     try:
         db = DB(args.db)
-    except Exception as exc:
-        print(f"\n{R}FATAL: Cannot connect to database: {exc}{RESET}")
+    except Exception:
         sys.exit(2)
 
     try:

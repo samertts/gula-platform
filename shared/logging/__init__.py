@@ -1,13 +1,13 @@
 from .config import (
-    configure_logging,
-    bind_log_context,
-    get_request_id,
     JSONFormatter,
+    bind_log_context,
+    configure_logging,
+    get_request_id,
 )
 
 __all__ = [
-    "configure_logging",
-    "bind_log_context",
-    "get_request_id",
     "JSONFormatter",
+    "bind_log_context",
+    "configure_logging",
+    "get_request_id",
 ]

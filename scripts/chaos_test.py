@@ -20,13 +20,12 @@ Requirements: requests, docker (CLI accessible), colorama (optional)
 """
 
 import argparse
+import contextlib
 import json
 import subprocess
 import sys
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
 
 import requests
 import urllib3
@@ -35,7 +34,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── ANSI colours (fallback to plain text if not supported) ───────────────────
 try:
-    from colorama import Fore, Style, init as _cinit
+    from colorama import Fore, Style
+    from colorama import init as _cinit
     _cinit()
     GREEN = Fore.GREEN
     RED   = Fore.RED
@@ -46,10 +46,10 @@ except ImportError:
     GREEN = RED = YELLOW = CYAN = RESET = ""
 
 
-def ok(msg: str)   -> None: print(f"  {GREEN}✔ {msg}{RESET}")
-def fail(msg: str) -> None: print(f"  {RED}✘ {msg}{RESET}")
-def warn(msg: str) -> None: print(f"  {YELLOW}⚠ {msg}{RESET}")
-def info(msg: str) -> None: print(f"  {CYAN}→ {msg}{RESET}")
+def ok(msg: str)   -> None: pass
+def fail(msg: str) -> None: pass
+def warn(msg: str) -> None: pass
+def info(msg: str) -> None: pass
 
 PASSED = []
 FAILED = []
@@ -67,7 +67,7 @@ def result(name: str, success: bool, detail: str = "") -> None:
 
 def docker(cmd: list[str], check: bool = False) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["docker", "compose"] + cmd,
+        ["docker", "compose", *cmd],
         capture_output=True, text=True, check=check,
         cwd=subprocess.run(["git", "rev-parse", "--show-toplevel"],
                            capture_output=True, text=True).stdout.strip()
@@ -75,7 +75,7 @@ def docker(cmd: list[str], check: bool = False) -> subprocess.CompletedProcess:
 
 
 def container_running(service: str) -> bool:
-    r = docker(["ps", "--services", "--filter", f"status=running"])
+    r = docker(["ps", "--services", "--filter", "status=running"])
     return service in r.stdout
 
 
@@ -105,9 +105,6 @@ def post(base: str, path: str, body: dict, token: str = "",
 
 def test_baseline(base: str, verify: bool) -> dict:
     """Confirm the system is healthy before chaos begins."""
-    print(f"\n{'─'*60}")
-    print("TEST 1: Baseline Health")
-    print(f"{'─'*60}")
 
     r = get(base, "/health", verify=verify)
     body = r.json()
@@ -141,9 +138,6 @@ def test_baseline(base: str, verify: bool) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_redis_failure(base: str, verify: bool) -> None:
-    print(f"\n{'─'*60}")
-    print("TEST 2: Redis Failure → Degraded Mode (not crash)")
-    print(f"{'─'*60}")
 
     info("Stopping gula-redis …")
     docker(["stop", "redis"])
@@ -179,9 +173,6 @@ def test_redis_failure(base: str, verify: bool) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_backend_down(base: str, verify: bool) -> None:
-    print(f"\n{'─'*60}")
-    print("TEST 3: Backend Down → Clean 502/503 from nginx (no hang)")
-    print(f"{'─'*60}")
 
     info("Stopping gula-backend …")
     docker(["stop", "gula-backend"])
@@ -229,14 +220,11 @@ def test_backend_down(base: str, verify: bool) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_rate_limiting(base: str, verify: bool) -> None:
-    print(f"\n{'─'*60}")
-    print("TEST 4: Rate Limiting → 429 under burst (not 500)")
-    print(f"{'─'*60}")
 
     statuses: list[int] = []
     errors = 0
 
-    def fire() -> Optional[int]:
+    def fire() -> int | None:
         try:
             r = requests.post(
                 f"{base}/login",
@@ -277,9 +265,6 @@ def test_rate_limiting(base: str, verify: bool) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_concurrent_load(base: str, verify: bool) -> None:
-    print(f"\n{'─'*60}")
-    print("TEST 5: Concurrent Load → No DB Connection Exhaustion")
-    print(f"{'─'*60}")
 
     statuses: list[int] = []
     latencies: list[float] = []
@@ -301,7 +286,7 @@ def test_concurrent_load(base: str, verify: bool) -> None:
             latencies.append(latency)
 
     ok_count  = statuses.count(200)
-    err_count = sum(1 for s in statuses if s not in (200, 429))
+    sum(1 for s in statuses if s not in (200, 429))
     avg_ms    = (sum(latencies) / len(latencies) * 1000) if latencies else 0
     p95_ms    = sorted(latencies)[int(len(latencies) * 0.95)] * 1000 if latencies else 0
 
@@ -315,9 +300,6 @@ def test_concurrent_load(base: str, verify: bool) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_invalid_auth(base: str, verify: bool) -> None:
-    print(f"\n{'─'*60}")
-    print("TEST 6: Invalid Auth → Consistent 401 (no leak)")
-    print(f"{'─'*60}")
 
     tokens = [
         ("empty bearer",      "Bearer "),
@@ -353,9 +335,6 @@ def test_invalid_auth(base: str, verify: bool) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_idempotency(base: str, token: str, verify: bool) -> None:
-    print(f"\n{'─'*60}")
-    print("TEST 7: Idempotency — Duplicate Claim Submission")
-    print(f"{'─'*60}")
 
     if not token:
         warn("Skipped — no admin token provided (use --admin-token)")
@@ -370,7 +349,7 @@ def test_idempotency(base: str, token: str, verify: bool) -> None:
 
     responses = []
     info(f"Sending same claim 3× with Idempotency-Key: {key}")
-    for i in range(3):
+    for _i in range(3):
         try:
             r = post(base, "/api/claims", payload, token=token,
                      idempotency_key=key, verify=verify)
@@ -388,10 +367,8 @@ def test_idempotency(base: str, token: str, verify: bool) -> None:
     ids = []
     for s, body in responses:
         if s in (200, 201):
-            try:
+            with contextlib.suppress(Exception):
                 ids.append(json.loads(body).get("id"))
-            except Exception:
-                pass
     if len(ids) > 1:
         all_same = len(set(ids)) == 1
         result("All repetitions return same claim_id (no duplicate)", all_same,
@@ -405,9 +382,6 @@ def test_idempotency(base: str, token: str, verify: bool) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_security_probes(base: str, verify: bool) -> None:
-    print(f"\n{'─'*60}")
-    print("TEST 8: Security Probes (path traversal, XSS, scanner paths)")
-    print(f"{'─'*60}")
 
     # Probes: (path, name, expected_codes, notes)
     # Path traversal: nginx normalises /api/../../etc/passwd → not a real exposure,
@@ -423,7 +397,7 @@ def test_security_probes(base: str, verify: bool) -> None:
         ("/api/../../etc/passwd",      "path traversal (nginx-normalised)", (200, 400, 403, 404), True),
     ]
 
-    for path, name, ok_codes, note_ok in probes:
+    for path, name, ok_codes, _note_ok in probes:
         try:
             r = requests.get(f"{base}{path}", timeout=8, verify=verify,
                              allow_redirects=False)
@@ -449,26 +423,16 @@ def print_summary() -> int:
     total  = len(PASSED) + len(FAILED)
     pct    = (len(PASSED) / total * 100) if total else 0
 
-    print(f"\n{'═'*60}")
-    print("CHAOS TEST SUMMARY")
-    print(f"{'═'*60}")
-    print(f"  PASSED : {GREEN}{len(PASSED)}{RESET}")
-    print(f"  FAILED : {RED}{len(FAILED)}{RESET}")
-    print(f"  SCORE  : {pct:.0f}% ({len(PASSED)}/{total})")
 
     if FAILED:
-        print(f"\n{RED}Failed tests:{RESET}")
-        for f in FAILED:
-            print(f"  - {f}")
+        for _f in FAILED:
+            pass
 
     if pct >= 90:
-        print(f"\n{GREEN}✔ RESILIENT — system handles failure conditions correctly.{RESET}")
         verdict = 0
     elif pct >= 70:
-        print(f"\n{YELLOW}⚠ PARTIALLY RESILIENT — fix failing tests before production.{RESET}")
         verdict = 1
     else:
-        print(f"\n{RED}✘ NOT RESILIENT — critical failures detected.{RESET}")
         verdict = 2
 
     return verdict
@@ -496,17 +460,8 @@ def main() -> int:
     base   = args.base.rstrip("/")
     token  = args.admin_token
 
-    if args.tests == "all":
-        run = set(range(1, 9))
-    else:
-        run = set(int(t) for t in args.tests.split(","))
+    run = set(range(1, 9)) if args.tests == "all" else {int(t) for t in args.tests.split(",")}
 
-    print(f"\n{'═'*60}")
-    print("GULA Platform — Chaos & Resilience Test Suite")
-    print(f"Target : {base}")
-    print(f"Token  : {'provided' if token else 'not provided (some tests skipped)'}")
-    print(f"Docker : {'disabled' if args.no_docker else 'enabled'}")
-    print(f"{'═'*60}")
 
     if 1 in run: test_baseline(base, verify)
     if 2 in run and not args.no_docker: test_redis_failure(base, verify)

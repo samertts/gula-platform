@@ -9,11 +9,11 @@ pydantic>=2.7.0
 pydantic-settings>=2.0.0
 passlib[bcrypt]>=1.7.4
 bcrypt>=4.1.3,<4.2.0  # passlib 1.7.4 incompatible with bcrypt>=4.2 (detect_wrap_bug fails)
-python-jose[cryptography]>=3.3.0
+python-jose[cryptography]>=3.4.0  # >=3.4.0 for CVE-2024-33663/33664/29370 fix in ecdsa dependency
 cryptography>=42.0.0
 qrcode>=7.4.2
 Pillow>=10.4.0
-jinja2>=3.1.4
+# jinja2>=3.1.4  # removed — dead dependency (not imported anywhere)
 reportlab>=4.1.0
 arabic-reshaper>=3.0.0
 python-bidi>=0.4.2
@@ -23,8 +23,7 @@ httpx>=0.27.0
 # pytesseract>=0.3.10
 # Redis — required for production perm_version invalidation + rate limiting
 redis>=5.0.0
-# Fast JSON serialization (2-4x faster than stdlib json)
-orjson>=3.9.0
+# orjson>=3.9.0  # removed — dead dependency (not imported anywhere)
 # Error tracking — optional, activates only when SENTRY_DSN env var is set
 sentry-sdk[fastapi]>=2.0.0
 # Google AI Studio — official Gemini SDK (OPTIONAL — not installed by default)

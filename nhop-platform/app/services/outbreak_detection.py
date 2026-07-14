@@ -23,15 +23,15 @@ a public-health signal.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import datetime, timedelta
 
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
+from backend.app._compat import UTC
+
 from ..models.antibiotic_sensitivity import AntibioticSensitivity
 from ..models.disease_case import DiseaseCase
-
 
 # ─── Tunables ───────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ _MIN_CASES     = 3   # ignore (disease, province) pairs with fewer than N in 24h
 @dataclass(frozen=True)
 class OutbreakAlert:
     disease_code: str
-    disease_name: Optional[str]
+    disease_name: str | None
     province: str
     current_count: int
     baseline_avg: float
@@ -57,7 +57,7 @@ class OutbreakAlert:
 
 # ─── check_outbreak ─────────────────────────────────────────────────────────
 
-def _classify(ratio: float) -> Optional[str]:
+def _classify(ratio: float) -> str | None:
     if ratio > CRITICAL_RATIO:
         return "critical"
     if ratio > WARNING_RATIO:
@@ -65,12 +65,12 @@ def _classify(ratio: float) -> Optional[str]:
     return None
 
 
-def check_outbreak(db: Session, *, now: Optional[datetime] = None) -> list[OutbreakAlert]:
+def check_outbreak(db: Session, *, now: datetime | None = None) -> list[OutbreakAlert]:
     """Scan the last 24h vs the prior 29-day baseline and emit alerts.
 
     ``now`` is injectable for testability; defaults to UTC now.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     window_start   = now - timedelta(hours=24)
     baseline_start = now - timedelta(days=BASELINE_DAYS)
 
@@ -144,12 +144,12 @@ def get_disease_heatmap(
     disease_code: str,
     days: int = 7,
     *,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> dict:
     """Per-province case counts for ``disease_code`` over the last ``days`` days."""
     if days < 1:
         raise ValueError("days must be >= 1")
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     window_start = now - timedelta(days=days)
 
     rows = (
@@ -181,7 +181,7 @@ def get_disease_heatmap(
 
 def get_resistance_report(
     db: Session,
-    province: Optional[str] = None,
+    province: str | None = None,
 ) -> dict:
     """Resistance rates per (bacterium, antibiotic[, province]).
 
@@ -230,7 +230,7 @@ def get_resistance_report(
     pairs.sort(key=lambda p: (-p["resistance_rate"], -p["tested"]))
 
     return {
-        "generated_at": datetime.now(timezone.utc),
+        "generated_at": datetime.now(UTC),
         "province_filter": province,
         "total_pairs": len(pairs),
         "pairs": pairs,

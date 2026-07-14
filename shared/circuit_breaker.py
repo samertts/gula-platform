@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger("gula.circuit_breaker")
 
@@ -52,7 +53,7 @@ class CircuitBreaker:
             result = fn(*args, **kwargs)
             self._on_success()
             return result
-        except Exception as exc:
+        except Exception:
             self._on_failure()
             raise
 

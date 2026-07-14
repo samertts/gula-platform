@@ -25,6 +25,7 @@ from .test_result import (
 )
 
 __all__ = [
+    "CitizenTimelineResponse",
     "LabBrief",
     "LabCreate",
     "LabDeviceCreate",
@@ -34,7 +35,6 @@ __all__ = [
     "NotificationListResponse",
     "NotificationRead",
     "NotificationUnreadCount",
-    "CitizenTimelineResponse",
     "TestResultCreate",
     "TestResultListResponse",
     "TestResultRead",

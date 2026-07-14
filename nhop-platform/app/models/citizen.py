@@ -4,12 +4,19 @@ One row per real person. Externally identified by `health_id` (never by
 primary key, never by raw national_id). `national_id` is unique when present
 but nullable for edge cases (e.g. newborns awaiting civil registration).
 """
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 
 from sqlalchemy import (
-    JSON, Date, DateTime, Index, Integer, String,
+    JSON,
+    Date,
+    DateTime,
+    Index,
+    Integer,
+    String,
 )
 from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.app._compat import UTC
 
 from ..core.database import Base
 
@@ -44,11 +51,11 @@ class Citizen(Base):
     blood_type:       Mapped[str | None]  = mapped_column(String(5), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False,
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )

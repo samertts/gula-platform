@@ -3,10 +3,12 @@
 The full LIMS lives in the GULA platform; this mirror table stores only the
 minimum projection the NHOP citizen-facing summary needs.
 """
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.app._compat import UTC
 
 from ..core.database import Base
 
@@ -27,5 +29,5 @@ class LabTest(Base):
     lab_name:     Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     performed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False,
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
     )

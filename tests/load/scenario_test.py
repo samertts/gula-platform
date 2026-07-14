@@ -34,7 +34,6 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Optional
 
-
 # ─── CLI args ─────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser(description="GULA real-scenario load test")
 parser.add_argument("--url",      default="http://localhost:8080", help="Base URL of the platform")
@@ -92,7 +91,7 @@ class ScenarioResult:
     user_id:   int
     round_num: int
     steps:     list = field(default_factory=list)
-    failed_at: Optional[str] = None
+    failed_at: str | None = None
 
     def add(self, step: str, status: int, elapsed: float, ok: bool):
         self.steps.append(StepResult(step, status, elapsed, ok))

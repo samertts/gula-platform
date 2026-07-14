@@ -681,7 +681,7 @@ class TestSystemConfig:
             capture_output=True, text=True
         )
         # Should exit with error in production without keys
-        assert result.returncode != 0 or "FATAL" in result.stderr or True
+        assert True
 
     def test_app_version_semantic(self):
         """App version must follow semantic versioning."""
@@ -735,7 +735,7 @@ class TestAPIRouteStructure:
             try:
                 __import__(module)
             except ImportError as e:
-                assert False, f"Failed to import {module}: {e}"
+                raise AssertionError(f"Failed to import {module}: {e}")
 
     def test_results_route_has_test_profiles(self):
         """Results route must define standard test profiles."""
@@ -803,7 +803,7 @@ class TestSecurityProtections:
             try:
                 interpret_result(char, 100, 70, 100)
             except Exception as e:
-                assert False, f"Crashed with input '{char[:20]}...': {e}"
+                raise AssertionError(f"Crashed with input '{char[:20]}...': {e}")
 
     def test_path_traversal_in_filenames(self):
         """Path traversal must be detected."""

@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
+from app._compat import UTC
+
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production-" + "x" * 32)
@@ -29,12 +31,10 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
+from app.core.idempotency import IdempotencyResult, purge_expired_keys
+from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from fastapi import HTTPException
-
-from app.core.idempotency import IdempotencyResult, purge_expired_keys
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ def db():
 def _insert_key(db, key: str, lab_id: int, age_hours: float = 0,
                 status_code: int = 200, body: str = '{"ok": true}'):
     """Directly insert a key row for testing."""
-    created = datetime.now(timezone.utc) - timedelta(hours=age_hours)
+    created = datetime.now(UTC) - timedelta(hours=age_hours)
     db.execute(text("""
         INSERT INTO idempotency_keys (key, lab_id, created_at, status_code, response_body)
         VALUES (:key, :lab_id, :created_at, :sc, :body)
@@ -86,7 +86,7 @@ class TestIdempotencyResultCache:
         db.execute(text("""
             INSERT INTO idempotency_keys (key, lab_id, created_at)
             VALUES ('test-key-001', 1, :now)
-        """), {"now": datetime.now(timezone.utc)})
+        """), {"now": datetime.now(UTC)})
         db.commit()
 
         result = IdempotencyResult(
@@ -131,7 +131,6 @@ class TestIdempotencyResultCache:
 class TestKeyValidation:
     def test_key_too_long_raises_400(self):
         from app.core.idempotency import idempotency_check
-        from fastapi import HTTPException
 
         long_key = "x" * 256
         mock_db = MagicMock()

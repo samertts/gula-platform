@@ -11,15 +11,11 @@ def analyze(test,value):
         elif value>140:
             advice="ارتفاع محتمل في مستوى السكر"
 
-    if test=="hb":
+    if test=="hb" and value<10:
+        advice="فقر دم محتمل"
 
-        if value<10:
-            advice="فقر دم محتمل"
-
-    if test=="creatinine":
-
-        if value>1.5:
-            advice="قد يكون هناك ضعف في وظائف الكلى"
+    if test=="creatinine" and value>1.5:
+        advice="قد يكون هناك ضعف في وظائف الكلى"
 
     return advice
 

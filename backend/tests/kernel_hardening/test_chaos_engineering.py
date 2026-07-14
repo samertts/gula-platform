@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
 
@@ -58,10 +59,8 @@ class TestChaosDIContainer:
         container = DIContainer()
         kernel.register_component("di_container", container)
         container._scopes = None
-        try:
+        with contextlib.suppress(Exception):
             container.clear_scope("nonexistent")
-        except Exception:
-            pass
         from backend.app.kernel.types import ServiceDescriptor, ServiceLifecycle
         desc = ServiceDescriptor(
             name="resilient",
@@ -87,10 +86,8 @@ class TestChaosEventBus:
 
         event_bus.subscribe("test.event", failing_handler)
         event_bus.subscribe("test.event", normal_handler)
-        try:
+        with contextlib.suppress(Exception):
             event_bus.publish(Event(name="test.event", data={"k": "v"}))
-        except Exception:
-            pass
         assert len(received) == 1
 
     def test_survives_massive_event_load(self, kernel: Kernel):
@@ -117,18 +114,14 @@ class TestChaosEventBus:
 class TestChaosScheduler:
     def test_survives_stop_without_start(self, kernel: Kernel):
         scheduler = Scheduler(kernel)
-        try:
+        with contextlib.suppress(Exception):
             asyncio.run(scheduler.stop())
-        except Exception:
-            pass
 
     def test_survives_double_start(self, kernel: Kernel):
         scheduler = Scheduler(kernel)
         asyncio.run(scheduler.start())
-        try:
+        with contextlib.suppress(Exception):
             asyncio.run(scheduler.start())
-        except Exception:
-            pass
         asyncio.run(scheduler.stop())
 
 
@@ -172,20 +165,16 @@ class TestChaosPlugin:
     def test_survives_broken_plugin_registry(self, kernel: Kernel):
         pm = PluginManager(kernel)
         pm.registry._plugins = None
-        try:
+        with contextlib.suppress(Exception):
             pm.list_plugins()
-        except Exception:
-            pass
 
 
 class TestChaosGateway:
     def test_survives_broken_discovery(self, kernel: Kernel):
         sd = ServiceDiscovery(kernel)
         sd._services = None
-        try:
+        with contextlib.suppress(Exception):
             sd.discover("anything")
-        except Exception:
-            pass
         sd._services = {}
         sd.register(ServiceEndpoint(name="fixed", host="localhost", port=9999))
         result = sd.discover("fixed")
@@ -196,10 +185,8 @@ class TestChaosConfiguration:
     def test_survives_corrupted_config(self):
         cr = ConfigurationRegistry()
         cr._config = None
-        try:
+        with contextlib.suppress(Exception):
             cr.get("anything")
-        except Exception:
-            pass
         cr._config = {}
         cr.set("key", "value")
         assert cr.get("key") == "value"

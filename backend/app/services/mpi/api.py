@@ -164,7 +164,7 @@ def manual_merge(
             decided_by_user_id=current_user.id,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     db.commit()
 
     return MergeResponse(

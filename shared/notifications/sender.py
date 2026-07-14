@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 import smtplib
@@ -8,7 +7,7 @@ import ssl
 from dataclasses import dataclass, field
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -57,7 +56,7 @@ class NotificationSender:
         self._whatsapp_api_url = whatsapp_api_url or os.getenv("WHATSAPP_API_URL", "")
         self._whatsapp_token = whatsapp_token or os.getenv("WHATSAPP_TOKEN", "")
         self._whatsapp_phone_id = whatsapp_phone_id or os.getenv("WHATSAPP_PHONE_ID", "")
-        self._http_client: Optional[httpx.Client] = None
+        self._http_client: httpx.Client | None = None
 
     @property
     def http(self) -> httpx.Client:
@@ -70,8 +69,7 @@ class NotificationSender:
             logger.warning("FCM key not configured, skipping push notification")
             return False
         try:
-            import firebase_admin
-            from firebase_admin import credentials, messaging
+            from firebase_admin import messaging
             msg = messaging.Message(
                 notification=messaging.Notification(title=title, body=body),
                 data={k: str(v) for k, v in (data or {}).items()},

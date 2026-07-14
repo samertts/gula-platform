@@ -18,13 +18,14 @@ does not accidentally match ``overview`` or ``timeline`` as a path variable.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
+
+from backend.app._compat import UTC
 
 from ...core.database import get_db
 from ...models.citizen import Citizen
@@ -47,7 +48,6 @@ from ...schemas.doctor import (
 from ...services.audit import log_action
 from ...services.test_suggestions import suggest_additional_tests
 
-
 router = APIRouter(prefix="/doctor", tags=["doctor"])
 
 
@@ -56,11 +56,11 @@ router = APIRouter(prefix="/doctor", tags=["doctor"])
 _DOCTOR_ROLE = "DOCTOR"
 
 
-def _actor_id(request: Request) -> Optional[str]:
+def _actor_id(request: Request) -> str | None:
     return request.headers.get("X-Actor-Id")
 
 
-def _client_ip(request: Request) -> Optional[str]:
+def _client_ip(request: Request) -> str | None:
     if request.client:
         return request.client.host
     return None
@@ -117,7 +117,7 @@ def order_tests(
     combined = list(payload.tests) + additions
 
     # 2. Dedup against the last 7 days of results for this citizen.
-    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    cutoff = datetime.now(UTC) - timedelta(days=7)
     recent_rows = (
         db.query(TestResult)
           .filter(
@@ -158,7 +158,7 @@ def order_tests(
         )
 
     # 3. Resolve the preferred lab (must be active if supplied).
-    lab_id: Optional[UUID] = None
+    lab_id: UUID | None = None
     if payload.preferred_lab_id is not None:
         lab = db.query(Lab).filter(Lab.id == payload.preferred_lab_id).first()
         if lab is None:
@@ -329,7 +329,7 @@ def patient_overview(
           .all()
     )
 
-    window_cutoff = datetime.now(timezone.utc) - timedelta(
+    window_cutoff = datetime.now(UTC) - timedelta(
         days=_HEALTH_SCORE_WINDOW_DAYS
     )
     window_rows = (
@@ -470,7 +470,7 @@ def refer_patient(
     }
 
     referral_id = uuid4()
-    created_at = datetime.now(timezone.utc)
+    created_at = datetime.now(UTC)
 
     # Referrals do not have their own table yet; durability comes via the
     # audit log, matching how critical alerts are persisted elsewhere.

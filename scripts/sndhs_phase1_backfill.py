@@ -46,8 +46,8 @@ import logging
 import os
 import sys
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 # We import lazily so ``--help`` works without DB connectivity.
 
@@ -87,7 +87,7 @@ def _conn(engine) -> Iterator:
 
 def _check_preconditions(engine) -> None:
     """Fail fast with a clear message if the migration set has not run."""
-    from sqlalchemy import text, inspect
+    from sqlalchemy import inspect
     insp = inspect(engine)
 
     cols_patients = {c["name"] for c in insp.get_columns("patients")}

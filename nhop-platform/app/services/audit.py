@@ -4,7 +4,6 @@ Rows are flushed but not committed — the calling transaction commits (or
 rolls back) along with its business writes. This keeps audit entries tied to
 the underlying change.
 """
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -17,9 +16,9 @@ def log_action(
     action: str,
     target_type: str,
     target_id: str,
-    actor_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
-    metadata: Optional[dict] = None,
+    actor_id: str | None = None,
+    ip_address: str | None = None,
+    metadata: dict | None = None,
 ) -> AuditLog:
     row = AuditLog(
         action=action,

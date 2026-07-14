@@ -38,36 +38,34 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
+from app.database import Base, get_db
+from app.models.audit_log import AuditLog
+from app.models.lab import Lab
+from app.models.lab_user import LabUser
+from app.security.auth import create_token, hash_password
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.database import Base, get_db
-from app.models.lab import Lab
-from app.models.lab_user import LabUser
-from app.models.audit_log import AuditLog
-from app.security.auth import hash_password, create_token
-
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="function")
 def db_engine():
+    import app.models.audit_log
+    import app.models.claim
+    import app.models.consent
     import app.models.lab
-    import app.models.lab_user
-    import app.models.user
-    import app.models.patient
     import app.models.lab_order
     import app.models.lab_result
-    import app.models.audit_log
-    import app.models.sample
-    import app.models.quality_control
-    import app.models.consent
+    import app.models.lab_user
     import app.models.outbox
+    import app.models.patient
+    import app.models.quality_control
+    import app.models.sample
     import app.models.subscription
-    import app.models.claim
-    from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
+    import app.models.user
+    from app.services.mpi.models import Citizen, IdentityClaim
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -91,8 +89,8 @@ def db(db_engine):
 
 @pytest.fixture()
 def client(db):
-    from app.main import app
     import app.core.startup_guard as _guard
+    from app.main import app
 
     def _override():
         try:

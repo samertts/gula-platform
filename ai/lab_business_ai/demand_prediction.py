@@ -13,6 +13,5 @@ def predict_next_test():
 
         stats[t] = stats.get(t, 0) + 1
 
-    top = max(stats, key=stats.get)
+    return max(stats, key=stats.get)
 
-    return top

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import timezone, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
+
+from backend.app._compat import UTC
 
 
 class NotificationChannel(Enum):
@@ -38,7 +40,7 @@ class Notification:
         if not self.id:
             self.id = str(uuid4())
         if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).isoformat()
+            self.created_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -72,5 +74,10 @@ class SubscriptionNotification:
     enabled: bool = True
 
 
-__all__ = ["Notification", "NotificationTemplate", "SubscriptionNotification",
-           "NotificationChannel", "NotificationPriority"]
+__all__ = [
+    "Notification",
+    "NotificationChannel",
+    "NotificationPriority",
+    "NotificationTemplate",
+    "SubscriptionNotification",
+]

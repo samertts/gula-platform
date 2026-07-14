@@ -8,13 +8,12 @@ task primitives directly and never spawn background loops.
 from __future__ import annotations
 
 import asyncio
+
 import pytest
-
-from app.tasks.queue    import _InMemoryQueue
-from app.tasks.registry import task_handler, get_handler, _REGISTRY
-from app.tasks.schema   import TaskPayload, TaskStatus
-from app.tasks.worker   import TaskWorker
-
+from app.tasks.queue import _InMemoryQueue
+from app.tasks.registry import _REGISTRY, get_handler, task_handler
+from app.tasks.schema import TaskPayload, TaskStatus
+from app.tasks.worker import TaskWorker
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -248,7 +247,7 @@ async def test_worker_timeout_error_goes_to_dlq():
     @task_handler(type_name)
     async def _timeout_handler(payload: dict):
         # Simulate an internal deadline being exceeded (e.g. from a network call)
-        raise asyncio.TimeoutError("deadline exceeded")
+        raise TimeoutError("deadline exceeded")
 
     task = TaskPayload(type=type_name, max_retries=0)
     await q.enqueue(task)

@@ -6,7 +6,9 @@
 
 # Python
 venv/
+.venv/
 __pycache__/
+.coverage
 *.pyc
 *.pyo
 *.egg-info/

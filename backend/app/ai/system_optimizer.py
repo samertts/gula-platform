@@ -121,13 +121,15 @@ class SystemSnapshot:
 
 def _collect_cpu() -> CPUMetrics:
     try:
-        parts = open("/proc/loadavg").read().split()
+        with open("/proc/loadavg") as f:
+            parts = f.read().split()
         load_1m, load_5m, load_15m = float(parts[0]), float(parts[1]), float(parts[2])
     except Exception:
         load_1m = load_5m = load_15m = 0.0
 
     try:
-        num_cpus = sum(1 for line in open("/proc/cpuinfo") if line.startswith("processor"))
+        with open("/proc/cpuinfo") as f:
+            num_cpus = sum(1 for line in f if line.startswith("processor"))
     except Exception:
         num_cpus = 1
 
@@ -139,8 +141,9 @@ def _collect_cpu() -> CPUMetrics:
 def _collect_memory() -> MemoryMetrics:
     mem: dict[str, int] = {}
     try:
-        for line in open("/proc/meminfo"):
-            parts = line.split()
+        with open("/proc/meminfo") as f:
+            for line in f:
+                parts = line.split()
             if len(parts) >= 2:
                 mem[parts[0].rstrip(":")] = int(parts[1])  # kB
     except Exception:

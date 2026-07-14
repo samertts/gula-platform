@@ -95,7 +95,7 @@ def verify_card_token(token: str) -> tuple[int, int]:
         lab_id = int(lab_s)
         exp = int(exp_s)
     except (ValueError, UnicodeDecodeError):
-        raise CardTokenError("invalid token body")
+        raise CardTokenError("invalid token body") from None
 
     if exp < int(time.time()):
         raise CardTokenError("token expired")

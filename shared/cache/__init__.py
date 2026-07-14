@@ -1,13 +1,13 @@
 from .backends import (
     CacheBackend,
-    RedisBackend,
     MemoryBackend,
+    RedisBackend,
     get_cache,
 )
 
 __all__ = [
     "CacheBackend",
-    "RedisBackend",
     "MemoryBackend",
+    "RedisBackend",
     "get_cache",
 ]

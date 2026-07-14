@@ -5,17 +5,17 @@
 """
 import os
 import sys
-import time
 import threading
+import time
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///test_elite.db")
 os.environ.setdefault("SECRET_KEY", "test-secret-for-elite-tests")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 # =============================================================================
 # 1. State Persistence
@@ -102,7 +102,7 @@ class TestSlidingWindowPersistence:
 
     def test_restore_db_window_from_redis_helper(self):
         """Public helper must call restore_from_redis on db_window."""
-        from app.database import restore_db_window_from_redis, db_window
+        from app.database import db_window, restore_db_window_from_redis
         mock_cache = MagicMock()
         mock_cache.get.return_value = None  # empty Redis
         with patch("app.security.redis_client.cache", mock_cache):
@@ -146,7 +146,7 @@ class TestCorrelationContextVars:
         assert _lab_id_var.get(None) is None
 
     def test_user_lab_isolated_between_threads(self):
-        from app.database import _user_id_var, _lab_id_var
+        from app.database import _lab_id_var, _user_id_var
         results = {}
 
         def thread_a():
@@ -174,7 +174,7 @@ class TestCorrelationContextVars:
         assert results["b_lab"]  is None
 
     def test_all_four_vars_independent(self):
-        from app.database import _request_id_var, _endpoint_var, _user_id_var, _lab_id_var
+        from app.database import _endpoint_var, _lab_id_var, _request_id_var, _user_id_var
         t1 = _request_id_var.set("req-xyz")
         t2 = _endpoint_var.set("/api/orders")
         t3 = _user_id_var.set(5)
@@ -216,7 +216,7 @@ class TestSystemHealthDegradationLevel:
 
     def _fresh_health(self):
         """Return a fresh SystemHealth-like object (bypass singleton for testing)."""
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth)
         h._init()
         return h
@@ -301,15 +301,15 @@ class TestDegradedModeMiddleware:
 
     @pytest.mark.asyncio
     async def test_none_level_passes_all(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         assert h.degradation_level == DegradationLevel.NONE
-        resp, passed = await self._dispatch(h, "POST", "/api/orders")
+        _resp, passed = await self._dispatch(h, "POST", "/api/orders")
         assert passed  # passed through
 
     @pytest.mark.asyncio
     async def test_l2_blocks_post(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         h.enter_degraded_mode("test", DegradationLevel.L2_READ_ONLY)
         resp, passed = await self._dispatch(h, "POST", "/api/orders")
@@ -318,15 +318,15 @@ class TestDegradedModeMiddleware:
 
     @pytest.mark.asyncio
     async def test_l2_allows_get(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         h.enter_degraded_mode("test", DegradationLevel.L2_READ_ONLY)
-        resp, passed = await self._dispatch(h, "GET", "/api/patients")
+        _resp, passed = await self._dispatch(h, "GET", "/api/patients")
         assert passed  # GET passes in L2
 
     @pytest.mark.asyncio
     async def test_l3_blocks_get_on_non_critical(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         resp, passed = await self._dispatch(h, "GET", "/api/patients")
@@ -335,31 +335,31 @@ class TestDegradedModeMiddleware:
 
     @pytest.mark.asyncio
     async def test_l3_allows_health(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
-        resp, passed = await self._dispatch(h, "GET", "/health")
+        _resp, passed = await self._dispatch(h, "GET", "/health")
         assert passed  # /health is in _ALWAYS_ALLOWED
 
     @pytest.mark.asyncio
     async def test_l3_allows_auth_login(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
-        resp, passed = await self._dispatch(h, "POST", "/auth/login")
+        _resp, passed = await self._dispatch(h, "POST", "/auth/login")
         assert passed  # /auth/login is in _CRITICAL_PATHS
 
     @pytest.mark.asyncio
     async def test_l3_allows_kill_switch_deactivate(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
-        resp, passed = await self._dispatch(h, "POST", "/admin/kill-switch/deactivate")
+        _resp, passed = await self._dispatch(h, "POST", "/admin/kill-switch/deactivate")
         assert passed  # operator recovery path must always work
 
     @pytest.mark.asyncio
     async def test_l2_response_includes_level_name(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         h.enter_degraded_mode("test", DegradationLevel.L2_READ_ONLY)
         resp, _ = await self._dispatch(h, "DELETE", "/api/orders/1")
@@ -369,18 +369,18 @@ class TestDegradedModeMiddleware:
 
     @pytest.mark.asyncio
     async def test_l1_passes_writes_with_header(self):
-        from app.core.self_healing import SystemHealth, DegradationLevel
+        from app.core.self_healing import DegradationLevel, SystemHealth
         h = object.__new__(SystemHealth); h._init()
         h.enter_degraded_mode("pressure", DegradationLevel.L1_CACHE_HEAVY)
-        resp, passed = await self._dispatch(h, "POST", "/api/orders")
+        _resp, passed = await self._dispatch(h, "POST", "/api/orders")
         assert passed  # L1 allows writes
 
 
 class TestTriggerFunctionsUseLevels:
 
     def test_trigger_circuit_open_uses_l2(self):
-        from app.database import _trigger_circuit_open
         from app.core.self_healing import DegradationLevel
+        from app.database import _trigger_circuit_open
         mock_health = MagicMock()
         from app.core.self_healing import CircuitState
         mock_health.db_circuit.state = CircuitState.CLOSED
@@ -392,8 +392,8 @@ class TestTriggerFunctionsUseLevels:
         assert kwargs.get("level") == DegradationLevel.L2_READ_ONLY
 
     def test_trigger_system_degradation_uses_l3(self):
-        from app.database import _trigger_system_degradation
         from app.core.self_healing import DegradationLevel
+        from app.database import _trigger_system_degradation
         mock_health = MagicMock()
         with patch("app.core.self_healing.health", mock_health):
             _trigger_system_degradation(55)

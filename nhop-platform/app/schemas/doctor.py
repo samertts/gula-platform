@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..models.test_order import TestOrderStatus
-
 
 # ─── POST /doctor/order-tests ───────────────────────────────────────────────
 
@@ -18,7 +16,7 @@ class OrderTestsRequest(BaseModel):
     citizen_health_id: str = Field(..., min_length=1, max_length=20)
     tests: list[str] = Field(..., min_length=1, max_length=50)
     clinical_indication: str = Field(..., min_length=2, max_length=500)
-    preferred_lab_id: Optional[UUID] = None
+    preferred_lab_id: UUID | None = None
     urgent: bool = False
 
     @field_validator("tests")
@@ -49,7 +47,7 @@ class OrderTestsResponse(BaseModel):
     id: UUID
     citizen_id: int
     doctor_id: str
-    lab_id: Optional[UUID]
+    lab_id: UUID | None
     tests: list[str]
     suggested_additions: list[str] = Field(default_factory=list)
     duplicates_skipped: list[DuplicateTestNotice] = Field(default_factory=list)
@@ -66,10 +64,10 @@ class OverviewCitizen(BaseModel):
 
     health_id: str
     full_name: str
-    gender: Optional[str] = None
-    birth_date: Optional[datetime] = None
-    blood_type: Optional[str] = None
-    province: Optional[str] = None
+    gender: str | None = None
+    birth_date: datetime | None = None
+    blood_type: str | None = None
+    province: str | None = None
     chronic_diseases: list[str] = Field(default_factory=list)
     allergies: list[str] = Field(default_factory=list)
 
@@ -80,12 +78,12 @@ class OverviewResultRow(BaseModel):
     id: UUID
     test_code: str
     test_name: str
-    value_numeric: Optional[float] = None
-    value_text: Optional[str] = None
-    unit: Optional[str] = None
+    value_numeric: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
     is_abnormal: bool
     is_critical: bool
-    direction: Optional[str] = None
+    direction: str | None = None
     performed_at: datetime
 
 
@@ -107,21 +105,21 @@ class PatientOverviewResponse(BaseModel):
 
 class TimelineDoctorPoint(BaseModel):
     performed_at: datetime
-    value_numeric: Optional[float] = None
-    value_text: Optional[str] = None
-    unit: Optional[str] = None
+    value_numeric: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
     is_abnormal: bool
     is_critical: bool
-    direction: Optional[str] = None
-    reference_min: Optional[float] = None
-    reference_max: Optional[float] = None
+    direction: str | None = None
+    reference_min: float | None = None
+    reference_max: float | None = None
 
 
 class DoctorTimelineResponse(BaseModel):
     health_id: str
     test_code: str
-    test_name: Optional[str] = None
-    unit: Optional[str] = None
+    test_name: str | None = None
+    unit: str | None = None
     points: list[TimelineDoctorPoint]
 
 

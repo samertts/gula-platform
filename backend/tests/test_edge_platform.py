@@ -10,11 +10,14 @@ Covers:
 """
 from __future__ import annotations
 
-import pytest
 from datetime import datetime, timedelta, timezone
 
-from app.edge import config as edge_config, identity, policy as policy_mod, \
-    registry, scheduler, trust as trust_mod, governance
+import pytest
+from app._compat import UTC
+from app.edge import config as edge_config
+from app.edge import governance, identity, registry, scheduler
+from app.edge import policy as policy_mod
+from app.edge import trust as trust_mod
 from app.models.edge import EdgeDevice, EdgeTask
 from app.security.auth import create_token
 
@@ -256,7 +259,7 @@ def test_sweep_stale_marks_timeouts(db, lab, admin_user, public_key_pem):
     t = scheduler.claim_next_task(db, d)
     db.commit()
     # Force stale dispatch in the past
-    t.dispatched_at = datetime.now(timezone.utc) - timedelta(seconds=120)
+    t.dispatched_at = datetime.now(UTC) - timedelta(seconds=120)
     db.commit()
     n = scheduler.sweep_stale(db)
     db.commit()
@@ -322,7 +325,7 @@ def test_pick_models_for_active_assignment(db, lab, admin_user, public_key_pem):
 # ── HTTP — operator API smoke ────────────────────────────────────────────────
 
 def test_http_register_and_list(client, db, lab, admin_user, public_key_pem):
-    
+
     headers = _auth(admin_user.id, lab.id, "admin")
 
     r = client.post("/edge/devices/register", json={
@@ -342,7 +345,7 @@ def test_http_register_and_list(client, db, lab, admin_user, public_key_pem):
 
 def test_http_agent_heartbeat_claims_task(client, db, lab, admin_user,
                                           public_key_pem):
-    
+
     headers = _auth(admin_user.id, lab.id, "admin")
 
     reg = client.post("/edge/devices/register", json={
@@ -376,7 +379,7 @@ def test_http_agent_heartbeat_claims_task(client, db, lab, admin_user,
 
 def test_http_agent_token_invalid_signature_rejected(client, db, lab,
                                                      admin_user, public_key_pem):
-    
+
     headers = _auth(admin_user.id, lab.id, "admin")
     reg = client.post("/edge/devices/register", json={
         "public_key_pem": public_key_pem, "role_mode": "personal",

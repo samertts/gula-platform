@@ -12,8 +12,6 @@ only routes by `kind` and reads/writes typed parameters from `payload`.
 """
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import time
 from typing import Any
@@ -84,13 +82,13 @@ class OllamaRuntime(Runtime):
         if kind == "ai.classify":
             return await self._chat(c, payload, system=(
                 "Classify the input as one of: normal, abnormal, critical. "
-                "Reply with JSON: {\"label\": ..., \"confidence\": 0.0-1.0}"
+                'Reply with JSON: {"label": ..., "confidence": 0.0-1.0}'
             ))
 
         if kind == "ai.extract_lab_values":
             return await self._chat(c, payload, system=(
                 "Extract lab values from the input text and return JSON: "
-                "[{\"test\": str, \"value\": number, \"unit\": str}, ...]"
+                '[{"test": str, "value": number, "unit": str}, ...]'
             ))
 
         if kind == "ai.embed":

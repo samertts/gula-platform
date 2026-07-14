@@ -3,18 +3,16 @@ GULA Platform - Autonomous Manager (Self-Healing Platform)
 Executive Order 23: Self-healing, auto-restart, isolation of failed services
 """
 
-import os
-import time
-import logging
 import asyncio
-import requests
+import logging
+import os
 import subprocess
 from datetime import datetime, timedelta
+
+import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Dict, List, Optional
-from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, generate_latest
 from starlette.responses import Response
 
 logging.basicConfig(
@@ -41,8 +39,8 @@ SERVICES = {
     "gula-ollama":                {"url": "http://ollama:11434/api/tags",             "critical": False},
 }
 
-FAILURE_COUNTS: Dict[str, int] = {s: 0 for s in SERVICES}
-LAST_RESTART: Dict[str, Optional[datetime]] = {s: None for s in SERVICES}
+FAILURE_COUNTS: dict[str, int] = dict.fromkeys(SERVICES, 0)
+LAST_RESTART: dict[str, datetime | None] = dict.fromkeys(SERVICES)
 MAX_FAILURES_BEFORE_RESTART = 3
 HEALTH_CHECK_INTERVAL = 15  # seconds
 RESTART_COOLDOWN = 60       # seconds between restarts
@@ -93,9 +91,8 @@ def restart_service(service_name: str) -> bool:
             RESTART_COUNTER.labels(service=service_name).inc()
             logger.info(f"[AutoManager] {service_name}: restarted successfully")
             return True
-        else:
-            logger.error(f"[AutoManager] {service_name}: restart failed: {result.stderr}")
-            return False
+        logger.error(f"[AutoManager] {service_name}: restart failed: {result.stderr}")
+        return False
     except Exception as e:
         logger.error(f"[AutoManager] {service_name}: restart error: {e}")
         return False

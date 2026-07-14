@@ -460,7 +460,7 @@ def set_feature_flag(
         try:
             expires = datetime.fromisoformat(body.expires_at)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid expires_at format (use ISO 8601)")
+            raise HTTPException(status_code=400, detail="Invalid expires_at format (use ISO 8601)") from None
 
     # Upsert feature flag
     flag = (

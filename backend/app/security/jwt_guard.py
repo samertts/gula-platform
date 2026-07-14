@@ -1,4 +1,12 @@
-"""JWT Guard - validates Authorization header tokens."""
+"""JWT Guard - validates Authorization header tokens.
+
+WARNING: This module is DEAD CODE. It is not imported by any route.
+Routes use `dependencies.get_current_user()` which performs full validation
+including token type, JTI blacklist, user active status, permission version,
+and lab active status. This function bypasses all of those checks.
+
+See `backend/app/security/dependencies.py` for the canonical auth dependency.
+"""
 
 from fastapi import HTTPException, Request
 from jose import JWTError, jwt
@@ -19,4 +27,4 @@ def protect(request: Request):
             raise HTTPException(status_code=401, detail="Invalid token payload")
         return payload
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from None

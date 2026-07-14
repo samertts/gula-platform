@@ -3,16 +3,16 @@ GULA Platform - Patient Service
 Executive Order 5: Audit on PatientCreated
 """
 
-import os
-import logging
 import json
+import logging
+import os
+from datetime import date, datetime
+
+import asyncpg
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, generate_latest
 from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime, date
-import asyncpg
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 
 logging.basicConfig(level=logging.INFO)
@@ -61,16 +61,16 @@ def publish_event(event_type: str, payload: dict):
 
 
 class PatientCreate(BaseModel):
-    lab_id: Optional[int] = None
-    national_id: Optional[str] = None
+    lab_id: int | None = None
+    national_id: str | None = None
     first_name: str
     last_name: str
-    gender: Optional[str] = None
-    date_of_birth: Optional[date] = None
-    age: Optional[int] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
+    gender: str | None = None
+    date_of_birth: date | None = None
+    age: int | None = None
+    phone: str | None = None
+    email: str | None = None
+    address: str | None = None
 
 
 class PatientResponse(BaseModel):
@@ -78,8 +78,8 @@ class PatientResponse(BaseModel):
     patient_uuid: str
     first_name: str
     last_name: str
-    gender: Optional[str]
-    age: Optional[int]
+    gender: str | None
+    age: int | None
     created_at: datetime
 
 
@@ -133,8 +133,8 @@ async def create_patient(patient: PatientCreate):
         return result
 
 
-@app.get("/patients", response_model=List[PatientResponse])
-async def list_patients(lab_id: Optional[int] = None, skip: int = 0, limit: int = 100):
+@app.get("/patients", response_model=list[PatientResponse])
+async def list_patients(lab_id: int | None = None, skip: int = 0, limit: int = 100):
     skip = max(0, skip)
     limit = max(1, min(limit, 500))
     pool = await get_db()

@@ -8,12 +8,13 @@ insertion).
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
+
+from backend.app._compat import UTC
 
 from ..models.notification import (
     Notification,
@@ -31,8 +32,8 @@ def send_notification(
     title: str,
     body: str,
     priority: NotificationPriority = NotificationPriority.medium,
-    related_type: Optional[str] = None,
-    related_id: Optional[str] = None,
+    related_type: str | None = None,
+    related_id: str | None = None,
 ) -> Notification:
     """Persist a notification for ``recipient_id``.
 
@@ -114,7 +115,7 @@ def mark_read(
     *,
     notification_id: UUID,
     user_id: str,
-) -> Optional[Notification]:
+) -> Notification | None:
     """Mark a single notification as read.
 
     Returns the updated row, or ``None`` if the notification does not belong
@@ -132,6 +133,6 @@ def mark_read(
         return None
     if not row.is_read:
         row.is_read = True
-        row.read_at = datetime.now(timezone.utc)
+        row.read_at = datetime.now(UTC)
         db.flush()
     return row

@@ -34,10 +34,9 @@ class QCBatchSubmit(BaseModel):
 
 
 def evaluate_westgard(measured: float, expected: float, sd: float) -> dict:
-    """Apply Westgard multi-rules for QC evaluation.
+    """Apply Westgard multi-rules for QC evaluation (single-rule only).
     Returns status (pass/warning/fail) and violation type."""
     if sd is None or sd <= 0:
-        # Without SD, use simple 10% deviation check
         deviation_pct = abs(measured - expected) / expected * 100 if expected != 0 else 0
         if deviation_pct > 15:
             return {"status": "fail", "violation": "deviation>15%"}
@@ -47,13 +46,98 @@ def evaluate_westgard(measured: float, expected: float, sd: float) -> dict:
 
     z_score = (measured - expected) / sd
 
-    # 1-3s rule: Single measurement exceeds mean +/- 3SD → FAIL (reject run)
     if abs(z_score) >= 3.0:
         return {"status": "fail", "violation": "1-3s"}
 
-    # 1-2s rule: Single measurement exceeds mean +/- 2SD → WARNING (investigate)
     if abs(z_score) >= 2.0:
         return {"status": "warning", "violation": "1-2s"}
+
+    return {"status": "pass", "violation": None}
+
+
+def evaluate_westgard_full(
+    db: Session,
+    lab_id: int,
+    test_code: str,
+    level: str,
+    measured: float,
+    expected: float,
+    sd: float,
+    instrument_name: str | None = None,
+    lot_number: str | None = None,
+) -> dict:
+    """Apply ALL Westgard multi-rules using historical QC data.
+    Rules: 1-3s, 1-2s, 2-2s, R-4s, 4-1s, 10-x."""
+    if sd is None or sd <= 0:
+        return evaluate_westgard(measured, expected, sd)
+
+    z_score = (measured - expected) / sd
+
+    # 1-3s: Single measurement >3SD → FAIL
+    if abs(z_score) >= 3.0:
+        return {"status": "fail", "violation": "1-3s"}
+
+    # Query recent QC results for same test/level/instrument/lot
+    cutoff = datetime.now(UTC) - timedelta(hours=48)
+    filters = [
+        QualityControl.lab_id == lab_id,
+        QualityControl.test_code == test_code,
+        QualityControl.level == level,
+        QualityControl.created_at >= cutoff,
+    ]
+    if instrument_name:
+        filters.append(QualityControl.instrument_name == instrument_name)
+    if lot_number:
+        filters.append(QualityControl.lot_number == lot_number)
+
+    recent = (
+        db.query(QualityControl)
+        .filter(*filters)
+        .order_by(QualityControl.created_at.desc())
+        .limit(15)
+        .all()
+    )
+
+    # Compute z-scores for historical measurements
+    historical_z = []
+    for qc in recent:
+        if qc.sd and qc.sd > 0 and qc.expected_value:
+            hz = (qc.measured_value - qc.expected_value) / qc.sd
+            historical_z.append(hz)
+
+    # 1-2s: Single measurement >2SD → WARNING (checked first before multi-rules)
+    if abs(z_score) >= 2.0:
+        return {"status": "warning", "violation": "1-2s"}
+
+    # 2-2s: Two consecutive measurements >2SD on same side
+    if len(historical_z) >= 1:
+        last_z = historical_z[0]
+        if z_score > 2.0 and last_z > 2.0:
+            return {"status": "fail", "violation": "2-2s"}
+        if z_score < -2.0 and last_z < -2.0:
+            return {"status": "fail", "violation": "2-2s"}
+
+    # R-4s: Two consecutive measurements differ by >4SD
+    if len(historical_z) >= 1:
+        last_z = historical_z[0]
+        if abs(z_score - last_z) >= 4.0:
+            return {"status": "fail", "violation": "R-4s"}
+
+    # 4-1s: Four consecutive measurements >1SD on same side
+    if len(historical_z) >= 3:
+        recent_four = [z_score] + historical_z[:3]
+        if all(z > 1.0 for z in recent_four):
+            return {"status": "fail", "violation": "4-1s"}
+        if all(z < -1.0 for z in recent_four):
+            return {"status": "fail", "violation": "4-1s"}
+
+    # 10-x: Ten consecutive measurements on same side of mean
+    if len(historical_z) >= 9:
+        recent_ten = [z_score] + historical_z[:9]
+        if all(z > 0 for z in recent_ten):
+            return {"status": "fail", "violation": "10-x"}
+        if all(z < 0 for z in recent_ten):
+            return {"status": "fail", "violation": "10-x"}
 
     return {"status": "pass", "violation": None}
 
@@ -68,7 +152,17 @@ def submit_qc(
     if data.level not in ("low", "normal", "high"):
         raise HTTPException(status_code=400, detail="Level must be: low, normal, high")
 
-    eval_result = evaluate_westgard(data.measured_value, data.expected_value, data.sd or 0)
+    eval_result = evaluate_westgard_full(
+        db,
+        lab_id=current_user.lab_id,
+        test_code=data.test_code,
+        level=data.level,
+        measured=data.measured_value,
+        expected=data.expected_value,
+        sd=data.sd or 0,
+        instrument_name=data.instrument_name,
+        lot_number=data.lot_number,
+    )
 
     qc = QualityControl(
         lab_id=current_user.lab_id,
@@ -107,7 +201,17 @@ def submit_qc_batch(
     results = []
     failures = 0
     for item in data.results:
-        eval_result = evaluate_westgard(item.measured_value, item.expected_value, item.sd or 0)
+        eval_result = evaluate_westgard_full(
+            db,
+            lab_id=current_user.lab_id,
+            test_code=item.test_code,
+            level=item.level,
+            measured=item.measured_value,
+            expected=item.expected_value,
+            sd=item.sd or 0,
+            instrument_name=item.instrument_name,
+            lot_number=item.lot_number,
+        )
         qc = QualityControl(
             lab_id=current_user.lab_id,
             test_code=item.test_code,

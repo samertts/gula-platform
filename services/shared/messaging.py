@@ -1,5 +1,6 @@
 """Bridge to shared MessageBroker."""
 import warnings
+
 warnings.warn(
     "services/shared/messaging.py is deprecated. Import from 'shared.messaging' instead.",
     DeprecationWarning,

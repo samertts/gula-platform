@@ -4,7 +4,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
 from app.financial.pricing import (
     MINIMUM_BILL,
     VOLUME_DISCOUNT_THRESHOLD,

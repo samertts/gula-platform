@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
+
+from backend.app._compat import UTC
 
 
 class AppointmentStatus(Enum):
@@ -61,7 +63,7 @@ class Appointment:
     def __post_init__(self) -> None:
         if not self.id:
             self.id = str(uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         if not self.created_at:
             self.created_at = now
         if not self.updated_at:
@@ -75,7 +77,7 @@ class Appointment:
                 f"Allowed: {[s.value for s in allowed]}"
             )
         self.status = new_status
-        self.updated_at = datetime.now(timezone.utc).isoformat()
+        self.updated_at = datetime.now(UTC).isoformat()
 
     def can_check_in(self) -> bool:
         return self.status == AppointmentStatus.CONFIRMED

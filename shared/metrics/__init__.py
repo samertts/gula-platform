@@ -1,15 +1,15 @@
 from .collector import (
-    MetricsCollector,
-    metrics,
     Counter,
     Gauge,
     Histogram,
+    MetricsCollector,
+    metrics,
 )
 
 __all__ = [
-    "MetricsCollector",
-    "metrics",
     "Counter",
     "Gauge",
     "Histogram",
+    "MetricsCollector",
+    "metrics",
 ]

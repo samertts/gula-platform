@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,8 +14,8 @@ class NotificationBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     body: str = Field(..., min_length=1, max_length=2000)
     priority: NotificationPriority = NotificationPriority.medium
-    related_type: Optional[str] = Field(default=None, max_length=40)
-    related_id: Optional[str] = Field(default=None, max_length=80)
+    related_type: str | None = Field(default=None, max_length=40)
+    related_id: str | None = Field(default=None, max_length=80)
 
 
 class NotificationCreate(NotificationBase):
@@ -32,7 +31,7 @@ class NotificationRead(NotificationBase):
     recipient_role: str
     is_read: bool
     created_at: datetime
-    read_at: Optional[datetime] = None
+    read_at: datetime | None = None
 
 
 class NotificationListResponse(BaseModel):

@@ -6,7 +6,11 @@ from pathlib import Path
 
 from backend.app.engineering.ci.quality_gates import QualityGates
 from backend.app.engineering.crud.generator import CRUDGenerator, EntityField, EntitySpec
-from backend.app.engineering.generators.capability import CapabilityGenerator, CapabilitySpec
+from backend.app.engineering.generators.capability import (
+    CapabilityGenerator,
+    CapabilitySpec,
+    EntityField,
+)
 from backend.app.engineering.generators.microservice import MicroserviceGenerator, MicroserviceSpec
 from backend.app.engineering.generators.module import ModuleGenerator, ModuleSpec
 from backend.app.engineering.generators.plugin import PluginGenerator, PluginSpec
@@ -82,6 +86,32 @@ def main() -> None:
     doctor = sub.add_parser("doctor", help="System diagnostics")
     doctor.add_argument("--dir", default=".", help="Project root directory")
 
+    # gula capability
+    cap_cmd = sub.add_parser("capability", help="Manage capabilities in the registry")
+    cap_sub = cap_cmd.add_subparsers(dest="cap_action")
+
+    cap_list = cap_sub.add_parser("list", help="List all capabilities")
+    cap_list.add_argument("--domain", default="", help="Filter by domain")
+    cap_list.add_argument("--status", default="", help="Filter by status (active, draft, deprecated, retired)")
+    cap_list.add_argument("--enabled-only", action="store_true", help="Show only enabled capabilities")
+
+    cap_show = cap_sub.add_parser("show", help="Show capability details")
+    cap_show.add_argument("name", help="Capability name")
+
+    cap_enable = cap_sub.add_parser("enable", help="Enable a capability")
+    cap_enable.add_argument("name", help="Capability name")
+
+    cap_disable = cap_sub.add_parser("disable", help="Disable a capability")
+    cap_disable.add_argument("name", help="Capability name")
+
+    cap_impact = cap_sub.add_parser("impact", help="Show impact analysis for capability changes")
+    cap_impact.add_argument("name", help="Capability name")
+
+    cap_graph = cap_sub.add_parser("graph", help="Show dependency graph")
+    cap_graph.add_argument("--format", default="text", choices=["text", "mermaid", "json"], help="Output format")
+
+    cap_summary = cap_sub.add_parser("summary", help="Show capability registry summary")
+
     # gula info
     sub.add_parser("info", help="Show platform info")
 
@@ -97,6 +127,8 @@ def main() -> None:
         _handle_quality(args)
     elif args.command == "doctor":
         _handle_doctor(args)
+    elif args.command == "capability":
+        _handle_capability(args)
     elif args.command == "info":
         _handle_info()
     else:
@@ -143,10 +175,23 @@ def _add_new_capability(sub: argparse._SubParsersAction) -> None:
     p.add_argument("name", help="Capability name")
     p.add_argument("--description", default="", help="Capability description")
     p.add_argument("--dir", default=".", help="Target directory")
-    p.add_argument("--domain", default="clinical", help="Domain")
+    p.add_argument("--domain", default="core", help="Domain (core, clinical, identity, financial, communication, infrastructure, observability, reporting, integration, platform)")
+    p.add_argument("--layer", default="application", help="Layer (domain, application, infrastructure, presentation)")
+    p.add_argument("--owner", default="platform-team", help="Capability owner")
+    p.add_argument("--version", default="1.0.0", help="Initial semver")
+    p.add_argument("--entities", nargs="*", default=[], help="Entities in format Name:type")
     p.add_argument("--commands", nargs="*", default=[], help="Commands")
     p.add_argument("--events", nargs="*", default=[], help="Events")
     p.add_argument("--queries", nargs="*", default=[], help="Queries")
+    p.add_argument("--policies", nargs="*", default=[], help="Policy names")
+    p.add_argument("--permissions", nargs="*", default=[], help="Permission names")
+    p.add_argument("--dependencies", nargs="*", default=[], help="Dependency capability names")
+    p.add_argument("--tags", nargs="*", default=[], help="Tags")
+    p.add_argument("--no-api", action="store_true", help="Skip API routes")
+    p.add_argument("--no-tests", action="store_true", help="Skip tests")
+    p.add_argument("--no-adr", action="store_true", help="Skip ADR")
+    p.add_argument("--no-docs", action="store_true", help="Skip docs")
+    p.add_argument("--no-sbom", action="store_true", help="Skip SBOM")
 
 
 def _add_new_crud(sub: argparse._SubParsersAction) -> None:
@@ -346,13 +391,33 @@ def _handle_new(args: argparse.Namespace) -> None:
         _print_result("Platform", result)
 
     elif args.new_type == "capability":
+        entities = []
+        for e in args.entities:
+            if ":" in e:
+                name, typ = e.split(":", 1)
+                entities.append(EntityField(name=name, type=typ))
+            else:
+                entities.append(EntityField(name=e, type="str"))
         spec = CapabilitySpec(
             name=args.name,
             description=args.description,
             domain=args.domain,
+            layer=args.layer,
+            owner=args.owner,
+            version=args.version,
+            entities=entities or None,
             commands=args.commands,
             events=args.events,
             queries=args.queries,
+            policies=args.policies,
+            permissions=args.permissions,
+            dependencies=args.dependencies,
+            tags=args.tags,
+            with_api=not args.no_api,
+            with_tests=not args.no_tests,
+            with_adr=not args.no_adr,
+            with_docs=not args.no_docs,
+            with_sbom=not args.no_sbom,
         )
         gen = CapabilityGenerator(target_dir=target)
         result = gen.generate(spec=spec)
@@ -403,8 +468,8 @@ def _do_generate_crud(args: argparse.Namespace, target: Path) -> None:
         for f in args.fields:
             if ":" in f:
                 name, typ = f.split(":", 1)
-                indexed = ":indexed" in args.fields
-                unique = ":unique" in args.fields
+                indexed = ":indexed" in f
+                unique = ":unique" in f
                 fields.append(EntityField(name=name, type=typ, indexed=indexed, unique=unique))
             else:
                 fields.append(EntityField(name=f, type="str"))
@@ -742,18 +807,178 @@ def _handle_doctor(args: argparse.Namespace) -> None:
     print("  Doctor check complete.")
 
 
+def _handle_capability(args: argparse.Namespace) -> None:
+    from backend.app.kernel.capabilities_registry_populator import _get_all_descriptors
+    from backend.app.kernel.types import CapabilityStatus
+
+    all_caps = _get_all_descriptors()
+
+    if args.cap_action == "list":
+        filtered = all_caps
+        if args.domain:
+            filtered = [c for c in filtered if c.domain == args.domain]
+        if args.status:
+            filtered = [c for c in filtered if c.status.value == args.status]
+        if args.enabled_only:
+            filtered = [c for c in filtered if c.enabled]
+
+        domain_order = ["identity_security", "clinical", "communication", "infrastructure",
+                         "reporting", "platform", "financial", "observability", "integration"]
+        filtered.sort(key=lambda c: (domain_order.index(c.domain) if c.domain in domain_order else 99, c.name))
+
+        print(f"\n  Capability Registry — {len(filtered)} capabilities")
+        print(f"  {'=' * 70}")
+        if not filtered:
+            print("  No capabilities match the filter.")
+        for cap in filtered:
+            status_icon = {"active": "🟢", "draft": "🟡", "deprecated": "🟠", "retired": "🔴"}
+            icon = status_icon.get(cap.status.value, "⚪")
+            deps_str = f" → depends on: {', '.join(cap.dependencies)}" if cap.dependencies else ""
+            print(f"  {icon} {cap.name:30s} v{cap.version:8s} [{cap.domain:20s}]{deps_str}")
+        print()
+
+    elif args.cap_action == "show":
+        cap = next((c for c in all_caps if c.name == args.name), None)
+        if not cap:
+            print(f"  Capability '{args.name}' not found.")
+            return
+        print(f"\n  Capability: {cap.name}")
+        print(f"  {'=' * 50}")
+        print(f"  Version:      {cap.version}")
+        print(f"  Domain:       {cap.domain}")
+        print(f"  Layer:        {cap.layer}")
+        print(f"  Owner:        {cap.owner}")
+        print(f"  Status:       {cap.status.value}")
+        print(f"  Enabled:      {cap.enabled}")
+        print(f"  Description:  {cap.description}")
+        if cap.dependencies:
+            print(f"  Dependencies: {', '.join(cap.dependencies)}")
+        if cap.permissions:
+            print(f"  Permissions:  {', '.join(cap.permissions)}")
+        if cap.api_endpoints:
+            print("  API Endpoints:")
+            for ep in cap.api_endpoints:
+                print(f"    {ep.method:7s} {ep.path}")
+        print()
+
+    elif args.cap_action == "enable":
+        cap = next((c for c in all_caps if c.name == args.name), None)
+        if not cap:
+            print(f"  Capability '{args.name}' not found.")
+            return
+        cap.enabled = True
+        print(f"  ✅ Capability '{args.name}' enabled.")
+
+    elif args.cap_action == "disable":
+        cap = next((c for c in all_caps if c.name == args.name), None)
+        if not cap:
+            print(f"  Capability '{args.name}' not found.")
+            return
+        cap.enabled = False
+        print(f"  ✅ Capability '{args.name}' disabled.")
+
+    elif args.cap_action == "impact":
+        cap = next((c for c in all_caps if c.name == args.name), None)
+        if not cap:
+            print(f"  Capability '{args.name}' not found.")
+            return
+        direct = [c.name for c in all_caps if args.name in c.dependencies]
+        transitive = set()
+        queue = list(direct)
+        while queue:
+            current = queue.pop(0)
+            for c in all_caps:
+                if current in c.dependencies and c.name != args.name:
+                    if c.name not in transitive and c.name not in direct:
+                        transitive.add(c.name)
+                        queue.append(c.name)
+        print(f"\n  Impact Analysis: {args.name}")
+        print(f"  {'=' * 50}")
+        print(f"  Direct dependents ({len(direct)}):")
+        for d in direct or ["(none)"]:
+            print(f"    - {d}")
+        print(f"  Transitive dependents ({len(transitive)}):")
+        for t in transitive or ["(none)"]:
+            print(f"    - {t}")
+        unresolved = [d for d in cap.dependencies if d not in [c.name for c in all_caps]]
+        if unresolved:
+            print(f"  ⚠️  Unresolved dependencies: {', '.join(unresolved)}")
+        print()
+
+    elif args.cap_action == "graph":
+        if args.format == "mermaid":
+            domains = {}
+            for cap in all_caps:
+                domains.setdefault(cap.domain, []).append(cap)
+            print("```mermaid")
+            print("graph TD")
+            for domain, caps in domains.items():
+                print(f"    subgraph {domain}")
+                for cap in caps:
+                    safe_name = cap.name.replace("_", "_").replace("-", "_")
+                    print(f"        {safe_name}[{cap.name}]")
+                print("    end")
+            for cap in all_caps:
+                for dep in cap.dependencies:
+                    safe_cap = cap.name.replace("_", "_").replace("-", "_")
+                    safe_dep = dep.replace("_", "_").replace("-", "_")
+                    print(f"    {safe_cap} --> {safe_dep}")
+            print("```")
+        elif args.format == "json":
+            import json
+            graph = {}
+            for cap in all_caps:
+                graph[cap.name] = {"dependencies": cap.dependencies, "domain": cap.domain}
+            print(json.dumps(graph, indent=2))
+        else:
+            print(f"\n  Capability Dependency Graph ({len(all_caps)} capabilities)")
+            print(f"  {'=' * 70}")
+            for cap in all_caps:
+                deps_str = f" → {', '.join(cap.dependencies)}" if cap.dependencies else ""
+                print(f"    {cap.name:30s} [{cap.domain:20s}]{deps_str}")
+            print()
+
+    elif args.cap_action == "summary":
+        domains = {}
+        statuses = {}
+        total_deps = 0
+        enabled_count = 0
+        for cap in all_caps:
+            domains[cap.domain] = domains.get(cap.domain, 0) + 1
+            statuses[cap.status.value] = statuses.get(cap.status.value, 0) + 1
+            total_deps += len(cap.dependencies)
+            if cap.enabled:
+                enabled_count += 1
+        print("\n  Capability Registry Summary")
+        print(f"  {'=' * 50}")
+        print(f"  Total:                {len(all_caps)}")
+        print(f"  Enabled:              {enabled_count}")
+        print(f"  Total Dependencies:   {total_deps}")
+        print("  Domains:")
+        for domain, count in sorted(domains.items(), key=lambda x: -x[1]):
+            print(f"    {domain:25s} {count}")
+        print("  Statuses:")
+        for status, count in sorted(statuses.items(), key=lambda x: -x[1]):
+            print(f"    {status:25s} {count}")
+        draft = [c.name for c in all_caps if c.status == CapabilityStatus.DRAFT]
+        if draft:
+            print(f"  Draft Capabilities:   {', '.join(draft)}")
+        print()
+
+
 def _handle_info() -> None:
     print("GULA Engineering Automation Platform")
     print("  Version: 2.1.0")
     print("  From now on, GULA builds GULA.")
     print()
     print("  Commands:")
-    print("    gula new <type>      Scaffold projects, modules, plugins, platforms")
-    print("    gula generate <type> Generate code, tests, docs, CI/CD")
-    print("    gula validate <type> Validate architecture quality")
-    print("    gula quality         Run quality gates")
-    print("    gula doctor          System diagnostics")
-    print("    gula info            Show this info")
+    print("    gula new <type>       Scaffold projects, modules, plugins, platforms, capabilities, CRUD")
+    print("    gula generate <type>  Generate code, tests, docs, CI/CD")
+    print("    gula validate <type>  Validate architecture quality (clean-arch, solid, ddd, cqrs, event-driven)")
+    print("    gula quality          Run quality gates (ruff, pytest, mypy, coverage, bandit)")
+    print("    gula doctor           System diagnostics")
+    print("    gula capability       Manage capabilities (list, show, enable, disable, impact, graph, summary)")
+    print("    gula info             Show this info")
 
 
 def _print_result(name: str, result: object) -> None:

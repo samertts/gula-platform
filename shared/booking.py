@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from .domain.booking import Appointment, AppointmentStatus
@@ -24,7 +23,7 @@ class BookingEngine:
         patient_id: str,
         lab_id: int,
         slot_time: datetime,
-        test_types: Optional[list[str]] = None,
+        test_types: list[str] | None = None,
         patient_name: str = "",
         doctor_name: str = "",
     ) -> Appointment:
@@ -44,7 +43,7 @@ class BookingEngine:
                      apt.id, patient_id, lab_id, slot_time.isoformat())
         return apt
 
-    def get(self, appointment_id: str) -> Optional[Appointment]:
+    def get(self, appointment_id: str) -> Appointment | None:
         return self._appointments.get(appointment_id)
 
     def confirm(self, appointment_id: str) -> Appointment:

@@ -28,10 +28,11 @@ from datetime import datetime
         return self._result
 
     def _factory_class(self, entity: str) -> str:
+        entity.lower()
         return f"""
 class {entity}Factory(factory.Factory):
     class Meta:
-        model = "models.{entity.lower()}.{entity}"
+        model = {entity}
 
     id = factory.Sequence(lambda n: n + 1)
     name = factory.Faker("name")

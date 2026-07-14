@@ -3,16 +3,16 @@ GULA Platform - Order Service
 Executive Order 5: Audit on OrderCreated, OrderCompleted
 """
 
-import os
-import logging
 import json
+import logging
+import os
+from datetime import datetime
+
+import asyncpg
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, generate_latest
 from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime
-import asyncpg
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 
 logging.basicConfig(level=logging.INFO)
@@ -64,7 +64,7 @@ class OrderCreate(BaseModel):
     patient_id: int
     test_id: int
     priority: str = "routine"
-    ordered_by: Optional[int] = None
+    ordered_by: int | None = None
 
 
 class OrderResponse(BaseModel):
@@ -147,8 +147,8 @@ async def complete_order(order_id: int):
         return dict(row)
 
 
-@app.get("/orders", response_model=List[OrderResponse])
-async def list_orders(lab_id: Optional[int] = None, status: Optional[str] = None, skip: int = 0, limit: int = 100):
+@app.get("/orders", response_model=list[OrderResponse])
+async def list_orders(lab_id: int | None = None, status: str | None = None, skip: int = 0, limit: int = 100):
     skip = max(0, skip)
     limit = max(1, min(limit, 500))
     pool = await get_db()

@@ -1,5 +1,5 @@
-from fastapi import APIRouter
 import redis
+from fastapi import APIRouter
 
 router = APIRouter()
 

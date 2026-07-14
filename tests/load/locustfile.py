@@ -15,8 +15,8 @@ Scenarios:
 
 import random
 import time
-from locust import HttpUser, task, between, tag, events
 
+from locust import HttpUser, between, events, tag, task
 
 # ─── Shared state (set by login) ─────────────────────────────────────────────
 _tokens = {}   # username → token
@@ -52,20 +52,17 @@ def _random_value(test):
     if roll < 0.80:
         # Normal
         return round(random.uniform(low, high), 2)
-    elif roll < 0.95:
+    if roll < 0.95:
         # Abnormal (outside range)
         if random.random() < 0.5:
             return round(random.uniform(low * 0.3, low * 0.95), 2)
-        else:
-            return round(random.uniform(high * 1.05, high * 1.8), 2)
-    else:
-        # Critical
-        if test["test_name"] == "Potassium":
-            return round(random.uniform(6.5, 8.0), 2)
-        elif test["test_name"] == "Hemoglobin":
-            return round(random.uniform(3.0, 5.0), 2)
-        else:
-            return round(high * 3.5, 2)
+        return round(random.uniform(high * 1.05, high * 1.8), 2)
+    # Critical
+    if test["test_name"] == "Potassium":
+        return round(random.uniform(6.5, 8.0), 2)
+    if test["test_name"] == "Hemoglobin":
+        return round(random.uniform(3.0, 5.0), 2)
+    return round(high * 3.5, 2)
 
 
 # =============================================================================
@@ -97,9 +94,8 @@ class LabTechnicianUser(HttpUser):
                 token = data.get("access_token") or data.get("token", "")
                 r.success()
                 return token
-            else:
-                r.failure(f"Login failed: {r.status_code}")
-                return ""
+            r.failure(f"Login failed: {r.status_code}")
+            return ""
 
     def _headers(self):
         return {"Authorization": f"Bearer {self.token}"}

@@ -62,13 +62,13 @@ def _mint_citizen_from_self_registration(
                 pass
 
         # ULID inline (avoid circular import with resolver)
-        _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+        _crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
         ms = int(time.time() * 1000) & ((1 << 48) - 1)
         rand = secrets.randbits(80)
         val = (ms << 80) | rand
         out = []
         for _ in range(26):
-            out.append(_CROCKFORD[val & 0x1F])
+            out.append(_crockford[val & 0x1F])
             val >>= 5
         ulid = "".join(reversed(out))
 
@@ -343,7 +343,7 @@ def register_citizen(
         db.rollback()
         raise HTTPException(
             status_code=409, detail="Registration failed. Please check your details."
-        )
+        ) from None
 
     # Citizen-first: canonical national identity exists before any lab visit.
     citizen_ulid = _mint_citizen_from_self_registration(

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
@@ -29,7 +29,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
-
 # ── validate_config ───────────────────────────────────────────────────────────
 
 class TestValidateConfig:
@@ -40,8 +39,8 @@ class TestValidateConfig:
         function body, so we must mutate app.config attributes directly — not
         try to patch them on the startup_guard namespace where they don't exist.
         """
-        from app.core import startup_guard
         import app.config as cfg
+        from app.core import startup_guard
         old_sk   = cfg.SECRET_KEY
         old_ek   = cfg.ENCRYPTION_KEY
         old_nid  = cfg.NID_HMAC_KEY
@@ -151,24 +150,24 @@ class TestSystemReadiness:
         assert reason == "startup_in_progress"
 
     def test_set_system_ready_marks_ready(self):
-        from app.core.startup_guard import set_system_ready, is_system_ready
+        from app.core.startup_guard import is_system_ready, set_system_ready
         set_system_ready(True, "ok")
         # is_system_ready also checks DB — mock the DB check to pass
         with patch("app.database.check_db_connection", return_value=True):
             with patch("app.security.redis_client.cache") as mock_redis:
                 mock_redis.set.return_value = True
-                ready, reason = is_system_ready()
+                ready, _reason = is_system_ready()
         assert ready is True
 
     def test_set_system_ready_false_clears_readiness(self):
-        from app.core.startup_guard import set_system_ready, is_system_ready
+        from app.core.startup_guard import is_system_ready, set_system_ready
         set_system_ready(True, "ok")
         set_system_ready(False, "db_down")
-        ready, reason = is_system_ready()
+        ready, _reason = is_system_ready()
         assert ready is False
 
     def test_database_down_after_startup_returns_503_reason(self):
-        from app.core.startup_guard import set_system_ready, is_system_ready
+        from app.core.startup_guard import is_system_ready, set_system_ready
         set_system_ready(True, "ok")
         with patch("app.database.check_db_connection", return_value=False):
             ready, reason = is_system_ready()
@@ -176,7 +175,7 @@ class TestSystemReadiness:
         assert reason == "database_unavailable"
 
     def test_redis_down_after_startup_returns_degraded_not_false(self):
-        from app.core.startup_guard import set_system_ready, is_system_ready
+        from app.core.startup_guard import is_system_ready, set_system_ready
         set_system_ready(True, "ok")
         with patch("app.database.check_db_connection", return_value=True):
             with patch("app.security.redis_client.cache") as mock_redis:

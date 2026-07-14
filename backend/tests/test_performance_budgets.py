@@ -40,14 +40,13 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-from sqlalchemy import event
-
 from app.models.lab import Lab
-from app.models.lab_user import LabUser
-from app.models.patient import Patient
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
-from app.security.auth import hash_password, create_token
+from app.models.lab_user import LabUser
+from app.models.patient import Patient
+from app.security.auth import create_token, hash_password
+from sqlalchemy import event
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:

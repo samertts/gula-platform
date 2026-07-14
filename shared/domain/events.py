@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import timezone, datetime
+from datetime import datetime
 from typing import Any
+
+from backend.app._compat import UTC
 
 
 @dataclass
@@ -18,7 +20,7 @@ class DomainEvent:
 
     def __post_init__(self) -> None:
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
 
 
 @dataclass
@@ -57,6 +59,12 @@ class AlertTriggered(DomainEvent):
 
 
 __all__ = [
-    "DomainEvent", "OrderCreated", "OrderValidated", "ResultUpdated",
-    "ResultCritical", "SampleCollected", "PatientCreated", "AlertTriggered",
+    "AlertTriggered",
+    "DomainEvent",
+    "OrderCreated",
+    "OrderValidated",
+    "PatientCreated",
+    "ResultCritical",
+    "ResultUpdated",
+    "SampleCollected",
 ]

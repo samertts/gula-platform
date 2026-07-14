@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import timezone, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
+
+from backend.app._compat import UTC
 
 logger = logging.getLogger("gula.subscriptions")
 
@@ -52,9 +54,9 @@ class Subscription:
         self.lab_id = lab_id
         self.plan = PLANS.get(plan_name, PLANS["free"])
         self.active = True
-        self.billing_period_start = datetime.now(timezone.utc)
-        self.billing_period_end = datetime.now(timezone.utc) + timedelta(days=30)
-        self.created_at = datetime.now(timezone.utc)
+        self.billing_period_start = datetime.now(UTC)
+        self.billing_period_end = datetime.now(UTC) + timedelta(days=30)
+        self.created_at = datetime.now(UTC)
 
     @property
     def feature_set(self) -> list[str]:
@@ -72,4 +74,4 @@ class Subscription:
         }
 
 
-__all__ = ["SubscriptionPlan", "Subscription", "PLANS"]
+__all__ = ["PLANS", "Subscription", "SubscriptionPlan"]

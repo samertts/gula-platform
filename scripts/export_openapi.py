@@ -117,10 +117,8 @@ def main():
     parser.add_argument("--format", default="json", choices=["json", "yaml"], help="Output format")
     args = parser.parse_args()
 
-    print("Loading FastAPI app...")
     spec = _load_spec()
 
-    print("Enriching spec for frontend tools...")
     spec = _enrich_spec(spec)
 
     out_path = os.path.abspath(args.out)
@@ -131,7 +129,6 @@ def main():
             content = yaml.dump(spec, allow_unicode=True, sort_keys=False)
             mode = "w"
         except ImportError:
-            print("pyyaml not installed — falling back to JSON output")
             content = json.dumps(spec, ensure_ascii=False, indent=2)
             out_path = out_path.replace(".yaml", ".json")
             mode = "w"
@@ -142,14 +139,7 @@ def main():
     with open(out_path, mode, encoding="utf-8") as f:
         f.write(content)
 
-    route_count = len(spec.get("paths", {}))
-    print(f"\nExported {route_count} routes → {out_path}")
-    print("\nHow to use with frontend design tools:")
-    print("  Google AI Studio: Upload openapi.json in the API integration panel")
-    print("  Claude.ai:        Share the file or paste the URL in the design canvas")
-    print("  Swagger UI:       docker run -p 8080:8080 -e SWAGGER_JSON=/spec/openapi.json")
-    print("                    -v $(pwd):/spec swaggerapi/swagger-ui")
-    print("  Postman:          File → Import → OpenAPI → select openapi.json")
+    len(spec.get("paths", {}))
 
 
 if __name__ == "__main__":

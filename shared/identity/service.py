@@ -4,16 +4,9 @@ import hashlib
 import hmac
 import logging
 import re
-from datetime import date
-from typing import Any, Optional
 
 from .domain import (
-    Gender,
-    IdentityDocument,
-    IdentityDocumentType,
-    IdentityStatus,
     PatientIdentity,
-    PersonName,
 )
 
 logger = logging.getLogger("gula.identity")

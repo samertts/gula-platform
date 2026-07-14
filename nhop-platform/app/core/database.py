@@ -5,11 +5,10 @@ from the per-lab GULA schema. In production this points at a Postgres DSN;
 in tests it defaults to an in-memory SQLite URL for fast unit runs.
 """
 import os
-from typing import Iterator
+from collections.abc import Iterator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
-
 
 DATABASE_URL = os.getenv("NHOP_DATABASE_URL", "sqlite:///./nhop.db")
 

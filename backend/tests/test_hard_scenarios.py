@@ -19,8 +19,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///test_hard.db")
 os.environ.setdefault("SECRET_KEY", "test-secret-hard-scenarios")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 def _run_async(coro):
@@ -57,8 +58,8 @@ class TestSlowDeath:
 
     def test_five_timeouts_triggers_l1(self):
         """5 timeouts in 5min → _trigger_slow_db → L1_CACHE_HEAVY."""
-        from app.database import _SlidingWindow, _TIMEOUT_L1_THRESHOLD, _trigger_slow_db
         from app.core.self_healing import DegradationLevel
+        from app.database import _TIMEOUT_L1_THRESHOLD, _SlidingWindow, _trigger_slow_db
         mock_h = _fresh_health()
         w = _SlidingWindow(max_age_s=300)
         for _ in range(_TIMEOUT_L1_THRESHOLD):
@@ -73,8 +74,8 @@ class TestSlowDeath:
 
     def test_fifteen_timeouts_triggers_l2(self):
         """15 timeouts in 5min → circuit opens → L2_READ_ONLY."""
-        from app.database import _TIMEOUT_L2_THRESHOLD, _trigger_circuit_open
         from app.core.self_healing import DegradationLevel
+        from app.database import _TIMEOUT_L2_THRESHOLD, _trigger_circuit_open
         mock_h = _fresh_health()
         with patch("app.core.self_healing.health", mock_h):
             _trigger_circuit_open(_TIMEOUT_L2_THRESHOLD)
@@ -82,7 +83,7 @@ class TestSlowDeath:
 
     def test_auto_repair_enters_l1_on_high_latency(self):
         """auto_repair enters L1_CACHE_HEAVY when db_ms > DB_LATENCY_WARN."""
-        from app.core.auto_repair import RepairEngine, _DB_LATENCY_WARN
+        from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
         mock_h = _fresh_health()
         engine = RepairEngine()
@@ -104,7 +105,7 @@ class TestSlowDeath:
 
     def test_auto_repair_exits_l1_on_latency_recovery(self):
         """When DB latency drops, auto_repair exits L1_CACHE_HEAVY back to NONE."""
-        from app.core.auto_repair import RepairEngine, _DB_LATENCY_WARN
+        from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
         mock_h = _fresh_health()
         mock_h.enter_degraded_mode("high latency", DegradationLevel.L1_CACHE_HEAVY)
@@ -257,7 +258,7 @@ class TestMemoryPressure:
 
     def test_memory_critical_triggers_repair(self):
         """When RSS > _MEMORY_CRITICAL_MB, auto_repair must call GC."""
-        from app.core.auto_repair import RepairEngine, _MEMORY_CRITICAL_MB
+        from app.core.auto_repair import _MEMORY_CRITICAL_MB, RepairEngine
         engine = RepairEngine()
         repair_called = []
 
@@ -283,7 +284,7 @@ class TestMemoryPressure:
 
     def test_memory_warn_also_triggers_gc(self):
         """High memory (warn level) also triggers GC before it becomes critical."""
-        from app.core.auto_repair import RepairEngine, _MEMORY_WARN_MB, _MEMORY_CRITICAL_MB
+        from app.core.auto_repair import _MEMORY_CRITICAL_MB, _MEMORY_WARN_MB, RepairEngine
         engine = RepairEngine()
         repair_called = []
 
@@ -301,7 +302,7 @@ class TestMemoryPressure:
 
     def test_normal_memory_does_not_trigger_repair(self):
         """Normal RSS must not trigger unnecessary GC."""
-        from app.core.auto_repair import RepairEngine, _MEMORY_WARN_MB
+        from app.core.auto_repair import _MEMORY_WARN_MB, RepairEngine
         engine = RepairEngine()
         repair_called = []
 
@@ -413,7 +414,9 @@ class TestSilentFailure:
 
     def test_timeout_escalation_path_exists(self):
         """Escalation code for timeout status must exist in check_db_connection_detail."""
-        import ast, inspect
+        import ast
+        import inspect
+
         from app.database import check_db_connection_detail
         src = inspect.getsource(check_db_connection_detail)
         assert '"timeout"' in src or "'timeout'" in src, (
@@ -425,8 +428,8 @@ class TestSilentFailure:
 
     def test_five_timeouts_enters_l1(self):
         """5 timeout events → _trigger_slow_db → L1_CACHE_HEAVY."""
-        from app.database import _trigger_slow_db, _TIMEOUT_L1_THRESHOLD
         from app.core.self_healing import DegradationLevel
+        from app.database import _TIMEOUT_L1_THRESHOLD, _trigger_slow_db
         h = _fresh_health()
         with patch("app.core.self_healing.health", h):
             _trigger_slow_db(_TIMEOUT_L1_THRESHOLD)
@@ -434,8 +437,8 @@ class TestSilentFailure:
 
     def test_fifteen_timeouts_enters_l2(self):
         """15 timeout events → _trigger_circuit_open → L2_READ_ONLY."""
-        from app.database import _trigger_circuit_open, _TIMEOUT_L2_THRESHOLD
         from app.core.self_healing import DegradationLevel
+        from app.database import _TIMEOUT_L2_THRESHOLD, _trigger_circuit_open
         h = _fresh_health()
         with patch("app.core.self_healing.health", h):
             _trigger_circuit_open(_TIMEOUT_L2_THRESHOLD)
@@ -443,8 +446,14 @@ class TestSilentFailure:
 
     def test_no_except_pass_in_trigger_functions(self):
         """The trigger functions must NEVER silently swallow exceptions."""
-        import ast, inspect
-        from app.database import _trigger_slow_db, _trigger_circuit_open, _trigger_system_degradation
+        import ast
+        import inspect
+
+        from app.database import (
+            _trigger_circuit_open,
+            _trigger_slow_db,
+            _trigger_system_degradation,
+        )
 
         for fn in (_trigger_slow_db, _trigger_circuit_open, _trigger_system_degradation):
             src = inspect.getsource(fn)

@@ -58,4 +58,4 @@ class Lab:
     status: str = "active"
 
 
-__all__ = ["Patient", "Order", "Result", "Sample", "Lab"]
+__all__ = ["Lab", "Order", "Patient", "Result", "Sample"]

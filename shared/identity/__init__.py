@@ -20,11 +20,11 @@ from .service import IdentityService
 
 __all__ = [
     "Gender",
+    "IdentityClaimCreated",
+    "IdentityClaimMerged",
     "IdentityDocument",
     "IdentityDocumentType",
     "IdentityEvent",
-    "IdentityClaimCreated",
-    "IdentityClaimMerged",
     "IdentityService",
     "IdentityStatus",
     "IdentityVerified",

@@ -1,3 +1,5 @@
+import contextlib
+
 from record_reader import get_patient_history
 
 
@@ -9,10 +11,8 @@ def analyze_trend(nhid, test):
 
     for r in history:
         if r["test"] == test:
-            try:
+            with contextlib.suppress(BaseException):
                 values.append(float(r["value"]))
-            except:
-                pass
 
     if len(values) < 2:
         return "Not enough data"

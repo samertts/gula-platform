@@ -13,17 +13,19 @@ Route order matters: static segments (``/validate``) are declared before
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, asc, desc
 from sqlalchemy.orm import Session
 
+from backend.app._compat import UTC
+
 from ...core.database import get_db
 from ...models.citizen import Citizen
 from ...models.lab import Lab
+from ...models.notification import NotificationPriority, NotificationType
 from ...models.test_result import (
     ResultCategory,
     ResultStatus,
@@ -42,7 +44,6 @@ from ...schemas.test_result import (
     TimelineSeries,
     ValidationWarning,
 )
-from ...models.notification import NotificationPriority, NotificationType
 from ...services.audit import log_action
 from ...services.notification import send_notification
 from ...services.smart_analysis import (
@@ -50,17 +51,16 @@ from ...services.smart_analysis import (
     validate_result,
 )
 
-
 router = APIRouter(prefix="/test-results", tags=["test-results"])
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
-def _actor_id(request: Request) -> Optional[str]:
+def _actor_id(request: Request) -> str | None:
     return request.headers.get("X-Actor-Id")
 
 
-def _client_ip(request: Request) -> Optional[str]:
+def _client_ip(request: Request) -> str | None:
     if request.client:
         return request.client.host
     return None
@@ -94,7 +94,7 @@ def _recompute_lab_metrics(db: Session, lab: Lab, new_tat_minutes: int) -> None:
     previous_avg = lab.avg_tat_minutes or 0
     new_avg = previous_avg + (new_tat_minutes - previous_avg) / new_total
     lab.total_tests = new_total
-    lab.avg_tat_minutes = int(round(new_avg))
+    lab.avg_tat_minutes = round(new_avg)
 
 
 def _fire_critical_alert(
@@ -213,8 +213,8 @@ def create_test_result(
     warnings_payload = [w.__dict__ for w in vr.warnings] + \
                        [w.__dict__ for w in cmp_.warnings]
 
-    performed_at = payload.performed_at or datetime.now(timezone.utc)
-    received_at = datetime.now(timezone.utc)
+    performed_at = payload.performed_at or datetime.now(UTC)
+    received_at = datetime.now(UTC)
     tat_minutes = max(
         0, int((received_at - performed_at).total_seconds() // 60)
     )
@@ -280,7 +280,7 @@ def create_test_result(
 def citizen_timeline(
     health_id: str,
     request: Request,
-    test_code: Optional[str] = Query(default=None, max_length=60),
+    test_code: str | None = Query(default=None, max_length=60),
     db: Session = Depends(get_db),
 ) -> CitizenTimelineResponse:
     citizen = _require_citizen(db, health_id)
@@ -346,10 +346,10 @@ def citizen_timeline(
 def list_citizen_results(
     health_id: str,
     request: Request,
-    category: Optional[ResultCategory] = Query(default=None),
-    date_from: Optional[date] = Query(default=None),
-    date_to: Optional[date] = Query(default=None),
-    is_abnormal: Optional[bool] = Query(default=None),
+    category: ResultCategory | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    is_abnormal: bool | None = Query(default=None),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -363,11 +363,11 @@ def list_citizen_results(
         filters.append(TestResult.is_abnormal == is_abnormal)
     if date_from is not None:
         filters.append(TestResult.performed_at >= datetime.combine(
-            date_from, datetime.min.time(), tzinfo=timezone.utc
+            date_from, datetime.min.time(), tzinfo=UTC
         ))
     if date_to is not None:
         filters.append(TestResult.performed_at <= datetime.combine(
-            date_to, datetime.max.time(), tzinfo=timezone.utc
+            date_to, datetime.max.time(), tzinfo=UTC
         ))
 
     base_query = db.query(TestResult).filter(and_(*filters))
@@ -444,7 +444,7 @@ def verify_test_result(
 
     row.status = ResultStatus.verified
     row.verified_by = payload.verified_by
-    row.verified_at = datetime.now(timezone.utc)
+    row.verified_at = datetime.now(UTC)
 
     log_action(
         db,

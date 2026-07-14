@@ -7,19 +7,22 @@ are safe to expose to dashboards and the hourly background task.
     GET /v1/outbreak/heatmap/{disease_code} - province-level case counts
     GET /v1/outbreak/resistance             - antibiotic resistance report
 """
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
+
+from backend.app._compat import UTC
 
 from ...core.database import get_db
 from ...core.rbac import Role, require_roles
 from ...schemas.outbreak import (
     AlertsResponse,
     HeatmapResponse,
-    OutbreakAlert as OutbreakAlertSchema,
     ResistanceResponse,
+)
+from ...schemas.outbreak import (
+    OutbreakAlert as OutbreakAlertSchema,
 )
 from ...services.audit import log_action
 from ...services.outbreak_detection import (
@@ -28,17 +31,16 @@ from ...services.outbreak_detection import (
     get_resistance_report,
 )
 
-
 router = APIRouter(prefix="/outbreak", tags=["outbreak"])
 
 _ministry_or_admin = require_roles(Role.MINISTRY, Role.ADMIN)
 
 
-def _actor_id(request: Request) -> Optional[str]:
+def _actor_id(request: Request) -> str | None:
     return request.headers.get("X-Actor-Id")
 
 
-def _client_ip(request: Request) -> Optional[str]:
+def _client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
@@ -60,7 +62,7 @@ def list_alerts(
     )
     db.commit()
     return AlertsResponse(
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         alerts=[
             OutbreakAlertSchema(
                 disease_code=a.disease_code,
@@ -102,7 +104,7 @@ def heatmap(
 @router.get("/resistance", response_model=ResistanceResponse)
 def resistance(
     request: Request,
-    province: Optional[str] = Query(default=None, max_length=80),
+    province: str | None = Query(default=None, max_length=80),
     db: Session = Depends(get_db),
     role: str = Depends(_ministry_or_admin),
 ) -> ResistanceResponse:

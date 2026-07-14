@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import logging
 import os
 import sys
@@ -26,7 +25,6 @@ from .runtime import make_runtime
 from .security import generate_keypair
 from .state import AgentState
 
-
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("gula.edge.cli")
@@ -36,10 +34,9 @@ def _load_config(path: str | None) -> dict[str, Any]:
     cfg_path = Path(path or os.getenv("GULA_EDGE_CONFIG", "config.toml"))
     if not cfg_path.exists():
         sys.exit(f"config not found at {cfg_path} — copy config.example.toml")
-    if sys.version_info >= (3, 11):
-        import tomllib  # type: ignore
-        with cfg_path.open("rb") as f:
-            return tomllib.load(f)
+    import tomllib  # type: ignore
+    with cfg_path.open("rb") as f:
+        return tomllib.load(f)
     import tomli  # type: ignore
     with cfg_path.open("rb") as f:
         return tomli.load(f)
@@ -101,14 +98,7 @@ def _cmd_register(cfg: dict[str, Any]) -> int:
 def _cmd_status(cfg: dict[str, Any]) -> int:
     state = AgentState(cfg["storage"]["state_dir"])
     if not state.is_registered():
-        print(json.dumps({"registered": False}, indent=2))
         return 0
-    print(json.dumps({
-        "registered": True,
-        "device_id":  state.get("device_id"),
-        "fingerprint": state.get("cert_fingerprint"),
-        "backend_url": state.get("backend_url"),
-    }, indent=2))
     return 0
 
 

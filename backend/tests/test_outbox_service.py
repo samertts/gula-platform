@@ -21,6 +21,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
+from app._compat import UTC
+
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production-" + "x" * 32)
@@ -31,22 +33,20 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
+from app.core.events import EventBus
+from app.database import Base
+from app.models.outbox import MAX_ATTEMPTS, OutboxEvent
+from app.services.outbox_service import OutboxWorker, emit_to_outbox, purge_old_events
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from app.database import Base
-from app.models.outbox import OutboxEvent, MAX_ATTEMPTS
-from app.services.outbox_service import emit_to_outbox, OutboxWorker, purge_old_events
-from app.core.events import EventBus
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture()
 def db():
-    import app.models.lab       # noqa: F401 — FK targets
-    import app.models.lab_user  # noqa: F401
-    import app.models.outbox    # noqa: F401
+    import app.models.lab
+    import app.models.lab_user
+    import app.models.outbox
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -158,7 +158,7 @@ class TestOutboxWorkerRunOnce:
             payload='{"x": 1}',
             status="pending",
             attempts=MAX_ATTEMPTS - 1,   # one away from limit
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db.add(ev)
         db.commit()
@@ -175,11 +175,11 @@ class TestOutboxWorkerRunOnce:
     def test_done_events_are_not_reprocessed(self, db):
         ev = OutboxEvent(
             event_type="order.created",
-            payload='{}',
+            payload="{}",
             status="done",
             attempts=1,
-            processed_at=datetime.now(timezone.utc),
-            created_at=datetime.now(timezone.utc),
+            processed_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
         )
         db.add(ev)
         db.commit()
@@ -197,10 +197,10 @@ class TestOutboxWorkerRunOnce:
     def test_exhausted_failed_events_are_not_retried(self, db):
         ev = OutboxEvent(
             event_type="order.created",
-            payload='{}',
+            payload="{}",
             status="failed",
             attempts=MAX_ATTEMPTS,   # already exhausted
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db.add(ev)
         db.commit()
@@ -223,10 +223,10 @@ class TestOutboxWorkerRunOnce:
 
         fail_ev = OutboxEvent(
             event_type="no_handler_event",
-            payload='{}',
+            payload="{}",
             status="pending",
             attempts=0,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db.add(fail_ev)
         db.commit()
@@ -254,10 +254,10 @@ class TestPurgeOldEvents:
     def test_purges_old_done_events(self, db):
         old_done = OutboxEvent(
             event_type="order.created",
-            payload='{}',
+            payload="{}",
             status="done",
             attempts=1,
-            created_at=datetime.now(timezone.utc) - timedelta(days=31),
+            created_at=datetime.now(UTC) - timedelta(days=31),
         )
         db.add(old_done)
         db.commit()
@@ -270,10 +270,10 @@ class TestPurgeOldEvents:
     def test_keeps_recent_events(self, db):
         recent = OutboxEvent(
             event_type="order.created",
-            payload='{}',
+            payload="{}",
             status="done",
             attempts=1,
-            created_at=datetime.now(timezone.utc) - timedelta(days=1),
+            created_at=datetime.now(UTC) - timedelta(days=1),
         )
         db.add(recent)
         db.commit()

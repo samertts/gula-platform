@@ -10,25 +10,27 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Enum,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from backend.app._compat import UTC
+
 from .base import Base
 
 
-class TestOrderStatus(str, enum.Enum):
+class TestOrderStatus(enum.StrEnum):
     pending = "pending"
     dispatched = "dispatched"
     fulfilled = "fulfilled"
@@ -36,7 +38,7 @@ class TestOrderStatus(str, enum.Enum):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class TestOrder(Base):

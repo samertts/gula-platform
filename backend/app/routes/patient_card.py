@@ -138,7 +138,7 @@ def scan_patient_card(
             ip_address=get_client_ip(request),
         )
         db.commit()
-        raise HTTPException(status_code=400, detail="Invalid or expired card token")
+        raise HTTPException(status_code=400, detail="Invalid or expired card token") from e
 
     if token_lab_id != current_user.lab_id:
         log_action(

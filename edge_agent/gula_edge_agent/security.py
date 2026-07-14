@@ -16,7 +16,6 @@ from __future__ import annotations
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-
 # Mirrored from backend.app.edge.config.ALLOWED_TASK_KINDS so that even if the
 # server somehow allowlists a new kind, the agent won't run it without an
 # explicit agent update.

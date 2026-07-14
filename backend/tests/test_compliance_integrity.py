@@ -20,10 +20,10 @@ auth + tenant scoping at the route layer.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import sys
-import json
-import hashlib
 from datetime import datetime, timezone
 
 os.environ["RUNTIME_MODE"] = "test"
@@ -38,19 +38,18 @@ os.environ.setdefault("REDIS_URL", "")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-
 from app.models.audit_log import AuditLog
 from app.models.lab import Lab
-from app.models.lab_user import LabUser
-from app.models.patient import Patient
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
-from app.security.auth import hash_password, create_token
+from app.models.lab_user import LabUser
+from app.models.patient import Patient
+from app.security.auth import create_token, hash_password
 from app.services.audit_service import (
+    _GENESIS_HASH,
+    _compute_chain_hash,
     log_action,
     verify_audit_chain,
-    _compute_chain_hash,
-    _GENESIS_HASH,
 )
 
 
@@ -404,8 +403,8 @@ class TestDhis2Aggregate:
         We assert this by using a dedicated TestClient that swallows server
         exceptions — the route should bail at auth long before the OperationalError.
         """
-        from fastapi.testclient import TestClient
         from app.main import app
+        from fastapi.testclient import TestClient
         with TestClient(app, raise_server_exceptions=False) as c:
             res = c.get("/compliance/dhis2/aggregate")
             assert res.status_code in (401, 403, 503)

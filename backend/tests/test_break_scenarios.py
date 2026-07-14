@@ -10,20 +10,20 @@ These tests simulate what happens when you:
 
 All scenarios run without a real database or Docker.
 """
+import json
+import logging
 import os
 import sys
-import json
 import time
-import logging
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///test_break.db")
 os.environ.setdefault("SECRET_KEY", "test-secret-break-scenarios")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -64,14 +64,14 @@ class TestScenario1_PostgresDown:
 
     def test_single_refused_does_not_escalate(self):
         """One refused should NOT trigger escalation (below threshold)."""
-        from app.database import _SlidingWindow, _CIRCUIT_OPEN_THRESHOLD
+        from app.database import _CIRCUIT_OPEN_THRESHOLD, _SlidingWindow
         w = _SlidingWindow(max_age_s=300)
         w.record("refused")
         assert w.count("refused") < _CIRCUIT_OPEN_THRESHOLD
 
     def test_refused_storm_hits_circuit_threshold(self):
         """20 refused events in 5min → circuit open threshold reached."""
-        from app.database import _SlidingWindow, _CIRCUIT_OPEN_THRESHOLD
+        from app.database import _CIRCUIT_OPEN_THRESHOLD, _SlidingWindow
         w = _SlidingWindow(max_age_s=300)
         for _ in range(_CIRCUIT_OPEN_THRESHOLD):
             w.record("refused")
@@ -79,8 +79,8 @@ class TestScenario1_PostgresDown:
 
     def test_trigger_circuit_open_escalates_to_l2(self):
         """Simulates: refused storm → _trigger_circuit_open → L2_READ_ONLY."""
-        from app.database import _trigger_circuit_open, _CIRCUIT_OPEN_THRESHOLD
-        from app.core.self_healing import DegradationLevel, CircuitState
+        from app.core.self_healing import CircuitState, DegradationLevel
+        from app.database import _CIRCUIT_OPEN_THRESHOLD, _trigger_circuit_open
         mock_h = _fresh_health()
         # Simulate circuit is CLOSED (normal state before storm)
         assert mock_h.db_circuit.state == CircuitState.CLOSED
@@ -93,7 +93,7 @@ class TestScenario1_PostgresDown:
 
     def test_refused_storm_hits_degrade_threshold(self):
         """50 refused events in 5min → system degrade threshold reached."""
-        from app.database import _SlidingWindow, _SYSTEM_DEGRADE_THRESHOLD
+        from app.database import _SYSTEM_DEGRADE_THRESHOLD, _SlidingWindow
         w = _SlidingWindow(max_age_s=300)
         for _ in range(_SYSTEM_DEGRADE_THRESHOLD):
             w.record("refused")
@@ -101,8 +101,8 @@ class TestScenario1_PostgresDown:
 
     def test_trigger_system_degradation_escalates_to_l3(self):
         """Simulates: sustained storm → _trigger_system_degradation → L3."""
-        from app.database import _trigger_system_degradation, _SYSTEM_DEGRADE_THRESHOLD
         from app.core.self_healing import DegradationLevel
+        from app.database import _SYSTEM_DEGRADE_THRESHOLD, _trigger_system_degradation
         mock_h = _fresh_health()
         with patch("app.core.self_healing.health", mock_h):
             _trigger_system_degradation(_SYSTEM_DEGRADE_THRESHOLD + 5)
@@ -333,13 +333,13 @@ class TestScenario4_RestartPersistence:
 class TestScenario5_CorrelationLogs:
 
     def test_user_id_lab_id_vars_exist(self):
-        from app.database import _user_id_var, _lab_id_var
+        from app.database import _lab_id_var, _user_id_var
         assert _user_id_var is not None
         assert _lab_id_var  is not None
 
     def test_correlation_vars_set_before_db_call(self):
         """Simulate: authenticated request → get_current_user sets vars → DB fails."""
-        from app.database import _user_id_var, _lab_id_var
+        from app.database import _lab_id_var, _user_id_var
         t1 = _user_id_var.set(42)
         t2 = _lab_id_var.set(7)
         assert _user_id_var.get(None) == 42
@@ -350,7 +350,7 @@ class TestScenario5_CorrelationLogs:
     def test_db_error_log_includes_user_and_lab(self):
         """The logger.error call in check_db_connection_detail must include
         user_id and lab_id from ContextVars."""
-        from app.database import _user_id_var, _lab_id_var, _request_id_var, _endpoint_var
+        from app.database import _endpoint_var, _lab_id_var, _request_id_var, _user_id_var
 
         # Set all 4 correlation vars as they would be in a real request
         t1 = _request_id_var.set("req-test-001")
@@ -378,8 +378,10 @@ class TestScenario5_CorrelationLogs:
 
         try:
             # Simulate a DB error log directly (the path taken in check_db_connection_detail)
-            from app.database import _user_id_var as _uv, _lab_id_var as _lv
-            from app.database import _request_id_var as _rv, _endpoint_var as _ev
+            from app.database import _endpoint_var as _ev
+            from app.database import _lab_id_var as _lv
+            from app.database import _request_id_var as _rv
+            from app.database import _user_id_var as _uv
             user_id  = _uv.get(None)
             lab_id   = _lv.get(None)
             req_id   = _rv.get("")
@@ -416,15 +418,16 @@ class TestScenario5_CorrelationLogs:
 
     def test_unauthenticated_request_has_none_user(self):
         """Requests without auth must have user_id=None (no crash, no leak)."""
-        from app.database import _user_id_var, _lab_id_var
+        from app.database import _lab_id_var, _user_id_var
         # Don't set anything — simulate unauthenticated request
         assert _user_id_var.get(None) is None
         assert _lab_id_var.get(None)  is None
 
     def test_correlation_vars_dont_leak_between_requests(self):
         """After request A sets vars, request B must see defaults."""
-        from app.database import _user_id_var, _lab_id_var
         import threading
+
+        from app.database import _lab_id_var, _user_id_var
         results = {}
 
         def request_a():
