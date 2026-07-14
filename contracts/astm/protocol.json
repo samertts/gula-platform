@@ -1,0 +1,512 @@
+{
+  "contract": "ASTM E1381/E1394 Protocol Contract — GULA Platform",
+  "version": "E1394-97 (E1381-02 serial transport)",
+  "status": "frozen",
+  "last_updated": "2026-07-14",
+  "source_files": [
+    "backend/app/lims/integration/astm.py",
+    "backend/app/lims/integration/simulator.py",
+    "backend/app/lims/routes.py",
+    "services/device_bridge/app/pipeline/parser_engine.py",
+    "services/device_bridge/app/pipeline/data_pipeline.py",
+    "services/device_bridge/app/pipeline/normalizer.py",
+    "services/device_bridge/app/adapters/vendors.py",
+    "shared/device/astm.py"
+  ],
+
+  "overview": "ASTM E1394 (E1381 serial) protocol for bidirectional communication with laboratory analyzers. Primary protocol for hematology (Sysmex), chemistry (Mindray), and immunoassay (Roche) instruments. Supports frame-level checksum validation, ENQ/ACK handshake, host query (Q message), and result upload (H/P/O/R/L sequence). Two parser implementations exist: the monolith parser in the backend for HTTP-transported messages, and the device-bridge parser in services/device_bridge/ for byte-level serial/TCP transport.",
+
+  "encoding": {
+    "character_encoding": "ASCII",
+    "frame_format": "STX + payload + ETX + checksum",
+    "stx": {"value": "0x02", "name": "Start of Text", "description": "Begins every ASTM frame"},
+    "etx": {"value": "0x03", "name": "End of Text", "description": "Ends frame payload before checksum"},
+    "checksum": {"length": 2, "type": "hex_ascii", "algorithm": "sum(payload) % 256 formatted as 2 uppercase hex digits", "validation": "mandatory via validate_checksum()"},
+    "enq": {"value": "0x05", "name": "Enquiry", "description": "Sent by host to request instrument data"},
+    "ack": {"value": "0x06", "name": "Acknowledge", "description": "Positive acknowledgment"},
+    "nak": {"value": "0x15", "name": "Negative Acknowledge", "description": "Negative acknowledgment — request retransmit"},
+    "eot": {"value": "0x04", "name": "End of Transmission", "description": "Terminates a transmission session"},
+    "cr": {"value": "0x0D", "name": "Carriage Return", "description": "Record (line) delimiter within payload"},
+    "lf": {"value": "0x0A", "name": "Line Feed", "description": "Optional trailing whitespace after checksum"},
+    "record_delimiter": "\\r (CR)",
+    "field_delimiter": "| (pipe)",
+    "repetition_delimiter": "\\\\ (backslash)",
+    "component_delimiter": "^ (caret)",
+    "escape_character": "& (ampersand)"
+  },
+
+  "frame_types": {
+    "H": {
+      "name": "Header",
+      "description": "Message header — first frame in every ASTM transmission. Identifies sender, receiver, protocol version, and message sequence.",
+      "required": true,
+      "max_occurrences": 1,
+      "position": "first frame in message",
+      "fields": [
+        {"seq": 1, "name": "Record Type ID", "description": "Literal 'H'", "data_type": "ST", "length": 1, "required": true, "value": "H"},
+        {"seq": 2, "name": "Delimiter Definition", "description": "Field/component/repetition/escape chars", "data_type": "ST", "length": 4, "required": false, "default": "\\\\^&", "example": "\\\\^&"},
+        {"seq": 3, "name": "Message Control ID", "description": "Unique message identifier", "data_type": "ST", "length": 20, "required": false, "example": "12345678"},
+        {"seq": 4, "name": "Access Password", "description": "Not used", "data_type": "ST", "length": 10, "required": false},
+        {"seq": 5, "name": "Sender Name or ID", "description": "Sending instrument or LIS identifier", "data_type": "ST", "length": 20, "required": false, "default": "LIS"},
+        {"seq": 6, "name": "Sender Street Address", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 7, "name": "Reserved", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 8, "name": "Sender Phone Number", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 9, "name": "Characteristics of Sender", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 10, "name": "Receiver Name or ID", "description": "Receiving system identifier (GULA LIS)", "data_type": "ST", "length": 20, "required": false, "default": "LIS"},
+        {"seq": 11, "name": "Receiver Street Address", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 12, "name": "Reserved", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 13, "name": "Receiver Phone Number", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 14, "name": "Characteristics of Receiver", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 15, "name": "Protocol Version", "description": "ASTM standard version identifier", "data_type": "ST", "length": 10, "required": false, "default": "ASTM_E1394"},
+        {"seq": 16, "name": "Sequence Number", "description": "4-digit zero-padded message sequence number", "data_type": "ST", "length": 4, "required": false, "example": "0001"}
+      ]
+    },
+
+    "P": {
+      "name": "Patient",
+      "description": "Patient identification — links specimen results to a patient. P-2 (or P-3 depending on variant) carries the specimen ID. GULA uses P-2 (fields[1]) as the specimen_id.",
+      "required": false,
+      "max_occurrences": 1,
+      "position": "second frame (after H) in result message",
+      "fields": [
+        {"seq": 1, "name": "Record Type ID", "description": "Literal 'P'", "data_type": "ST", "length": 1, "required": true, "value": "P"},
+        {"seq": 2, "name": "Sequence Number / Specimen ID", "description": "Specimen sequence or barcode. GULA reads this as specimen_id.", "data_type": "ST", "length": 20, "required": false, "example": "1"},
+        {"seq": 3, "name": "Specimen ID (alternate position)", "description": "Used by device_bridge parser_engine.py at parts[3]", "data_type": "ST", "length": 20, "required": false, "example": "SMP-A1B2C3D4"},
+        {"seq": 4, "name": "Patient Name", "description": "Patient name (family^given)", "data_type": "ST", "length": 30, "required": false, "example": "SIM^PATIENT"},
+        {"seq": 5, "name": "Patient ID", "description": "Primary patient identifier", "data_type": "ST", "length": 20, "required": false, "example": "PAT-A1B2C3"},
+        {"seq": 6, "name": "Date of Birth", "description": "YYYYMMDD", "data_type": "DT", "length": 8, "required": false, "example": "19800101"},
+        {"seq": 7, "name": "Sex", "description": "M = male, F = female", "data_type": "ST", "length": 1, "required": false, "example": "M"},
+        {"seq": 8, "name": "Patient Address", "description": "Not used", "data_type": "ST", "length": 40, "required": false},
+        {"seq": 9, "name": "Reserved", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 10, "name": "Phone Number", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 11, "name": "Physician ID", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 12, "name": "Location", "description": "Not used", "data_type": "ST", "length": 20, "required": false}
+      ]
+    },
+
+    "O": {
+      "name": "Order",
+      "description": "Test order — identifies the ordered test for a specimen. GULA reads O-3 (fields[2]) as test_code.",
+      "required": false,
+      "max_occurrences": "one per test (unbounded total)",
+      "position": "after P or after prior O/R block",
+      "fields": [
+        {"seq": 1, "name": "Record Type ID", "description": "Literal 'O'", "data_type": "ST", "length": 1, "required": true, "value": "O"},
+        {"seq": 2, "name": "Sequence Number", "description": "Order sequence within message", "data_type": "ST", "length": 4, "required": false, "example": "1"},
+        {"seq": 3, "name": "Specimen ID", "description": "Specimen barcode or accession number", "data_type": "ST", "length": 20, "required": false, "example": "SMP-A1B2C3D4"},
+        {"seq": 4, "name": "Test Code / Order Code", "description": "PRIMARY TEST CODE. GULA reads this as the test identifier.", "data_type": "ST", "length": 20, "required": false, "example": "WBC"},
+        {"seq": 5, "name": "Test Name", "description": "Universal test name (LOINC or vendor)", "data_type": "ST", "length": 30, "required": false, "example": "White Blood Cell Count"},
+        {"seq": 6, "name": "Reserved", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 7, "name": "Priority", "description": "Not used", "data_type": "ST", "length": 10, "required": false}
+      ]
+    },
+
+    "R": {
+      "name": "Result",
+      "description": "Test result — contains the measured value, unit, reference range, and abnormal flags. Each R frame carries one result.",
+      "required": false,
+      "max_occurrences": "one per test (unbounded total)",
+      "position": "after corresponding O frame (O→R pair per test)",
+      "fields": [
+        {"seq": 1, "name": "Record Type ID", "description": "Literal 'R'", "data_type": "ST", "length": 1, "required": true, "value": "R"},
+        {"seq": 2, "name": "Sequence Number", "description": "Result sequence number within message", "data_type": "ST", "length": 4, "required": false, "example": "1"},
+        {"seq": 3, "name": "Instrument Result ID", "description": "Instrument-generated unique result identifier", "data_type": "ST", "length": 20, "required": false, "example": "A1B2C3D4"},
+        {"seq": 4, "name": "Test Code (or Result ID)", "description": "TEST CODE — identifies which test this result belongs to. In variant implementations, this field may carry the test code.", "data_type": "ST", "length": 20, "required": false, "example": "WBC"},
+        {"seq": 5, "name": "Test Name / Result Name", "description": "Human-readable test name (display name)", "data_type": "ST", "length": 30, "required": false, "example": "White Blood Cell Count"},
+        {"seq": 6, "name": "Value", "description": "THE RESULT VALUE as a string. May be numeric or text.", "data_type": "ST", "length": 20, "required": false, "example": "7.5"},
+        {"seq": 7, "name": "Unit", "description": "Result unit (e.g., 10^3/uL, mg/dL, mmol/L)", "data_type": "ST", "length": 10, "required": false, "example": "10^3/uL"},
+        {"seq": 8, "name": "Reference Range", "description": "Normal reference range (e.g., 4.0-11.0)", "data_type": "ST", "length": 20, "required": false, "example": "4.0-11.0"},
+        {"seq": 9, "name": "Abnormal Flag", "description": "N = normal, H = high, L = low, HH = panic high, LL = panic low", "data_type": "ST", "length": 2, "required": false, "example": "N"},
+        {"seq": 10, "name": "Nature of Abnormality", "description": "Not used", "data_type": "ST", "length": 10, "required": false},
+        {"seq": 11, "name": "Result Status", "description": "F = final, P = preliminary, X = cancelled", "data_type": "ST", "length": 1, "required": false, "default": "F"},
+        {"seq": 12, "name": "Operator ID", "description": "Not used", "data_type": "ST", "length": 10, "required": false},
+        {"seq": 13, "name": "Date/Time Test Started", "description": "Not used", "data_type": "DT", "length": 14, "required": false},
+        {"seq": 14, "name": "Date/Time Test Completed", "description": "Not used", "data_type": "DT", "length": 14, "required": false}
+      ]
+    },
+
+    "C": {
+      "name": "Comment",
+      "description": "Free-text comment associated with patient, order, or result. Generic note attachment.",
+      "required": false,
+      "max_occurrences": "unbounded",
+      "fields": [
+        {"seq": 1, "name": "Record Type ID", "description": "Literal 'C'", "data_type": "ST", "length": 1, "required": true, "value": "C"},
+        {"seq": 2, "name": "Sequence Number", "description": "Comment sequence within message", "data_type": "ST", "length": 4, "required": false},
+        {"seq": 3, "name": "Comment Source", "description": "I = instrument, M = LIS, P = physician", "data_type": "ST", "length": 1, "required": false},
+        {"seq": 4, "name": "Comment Text", "description": "Free-text comment content", "data_type": "TX", "length": 65536, "required": false}
+      ]
+    },
+
+    "L": {
+      "name": "Terminator",
+      "description": "Message terminator — signals end of ASTM message transmission. Must be the last frame.",
+      "required": true,
+      "max_occurrences": 1,
+      "position": "last frame in message",
+      "fields": [
+        {"seq": 1, "name": "Record Type ID", "description": "Literal 'L'", "data_type": "ST", "length": 1, "required": true, "value": "L"},
+        {"seq": 2, "name": "Sequence Number", "description": "Terminator sequence number", "data_type": "ST", "length": 4, "required": false, "default": "1"},
+        {"seq": 3, "name": "Terminator Code", "description": "N = normal termination, R = resend requested", "data_type": "ST", "length": 1, "required": false, "default": "N"}
+      ]
+    },
+
+    "Q": {
+      "name": "Query",
+      "description": "Host query — LIS sends Q frame to request specific patient/specimen data from the instrument. Used in host-query mode for bidirectional instruments.",
+      "required": false,
+      "max_occurrences": 1,
+      "direction": "LIS→Instrument",
+      "fields": [
+        {"seq": 1, "name": "Record Type ID", "description": "Literal 'Q'", "data_type": "ST", "length": 1, "required": true, "value": "Q"},
+        {"seq": 2, "name": "Sequence Number", "description": "Query sequence number", "data_type": "ST", "length": 4, "required": false, "default": "1"},
+        {"seq": 3, "name": "Specimen Barcode / Patient ID", "description": "The target specimen barcode or patient identifier to query", "data_type": "ST", "length": 20, "required": false, "example": "SMP-A1B2C3D4"},
+        {"seq": 4, "name": "Test Codes (optional)", "description": "ALL = all tests for specimen, or comma-separated list of test codes", "data_type": "ST", "length": 100, "required": false, "default": "ALL"}
+      ]
+    },
+
+    "M": {
+      "name": "Manufacturer",
+      "description": "Manufacturer-specific information frame. Vendor-defined structure. Not parsed by GULA.",
+      "required": false,
+      "max_occurrences": "unbounded",
+      "fields": [
+        {"seq": 1, "name": "Record Type ID", "description": "Literal 'M'", "data_type": "ST", "length": 1, "required": true, "value": "M"},
+        {"seq": 2, "name": "Sequence Number", "description": "Sequence within message", "data_type": "ST", "length": 4, "required": false},
+        {"seq": 3, "name": "Manufacturer Data", "description": "Vendor-defined content. Not parsed.", "data_type": "TX", "length": 65536, "required": false}
+      ]
+    }
+  },
+
+  "message_sequences": {
+    "result_upload": {
+      "description": "Standard result upload from instrument to LIS",
+      "direction": "instrument→LIS",
+      "frames_in_order": [
+        {"frame": "H", "usage": "R", "description": "Header — begins message, identifies sender"},
+        {"frame": "P", "usage": "R", "description": "Patient — patient/specimen identification"},
+        {"frame": "O", "usage": "R", "description": "Order — test order (one per test)"},
+        {"frame": "R", "usage": "R", "description": "Result — test result (one per test, follows O)"},
+        {"frame": "C", "usage": "O", "description": "Comment — optional remarks"},
+        {"frame": "L", "usage": "R", "description": "Terminator — ends message, N = normal"}
+      ],
+      "example": "H|\\\\^&|||SIMULATOR|||||ASTM_E1394|0001|\\rP|1|SMP-A1B2C3D4|||SIM^PATIENT|||M|19800101\\rO|1|SMP-A1B2C3D4|WBC|White Blood Cell Count|||\\rR|1|A1B2C3D4|WBC|White Blood Cell Count|7.5|10^3/uL|4.0-11.0|N\\rL|1|N\\r"
+    },
+
+    "host_query": {
+      "description": "LIS queries instrument for specific specimen data",
+      "direction": "LIS→Instrument then instrument→LIS",
+      "protocol_flow": [
+        {"step": 1, "action": "LIS sends ENQ (0x05)"},
+        {"step": 2, "action": "Instrument responds ACK (0x06) if ready"},
+        {"step": 3, "action": "LIS sends Q frame as STX...ETX+checksum"},
+        {"step": 4, "action": "Instrument responds ACK (0x06)"},
+        {"step": 5, "action": "Instrument sends result data (H/P/O/R/L frames) as STX...ETX+checksum"},
+        {"step": 6, "action": "LIS responds ACK (0x06)"},
+        {"step": 7, "action": "LIS sends EOT (0x04)"}
+      ],
+      "example_query": "H|\\\\^&|||LIS|||||ASTM_E1394|0001|\\rQ|1|SMP-A1B2C3D4||ALL\\rL|1|N\\r"
+    }
+  },
+
+  "handshake_protocol": {
+    "ENQ_ACK": {
+      "description": "Bidirectional ENQ/ACK handshake for session establishment",
+      "initiator": "LIS (host)",
+      "flow": [
+        {"from": "LIS", "message": "ENQ (0x05)", "description": "Host requests instrument attention"},
+        {"from": "instrument", "message": "ACK (0x06)", "description": "Instrument acknowledges and is ready"},
+        {"from": "LIS", "message": "STX + payload + ETX + checksum", "description": "Host sends command (e.g., Q frame)"},
+        {"from": "instrument", "message": "ACK (0x06) or NAK (0x15)", "description": "Instrument accepts or rejects frame"},
+        {"from": "LIS", "message": "EOT (0x04)", "description": "Host terminates session"}
+      ],
+      "timeout_ms": 5000,
+      "retry_count": 3,
+      "retry_interval_ms": 1000
+    }
+  },
+
+  "connection_management": {
+    "serial": {
+      "baud_rates": [9600, 19200, 38400, 57600, 115200],
+      "data_bits": 8,
+      "parity": ["none", "even"],
+      "stop_bits": 1,
+      "flow_control": "none",
+      "default_baud": 9600
+    },
+    "tcp": {
+      "transport": "TCP/IP socket",
+      "default_port": 5000,
+      "encoding": "ASCII",
+      "delimiter": "STX/ETX framed or CR-terminated lines"
+    },
+    "device_registry": {
+      "class": "DeviceRegistry",
+      "source": "backend/app/lims/integration/device_registry.py",
+      "fields": ["instrument_id", "instrument_code", "protocol", "host", "port", "connected", "connected_at", "last_heartbeat", "error_count", "metadata"],
+      "key_methods": ["register", "unregister", "get", "get_by_code", "list_active", "mark_heartbeat", "mark_disconnected"]
+    }
+  },
+
+  "parsing": {
+    "monolith_parser": {
+      "source": "backend/app/lims/integration/astm.py parse_astm_message()",
+      "input": "raw string (CR or CR/LF delimited)",
+      "method": "split on CR/LF regex, first character of each line determines record_type",
+      "field_delimiter": "|",
+      "extraction": {
+        "specimen_id": "P-2 (first field after type marker, fields[1])",
+        "test_code": "O-4 (fields[3]) or R-2 (fields[2]) depending on context",
+        "test_name": "R-4 (fields[3])",
+        "value": "R-5 (fields[4])",
+        "unit": "R-6 (fields[5])",
+        "ref_range": "R-7 (fields[6])",
+        "flag": "R-8 (fields[7])",
+        "instrument_result_id": "R-2 (fields[1])"
+      }
+    },
+    "device_bridge_parser": {
+      "source": "services/device_bridge/app/pipeline/parser_engine.py ASTMParser",
+      "input": "bytes (byte-level frame from serial/TCP)",
+      "frame_assembly": "ASTMBuffer — accumulates bytes, extracts STX...ETX+checksum frames",
+      "checksum_validation": "mandatory — sum(payload) % 256 compared to received hex",
+      "parsing": "decode payload as ASCII, split on CR, parse each line by type marker",
+      "extraction": {
+        "patient_id": "P-3 (parts[3])",
+        "patient_name": "P-5 (parts[5])",
+        "test_code": "R-2 (parts[2], last component after ^ split)",
+        "value": "R-3 (parts[3])",
+        "unit": "R-4 (parts[4])"
+      }
+    },
+    "shared_protocol": {
+      "source": "shared/device/astm.py ASTMProtocol",
+      "frame_pattern": "STX (0x02) + payload + ETX (0x03) + optional checksum byte",
+      "pattern_regex": "\\\\x02(.*?)\\\\x03(\\\\w?)",
+      "result_parsing": "split on |, fields[2]=test_id, fields[3]=test_name, fields[4]=value, fields[5]=unit, fields[6]=flags, fields[7]=ref_range"
+    }
+  },
+
+  "supported_instruments": {
+    "sysmex": {
+      "full_name": "Sysmex Corporation",
+      "instrument_types": ["hematology"],
+      "models": ["XS-1000i", "XT-2000i", "XN-350", "XN-550", "XN-1000", "XN-2000", "XE-5000"],
+      "test_profiles": ["CBC (complete blood count)", "CBC+DIFF (with 5-part differential)"],
+      "adapter_class": "SysmexAdapter",
+      "adapter_transforms": "Maps HGB→HB test code",
+      "connection": "serial RS-232",
+      "baud": 9600,
+      "notes": "Sysmex instruments send hematology panels. Use ASTM protocol. HGB code mapped to HB for legacy compatibility."
+    },
+    "mindray": {
+      "full_name": "Mindray Bio-Medical Electronics",
+      "instrument_types": ["chemistry", "hematology"],
+      "models": ["BC-2600", "BC-3600", "BC-5000", "BC-6000", "BC-6800", "BS-200", "BS-400", "BS-800"],
+      "test_profiles": ["CBC", "chemistry panel", "liver panel", "renal panel"],
+      "adapter_class": "MindrayAdapter",
+      "adapter_transforms": "UNKNOWN patient IDs remapped to UNMATCHED",
+      "connection": "serial RS-232 or TCP/IP",
+      "baud": 19200,
+      "notes": "Mindray instruments may send empty patient IDs. The MindrayAdapter remaps UNKNOWN→UNMATCHED."
+    },
+    "roche": {
+      "full_name": "Roche Diagnostics",
+      "instrument_types": ["immunoassay", "clinical chemistry"],
+      "models": ["Cobas c 311", "Cobas c 501", "Cobas c 502", "Cobas e 411", "Cobas e 601", "Cobas 8000"],
+      "test_profiles": ["immunoassay", "chemistry"],
+      "adapter_class": "RocheAdapter",
+      "adapter_transforms": "Unit normalization: 10^9/L→x10^9/L",
+      "connection": "TCP/IP (ASTM over TCP) or serial",
+      "port": 5000,
+      "notes": "Roche uses ASTM E1394 over TCP. Unit format varies; RocheAdapter normalizes 10^9/L→x10^9/L."
+    },
+    "generic": {
+      "full_name": "Generic ASTM Instrument",
+      "instrument_types": ["any"],
+      "models": ["any ASTM E1394-compatible device"],
+      "test_profiles": ["any"],
+      "adapter_class": "GenericASTMAdapter",
+      "adapter_transforms": "passthrough — no transformation",
+      "connection": "serial RS-232 or TCP/IP",
+      "notes": "Generic adapter makes zero assumptions about instrument-specific encoding."
+    }
+  },
+
+  "test_profiles": {
+    "hematology": {
+      "WBC":  {"name": "White Blood Cell Count", "unit": "10^3/uL", "ref_low": 4.0, "ref_high": 11.0, "precision": 1, "category": "CBC"},
+      "RBC":  {"name": "Red Blood Cell Count", "unit": "10^6/uL", "ref_low": 4.5, "ref_high": 5.9, "precision": 2, "category": "CBC"},
+      "HGB":  {"name": "Hemoglobin", "unit": "g/dL", "ref_low": 12.0, "ref_high": 16.0, "precision": 1, "category": "CBC"},
+      "HCT":  {"name": "Hematocrit", "unit": "%", "ref_low": 36.0, "ref_high": 48.0, "precision": 1, "category": "CBC"},
+      "MCV":  {"name": "Mean Corpuscular Volume", "unit": "fL", "ref_low": 80.0, "ref_high": 100.0, "precision": 1, "category": "CBC"},
+      "PLT":  {"name": "Platelet Count", "unit": "10^3/uL", "ref_low": 150, "ref_high": 450, "precision": 0, "category": "CBC"}
+    },
+    "chemistry": {
+      "GLU":  {"name": "Glucose", "unit": "mg/dL", "ref_low": 70, "ref_high": 110, "precision": 1, "category": "chem"},
+      "CRE":  {"name": "Creatinine", "unit": "mg/dL", "ref_low": 0.6, "ref_high": 1.2, "precision": 2, "category": "chem"},
+      "BUN":  {"name": "Blood Urea Nitrogen", "unit": "mg/dL", "ref_low": 7, "ref_high": 20, "precision": 1, "category": "chem"},
+      "NA":   {"name": "Sodium", "unit": "mmol/L", "ref_low": 136, "ref_high": 145, "precision": 0, "category": "chem"},
+      "K":    {"name": "Potassium", "unit": "mmol/L", "ref_low": 3.5, "ref_high": 5.1, "precision": 1, "category": "chem"},
+      "CL":   {"name": "Chloride", "unit": "mmol/L", "ref_low": 98, "ref_high": 107, "precision": 0, "category": "chem"},
+      "CA":   {"name": "Calcium", "unit": "mg/dL", "ref_low": 8.5, "ref_high": 10.5, "precision": 1, "category": "chem"},
+      "TP":   {"name": "Total Protein", "unit": "g/dL", "ref_low": 6.0, "ref_high": 8.3, "precision": 1, "category": "chem"},
+      "ALB":  {"name": "Albumin", "unit": "g/dL", "ref_low": 3.5, "ref_high": 5.0, "precision": 1, "category": "chem"},
+      "TBIL": {"name": "Total Bilirubin", "unit": "mg/dL", "ref_low": 0.1, "ref_high": 1.2, "precision": 2, "category": "chem"},
+      "ALP":  {"name": "Alkaline Phosphatase", "unit": "U/L", "ref_low": 44, "ref_high": 147, "precision": 0, "category": "chem"},
+      "ALT":  {"name": "ALT (SGPT)", "unit": "U/L", "ref_low": 10, "ref_high": 40, "precision": 0, "category": "chem"},
+      "AST":  {"name": "AST (SGOT)", "unit": "U/L", "ref_low": 10, "ref_high": 40, "precision": 0, "category": "chem"},
+      "LDH":  {"name": "Lactate Dehydrogenase", "unit": "U/L", "ref_low": 140, "ref_high": 280, "precision": 0, "category": "chem"},
+      "CK":   {"name": "Creatine Kinase", "unit": "U/L", "ref_low": 55, "ref_high": 170, "precision": 0, "category": "chem"},
+      "AMY":  {"name": "Amylase", "unit": "U/L", "ref_low": 28, "ref_high": 100, "precision": 0, "category": "chem"}
+    }
+  },
+
+  "vendor_code_mappings": {
+    "sysmex": {
+      "notes": "Sysmex uses HGB test code internally; GULA maps HGB→HB for legacy compatibility via SysmexAdapter",
+      "mapping": {"HGB": "HB"}
+    },
+    "roche": {
+      "notes": "Roche uses standard ASTM test codes. Unit format uses 10^9/L notation; normalized to x10^9/L.",
+      "unit_mapping": {"10^9/L": "x10^9/L"}
+    }
+  },
+
+  "canonical_result_models": {
+    "monolith": {
+      "class": "ASTMResult",
+      "source": "backend/app/lims/integration/astm.py",
+      "fields": [
+        {"name": "specimen_id", "type": "str", "source": "P-2", "description": "Specimen barcode / accession number"},
+        {"name": "test_code", "type": "str", "source": "O-4 or R-2", "description": "Canonical test code"},
+        {"name": "test_name", "type": "str", "source": "R-4", "description": "Test display name"},
+        {"name": "value", "type": "str", "source": "R-5", "description": "Result value (string)"},
+        {"name": "unit", "type": "str", "source": "R-6", "description": "Result unit"},
+        {"name": "ref_range", "type": "str", "source": "R-7", "description": "Reference range display string"},
+        {"name": "flag", "type": "str", "source": "R-8", "description": "Abnormal flag (N/H/L)"},
+        {"name": "instrument_result_id", "type": "str", "source": "R-2", "description": "Instrument result identifier"},
+        {"name": "raw_records", "type": "list[ASTMRecord]", "source": "all", "description": "All parsed records for traceability"}
+      ]
+    },
+    "device_bridge": {
+      "class": "NormalizedResult",
+      "source": "services/device_bridge/app/pipeline/normalizer.py",
+      "vendor_transforms": "AdapterRegistry resolves vendor→adapter, transforms applied before normalization",
+      "fields": [
+        {"name": "patient_id", "type": "str", "source": "resolved via PatientMatcher", "description": "Patient identifier from P frame or fallback"},
+        {"name": "device_id", "type": "str", "source": "connection context", "description": "Device/instrument identifier"},
+        {"name": "test_code", "type": "str", "source": "R frame after mapping_engine.canonical_code()", "description": "Canonical test code via TestMappingEngine"},
+        {"name": "test_name", "type": "str", "source": "TEST_NAME_MAP or raw code", "description": "Human-readable test name"},
+        {"name": "value", "type": "float", "source": "R value parsed to float", "description": "Numerical result value"},
+        {"name": "unit", "type": "str", "source": "R frame", "description": "Result unit"},
+        {"name": "reference_range", "type": "str", "source": "provided at transform time", "description": "Normal reference range"},
+        {"name": "timestamp", "type": "datetime", "source": "datetime.now(UTC)", "description": "Processing timestamp"},
+        {"name": "status", "type": "str", "default": "final", "description": "Result status"}
+      ]
+    },
+    "shared": {
+      "class": "ASTMResult (shared/device/astm.py)",
+      "source": "shared/device/astm.py",
+      "fields": [
+        {"name": "sequence", "type": "str", "source": "fields[1]", "description": "Sequence number"},
+        {"name": "test_id", "type": "str", "source": "fields[2]", "description": "Test identifier"},
+        {"name": "test_name", "type": "str", "source": "fields[3]", "description": "Test name"},
+        {"name": "value", "type": "str", "source": "fields[4]", "description": "Result value"},
+        {"name": "unit", "type": "str", "source": "fields[5]", "description": "Unit"},
+        {"name": "abnormal_flags", "type": "str", "source": "fields[6]", "description": "Abnormal flags"},
+        {"name": "reference_range", "type": "str", "source": "fields[7]", "description": "Reference range"}
+      ]
+    }
+  },
+
+  "error_handling": {
+    "frame_level": {
+      "missing_stx": "ASTMBuffer discards bytes until STX (0x02) found",
+      "missing_etx": "ASTMBuffer waits for more data — no error raised until timeout",
+      "checksum_mismatch": "validate_checksum() raises ParserError with expected vs received values. Frame is discarded.",
+      "truncated_frame": "If STX found but insufficient bytes for ETX+checksum, buffer waits for more data"
+    },
+    "record_level": {
+      "empty_lines": "skipped (after strip())",
+      "unknown_record_type": "recorded as type='unknown' in monolith parser; silently skipped in device_bridge parser",
+      "short_records": "missing fields return empty strings; no error raised",
+      "invalid_numeric": "device_bridge ParserEngine.parse() raises ParserError('Invalid numeric value'); frame discarded in pipeline",
+      "insufficient_fields": "ParserEngine requires ≥3 fields; ParserError('Expected at least 3 fields')"
+    },
+    "pipeline_level": {
+      "corrupt_frame": "caught by except Exception in DataPipeline.process_chunk, logged, frame discarded",
+      "empty_result_set": "pipeline returns empty list, no error raised",
+      "send_failure": "results queued to RetryQueue and EdgeAgentBuffer for later retry"
+    }
+  },
+
+  "simulator_specification": {
+    "source": "backend/app/lims/integration/simulator.py",
+    "generation_function": "generate_astm_message()",
+    "input_parameters": [
+      {"name": "specimen_barcode", "type": "str | None", "default": "SMP-<8-hex-uuid>"},
+      {"name": "test_codes", "type": "list[str] | None", "default": ["WBC", "RBC", "HGB", "HCT", "PLT"]},
+      {"name": "inject_error", "type": "bool", "default": false, "description": "Generate out-of-range values with H/L flags"}
+    ],
+    "output": "ASTM-formatted string with CR record delimiters",
+    "value_generation": "Gaussian random centered on (ref_low + ref_high)/2, SD = range/4. Error mode biases ±(1-5) beyond ref range.",
+    "flag_logic": "N = normal (always set), H if value > ref_high (30% chance in error mode), L if value < ref_low (30% chance in error mode)",
+    "test_profiles_available": ["WBC", "RBC", "HGB", "HCT", "MCV", "PLT", "GLU", "CRE", "BUN", "NA", "K", "CL", "CA", "TP", "ALB", "TBIL", "ALP", "ALT", "AST", "LDH", "CK", "AMY"]
+  },
+
+  "data_pipeline": {
+    "source": "services/device_bridge/app/pipeline/data_pipeline.py DataPipeline",
+    "flow": [
+      {"step": 1, "component": "ASTMBuffer.append()", "description": "Accumulate raw bytes from instrument connection"},
+      {"step": 2, "component": "ASTMBuffer.extract_frames()", "description": "Extract STX...ETX+checksum frames"},
+      {"step": 3, "component": "validate_checksum()", "description": "Verify frame integrity"},
+      {"step": 4, "component": "ASTMParser.parse_frame()", "description": "Decode payload → ASTMRecord list"},
+      {"step": 5, "component": "ASTMMessageBuilder.process_records()", "description": "Build patient-scoped result rows"},
+      {"step": 6, "component": "AdapterRegistry.resolve(vendor).transform_rows()", "description": "Apply vendor-specific transforms"},
+      {"step": 7, "component": "TestMappingEngine.canonical_code()", "description": "Map vendor codes to canonical test codes"},
+      {"step": 8, "component": "PatientMatcher.resolve_patient_id()", "description": "Resolve patient identity"},
+      {"step": 9, "component": "Normalizer.transform()", "description": "Create NormalizedResult"},
+      {"step": 10, "component": "ResultRepository.save_results()", "description": "Persist results"},
+      {"step": 11, "component": "LogRepository.save()", "description": "Log raw data and processing status"},
+      {"step": 12, "component": "SmartRoutingEngine.decide()", "description": "Route to GULA API and/or offline edge buffer"},
+      {"step": 13, "component": "GulaClient.send_results()", "description": "Forward normalized results to GULA backend"},
+      {"step": 14, "component": "RetryQueue.enqueue()", "description": "Queue failed sends for retry"},
+      {"step": 15, "component": "EdgeAgentBuffer.enqueue()", "description": "Buffer for offline/edge sync"}
+    ]
+  },
+
+  "adapter_registry": {
+    "source": "services/device_bridge/app/adapters/vendors.py",
+    "adapters": {
+      "generic": {"class": "GenericASTMAdapter", "transform": "passthrough"},
+      "sysmex": {"class": "SysmexAdapter", "transform": "test_code.replace('HGB', 'HB')"},
+      "roche":  {"class": "RocheAdapter", "transform": "unit.replace('10^9/L', 'x10^9/L')"},
+      "mindray": {"class": "MindrayAdapter", "transform": "patient_id 'UNKNOWN' → 'UNMATCHED'"}
+    }
+  },
+
+  "api_endpoints": {
+    "receive_astm": {
+      "method": "POST",
+      "path": "/lims/integration/astm/receive",
+      "description": "Receive and parse an ASTM E1394 message from an instrument",
+      "auth": "JWT (get_current_user)",
+      "tenant_isolation": "lab_id from current_user, verified against instrument",
+      "request_body": {"instrument_id": "int", "raw_message": "str"},
+      "response": {"parsed_results": [{"specimen_id": "str", "test_code": "str", "value": "str", "unit": "str", "flag": "str"}], "count": "int"},
+      "error_codes": [404, 500]
+    },
+    "simulate": {
+      "method": "POST",
+      "path": "/lims/integration/simulate",
+      "description": "Generate and parse a simulated ASTM message for testing",
+      "auth": "JWT (get_current_user)",
+      "query_params": {"instrument_id": "int", "protocol": "astm", "test_codes": "optional comma-separated", "inject_error": "bool"},
+      "response": {"protocol": "astm", "raw_message": "str", "parsed": [{"specimen_id": "str", "test_code": "str", "value": "str"}]}
+    }
+  },
+
+  "definition_of_frozen": "This document captures the exact ASTM E1381/E1394 contract as implemented on 2026-07-14. It covers both the monolith parser (backend/app/lims/integration/astm.py) and the device bridge parser (services/device_bridge/app/pipeline/parser_engine.py) including all frame type definitions, field positions, checksum validation, ENQ/ACK handshake, host query protocol, vendor adapter transforms, and the full data pipeline. Any changes to frame structures, field indices, checksum algorithm, handshake protocol, or canonical result mapping constitute a contract change requiring version bump and stakeholder notification."
+}

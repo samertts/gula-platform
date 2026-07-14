@@ -7,13 +7,6 @@ from .ai_interaction import (
     MedicalTerminologyNormalized,
 )
 from .audit_log import AuditLog
-    AIFeedback,
-    AIInteraction,
-    AIRetrievalRef,
-    AIUnresolvedQuestion,
-    MedicalTerminologyNormalized,
-)
-from .audit_log import AuditLog
 from .consent import Consent
 from .edge import (
     EdgeDevice,
