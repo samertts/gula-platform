@@ -9,8 +9,10 @@ from backend.app.kernel.event_bus.dispatcher import EventDispatcher
 from backend.app.kernel.event_bus.events import Event
 from backend.app.kernel.event_bus.inbox import InboxPattern
 from backend.app.kernel.event_bus.outbox import OutboxPattern
+from backend.app.kernel.event_bus.recovery import RecoveryEngine
 from backend.app.kernel.event_bus.replay import EventReplay
 from backend.app.kernel.event_bus.retry_queue import RetryQueue
+from backend.app.kernel.event_bus.snapshot import SnapshotEngine
 from backend.app.kernel.event_bus.store import EventStore
 from backend.app.kernel.event_bus.versioning import EventVersioning
 
@@ -30,6 +32,8 @@ class EventBus:
         self.retry_queue = RetryQueue()
         self.dead_letter_queue = DeadLetterQueue()
         self.replay = EventReplay(self)
+        self.snapshot = SnapshotEngine()
+        self.recovery = RecoveryEngine()
         self.versioning = EventVersioning()
         self._subscribers: dict[str, list[Callable]] = {}
 
