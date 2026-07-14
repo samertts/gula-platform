@@ -1,0 +1,43 @@
+{
+  "name": "@gula-platform/sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for the GULA Medical Laboratory Platform — Arabic-first healthcare LIMS",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "prepublishOnly": "npm run build",
+    "lint": "eslint src/ --ext .ts",
+    "test": "jest --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "gula",
+    "lims",
+    "healthcare",
+    "lab",
+    "laboratory",
+    "iraq",
+    "fhir",
+    "mpi",
+    "sdk"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

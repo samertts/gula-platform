@@ -1,0 +1,458 @@
+{
+  "contract": "HL7 v2.x Protocol Contract — GULA Platform",
+  "version": "2.5.1",
+  "status": "frozen",
+  "last_updated": "2026-07-14",
+  "source_files": [
+    "backend/app/lims/integration/hl7.py",
+    "backend/app/lims/integration/simulator.py",
+    "backend/app/lims/routes.py"
+  ],
+
+  "overview": "HL7 v2.5.1 interface for laboratory instrument result ingestion. Supports ORU^R01 (unsolicited observation result) messages from clinical laboratory analyzers and middleware. Used by Roche, Abbott, Siemens instruments. Message exchange is LIS-as-server, instrument-as-client via HTTP POST. All patient data is tenant-isolated by lab_id.",
+
+  "encoding": {
+    "message_format": "ER7 (pipe-delimited)",
+    "segment_terminator": "\\r (0x0D, CR)",
+    "field_separator": "|",
+    "component_separator": "^",
+    "subcomponent_separator": "&",
+    "repetition_separator": "~",
+    "escape_character": "\\\\",
+    "character_encodings": ["UTF-8", "ASCII"],
+    "supported_versions": ["2.5", "2.5.1"],
+    "xml_encoding_supported": false
+  },
+
+  "supported_message_types": [
+    {
+      "type": "ORU^R01",
+      "description": "Unsolicited observation result — primary message type for instrument result transmission",
+      "direction": "instrument→LIS",
+      "ack_required": true,
+      "ack_type": "ORU^R01 ACK",
+      "trigger_event": "R01"
+    },
+    {
+      "type": "ACK",
+      "description": "General acknowledgment — returned for all accepted messages",
+      "direction": "LIS→instrument",
+      "ack_codes": {
+        "AA": "Application Accept — message accepted",
+        "AE": "Application Error — message valid but processing failed",
+        "AR": "Application Reject — message rejected"
+      }
+    },
+    {
+      "type": "ADT^A01",
+      "description": "Admit/visit notification — patient admission from HIS",
+      "direction": "HIS→LIS",
+      "status": "not_yet_implemented",
+      "planned": true
+    },
+    {
+      "type": "ADT^A04",
+      "description": "Patient registration — outpatient registration",
+      "direction": "HIS→LIS",
+      "status": "not_yet_implemented",
+      "planned": true
+    },
+    {
+      "type": "ORM^O01",
+      "description": "General order message — lab order placement from HIS/CPOE",
+      "direction": "HIS→LIS",
+      "status": "not_yet_implemented",
+      "planned": true
+    },
+    {
+      "type": "QBP^Q22",
+      "description": "Query by parameter — patient demographics query",
+      "direction": "bidirectional",
+      "status": "not_yet_implemented",
+      "planned": false
+    }
+  ],
+
+  "segments": {
+    "MSH": {
+      "name": "Message Header",
+      "description": "Every HL7 message begins with MSH. Defines message type, sending/receiving applications, timestamp, and version.",
+      "required": true,
+      "max_occurrences": 1,
+      "fields": [
+        {"seq": 1, "name": "Field Separator", "description": "Literal value: |", "data_type": "ST", "length": 1, "required": true, "value": "|"},
+        {"seq": 2, "name": "Encoding Characters", "description": "Component/repetition/escape/subcomponent separators", "data_type": "ST", "length": 4, "required": true, "value": "^~\\\\&"},
+        {"seq": 3, "name": "Sending Application", "description": "Instrument or middleware identifier (e.g., SIMULATOR, ROCHE_COBAS)", "data_type": "HD", "length": 227, "required": false, "example": "SIMULATOR"},
+        {"seq": 4, "name": "Sending Facility", "description": "Sending lab/facility name", "data_type": "HD", "length": 227, "required": false, "example": "SIMLAB"},
+        {"seq": 5, "name": "Receiving Application", "description": "GULA LIS identifier", "data_type": "HD", "length": 227, "required": false, "default": "LIS"},
+        {"seq": 6, "name": "Receiving Facility", "description": "Receiving lab/facility name", "data_type": "HD", "length": 227, "required": false, "default": "LAB"},
+        {"seq": 7, "name": "Date/Time of Message", "description": "Format: YYYYMMDDHHMMSS", "data_type": "TS", "length": 26, "required": true, "format": "YYYYMMDDHHMMSS", "example": "20260714143000"},
+        {"seq": 8, "name": "Security", "description": "Not used", "data_type": "ST", "length": 40, "required": false},
+        {"seq": 9, "name": "Message Type", "description": "Trigger event pair, e.g., ORU^R01", "data_type": "MSG", "length": 15, "required": true, "example": "ORU^R01"},
+        {"seq": 10, "name": "Message Control ID", "description": "Unique message identifier from sender", "data_type": "ST", "length": 20, "required": true, "example": "A1B2C3D4"},
+        {"seq": 11, "name": "Processing ID", "description": "P = production, T = training, D = debug", "data_type": "PT", "length": 3, "required": true, "default": "P"},
+        {"seq": 12, "name": "Version ID", "description": "HL7 version number", "data_type": "VID", "length": 60, "required": true, "default": "2.5.1"}
+      ]
+    },
+
+    "PID": {
+      "name": "Patient Identification",
+      "description": "Patient demographic data. PID-3 is the primary patient identifier used by GULA.",
+      "required": true,
+      "max_occurrences": 1,
+      "fields": [
+        {"seq": 1, "name": "Set ID - PID", "description": "Segment occurrence number", "data_type": "SI", "length": 4, "required": false},
+        {"seq": 2, "name": "Patient ID (External)", "description": "Not used; PID-3 preferred", "data_type": "CX", "length": 20, "required": false},
+        {"seq": 3, "name": "Patient Identifier List", "description": "PRIMARY patient identifier used by GULA. Contains the lab-specific patient ID.", "data_type": "CX", "length": 250, "required": true, "example": "PAT-A1B2C3"},
+        {"seq": 4, "name": "Alternate Patient ID", "description": "Not used", "data_type": "CX", "length": 20, "required": false},
+        {"seq": 5, "name": "Patient Name", "description": "Family^Given^Middle^Suffix format", "data_type": "XPN", "length": 250, "required": false, "example": "SIM^PATIENT"},
+        {"seq": 6, "name": "Mother's Maiden Name", "description": "Not used", "data_type": "XPN", "length": 250, "required": false},
+        {"seq": 7, "name": "Date/Time of Birth", "description": "YYYYMMDD", "data_type": "TS", "length": 26, "required": false, "format": "YYYYMMDD", "example": "19800101"},
+        {"seq": 8, "name": "Sex", "description": "M = male, F = female, O = other, U = unknown", "data_type": "IS", "length": 1, "required": false, "example": "M"},
+        {"seq": 9, "name": "Patient Alias", "description": "Not used", "data_type": "XPN", "length": 250, "required": false},
+        {"seq": 10, "name": "Race", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 11, "name": "Patient Address", "description": "Not used", "data_type": "XAD", "length": 250, "required": false},
+        {"seq": 12, "name": "County Code", "description": "Not used", "data_type": "IS", "length": 4, "required": false},
+        {"seq": 13, "name": "Phone Number - Home", "description": "Not used", "data_type": "XTN", "length": 250, "required": false},
+        {"seq": 14, "name": "Phone Number - Business", "description": "Not used", "data_type": "XTN", "length": 250, "required": false},
+        {"seq": 15, "name": "Primary Language", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 16, "name": "Marital Status", "description": "Not used", "data_type": "IS", "length": 1, "required": false},
+        {"seq": 17, "name": "Religion", "description": "Not used", "data_type": "IS", "length": 3, "required": false},
+        {"seq": 18, "name": "Patient Account Number", "description": "Not used", "data_type": "CX", "length": 250, "required": false},
+        {"seq": 19, "name": "SSN Number", "description": "Not used", "data_type": "ST", "length": 16, "required": false},
+        {"seq": 20, "name": "Driver's License Number", "description": "Not used", "data_type": "DLN", "length": 25, "required": false}
+      ]
+    },
+
+    "SPM": {
+      "name": "Specimen",
+      "description": "Specimen details. SPM-2 is the primary specimen barcode/ID used by GULA.",
+      "required": false,
+      "max_occurrences": 1,
+      "fields": [
+        {"seq": 1, "name": "Set ID - SPM", "description": "Segment occurrence number", "data_type": "SI", "length": 4, "required": false, "example": "1"},
+        {"seq": 2, "name": "Specimen ID", "description": "SPECIMEN BARCODE / accession number. The primary specimen identifier used by GULA.", "data_type": "EIP", "length": 250, "required": true, "example": "SMP-A1B2C3D4"},
+        {"seq": 3, "name": "Specimen Type", "description": "Type of specimen (SER = serum, PLAS = plasma, WB = whole blood, UR = urine)", "data_type": "CE", "length": 250, "required": false, "example": "SER^Serum"},
+        {"seq": 4, "name": "Specimen Type Modifier", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 5, "name": "Specimen Additives", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 6, "name": "Specimen Collection Method", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 7, "name": "Specimen Source Site", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 8, "name": "Specimen Source Site Modifier", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 9, "name": "Specimen Collection Volume", "description": "Not used", "data_type": "CQ", "length": 20, "required": false}
+      ]
+    },
+
+    "OBR": {
+      "name": "Observation Request",
+      "description": "Order-level information linking results to the request. Contains placer/filler order numbers. GULA uses OBR-2 (placer) and OBR-3 (filler) as the instrument result ID.",
+      "required": true,
+      "max_occurrences": 1,
+      "fields": [
+        {"seq": 1, "name": "Set ID - OBR", "description": "Segment occurrence number", "data_type": "SI", "length": 4, "required": false, "example": "1"},
+        {"seq": 2, "name": "Placer Order Number", "description": "Order ID assigned by the ordering system. Also carries specimen barcode.", "data_type": "EI", "length": 75, "required": false, "example": "SMP-A1B2C3D4^SIM"},
+        {"seq": 3, "name": "Filler Order Number", "description": "Order ID assigned by the filler (LIS). Used as instrument_result_id.", "data_type": "EI", "length": 75, "required": false, "example": "A1B2C3D4^SIM"},
+        {"seq": 4, "name": "Universal Service ID", "description": "Test code / panel identifier", "data_type": "CE", "length": 250, "required": false, "example": "GLU^Glucose"},
+        {"seq": 5, "name": "Priority", "description": "Not used", "data_type": "ID", "length": 2, "required": false},
+        {"seq": 6, "name": "Requested Date/Time", "description": "Not used", "data_type": "TS", "length": 26, "required": false},
+        {"seq": 7, "name": "Observation Date/Time", "description": "Date/time of specimen collection or observation", "data_type": "TS", "length": 26, "required": false, "example": "20260714143000"},
+        {"seq": 8, "name": "Observation End Date/Time", "description": "Not used", "data_type": "TS", "length": 26, "required": false},
+        {"seq": 9, "name": "Collection Volume", "description": "Not used", "data_type": "CQ", "length": 20, "required": false},
+        {"seq": 10, "name": "Collector Identifier", "description": "Not used", "data_type": "XCN", "length": 250, "required": false},
+        {"seq": 11, "name": "Specimen Action Code", "description": "Not used", "data_type": "ID", "length": 1, "required": false},
+        {"seq": 12, "name": "Danger Code", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 13, "name": "Relevant Clinical Info", "description": "Not used", "data_type": "ST", "length": 300, "required": false},
+        {"seq": 14, "name": "Specimen Received Date/Time", "description": "Not used", "data_type": "TS", "length": 26, "required": false},
+        {"seq": 15, "name": "Specimen Source", "description": "Not used", "data_type": "SPS", "length": 300, "required": false}
+      ]
+    },
+
+    "OBX": {
+      "name": "Observation/Result",
+      "description": "Individual test result. Each OBX carries one result value. GULA parses OBX-3 (test code/name), OBX-5 (value), OBX-6 (unit), OBX-7 (ref range), OBX-8 (abnormal flag), and OBX-11 (result status).",
+      "required": true,
+      "max_occurrences": "unbounded",
+      "fields": [
+        {"seq": 1, "name": "Set ID - OBX", "description": "Sequence number within the message", "data_type": "SI", "length": 4, "required": false, "example": "1"},
+        {"seq": 2, "name": "Value Type", "description": "NM = numeric, ST = string, CE = coded entry, TX = text, DT = date, TM = time", "data_type": "ID", "length": 2, "required": true, "default": "NM"},
+        {"seq": 3, "name": "Observation Identifier", "description": "TEST CODE AND NAME. Format: code^name (e.g., GLU^Glucose). Parsed as canonical test_code and test_name.", "data_type": "CE", "length": 250, "required": true, "example": "GLU^Glucose"},
+        {"seq": 4, "name": "Observation Sub-Id", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 5, "name": "Observation Value", "description": "THE RESULT VALUE. String representation of numeric or text result.", "data_type": "varies", "length": 65536, "required": false, "example": "95.3"},
+        {"seq": 6, "name": "Units", "description": "Result unit (e.g., mg/dL, mmol/L, 10^3/uL)", "data_type": "CE", "length": 250, "required": false, "example": "mg/dL"},
+        {"seq": 7, "name": "References Range", "description": "Normal reference range as display string (e.g., 70.0-110.0)", "data_type": "ST", "length": 60, "required": false, "example": "70.0-110.0"},
+        {"seq": 8, "name": "Abnormal Flags", "description": "L = low, H = high, LL = panic low, HH = panic high, N = normal, A = abnormal, null = not evaluated", "data_type": "IS", "length": 5, "required": false, "example": "N"},
+        {"seq": 9, "name": "Probability", "description": "Not used", "data_type": "NM", "length": 5, "required": false},
+        {"seq": 10, "name": "Nature of Abnormal Test", "description": "Not used", "data_type": "ID", "length": 2, "required": false},
+        {"seq": 11, "name": "Observation Result Status", "description": "F = final, P = preliminary, C = corrected, X = cannot be performed, D = deleted", "data_type": "ID", "length": 1, "required": false, "default": "F"},
+        {"seq": 12, "name": "Effective Date of Reference Range", "description": "Not used", "data_type": "TS", "length": 26, "required": false},
+        {"seq": 13, "name": "User Defined Access Checks", "description": "Not used", "data_type": "ST", "length": 20, "required": false},
+        {"seq": 14, "name": "Date/Time of Observation", "description": "Not used", "data_type": "TS", "length": 26, "required": false},
+        {"seq": 15, "name": "Producer's ID", "description": "Not used", "data_type": "CE", "length": 250, "required": false},
+        {"seq": 16, "name": "Responsible Observer", "description": "Not used", "data_type": "XCN", "length": 250, "required": false}
+      ]
+    },
+
+    "MSA": {
+      "name": "Message Acknowledgment",
+      "description": "Contains the acknowledgment code and original message control ID. Generated by build_hl7_ack().",
+      "required": true,
+      "max_occurrences": 1,
+      "fields": [
+        {"seq": 1, "name": "Acknowledgment Code", "description": "AA = accept, AE = application error, AR = application reject", "data_type": "ID", "length": 2, "required": true, "values": ["AA", "AE", "AR"]},
+        {"seq": 2, "name": "Message Control ID", "description": "Echo of MSH-10 from the original message being acknowledged", "data_type": "ST", "length": 20, "required": true},
+        {"seq": 3, "name": "Text Message", "description": "Optional human-readable error message for AE/AR", "data_type": "ST", "length": 80, "required": false}
+      ]
+    },
+
+    "NTE": {
+      "name": "Notes and Comments",
+      "description": "Free-text notes or comments attached to a segment (usually PID, OBR, or OBX).",
+      "required": false,
+      "max_occurrences": "unbounded",
+      "fields": [
+        {"seq": 1, "name": "Set ID - NTE", "description": "Segment occurrence number", "data_type": "SI", "length": 4, "required": false},
+        {"seq": 2, "name": "Source of Comment", "description": "L = from lab, O = from ordering system, P = from patient", "data_type": "ID", "length": 1, "required": false, "default": "L"},
+        {"seq": 3, "name": "Comment", "description": "Free-text note content", "data_type": "TX", "length": 65536, "required": false}
+      ]
+    },
+
+    "PV1": {
+      "name": "Patient Visit",
+      "description": "Patient visit/admission information. Used for inpatient/outpatient context.",
+      "required": false,
+      "max_occurrences": 1,
+      "fields": [
+        {"seq": 1, "name": "Set ID - PV1", "description": "Segment occurrence number", "data_type": "SI", "length": 4, "required": false},
+        {"seq": 2, "name": "Patient Class", "description": "I = inpatient, O = outpatient, E = emergency", "data_type": "IS", "length": 1, "required": false},
+        {"seq": 3, "name": "Assigned Patient Location", "description": "Not used", "data_type": "PL", "length": 80, "required": false},
+        {"seq": 4, "name": "Admission Type", "description": "Not used", "data_type": "IS", "length": 1, "required": false},
+        {"seq": 5, "name": "Preadmit Number", "description": "Not used", "data_type": "CX", "length": 250, "required": false},
+        {"seq": 6, "name": "Prior Patient Location", "description": "Not used", "data_type": "PL", "length": 80, "required": false},
+        {"seq": 7, "name": "Attending Doctor", "description": "Not used", "data_type": "XCN", "length": 250, "required": false},
+        {"seq": 8, "name": "Referring Doctor", "description": "Not used", "data_type": "XCN", "length": 250, "required": false},
+        {"seq": 9, "name": "Consulting Doctor", "description": "Not used", "data_type": "XCN", "length": 250, "required": false},
+        {"seq": 10, "name": "Hospital Service", "description": "Not used", "data_type": "IS", "length": 3, "required": false},
+        {"seq": 11, "name": "Temporary Location", "description": "Not used", "data_type": "PL", "length": 80, "required": false},
+        {"seq": 12, "name": "Preadmit Test Indicator", "description": "Not used", "data_type": "IS", "length": 2, "required": false},
+        {"seq": 13, "name": "Re-admission Indicator", "description": "Not used", "data_type": "IS", "length": 2, "required": false},
+        {"seq": 14, "name": "Admit Source", "description": "Not used", "data_type": "IS", "length": 6, "required": false},
+        {"seq": 15, "name": "Ambulatory Status", "description": "Not used", "data_type": "IS", "length": 2, "required": false},
+        {"seq": 16, "name": "VIP Indicator", "description": "Not used", "data_type": "IS", "length": 2, "required": false},
+        {"seq": 17, "name": "Admitting Doctor", "description": "Not used", "data_type": "XCN", "length": 250, "required": false},
+        {"seq": 18, "name": "Patient Type", "description": "Not used", "data_type": "IS", "length": 2, "required": false},
+        {"seq": 19, "name": "Visit Number", "description": "Unique visit identifier", "data_type": "CX", "length": 250, "required": false}
+      ]
+    },
+
+    "ORC": {
+      "name": "Common Order",
+      "description": "Common order segment carrying order control information. Links to placer/filler order numbers and order status.",
+      "required": false,
+      "max_occurrences": 1,
+      "fields": [
+        {"seq": 1, "name": "Order Control", "description": "NW = new order, CA = cancel, OC = order confirmed, SC = status changed", "data_type": "ID", "length": 2, "required": false},
+        {"seq": 2, "name": "Placer Order Number", "description": "Not used", "data_type": "EI", "length": 75, "required": false},
+        {"seq": 3, "name": "Filler Order Number", "description": "Not used", "data_type": "EI", "length": 75, "required": false},
+        {"seq": 4, "name": "Placer Group Number", "description": "Not used", "data_type": "EI", "length": 75, "required": false},
+        {"seq": 5, "name": "Order Status", "description": "Not used", "data_type": "ID", "length": 1, "required": false},
+        {"seq": 6, "name": "Response Flag", "description": "Not used", "data_type": "ID", "length": 1, "required": false},
+        {"seq": 7, "name": "Quantity/Timing", "description": "Not used", "data_type": "TQ", "length": 200, "required": false},
+        {"seq": 8, "name": "Parent Order", "description": "Not used", "data_type": "CM", "length": 200, "required": false},
+        {"seq": 9, "name": "Date/Time of Transaction", "description": "Not used", "data_type": "TS", "length": 26, "required": false},
+        {"seq": 10, "name": "Entered By", "description": "Not used", "data_type": "XCN", "length": 250, "required": false},
+        {"seq": 11, "name": "Verified By", "description": "Not used", "data_type": "XCN", "length": 250, "required": false},
+        {"seq": 12, "name": "Ordering Provider", "description": "Not used", "data_type": "XCN", "length": 250, "required": false},
+        {"seq": 13, "name": "Enterer's Location", "description": "Not used", "data_type": "PL", "length": 80, "required": false}
+      ]
+    },
+
+    "TQ1": {
+      "name": "Timing/Quantity",
+      "description": "Specifies the timing and quantity details for an order. Used in ORM messages.",
+      "required": false,
+      "max_occurrences": 1,
+      "fields": [
+        {"seq": 1, "name": "Set ID - TQ1", "description": "Segment occurrence number", "data_type": "SI", "length": 4, "required": false},
+        {"seq": 2, "name": "Quantity", "description": "Not used", "data_type": "CQ", "length": 267, "required": false},
+        {"seq": 3, "name": "Repeat Pattern", "description": "Not used", "data_type": "RPT", "length": 540, "required": false},
+        {"seq": 4, "name": "Explicit Time", "description": "Not used", "data_type": "TM", "length": 20, "required": false},
+        {"seq": 5, "name": "Relative Time and Units", "description": "Not used", "data_type": "CQ", "length": 267, "required": false},
+        {"seq": 6, "name": "Service Duration", "description": "Not used", "data_type": "CQ", "length": 267, "required": false},
+        {"seq": 7, "name": "Start Date/Time", "description": "Not used", "data_type": "TS", "length": 26, "required": false},
+        {"seq": 8, "name": "End Date/Time", "description": "Not used", "data_type": "TS", "length": 26, "required": false},
+        {"seq": 9, "name": "Priority", "description": "Not used", "data_type": "CWE", "length": 250, "required": false},
+        {"seq": 10, "name": "Condition Text", "description": "Not used", "data_type": "TX", "length": 250, "required": false},
+        {"seq": 11, "name": "Text Instruction", "description": "Not used", "data_type": "TX", "length": 250, "required": false},
+        {"seq": 12, "name": "Conjunction", "description": "Not used", "data_type": "ID", "length": 10, "required": false},
+        {"seq": 13, "name": "Occurrence Duration", "description": "Not used", "data_type": "CQ", "length": 267, "required": false},
+        {"seq": 14, "name": "Total Occurrences", "description": "Not used", "data_type": "NM", "length": 5, "required": false}
+      ]
+    }
+  },
+
+  "message_structures": {
+    "ORU_R01": {
+      "description": "Unsolicited observation result message structure",
+      "segments_in_order": [
+        {"segment": "MSH", "usage": "R", "description": "Message header"},
+        {"segment": "PID", "usage": "R", "description": "Patient identification"},
+        {"segment": "PV1", "usage": "O", "description": "Patient visit (optional)"},
+        {"segment": "ORC", "usage": "O", "description": "Common order (optional)"},
+        {"segment": "OBR", "usage": "R", "description": "Observation request"},
+        {"segment": "SPM", "usage": "O", "description": "Specimen details"},
+        {"segment": "NTE", "usage": "O", "description": "Notes (0 or more)"},
+        {"segment": "OBX", "usage": "R", "description": "Observation results (1 or more)"},
+        {"segment": "NTE", "usage": "O", "description": "Result notes (0 or more, per OBX)"}
+      ],
+      "example": "MSH|^~\\\\&|SIMULATOR|SIMLAB|LIS|LAB|20260714143000||ORU^R01|A1B2C3D4|P|2.5.1\\rPID|||PAT-A1B2C3||SIM^PATIENT||19800101|M\\rSPM|1|SMP-A1B2C3D4||SER^Serum\\rOBR|1|SMP-A1B2C3D4^SIM|A1B2C3D4^SIM|GLU^Glucose|||20260714143000\\rOBX|1|NM|GLU^Glucose||95.3|mg/dL|70.0-110.0|N|||F\\r"
+    },
+
+    "ACK": {
+      "description": "General acknowledgment message structure",
+      "segments_in_order": [
+        {"segment": "MSH", "usage": "R", "description": "Message header"},
+        {"segment": "MSA", "usage": "R", "description": "Message acknowledgment"}
+      ],
+      "example": "MSH|^~\\\\&|LIS|LAB|SENDING_APP|SENDING_FAC|20260714143000||ACK|A1B2C3D4|P|2.5.1\\rMSA|AA|A1B2C3D4\\r"
+    }
+  },
+
+  "acknowledgment": {
+    "mode": "ORIGINAL — each message receives exactly one ACK",
+    "generated_by": "build_hl7_ack() in backend/app/lims/integration/hl7.py",
+    "format": "MSH + MSA two-segment response",
+    "ack_codes": {
+      "AA": {
+        "meaning": "Application Accept",
+        "description": "Message was accepted and processed successfully",
+        "http_mapping": 200
+      },
+      "AE": {
+        "meaning": "Application Error",
+        "description": "Message was syntactically valid but processing failed internally",
+        "http_mapping": 500
+      },
+      "AR": {
+        "meaning": "Application Reject",
+        "description": "Message was rejected (bad data, unknown patient, etc.)",
+        "http_mapping": 400
+      }
+    },
+    "processing_id": "P",
+    "version": "2.5.1"
+  },
+
+  "parsing": {
+    "engine": "parse_hl7_message() in backend/app/lims/integration/hl7.py",
+    "segment_delimiter": "CR (0x0D) or LF (0x0A) — regex split on \\r|\\n",
+    "field_delimiter": "| (pipe)",
+    "component_delimiter": "^ (caret)",
+    "subcomponent_delimiter": "& (ampersand)",
+    "repetition_delimiter": "~ (tilde)",
+    "escape_character": "\\\\ (backslash)",
+    "extraction": {
+      "patient_id": "PID-3 (CX field, first component used)",
+      "specimen_id": "SPM-2.1 (first component of EIP field)",
+      "result_id": "OBR-3 (filler order number) fallback OBR-2 (placer order number)",
+      "test_code": "OBX-3.1 (first component of CE field)",
+      "test_name": "OBX-3.2 (second component of CE field)",
+      "value": "OBX-5 (Observation Value, string)",
+      "unit": "OBX-6 (Units, CE display)",
+      "ref_range": "OBX-7 (Reference Range, display string)",
+      "abnormal_flag": "OBX-8 (Abnormal Flags)",
+      "result_status": "OBX-11 (Observation Result Status)"
+    }
+  },
+
+  "error_handling": {
+    "missing_segments": "parse_hl7_message skips empty/blank lines; no error raised",
+    "short_segments": "segments with fewer fields than expected return empty strings for missing positions",
+    "invalid_values": "no type coercion is performed — all values remain as strings",
+    "unknown_segments": "unknown segment types are silently skipped",
+    "multiple_patients": "only PID-3 from the last PID segment is retained — no multi-patient merge logic",
+    "orphan_obx": "OBX segments appearing before any OBR are still parsed but linked to an empty HL7Result",
+    "ack_generation": "AE or AR may be returned with descriptive MSA-3 text on internal failures"
+  },
+
+  "vendor_profiles": {
+    "roche": {
+      "supported_instruments": ["Cobas c 311", "Cobas c 501", "Cobas c 502", "Cobas e 411", "Cobas e 601"],
+      "message_type": "ORU^R01",
+      "notes": "Roche middleware may send patient IDs in PID-2 or PID-3. OBX-3 uses local test codes. Units expressed in Roche format (e.g., 10^9/L)."
+    },
+    "abbott": {
+      "supported_instruments": ["Architect c8000", "Architect i1000SR", "Alinity c", "Alinity i"],
+      "message_type": "ORU^R01",
+      "notes": "Abbott sends specimen barcode in OBR-2 (placer order number) and OBR-3 (filler). PID-3 is the preferred patient identifier."
+    },
+    "siemens": {
+      "supported_instruments": ["Dimension EXL 200", "Dimension EXL 500", "Atellica CH", "Atellica IM"],
+      "message_type": "ORU^R01",
+      "notes": "Siemens uses NTE segments for result remarks. OBX-8 flags use L/H/N convention."
+    },
+    "simulator": {
+      "supported_instruments": ["GULA Simulator (test only)"],
+      "message_type": "ORU^R01",
+      "notes": "Internal simulator at backend/app/lims/integration/simulator.py. Generates random values within physiological ranges. Test codes: GLU, CRE, BUN, NA, K."
+    }
+  },
+
+  "test_profiles": {
+    "GLU":  {"name": "Glucose", "unit": "mg/dL", "ref_low": 70, "ref_high": 110, "precision": 1, "value_type": "NM"},
+    "CRE":  {"name": "Creatinine", "unit": "mg/dL", "ref_low": 0.6, "ref_high": 1.2, "precision": 2, "value_type": "NM"},
+    "BUN":  {"name": "Blood Urea Nitrogen", "unit": "mg/dL", "ref_low": 7, "ref_high": 20, "precision": 1, "value_type": "NM"},
+    "NA":   {"name": "Sodium", "unit": "mmol/L", "ref_low": 136, "ref_high": 145, "precision": 0, "value_type": "NM"},
+    "K":    {"name": "Potassium", "unit": "mmol/L", "ref_low": 3.5, "ref_high": 5.1, "precision": 1, "value_type": "NM"},
+    "CL":   {"name": "Chloride", "unit": "mmol/L", "ref_low": 98, "ref_high": 107, "precision": 0, "value_type": "NM"},
+    "CA":   {"name": "Calcium", "unit": "mg/dL", "ref_low": 8.5, "ref_high": 10.5, "precision": 1, "value_type": "NM"},
+    "TP":   {"name": "Total Protein", "unit": "g/dL", "ref_low": 6.0, "ref_high": 8.3, "precision": 1, "value_type": "NM"},
+    "ALB":  {"name": "Albumin", "unit": "g/dL", "ref_low": 3.5, "ref_high": 5.0, "precision": 1, "value_type": "NM"},
+    "TBIL": {"name": "Total Bilirubin", "unit": "mg/dL", "ref_low": 0.1, "ref_high": 1.2, "precision": 2, "value_type": "NM"},
+    "ALP":  {"name": "Alkaline Phosphatase", "unit": "U/L", "ref_low": 44, "ref_high": 147, "precision": 0, "value_type": "NM"},
+    "ALT":  {"name": "ALT (SGPT)", "unit": "U/L", "ref_low": 10, "ref_high": 40, "precision": 0, "value_type": "NM"},
+    "AST":  {"name": "AST (SGOT)", "unit": "U/L", "ref_low": 10, "ref_high": 40, "precision": 0, "value_type": "NM"},
+    "LDH":  {"name": "Lactate Dehydrogenase", "unit": "U/L", "ref_low": 140, "ref_high": 280, "precision": 0, "value_type": "NM"},
+    "CK":   {"name": "Creatine Kinase", "unit": "U/L", "ref_low": 55, "ref_high": 170, "precision": 0, "value_type": "NM"},
+    "AMY":  {"name": "Amylase", "unit": "U/L", "ref_low": 28, "ref_high": 100, "precision": 0, "value_type": "NM"}
+  },
+
+  "canonical_result_model": {
+    "class": "HL7Result",
+    "source": "backend/app/lims/integration/hl7.py",
+    "fields": [
+      {"name": "specimen_id", "type": "str", "source": "SPM-2.1", "description": "Specimen barcode / accession number"},
+      {"name": "patient_id", "type": "str", "source": "PID-3", "description": "Primary patient identifier"},
+      {"name": "test_code", "type": "str", "source": "OBX-3.1", "description": "Canonical test code"},
+      {"name": "test_name", "type": "str", "source": "OBX-3.2", "description": "Test display name"},
+      {"name": "value", "type": "str", "source": "OBX-5", "description": "Result value (string)"},
+      {"name": "unit", "type": "str", "source": "OBX-6", "description": "Result unit"},
+      {"name": "ref_range", "type": "str", "source": "OBX-7", "description": "Reference range as display string"},
+      {"name": "abnormal_flag", "type": "str", "source": "OBX-8", "description": "Abnormality indicator (L/H/N/blank)"},
+      {"name": "status", "type": "str", "source": "not directly mapped", "description": "Reserved for processing status"},
+      {"name": "instrument_result_id", "type": "str", "source": "OBR-3 or OBR-2", "description": "Instrument/filler order number"},
+      {"name": "result_status", "type": "str", "source": "OBX-11", "description": "Observation result status (F/P/C/X/D)"}
+    ]
+  },
+
+  "api_endpoints": {
+    "receive": {
+      "method": "POST",
+      "path": "/lims/integration/hl7/receive",
+      "description": "Receive and parse an HL7 ORU^R01 message from an instrument",
+      "auth": "JWT (get_current_user)",
+      "tenant_isolation": "lab_id from current_user, verified against instrument",
+      "request_body": {"instrument_id": "int", "raw_message": "str (the raw HL7 message text)"},
+      "response": {"parsed_results": [{"specimen_id": "str", "test_code": "str", "value": "str", "unit": "str", "abnormal_flag": "str"}], "count": "int"},
+      "error_codes": [404, 422, 500]
+    },
+    "simulate": {
+      "method": "POST",
+      "path": "/lims/integration/simulate",
+      "description": "Generate and parse simulated HL7 or ASTM messages for testing",
+      "auth": "JWT (get_current_user)",
+      "query_params": {"instrument_id": "int", "protocol": "astm|hl7", "test_codes": "optional comma-separated", "inject_error": "bool"},
+      "response": {"protocol": "str", "raw_message": "str", "parsed": [{"specimen_id": "str", "test_code": "str", "value": "str"}]}
+    }
+  },
+
+  "definition_of_frozen": "This document captures the exact HL7 v2.5.1 contract as implemented on 2026-07-14. Any changes to segment parsing field indices, canonical result mapping, ACK format, or endpoint behavior constitute a contract change requiring version bump and stakeholder notification."
+}

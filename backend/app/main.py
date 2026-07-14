@@ -71,14 +71,49 @@ if _SENTRY_DSN:
         logger.warning("SENTRY_DSN set but sentry-sdk not installed; skipping")
 
 # Import all models so they are registered with Base.metadata (needed for create_all + alembic)
+from .lims.models import (  # noqa: F401, E402 register LIMS tables with Base metadata
+    AutoValidationRule,
+    Calibration,
+    ChainOfCustody,
+    Consumable,
+    DeltaCheckRule,
+    Department,
+    ElectronicSignature,
+    EQA,
+    EquipmentLog,
+    Instrument,
+    InstrumentModel,
+    IQC,
+    LabReport,
+    Lot,
+    Maintenance,
+    Manufacturer,
+    Order,
+    Panel,
+    PanelTest,
+    QCProgram,
+    Reagent,
+    ReferenceRangeDef,
+    ReportAttachment,
+    Result,
+    ResultRelease,
+    ResultValidation,
+    Section,
+    Specimen,
+    SpecimenCatalog,
+    Storage,
+    Supplier,
+    TemperatureLog,
+    Transportation,
+    Workstation,
+)
 from .models import (  # noqa: F401, E402
     AuditLog,
     Lab,
     LabOrder,
     LabResult,
     LabUser,
-    Patient,
-    QualityControl,
+    Patient,    QualityControl,
     Sample,
     TestType,
     User,
@@ -703,6 +738,95 @@ app.include_router(ai_telemetry_routes.router)
 from .kernel import routes as kernel_routes  # noqa: E402
 
 app.include_router(kernel_routes.router)
+
+# ===== NATIONAL GOVERNANCE LAYER ROUTES =====
+# The Governance Layer is the single authority for national healthcare governance.
+# All future modules MUST inherit policies from this layer.
+# Do NOT modify Foundation or National Healthcare Domain.
+# Extend only through governance services.
+from .governance.routes import governance_router, analytics_router  # noqa: E402
+
+app.include_router(governance_router)
+app.include_router(analytics_router)
+
+# ===== NATIONAL LIMS LAYER ROUTES =====
+# The National LIMS is the canonical laboratory information management system.
+# It builds on the existing foundation and governance layers without modifying them.
+from .lims.models import (  # noqa: E402, F401  register LIMS tables with Base metadata
+    AutoValidationRule,
+    Calibration,
+    ChainOfCustody,
+    Consumable,
+    DeltaCheckRule,
+    Department,
+    ElectronicSignature,
+    EQA,
+    EquipmentLog,
+    Instrument,
+    InstrumentModel,
+    IQC,
+    LabReport,
+    Lot,
+    Maintenance,
+    Manufacturer,
+    Order,
+    Panel,
+    PanelTest,
+    QCProgram,
+    Reagent,
+    ReferenceRangeDef,
+    ReportAttachment,
+    Result,
+    ResultRelease,
+    ResultValidation,
+    Section,
+    Specimen,
+    SpecimenCatalog,
+    Storage,
+    Supplier,
+    TemperatureLog,
+    Transportation,
+    Workstation,
+)
+from .lims import routes as lims_routes  # noqa: E402
+app.include_router(lims_routes.router)
+
+# ===== NATIONAL PLATFORM RUNTIME ROUTES =====
+# The National Platform Runtime is the execution layer for the entire
+# Iraq National Health Platform. Each module is a bounded context with
+# its own domain, application, infrastructure, and API layers.
+# All modules reuse the existing Kernel, EventBus, Tasks, Notifications,
+# and Security infrastructure without modifying them.
+
+from .national.rules_engine.api.routes import router as rules_router  # noqa: E402
+app.include_router(rules_router)
+
+from .national.background_platform.api.routes import router as background_router  # noqa: E402
+app.include_router(background_router)
+
+from .national.workflow_runtime.api.routes import router as workflow_router  # noqa: E402
+app.include_router(workflow_router)
+
+from .national.task_engine.api.routes import router as task_router  # noqa: E402
+app.include_router(task_router)
+
+from .national.notification_platform.api.routes import router as notification_platform_router  # noqa: E402
+app.include_router(notification_platform_router)
+
+from .national.document_platform.api.routes import router as document_router  # noqa: E402
+app.include_router(document_router)
+
+from .national.scheduling_platform.api.routes import router as scheduling_router  # noqa: E402
+app.include_router(scheduling_router)
+
+from .national.search_platform.api.routes import router as search_router  # noqa: E402
+app.include_router(search_router)
+
+from .national.observability.api.routes import router as observability_router  # noqa: E402
+app.include_router(observability_router)
+
+logger.info("National Platform Runtime initialized — 9 modules registered")
+
 from .models.ai_interaction import (  # noqa: E402, F401  register with Base metadata
     AIFeedback,
     AIInteraction,
