@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC
@@ -34,7 +34,7 @@ class Facility(Base):
     __tablename__ = "facilities"
 
     id = Column(Integer, primary_key=True, index=True)
-    organization_id = Column(Integer, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
     facility_type = Column(String(50), nullable=False, index=True)

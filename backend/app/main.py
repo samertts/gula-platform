@@ -119,6 +119,21 @@ from .models import (  # noqa: F401, E402
     User,
 )
 from .models.outbox import OutboxEvent  # noqa: E402  register OutboxEvent with Base metadata
+from .hospital.models import (  # noqa: F401, E402 register hospital tables with Base metadata
+    Bed,
+    BedAssignment,
+    Building,
+    Campus,
+    Clinic,
+    CostCenter,
+    Department,
+    Floor,
+    HospitalMaster,
+    MedicalEquipment,
+    OperationTheater,
+    Room,
+    Unit,
+)
 
 # Schema management: create_all is safe and idempotent (checkfirst=True by default).
 # It creates missing tables without touching existing data.
@@ -714,6 +729,12 @@ app.include_router(edge_routes.router)
 from .routes import patient_card as patient_card_routes  # noqa: E402
 
 app.include_router(patient_card_routes.router)
+
+# Care Continuum — National Care Continuum Platform (primary care, referrals,
+# chronic disease, maternal/child health, immunisation, public health, patient tasks)
+from .routes import care_continuum as care_continuum_routes  # noqa: E402
+
+app.include_router(care_continuum_routes.router)
 from .models.edge import (  # noqa: E402, F401  register edge tables with Base metadata
     EdgeDevice,
     EdgeEvent,
@@ -731,6 +752,18 @@ from .models.edge import (  # noqa: E402, F401  register edge tables with Base m
 from .routes import ai_telemetry as ai_telemetry_routes  # noqa: E402
 
 app.include_router(ai_telemetry_routes.router)
+
+# ===== CLINICAL PLATFORM ROUTES =====
+from .routes import clinical as clinical_routes  # noqa: E402
+from .routes import clinical_orders as clinical_orders_routes  # noqa: E402
+from .routes import clinical_documentation as clinical_documentation_routes  # noqa: E402
+from .routes import clinical_quality as clinical_quality_routes  # noqa: E402
+
+app.include_router(clinical_routes.router)
+app.include_router(clinical_orders_routes.router)
+app.include_router(clinical_documentation_routes.router)
+app.include_router(clinical_quality_routes.router)
+logger.info("Clinical Core routes registered — MISSION-014")
 
 # ===== KERNEL MANAGEMENT ROUTES =====
 # The Kernel is the permanent runtime foundation. These routes expose kernel
@@ -824,6 +857,79 @@ app.include_router(search_router)
 
 from .national.observability.api.routes import router as observability_router  # noqa: E402
 app.include_router(observability_router)
+
+# ===== NATIONAL DATA PLATFORM ROUTES =====
+# The National Data Platform provides canonical data models, MDM, event store,
+# data warehouse, data governance, and AI/vector store capabilities.
+# It builds on existing LIMS, National, EHR, and clinical models.
+
+from .national_data.models import (  # noqa: E402, F401
+    CanonicalPatient,
+    CanonicalEncounter,
+    CanonicalObservation,
+    CanonicalMedication,
+    CanonicalProcedure,
+    CanonicalDocument,
+)
+from .national_data.models.mdm import (  # noqa: E402, F401
+    GoldenRecord,
+    DuplicateRecord,
+    MergeAction,
+    SourceSystem,
+    ProviderRegistry,
+    DeviceRegistry,
+    LocationRegistry,
+    TerminologyRegistry,
+)
+from .national_data.models.event_store import (  # noqa: E402, F401
+    StoredEvent,
+    EventSnapshot,
+    EventRetentionPolicy,
+)
+from .national_data.models.warehouse import (  # noqa: E402, F401
+    FactPatientVisit,
+    FactLabResult,
+    FactDiagnosis,
+    DimPatient,
+    DimDate,
+    DimFacility,
+    DimProvider,
+    DimDiagnosis,
+)
+from .national_data.models.governance import (  # noqa: E402, F401
+    DataLineageEntry,
+    DataCatalogEntry,
+    MetadataEntry,
+    DataQualityRule,
+    DataQualityCheck,
+    DataSteward,
+    DataClassification,
+    RetentionPolicy,
+    ConsentDirective,
+)
+from .national_data.models.ai_data import (  # noqa: E402, F401
+    FeatureStore,
+    FeatureValue,
+    TrainingDataset,
+    DeidentificationJob,
+    SyntheticDataJob,
+    VectorEmbedding,
+    KnowledgeGraphNode,
+    KnowledgeGraphEdge,
+)
+
+from .routes import national_data as national_data_routes  # noqa: E402
+from .routes import national_streaming as national_streaming_routes  # noqa: E402
+
+app.include_router(national_data_routes.router)
+app.include_router(national_streaming_routes.router)
+
+logger.info("National Data Platform initialized — routes registered")
+
+# ===== HOSPITAL INFORMATION SYSTEM =====
+from .routes import hospital as hospital_routes  # noqa: E402
+
+app.include_router(hospital_routes.router)
 
 logger.info("National Platform Runtime initialized — 9 modules registered")
 
