@@ -1,0 +1,235 @@
+# =============================================================================
+# GULA Platform — Redis HA with Sentinel
+# =============================================================================
+# Architecture:
+#   - 1 Redis Primary (read/write)
+#   - 2 Redis Replicas (read-only, failover candidates)
+#   - 3 Redis Sentinels (quorum=2 for failover decision)
+#
+# Usage:
+#   docker compose -f config/redis-sentinel/docker-compose.redis-ha.yml up -d
+#
+# Integration with main stack:
+#   Add to docker-compose.yml networks: [gula-net]
+#   Update REDIS_URL in backend to: redis://:${REDIS_PASSWORD}@redis-sentinel:26379
+#   (Sentinel-aware clients auto-discover the current primary)
+# =============================================================================
+
+services:
+
+  # ── Redis Primary ───────────────────────────────────────────────────────────
+  redis-primary:
+    image: redis:7-alpine
+    container_name: gula-redis-primary
+    restart: always
+    mem_limit: 384m
+    mem_reservation: 128m
+    cpus: "0.5"
+    command:
+      - redis-server
+      - --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      - --masterauth ${REDIS_PASSWORD}
+      - --appendonly yes
+      - --appendfsync everysec
+      - --auto-aof-rewrite-percentage 100
+      - --auto-aof-rewrite-min-size 64mb
+      - --save 900 1
+      - --save 300 10
+      - --save 60 1000
+      - --maxmemory 256mb
+      - --maxmemory-policy volatile-lru
+      - --replica-priority 100
+      - --rename-command FLUSHALL ""
+      - --rename-command FLUSHDB ""
+      - --rename-command CONFIG ""
+    expose:
+      - "6379"
+    volumes:
+      - redis-primary-data:/data
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Redis Replica 1 ─────────────────────────────────────────────────────────
+  redis-replica-1:
+    image: redis:7-alpine
+    container_name: gula-redis-replica-1
+    restart: always
+    mem_limit: 384m
+    mem_reservation: 128m
+    cpus: "0.5"
+    command:
+      - redis-server
+      - --requirepass ${REDIS_PASSWORD}
+      - --masterauth ${REDIS_PASSWORD}
+      - --replicaof redis-primary 6379
+      - --appendonly yes
+      - --appendfsync everysec
+      - --save 900 1
+      - --save 300 10
+      - --slave-read-only yes
+      - --replica-priority 100
+      - --rename-command FLUSHALL ""
+      - --rename-command FLUSHDB ""
+      - --rename-command CONFIG ""
+    expose:
+      - "6379"
+    volumes:
+      - redis-replica-1-data:/data
+    depends_on:
+      - redis-primary
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Redis Replica 2 ─────────────────────────────────────────────────────────
+  redis-replica-2:
+    image: redis:7-alpine
+    container_name: gula-redis-replica-2
+    restart: always
+    mem_limit: 384m
+    mem_reservation: 128m
+    cpus: "0.5"
+    command:
+      - redis-server
+      - --requirepass ${REDIS_PASSWORD}
+      - --masterauth ${REDIS_PASSWORD}
+      - --replicaof redis-primary 6379
+      - --appendonly yes
+      - --appendfsync everysec
+      - --save 900 1
+      - --save 300 10
+      - --slave-read-only yes
+      - --replica-priority 99
+      - --rename-command FLUSHALL ""
+      - --rename-command FLUSHDB ""
+      - --rename-command CONFIG ""
+    expose:
+      - "6379"
+    volumes:
+      - redis-replica-2-data:/data
+    depends_on:
+      - redis-primary
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Redis Sentinel 1 ────────────────────────────────────────────────────────
+  redis-sentinel-1:
+    image: redis:7-alpine
+    container_name: gula-redis-sentinel-1
+    restart: always
+    mem_limit: 64m
+    mem_reservation: 32m
+    cpus: "0.1"
+    command:
+      - redis-sentinel
+      - /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf:ro
+      - redis-sentinel-1-data:/data
+    depends_on:
+      - redis-primary
+      - redis-replica-1
+      - redis-replica-2
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep -q PONG"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Redis Sentinel 2 ────────────────────────────────────────────────────────
+  redis-sentinel-2:
+    image: redis:7-alpine
+    container_name: gula-redis-sentinel-2
+    restart: always
+    mem_limit: 64m
+    mem_reservation: 32m
+    cpus: "0.1"
+    command:
+      - redis-sentinel
+      - /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf:ro
+      - redis-sentinel-2-data:/data
+    depends_on:
+      - redis-primary
+      - redis-replica-1
+      - redis-replica-2
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep -q PONG"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Redis Sentinel 3 ────────────────────────────────────────────────────────
+  redis-sentinel-3:
+    image: redis:7-alpine
+    container_name: gula-redis-sentinel-3
+    restart: always
+    mem_limit: 64m
+    mem_reservation: 32m
+    cpus: "0.1"
+    command:
+      - redis-sentinel
+      - /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf:ro
+      - redis-sentinel-3-data:/data
+    depends_on:
+      - redis-primary
+      - redis-replica-1
+      - redis-replica-2
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep -q PONG"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Sentinel Failover Notification Script ──────────────────────────────────
+  # This container-less script is mounted into the sentinel containers above.
+  # Ensure the file exists at /usr/local/bin/redis-failover-notify.sh
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  redis-primary-data:
+    driver: local
+  redis-replica-1-data:
+    driver: local
+  redis-replica-2-data:
+    driver: local
+  redis-sentinel-1-data:
+    driver: local
+  redis-sentinel-2-data:
+    driver: local
+  redis-sentinel-3-data:
+    driver: local
+
+# ── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  gula-net:
+    external: true

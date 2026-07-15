@@ -1,0 +1,3 @@
+{{- if .Values.redis.serviceMonitor.enabled }}
+{{ include "gula.serviceMonitor" (dict "enabled" true "name" (printf "%s-%s" .Values.redis.name "sm") "component" "cache" "port" "redis" "interval" .Values.redis.serviceMonitor.interval "scrapeTimeout" .Values.redis.serviceMonitor.scrapeTimeout "path" "/metrics" "Values" $.Values) }}
+{{- end }}

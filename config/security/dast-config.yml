@@ -1,0 +1,225 @@
+# =============================================================================
+# DAST Configuration — Dynamic Application Security Testing
+# =============================================================================
+# Path: config/security/dast-config.yml
+# Managed by: Security Operations
+# Version: 1.0.0
+# Last updated: 2026-07-15
+# =============================================================================
+
+# =============================================================================
+# TOOL CONFIGURATION
+# =============================================================================
+tool:
+  name: "OWASP ZAP"
+  version: "2.14.0+"
+  mode: "full_scan"
+  docker_image: "ghcr.io/zaproxy/zaproxy:stable"
+
+# =============================================================================
+# TARGET
+# =============================================================================
+target:
+  base_url: "https://staging.gula.health"
+  environment: "staging"
+  # Never run DAST against production without explicit approval
+
+  authentication:
+    type: "jwt"
+    login_endpoint: "https://staging.gula.health/api/login"
+    login_method: "POST"
+    login_body_format: "json"
+    login_credentials:
+      username_field: "email"
+      password_field: "password"
+      # Credentials provided by CI secrets, never hardcoded
+      # CI_SECRET_ZAP_USERNAME
+      # CI_SECRET_ZAP_PASSWORD
+    token_extraction:
+      method: "json_path"
+      json_path: "$.access_token"
+    bearer_header: "Authorization: Bearer {token}"
+
+    # Post-authentication session verification
+    verification:
+      endpoint: "https://staging.gula.health/api/me"
+      expected_status: 200
+      expected_content: '"email"'
+
+  # Rate limiting awareness
+  rate_limit:
+    requests_per_second: 10
+    delay_between_requests_ms: 200
+
+# =============================================================================
+# SCAN CONFIGURATION
+# =============================================================================
+scan:
+  # Spider configuration
+  spider:
+    traditional:
+      enabled: true
+      max_children: 50
+      max_depth: 10
+      parse_comments: true
+      parse_robots: true
+      parse_sitemap: true
+      send_referer_header: true
+      handle_o_data_url_visited: true
+    ajax:
+      enabled: true
+      browser_id: "firefox-headless"
+      max_crawl_depth: 10
+      number_of_browsers: 3
+      click_default_elems: true
+      click_elems_wait_time_ms: 1000
+      wait_for_page_load_ms: 5000
+      reload_advanced_dom_before_wait: true
+
+  # Active scanning
+  active_scan:
+    enabled: true
+    max_scan_duration_minutes: 120
+    default_alert_threshold: "medium"
+    default_attack_strength: "high"
+
+    # Enable all scan policies
+    scan_policies:
+      - "sql-injection"
+      - "xss"
+      - "path-traversal"
+      - "command-injection"
+      - "ssrf"
+      - "remote-file-inclusion"
+      - "code-injection"
+      - "ldap-injection"
+      - "xpath-injection"
+      - "xml-external-entity"
+      - "format-string"
+      - "buffer-overflow"
+      - "authentication-bypass"
+      - "authorization-bypass"
+      - "session-fixation"
+      - "csrf"
+      - "open-redirect"
+      - "information-disclosure"
+      - "directory-browsing"
+      - "file-upload"
+      - "http-methods"
+      - "ssl/tls"
+      - "http-headers"
+
+  # Passive scanning
+  passive_scan:
+    enabled: true
+    wait_for_recorded_messages: true
+
+  # Fuzzer
+  fuzzer:
+    enabled: false  # Only enable for targeted testing, very intensive
+
+# =============================================================================
+# EXCLUSIONS
+# =============================================================================
+exclusions:
+  paths:
+    - "/health*"           # Health check endpoints
+    - "/health/live"
+    - "/health/ready"
+    - "/health/status"
+    - "/health/deep"
+    - "/docs*"             # API documentation
+    - "/redoc*"
+    - "/openapi.json"
+    - "/metrics*"          # Metrics endpoints
+    - "/metrics/prom"
+
+  parameters:
+    - "token"              # JWT tokens may trigger false positives
+    - "csrf_token"
+    - "nonce"
+
+# =============================================================================
+# PASS/FAIL CRITERIA
+# =============================================================================
+pass_fail:
+  # Block on any HIGH severity alerts
+  max_high_alerts: 0
+  high_action: "fail"
+
+  # Allow up to 5 MEDIUM severity alerts
+  max_medium_alerts: 5
+  medium_action: "warn"
+
+  # LOW alerts are informational only
+  max_low_alerts: 100
+  low_action: "info"
+
+  # False positive management
+  false_positives:
+    # Known false positives by alert ID
+    - alert_id: 10010  # Cookie set without HttpOnly
+      reason: "Cookies set securely via JWT, not cookies"
+    - alert_id: 10021  # X-Content-Type-Options header
+      reason: "Set by nginx ingress, not application"
+    - alert_id: 10020  # X-Frame-Options header
+      reason: "Set by nginx ingress, not application"
+    - alert_id: 10095  # CSP header
+      reason: "Set by middleware, verified separately"
+
+# =============================================================================
+# REPORTING
+# =============================================================================
+reporting:
+  formats:
+    - "html"
+    - "sarif"
+    - "markdown"
+    - "json"
+
+  output_dir: "reports/dast/"
+
+  # Report sections
+  include:
+    - "alerts"
+    - "urls"
+    - "parameters"
+    - "statistics"
+    - "history"
+
+  # Template for HTML report
+  template: "traditional"
+
+# =============================================================================
+# CONTEXT CONFIGURATION
+# =============================================================================
+context:
+  name: "gula-platform-staging"
+  description: "GULA Platform staging environment DAST scan"
+  logged_in_indicator: "\\QLogout\\E|\\QDashboard\\E|\\Qlogout\\E"
+  session_management: "cookie_based"
+
+  # Technical details
+  tech:
+    - "Python"
+    - "FastAPI"
+    - "PostgreSQL"
+    - "Redis"
+    - "Nginx"
+    - "Docker"
+
+# =============================================================================
+# SCHEDULE
+# =============================================================================
+schedule:
+  # Full scan weekly
+  full_scan:
+    frequency: "weekly"
+    day: "saturday"
+    time: "02:00 Baghdad"
+
+  # Quick scan daily (passive only)
+  daily_scan:
+    enabled: true
+    time: "03:00 Baghdad"
+    type: "passive"

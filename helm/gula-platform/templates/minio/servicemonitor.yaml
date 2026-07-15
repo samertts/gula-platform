@@ -1,0 +1,3 @@
+{{- if .Values.minio.serviceMonitor.enabled }}
+{{ include "gula.serviceMonitor" (dict "enabled" true "name" (printf "%s-%s" .Values.minio.name "sm") "component" "storage" "port" "api" "interval" .Values.minio.serviceMonitor.interval "scrapeTimeout" .Values.minio.serviceMonitor.scrapeTimeout "path" "/minio/v2/metrics/cluster" "Values" $.Values) }}
+{{- end }}

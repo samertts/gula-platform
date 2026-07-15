@@ -1,0 +1,176 @@
+# =============================================================================
+# GULA PLATFORM - Alertmanager Configuration
+# Executive Order 17: Incident Notification & Escalation
+# =============================================================================
+
+global:
+  resolve_timeout: 5m
+  slack_api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@gula.health'
+  smtp_auth_username: 'alerts@gula.health'
+  smtp_auth_password: 'smtp-password-placeholder'
+  smtp_require_tls: true
+  slack_icon_url: 'https://raw.githubusercontent.com/grafana/grafana/main/public/img/grafana_icon.svg'
+
+route:
+  receiver: default
+  group_by: [alertname, severity, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    # ── Critical: PagerDuty + Slack + Email ────────────────────────────────
+    - match:
+        severity: critical
+      receiver: pagerduty-critical
+      repeat_interval: 1h
+      continue: true
+
+    - match:
+        severity: critical
+      receiver: slack-critical
+      repeat_interval: 1h
+      continue: true
+
+    - match:
+        severity: critical
+      receiver: email-critical
+      repeat_interval: 1h
+
+    # ── Warning: Slack + Email ──────────────────────────────────────────────
+    - match:
+        severity: warning
+      receiver: slack-warning
+      repeat_interval: 4h
+      continue: true
+
+    - match:
+        severity: warning
+      receiver: email-warning
+      repeat_interval: 4h
+
+    # ── Info: Slack only ────────────────────────────────────────────────────
+    - match:
+        severity: info
+      receiver: slack-info
+      repeat_interval: 24h
+
+    # ── Database-specific: different Slack channel ──────────────────────────
+    - match:
+        service: database
+      receiver: slack-database
+      repeat_interval: 1h
+
+    # ── Kill Switch: immediate PagerDuty ────────────────────────────────────
+    - match:
+        alertname: KillSwitchActive
+      receiver: pagerduty-critical
+      repeat_interval: 5m
+      group_wait: 0s
+
+inhibit_rules:
+  # Suppress warnings when a critical alert exists for the same service
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: [service]
+
+  # Suppress info when any higher severity alert exists for the same alertname
+  - source_match:
+      severity: critical
+    target_match:
+      severity: info
+    equal: [alertname]
+
+  - source_match:
+      severity: warning
+    target_match:
+      severity: info
+    equal: [alertname]
+
+receivers:
+  # ── Default (catch-all) ──────────────────────────────────────────────────
+  - name: default
+    slack_configs:
+      - channel: '#gula-alerts'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        icon_emoji: ':gula:'
+        send_resolved: true
+
+  # ── Slack ────────────────────────────────────────────────────────────────
+  - name: slack-critical
+    slack_configs:
+      - channel: '#gula-critical'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: 'danger'
+        icon_emoji: ':red_circle:'
+        send_resolved: true
+
+  - name: slack-warning
+    slack_configs:
+      - channel: '#gula-alerts'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: 'warning'
+        icon_emoji: ':warning:'
+        send_resolved: true
+
+  - name: slack-info
+    slack_configs:
+      - channel: '#gula-info'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: 'good'
+        icon_emoji: ':information_source:'
+        send_resolved: false
+
+  - name: slack-database
+    slack_configs:
+      - channel: '#gula-db-alerts'
+        title: '[DB] {{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        icon_emoji: ':database:'
+        send_resolved: true
+
+  # ── PagerDuty ────────────────────────────────────────────────────────────
+  - name: pagerduty-critical
+    pagerduty_configs:
+      - routing_key: 'pagerduty-routing-key-placeholder'
+        severity: '{{ template "pagerduty.severity" . }}'
+        client: 'GULA Platform'
+        client_url: 'https://gula.health'
+        description: '{{ .GroupLabels.alertname }} - {{ .Status }}'
+        details:
+          firing: '{{ template "pagerduty.details" . }}'
+          num_firing: '{{ .Alerts.Firing | len }}'
+          num_resolved: '{{ .Alerts.Resolved | len }}'
+          group_labels: '{{ .GroupLabels | toJSON }}'
+          common_labels: '{{ .CommonLabels | toJSON }}'
+
+  # ── Email ────────────────────────────────────────────────────────────────
+  - name: email-critical
+    email_configs:
+      - to: 'oncall@gula.health'
+        headers:
+          subject: '[CRITICAL] {{ .GroupLabels.alertname }} - GULA Platform'
+        html: '{{ template "email.html" . }}'
+        send_resolved: true
+
+  - name: email-warning
+    email_configs:
+      - to: 'ops@gula.health'
+        headers:
+          subject: '[WARNING] {{ .GroupLabels.alertname }} - GULA Platform'
+        html: '{{ template "email.html" . }}'
+        send_resolved: true
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

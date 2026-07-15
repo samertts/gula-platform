@@ -1,0 +1,43 @@
+# GULA Platform — Infrastructure as Code Scanning
+
+iac-scan:
+  tool: checkov
+  frameworks:
+    - kubernetes
+    - docker-compose
+    - dockerfile
+    - helm
+
+  paths:
+    - k8s/
+    - helm/
+    - docker-compose*.yml
+    - Dockerfile
+    - services/*/Dockerfile
+
+  skip_checks:
+    - CKV_DOCKER_2  # Healthcheck — defined at runtime
+    - CKV_K8S_10    # Service account token mount
+    - CKV_K8S_43    # Image pull policy — latest is acceptable in dev
+    - CKV_K8S_11    # CPU limits — managed by HPA
+
+  hard_fail_on:
+    - CKV_K8S_20    # Container runs as root
+    - CKV_K8S_21    # Default service account used
+    - CKV_K8S_22    # Pod security context not set
+    - CKV_K8S_23    # Privileged container
+    - CKV_K8S_24    # Container with added capabilities
+    - CKV_K8S_30    # Container with securityContext readOnlyRootFilesystem
+    - CKV_K8S_31    # Container with securityContext allowPrivilegeEscalation
+    - CKV_K8S_32    # Pod hostNetwork
+    - CKV_K8S_33    # Container hostPort
+    - CKV_K8S_34    # Container with hostPID
+    - CKV_K8S_35    # Container with hostIPC
+    - CKV_DOCKER_3  # Last user is root
+
+  output:
+    - cli
+    - sarif: reports/checkov-report.sarif
+
+  quiet: false
+  soft_fail: false

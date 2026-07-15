@@ -1,0 +1,112 @@
+name: Auto Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Rollback reason'
+        required: true
+        default: 'Manual trigger'
+      target_deployment:
+        description: 'Deployment to rollback'
+        required: false
+        default: 'gula-backend'
+
+concurrency:
+  group: gula-blue-green-deploy
+  cancel-in-progress: false
+
+env:
+  NAMESPACE: gula
+  ROLLBACK_REASON: ${{ github.event.inputs.reason || 'Auto-rollback triggered by monitoring alert' }}
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with: { version: 'v1.28.0' }
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+
+      - name: Get previous slot
+        id: slots
+        run: |
+          ACTIVE=$(kubectl get svc gula-backend-active \
+            -n ${{ env.NAMESPACE }} \
+            -o jsonpath='{.metadata.annotations.blue-green/active-slot}' 2>/dev/null || echo "blue")
+
+          if [ "$ACTIVE" = "blue" ]; then
+            PREVIOUS="green"
+          else
+            PREVIOUS="blue"
+          fi
+
+          echo "active=$ACTIVE" >> $GITHUB_OUTPUT
+          echo "previous=$PREVIOUS" >> $GITHUB_OUTPUT
+
+      - name: Rollback traffic
+        run: |
+          PREV="${{ steps.slots.outputs.previous }}"
+          echo "Rolling back to slot: $PREV"
+
+          kubectl patch svc gula-backend-active \
+            -n ${{ env.NAMESPACE }} \
+            --type=json \
+            -p "[
+              {\"op\":\"replace\",\"path\":\"/spec/selector/slot\",\"value\":\"${PREV}\"},
+              {\"op\":\"replace\",\"path\":\"/metadata/annotations/blue-green~1active-slot\",\"value\":\"${PREV}\"}
+            ]"
+
+          if kubectl api-resources | grep -q TrafficSplit; then
+            kubectl patch trafficsplit gula-backend-split \
+              -n ${{ env.NAMESPACE }} \
+              --type=json \
+              -p '[
+                {"op":"replace","path":"/spec/backends/0/weight","value":100},
+                {"op":"replace","path":"/spec/backends/1/weight","value":0}
+              ]' 2>/dev/null || true
+          fi
+
+      - name: Verify rollback
+        run: |
+          for i in $(seq 1 12); do
+            STATUS=$(curl -sf --max-time 5 http://localhost:18000/health 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Rollback verified — health check passed"
+              exit 0
+            fi
+            echo "Waiting for health... attempt $i"
+            sleep 10
+          done
+          echo "WARNING: Rollback health check failed"
+          exit 1
+
+      - name: Notify
+        if: always()
+        env:
+          SLACK_WEBHOOK: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          curl -sf -X POST -H "Content-Type: application/json" \
+            -d "{\"text\":\"🔄 Auto rollback executed\nReason: ${{ env.ROLLBACK_REASON }}\nPrevious slot: ${{ steps.slots.outputs.previous }}\nStatus: ${{ job.status }}\"}" \
+            "$SLACK_WEBHOOK" 2>/dev/null || true
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Rollback Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Reason | ${{ env.ROLLBACK_REASON }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rolled back from | ${{ steps.slots.outputs.active }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rolled back to | ${{ steps.slots.outputs.previous }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY

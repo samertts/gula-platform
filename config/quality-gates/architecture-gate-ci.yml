@@ -1,0 +1,100 @@
+name: Architecture Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**/*.py'
+      - 'backend/migrations/versions/*.py'
+      - 'config/quality-gates/architecture-gate.py'
+
+jobs:
+  architecture-gate:
+    name: Architecture Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -q -r backend/requirements.txt
+
+      - name: Run architecture quality gate
+        id: gate
+        run: |
+          python config/quality-gates/architecture-gate.py --json > architecture-gate-report.json 2>&1
+          EXIT_CODE=$?
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          cat architecture-gate-report.json
+          exit $EXIT_CODE
+        continue-on-error: true
+
+      - name: Upload architecture gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-gate-report
+          path: architecture-gate-report.json
+          retention-days: 30
+
+      - name: Comment PR with architecture gate status
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('architecture-gate-report.json', 'utf8'));
+            const passed = report.passed;
+            const errors = report.summary.errors;
+            const warnings = report.summary.warnings;
+
+            let body = `## Architecture Quality Gate\n\n`;
+            body += `**Status:** ${passed ? '✅ PASSED' : '❌ FAILED'}\n`;
+            body += `**Errors:** ${errors}\n`;
+            body += `**Warnings:** ${warnings}\n\n`;
+
+            if (report.failures.length > 0) {
+              body += `### Details\n\n`;
+              body += `| Check | Severity | Message |\n`;
+              body += `|-------|----------|--------|\n`;
+              for (const f of report.failures) {
+                body += `| ${f.check_name || f.check} | ${f.severity} | ${f.message} |\n`;
+              }
+            }
+
+            const comments = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.data.find(c =>
+              c.user.type === 'Bot' && c.body.startsWith('## Architecture Quality Gate')
+            );
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: botComment.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
+
+      - name: Fail PR if gate failed
+        if: steps.gate.outputs.exit_code != '0'
+        run: |
+          echo "❌ Architecture gate failed. Check the report for details."
+          exit 1

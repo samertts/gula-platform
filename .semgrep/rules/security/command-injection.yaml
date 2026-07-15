@@ -1,0 +1,256 @@
+# =============================================================================
+# Semgrep Rule: Command Injection Detection
+# =============================================================================
+# Path: .semgrep/rules/security/command-injection.yaml
+# Managed by: Security Operations
+# Mitre: T1202 (Command and Scripting Interpreter)
+# Severity: ERROR (blocks CI)
+# =============================================================================
+
+rules:
+  - id: command-injection-os-system
+    patterns:
+      - pattern: |
+          os.system($USER_INPUT)
+      - pattern-not: |
+          os.system("...")
+    message: >-
+      Detected os.system() with non-literal argument. This can lead to
+      command injection. Use subprocess.run() with a list argument
+      instead of a string.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+      confidence: HIGH
+
+  - id: command-injection-subprocess-shell
+    patterns:
+      - pattern-either:
+          - pattern: |
+              subprocess.call($USER_INPUT, shell=True)
+          - pattern: |
+              subprocess.run($USER_INPUT, shell=True)
+          - pattern: |
+              subprocess.Popen($USER_INPUT, shell=True)
+          - pattern: |
+              subprocess.check_output($USER_INPUT, shell=True)
+          - pattern: |
+              subprocess.check_call($USER_INPUT, shell=True)
+      - pattern-not: |
+          subprocess.call("...", shell=True)
+      - pattern-not: |
+          subprocess.run("...", shell=True)
+      - pattern-not: |
+          subprocess.Popen("...", shell=True)
+    message: >-
+      Detected subprocess with shell=True and non-literal command.
+      This is vulnerable to command injection. Use a list of arguments
+      instead: subprocess.run(["command", arg1, arg2]).
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-subprocess-list
+    patterns:
+      - pattern: |
+          subprocess.run([$CMD, ...])
+      - pattern-inside: |
+          $CMD = $USER_INPUT
+      - pattern-not: |
+          $CMD = "..."
+    message: >-
+      Detected subprocess where the command name comes from a
+      non-literal source. Validate the command against a whitelist.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-popen
+    patterns:
+      - pattern: |
+          subprocess.Popen($USER_INPUT, ...)
+      - pattern-not: |
+          subprocess.Popen("...", ...)
+      - pattern-not: |
+          subprocess.Popen(["..."], ...)
+    message: >-
+      Detected subprocess.Popen() with non-literal argument.
+      Use list arguments and avoid shell=True.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-commands-module
+    patterns:
+      - pattern-either:
+          - pattern: |
+              commands.getoutput($USER_INPUT)
+          - pattern: |
+              commands.getstatusoutput($USER_INPUT)
+      - pattern-not: |
+          commands.getoutput("...")
+    message: >-
+      Detected deprecated commands module with non-literal argument.
+      Use subprocess.run() with a list.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-os-popen
+    patterns:
+      - pattern: |
+          os.popen($USER_INPUT)
+      - pattern-not: |
+          os.popen("...")
+    message: >-
+      Detected os.popen() with non-literal argument. Use subprocess.run()
+      with a list argument.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-asyncio-create-subprocess-shell
+    patterns:
+      - pattern: |
+          asyncio.create_subprocess_shell($USER_INPUT)
+      - pattern-not: |
+          asyncio.create_subprocess_shell("...")
+    message: >-
+      Detected asyncio.create_subprocess_shell() with non-literal
+      argument. Use create_subprocess_exec() with a list.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-fabric
+    patterns:
+      - pattern: |
+          fabric.api.run($USER_INPUT)
+      - pattern-not: |
+          fabric.api.run("...")
+    message: >-
+      Detected fabric.api.run() with non-literal command.
+      Validate the command to prevent injection.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-paramiko
+    patterns:
+      - pattern: |
+          $SSH.exec_command($USER_INPUT)
+      - pattern: |
+          $CLIENT.exec_command($USER_INPUT)
+      - pattern-not: |
+          $SSH.exec_command("...")
+      - pattern-not: |
+          $CLIENT.exec_command("...")
+    message: >-
+      Detected paramiko exec_command() with non-literal argument.
+      Validate the command string to prevent injection.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-pexpect
+    patterns:
+      - pattern: |
+          pexpect.spawn($USER_INPUT)
+      - pattern-not: |
+          pexpect.spawn("...")
+    message: >-
+      Detected pexpect.spawn() with non-literal command.
+      Use a list of arguments.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-concatenation-in-shell
+    patterns:
+      - pattern: |
+          subprocess.run("..." + $USER_INPUT + "...", shell=True)
+    message: >-
+      Detected command built with string concatenation and shell=True.
+      This is a command injection vulnerability.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-fstring-in-shell
+    patterns:
+      - pattern: |
+          subprocess.run(f"...{...}...", shell=True)
+      - pattern: |
+          os.system(f"...{...}...")
+    message: >-
+      Detected command built with f-string interpolation and shell=True.
+      Use subprocess.run() with a list of arguments.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: command-injection-ansible-shell
+    patterns:
+      - pattern: |
+          $MODULE.shell($USER_INPUT)
+      - pattern-not: |
+          $MODULE.shell("...")
+    message: >-
+      Detected Ansible shell module with non-literal command.
+      Prefer the command module (no shell interpretation) or
+      validate the input.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A1: Injection"
+      category: security

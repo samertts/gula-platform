@@ -1,0 +1,73 @@
+apiVersion: v2
+name: gula-platform
+version: 1.0.0
+appVersion: "2.1.0"
+description: GULA Platform - National Healthcare Platform
+type: application
+keywords:
+  - healthcare
+  - laboratory
+  - lims
+  - arabic-first
+home: https://gula-platform.org
+sources:
+  - https://github.com/samertts/gula-platform
+maintainers:
+  - name: GULA Platform Team
+    email: ops@gula-platform.org
+icon: https://gula-platform.org/icon.png
+dependencies:
+  - name: postgresql
+    version: ~12.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgres.enabled
+    tags:
+      - database
+  - name: redis
+    version: ~18.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - cache
+  - name: rabbitmq
+    version: ~14.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: rabbitmq.enabled
+    tags:
+      - messaging
+  - name: minio
+    version: ~14.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: minio.enabled
+    tags:
+      - storage
+  - name: prometheus
+    version: ~25.0
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: monitoring.prometheus.enabled
+    tags:
+      - monitoring
+  - name: grafana
+    version: ~8.0
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.grafana.enabled
+    tags:
+      - monitoring
+  - name: loki
+    version: ~6.0
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.loki.enabled
+    tags:
+      - monitoring
+  - name: tempo
+    version: ~1.0
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.tempo.enabled
+    tags:
+      - tracing
+  - name: linkerd2
+    version: ~1.0
+    repository: https://helm.linkerd.io/stable
+    condition: serviceMesh.linkerd.enabled
+    tags:
+      - service-mesh
