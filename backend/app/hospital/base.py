@@ -1,59 +1,11 @@
-import uuid
-from datetime import datetime
-from typing import Any
+from sqlalchemy import Boolean, Column, Integer
 
-from app._compat import UTC
-from app.models.base import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin, TimestampMixin
-from sqlalchemy import Column, String
-from sqlalchemy.orm import declarative_base
+from shared.models import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin, TimestampMixin
+
+from ..database import Base
 
 
-HospitalBase = declarative_base()
-
-
-def _ulid() -> str:
-    return str(uuid.uuid4()).replace("-", "").upper()[:26]
-
-
-class HospitalBaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, HospitalBase):
+class HospitalBaseEntity(Base, AuditMixin, SoftDeleteMixin, TenantMixin, OptimisticLockMixin):
     __abstract__ = True
 
-    id = Column(String(26), primary_key=True, default=_ulid)
-    fhir_id = Column(String(64), nullable=True, index=True)
-    fhir_resource_type = Column(String(32), nullable=True)
-
-    def to_dict(self) -> dict[str, Any]:
-        result = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
-
-    def soft_delete(self) -> None:
-        self.is_deleted = True
-        self.deleted_at = datetime.now(UTC)
-
-    def restore(self) -> None:
-        self.is_deleted = False
-        self.deleted_at = None
-
-    @property
-    def is_active(self) -> bool:
-        return not self.is_deleted
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} id={self.id}>"
-
-
-class HospitalTenantEntity(TenantMixin, HospitalBaseEntity):
-    __abstract__ = True
-
-
-class HospitalAuditEntity(AuditMixin, HospitalBaseEntity):
-    __abstract__ = True
-
-
-class HospitalTenantAuditEntity(TenantMixin, AuditMixin, HospitalBaseEntity):
-    __abstract__ = True
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
