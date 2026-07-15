@@ -1,0 +1,3 @@
+{{- if .Values.backend.serviceMonitor.enabled }}
+{{ include "gula.serviceMonitor" (dict "enabled" true "name" (printf "%s-%s" .Values.backend.name "sm") "component" "api" "port" "http" "interval" .Values.backend.serviceMonitor.interval "scrapeTimeout" .Values.backend.serviceMonitor.scrapeTimeout "path" .Values.backend.serviceMonitor.path "labels" .Values.backend.serviceMonitor.labels "annotations" .Values.backend.serviceMonitor.annotations "Values" $.Values) }}
+{{- end }}

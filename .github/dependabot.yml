@@ -1,0 +1,215 @@
+# =============================================================================
+# Dependabot Configuration — GULA Platform
+# =============================================================================
+# Path: .github/dependabot.yml
+# Managed by: Security Operations
+# Version: 2.0
+# =============================================================================
+#
+# Dependabot automatically creates pull requests to update dependencies.
+# Version updates are checked on the schedule defined below.
+#
+
+version: 2
+updates:
+  # ============================================================================
+  # Python (pip) — Backend
+  # ============================================================================
+  - package-ecosystem: "pip"
+    directory: "/backend/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    # Allow up to 10 open PRs at a time
+    open-pull-requests-limit: 10
+    # Labels for automated PRs
+    labels:
+      - "dependencies"
+      - "automated"
+      - "python"
+    # Reviewers to assign
+    reviewers:
+      - "samertts"
+    # Assignees
+    assignees:
+      - "samertts"
+    # Group minor/patch updates together
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    # Ignore major version bumps that need manual verification
+    ignore:
+      - dependency-name: "fastapi"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "sqlalchemy"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "alembic"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "pydantic"
+        update-types: ["version-update:semver-major"]
+    # Allow auto-merge for patch updates
+    allow:
+      - dependency-type: "production"
+        update-types: ["version-update:semver-patch"]
+    # Vendor directory (if using pip --no-index)
+    vendor: false
+
+  # ============================================================================
+  # npm — Frontend (React + Firebase)
+  # ============================================================================
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "javascript"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "firebase"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+    allow:
+      - dependency-type: "production"
+        update-types: ["version-update:semver-patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/frontend-v2/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "javascript"
+      - "frontend-v2"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "firebase"
+        update-types: ["version-update:semver-major"]
+    allow:
+      - dependency-type: "production"
+        update-types: ["version-update:semver-patch"]
+
+  # ============================================================================
+  # Docker — Backend image
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/backend/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major"]
+
+  # ============================================================================
+  # Docker — Services (device_bridge, etc.)
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/services/device_bridge/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "device-bridge"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # GitHub Actions — CI/CD workflows
+  # ============================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "github-actions"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    groups:
+      actions-dependencies:
+        patterns:
+          - "*"

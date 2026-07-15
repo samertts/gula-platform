@@ -1,0 +1,152 @@
+name: Production Quality Gates
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: quality-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  architecture-gate:
+    name: Architecture Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python3 config/quality-gates/architecture-gate.py
+      - name: Report
+        if: always()
+        run: echo "## Architecture Gate" >> $GITHUB_STEP_SUMMARY
+
+  performance-gate:
+    name: Performance Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python3 config/quality-gates/performance-gate.py
+      - name: Report
+        if: always()
+        run: echo "## Performance Gate" >> $GITHUB_STEP_SUMMARY
+
+  security-gate:
+    name: Security Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python3 config/quality-gates/security-gate.py
+      - name: Report
+        if: always()
+        run: echo "## Security Gate" >> $GITHUB_STEP_SUMMARY
+
+  database-gate:
+    name: Database Validation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install sqlalchemy psycopg2-binary alembic
+      - run: python3 config/quality-gates/database-gate.py
+        env:
+          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/testdb
+
+  api-gate:
+    name: API Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python3 config/quality-gates/api-gate.py
+
+  fhir-gate:
+    name: FHIR Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python3 config/quality-gates/fhir-gate.py
+
+  scalability-gate:
+    name: Scalability Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python3 config/quality-gates/scalability-gate.py
+
+  accessibility-gate:
+    name: Accessibility Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node config/quality-gates/accessibility-gate.js
+
+  offline-gate:
+    name: Offline Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python3 config/quality-gates/offline-gate.py
+
+  combined-report:
+    name: Combined Gate Report
+    if: always()
+    needs:
+      - architecture-gate
+      - performance-gate
+      - security-gate
+      - database-gate
+      - api-gate
+      - fhir-gate
+      - scalability-gate
+      - accessibility-gate
+      - offline-gate
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "# Production Quality Gates Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          for gate in architecture performance security database api fhir scalability accessibility offline; do
+            result="${{ needs.${gate}-gate.result }}"
+            echo "| ${gate} | ${result} |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo ":x: **RELEASE BLOCKED** — One or more quality gates failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo ":white_check_mark: **All gates pass** — Release ready" >> $GITHUB_STEP_SUMMARY
+          fi

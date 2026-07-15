@@ -1,0 +1,25 @@
+{{- $namespace := .Values.global.namespace -}}
+{{- range $svc, $config := .Values.microservices }}
+{{- if $config.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $config.name }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "gula.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: microservice
+    gula-service: {{ $svc }}
+spec:
+  type: ClusterIP
+  selector:
+    gula-service: {{ $svc }}
+    app.kubernetes.io/component: microservice
+  ports:
+    - port: {{ $config.servicePort }}
+      targetPort: {{ $config.port }}
+      name: http
+      protocol: TCP
+{{- end }}
+{{- end }}

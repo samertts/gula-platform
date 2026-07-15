@@ -1,0 +1,244 @@
+# =============================================================================
+# Semgrep Rule: Authentication Bypass Detection
+# =============================================================================
+# Path: .semgrep/rules/security/auth-bypass.yaml
+# Managed by: Security Operations
+# Mitre: T1078 (Valid Accounts)
+# Severity: ERROR (blocks CI)
+# =============================================================================
+
+rules:
+  - id: auth-bypass-missing-auth-dependency
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @router.$METHOD("/api/...")
+              ...
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              @app.$METHOD("/api/...")
+              ...
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              @route("/api/...", methods=[...])
+              ...
+              def $FUNC(...):
+                  ...
+      - pattern-not: |
+          @router.$METHOD("/health/...")
+          ...
+      - pattern-not: |
+          @app.$METHOD("/health/...")
+          ...
+      - pattern-not: |
+          @router.$METHOD("/docs/...")
+          ...
+      - pattern-not-inside: |
+          Depends(auth_required)
+      - pattern-not-inside: |
+          Depends(get_current_user)
+      - pattern-not-inside: |
+          Depends(require_role)
+      - pattern-not-inside: |
+          Depends(require_permission)
+    message: >-
+      Detected API endpoint without authentication dependency.
+      Every API endpoint must have an auth dependency:
+      `Depends(get_current_user)` or `Depends(require_role(...))`.
+      If this is intentionally public, add a comment explaining why.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A2: Broken Authentication"
+      category: security
+      confidence: HIGH
+
+  - id: auth-bypass-permissive-cors
+    patterns:
+      - pattern-either:
+          - pattern: |
+              allow_origins=["*"]
+          - pattern: |
+              allow_origins=['*']
+          - pattern: |
+              allow_origins="*"
+    message: >-
+      Detected permissive CORS configuration allowing all origins.
+      Restrict to specific allowed origins. Never use '*' in production.
+    languages:
+      - python
+      - javascript
+      - typescript
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942: Permissive Cross-domain Policy"
+      owasp: "A5: Security Misconfiguration"
+      category: security
+
+  - id: auth-bypass-allow-any
+    patterns:
+      - pattern-either:
+          - pattern: |
+              AllowAny()
+          - pattern: |
+              authentication_classes = [AllowAny]
+          - pattern: |
+              permission_classes = [AllowAny]
+      - pattern-not-inside: |
+          class $HEALTH(APIView):
+              ...
+    message: >-
+      Detected AllowAny permission class. Ensure this endpoint is
+      intentionally public (e.g., health check, registration).
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A2: Broken Authentication"
+      category: security
+
+  - id: auth-bypass-hardcoded-admin-route
+    patterns:
+      - pattern: |
+          @router.get("/admin/...")
+          def $FUNC(...):
+              ...
+      - pattern-not-inside: |
+          Depends(require_role("admin"))
+      - pattern-not-inside: |
+          Depends(require_permission("admin"))
+      - pattern-not-inside: |
+          @require_admin
+      - pattern-not-inside: |
+          @admin_required
+    message: >-
+      Detected admin route without admin role check.
+      Admin endpoints must verify the user has admin role.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A2: Broken Authentication"
+      category: security
+
+  - id: auth-bypass-inline-auth-check-missing
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if not $USER.is_authenticated:
+                  ...
+          - pattern: |
+              if $USER.role != "admin":
+                  ...
+          - pattern: |
+              if not current_user:
+                  ...
+    message: >-
+      Detected inline authentication/authorization check.
+      Use standard auth dependencies instead of inline checks
+      to ensure consistent enforcement.
+    languages:
+      - python
+    severity: INFO
+    metadata:
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A2: Broken Authentication"
+      category: security
+
+  - id: auth-bypass-exception-in-auth
+    patterns:
+      - pattern: |
+          try:
+              ...
+              get_current_user(...)
+          except:
+              ...
+    message: >-
+      Detected auth call wrapped in try/except that may silently
+      bypass authentication. Auth failures must propagate.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A2: Broken Authentication"
+      category: security
+
+  - id: auth-bypass-jwt-verification-skipped
+    patterns:
+      - pattern: |
+          jwt.decode($TOKEN, $SECRET, algorithms=[...], options={"verify_signature": False})
+      - pattern: |
+          jwt.decode($TOKEN, $SECRET, algorithms=[...], options={"verify_exp": False})
+      - pattern: |
+          jwt.decode($TOKEN, $SECRET, algorithms=[...], options={"verify_aud": False})
+    message: >-
+      Detected JWT verification being skipped. Never disable signature
+      or expiry verification in production code.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+      owasp: "A2: Broken Authentication"
+      category: security
+
+  - id: auth-bypass-debug-endpoint
+    patterns:
+      - pattern: |
+          @app.get("/debug/...")
+          def $FUNC(...):
+              ...
+    message: >-
+      Detected debug endpoint. Debug endpoints must be removed
+      or gated behind feature flags in production.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      cwe: "CWE-489: Debug Information Exposure"
+      owasp: "A5: Security Misconfiguration"
+      category: security
+
+  - id: auth-bypass-skip-tenant-check
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $QUERY.filter(...).all()
+          - pattern: |
+              $QUERY.filter(...).first()
+      - pattern-not-inside: |
+          .filter(..., lab_id=current_user.lab_id)
+      - pattern-not-inside: |
+          .filter(..., lab_id == current_user.lab_id)
+      - pattern-not-inside: |
+          .filter_by(..., lab_id=current_user.lab_id)
+      - pattern-not-inside: |
+          .where(..., lab_id=current_user.lab_id)
+      - pattern-not-inside: |
+          .where(..., lab_id == current_user.lab_id)
+      - pattern-not-inside: |
+          def _get_tenant_filter(...):
+              ...
+      - pattern-inside: |
+          def $FUNC(...):
+              ...
+      - pattern-inside: |
+          $DB.query(...)
+    message: >-
+      Detected database query without lab_id tenant isolation filter.
+      Every patient data query must filter by lab_id = current_user.lab_id.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A2: Broken Authentication"
+      category: security
+      confidence: HIGH

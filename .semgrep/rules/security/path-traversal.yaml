@@ -1,0 +1,207 @@
+# =============================================================================
+# Semgrep Rule: Path Traversal Detection
+# =============================================================================
+# Path: .semgrep/rules/security/path-traversal.yaml
+# Managed by: Security Operations
+# Mitre: T1083 (File and Directory Discovery)
+# Severity: ERROR (blocks CI)
+# =============================================================================
+
+rules:
+  - id: path-traversal-open
+    patterns:
+      - pattern-either:
+          - pattern: |
+              open($USER_INPUT, ...)
+          - pattern: |
+              open(str($USER_INPUT), ...)
+      - pattern-not: |
+          open("...", ...)
+      - pattern-not: |
+          open(os.environ.get("..."), ...)
+      - pattern-not-inside: |
+          def _sanitize_path(...):
+              ...
+          ...
+      - metavariable-regex:
+          metavariable: $USER_INPUT
+          regex: (?!(("[^"]*")|('[^']*')|(\"\"\".*\"\"\")|(\'\'\'.*\'\'\')$))
+    message: >-
+      Detected call to open() with a non-literal argument.
+      Ensure the input is validated against path traversal attacks
+      (e.g., using os.path.realpath and checking it starts with an allowed prefix).
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A1: Injection"
+      category: security
+      confidence: HIGH
+
+  - id: path-traversal-pathlib
+    patterns:
+      - pattern-either:
+          - pattern: |
+              Path($USER_INPUT)
+          - pattern: |
+              Path($BASE, $USER_INPUT)
+          - pattern: |
+              Path($PARTS) / $USER_INPUT
+      - pattern-not: |
+          Path("...")
+      - pattern-not: |
+          Path("...", $VAR)
+      - pattern-not-inside: |
+          def _sanitize_path(...):
+              ...
+          ...
+      - metavariable-regex:
+          metavariable: $USER_INPUT
+          regex: (?!(("[^"]*")|('[^']*')|(\"\"\".*\"\"\")|(\'\'\'.*\'\'\')$))
+    message: >-
+      Detected Path() constructed with a non-literal argument.
+      Validate the resolved path is within an allowed directory
+      using .resolve() and a prefix check.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: path-traversal-os-path
+    patterns:
+      - pattern-either:
+          - pattern: |
+              os.path.join($BASE, $USER_INPUT)
+          - pattern: |
+              os.path.join($PARTS, $USER_INPUT)
+      - pattern-not: |
+          os.path.join("...", $USER_INPUT)
+      - pattern-not-inside: |
+          def _sanitize_path(...):
+              ...
+          ...
+      - metavariable-regex:
+          metavariable: $USER_INPUT
+          regex: (?!(("[^"]*")|('[^']*')|(\"\"\".*\"\"\")|(\'\'\'.*\'\'\')$))
+    message: >-
+      Detected os.path.join() with user input. Use os.path.realpath()
+      and verify the result starts with the expected base directory.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: path-traversal-send-file
+    patterns:
+      - pattern-either:
+          - pattern: |
+              FileResponse($USER_INPUT)
+          - pattern: |
+              send_file($USER_INPUT)
+          - pattern: |
+              StreamingResponse(open($USER_INPUT, ...), ...)
+      - pattern-not: |
+          FileResponse("...")
+      - pattern-not: |
+          send_file("...")
+    message: >-
+      Detected file serving endpoint with user-controlled path.
+      Validate the path to prevent directory traversal.
+      Use a whitelist approach for allowed files.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: path-traversal-sanitization-missing
+    patterns:
+      - pattern-either:
+          - pattern: |
+              open(".../{" + $USER_INPUT + "}", ...)
+          - pattern: |
+              open("..." + $USER_INPUT + "...", ...)
+          - pattern: |
+              Path("...") / $USER_INPUT / "..."
+    message: >-
+      Detected file path constructed with string concatenation using
+      user input. Use safe path join with validation.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: path-traversal-tempfile
+    patterns:
+      - pattern: |
+          tempfile.NamedTemporaryFile(dir=$USER_INPUT, ...)
+      - pattern: |
+          tempfile.mkstemp(dir=$USER_INPUT, ...)
+      - pattern-not: |
+          tempfile.NamedTemporaryFile(dir="/tmp/...", ...)
+    message: >-
+      Detected temporary file creation with user-controlled directory.
+      This could allow writing files to arbitrary locations.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: path-traversal-shutil
+    patterns:
+      - pattern-either:
+          - pattern: |
+              shutil.copy($USER_INPUT, ...)
+          - pattern: |
+              shutil.move($USER_INPUT, ...)
+          - pattern: |
+              shutil.rmtree($USER_INPUT)
+      - pattern-not: |
+          shutil.copy("...", ...)
+      - pattern-not: |
+          shutil.move("...", ...)
+      - pattern-not: |
+          shutil.rmtree("...")
+    message: >-
+      Detected shutil operation with user-controlled path.
+      Validate the path to prevent directory traversal.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A1: Injection"
+      category: security
+
+  - id: path-traversal-zipfile
+    patterns:
+      - pattern: |
+          zipfile.ZipFile.extract($ZIP, path=$USER_INPUT)
+      - pattern: |
+          zipfile.ZipFile.extractall($ZIP, path=$USER_INPUT)
+    message: >-
+      Detected zip file extraction with user-controlled path.
+      This can lead to a Zip Slip vulnerability.
+      Validate the destination path is within the target directory.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A1: Injection"
+      category: security

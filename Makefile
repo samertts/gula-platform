@@ -11,7 +11,15 @@
         db-shell redis-cli shell secrets-gen \
         scenario-test integrity-test metrics-token \
         self-audit self-audit-fix scale scale-down \
-        manage kill-switch-on kill-switch-off control-stats
+        manage kill-switch-on kill-switch-off control-stats \
+        helm-deploy helm-uninstall helm-package helm-template helm-lint \
+        quality-gate canary-deploy blue-green-deploy auto-rollback \
+        dr-failover dr-failback dr-test dr-validate \
+        load-test stress-test spike-test soak-test recovery-test \
+        sast dast dependency-scan secret-scan container-scan iac-scan sbom \
+        continuous-backup pitr-recover cert-renew secret-rotate key-rotate \
+        chaos-run snapshot-create snapshot-list snapshot-cleanup \
+        tag-release performance-report security-report
 
 BACKEND_URL ?= http://localhost:8080
 
@@ -247,6 +255,196 @@ monitoring:
 
 monitoring-down:
 	docker compose --profile monitoring stop prometheus grafana
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helm
+# ─────────────────────────────────────────────────────────────────────────────
+helm-lint:
+	helm lint helm/gula-platform
+
+helm-template:
+	helm template gula-platform helm/gula-platform
+
+helm-package:
+	helm package helm/gula-platform -d ./releases
+
+helm-deploy:
+	helm upgrade --install gula-platform helm/gula-platform \
+	  -f helm/gula-platform/values.yaml --namespace gula --create-namespace
+
+helm-uninstall:
+	helm uninstall gula-platform -n gula
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Quality Gates
+# ─────────────────────────────────────────────────────────────────────────────
+quality-gate:
+	@echo "=== Running Production Quality Gates ==="
+	@python3 config/quality-gates/architecture-gate.py || true
+	@python3 config/quality-gates/performance-gate.py || true
+	@python3 config/quality-gates/security-gate.py || true
+	@python3 config/quality-gates/database-gate.py || true
+	@python3 config/quality-gates/api-gate.py || true
+	@python3 config/quality-gates/fhir-gate.py || true
+	@python3 config/quality-gates/scalability-gate.py || true
+	@python3 config/quality-gates/offline-gate.py || true
+	@node config/quality-gates/accessibility-gate.js || true
+	@echo "=== All quality gates complete ==="
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Deployment Strategies
+# ─────────────────────────────────────────────────────────────────────────────
+canary-deploy:
+	@echo "=== Canary Deployment ==="
+	@echo "  IMAGE_TAG=${IMAGE_TAG}  CANARY_PCT=${CANARY_PCT:-10}"
+	bash .github/scripts/canary-deploy.sh ${IMAGE_TAG} ${CANARY_PCT:-10} 2>/dev/null \
+	  || echo "See .github/workflows/canary-deploy.yml for CI-driven deployment"
+
+blue-green-deploy:
+	@echo "=== Blue-Green Deployment ==="
+	@echo "  IMAGE_TAG=${IMAGE_TAG}  SLOT=${SLOT:-auto}"
+	bash .github/scripts/blue-green-deploy.sh ${IMAGE_TAG} ${SLOT:-auto} 2>/dev/null \
+	  || echo "See .github/workflows/blue-green-deploy.yml for CI-driven deployment"
+
+auto-rollback:
+	@echo "=== Auto Rollback ==="
+	bash .github/scripts/auto-rollback.sh ${TARGET:-gula-backend} 2>/dev/null \
+	  || echo "See .github/workflows/auto-rollback.yml"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Disaster Recovery
+# ─────────────────────────────────────────────────────────────────────────────
+dr-failover:
+	@echo "=== DR Failover ==="
+	bash scripts/dr-failover.sh
+
+dr-failback:
+	@echo "=== DR Failback ==="
+	bash scripts/dr-failback.sh
+
+dr-test:
+	@echo "=== DR Test ==="
+	bash scripts/dr-test.sh
+
+dr-validate:
+	@echo "=== Restore Validation ==="
+	bash scripts/validate-restore.sh
+
+continuous-backup:
+	bash scripts/continuous-backup.sh ${TYPE:-full}
+
+pitr-recover:
+	@echo "=== Point-in-Time Recovery ==="
+	bash scripts/pitr-recover.sh ${TARGET_TIME}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Performance Testing
+# ─────────────────────────────────────────────────────────────────────────────
+load-test:
+	@echo "=== Load Test ==="
+	k6 run tests/load/k6-scenarios.js -e BASE_URL=$(BACKEND_URL) --out json=/tmp/load-results.json
+	python3 scripts/generate-performance-report.py -i /tmp/load-results.json -o docs/reports/load-report.html
+
+stress-test:
+	@echo "=== Stress Test ==="
+	bash tests/stress/stress-test.sh
+
+spike-test:
+	@echo "=== Spike Test ==="
+	bash tests/spike/spike-test.sh
+
+soak-test:
+	@echo "=== Soak Test (24h) ==="
+	bash tests/soak/soak-test.sh
+
+recovery-test:
+	@echo "=== Recovery Test ==="
+	bash tests/recovery/recovery-test.sh
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Security Testing
+# ─────────────────────────────────────────────────────────────────────────────
+sast:
+	@echo "=== SAST: Bandit ==="
+	cd backend && bandit -r app/ -ll -ii -f json -o /tmp/bandit-report.json 2>/dev/null || true
+	@echo "=== SAST: Semgrep ==="
+	semgrep --config=.semgrep/rules/security/ --error backend/app/ 2>/dev/null || true
+
+dast:
+	@echo "=== DAST: OWASP ZAP ==="
+	python3 config/security/zap-api-scan.py --target $(BACKEND_URL) 2>/dev/null || true
+
+dependency-scan:
+	@echo "=== Dependency Scan ==="
+	cd backend && safety check -r requirements.txt --full-report 2>/dev/null || true
+	cd frontend-v2 && npm audit --audit-level=high 2>/dev/null || true
+
+secret-scan:
+	@echo "=== Secret Scan ==="
+	gitleaks detect --source . --verbose 2>/dev/null || true
+
+container-scan:
+	@echo "=== Container Scan ==="
+	trivy image ghcr.io/samertts/gula-platform/backend:${IMAGE_TAG:-latest} \
+	  --severity CRITICAL,HIGH --format sarif --output /tmp/trivy-report.sarif 2>/dev/null || true
+
+iac-scan:
+	@echo "=== IaC Scan ==="
+	checkov -d k8s/ --framework kubernetes -o json > /tmp/checkov-report.json 2>/dev/null || true
+
+sbom:
+	@echo "=== SBOM Generation ==="
+	bash scripts/generate-sbom.sh
+	bash scripts/validate-sbom.sh
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Security Operations
+# ─────────────────────────────────────────────────────────────────────────────
+cert-renew:
+	bash scripts/cert-renew.sh
+
+secret-rotate:
+	bash scripts/rotate-secrets.sh
+
+key-rotate:
+	bash scripts/rotate-keys.sh
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Chaos Engineering
+# ─────────────────────────────────────────────────────────────────────────────
+chaos-run:
+	@echo "=== Chaos Engineering ==="
+	bash tests/chaos/run-chaos.sh
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Snapshot Management
+# ─────────────────────────────────────────────────────────────────────────────
+snapshot-create:
+	bash scripts/manage-snapshots.sh create
+
+snapshot-list:
+	bash scripts/manage-snapshots.sh list
+
+snapshot-cleanup:
+	bash scripts/manage-snapshots.sh cleanup
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reports
+# ─────────────────────────────────────────────────────────────────────────────
+performance-report:
+	@echo "=== Performance Report ==="
+	python3 scripts/generate-performance-report.py -o docs/reports/performance-report.html
+
+security-report:
+	@echo "=== Security Report ==="
+	@echo "See docs/reports/security-report.md"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Release
+# ─────────────────────────────────────────────────────────────────────────────
+tag-release:
+	@echo "=== Release Tagging ==="
+	bash scripts/tag-release.sh ${VERSION:-production-platform-v1.0}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Admin

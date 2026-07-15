@@ -1,0 +1,1102 @@
+# =============================================================================
+# Snort IDS Rules — GULA Platform API Protection
+# =============================================================================
+# Path: /etc/snort/rules/local.rules
+# Managed by: Security Operations
+# Ruleset version: 1.0.0
+# Last updated: 2026-07-15
+# =============================================================================
+#
+# Rule Header Format:
+#   alert <protocol> <src_ip> <src_port> -> <dst_ip> <dst_port>
+#   (msg:"<description>";
+#    content/uricontent/pcre patterns;
+#    sid:<unique_id>;
+#    classtype:<classification>;
+#    priority:<1-4>;)
+#
+# SID Range Allocation:
+#   1000000-1000999: SQL Injection
+#   1001000-1001999: XSS
+#   1002000-1002999: Path Traversal
+#   1003000-1003999: Command Injection
+#   1004000-1004999: SSRF
+#   1005000-1005999: API Abuse
+#   1006000-1006999: Scanner / Probe Detection
+#   1007000-1007999: Authentication Attacks
+#   1008000-1008999: Data Exfiltration / Leakage
+#   1009000-1009999: General / Catch-all
+#
+
+# ============================================================================
+# PREAMBLE — Local rules configuration
+# ============================================================================
+# Include local rules after all distributed rules
+# ipvar GULA_API_NET 10.0.0.0/8
+# ipvar GULA_INTERNAL_NET 10.0.0.0/8
+# ipvar EXTERNAL_NET !$GULA_INTERNAL_NET
+# portvar HTTP_PORTS [80,443,8080,8000]
+
+# ============================================================================
+# SECTION 1: SQL INJECTION (SID: 1000000-1000999)
+# ============================================================================
+# Detect classic SQL injection patterns in URI and request body
+
+# 1.1 — Basic tautology: ' OR 1=1, ' OR '1'='1, etc.
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI Basic tautology 'OR 1=1' detected";
+   flow:to_server,established;
+   content:"' OR"; nocase; http_uri;
+   content:"1=1"; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000001; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI Tautology 'OR 1=1' in request body";
+   flow:to_server,established;
+   content:"' OR"; nocase; http_client_body;
+   content:"1=1"; distance:0; within:10; http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1000002; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI 'OR' tautology variant";
+   flow:to_server,established;
+   pcre:"/(\bOR\b|\bAND\b)\s+[\"']?[^\s]+\s*=\s*[\"']?[^\s]+/i";
+   classtype:attempted-repository-vulnerability;
+   sid:1000003; priority:2; rev:2;)
+
+# 1.2 — UNION SELECT detection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI UNION SELECT in URI";
+   flow:to_server,established;
+   content:"UNION"; nocase; http_uri;
+   content:"SELECT"; nocase; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000010; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI UNION SELECT in request body";
+   flow:to_server,established;
+   content:"UNION"; nocase; http_client_body;
+   content:"SELECT"; nocase; distance:0; within:10; http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1000011; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI UNION ALL SELECT in URI";
+   flow:to_server,established;
+   content:"UNION"; nocase; http_uri;
+   content:"ALL"; nocase; distance:0; within:6; http_uri;
+   content:"SELECT"; nocase; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000012; priority:1; rev:1;)
+
+# 1.3 — DROP TABLE / DROP DATABASE detection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI DROP TABLE in URI";
+   flow:to_server,established;
+   content:"DROP"; nocase; http_uri;
+   content:"TABLE"; nocase; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000020; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI DROP TABLE in request body";
+   flow:to_server,established;
+   content:"DROP"; nocase; http_client_body;
+   content:"TABLE"; nocase; distance:0; within:10; http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1000021; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI DROP DATABASE in URI";
+   flow:to_server,established;
+   content:"DROP"; nocase; http_uri;
+   content:"DATABASE"; nocase; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000022; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI DROP in request body";
+   flow:to_server,established;
+   pcre:"/\bDROP\s+(TABLE|DATABASE|SCHEMA|INDEX|VIEW|PROCEDURE|FUNCTION)\b/i";
+   classtype:attempted-repository-vulnerability;
+   sid:1000023; priority:1; rev:2;)
+
+# 1.4 — DELETE / INSERT / UPDATE / ALTER detection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI DELETE FROM in URI";
+   flow:to_server,established;
+   content:"DELETE"; nocase; http_uri;
+   content:"FROM"; nocase; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000030; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI INSERT INTO in URI";
+   flow:to_server,established;
+   content:"INSERT"; nocase; http_uri;
+   content:"INTO"; nocase; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000031; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI ALTER TABLE in URI";
+   flow:to_server,established;
+   content:"ALTER"; nocase; http_uri;
+   content:"TABLE"; nocase; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000032; priority:1; rev:1;)
+
+# 1.5 — Comments and inline SQL
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI SQL comment injection -- in URI";
+   flow:to_server,established;
+   content:"--"; http_uri;
+   content:"--"; distance:0; within:2; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000040; priority:2; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI block comment injection /* in URI";
+   flow:to_server,established;
+   content:"/*"; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000041; priority:2; rev:1;)
+
+# 1.6 — pg_sleep / BENCHMARK timing detection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI pg_sleep timing attack in URI";
+   flow:to_server,established;
+   content:"pg_sleep"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000050; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI BENCHMARK timing attack in URI";
+   flow:to_server,established;
+   content:"BENCHMARK"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000051; priority:1; rev:1;)
+
+# 1.7 — INFORMATION_SCHEMA queries
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI INFORMATION_SCHEMA query in URI";
+   flow:to_server,established;
+   content:"INFORMATION_SCHEMA"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000060; priority:2; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI INFORMATION_SCHEMA query in request body";
+   flow:to_server,established;
+   content:"INFORMATION_SCHEMA"; nocase; http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1000061; priority:2; rev:1;)
+
+# 1.8 — EXEC / EXECUTE immediate
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI EXECUTE IMMEDIATE in URI";
+   flow:to_server,established;
+   content:"EXECUTE"; nocase; http_uri;
+   content:"IMMEDIATE"; nocase; distance:0; within:15; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000070; priority:1; rev:1;)
+
+# 1.9 — xp_cmdshell (MSSQL specific, but check anyway)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI xp_cmdshell in URI";
+   flow:to_server,established;
+   content:"xp_cmdshell"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1000080; priority:1; rev:1;)
+
+# 1.10 — General SQL injection pcre catch-all
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI General SQL keyword sequence in URI";
+   flow:to_server,established;
+   pcre:"/(\bSELECT\b.*\bFROM\b|\bINSERT\b.*\bINTO\b|\bUPDATE\b.*\bSET\b|\bDELETE\b.*\bFROM\b|\bCREATE\b.*\bTABLE\b|\bALTER\b.*\bTABLE\b|\bTRUNCATE\b)/i";
+   classtype:attempted-repository-vulnerability;
+   sid:1000090; priority:2; rev:2;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SQLI General SQL keyword in POST body";
+   flow:to_server,established;
+   pcre:"/(\bSELECT\b.*\bFROM\b|\bINSERT\b.*\bINTO\b|\bUPDATE\b.*\bSET\b|\bDELETE\b.*\bFROM\b|\bCREATE\b.*\bTABLE\b|\bALTER\b.*\bTABLE\b|\bTRUNCATE\b)/i";
+   http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1000091; priority:2; rev:2;)
+
+# ============================================================================
+# SECTION 2: CROSS-SITE SCRIPTING (XSS) (SID: 1001000-1001999)
+# ============================================================================
+
+# 2.1 — <script> tag detection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS <script> tag in URI";
+   flow:to_server,established;
+   content:"<script"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001000; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS <script> tag in request body";
+   flow:to_server,established;
+   content:"<script"; nocase; http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1001001; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS </script> tag in URI";
+   flow:to_server,established;
+   content:"</script>"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001002; priority:1; rev:1;)
+
+# 2.2 — onerror= / onload= / onmouseover= event handlers
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS onerror event handler in URI";
+   flow:to_server,established;
+   content:"onerror"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001010; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS onerror event handler in request body";
+   flow:to_server,established;
+   content:"onerror"; nocase; http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1001011; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS onload event handler in URI";
+   flow:to_server,established;
+   content:"onload"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001012; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS Event handler in URI";
+   flow:to_server,established;
+   pcre:"/\son\w+\s*=\s*['\"]?/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001013; priority:2; rev:2;)
+
+# 2.3 — javascript: scheme
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS javascript: scheme in URI";
+   flow:to_server,established;
+   content:"javascript:"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001020; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS javascript: scheme in request body";
+   flow:to_server,established;
+   content:"javascript:"; nocase; http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1001021; priority:1; rev:1;)
+
+# 2.4 — document.cookie / document.write / window.location
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS document.cookie access in URI";
+   flow:to_server,established;
+   pcre:"/document\s*\.\s*cookie/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001030; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS document.write in URI";
+   flow:to_server,established;
+   pcre:"/document\s*\.\s*write/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001031; priority:1; rev:1;)
+
+# 2.5 — eval() / setTimeout / setInterval
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS eval() in URI";
+   flow:to_server,established;
+   content:"eval("; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001040; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS setTimeout in URI";
+   flow:to_server,established;
+   content:"setTimeout"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001041; priority:1; rev:1;)
+
+# 2.6 — Data URI scheme (potential XSS vector)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS data: URI scheme in URI";
+   flow:to_server,established;
+   content:"data:"; nocase; http_uri;
+   content:"text/html"; nocase; distance:0; within:40; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001050; priority:2; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS data: URI scheme in request body";
+   flow:to_server,established;
+   content:"data:"; nocase; http_client_body;
+   content:"text/html"; nocase; distance:0; within:40; http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1001051; priority:2; rev:1;)
+
+# 2.7 — Base64 encoded XSS
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS Base64-encoded content in URI";
+   flow:to_server,established;
+   pcre:"/[A-Za-z0-9+/]{40,}={0,2}/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001060; priority:3; rev:1;)
+
+# 2.8 — <img>, <iframe>, <svg> with event handlers
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS <img> tag with event handler in URI";
+   flow:to_server,established;
+   content:"<img"; nocase; http_uri;
+   content:"onerror"; nocase; distance:0; within:200; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001070; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS <iframe> tag in URI";
+   flow:to_server,established;
+   content:"<iframe"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001071; priority:1; rev:1;)
+
+# 2.9 — alert(), prompt(), confirm() probes
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS alert() probe in URI";
+   flow:to_server,established;
+   pcre:"/alert\s*\(/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001080; priority:2; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS prompt() probe in URI";
+   flow:to_server,established;
+   pcre:"/prompt\s*\(/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001081; priority:2; rev:1;)
+
+# 2.10 — General XSS polyglot detection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-XSS General XSS polyglot patterns in URI";
+   flow:to_server,established;
+   pcre:"/[<>].*[\"'\(\)]/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1001090; priority:2; rev:2;)
+
+# ============================================================================
+# SECTION 3: PATH TRAVERSAL (SID: 1002000-1002999)
+# ============================================================================
+
+# 3.1 — Directory traversal ../ in URI
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Directory traversal ../ in URI";
+   flow:to_server,established;
+   content:"../"; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002000; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Directory traversal ..%2f in URI";
+   flow:to_server,established;
+   content:"..%2f"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002001; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Directory traversal ..%5c in URI";
+   flow:to_server,established;
+   content:"..%5c"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002002; priority:1; rev:1;)
+
+# 3.2 — Encoded traversal variants
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Double-encoded traversal %252e%252e%252f in URI";
+   flow:to_server,established;
+   content:"%252e%252e%252f"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002010; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Unicode-encoded traversal %c0%ae%c0%ae/ in URI";
+   flow:to_server,established;
+   content:"%c0%ae%c0%ae"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002011; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Unicode-encoded traversal %c0%ae%c0%ae%c0%af in URI";
+   flow:to_server,established;
+   content:"%c0%ae%c0%ae%c0%af"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002012; priority:1; rev:1;)
+
+# 3.3 — Access to sensitive system files via path traversal
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Attempted access to /etc/passwd via traversal";
+   flow:to_server,established;
+   pcre:"/(\.\.\/|\%2e\%2e\%2f|\%2e\%2e\/).*etc\/passwd/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002020; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Attempted access to Windows system files";
+   flow:to_server,established;
+   pcre:"/(\.\.\/|\.\.\\\|\%2e\%2e\%2f|\%2e\%2e\%5c).*(win\.ini|boot\.ini|autoexec\.bat|system32|windows)/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002021; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Attempted access to .env file via traversal";
+   flow:to_server,established;
+   pcre:"/(\.\.\/|\%2e\%2e\%2f|\%2e\%2e\/).*\.env/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002022; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Attempted access to application config files";
+   flow:to_server,established;
+   pcre:"/(\.\.\/|\%2e\%2e\%2f).*(config\.py|config\.yml|config\.json|settings\.py|\.env\.\w+)/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002023; priority:1; rev:1;)
+
+# 3.4 — Absolute path access attempts
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Absolute path access to /etc/ in URI";
+   flow:to_server,established;
+   pcre:"/\/etc\/(passwd|shadow|hosts|hostname|resolv\.conf|issue|fstab|cron|sudoers|ldap|ssl|cert|ssh|nginx|mysql|postgres)/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002030; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Absolute path access to /proc/ in URI";
+   flow:to_server,established;
+   pcre:"/\/proc\/(self\/environ|self\/cmdline|self\/fd|\d+\/|cpuinfo|meminfo|mounts|net\/)/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002031; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Absolute path access to .git/ in URI";
+   flow:to_server,established;
+   pcre:"/\.git\/(config|HEAD|index|refs|objects|logs|hooks)/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002032; priority:1; rev:1;)
+
+# 3.5 — Null byte injection with path traversal
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-PT Null byte injection with path traversal";
+   flow:to_server,established;
+   pcre:"/(\.\.\/|\%2e\%2e\%2f).*\%00/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1002040; priority:1; rev:1;)
+
+# ============================================================================
+# SECTION 4: COMMAND INJECTION (SID: 1003000-1003999)
+# ============================================================================
+
+# 4.1 — Semicolon command chaining
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Semicolon command chaining in URI";
+   flow:to_server,established;
+   pcre:"/[;|]\s*(ls|cat|id|whoami|pwd|uname|ifconfig|ip\s|netstat|ps\s|kill|chmod|chown|wget|curl|nc\s|bash|sh\s|python|perl|ruby|php|node|rm\s|mv\s|cp\s|mkfifo|mknod|echo\s|printf\s)\s/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003000; priority:1; rev:2;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Semicolon command chaining in request body";
+   flow:to_server,established;
+   pcre:"/[;|]\s*(ls|cat|id|whoami|pwd|uname|ifconfig|ip\s|netstat|ps\s|kill|chmod|chown|wget|curl|nc\s|bash|sh\s|python|perl|ruby|php|node|rm\s|mv\s|cp\s|mkfifo|mknod|echo\s|printf\s)\s/i";
+   http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1003001; priority:1; rev:2;)
+
+# 4.2 — Pipe command injection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Pipe command injection in URI";
+   flow:to_server,established;
+   content:"|"; http_uri;
+   content:"cat"; nocase; distance:0; within:10; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003010; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Pipe to shell in URI";
+   flow:to_server,established;
+   pcre:"/\|\s*(bash|sh|zsh|dash|ksh|tcsh|csh)\s/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003011; priority:1; rev:2;)
+
+# 4.3 — Backtick command execution
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Backtick command execution in URI";
+   flow:to_server,established;
+   pcre:"/`[a-z]+\s/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003020; priority:1; rev:1;)
+
+# 4.4 — Subshell $() injection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Subshell $() command injection in URI";
+   flow:to_server,established;
+   pcre:"/\$\([a-z]/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003030; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Subshell $() command injection in request body";
+   flow:to_server,established;
+   pcre:"/\$\([a-z]/i";
+   http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1003031; priority:1; rev:1;)
+
+# 4.5 — wget/curl download + execute pattern
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI wget/curl download pattern in URI";
+   flow:to_server,established;
+   pcre:"/(wget|curl)\s.*[-]{1,2}[oO]\s/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003040; priority:1; rev:1;)
+
+# 4.6 — Redirect to file (write)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Output redirect to file in URI";
+   flow:to_server,established;
+   pcre:"/[>]{1,2}\s*\/[a-z]/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003050; priority:1; rev:1;)
+
+# 4.7 — Environment variable readout
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Environment variable readout in URI";
+   flow:to_server,established;
+   pcre:"/\$\{(HOME|PATH|USER|PWD|SHELL|SECRET|KEY|TOKEN|PASS|ENV|DB_|REDIS_|RABBIT|AWS_|AZURE|GCP_|GEMINI_|GROQ_|GULA_)\b/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003060; priority:1; rev:1;)
+
+# 4.8 — Sleep / delay commands (time-based detection)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI sleep/timeout/time-based probe in URI";
+   flow:to_server,established;
+   pcre:"/\b(sleep|timeout|usleep)\s+\d+/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003070; priority:2; rev:1;)
+
+# 4.9 — Base64 encoded commands
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI Base64 encoded command in URI";
+   flow:to_server,established;
+   content:"echo"; nocase; http_uri;
+   content:"base64"; nocase; distance:0; within:20; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003080; priority:1; rev:1;)
+
+# 4.10 — General command injection PCRE catch-all
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI General command injection pattern in URI";
+   flow:to_server,established;
+   pcre:"/(;|\||`|\$\(|\n|\r\n)\s*\b(ls|cat|id|whoami|pwd|uname|ifconfig|ip\s|netstat|ps|kill|chmod|chown|wget|curl|nc|bash|sh|python|perl|ruby|php|node|rm|mv|cp|mkfifo|mknod|echo|printf|sleep|timeout|kill|pkill|systemctl|service|docker|kubectl|nc|ncat|socat|telnet|ssh|scp|sftp|gcc|cc|make|grep|find|xargs|sort|uniq|tee|dd|base64|openssl|tar|gzip|gunzip)\b/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1003090; priority:1; rev:3;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-CI General command injection pattern in request body";
+   flow:to_server,established;
+   pcre:"/(;|\||`|\$\(|\n|\r\n)\s*\b(ls|cat|id|whoami|pwd|uname|ifconfig|ip\s|netstat|ps|kill|chmod|chown|wget|curl|nc|bash|sh|python|perl|ruby|php|node|rm|mv|cp|mkfifo|mknod|echo|printf|sleep|timeout|kill|pkill|systemctl|service|docker|kubectl|nc|ncat|socat|telnet|ssh|scp|sftp|gcc|cc|make|grep|find|xargs|sort|uniq|tee|dd|base64|openssl|tar|gzip|gunzip)\b/i";
+   http_client_body;
+   classtype:attempted-repository-vulnerability;
+   sid:1003091; priority:1; rev:3;)
+
+# ============================================================================
+# SECTION 5: SERVER-SIDE REQUEST FORGERY (SSRF) (SID: 1004000-1004999)
+# ============================================================================
+
+# 5.1 — Internal IP ranges in URL parameters
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Request to 127.0.0.1 in URI";
+   flow:to_server,established;
+   content:"127.0.0.1"; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004000; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Request to localhost in URI";
+   flow:to_server,established;
+   content:"localhost"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004001; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Request to 10.0.0.0/8 in URI";
+   flow:to_server,established;
+   pcre:"/(\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004002; priority:1; rev:2;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Request to 172.16-31.0.0/12 in URI";
+   flow:to_server,established;
+   pcre:"/(\b172\.(1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3}\b)/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004003; priority:1; rev:2;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Request to 192.168.0.0/16 in URI";
+   flow:to_server,established;
+   pcre:"/(\b192\.168\.\d{1,3}\.\d{1,3}\b)/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004004; priority:1; rev:2;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Request to 169.254.0.0/16 (link-local) in URI";
+   flow:to_server,established;
+   pcre:"/(\b169\.254\.\d{1,3}\.\d{1,3}\b)/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004005; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Request to 0.0.0.0 in URI";
+   flow:to_server,established;
+   content:"0.0.0.0"; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004006; priority:1; rev:1;)
+
+# 5.2 — Metadata service endpoints (cloud providers)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF AWS metadata service in URI";
+   flow:to_server,established;
+   pcre:"/(169\.254\.169\.254|fd00:ec2::254|%s\s*=\s*http:\/\/169\.254\.169\.254)/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004010; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF GCP metadata service in URI";
+   flow:to_server,established;
+   pcre:"/metadata\.google\.internal|metadata\.google\.com/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004011; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Azure metadata service in URI";
+   flow:to_server,established;
+   pcre:"/169\.254\.169\.254.*metadata.*azure|metadata\.azure\.(com|net)/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004012; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF DigitalOcean metadata service in URI";
+   flow:to_server,established;
+   pcre:"/169\.254\.169\.254.*metadata.*digitalocean/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004013; priority:1; rev:1;)
+
+# 5.3 — Internal service endpoints via port number
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Internal port scan via URI (5432 PostgreSQL)";
+   flow:to_server,established;
+   pcre:"/:\d*5432\d*[^0-9]/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004020; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Internal port scan via URI (6379 Redis)";
+   flow:to_server,established;
+   pcre:"/:\d*6379\d*[^0-9]/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004021; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Internal port scan via URI (9200 Elasticsearch)";
+   flow:to_server,established;
+   pcre:"/:\d*9200\d*[^0-9]/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004022; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Internal port scan via URI (8000 backend)";
+   flow:to_server,established;
+   pcre:"/:\d*8000\d*[^0-9]/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004023; priority:1; rev:1;)
+
+# 5.4 — URL scheme abuse (file://, gopher://, dict://, etc.)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF file:// protocol in URI";
+   flow:to_server,established;
+   content:"file://"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004030; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF gopher:// protocol in URI";
+   flow:to_server,established;
+   content:"gopher://"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004031; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF dict:// protocol in URI";
+   flow:to_server,established;
+   content:"dict://"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004032; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF ftp:// protocol in URI";
+   flow:to_server,established;
+   content:"ftp://"; nocase; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004033; priority:1; rev:1;)
+
+# 5.5 — URL redirect to internal subdomains
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Internal subdomain probe in URI";
+   flow:to_server,established;
+   pcre:"/(\.internal|\.local|\.intranet|corp\.|internal\.|private\.|service\.|docker\.|gula\.internal)\b/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004040; priority:1; rev:1;)
+
+# 5.6 — IPv6 loopback / internal
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF IPv6 loopback ::1 in URI";
+   flow:to_server,established;
+   content:"[::1]"; http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004050; priority:1; rev:1;)
+
+# 5.7 — Shortened IP representations (0/1 for 0.0.0.0/1)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SSRF Shortened IP (0/1) bypass in URI";
+   flow:to_server,established;
+   pcre:"/(\b0\b.*\b0\b.*\b0\b.*\b[0-9]+\b|\b127\b.*\b1\b|\b2130706433\b|\b0x7f000001\b)/";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1004060; priority:1; rev:1;)
+
+# ============================================================================
+# SECTION 6: API ABUSE / DOS / SCANNING (SID: 1005000-1005999)
+# ============================================================================
+
+# 6.1 — Excessive request rate (stateless detection per session)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Excessive requests to /api/ endpoint";
+   flow:to_server,established;
+   content:"/api/"; http_uri;
+   threshold:type threshold, track by_src, count 100, seconds 60;
+   classtype:attempted-dos;
+   sid:1005000; priority:2; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Excessive requests to /admin/ endpoint";
+   flow:to_server,established;
+   content:"/admin/"; http_uri;
+   threshold:type threshold, track by_src, count 30, seconds 60;
+   classtype:attempted-dos;
+   sid:1005001; priority:2; rev:1;)
+
+# 6.2 — Authentication endpoint brute force
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Brute force /api/login";
+   flow:to_server,established;
+   content:"POST"; http_method;
+   content:"/api/login"; http_uri;
+   threshold:type threshold, track by_src, count 10, seconds 60;
+   classtype:attempted-user;
+   sid:1005010; priority:1; rev:1;)
+
+# 6.3 — Suspicious HTTP methods
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Suspicious HTTP method OPTIONS on API";
+   flow:to_server,established;
+   content:"OPTIONS"; http_method;
+   content:"/api/"; http_uri;
+   classtype:attempted-recon;
+   sid:1005020; priority:2; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Suspicious HTTP method PUT/DELETE on non-resource";
+   flow:to_server,established;
+   pcre:"/\b(PUT|DELETE|TRACE|CONNECT|PATCH)\b/";
+   http_method;
+   classtype:attempted-recon;
+   sid:1005021; priority:2; rev:1;)
+
+# 6.4 — Large payload (potential buffer overflow / DOS)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Large request body (>10MB)";
+   flow:to_server,established;
+   dsize:>10485760;
+   classtype:attempted-dos;
+   sid:1005030; priority:2; rev:1;)
+
+# 6.5 — Repeated 404 scanning
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Repeated 404 scanning";
+   flow:to_server,established;
+   content:"HTTP/1.1\" 404"; http_raw_header;
+   threshold:type threshold, track by_src, count 20, seconds 60;
+   classtype:attempted-recon;
+   sid:1005040; priority:2; rev:1;)
+
+# 6.6 — Null User-Agent or suspicious UA
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Missing User-Agent header";
+   flow:to_server,established;
+   content:"!"; http_user_agent;
+   classtype:attempted-recon;
+   sid:1005050; priority:3; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE Suspicious User-Agent (curl/wget)";
+   flow:to_server,established;
+   pcre:"/^(curl\/|Wget\/|Go-http-|python-requests|Java\/|libwww-perl|WWW-Mechanize|scrapy|masscan|nmap|sqlmap)/i";
+   http_user_agent;
+   classtype:attempted-recon;
+   sid:1005051; priority:3; rev:1;)
+
+# 6.7 — GraphQL introspection / schema leak
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-ABUSE GraphQL introspection query";
+   flow:to_server,established;
+   pcre:"/__schema|__type|introspectionquery/i";
+   http_client_body;
+   classtype:attempted-recon;
+   sid:1005060; priority:2; rev:1;)
+
+# ============================================================================
+# SECTION 7: SCANNER / PROBE DETECTION (SID: 1006000-1006999)
+# ============================================================================
+
+# 7.1 — Common web scanner fingerprints
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SCAN SQLMap scanner fingerprint";
+   flow:to_server,established;
+   pcre:"/sqlmap/i";
+   http_user_agent;
+   classtype:attempted-recon;
+   sid:1006000; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SCAN Nuclei scanner fingerprint";
+   flow:to_server,established;
+   pcre:"/nuclei/i";
+   http_user_agent;
+   classtype:attempted-recon;
+   sid:1006001; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SCAN Acunetix scanner fingerprint";
+   flow:to_server,established;
+   pcre:"/acunetix/i";
+   http_user_agent;
+   classtype:attempted-recon;
+   sid:1006002; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SCAN Nessus scanner fingerprint";
+   flow:to_server,established;
+   pcre:"/nessus/i";
+   http_user_agent;
+   classtype:attempted-recon;
+   sid:1006003; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SCAN Burp Suite scanner fingerprint";
+   flow:to_server,established;
+   pcre:"/burp/i";
+   http_user_agent;
+   classtype:attempted-recon;
+   sid:1006004; priority:1; rev:1;)
+
+# 7.2 — Common probe paths
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SCAN Common CMS probe path";
+   flow:to_server,established;
+   pcre:"/(wp-admin|wp-content|wp-includes|wp-login|xmlrpc|administrator|joomla|drupal|phpmyadmin|phpMyAdmin|pma|myadmin|admin\/login|manager\/|cgi-bin\/|\.env\.\w+|\.git\/config|\.svn\/entries|server-status|server-info|\.aws\/credentials)/i";
+   http_uri;
+   classtype:attempted-recon;
+   sid:1006010; priority:2; rev:1;)
+
+# 7.3 — X-Forwarded-For / header injection probes
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-SCAN Header injection probe in URI";
+   flow:to_server,established;
+   pcre:"/%0d%0a|%0a|%0d/i";
+   http_uri;
+   classtype:attempted-repository-vulnerability;
+   sid:1006020; priority:2; rev:1;)
+
+# ============================================================================
+# SECTION 8: AUTHENTICATION ATTACKS (SID: 1007000-1007999)
+# ============================================================================
+
+# 8.1 — JWT tampering / none algorithm
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-AUTH JWT none algorithm attack in Authorization header";
+   flow:to_server,established;
+   pcre:"/eyJ[a-zA-Z0-9_-]+\.ey[a-zA-Z0-9_-]+\.\s*$/i";
+   http_header;
+   classtype:attempted-user;
+   sid:1007000; priority:1; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-AUTH JWT algorithm confusion in Authorization header";
+   flow:to_server,established;
+   pcre:"/alg\"\s*:\s*\"(none|None|NONE|nOnE)\"/i";
+   http_header;
+   classtype:attempted-user;
+   sid:1007001; priority:1; rev:1;)
+
+# 8.2 — Token brute force via Authorization header
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-AUTH Token brute force in Authorization header";
+   flow:to_server,established;
+   content:"Authorization"; http_header;
+   threshold:type threshold, track by_src, count 50, seconds 60;
+   classtype:attempted-user;
+   sid:1007010; priority:1; rev:1;)
+
+# 8.3 — Session ID in URI (leakage)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-AUTH Session ID in URI query string";
+   flow:to_server,established;
+   pcre:"/(sessionid|session_id|sid|jsessionid|phpsessid|aspsessionid)=[a-zA-Z0-9]+/i";
+   http_uri;
+   classtype:attempted-recon;
+   sid:1007020; priority:2; rev:1;)
+
+# ============================================================================
+# SECTION 9: DATA EXFILTRATION / LEAKAGE (SID: 1008000-1008999)
+# ============================================================================
+
+# 9.1 — PHI / PII in response (credit card patterns)
+alert tcp $HTTP_SERVERS $HTTP_PORTS -> $EXTERNAL_NET any
+  (msg:"GULA-LEAK Credit card number in response body";
+   flow:from_server,established;
+   pcre:"/\b(4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b/";
+   classtype:policy-violation;
+   sid:1008000; priority:1; rev:1;)
+
+# 9.2 — Large data transfers
+alert tcp $HTTP_SERVERS $HTTP_PORTS -> $EXTERNAL_NET any
+  (msg:"GULA-LEAK Large response body >50MB";
+   flow:from_server,established;
+   dsize:>52428800;
+   classtype:policy-violation;
+   sid:1008010; priority:2; rev:1;)
+
+# 9.3 — Bulk API response
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-LEAK Potential bulk data export via API";
+   flow:to_server,established;
+   content:"/api/patients/export"; http_uri;
+   threshold:type threshold, track by_src, count 5, seconds 300;
+   classtype:policy-violation;
+   sid:1008020; priority:1; rev:1;)
+
+# ============================================================================
+# SECTION 10: GENERAL / CATCH-ALL (SID: 1009000-1009999)
+# ============================================================================
+
+# 10.1 — Missing security headers in response
+alert tcp $HTTP_SERVERS $HTTP_PORTS -> $EXTERNAL_NET any
+  (msg:"GULA-GEN Missing X-Content-Type-Options header";
+   flow:from_server,established;
+   content:!"X-Content-Type-Options"; http_header;
+   classtype:policy-violation;
+   sid:1009000; priority:3; rev:1;)
+
+alert tcp $HTTP_SERVERS $HTTP_PORTS -> $EXTERNAL_NET any
+  (msg:"GULA-GEN Missing X-Frame-Options header";
+   flow:from_server,established;
+   content:!"X-Frame-Options"; http_header;
+   classtype:policy-violation;
+   sid:1009001; priority:3; rev:1;)
+
+# 10.2 — Invalid content-type detection
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-GEN Suspicious content-type in POST request";
+   flow:to_server,established;
+   content:"POST"; http_method;
+   content:!"Content-Type"; http_header;
+   classtype:attempted-recon;
+   sid:1009010; priority:3; rev:1;)
+
+# 10.3 — Catch-all for any unclassified suspicious URI encoding
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-GEN Excessive URI encoding detected";
+   flow:to_server,established;
+   pcre:"/(%[0-9a-fA-F]{2}){10,}/";
+   http_uri;
+   classtype:attempted-recon;
+   sid:1009020; priority:3; rev:1;)
+
+# 10.4 — Catch-all for non-HTTP traffic on HTTP ports (tunnel detection)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-GEN Non-HTTP traffic on HTTP port (potential tunnel)";
+   flow:to_server,established;
+   content:!"GET"; http_method;
+   content:!"POST"; http_method;
+   content:!"PUT"; http_method;
+   content:!"DELETE"; http_method;
+   content:!"HEAD"; http_method;
+   content:!"OPTIONS"; http_method;
+   content:!"PATCH"; http_method;
+   classtype:attempted-recon;
+   sid:1009030; priority:2; rev:1;)
+
+# 10.5 — Websocket abuse
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"GULA-GEN Websocket upgrade abuse";
+   flow:to_server,established;
+   content:"Upgrade"; http_header;
+   content:"websocket"; nocase; distance:0; within:20; http_header;
+   threshold:type threshold, track by_src, count 100, seconds 60;
+   classtype:attempted-dos;
+   sid:1009040; priority:2; rev:1;)

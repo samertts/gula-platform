@@ -1,0 +1,236 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.postgres.name }}-primary
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "gula.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  serviceName: {{ .Values.postgres.name }}-primary
+  replicas: {{ .Values.postgres.primary.replicaCount }}
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      {{- include "gula.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+      role: primary
+  template:
+    metadata:
+      labels:
+        {{- include "gula.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+        role: primary
+      annotations:
+        {{- if .Values.serviceMesh.linkerd.enabled }}
+        linkerd.io/inject: disabled
+        {{- end }}
+    spec:
+      {{- include "gula.imagePullSecrets" .Values.postgres | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_DB
+              value: labdb
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+              name: postgres
+              protocol: TCP
+          resources:
+            requests:
+              memory: {{ .Values.postgres.primary.resources.requests.memory }}
+              cpu: {{ .Values.postgres.primary.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.postgres.primary.resources.limits.memory }}
+              cpu: {{ .Values.postgres.primary.resources.limits.cpu }}
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "labdb"]
+            initialDelaySeconds: {{ .Values.postgres.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.postgres.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.postgres.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.postgres.probes.liveness.failureThreshold }}
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "labdb"]
+            initialDelaySeconds: {{ .Values.postgres.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.postgres.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.postgres.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.postgres.probes.readiness.failureThreshold }}
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          lifecycle:
+            preStop:
+              exec:
+                command: ["pg_ctl", "stop", "-D", "/var/lib/postgresql/data/pgdata", "-m", "fast"]
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: {{ toYaml .Values.postgres.storage.accessModes | nindent 8 }}
+        {{- if .Values.postgres.storage.storageClass }}
+        storageClassName: {{ .Values.postgres.storage.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storage.size }}
+---
+{{- if .Values.postgres.patroni.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.postgres.name }}-patroni
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "gula.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+    application: spilo
+spec:
+  serviceName: {{ .Values.postgres.name }}-patroni
+  replicas: {{ add1 .Values.postgres.primary.replicaCount }}
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      application: spilo
+  template:
+    metadata:
+      labels:
+        application: spilo
+        {{- include "gula.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+      annotations:
+        {{- if .Values.serviceMesh.linkerd.enabled }}
+        linkerd.io/inject: disabled
+        {{- end }}
+    spec:
+      securityContext:
+        runAsNonRoot: false
+        fsGroup: 103
+      terminationGracePeriodSeconds: 300
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgres.patroni.image.repository }}:{{ .Values.postgres.patroni.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.patroni.image.pullPolicy }}
+          env:
+            - name: SCOPE
+              value: {{ .Values.postgres.patroni.scope }}
+            - name: PGROOT
+              value: /home/postgres/pgdata/pgroot
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: POSTGRES_PASSWORD
+            - name: ETCD_HOST
+              value: ""
+            - name: PATRONI_KUBERNETES_USE_ENDPOINTS
+              value: "true"
+            - name: PATRONI_KUBERNETES_NAMESPACE
+              value: {{ .Values.global.namespace }}
+            - name: PATRONI_KUBERNETES_LABELS
+              value: '{"application": "spilo"}'
+            - name: PATRONI_KUBERNETES_SCOPE_LABEL
+              value: "scope"
+            - name: PATRONI_POSTGRESQL_DATA_DIR
+              value: /home/postgres/pgdata/pgroot
+            - name: PATRONI_POSTGRESQL_PGPASS
+              value: /home/postgres/pgdata/pgpass
+            - name: PATRONI_REPLICATION_USERNAME
+              value: replicator
+            - name: PATRONI_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: POSTGRES_PASSWORD
+            - name: PATRONI_SUPERUSER_USERNAME
+              value: postgres
+            - name: PATRONI_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: POSTGRES_PASSWORD
+            - name: PATRONI_POSTGRESQL_PARAMETERS
+              value: |
+                {{- range $key, $value := .Values.postgres.patroni.pgParameters }}
+                {{ $key }}: {{ $value }}
+                {{- end }}
+          ports:
+            - containerPort: 5432
+              name: postgres
+            - containerPort: 8008
+              name: patroni
+          resources:
+            requests:
+              memory: {{ .Values.postgres.primary.resources.requests.memory }}
+              cpu: {{ .Values.postgres.primary.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.postgres.primary.resources.limits.memory }}
+              cpu: {{ .Values.postgres.primary.resources.limits.cpu }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8008
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 8008
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: pgdata
+              mountPath: /home/postgres/pgdata
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: application
+                    operator: In
+                    values:
+                      - spilo
+              topologyKey: kubernetes.io/hostname
+      {{- include "gula.topologySpreadConstraints" (dict "constraints" .Values.postgres.topologySpreadConstraints) | nindent 6 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: {{ toYaml .Values.postgres.storage.accessModes | nindent 8 }}
+        {{- if .Values.postgres.storage.storageClass }}
+        storageClassName: {{ .Values.postgres.storage.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storage.size }}
+{{- end }}
+{{- end }}

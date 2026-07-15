@@ -1,0 +1,29 @@
+{{- $namespace := .Values.global.namespace -}}
+{{- range $svc, $config := .Values.microservices }}
+{{- if and $config.enabled $config.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $config.name }}-hpa
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "gula.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: microservice
+    gula-service: {{ $svc }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $config.name }}
+  minReplicas: {{ $config.autoscaling.minReplicas }}
+  maxReplicas: {{ $config.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $config.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- end }}

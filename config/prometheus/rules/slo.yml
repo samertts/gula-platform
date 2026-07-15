@@ -1,0 +1,151 @@
+groups:
+  # ===========================================================================
+  # SLO RECORDING RULES
+  # ===========================================================================
+  - name: gula_slo_recording
+    interval: 30s
+    rules:
+      # Availability SLO: 99.99% uptime
+      - record: slo:availability_target
+        expr: 99.99
+
+      - record: slo:availability_window
+        expr: |
+          (
+            sum(rate(gula_up[30d])) * 30 * 24 * 3600
+            /
+            sum(rate(gula_up{}[30d]) + rate(gula_down{}[30d])) * 30 * 24 * 3600
+          ) * 100
+
+      # Latency SLO: p99 < 500ms
+      - record: slo:latency_p99_target
+        expr: 500
+
+      - record: slo:latency_p99
+        expr: histogram_quantile(0.99, sum(rate(gula_request_duration_seconds_bucket[5m])) by (le))
+
+      # Error Budget: 0.01% error ratio
+      - record: slo:error_budget_target
+        expr: 0.0001
+
+      - record: slo:error_budget_remaining
+        expr: |
+          (
+            slo:error_budget_target
+            -
+            sum(rate(gula_request_errors_total[30d]))
+            /
+            sum(rate(gula_requests_total[30d]))
+          )
+          / slo:error_budget_target
+
+      # Error budget consumption
+      - record: slo:error_budget_consumed_1h
+        expr: |
+          (
+            sum(rate(gula_request_errors_total[1h]))
+            /
+            sum(rate(gula_requests_total[1h]))
+          )
+          / slo:error_budget_target
+
+      - record: slo:error_budget_consumed_6h
+        expr: |
+          (
+            sum(rate(gula_request_errors_total[6h]))
+            /
+            sum(rate(gula_requests_total[6h]))
+          )
+          / slo:error_budget_target
+
+      # Burn rate
+      - record: slo:burn_rate_5m
+        expr: |
+          (
+            sum(rate(gula_request_errors_total[5m]))
+            /
+            sum(rate(gula_requests_total[5m]))
+          )
+          / slo:error_budget_target
+
+  # ===========================================================================
+  # MULTI-WINDOW MULTI-BURN-RATE ALERTS
+  # ===========================================================================
+  - name: gula_slo_alerts
+    interval: 60s
+    rules:
+      # Critical: error budget consumed 5% in 1 hour (fast burn)
+      - alert: SLOErrorBudgetFastBurn
+        expr: slo:error_budget_consumed_1h > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "SLO error budget fast burn: {{ $value | humanizePercentage }} consumed in 1h"
+          description: |
+            Error budget consumed at 5% in 1 hour. Projected to exhaust budget in 20 hours.
+            Current burn rate: {{ $value | humanizePercentage }}
+
+      # Warning: error budget consumed 2% in 6 hours (slow burn)
+      - alert: SLOErrorBudgetSlowBurn
+        expr: slo:error_budget_consumed_6h > 0.02
+        for: 10m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "SLO error budget slow burn: {{ $value | humanizePercentage }} consumed in 6h"
+          description: |
+            Error budget consumed at 2% in 6 hours. Projected to exhaust budget in 12.5 days.
+            Current consumption: {{ $value | humanizePercentage }}
+
+      # Critical: error budget exhausted
+      - alert: SLOErrorBudgetExhausted
+        expr: slo:error_budget_remaining <= 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "SLO error budget EXHAUSTED"
+          description: |
+            The 30-day error budget is fully consumed. Platform is outside SLO.
+            Immediate action required: investigate error sources and deploy fixes.
+
+      # Warning: Availability below 99.99%
+      - alert: SLOAvailabilityBelow
+        expr: slo:availability_window < 99.99
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "SLO availability {{ $value }}% (target: 99.99%)"
+          description: |
+            Rolling 30-day availability is below the 99.99% SLO target.
+
+      # Warning: p99 latency approaching threshold
+      - alert: SLOLatencyApproaching
+        expr: slo:latency_p99 > 400
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "p99 latency {{ $value }}ms approaching SLO (500ms)"
+          description: |
+            p99 latency is approaching the 500ms SLO threshold.
+
+      # Critical: p99 latency exceeds SLO
+      - alert: SLOLatencyExceeded
+        expr: slo:latency_p99 > 500
+        for: 2m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "p99 latency {{ $value }}ms EXCEEDS SLO (500ms)"
+          description: |
+            p99 latency has exceeded the 500ms SLO threshold.
+            Check database query performance and API endpoint latency.

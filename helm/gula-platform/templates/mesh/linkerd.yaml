@@ -1,0 +1,44 @@
+{{- if .Values.serviceMesh.linkerd.enabled }}
+{{- if .Values.serviceMesh.linkerd.serviceProfile.enabled }}
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: {{ .Values.backend.name }}.{{ .Values.global.namespace }}.svc.cluster.local
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "gula.labels" . | nindent 4 }}
+spec:
+  routes:
+    {{- range .Values.serviceMesh.linkerd.serviceProfile.routes }}
+    - name: {{ .name }}
+      condition:
+        method: {{ .condition.method }}
+        pathRegex: {{ .condition.pathRegex }}
+      isRetryable: {{ .isRetryable }}
+      timeout: {{ .timeout }}
+      {{- if .retryBudget }}
+      retryBudget:
+        retryRatio: {{ .retryBudget.retryRatio }}
+        minRetriesPerSecond: {{ .retryBudget.minRetriesPerSecond }}
+        ttl: {{ .retryBudget.ttl }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- if .Values.serviceMesh.linkerd.trafficSplit.enabled }}
+---
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: {{ .Values.backend.name }}-split
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "gula.labels" . | nindent 4 }}
+spec:
+  service: {{ .Values.backend.name }}-active
+  backends:
+    {{- range .Values.serviceMesh.linkerd.trafficSplit.backends }}
+    - service: {{ .service }}
+      weight: {{ .weight }}
+    {{- end }}
+{{- end }}
+{{- end }}
