@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.event_bus.dead_letter_queue import DeadLetterEntry, DeadLetterQueue
-from backend.app.kernel.event_bus.events import Event
+from app.kernel.event_bus.dead_letter_queue import DeadLetterEntry, DeadLetterQueue
+from app.kernel.event_bus.events import Event
 
 
 class TestDeadLetterQueue:

@@ -4,20 +4,20 @@ import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from backend.app.kernel.event_bus.dead_letter_queue import DeadLetterQueue
-from backend.app.kernel.event_bus.dispatcher import EventDispatcher
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.inbox import InboxPattern
-from backend.app.kernel.event_bus.outbox import OutboxPattern
-from backend.app.kernel.event_bus.recovery import RecoveryEngine
-from backend.app.kernel.event_bus.replay import EventReplay
-from backend.app.kernel.event_bus.retry_queue import RetryQueue
-from backend.app.kernel.event_bus.snapshot import SnapshotEngine
-from backend.app.kernel.event_bus.store import EventStore
-from backend.app.kernel.event_bus.versioning import EventVersioning
+from app.kernel.event_bus.dead_letter_queue import DeadLetterQueue
+from app.kernel.event_bus.dispatcher import EventDispatcher
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.inbox import InboxPattern
+from app.kernel.event_bus.outbox import OutboxPattern
+from app.kernel.event_bus.recovery import RecoveryEngine
+from app.kernel.event_bus.replay import EventReplay
+from app.kernel.event_bus.retry_queue import RetryQueue
+from app.kernel.event_bus.snapshot import SnapshotEngine
+from app.kernel.event_bus.store import EventStore
+from app.kernel.event_bus.versioning import EventVersioning
 
 if TYPE_CHECKING:
-    from backend.app.kernel import Kernel
+    from app.kernel import Kernel
 
 logger = logging.getLogger("gula.kernel.event_bus")
 

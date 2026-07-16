@@ -75,7 +75,7 @@ class DTOGenerator(BaseGenerator):
         from_attributes = True
 """)
 
-        content = f'''\"\"\"DTOs for {mod}.\"\"\"
+        content = f"""\"\"\"DTOs for {mod}.\"\"\"
 from __future__ import annotations
 
 from datetime import datetime
@@ -84,7 +84,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 {chr(10).join(parts)}
-'''
+"""
         self._write(f"dtos/{module}_dto.py", content)
 
         return self._result

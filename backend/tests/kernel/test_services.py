@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel import Kernel
-from backend.app.kernel.exceptions import ServiceNotFoundError
-from backend.app.kernel.runtime.service_registry import ServiceRegistry
+from app.kernel import Kernel
+from app.kernel.exceptions import ServiceNotFoundError
+from app.kernel.runtime.service_registry import ServiceRegistry
 
 
 class TestServiceRegistryFunctionality:

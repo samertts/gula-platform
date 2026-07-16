@@ -1,6 +1,18 @@
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    SmallInteger,
+    String,
+    Text,
+)
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import Gender
-from sqlalchemy import Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey, Index, SmallInteger, String, Text
 
 
 class Newborn(TenantAuditEntity):
@@ -27,7 +39,6 @@ class Newborn(TenantAuditEntity):
     mother_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
     mother_name = Column(String(200), nullable=True)
     father_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    father_name = Column(String(200), nullable=True)
 
     guardian_id = Column(String(26), ForeignKey("national_guardians.id", ondelete="RESTRICT"), nullable=True, index=True)
     family_id = Column(String(26), ForeignKey("national_families.id", ondelete="RESTRICT"), nullable=True, index=True)

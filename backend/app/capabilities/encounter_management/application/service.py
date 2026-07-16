@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional
+from app.capabilities.encounter_management.domain.entities import Encounter_management
+from app.capabilities.encounter_management.domain.repository import Encounter_managementRepository
 
 
 class Encounter_managementService:
     def __init__(self, repository: Encounter_managementRepository):
         self._repository = repository
 
-    async def get(self, id: str) -> Optional[Encounter_management]:
+    async def get(self, id: str) -> Encounter_management | None:
         return await self._repository.get(id)
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[Encounter_management]:

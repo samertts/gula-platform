@@ -125,7 +125,7 @@ def evaluate_westgard_full(
 
     # 4-1s: Four consecutive measurements >1SD on same side
     if len(historical_z) >= 3:
-        recent_four = [z_score] + historical_z[:3]
+        recent_four = [z_score, *historical_z[:3]]
         if all(z > 1.0 for z in recent_four):
             return {"status": "fail", "violation": "4-1s"}
         if all(z < -1.0 for z in recent_four):
@@ -133,7 +133,7 @@ def evaluate_westgard_full(
 
     # 10-x: Ten consecutive measurements on same side of mean
     if len(historical_z) >= 9:
-        recent_ten = [z_score] + historical_z[:9]
+        recent_ten = [z_score, *historical_z[:9]]
         if all(z > 0 for z in recent_ten):
             return {"status": "fail", "violation": "10-x"}
         if all(z < 0 for z in recent_ten):

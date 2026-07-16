@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.plugin.marketplace import MarketplacePlugin, PluginMarketplaceInterface
+from app.kernel.plugin.marketplace import MarketplacePlugin, PluginMarketplaceInterface
 
 
 class TestPluginMarketplace:

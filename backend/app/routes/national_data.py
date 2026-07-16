@@ -7,18 +7,18 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..national_data.models.canonical_patient import CanonicalPatient
-from ..national_data.models.canonical_encounter import CanonicalEncounter
-from ..national_data.models.canonical_observation import CanonicalObservation
-from ..national_data.models.mdm.GoldenRecord import GoldenRecord
-from ..national_data.models.governance.DataCatalogEntry import DataCatalogEntry
-from ..national_data.models.governance.RetentionPolicy import RetentionPolicy
-from ..national_data.models.governance.ConsentDirective import ConsentDirective
 from ..national_data.models.ai_data.DeidentificationJob import DeidentificationJob
 from ..national_data.models.ai_data.FeatureStore import FeatureStore
 from ..national_data.models.ai_data.FeatureValue import FeatureValue
 from ..national_data.models.ai_data.TrainingDataset import TrainingDataset
 from ..national_data.models.ai_data.VectorEmbedding import VectorEmbedding
+from ..national_data.models.canonical_encounter import CanonicalEncounter
+from ..national_data.models.canonical_observation import CanonicalObservation
+from ..national_data.models.canonical_patient import CanonicalPatient
+from ..national_data.models.governance.ConsentDirective import ConsentDirective
+from ..national_data.models.governance.DataCatalogEntry import DataCatalogEntry
+from ..national_data.models.governance.RetentionPolicy import RetentionPolicy
+from ..national_data.models.mdm.GoldenRecord import GoldenRecord
 from ..security.dependencies import require_permission
 from ..services.data_platform_service import DataPlatformService
 
@@ -286,7 +286,7 @@ def list_golden_records(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(GoldenRecord).filter(GoldenRecord.is_deleted == False)
+    query = db.query(GoldenRecord).filter(~~GoldenRecord.is_deleted)
     total = query.count()
     records = query.order_by(GoldenRecord.confidence_score.desc()).offset(skip).limit(limit).all()
     return {"total": total, "records": [_golden_to_dict(r) for r in records]}
@@ -320,7 +320,7 @@ def resolve_golden_record(
 ):
     record = db.query(GoldenRecord).filter(
         GoldenRecord.id == golden_record_id,
-        GoldenRecord.is_deleted == False,
+        ~GoldenRecord.is_deleted,
     ).first()
     if not record:
         raise HTTPException(status_code=404, detail="Golden record not found")
@@ -447,7 +447,7 @@ def list_data_catalog(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(DataCatalogEntry).filter(DataCatalogEntry.is_deleted == False)
+    query = db.query(DataCatalogEntry).filter(~~DataCatalogEntry.is_deleted)
     if entry_type:
         query = query.filter(DataCatalogEntry.entry_type == entry_type)
     total = query.count()
@@ -556,7 +556,7 @@ def list_retention_policies(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(RetentionPolicy).filter(RetentionPolicy.is_deleted == False)
+    query = db.query(RetentionPolicy).filter(~~RetentionPolicy.is_deleted)
     if entity_type:
         query = query.filter(RetentionPolicy.entity_type == entity_type)
     policies = query.order_by(RetentionPolicy.policy_name).all()
@@ -594,7 +594,7 @@ def list_consent_directives(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(ConsentDirective).filter(ConsentDirective.is_deleted == False)
+    query = db.query(ConsentDirective).filter(~~ConsentDirective.is_deleted)
     if patient_id:
         query = query.filter(ConsentDirective.patient_id == patient_id)
     if consent_type:
@@ -655,7 +655,7 @@ def list_deidentification_jobs(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(DeidentificationJob).filter(DeidentificationJob.is_deleted == False)
+    query = db.query(DeidentificationJob).filter(~~DeidentificationJob.is_deleted)
     if status:
         query = query.filter(DeidentificationJob.status == status)
     jobs = query.order_by(DeidentificationJob.id.desc()).all()
@@ -681,7 +681,7 @@ def list_features(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(FeatureStore).filter(FeatureStore.is_deleted == False, FeatureStore.is_active == True)
+    query = db.query(FeatureStore).filter(~~FeatureStore.is_deleted, FeatureStore.is_active)
     if entity_type:
         query = query.filter(FeatureStore.entity_type == entity_type)
     features = query.order_by(FeatureStore.feature_name).all()
@@ -757,7 +757,7 @@ def get_feature_values(
     query = db.query(FeatureValue).filter(
         FeatureValue.entity_type == entity_type,
         FeatureValue.entity_id == entity_id,
-        FeatureValue.is_deleted == False,
+        ~FeatureValue.is_deleted,
     )
     if feature_id:
         query = query.filter(FeatureValue.feature_id == feature_id)
@@ -782,7 +782,7 @@ def list_training_datasets(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(TrainingDataset).filter(TrainingDataset.is_deleted == False)
+    query = db.query(TrainingDataset).filter(~~TrainingDataset.is_deleted)
     if dataset_type:
         query = query.filter(TrainingDataset.dataset_type == dataset_type)
     datasets = query.order_by(TrainingDataset.id.desc()).all()
@@ -841,7 +841,7 @@ def list_vector_embeddings(
         .filter(
             VectorEmbedding.entity_type == entity_type,
             VectorEmbedding.entity_id == entity_id,
-            VectorEmbedding.is_deleted == False,
+            ~VectorEmbedding.is_deleted,
         )
         .order_by(VectorEmbedding.chunk_index)
         .all()

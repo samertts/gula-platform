@@ -4,10 +4,10 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel, KernelConfig
-from backend.app.kernel.event_bus.bus import EventBus
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.types import (
+from app.kernel import Kernel, KernelConfig
+from app.kernel.event_bus.bus import EventBus
+from app.kernel.event_bus.events import Event
+from app.kernel.types import (
     CapabilityDescriptor,
     ModuleDescriptor,
     PluginDescriptor,

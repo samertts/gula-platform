@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from app._compat import UTC
 from app.national.base import NationalBase
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, JSON
-from sqlalchemy.orm import relationship
-
 
 NOTIFICATION_TABLE = "national_notifications"
 TEMPLATE_TABLE = "national_notification_templates"

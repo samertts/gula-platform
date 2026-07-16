@@ -6,7 +6,9 @@ import pytest
 class TestDocument_managementCapability:
     @pytest.fixture
     def capability(self):
-        from backend.app.capabilities.document_management.capability import Document_managementCapability
+        from app.capabilities.document_management.capability import (
+            Document_managementCapability,
+        )
         return Document_managementCapability()
 
     @pytest.mark.asyncio

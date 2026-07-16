@@ -1,5 +1,6 @@
-from app.national.base import TenantAuditEntity
 from sqlalchemy import Boolean, Column, Index, Integer, String, Text
+
+from app.national.base import TenantAuditEntity
 
 
 class Attachment(TenantAuditEntity):

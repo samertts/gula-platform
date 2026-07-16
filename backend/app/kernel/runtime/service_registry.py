@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.app.kernel.exceptions import ServiceAlreadyRegisteredError, ServiceNotFoundError
+from app.kernel.exceptions import ServiceAlreadyRegisteredError, ServiceNotFoundError
 
 logger = logging.getLogger("gula.kernel.service_registry")
 

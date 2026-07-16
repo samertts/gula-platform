@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, ForeignKey, Index, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import AuditEntity
 from app.national.enums import FacilityType
-from sqlalchemy import Boolean, Column, Enum as SAEnum, ForeignKey, Index, String, Text
 
 
 class Facility(AuditEntity):

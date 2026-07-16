@@ -100,9 +100,7 @@ class GovernancePolicyEngine:
         if not policy["require_approval"]:
             return False
         elevated_roles = ["system_admin", "national_admin", "ministry_admin"]
-        if user_role in elevated_roles:
-            return False
-        return True
+        return user_role not in elevated_roles
 
 
 governance_policy_engine = GovernancePolicyEngine()

@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from backend.app.kernel.gateway.circuit_breaker import (
+from app.kernel.gateway.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerManager,
     CircuitState,

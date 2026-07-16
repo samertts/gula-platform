@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from backend.app.kernel.types import ModuleDescriptor
+from app.kernel.types import ModuleDescriptor
 
 logger = logging.getLogger("gula.kernel.module.metadata")
 

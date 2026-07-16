@@ -1,7 +1,10 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+
+from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String, Text
+
 from app._compat import UTC
-from ..base import GovernanceBase, GovernanceBaseEntity
+
+from ..base import GovernanceBaseEntity
 from ..enums import CardLifecycleEvent, HealthCardType, HealthNumberStatus, IdentityMergeAction
 
 

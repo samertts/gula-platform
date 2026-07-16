@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.plugin.permissions import PluginPermissionManager
-from backend.app.kernel.types import PluginDescriptor
+from app.kernel.plugin.permissions import PluginPermissionManager
+from app.kernel.types import PluginDescriptor
 
 
 class TestPluginPermissions:

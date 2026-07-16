@@ -1,12 +1,22 @@
 from __future__ import annotations
 
-from datetime import date, datetime
-
-from app._compat import UTC
-from app.clinical.base import BaseEntity, _ulid
-from app.clinical.enums import QualityIndicatorType
-from sqlalchemy import Boolean, Column, Date, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
+
+from app.clinical.base import BaseEntity
+from app.clinical.enums import QualityIndicatorType
 
 
 class QualityIndicator(BaseEntity):

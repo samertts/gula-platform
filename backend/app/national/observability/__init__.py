@@ -1,11 +1,4 @@
-from app.national.observability.domain.enums import (
-    AlertSeverity,
-    AlertStatus,
-    HealthStatus,
-    LogLevel,
-    MetricType,
-    SpanStatus,
-)
+from app.national.observability.application.service import ObservabilityService
 from app.national.observability.domain.entities import (
     AlertEvent,
     AlertRule,
@@ -17,6 +10,14 @@ from app.national.observability.domain.entities import (
     ServiceDependency,
     ServiceGraph,
     TraceSpan,
+)
+from app.national.observability.domain.enums import (
+    AlertSeverity,
+    AlertStatus,
+    HealthStatus,
+    LogLevel,
+    MetricType,
+    SpanStatus,
 )
 from app.national.observability.domain.events import (
     AlertFired,
@@ -35,7 +36,15 @@ from app.national.observability.domain.repository import (
     ServiceGraphRepository,
     TraceSpanRepository,
 )
-from app.national.observability.application.service import ObservabilityService
+from app.national.observability.exceptions import (
+    AlertEventNotFoundError,
+    AlertRuleNotFoundError,
+    DashboardNotFoundError,
+    HealthCheckNotFoundError,
+    MetricQueryError,
+    ObservabilityError,
+    TraceSpanNotFoundError,
+)
 from app.national.observability.infrastructure.models import (
     NationalAlertEvent,
     NationalAlertRule,
@@ -55,15 +64,6 @@ from app.national.observability.infrastructure.repository import (
     SQLAlchemyMetricRepository,
     SQLAlchemyServiceGraphRepository,
     SQLAlchemyTraceSpanRepository,
-)
-from app.national.observability.exceptions import (
-    AlertEventNotFoundError,
-    AlertRuleNotFoundError,
-    DashboardNotFoundError,
-    HealthCheckNotFoundError,
-    MetricQueryError,
-    ObservabilityError,
-    TraceSpanNotFoundError,
 )
 
 __all__ = [

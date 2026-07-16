@@ -1,6 +1,8 @@
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import AuditEntity
-from app.national.enums import MergeStatus, MergeMethod
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
+from app.national.enums import MergeMethod, MergeStatus
 
 
 class MergeRecord(AuditEntity):

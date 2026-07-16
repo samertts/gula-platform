@@ -1,10 +1,10 @@
-from app.national.document_platform.domain.enums import (
-    DocumentCategory,
-    DocumentFormat,
-    DocumentStatus,
-    RetentionPolicy,
-    SignatureStatus,
+from app.national.document_platform.application.interfaces import (
+    PDFGenerator,
+    QRCodeGenerator,
+    SignatureVerifier,
+    StorageAdapter,
 )
+from app.national.document_platform.application.service import DocumentPlatformService
 from app.national.document_platform.domain.entities import (
     Document,
     DocumentAttachment,
@@ -12,6 +12,13 @@ from app.national.document_platform.domain.entities import (
     DocumentVersion,
     ElectronicSignature,
     RetentionRule,
+)
+from app.national.document_platform.domain.enums import (
+    DocumentCategory,
+    DocumentFormat,
+    DocumentStatus,
+    RetentionPolicy,
+    SignatureStatus,
 )
 from app.national.document_platform.domain.events import (
     DocumentArchivedEvent,
@@ -32,13 +39,19 @@ from app.national.document_platform.domain.repository import (
     ElectronicSignatureRepository,
     RetentionRuleRepository,
 )
-from app.national.document_platform.application.interfaces import (
-    PDFGenerator,
-    QRCodeGenerator,
-    SignatureVerifier,
-    StorageAdapter,
+from app.national.document_platform.exceptions import (
+    AttachmentNotFoundError,
+    DocumentNotFoundError,
+    DocumentStateTransitionError,
+    DocumentValidationError,
+    DocumentVersionNotFoundError,
+    HashMismatchError,
+    QRCodeNotFoundError,
+    RetentionRuleNotFoundError,
+    SignatureNotFoundError,
+    SignatureVerificationError,
+    StorageError,
 )
-from app.national.document_platform.application.service import DocumentPlatformService
 from app.national.document_platform.infrastructure.models import (
     NationalDocumentAttachmentModel,
     NationalDocumentModel,
@@ -54,19 +67,6 @@ from app.national.document_platform.infrastructure.repository import (
     SQLAlchemyDocumentVersionRepository,
     SQLAlchemyElectronicSignatureRepository,
     SQLAlchemyRetentionRuleRepository,
-)
-from app.national.document_platform.exceptions import (
-    AttachmentNotFoundError,
-    DocumentNotFoundError,
-    DocumentStateTransitionError,
-    DocumentValidationError,
-    DocumentVersionNotFoundError,
-    HashMismatchError,
-    QRCodeNotFoundError,
-    RetentionRuleNotFoundError,
-    SignatureNotFoundError,
-    SignatureVerificationError,
-    StorageError,
 )
 
 __all__ = [

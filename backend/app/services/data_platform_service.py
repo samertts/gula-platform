@@ -8,23 +8,23 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.core.events import events
-from app.national_data.models.event_store.StoredEvent import StoredEvent
-from app.national_data.models.event_store.EventSnapshot import EventSnapshot
-from app.national_data.models.mdm.GoldenRecord import GoldenRecord
-from app.national_data.models.mdm.DuplicateRecord import DuplicateRecord
-from app.national_data.models.mdm.MergeAction import MergeAction
-from app.national_data.models.governance.DataLineageEntry import DataLineageEntry
-from app.national_data.models.governance.DataCatalogEntry import DataCatalogEntry
-from app.national_data.models.governance.DataQualityCheck import DataQualityCheck
-from app.national_data.models.governance.RetentionPolicy import RetentionPolicy
-from app.national_data.models.governance.ConsentDirective import ConsentDirective
+from app.national_data.models.ai_data.DeidentificationJob import DeidentificationJob
 from app.national_data.models.ai_data.FeatureStore import FeatureStore
 from app.national_data.models.ai_data.FeatureValue import FeatureValue
-from app.national_data.models.ai_data.DeidentificationJob import DeidentificationJob
+from app.national_data.models.ai_data.TrainingDataset import TrainingDataset
+from app.national_data.models.ai_data.VectorEmbedding import VectorEmbedding
+from app.national_data.models.event_store.EventSnapshot import EventSnapshot
+from app.national_data.models.event_store.StoredEvent import StoredEvent
+from app.national_data.models.governance.ConsentDirective import ConsentDirective
+from app.national_data.models.governance.DataCatalogEntry import DataCatalogEntry
+from app.national_data.models.governance.DataLineageEntry import DataLineageEntry
+from app.national_data.models.governance.DataQualityCheck import DataQualityCheck
+from app.national_data.models.governance.RetentionPolicy import RetentionPolicy
+from app.national_data.models.mdm.DuplicateRecord import DuplicateRecord
+from app.national_data.models.mdm.GoldenRecord import GoldenRecord
+from app.national_data.models.mdm.MergeAction import MergeAction
 from app.national_data.models.warehouse.DimDate import DimDate
 from app.services.outbox_service import emit_to_outbox
-from app.national_data.models.ai_data.VectorEmbedding import VectorEmbedding
-from app.national_data.models.ai_data.TrainingDataset import TrainingDataset
 
 logger = logging.getLogger("gula.data_platform")
 

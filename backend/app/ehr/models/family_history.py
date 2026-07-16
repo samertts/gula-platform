@@ -1,8 +1,9 @@
-from datetime import date, datetime
+from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
 
 from app._compat import UTC
 from app.ehr.base import EHRBaseEntity
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, Text
 
 
 class FamilyHistoryRecord(EHRBaseEntity):

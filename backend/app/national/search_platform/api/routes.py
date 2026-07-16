@@ -22,8 +22,8 @@ router = APIRouter(prefix="/national/search", tags=["National Search Platform"])
 
 
 def _get_service(db: Session = Depends(get_db)) -> SearchPlatformService:
-    from app.kernel.event_bus.bus import EventBus
     from app.kernel import Kernel
+    from app.kernel.event_bus.bus import EventBus
 
     kernel = Kernel.get_instance()
     event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)

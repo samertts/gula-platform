@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
+from .entities import Encounter_management
 
 
 class Encounter_managementRepository:
-    async def get(self, id: str) -> Optional[Encounter_management]:
+    async def get(self, id: str) -> Encounter_management | None:
         raise NotImplementedError
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[Encounter_management]:

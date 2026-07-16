@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from backend.app.kernel.exceptions import PluginPermissionDenied
-from backend.app.kernel.types import PluginDescriptor
+from app.kernel.exceptions import PluginPermissionDenied
+from app.kernel.types import PluginDescriptor
 
 logger = logging.getLogger("gula.kernel.plugin.permissions")
 

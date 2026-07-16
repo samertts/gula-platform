@@ -4,8 +4,8 @@ from enum import Enum
 
 
 class Search_servicePermission(Enum):
-    SEARCH.EXECUTE = "search_service:search.execute"
-    SEARCH.ADMIN = "search_service:search.admin"
+    EXECUTE = "search_service:search.execute"
+    ADMIN = "search_service:search.admin"
 
     def describe(self) -> str:
         descriptions = {        "search_service:search.execute": "Search.Execute",

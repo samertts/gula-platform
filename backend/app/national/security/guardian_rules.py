@@ -16,9 +16,7 @@ class GuardianRule:
 class GuardianRulesService:
     def get_guardian_rules(self, guardian_type: str, minor_age: int) -> GuardianRule:
         rules = GuardianRule()
-        if guardian_type == "legal_guardian":
-            pass
-        elif guardian_type == "parent":
+        if guardian_type == "legal_guardian" or guardian_type == "parent":
             pass
         elif guardian_type == "grandparent":
             rules.can_receive_results = False

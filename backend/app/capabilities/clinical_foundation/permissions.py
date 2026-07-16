@@ -4,9 +4,9 @@ from enum import Enum
 
 
 class Clinical_foundationPermission(Enum):
-    CLINICAL.READ = "clinical_foundation:clinical.read"
-    CLINICAL.WRITE = "clinical_foundation:clinical.write"
-    CLINICAL.ADMIN = "clinical_foundation:clinical.admin"
+    READ = "clinical_foundation:clinical.read"
+    WRITE = "clinical_foundation:clinical.write"
+    ADMIN = "clinical_foundation:clinical.admin"
 
     def describe(self) -> str:
         descriptions = {        "clinical_foundation:clinical.read": "Clinical.Read",

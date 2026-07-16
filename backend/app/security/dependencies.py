@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from fastapi import Depends, HTTPException, Request, status
@@ -129,3 +131,27 @@ def get_current_lab(
             detail="Lab not found or inactive",
         )
     return lab
+
+
+def require_service_account(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> LabUser | ServiceAccount:
+    raw_token = _extract_token(credentials, request)
+    if raw_token is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    if raw_token.startswith("gula_"):
+        from ..models.service_account import ServiceAccount
+        from .service_accounts import validate_api_key
+
+        account = validate_api_key(db, raw_token)
+        if account is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired API key"
+            )
+        return account
+
+    return get_current_user(request, credentials, db)
+

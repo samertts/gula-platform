@@ -5,27 +5,27 @@ import contextlib
 
 import pytest
 
-from backend.app.kernel import Kernel
-from backend.app.kernel.background.scheduler import Scheduler
-from backend.app.kernel.background.task_queue import Task, TaskQueue
-from backend.app.kernel.config.registry import ConfigurationRegistry
-from backend.app.kernel.event_bus.bus import EventBus
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.store import EventStore
-from backend.app.kernel.gateway.circuit_breaker import (
+from app.kernel import Kernel
+from app.kernel.background.scheduler import Scheduler
+from app.kernel.background.task_queue import Task, TaskQueue
+from app.kernel.config.registry import ConfigurationRegistry
+from app.kernel.event_bus.bus import EventBus
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.store import EventStore
+from app.kernel.gateway.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerManager,
     CircuitState,
 )
-from backend.app.kernel.gateway.discovery import ServiceDiscovery, ServiceEndpoint
-from backend.app.kernel.plugin.dependencies import PluginDependencyResolver
-from backend.app.kernel.plugin.manager import PluginManager
-from backend.app.kernel.plugin.registry import PluginRegistry
-from backend.app.kernel.runtime.context import ApplicationContext
-from backend.app.kernel.runtime.di_container import DIContainer
-from backend.app.kernel.runtime.service_registry import ServiceRegistry
-from backend.app.kernel.tenant.registry import TenantRegistry
-from backend.app.kernel.types import TenantDescriptor
+from app.kernel.gateway.discovery import ServiceDiscovery, ServiceEndpoint
+from app.kernel.plugin.dependencies import PluginDependencyResolver
+from app.kernel.plugin.manager import PluginManager
+from app.kernel.plugin.registry import PluginRegistry
+from app.kernel.runtime.context import ApplicationContext
+from app.kernel.runtime.di_container import DIContainer
+from app.kernel.runtime.service_registry import ServiceRegistry
+from app.kernel.tenant.registry import TenantRegistry
+from app.kernel.types import TenantDescriptor
 
 pytestmark = [
     pytest.mark.kernel,
@@ -61,7 +61,7 @@ class TestChaosDIContainer:
         container._scopes = None
         with contextlib.suppress(Exception):
             container.clear_scope("nonexistent")
-        from backend.app.kernel.types import ServiceDescriptor, ServiceLifecycle
+        from app.kernel.types import ServiceDescriptor, ServiceLifecycle
         desc = ServiceDescriptor(
             name="resilient",
             interface=None,
@@ -154,7 +154,7 @@ class TestChaosCircuitBreaker:
 
 class TestChaosPlugin:
     def test_survives_circular_dependencies(self):
-        from backend.app.kernel.types import PluginDescriptor
+        from app.kernel.types import PluginDescriptor
         resolver = PluginDependencyResolver()
         p1 = PluginDescriptor(name="a", version="1.0", path="/tmp", entry_point="P", dependencies=["b"])
         p2 = PluginDescriptor(name="b", version="1.0", path="/tmp", entry_point="P", dependencies=["c"])

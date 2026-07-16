@@ -1,8 +1,11 @@
-from datetime import datetime, date
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum, Float, Integer, String, Text
+
 from app._compat import UTC
-from ..base import GovernanceBase, GovernanceBaseEntity
-from ..enums import ClinicalPolicyType, PolicyStatus, WestgardRule
+
+from ..base import GovernanceBaseEntity
+from ..enums import ClinicalPolicyType, PolicyStatus
 
 
 class ClinicalPolicy(GovernanceBaseEntity):

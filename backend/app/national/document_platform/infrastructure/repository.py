@@ -3,6 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
 from app._compat import UTC
 from app.national.document_platform.domain.entities import (
     Document,
@@ -29,8 +32,6 @@ from app.national.document_platform.infrastructure.models import (
     NationalElectronicSignatureModel,
     NationalRetentionRuleModel,
 )
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
 
 
 class SQLAlchemyDocumentRepository(DocumentRepository):
@@ -83,7 +84,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
     async def get(self, document_id: str) -> Document | None:
         model = self.db.query(NationalDocumentModel).filter(
             NationalDocumentModel.id == document_id,
-            NationalDocumentModel.is_deleted == False,
+            ~NationalDocumentModel.is_deleted,
         ).first()
         if not model:
             return None
@@ -95,7 +96,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[Document]:
-        query = self.db.query(NationalDocumentModel).filter(NationalDocumentModel.is_deleted == False)
+        query = self.db.query(NationalDocumentModel).filter(~~NationalDocumentModel.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalDocumentModel, key) and value is not None:
                 query = query.filter(getattr(NationalDocumentModel, key) == value)
@@ -105,7 +106,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
     async def delete(self, document_id: str, soft: bool = True) -> None:
         model = self.db.query(NationalDocumentModel).filter(
             NationalDocumentModel.id == document_id,
-            NationalDocumentModel.is_deleted == False,
+            ~NationalDocumentModel.is_deleted,
         ).first()
         if model:
             if soft:
@@ -123,7 +124,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
     ) -> list[Document]:
         models = self.db.query(NationalDocumentModel).filter(
             NationalDocumentModel.status == status,
-            NationalDocumentModel.is_deleted == False,
+            ~NationalDocumentModel.is_deleted,
         ).order_by(NationalDocumentModel.created_at.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -135,7 +136,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
     ) -> list[Document]:
         models = self.db.query(NationalDocumentModel).filter(
             NationalDocumentModel.category == category,
-            NationalDocumentModel.is_deleted == False,
+            ~NationalDocumentModel.is_deleted,
         ).order_by(NationalDocumentModel.created_at.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -147,7 +148,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
     ) -> list[Document]:
         search_term = f"%{query}%"
         models = self.db.query(NationalDocumentModel).filter(
-            NationalDocumentModel.is_deleted == False,
+            ~~NationalDocumentModel.is_deleted,
             or_(
                 NationalDocumentModel.filename.ilike(search_term),
                 NationalDocumentModel.original_name.ilike(search_term),
@@ -156,7 +157,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         return [m.to_domain() for m in models]
 
     async def count(self, **filters: Any) -> int:
-        query = self.db.query(NationalDocumentModel).filter(NationalDocumentModel.is_deleted == False)
+        query = self.db.query(NationalDocumentModel).filter(~~NationalDocumentModel.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalDocumentModel, key) and value is not None:
                 query = query.filter(getattr(NationalDocumentModel, key) == value)

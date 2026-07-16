@@ -10,24 +10,10 @@ from backend.app.national.workflow_runtime.application.service import (
 )
 from backend.app.national.workflow_runtime.domain.entities import (
     WorkflowDefinition,
-    WorkflowExecution,
     WorkflowStepDefinition,
     WorkflowTemplate,
 )
 from backend.app.national.workflow_runtime.domain.enums import WorkflowTrigger
-from backend.app.national.workflow_runtime.domain.repository import (
-    WorkflowApprovalRepository,
-    WorkflowCompensationRepository,
-    WorkflowDefinitionRepository,
-    WorkflowExecutionRepository,
-    WorkflowExecutionStepRepository,
-    WorkflowTemplateRepository,
-    WorkflowTimerRepository,
-)
-from backend.app.national.workflow_runtime.exceptions import (
-    WorkflowExecutionNotFoundError,
-    WorkflowNotFoundError,
-)
 from backend.app.national.workflow_runtime.infrastructure.repository import (
     SQLAlchemyWorkflowApprovalRepository,
     SQLAlchemyWorkflowCompensationRepository,
@@ -43,7 +29,6 @@ router = APIRouter(prefix="/national/workflows", tags=["National Workflows"])
 
 
 def _get_service() -> WorkflowRuntimeService:
-    from backend.app.database import SessionLocal
 
     return WorkflowRuntimeService(
         definition_repo=SQLAlchemyWorkflowDefinitionRepository(),
@@ -319,8 +304,7 @@ async def instantiate_template(
 @router.get("/stats")
 async def get_stats(current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    stats = await svc.get_stats()
-    return stats
+    return await svc.get_stats()
 
 
 @router.get("/definitions/{definition_id}/versions")

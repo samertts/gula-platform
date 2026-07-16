@@ -1,6 +1,8 @@
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import EpisodeOfCareStatus
-from sqlalchemy import JSON, Column, DateTime, Enum as SAEnum, ForeignKey, Index, String, Text
 
 
 class EpisodeOfCare(TenantAuditEntity):

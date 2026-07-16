@@ -3,15 +3,15 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from backend.app.kernel.module.compatibility import ModuleVersionCompatibility
-from backend.app.kernel.module.discovery import ModuleDiscovery
-from backend.app.kernel.module.metadata import ModuleMetadataParser
-from backend.app.kernel.module.registry import ModuleRegistry
-from backend.app.kernel.module.resolver import ModuleDependencyResolver
-from backend.app.kernel.types import ModuleDescriptor
+from app.kernel.module.compatibility import ModuleVersionCompatibility
+from app.kernel.module.discovery import ModuleDiscovery
+from app.kernel.module.metadata import ModuleMetadataParser
+from app.kernel.module.registry import ModuleRegistry
+from app.kernel.module.resolver import ModuleDependencyResolver
+from app.kernel.types import ModuleDescriptor
 
 if TYPE_CHECKING:
-    from backend.app.kernel import Kernel
+    from app.kernel import Kernel
 
 logger = logging.getLogger("gula.kernel.module.loader")
 

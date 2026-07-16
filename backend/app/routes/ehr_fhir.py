@@ -22,10 +22,8 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..national.domain.encounter import Encounter
-from ..national.domain.patient import Patient as NationalPatient
-from ..national.domain.practitioner import Practitioner
-from ..services import ehr_service
 from ..security.dependencies import get_current_user
+from ..services import ehr_service
 
 router = APIRouter(prefix="/fhir", tags=["fhir"])
 
@@ -949,7 +947,7 @@ def _clinical_note_to_composition(rec: ClinicalNote) -> dict:
                 ),
                 "text": {
                     "status": "additional",
-                    "div": f"<div xmlns=\"http://www.w3.org/1999/xhtml\">{section_text}</div>",
+                    "div": f'<div xmlns="http://www.w3.org/1999/xhtml">{section_text}</div>',
                 },
             }
         ],

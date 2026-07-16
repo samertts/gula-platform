@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from backend.app.kernel.background.distributed_locks import DistributedLock, DistributedLockManager
+from app.kernel.background.distributed_locks import DistributedLock, DistributedLockManager
 
 
 class TestDistributedLocks:

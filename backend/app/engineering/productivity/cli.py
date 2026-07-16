@@ -110,7 +110,7 @@ def main() -> None:
     cap_graph = cap_sub.add_parser("graph", help="Show dependency graph")
     cap_graph.add_argument("--format", default="text", choices=["text", "mermaid", "json"], help="Output format")
 
-    cap_summary = cap_sub.add_parser("summary", help="Show capability registry summary")
+    cap_sub.add_parser("summary", help="Show capability registry summary")
 
     # gula info
     sub.add_parser("info", help="Show platform info")

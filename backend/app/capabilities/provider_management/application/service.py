@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional
+from app.capabilities.provider_management.domain.entities import Provider_management
+from app.capabilities.provider_management.domain.repository import Provider_managementRepository
 
 
 class Provider_managementService:
     def __init__(self, repository: Provider_managementRepository):
         self._repository = repository
 
-    async def get(self, id: str) -> Optional[Provider_management]:
+    async def get(self, id: str) -> Provider_management | None:
         return await self._repository.get(id)
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[Provider_management]:

@@ -44,7 +44,7 @@ class CapabilitySpec:
     with_sbom: bool = True
 
 
-_ENTITY_TPL = '''from __future__ import annotations
+_ENTITY_TPL = """from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -58,9 +58,9 @@ class {entity}:
 {fields}
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-'''
+"""
 
-_DTO_TPL = '''from __future__ import annotations
+_DTO_TPL = """from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -80,9 +80,9 @@ class {dto}UpdateRequest:
 @dataclass
 class {dto}Response:
 {response_fields}
-'''
+"""
 
-_REPOSITORY_TPL = '''from __future__ import annotations
+_REPOSITORY_TPL = """from __future__ import annotations
 
 from typing import Optional
 
@@ -105,9 +105,9 @@ class {repo}Repository:
 
     async def count(self) -> int:
         raise NotImplementedError
-'''
+"""
 
-_REPOSITORY_IMPL_TPL = '''from __future__ import annotations
+_REPOSITORY_IMPL_TPL = """from __future__ import annotations
 
 from typing import Optional
 
@@ -155,9 +155,9 @@ class SQLAlchemy{repo}Repository({repo}Repository):
         async with self._session_factory() as session:
             result = await session.execute(select({entity_name}))
             return len(result.scalars().all())
-'''
+"""
 
-_SERVICE_TPL = '''from __future__ import annotations
+_SERVICE_TPL = """from __future__ import annotations
 
 from typing import Optional
 
@@ -180,9 +180,9 @@ class {service}Service:
 
     async def delete(self, id: str) -> bool:
         return await self._repository.delete(id)
-'''
+"""
 
-_ROUTES_TPL = '''from __future__ import annotations
+_ROUTES_TPL = """from __future__ import annotations
 
 from typing import Any
 
@@ -233,9 +233,9 @@ async def delete_{prefix}(
     current_user: Any = Depends(get_current_user),
 ) -> dict:
     return {{"success": True}}
-'''
+"""
 
-_HEALTH_TPL = '''from __future__ import annotations
+_HEALTH_TPL = """from __future__ import annotations
 
 from fastapi import APIRouter
 
@@ -250,9 +250,9 @@ async def health_check() -> dict:
 @router.get("/ready")
 async def readiness() -> dict:
     return {{"ready": True, "capability": "{cap_name}"}}
-'''
+"""
 
-_POLICIES_TPL = '''from __future__ import annotations
+_POLICIES_TPL = """from __future__ import annotations
 
 
 class {cap}Policy:
@@ -268,9 +268,9 @@ class {cap}Policy:
 
     def add_rule(self, condition, message: str):
         self._rules.append({{"condition": condition, "message": message}})
-'''
+"""
 
-_PERMISSIONS_TPL = '''from __future__ import annotations
+_PERMISSIONS_TPL = """from __future__ import annotations
 
 from enum import Enum
 
@@ -281,9 +281,9 @@ class {cap}Permission(Enum):
     def describe(self) -> str:
         descriptions = {{{desc_map}}}
         return descriptions.get(self, self.value)
-'''
+"""
 
-_UNIT_TEST_TPL = '''from __future__ import annotations
+_UNIT_TEST_TPL = """from __future__ import annotations
 
 import pytest
 
@@ -303,9 +303,9 @@ class Test{cap}Capability:
     async def test_validate(self, capability):
         result = await capability.validate({{}})
         assert result is True
-'''
+"""
 
-_INTEGRATION_TEST_TPL = '''from __future__ import annotations
+_INTEGRATION_TEST_TPL = """from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
@@ -318,9 +318,9 @@ class Test{cap}API:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
-'''
+"""
 
-_ADR_TPL = '''# ADR-{seq:04d}: {cap} Capability
+_ADR_TPL = """# ADR-{seq:04d}: {cap} Capability
 
 - **Status:** proposed
 - **Date:** {date}
@@ -349,9 +349,9 @@ Build the {cap_name} capability as a reusable platform capability.
 - [ ] OpenAPI specification generated
 - [ ] ADR documented
 - [ ] Tests written and passing
-'''
+"""
 
-_README_TPL = '''# {cap} Capability
+_README_TPL = """# {cap} Capability
 
 **Domain:** {domain} | **Layer:** {layer} | **Version:** {version}
 
@@ -389,9 +389,9 @@ _README_TPL = '''# {cap} Capability
 ## License
 
 Proprietary - GULA Platform
-'''
+"""
 
-_SBOM_TPL = '''<?xml version="1.0" encoding="UTF-8"?>
+_SBOM_TPL = """<?xml version="1.0" encoding="UTF-8"?>
 <bom xmlns="http://cyclonedx.org/schema/bom/1.5" version="1">
     <metadata>
         <component type="library">
@@ -407,7 +407,7 @@ _SBOM_TPL = '''<?xml version="1.0" encoding="UTF-8"?>
         </component>
     </components>
 </bom>
-'''
+"""
 
 
 class CapabilityGenerator(BaseGenerator):
@@ -756,7 +756,7 @@ class {qry_cap}Query:
 
     def _generate_permissions(self, cap: str, cap_cap: str, spec: CapabilitySpec) -> None:
         perms = "\n".join(
-            f"    {p.upper()} = \"{cap.lower()}:{p.lower()}\""
+            f'    {p.upper()} = "{cap.lower()}:{p.lower()}"'
             for p in spec.permissions
         )
         desc_items = ",\n        ".join(
@@ -872,7 +872,7 @@ class {qry_cap}Query:
         self._write(
             f"{cap}/capability.json",
             f"""{{
-    "capability_id": "{str(uuid.uuid4())}",
+    "capability_id": "{uuid.uuid4()!s}",
     "name": "{spec.name}",
     "version": "{spec.version}",
     "description": "{spec.description}",
@@ -890,8 +890,8 @@ class {qry_cap}Query:
     ],
     "entities": [{entities}
     ],
-    "policies": {str([p for p in spec.policies])},
-    "permissions": {str([p for p in spec.permissions])},
+    "policies": {list(spec.policies)!s},
+    "permissions": {list(spec.permissions)!s},
     "api_endpoints": [
         {{"path": "/{prefix}/", "method": "GET", "auth_required": true}},
         {{"path": "/{prefix}/{{id}}", "method": "GET", "auth_required": true}},
@@ -902,7 +902,7 @@ class {qry_cap}Query:
     ],
     "required": false,
     "enabled": true,
-    "tags": {str(spec.tags)},
+    "tags": {spec.tags!s},
     "module_path": "{module_path}",
     "health_endpoint": "/{prefix}/health/"
 }}

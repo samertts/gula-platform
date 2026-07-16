@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional
+from app.capabilities.workflow_engine.domain.entities import Workflow_engine
+from app.capabilities.workflow_engine.domain.repository import Workflow_engineRepository
 
 
 class Workflow_engineService:
     def __init__(self, repository: Workflow_engineRepository):
         self._repository = repository
 
-    async def get(self, id: str) -> Optional[Workflow_engine]:
+    async def get(self, id: str) -> Workflow_engine | None:
         return await self._repository.get(id)
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[Workflow_engine]:

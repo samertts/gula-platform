@@ -14,7 +14,6 @@ from backend.app.national.task_engine.domain.entities import (
 from backend.app.national.task_engine.domain.enums import (
     TaskCategory,
     TaskPriority,
-    TaskStatus,
 )
 from backend.app.national.task_engine.infrastructure.repository import (
     SQLAlchemyNationalTaskRepository,
@@ -274,7 +273,7 @@ async def update_queue(
     queue_id: str, data: dict, current_user: Any = Depends(get_current_user)
 ):
     svc = _get_service()
-    result = await svc.update_queue(queue_id, data)
+    await svc.update_queue(queue_id, data)
     return {"success": True}
 
 
@@ -305,7 +304,7 @@ async def update_sla(
     sla_id: str, data: dict, current_user: Any = Depends(get_current_user)
 ):
     svc = _get_service()
-    result = await svc.update_sla(sla_id, data)
+    await svc.update_sla(sla_id, data)
     return {"success": True}
 
 

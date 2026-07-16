@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/fhir-interoperability", tags=["Fhir Interoperability"])
 
 
 @router.get("/")
-async def list_fhir-interoperability(
+async def list_fhir_interoperability(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_fhir-interoperability(
 
 
 @router.get("/{id}")
-async def get_fhir-interoperability(
+async def get_fhir_interoperability(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_fhir-interoperability(
 
 
 @router.post("/")
-async def create_fhir-interoperability(
+async def create_fhir_interoperability(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_fhir-interoperability(
 
 
 @router.put("/{id}")
-async def update_fhir-interoperability(
+async def update_fhir_interoperability(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_fhir-interoperability(
 
 
 @router.delete("/{id}")
-async def delete_fhir-interoperability(
+async def delete_fhir_interoperability(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

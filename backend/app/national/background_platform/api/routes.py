@@ -13,13 +13,11 @@ from app.national.background_platform.domain.enums import (
     DependencyType,
     JobCategory,
     JobPriority,
-    JobStatus,
     ScheduleType,
 )
 from app.national.background_platform.exceptions import (
     InvalidCronExpressionError,
     JobDependencyError,
-    JobExecutionError,
     JobNotFoundError,
     JobScheduleNotFoundError,
     JobStateTransitionError,
@@ -36,8 +34,8 @@ router = APIRouter(prefix="/national/jobs", tags=["National Background Platform"
 
 
 def _get_service(db: Session = Depends(get_db)) -> JobService:
-    from app.kernel.event_bus.bus import EventBus
     from app.kernel import Kernel
+    from app.kernel.event_bus.bus import EventBus
 
     kernel = Kernel.get_instance()
     event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)
@@ -256,9 +254,11 @@ async def execute_job_now(
 @router.post("/{job_id}/cancel")
 async def cancel_job(
     job_id: str,
-    body: dict[str, Any] = {},
+    body: dict[str, Any] | None = None,
     service: JobService = Depends(_get_service),
 ) -> dict[str, str]:
+    if body is None:
+        body = {}
     try:
         await service.cancel_job(job_id, reason=body.get("reason", ""))
         return {"status": "cancelled", "job_id": job_id}
@@ -444,7 +444,6 @@ async def validate_cron(
             detail="cron expression is required",
         )
     try:
-        result = await service.validate_cron_expression(expression)
-        return result
+        return await service.validate_cron_expression(expression)
     except InvalidCronExpressionError as e:
         return {"valid": False, "expression": expression, "error": str(e)}

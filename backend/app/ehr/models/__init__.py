@@ -1,4 +1,5 @@
 from app.ehr.models.allergy import AllergyIntolerance
+from app.ehr.models.attachment import ClinicalAttachment
 from app.ehr.models.care_plan import CarePlan, CarePlanActivity, CarePlanGoal
 from app.ehr.models.clinical_note import ClinicalNote
 from app.ehr.models.clinical_summary import ConditionRecord, DiagnosisRecord, ProblemListItem
@@ -13,7 +14,6 @@ from app.ehr.models.medication import (
 from app.ehr.models.risk_factor import RiskFactorRecord
 from app.ehr.models.social_history import SocialHistoryRecord
 from app.ehr.models.timeline import PatientTimelineEvent
-from app.ehr.models.attachment import ClinicalAttachment
 
 __all__ = [
     "AllergyIntolerance",

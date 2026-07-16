@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.background.worker_pool import WorkerPool
+from app.kernel.background.worker_pool import WorkerPool
 
 
 class TestWorkerPool:

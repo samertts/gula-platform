@@ -4,10 +4,10 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel, KernelConfig, KernelState
-from backend.app.kernel.exceptions import ServiceNotFoundError
-from backend.app.kernel.runtime.di_container import DIContainer
-from backend.app.kernel.types import ServiceDescriptor, ServiceLifecycle
+from app.kernel import Kernel, KernelConfig, KernelState
+from app.kernel.exceptions import ServiceNotFoundError
+from app.kernel.runtime.di_container import DIContainer
+from app.kernel.types import ServiceDescriptor, ServiceLifecycle
 
 
 class TestKernelSingleton:
@@ -119,7 +119,7 @@ class TestDescriptorDefaults:
         assert not desc.lazy
 
     def test_capability_descriptor(self):
-        from backend.app.kernel.types import CapabilityDescriptor
+        from app.kernel.types import CapabilityDescriptor
         desc = CapabilityDescriptor(name="test", version="1.0", description="test")
         assert not desc.required
         assert desc.enabled

@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Any
 
-from app._compat import UTC
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime
 from sqlalchemy.orm import declarative_base
+
+from app._compat import UTC
 
 GovernanceBase = declarative_base()
 

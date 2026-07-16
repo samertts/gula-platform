@@ -1,5 +1,6 @@
-from app.national_data.base import BaseEntity
 from sqlalchemy import Column, Index, Integer, SmallInteger, String
+
+from app.national_data.base import BaseEntity
 
 
 class DimDate(BaseEntity):

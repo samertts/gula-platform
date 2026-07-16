@@ -1,162 +1,135 @@
-# Software Bill of Materials — National Healthcare Platform
+# National Platform SBOM — Missions 017-024
 
-## Python Runtime & Framework
+**Version:** 2.2.0  
+**Date:** 2026-07-15  
+**Platform:** GULA National Digital Health Platform  
 
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| Python | 3.10+ | Runtime |
-| FastAPI | 0.109+ | Web framework |
-| Uvicorn | 0.27+ | ASGI server |
-| Gunicorn | 21.2+ | WSGI process manager |
-| Pydantic | 2.5+ | Data validation & settings |
-| Pydantic Settings | 2.1+ | Environment configuration |
+## Python Runtime Dependencies
 
-## Database & ORM
+| Package | Version | Purpose |
+|---------|---------|---------|
+| fastapi | >=0.115 | Web framework |
+| uvicorn | latest | ASGI server |
+| gunicorn | latest | WSGI server |
+| redis | >=5.0 | Cache/queue client |
+| python-multipart | >=0.0.20 | Form parsing |
+| sqlalchemy | >=2.0 | ORM |
+| alembic | >=1.13 | Migrations |
+| pydantic | >=2.0 | Data validation |
+| pydantic-settings | >=2.0 | Configuration |
+| pyjwt | >=2.8 | JWT auth |
+| cryptography | >=41 | Encryption |
+| httpx | >=0.27 | HTTP client |
+| sentry-sdk | >=2.0 | Error tracking |
+| prometheus-client | >=0.19 | Metrics |
+| psycopg2-binary | >=2.9 | PostgreSQL driver |
+| python-dotenv | >=1.0 | Env loading |
+| pyflakes | >=3.2 | Lint |
+| flake8 | >=7.0 | Lint |
+| pytest | >=8.0 | Testing |
+| pytest-asyncio | >=0.23 | Async testing |
+| ruff | >=0.3 | Lint/format |
+| mypy | >=1.8 | Type checking |
+| bandit | >=1.7 | Security scan |
+| semgrep | >=1.50 | SAST |
+
+## Mission 017 — National EHR Platform Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `app/national/fhir/` | 19 files | FHIR R4 mappers, validation, search, terminology |
+| `app/ehr/` | 14 files | EHR base entity, models (allergy, care_plan, clinical_note, etc.) |
+| `app/clinical/` | 12 files | CDS, knowledge, quality, research, terminology |
+| `app/routes/ehr_fhir.py` | 1 file | FHIR REST endpoints (20+ resource types) |
+| `app/routes/clinical*.py` | 4 files | Clinical documentation, orders, quality routes |
+
+## Mission 018 — National Health Data Platform Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `app/national_data/` | 30+ files | Canonical models, MDM, event store, warehouse, governance, AI data |
+| `app/health_data/` | 25+ files | Data lake, canonical mapping, streaming, governance |
+| `app/routes/national_data.py` | 1 file | National data API routes |
+| `app/routes/national_streaming.py` | 1 file | Streaming event routes |
+
+## Mission 019 — National Platform Operations Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `app/control_plane/` | 25+ files | Operations center, fleet, release, registry, digital twin |
+| `app/command_intelligence/` | 4 files | Incident and capacity intelligence |
+| `scripts/` | 85 files | Operational scripts (backup, DR, monitoring, deploy) |
+| `config/` | 90+ files | Infrastructure configuration (Prometheus, Grafana, HAProxy, etc.) |
+
+## Mission 020 — National Digital Health Ecosystem Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `app/national/ecosystem/` | 15+ files | Connectors, partners, transformation, gateway |
+| `app/national/ecosystem/connectors/` | 8 files | REST, FHIR, HL7, ASTM, File, Messaging, Webhook |
+| `app/national/ecosystem/partners/` | 3 files | Partner registry, credentials, certificates |
+| `app/national/ecosystem/gateway/` | 3 files | API gateway policies, routing |
+| `app/integration/` | 80+ files | Integration framework, connectors, standards |
+| `contracts/sdk/` | 3 SDKs | TypeScript, Dart, Python SDKs |
+
+## Mission 021 — National Citizen Super App Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `app/citizen_platform/` | 18 files | Citizen identity, appointments, family, laboratory, medications |
+| `frontend-v2/src/` | 85+ files | React + Firebase frontend (citizen/doctor/lab/ministry portals) |
+| `frontend-v2/src/views/citizen/` | 10+ views | Citizen dashboard, health, family, medications, results |
+| `frontend-v2/src/components/citizen/` | 6 components | DigitalTwin, FamilySwitcher, MedicineCabinet, etc. |
+
+## Mission 022 — National Health Intelligence & Automation Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `app/national/intelligence/` | 15+ files | Automation, clinical/laboratory/hospital/public health intelligence |
+| `app/national/intelligence/ai_platform/` | 1 file | LLM gateway, model registry, RAG engine |
+| `app/national/intelligence/automation/` | 1 file | Task/rule/schedule/notification automation |
+| `app/ai_fabric/` | 24 files | AI fabric with agents, RAG, knowledge graph |
+| `app/research_platform/` | 19 files | Research, population health, epidemiology |
+
+## Mission 023 — National Doctor Clinical Workspace Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `app/routes/clinical*.py` | 4 files | Clinical documentation, orders, quality |
+| `app/routes/ehr_fhir.py` | 1 file | FHIR resource access |
+| `frontend-v2/src/views/doctor/` | 2 views | PatientProfile, DoctorIntelligence |
+| `frontend-v2/src/components/doctor/` | 6 components | ClinicalNotes, PrescriptionBuilder, etc. |
+
+## Mission 024 — National Laboratory Desktop Professional Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `app/lims/` | 14 files | LIMS models, routes, services, state machine |
+| `app/lims/integration/` | 5 files | ASTM, HL7, device registry, simulator |
+| `app/lims/routes.py` | 1600+ lines | 50+ LIMS REST endpoints |
+| `services/device_bridge/` | 30+ files | LabLink-Core: ASTM/HL7 device integration |
+
+## Infrastructure Dependencies
 
 | Component | Version | Purpose |
 |-----------|---------|---------|
 | PostgreSQL | 16 | Primary database |
-| SQLAlchemy | 2.0+ | ORM & SQL toolkit |
-| Alembic | 1.13+ | Database migrations |
-| psycopg2-binary | 2.9+ | PostgreSQL adapter |
-| asyncpg | 0.29+ | Async PostgreSQL adapter |
-| SQLAlchemy-Utils | 0.41+ | Utility functions |
+| Redis | 7 | Cache, queue, session store |
+| Nginx | latest | API gateway |
+| Prometheus | latest | Metrics collection |
+| Grafana | latest | Dashboards |
+| HAProxy | latest | Load balancer |
+| Docker | latest | Container runtime |
 
-## Caching & Message Queue
+## Security Dependencies
 
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| Redis | 7 | Caching & session store |
-| redis-py | 5.0+ | Redis client |
-| RabbitMQ | 3.12+ | Message broker |
-| aio-pika | 9.3+ | Async RabbitMQ client |
+| Tool | Purpose |
+|------|---------|
+| JWT (PyJWT) | Authentication tokens |
+| Cryptography (Fernet) | Encryption at rest |
+| bcrypt | Password hashing |
+| mTLS | Partner certificate auth |
+| OAuth2 / OIDC | External identity federation |
 
-## Authentication & Security
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| PyJWT | 2.8+ | JWT encoding/decoding |
-| python-jose | 3.3+ | JOSE (JWT/JWS/JWE) |
-| cryptography | 41.0+ | Encryption primitives |
-| bcrypt | 4.1+ | Password hashing |
-| passlib | 1.7+ | Password hashing library |
-| python-multipart | 0.0.6+ | Form data parsing |
-| python-dotenv | 1.0+ | Environment file loading |
-
-## FHIR / Healthcare
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| fhir.resources | 7.0+ | FHIR R4 data models |
-| fhirpath-py | 0.8+ | FHIRPath evaluation |
-| hl7 | 0.4+ | HL7 v2 message parsing |
-| python-dicom | 2.4+ | DICOM image handling |
-
-## Testing
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| pytest | 7.4+ | Test framework |
-| pytest-asyncio | 0.23+ | Async test support |
-| pytest-cov | 4.1+ | Code coverage |
-| pytest-xdist | 3.5+ | Parallel test execution |
-| httpx | 0.26+ | HTTP client for testing |
-| factory-boy | 3.3+ | Test data factories |
-| freezegun | 1.2+ | Time mocking |
-| moto | 4.2+ | AWS service mocking |
-
-## Monitoring & Observability
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| Prometheus | 2.50+ | Metrics collection |
-| Grafana | 10.3+ | Metrics visualization |
-| Grafana Loki | 3.0+ | Log aggregation |
-| OpenTelemetry | 1.22+ | Distributed tracing |
-| Python JSON Logger | 2.0+ | Structured logging |
-| Sentry SDK | 1.40+ | Error tracking |
-
-## Deployment & Infrastructure
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| Docker | 24+ | Container runtime |
-| Docker Compose | 2.24+ | Multi-container orchestration |
-| nginx | 1.25+ | API gateway & reverse proxy |
-| HAProxy | 2.9+ | Load balancer |
-| MinIO | 2024+ | S3-compatible object storage |
-| Elasticsearch | 8.11+ | Full-text search |
-| Kibana | 8.11+ | Search visualization |
-
-## Clinical Intelligence (AI/ML)
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| scikit-learn | 1.3+ | ML algorithms |
-| sentence-transformers | 2.2+ | Text embeddings |
-| numpy | 1.26+ | Numerical computing |
-| pandas | 2.1+ | Data manipulation |
-| transformers | 4.36+ | LLM integration |
-| onnxruntime | 1.16+ | ML model inference |
-
-## Internationalization
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| Babel | 2.13+ | i18n/l10n support |
-| python-slugify | 8.0+ | URL/text slug generation |
-| pyarabic | 1.0+ | Arabic text processing |
-
-## Developer Tooling
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| flake8 | 7.0+ | Linter (error-only rules: E9, F821) |
-| pyflakes | 3.1+ | Fast linter |
-| mypy | 1.7+ | Static type checking |
-| ruff | 0.1+ | Fast Python linter |
-| black | 23.12+ | Code formatter |
-| pre-commit | 3.6+ | Git hooks |
-| safety | 2.4+ | CVE scanning |
-| bandit | 1.7+ | Security scanning |
-| hadolint | 2.12+ | Dockerfile linting |
-| gitleaks | 8.18+ | Secret scanning |
-
-## Database Schema Summary
-
-| Schema | Tables | Models |
-|--------|--------|--------|
-| `public` | ~20 | Labs, users, orders, results, samples |
-| `ehr` | 14 | Problems, allergies, medications, care plans, notes, immunizations, timeline |
-| `hospital` | 13 | Hospitals, campuses, buildings, beds, departments, equipment |
-| `cc` | 25+ | Referrals, care journeys, chronic disease, maternal, immunizations, tasks |
-| `clinical` | 12+ | Terminology, guidelines, order sets, quality indicators |
-| `national` | 20+ | Citizens, patients, encounters, facilities, organizations, practitioners |
-| `national_data` | 15+ | Canonical, MDM, event store, governance, deidentification |
-
-## Service Dependencies
-
-```
-gula-backend (FastAPI)
-  ├── PostgreSQL 16 (primary data store)
-  ├── Redis 7 (cache, sessions, rate limiting)
-  ├── RabbitMQ 3.12+ (event bus, async processing)
-  ├── MinIO / S3 (document/attachment storage)
-  └── Elasticsearch 8 (full-text search, FHIR search)
-```
-
-## Network Ports
-
-| Port | Service | Purpose |
-|------|---------|---------|
-| 443 | Host nginx | TLS termination |
-| 8080 | api-gateway | Internal routing |
-| 8000 | gula-backend | FastAPI application |
-| 5432 | PostgreSQL | Database |
-| 6379 | Redis | Cache |
-| 5672 | RabbitMQ | AMQP |
-| 15672 | RabbitMQ | Management UI |
-| 9090 | Prometheus | Metrics |
-| 3000 | Grafana | Dashboards |
-| 9200 | Elasticsearch | Search API |
-| 9000 | MinIO | S3 API |
+## License
+Proprietary — GULA Platform. All rights reserved.

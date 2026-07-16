@@ -1,0 +1,7 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GULA Platform API",
+    "version": "2.1.0"
+  }
+}

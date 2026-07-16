@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.plugin.dependencies import PluginDependencyResolver
-from backend.app.kernel.plugin.registry import PluginRegistry
-from backend.app.kernel.types import PluginDescriptor
+from app.kernel.plugin.dependencies import PluginDependencyResolver
+from app.kernel.plugin.registry import PluginRegistry
+from app.kernel.types import PluginDescriptor
 
 
 class TestPluginRegistry:

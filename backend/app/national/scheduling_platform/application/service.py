@@ -50,10 +50,7 @@ from app.national.scheduling_platform.exceptions import (
     CalendarNotFoundError,
     ConflictDetectionError,
     ResourceNotFoundError,
-    ResourceNotAvailableError,
     ScheduleNotFoundError,
-    SlotNotAvailableError,
-    TimeSlotNotFoundError,
     WaitingListNotFoundError,
 )
 
@@ -343,8 +340,7 @@ class SchedulingPlatformService:
             )
         appointment.status = new_status
         appointment.version += 1
-        saved = await self.appointment_repository.save(appointment)
-        return saved
+        return await self.appointment_repository.save(appointment)
 
     async def check_availability(
         self,
@@ -707,7 +703,7 @@ class SchedulingPlatformService:
         return await self.calendar_repository.list(skip=skip, limit=limit)
 
     async def get_dashboard_stats(self) -> dict[str, Any]:
-        today = date.today()
+        date.today()
         stats: dict[str, Any] = {
             "by_status": {},
             "total": 0,

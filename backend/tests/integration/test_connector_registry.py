@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.integration.connector.registry import ConnectorRegistry
-from backend.app.integration.connector.spec import (
+from app.integration.connector.registry import ConnectorRegistry
+from app.integration.connector.spec import (
     ConnectorSpec,
     ConnectorStatus,
     ConnectorType,

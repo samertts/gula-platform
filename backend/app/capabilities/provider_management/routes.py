@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/provider-management", tags=["Provider Management"])
 
 
 @router.get("/")
-async def list_provider-management(
+async def list_provider_management(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_provider-management(
 
 
 @router.get("/{id}")
-async def get_provider-management(
+async def get_provider_management(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_provider-management(
 
 
 @router.post("/")
-async def create_provider-management(
+async def create_provider_management(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_provider-management(
 
 
 @router.put("/{id}")
-async def update_provider-management(
+async def update_provider_management(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_provider-management(
 
 
 @router.delete("/{id}")
-async def delete_provider-management(
+async def delete_provider_management(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

@@ -8,20 +8,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.clinical.terminology.models import (
-    ATCCode,
-    CPTCode,
-    CodeSystem,
-    ICD10Code,
-    ICD11Code,
-    LOINCCode,
-    RxNormCode,
-    SNOMEDCTCode,
     TerminologyCode,
-    TerminologyMapping,
-    TerminologyVersion,
-    UCUMCode,
     ValueSet,
-    ValueSetMember,
 )
 from app.database import get_db
 from app.models.lab_user import LabUser
@@ -1182,8 +1170,7 @@ def create_registry(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = ResearchService.create_registry(db, data.model_dump(exclude_none=True))
-    return result
+    return ResearchService.create_registry(db, data.model_dump(exclude_none=True))
 
 
 @router.get("/research/registries")
@@ -1209,8 +1196,7 @@ def create_cohort(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = ResearchService.create_cohort(db, data.model_dump(exclude_none=True))
-    return result
+    return ResearchService.create_cohort(db, data.model_dump(exclude_none=True))
 
 
 @router.get("/research/cohorts")
@@ -1234,10 +1220,9 @@ def export_deidentified_dataset(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = ResearchService.export_deidentified_dataset(
+    return ResearchService.export_deidentified_dataset(
         db, cohort_id=cohort_id, registry_id=registry_id
     )
-    return result
 
 
 # ==============================================================================
@@ -1278,12 +1263,11 @@ def clinical_copilot(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = ClinicalAIService.clinical_copilot(
+    return ClinicalAIService.clinical_copilot(
         db,
         patient_context=data.patient_context,
         clinical_findings=data.clinical_findings,
     )
-    return result
 
 
 @router.post("/ai/risk-prediction")
@@ -1292,13 +1276,12 @@ def predict_risk(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = ClinicalAIService.predict_risk(
+    return ClinicalAIService.predict_risk(
         db,
         patient_id=data.patient_id,
         risk_type=data.risk_type,
         clinical_data=data.clinical_data,
     )
-    return result
 
 
 @router.post("/ai/care-gaps")
@@ -1307,12 +1290,11 @@ def detect_care_gaps(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = ClinicalAIService.detect_care_gaps(
+    return ClinicalAIService.detect_care_gaps(
         db,
         patient_id=data.patient_id,
         clinical_data=data.clinical_data,
     )
-    return result
 
 
 @router.post("/ai/diagnostic-assistant")
@@ -1321,13 +1303,12 @@ def diagnostic_assistant(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = ClinicalAIService.diagnostic_assistant(
+    return ClinicalAIService.diagnostic_assistant(
         db,
         symptoms=data.symptoms,
         findings=data.findings,
         patient_context=data.patient_context,
     )
-    return result
 
 
 @router.post("/ai/explain")
@@ -1336,9 +1317,8 @@ def get_explanation(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = ClinicalAIService.get_explanation(
+    return ClinicalAIService.get_explanation(
         db,
         recommendation_id=data.recommendation_id,
         recommendation_type=data.recommendation_type,
     )
-    return result

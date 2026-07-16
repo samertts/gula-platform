@@ -9,8 +9,8 @@ from .application.interfaces import (
     PushAdapter,
     SMSAdapter,
     TelegramAdapter,
-    WebSocketAdapter,
     WebhookAdapter,
+    WebSocketAdapter,
     WhatsAppAdapter,
 )
 from .application.service import NotificationPlatformService
@@ -62,6 +62,8 @@ from .exceptions import (
 )
 
 __all__ = [
+    "ChannelNotAvailableError",
+    "DeliveryFailedError",
     "DeliveryReport",
     "DeliveryReportRepository",
     "DeliveryReportStatus",
@@ -95,13 +97,11 @@ __all__ = [
     "NotificationTemplate",
     "NotificationTemplateRepository",
     "PushAdapter",
-    "ChannelNotAvailableError",
-    "DeliveryFailedError",
     "QuietHoursBlockedError",
     "RateLimitExceededError",
     "RecipientNotSpecifiedError",
-    "ScheduleNotFoundError",
     "SMSAdapter",
+    "ScheduleNotFoundError",
     "TelegramAdapter",
     "TemplateCreated",
     "TemplateEngine",

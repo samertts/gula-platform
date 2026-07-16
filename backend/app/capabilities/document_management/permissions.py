@@ -4,11 +4,11 @@ from enum import Enum
 
 
 class Document_managementPermission(Enum):
-    DOCUMENT.READ = "document_management:document.read"
-    DOCUMENT.WRITE = "document_management:document.write"
-    DOCUMENT.DELETE = "document_management:document.delete"
-    DOCUMENT.SIGN = "document_management:document.sign"
-    DOCUMENT.ADMIN = "document_management:document.admin"
+    READ = "document_management:document.read"
+    WRITE = "document_management:document.write"
+    DELETE = "document_management:document.delete"
+    SIGN = "document_management:document.sign"
+    ADMIN = "document_management:document.admin"
 
     def describe(self) -> str:
         descriptions = {        "document_management:document.read": "Document.Read",

@@ -1,9 +1,9 @@
-from datetime import date, datetime
 
-from app._compat import UTC
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Float, ForeignKey, Index, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.ehr.base import EHRBaseEntity
 from app.ehr.enums import RiskLevel
-from sqlalchemy import JSON, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Index, String, Text
 
 
 class RiskFactorRecord(EHRBaseEntity):

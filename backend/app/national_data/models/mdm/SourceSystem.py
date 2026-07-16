@@ -1,5 +1,6 @@
-from app.national_data.base import BaseEntity
 from sqlalchemy import Boolean, Column, Index, Integer, String, Text
+
+from app.national_data.base import BaseEntity
 
 
 class SourceSystem(BaseEntity):

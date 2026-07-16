@@ -6,7 +6,9 @@ import pytest
 class TestProvider_managementCapability:
     @pytest.fixture
     def capability(self):
-        from backend.app.capabilities.provider_management.capability import Provider_managementCapability
+        from app.capabilities.provider_management.capability import (
+            Provider_managementCapability,
+        )
         return Provider_managementCapability()
 
     @pytest.mark.asyncio

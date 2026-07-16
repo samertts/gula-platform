@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from backend.app.engineering.generators.capability import (
+from app.engineering.generators.capability import (
     CapabilityGenerator,
     CapabilitySpec,
     EntityField,
@@ -162,12 +162,9 @@ def generate_all_capabilities() -> None:
 
     total_files = 0
     for spec in capabilities:
-        print(f"  Generating capability: {spec.name} ({spec.domain})")
         result = gen.generate(spec=spec)
         total_files += len(result.files_created)
-        print(f"    -> {len(result.files_created)} files created")
 
-    print(f"\n  Total: {len(capabilities)} capabilities, {total_files} files created")
 
 
 if __name__ == "__main__":

@@ -4,9 +4,9 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel.runtime.lifecycle import LifecycleComponent, LifecycleManager
-from backend.app.kernel.runtime.shutdown import ShutdownHandler, ShutdownManager
-from backend.app.kernel.runtime.startup import StartupManager, StartupTask
+from app.kernel.runtime.lifecycle import LifecycleComponent, LifecycleManager
+from app.kernel.runtime.shutdown import ShutdownHandler, ShutdownManager
+from app.kernel.runtime.startup import StartupManager, StartupTask
 
 
 class TestLifecycleManager:

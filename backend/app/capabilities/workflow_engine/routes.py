@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/workflow-engine", tags=["Workflow Engine"])
 
 
 @router.get("/")
-async def list_workflow-engine(
+async def list_workflow_engine(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_workflow-engine(
 
 
 @router.get("/{id}")
-async def get_workflow-engine(
+async def get_workflow_engine(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_workflow-engine(
 
 
 @router.post("/")
-async def create_workflow-engine(
+async def create_workflow_engine(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_workflow-engine(
 
 
 @router.put("/{id}")
-async def update_workflow-engine(
+async def update_workflow_engine(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_workflow-engine(
 
 
 @router.delete("/{id}")
-async def delete_workflow-engine(
+async def delete_workflow_engine(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

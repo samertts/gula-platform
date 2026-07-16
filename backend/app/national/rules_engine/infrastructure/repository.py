@@ -3,12 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app._compat import UTC
 from app.national.rules_engine.domain.entities import RuleDefinition
 from app.national.rules_engine.domain.enums import RuleCategory, RuleStatus
 from app.national.rules_engine.domain.repository import RuleRepository
 from app.national.rules_engine.infrastructure.models import RuleEvaluationLog, RuleModel
-from sqlalchemy.orm import Session
 
 
 class SQLAlchemyRuleRepository(RuleRepository):
@@ -56,14 +57,14 @@ class SQLAlchemyRuleRepository(RuleRepository):
     async def get(self, rule_id: str) -> RuleDefinition | None:
         model = self.db.query(RuleModel).filter(
             RuleModel.id == rule_id,
-            RuleModel.is_deleted == False,
+            ~RuleModel.is_deleted,
         ).first()
         if not model:
             return None
         return model.to_domain()
 
     async def list(self, skip: int = 0, limit: int = 100, **filters: Any) -> list[RuleDefinition]:
-        query = self.db.query(RuleModel).filter(RuleModel.is_deleted == False)
+        query = self.db.query(RuleModel).filter(~~RuleModel.is_deleted)
         for key, value in filters.items():
             if hasattr(RuleModel, key) and value is not None:
                 query = query.filter(getattr(RuleModel, key) == value)
@@ -73,7 +74,7 @@ class SQLAlchemyRuleRepository(RuleRepository):
     async def delete(self, rule_id: str, soft: bool = True) -> None:
         model = self.db.query(RuleModel).filter(
             RuleModel.id == rule_id,
-            RuleModel.is_deleted == False,
+            ~RuleModel.is_deleted,
         ).first()
         if model:
             if soft:
@@ -86,20 +87,20 @@ class SQLAlchemyRuleRepository(RuleRepository):
     async def find_by_category(self, category: RuleCategory, skip: int = 0, limit: int = 100) -> list[RuleDefinition]:
         models = self.db.query(RuleModel).filter(
             RuleModel.category == category,
-            RuleModel.is_deleted == False,
+            ~RuleModel.is_deleted,
         ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
     async def find_by_status(self, status: RuleStatus, skip: int = 0, limit: int = 100) -> list[RuleDefinition]:
         models = self.db.query(RuleModel).filter(
             RuleModel.status == status,
-            RuleModel.is_deleted == False,
+            ~RuleModel.is_deleted,
         ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
     async def find_by_tags(self, tags: list[str], skip: int = 0, limit: int = 100) -> list[RuleDefinition]:
         models = self.db.query(RuleModel).filter(
-            RuleModel.is_deleted == False,
+            ~~RuleModel.is_deleted,
         ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
         result: list[RuleDefinition] = []
         for m in models:
@@ -111,14 +112,14 @@ class SQLAlchemyRuleRepository(RuleRepository):
         now = datetime.now(UTC)
         models = self.db.query(RuleModel).filter(
             RuleModel.status == RuleStatus.ACTIVE,
-            RuleModel.is_deleted == False,
-            (RuleModel.effective_from == None) | (RuleModel.effective_from <= now),
-            (RuleModel.effective_to == None) | (RuleModel.effective_to >= now),
+            ~RuleModel.is_deleted,
+            (RuleModel.effective_from is None) | (RuleModel.effective_from <= now),
+            (RuleModel.effective_to is None) | (RuleModel.effective_to >= now),
         ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
     async def count(self, **filters: Any) -> int:
-        query = self.db.query(RuleModel).filter(RuleModel.is_deleted == False)
+        query = self.db.query(RuleModel).filter(~~RuleModel.is_deleted)
         for key, value in filters.items():
             if hasattr(RuleModel, key) and value is not None:
                 query = query.filter(getattr(RuleModel, key) == value)

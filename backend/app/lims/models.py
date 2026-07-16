@@ -20,14 +20,10 @@ Every entity supports:
 from __future__ import annotations
 
 import uuid as _uuid
-from datetime import date, datetime, time
-from decimal import Decimal
+from datetime import datetime
 
-from app._compat import UTC
-from app.database import Base
 from sqlalchemy import (
     JSON,
-    BigInteger,
     Boolean,
     Column,
     Date,
@@ -35,18 +31,17 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
-    SmallInteger,
     String,
     Text,
-    Time,
     UniqueConstraint,
-    func,
-    Index,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import CheckConstraint
+
+from app._compat import UTC
+from app.database import Base
 
 # ── Reusable enums (living in the LIMS bounded context) ────────────────────
 

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from app.national.exceptions import NewbornRegistrationError, ForeignerRegistrationError
+from app.national.exceptions import ForeignerRegistrationError, NewbornRegistrationError
 from app.national.services.identity_service import IdentityService
 
 

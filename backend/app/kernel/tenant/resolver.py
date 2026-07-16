@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.app.kernel.tenant.registry import TenantRegistry
+    from app.kernel.tenant.registry import TenantRegistry
 
 logger = logging.getLogger("gula.kernel.tenant.resolver")
 

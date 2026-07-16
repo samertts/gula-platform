@@ -6,7 +6,7 @@ import pytest
 class TestSearch_serviceCapability:
     @pytest.fixture
     def capability(self):
-        from backend.app.capabilities.search_service.capability import Search_serviceCapability
+        from app.capabilities.search_service.capability import Search_serviceCapability
         return Search_serviceCapability()
 
     @pytest.mark.asyncio

@@ -8,16 +8,17 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.national.scheduling_platform.application.service import SchedulingPlatformService
-from app.national.scheduling_platform.domain.enums import AppointmentStatus, RecurrencePattern, ResourceType
+from app.national.scheduling_platform.domain.enums import (
+    AppointmentStatus,
+    RecurrencePattern,
+    ResourceType,
+)
 from app.national.scheduling_platform.exceptions import (
     AppointmentNotFoundError,
     CalendarNotFoundError,
     ConflictDetectionError,
     ResourceNotFoundError,
-    ResourceNotAvailableError,
     ScheduleNotFoundError,
-    SlotNotAvailableError,
-    TimeSlotNotFoundError,
     WaitingListNotFoundError,
 )
 from app.national.scheduling_platform.infrastructure.repository import (
@@ -34,8 +35,8 @@ router = APIRouter(prefix="/national/scheduling", tags=["National Scheduling Pla
 
 
 def _get_service(db: Session = Depends(get_db)) -> SchedulingPlatformService:
-    from app.kernel.event_bus.bus import EventBus
     from app.kernel import Kernel
+    from app.kernel.event_bus.bus import EventBus
 
     kernel = Kernel.get_instance()
     event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)
@@ -146,9 +147,11 @@ async def update_appointment(
 @router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def cancel_appointment(
     appointment_id: str,
-    body: dict[str, Any] = {},
+    body: dict[str, Any] | None = None,
     service: SchedulingPlatformService = Depends(_get_service),
 ) -> None:
+    if body is None:
+        body = {}
     try:
         await service.cancel_appointment(appointment_id, reason=body.get("reason", ""))
     except AppointmentNotFoundError as e:

@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/storage-service", tags=["Storage Service"])
 
 
 @router.get("/")
-async def list_storage-service(
+async def list_storage_service(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_storage-service(
 
 
 @router.get("/{id}")
-async def get_storage-service(
+async def get_storage_service(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_storage-service(
 
 
 @router.post("/")
-async def create_storage-service(
+async def create_storage_service(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_storage-service(
 
 
 @router.put("/{id}")
-async def update_storage-service(
+async def update_storage_service(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_storage-service(
 
 
 @router.delete("/{id}")
-async def delete_storage-service(
+async def delete_storage_service(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

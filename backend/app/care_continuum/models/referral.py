@@ -1,7 +1,9 @@
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.care_continuum.base import CareContinuumTenantAuditEntity
 from app.care_continuum.enums import ReferralDirection
 from app.national.enums import ReferralPriority, ReferralStatus
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum as SAEnum, ForeignKey, Index, String, Text
 
 
 class ReferralRequest(CareContinuumTenantAuditEntity):

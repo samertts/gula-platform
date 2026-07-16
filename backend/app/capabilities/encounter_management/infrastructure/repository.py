@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from typing import Optional
+from sqlalchemy import select
 
-from backend.app.capabilities.encounter_management.domain.entities import Encounter_management
-from backend.app.capabilities.encounter_management.domain.repository import Encounter_managementRepository
+from app.capabilities.encounter_management.domain.entities import Encounter_management
+from app.capabilities.encounter_management.domain.repository import (
+    Encounter_managementRepository,
+)
 
 
 class SQLAlchemyEncounter_managementRepository(Encounter_managementRepository):
     def __init__(self, session_factory):
         self._session_factory = session_factory
 
-    async def get(self, id: str) -> Optional[Encounter_management]:
+    async def get(self, id: str) -> Encounter_management | None:
         async with self._session_factory() as session:
             return await session.get(Encounter_management, id)
 

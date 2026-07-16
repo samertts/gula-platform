@@ -21,7 +21,6 @@ from app.national.document_platform.domain.entities import (
     DocumentQRCode,
     DocumentVersion,
     ElectronicSignature,
-    RetentionRule,
 )
 from app.national.document_platform.domain.enums import (
     DocumentCategory,
@@ -50,14 +49,9 @@ from app.national.document_platform.domain.repository import (
     RetentionRuleRepository,
 )
 from app.national.document_platform.exceptions import (
-    AttachmentNotFoundError,
     DocumentNotFoundError,
     DocumentStateTransitionError,
     DocumentValidationError,
-    DocumentVersionNotFoundError,
-    HashMismatchError,
-    QRCodeNotFoundError,
-    RetentionRuleNotFoundError,
     SignatureNotFoundError,
     SignatureVerificationError,
 )
@@ -400,8 +394,7 @@ class DocumentPlatformService:
             scanned_count=0,
         )
 
-        saved = await self.qr_code_repository.save(qr_code)
-        return saved
+        return await self.qr_code_repository.save(qr_code)
 
     async def verify_qr(
         self,
@@ -457,10 +450,9 @@ class DocumentPlatformService:
         }
 
         try:
-            pdf_bytes = await self.pdf_generator.generate(content, template=template)
-            return pdf_bytes
+            return await self.pdf_generator.generate(content, template=template)
         except Exception as exc:
-            raise DocumentValidationError(document_id, f"PDF generation failed: {exc}")
+            raise DocumentValidationError(document_id, f"PDF generation failed: {exc}") from exc
 
     async def add_attachment(
         self,
@@ -485,8 +477,7 @@ class DocumentPlatformService:
             storage_path=storage_path,
         )
 
-        saved = await self.attachment_repository.save(attachment)
-        return saved
+        return await self.attachment_repository.save(attachment)
 
     async def get_attachments(
         self,
@@ -688,7 +679,7 @@ class DocumentPlatformService:
         return documents
 
     async def get_expired_documents(self) -> list[Document]:
-        now = datetime.now(UTC)
+        datetime.now(UTC)
         return await self.document_repository.list(
             skip=0,
             limit=1000,

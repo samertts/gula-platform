@@ -1,8 +1,9 @@
 from datetime import datetime
 
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
+
 from app._compat import UTC
 from app.national_data.base import BaseEntity
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 
 
 class MergeAction(BaseEntity):

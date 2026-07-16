@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
+from .entities import Document_management
 
 
 class Document_managementRepository:
-    async def get(self, id: str) -> Optional[Document_management]:
+    async def get(self, id: str) -> Document_management | None:
         raise NotImplementedError
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[Document_management]:

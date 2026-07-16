@@ -1,5 +1,6 @@
-from app.national.events.base import NationalDomainEvent
 from dataclasses import dataclass
+
+from app.national.events.base import NationalDomainEvent
 
 
 @dataclass

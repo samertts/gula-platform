@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from backend.app._compat import UTC
@@ -23,20 +23,7 @@ from backend.app.national.task_engine.domain.entities import (
 )
 from backend.app.national.task_engine.domain.enums import (
     AssignmentStrategy,
-    TaskPriority,
     TaskStatus,
-)
-from backend.app.national.task_engine.domain.events import (
-    TaskAssigned,
-    TaskCancelled,
-    TaskCommentAdded,
-    TaskCompleted,
-    TaskCreated,
-    TaskEscalated,
-    TaskFailed,
-    TaskSLABreached,
-    TaskStarted,
-    TaskStatusChanged,
 )
 from backend.app.national.task_engine.domain.repository import (
     NationalTaskRepository,

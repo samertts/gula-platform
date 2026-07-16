@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from typing import Optional
+from sqlalchemy import select
 
-from backend.app.capabilities.document_management.domain.entities import Document_management
-from backend.app.capabilities.document_management.domain.repository import Document_managementRepository
+from app.capabilities.document_management.domain.entities import Document_management
+from app.capabilities.document_management.domain.repository import (
+    Document_managementRepository,
+)
 
 
 class SQLAlchemyDocument_managementRepository(Document_managementRepository):
     def __init__(self, session_factory):
         self._session_factory = session_factory
 
-    async def get(self, id: str) -> Optional[Document_management]:
+    async def get(self, id: str) -> Document_management | None:
         async with self._session_factory() as session:
             return await session.get(Document_management, id)
 

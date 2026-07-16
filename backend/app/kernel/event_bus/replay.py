@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from backend.app.kernel.event_bus.events import Event
+from app.kernel.event_bus.events import Event
 
 if TYPE_CHECKING:
-    from backend.app.kernel.event_bus.bus import EventBus
+    from app.kernel.event_bus.bus import EventBus
 
 logger = logging.getLogger("gula.kernel.event_bus.replay")
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.services.governance.identity_governance import (
+from app.services.governance.identity_governance import (
     IdentityGovernanceService,
     IdentityDocumentType,
     DocumentVerificationStatus,

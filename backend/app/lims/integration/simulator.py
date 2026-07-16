@@ -9,8 +9,6 @@ from __future__ import annotations
 import random
 import uuid
 from datetime import datetime
-from typing import Any
-
 
 # Test profiles: test_code -> (test_name, unit, low, high, precision)
 TEST_PROFILES: dict[str, tuple[str, str, float, float, int]] = {
@@ -50,8 +48,7 @@ def generate_value(test_code: str, inject_error: bool = False) -> float:
         # Generate out-of-range value
         if random.random() < 0.5:
             return round(low - random.uniform(1, 5), precision)
-        else:
-            return round(high + random.uniform(1, 5), precision)
+        return round(high + random.uniform(1, 5), precision)
 
     mean = (low + high) / 2
     sd = (high - low) / 4
@@ -89,7 +86,7 @@ def generate_astm_message(
         lines.append(f"O|{i}|{specimen_barcode}|{tc}|||")
         lines.append(f"R|{i}|{uuid.uuid4().hex[:8]}|{tc}|{name}|{value}|{unit}|{ref_range}|{flag}")
 
-    lines.append(f"L|1|N")
+    lines.append("L|1|N")
     return "\r".join(lines)
 
 
@@ -121,7 +118,7 @@ def generate_hl7_message(
         profile = TEST_PROFILES.get(tc)
         if not profile:
             continue
-        name, unit, low, high, precision = profile
+        name, unit, low, high, _precision = profile
         value = generate_value(tc, inject_error)
         ref_range = f"{low:.1f}-{high:.1f}"
         flag = ""

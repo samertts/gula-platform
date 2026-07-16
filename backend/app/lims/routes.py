@@ -9,9 +9,11 @@ All routes are prefixed with /lims and follow existing GULA patterns:
 
 from __future__ import annotations
 
-import secrets
 from datetime import datetime
-from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.database import get_db
@@ -19,17 +21,11 @@ from app.models.lab_order import LabOrder
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
 from app.services.audit_service import log_action
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 from . import models as lims_models
 from .exceptions import (
     AccessionNumberConflict,
-    DeltaCheckFailed,
     DuplicateSpecimenBarcode,
-    InstrumentOffline,
-    LIMSError,
 )
 from .fhir_mappers import (
     instrument_to_fhir_device,
@@ -884,7 +880,6 @@ def release_result(
         lims_models.Specimen.id == result.specimen_id,
     ).first()
     if specimen:
-        from .state_machine import enforce_specimen_transition
         try:
             SpecimenService.transition(db, specimen, "released", current_user.id)
         except Exception:
@@ -1014,7 +1009,7 @@ def qc_statistics(
     iqc_results = q.order_by(lims_models.IQC.performed_at.asc()).all()
     values = [r.measured_value for r in iqc_results if r.measured_value is not None]
 
-    from .quality import calculate_lj_statistics, calculate_lj_limits
+    from .quality import calculate_lj_limits, calculate_lj_statistics
     stats = calculate_lj_statistics(values)
     limits = calculate_lj_limits(stats["mean"], stats["sd"]) if stats["n"] > 1 else {}
 
@@ -1036,7 +1031,7 @@ def qc_statistics(
 
 @router.get("/quality/indicators")
 def list_quality_indicators():
-    from .quality import ISO_15189_INDICATORS, CAP_INDICATORS
+    from .quality import CAP_INDICATORS, ISO_15189_INDICATORS
 
     return {
         "iso_15189": [

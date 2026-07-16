@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from typing import Optional
+from sqlalchemy import select
 
-from backend.app.capabilities.provider_management.domain.entities import Provider_management
-from backend.app.capabilities.provider_management.domain.repository import Provider_managementRepository
+from app.capabilities.provider_management.domain.entities import Provider_management
+from app.capabilities.provider_management.domain.repository import (
+    Provider_managementRepository,
+)
 
 
 class SQLAlchemyProvider_managementRepository(Provider_managementRepository):
     def __init__(self, session_factory):
         self._session_factory = session_factory
 
-    async def get(self, id: str) -> Optional[Provider_management]:
+    async def get(self, id: str) -> Provider_management | None:
         async with self._session_factory() as session:
             return await session.get(Provider_management, id)
 

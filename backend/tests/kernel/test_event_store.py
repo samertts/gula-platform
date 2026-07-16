@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.store import EventStore
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.store import EventStore
 
 
 class TestEventStore:

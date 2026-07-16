@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.background.priority_queue import PriorityQueue, PriorityTask
+from app.kernel.background.priority_queue import PriorityQueue, PriorityTask
 
 
 class TestPriorityQueue:

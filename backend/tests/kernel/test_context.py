@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel import Kernel
-from backend.app.kernel.runtime.context import ApplicationContext
+from app.kernel import Kernel
+from app.kernel.runtime.context import ApplicationContext
 
 
 class TestApplicationContext:

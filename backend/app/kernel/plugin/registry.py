@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from backend.app.kernel.types import PluginDescriptor
+from app.kernel.types import PluginDescriptor
 
 logger = logging.getLogger("gula.kernel.plugin.registry")
 

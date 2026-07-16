@@ -48,9 +48,7 @@ from app.national.observability.exceptions import (
     AlertEventNotFoundError,
     AlertRuleNotFoundError,
     DashboardNotFoundError,
-    HealthCheckNotFoundError,
     MetricQueryError,
-    ObservabilityError,
 )
 
 logger = logging.getLogger("gula.national.observability")
@@ -161,7 +159,7 @@ class ObservabilityService:
         parent_span_id: str = "",
         attributes: dict[str, Any] | None = None,
     ) -> TraceSpan:
-        span = TraceSpan(
+        return TraceSpan(
             id=str(uuid.uuid4()),
             trace_id=trace_id,
             parent_span_id=parent_span_id,
@@ -172,7 +170,6 @@ class ObservabilityService:
             status=SpanStatus.OK,
             attributes=attributes or {},
         )
-        return span
 
     async def end_span(
         self,
@@ -375,15 +372,7 @@ class ObservabilityService:
         current_value = recent[0].get("value", 0.0)
         triggered = False
 
-        if rule.condition == "gt" and current_value > rule.threshold:
-            triggered = True
-        elif rule.condition == "gte" and current_value >= rule.threshold:
-            triggered = True
-        elif rule.condition == "lt" and current_value < rule.threshold:
-            triggered = True
-        elif rule.condition == "lte" and current_value <= rule.threshold:
-            triggered = True
-        elif rule.condition == "eq" and current_value == rule.threshold:
+        if (rule.condition == "gt" and current_value > rule.threshold) or (rule.condition == "gte" and current_value >= rule.threshold) or (rule.condition == "lt" and current_value < rule.threshold) or (rule.condition == "lte" and current_value <= rule.threshold) or (rule.condition == "eq" and current_value == rule.threshold):
             triggered = True
 
         if triggered:
@@ -521,7 +510,7 @@ class ObservabilityService:
                 setattr(dashboard, key, value)
 
         dashboard.updated_at = datetime.now(UTC)
-        saved = await self.dashboard_repository.save(dashboard)
+        await self.dashboard_repository.save(dashboard)
 
         if panels is not None:
             await self.dashboard_panel_repository.delete_by_dashboard(dashboard_id)

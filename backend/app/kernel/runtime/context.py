@@ -4,7 +4,7 @@ import contextvars
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.app.kernel import Kernel
+    from app.kernel import Kernel
 
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "kernel_request_id", default=""

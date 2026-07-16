@@ -4,10 +4,10 @@ from enum import Enum
 
 
 class Storage_servicePermission(Enum):
-    STORAGE.READ = "storage_service:storage.read"
-    STORAGE.WRITE = "storage_service:storage.write"
-    STORAGE.DELETE = "storage_service:storage.delete"
-    STORAGE.ADMIN = "storage_service:storage.admin"
+    READ = "storage_service:storage.read"
+    WRITE = "storage_service:storage.write"
+    DELETE = "storage_service:storage.delete"
+    ADMIN = "storage_service:storage.admin"
 
     def describe(self) -> str:
         descriptions = {        "storage_service:storage.read": "Storage.Read",

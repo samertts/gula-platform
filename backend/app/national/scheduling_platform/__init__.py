@@ -1,10 +1,4 @@
-from app.national.scheduling_platform.domain.enums import (
-    AppointmentStatus,
-    ConflictLevel,
-    RecurrencePattern,
-    ResourceType,
-    SlotStatus,
-)
+from app.national.scheduling_platform.application.service import SchedulingPlatformService
 from app.national.scheduling_platform.domain.entities import (
     Appointment,
     AppointmentReminder,
@@ -14,6 +8,13 @@ from app.national.scheduling_platform.domain.entities import (
     Schedule,
     TimeSlot,
     WaitingList,
+)
+from app.national.scheduling_platform.domain.enums import (
+    AppointmentStatus,
+    ConflictLevel,
+    RecurrencePattern,
+    ResourceType,
+    SlotStatus,
 )
 from app.national.scheduling_platform.domain.events import (
     AppointmentCancelled,
@@ -35,7 +36,18 @@ from app.national.scheduling_platform.domain.repository import (
     TimeSlotRepository,
     WaitingListRepository,
 )
-from app.national.scheduling_platform.application.service import SchedulingPlatformService
+from app.national.scheduling_platform.exceptions import (
+    AppointmentNotFoundError,
+    CalendarNotFoundError,
+    ConflictDetectionError,
+    InvalidAppointmentStateError,
+    ResourceNotAvailableError,
+    ResourceNotFoundError,
+    ScheduleNotFoundError,
+    SlotNotAvailableError,
+    TimeSlotNotFoundError,
+    WaitingListNotFoundError,
+)
 from app.national.scheduling_platform.infrastructure.models import (
     NationalAppointment,
     NationalAppointmentReminder,
@@ -53,18 +65,6 @@ from app.national.scheduling_platform.infrastructure.repository import (
     SQLAlchemyScheduleRepository,
     SQLAlchemyTimeSlotRepository,
     SQLAlchemyWaitingListRepository,
-)
-from app.national.scheduling_platform.exceptions import (
-    AppointmentNotFoundError,
-    CalendarNotFoundError,
-    ConflictDetectionError,
-    InvalidAppointmentStateError,
-    ResourceNotAvailableError,
-    ResourceNotFoundError,
-    ScheduleNotFoundError,
-    SlotNotAvailableError,
-    TimeSlotNotFoundError,
-    WaitingListNotFoundError,
 )
 
 __all__ = [

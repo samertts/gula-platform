@@ -1,0 +1,418 @@
+{
+  "id": null,
+  "uid": "gula-clinical",
+  "title": "GULA Platform — Clinical Operations",
+  "description": "Clinical operations and patient safety dashboard",
+  "tags": ["gula", "clinical"],
+  "timezone": "Asia/Baghdad",
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Clinical Overview",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "piechart",
+      "title": "Patient Acuity Distribution",
+      "gridPos": { "x": 0, "y": 1, "w": 8, "h": 8 },
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "percent", "value"],
+        "legend": { "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_patient_acuity_count", "legendFormat": "{{ acuity }}" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Clinical Alerts by Severity",
+      "gridPos": { "x": 8, "y": 1, "w": 16, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "increase(gula_clinical_alerts_total{severity=\"critical\"}[15m])", "legendFormat": "Critical" },
+        { "expr": "increase(gula_clinical_alerts_total{severity=\"warning\"}[15m])", "legendFormat": "Warning" },
+        { "expr": "increase(gula_clinical_alerts_total{severity=\"info\"}[15m])", "legendFormat": "Info" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Medication Administration Rate",
+      "gridPos": { "x": 0, "y": 9, "w": 8, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "increase(gula_medication_administrations_total[1h])", "legendFormat": "Administrations" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "CDS Interactions (24h)",
+      "gridPos": { "x": 8, "y": 9, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "increase(gula_cds_interactions_total[24h])", "legendFormat": "CDS Interactions" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "gauge",
+      "title": "Documentation Completion Rate",
+      "gridPos": { "x": 12, "y": 9, "w": 4, "h": 7 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 50 },
+              { "color": "yellow", "value": 75 },
+              { "color": "green", "value": 90 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_documentation_completion_percent", "legendFormat": "Completion" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Care Plan Adherence",
+      "gridPos": { "x": 16, "y": 9, "w": 8, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 60 },
+              { "color": "yellow", "value": 75 },
+              { "color": "green", "value": 90 }
+            ]
+          },
+          "custom": { "lineWidth": 2 },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_care_plan_adherence_percent", "legendFormat": "Adherence" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "gauge",
+      "title": "Patient Satisfaction Score",
+      "gridPos": { "x": 0, "y": 16, "w": 4, "h": 7 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 50 },
+              { "color": "yellow", "value": 70 },
+              { "color": "green", "value": 85 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_patient_satisfaction_score", "legendFormat": "Satisfaction" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Clinical Outcome Metrics",
+      "gridPos": { "x": 4, "y": 16, "w": 10, "h": 7 },
+      "options": {
+        "sortBy": [
+          { "displayName": "Rate", "desc": true }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "orange", "value": 10 },
+              { "color": "red", "value": 20 }
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "targets": [
+        {
+          "expr": "gula_clinical_outcome_metrics",
+          "format": "table",
+          "legendFormat": "{{ metric }}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByName": {
+              "metric": "Metric",
+              "Value": "Rate (%)",
+              "benchmark": "Benchmark"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Medication Error Rate",
+      "gridPos": { "x": 14, "y": 16, "w": 10, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 3 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "custom": { "lineWidth": 2 },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_medication_error_rate_percent", "legendFormat": "Error Rate" }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Hand Hygiene Compliance",
+      "gridPos": { "x": 0, "y": 23, "w": 8, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 70 },
+              { "color": "yellow", "value": 85 },
+              { "color": "green", "value": 95 }
+            ]
+          },
+          "custom": { "lineWidth": 2 },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_hand_hygiene_compliance_percent", "legendFormat": "Compliance" }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Active Clinical Alerts",
+      "gridPos": { "x": 8, "y": 23, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "orange", "value": 15 },
+              { "color": "red", "value": 30 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_active_clinical_alerts", "legendFormat": "Active" }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Patients on Monitor",
+      "gridPos": { "x": 12, "y": 23, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [
+        { "expr": "gula_patients_on_monitor", "legendFormat": "Monitored" }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Vitals Recorded Today",
+      "gridPos": { "x": 16, "y": 23, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [
+        { "expr": "increase(gula_vitals_recorded_total[24h])", "legendFormat": "Vitals" }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Clinical Tasks Overdue",
+      "gridPos": { "x": 20, "y": 23, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "orange", "value": 25 },
+              { "color": "red", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_clinical_tasks_overdue", "legendFormat": "Overdue" }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "links": [],
+  "timepicker": {}
+}

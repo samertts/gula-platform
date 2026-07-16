@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.recovery import RecoveryEngine, RecoveryStrategy
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.recovery import RecoveryEngine, RecoveryStrategy
 
 
 class TestRecoveryEngine:
@@ -49,7 +49,7 @@ class TestRecoveryEngine:
         assert len(engine.list_jobs()) == 0
 
     def test_job_properties(self):
-        from backend.app.kernel.event_bus.recovery import RecoveryJob
+        from app.kernel.event_bus.recovery import RecoveryJob
         job = RecoveryJob()
         assert job.is_complete is False
         assert job.status == "pending"

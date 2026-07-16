@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import BaseEntity, _ulid
 from app.national.observability.domain.enums import (
     AlertSeverity,
@@ -8,7 +22,6 @@ from app.national.observability.domain.enums import (
     MetricType,
     SpanStatus,
 )
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum as SAEnum, Float, ForeignKey, Index, Integer, String, Text
 
 
 class NationalMetricPoint(BaseEntity):

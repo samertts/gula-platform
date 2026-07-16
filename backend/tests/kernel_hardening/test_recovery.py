@@ -4,18 +4,18 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel, KernelState
-from backend.app.kernel.background.job_retry import JobRetry
-from backend.app.kernel.background.scheduler import Scheduler
-from backend.app.kernel.background.task_queue import Task, TaskQueue
-from backend.app.kernel.config.registry import ConfigurationRegistry
-from backend.app.kernel.event_bus.bus import EventBus
-from backend.app.kernel.event_bus.dead_letter_queue import DeadLetterEntry, DeadLetterQueue
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.outbox import OutboxMessage, OutboxPattern
-from backend.app.kernel.event_bus.store import EventStore
-from backend.app.kernel.gateway.circuit_breaker import CircuitBreaker, CircuitBreakerManager
-from backend.app.kernel.runtime.service_registry import ServiceRegistry
+from app.kernel import Kernel, KernelState
+from app.kernel.background.job_retry import JobRetry
+from app.kernel.background.scheduler import Scheduler
+from app.kernel.background.task_queue import Task, TaskQueue
+from app.kernel.config.registry import ConfigurationRegistry
+from app.kernel.event_bus.bus import EventBus
+from app.kernel.event_bus.dead_letter_queue import DeadLetterEntry, DeadLetterQueue
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.outbox import OutboxMessage, OutboxPattern
+from app.kernel.event_bus.store import EventStore
+from app.kernel.gateway.circuit_breaker import CircuitBreaker, CircuitBreakerManager
+from app.kernel.runtime.service_registry import ServiceRegistry
 
 pytestmark = [
     pytest.mark.kernel,

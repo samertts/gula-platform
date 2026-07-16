@@ -8,32 +8,33 @@ from typing import Any
 from app._compat import UTC
 from app.kernel.event_bus.bus import EventBus
 from app.kernel.event_bus.events import Event
-from app.notifications.service import NotificationService
 from app.national.rules_engine.domain.entities import (
     RuleDefinition,
     RuleEvaluationContext,
     RuleEvaluationResult,
 )
-from app.national.rules_engine.domain.enums import RuleOutcome, RuleSeverity, RuleStatus, RuleTrigger
+from app.national.rules_engine.domain.enums import (
+    RuleOutcome,
+    RuleSeverity,
+    RuleStatus,
+)
 from app.national.rules_engine.domain.events import (
     RuleActivatedEvent,
     RuleCreatedEvent,
     RuleDeactivatedEvent,
     RuleEvaluatedEvent,
     RuleSimulationEvent,
-    RuleUpdatedEvent,
     RuleViolationEvent,
 )
 from app.national.rules_engine.domain.expression_engine import ExpressionEngine
 from app.national.rules_engine.domain.repository import RuleRepository
 from app.national.rules_engine.domain.simulation import SimulationEngine
 from app.national.rules_engine.exceptions import (
-    RuleConflictError,
-    RuleEvaluationError,
     RuleNotFoundError,
     RuleValidationError,
     RuleVersionError,
 )
+from app.notifications.service import NotificationService
 
 logger = logging.getLogger("gula.national.rules_engine")
 
@@ -248,7 +249,7 @@ class RulesEngineService:
         self._invalidate_cache()
 
     async def get_evaluation_history(self, rule_id: str) -> list[dict[str, Any]]:
-        rule = await self._get_rule_or_raise(rule_id)
+        await self._get_rule_or_raise(rule_id)
         return []
 
     async def list_categories(self) -> list[str]:

@@ -1,6 +1,20 @@
 from __future__ import annotations
 
-from app._compat import UTC
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
+)
+
 from app.national.base import BaseEntity, _ulid
 from app.national.document_platform.domain.enums import (
     DocumentCategory,
@@ -8,18 +22,6 @@ from app.national.document_platform.domain.enums import (
     DocumentStatus,
     RetentionPolicy,
     SignatureStatus,
-)
-from sqlalchemy import (
-    JSON,
-    Boolean,
-    Column,
-    DateTime,
-    Enum as SAEnum,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    Text,
 )
 
 

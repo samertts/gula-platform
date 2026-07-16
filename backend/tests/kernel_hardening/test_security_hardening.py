@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel import Kernel
-from backend.app.kernel.plugin.permissions import PluginPermissionManager
-from backend.app.kernel.plugin.registry import PluginRegistry
-from backend.app.kernel.plugin.sandbox import PluginSandbox
-from backend.app.kernel.types import PluginDescriptor
+from app.kernel import Kernel
+from app.kernel.plugin.permissions import PluginPermissionManager
+from app.kernel.plugin.registry import PluginRegistry
+from app.kernel.plugin.sandbox import PluginSandbox
+from app.kernel.types import PluginDescriptor
 
 
 class TestSecurityPluginIsolation:
@@ -28,15 +28,15 @@ class TestSecurityPluginIsolation:
 
 class TestSecurityUnauthorizedAccess:
     def test_service_registry_requires_known_service(self, kernel: Kernel):
-        from backend.app.kernel.exceptions import ServiceNotFoundError
-        from backend.app.kernel.runtime.service_registry import ServiceRegistry
+        from app.kernel.exceptions import ServiceNotFoundError
+        from app.kernel.runtime.service_registry import ServiceRegistry
         sr = ServiceRegistry()
         kernel.register_component("service_registry", sr)
         with pytest.raises(ServiceNotFoundError):
             sr.get_required("unauthorized_service")
 
     def test_tenant_cannot_access_other_tenant_data(self):
-        from backend.app.kernel.tenant.isolation import TenantIsolation
+        from app.kernel.tenant.isolation import TenantIsolation
         ti = TenantIsolation()
         ti.isolate("tenant_a")
         assert ti.is_isolated("tenant_a")
@@ -61,7 +61,7 @@ class TestSecurityPrivilegeEscalation:
 
 class TestSecurityConfigurationTampering:
     def test_config_validator_rejects_type_mismatch(self):
-        from backend.app.kernel.config.validation import ConfigurationValidator
+        from app.kernel.config.validation import ConfigurationValidator
         cv = ConfigurationValidator()
         cv.register_schema("port", {"type": "int"})
         cv.validate("port", 8080)
@@ -71,7 +71,7 @@ class TestSecurityConfigurationTampering:
     def test_secrets_loader_requires_env_var(self):
         import os
 
-        from backend.app.kernel.config.secrets import SecretsLoader
+        from app.kernel.config.secrets import SecretsLoader
         if "MALICIOUS_SECRET" in os.environ:
             del os.environ["MALICIOUS_SECRET"]
         sl = SecretsLoader()
@@ -82,7 +82,7 @@ class TestSecurityConfigurationTampering:
 
 class TestSecurityRateLimiting:
     def test_rate_limiter_prevents_abuse(self):
-        from backend.app.kernel.gateway.rate_limiting import RateLimiter
+        from app.kernel.gateway.rate_limiting import RateLimiter
         rl = RateLimiter()
         rl.set_limit("api_key", 3, 60)
         assert rl.check("api_key")
@@ -91,7 +91,7 @@ class TestSecurityRateLimiting:
         assert not rl.check("api_key")
 
     def test_different_keys_have_independent_limits(self):
-        from backend.app.kernel.gateway.rate_limiting import RateLimiter
+        from app.kernel.gateway.rate_limiting import RateLimiter
         rl = RateLimiter()
         rl.set_limit("key_a", 2, 60)
         rl.set_limit("key_b", 5, 60)
@@ -103,7 +103,7 @@ class TestSecurityRateLimiting:
 
 class TestSecurityCircuitBreaker:
     def test_circuit_breaker_prevents_cascading_failures(self):
-        from backend.app.kernel.gateway.circuit_breaker import CircuitBreaker, CircuitState
+        from app.kernel.gateway.circuit_breaker import CircuitBreaker, CircuitState
         cb = CircuitBreaker("downstream", failure_threshold=2, recovery_timeout=30)
         cb.record_failure()
         cb.record_failure()
@@ -112,7 +112,7 @@ class TestSecurityCircuitBreaker:
     def test_half_open_allows_probe(self):
         import time
 
-        from backend.app.kernel.gateway.circuit_breaker import CircuitBreaker, CircuitState
+        from app.kernel.gateway.circuit_breaker import CircuitBreaker, CircuitState
         cb = CircuitBreaker("probe", failure_threshold=1, recovery_timeout=0.01)
         cb.record_failure()
         assert cb.state == CircuitState.OPEN

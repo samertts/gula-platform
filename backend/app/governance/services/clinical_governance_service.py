@@ -1,9 +1,9 @@
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..enums import ClinicalPolicyType, PolicyStatus, WestgardRule
+from ..enums import ClinicalPolicyType, PolicyStatus
 from ..models.clinical import (
     ApprovalPolicy,
     ClinicalPolicy,

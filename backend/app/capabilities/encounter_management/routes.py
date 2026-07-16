@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/encounter-management", tags=["Encounter Management"])
 
 
 @router.get("/")
-async def list_encounter-management(
+async def list_encounter_management(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_encounter-management(
 
 
 @router.get("/{id}")
-async def get_encounter-management(
+async def get_encounter_management(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_encounter-management(
 
 
 @router.post("/")
-async def create_encounter-management(
+async def create_encounter_management(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_encounter-management(
 
 
 @router.put("/{id}")
-async def update_encounter-management(
+async def update_encounter_management(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_encounter-management(
 
 
 @router.delete("/{id}")
-async def delete_encounter-management(
+async def delete_encounter_management(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

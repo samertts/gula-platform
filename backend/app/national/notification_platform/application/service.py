@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from app._compat import UTC
@@ -13,11 +13,11 @@ from app.national.notification_platform.application.interfaces import (
     InAppAdapter,
     NotificationChannelAdapter,
     PushAdapter,
-    SMSAdapter,
     SendResult,
+    SMSAdapter,
     TelegramAdapter,
-    WebSocketAdapter,
     WebhookAdapter,
+    WebSocketAdapter,
     WhatsAppAdapter,
 )
 from app.national.notification_platform.domain.entities import (
@@ -36,16 +36,6 @@ from app.national.notification_platform.domain.enums import (
     NotificationStatus,
     TemplateEngine,
 )
-from app.national.notification_platform.domain.events import (
-    NotificationBatchCompleted,
-    NotificationBounced,
-    NotificationDelivered,
-    NotificationFailed,
-    NotificationRead,
-    NotificationScheduled,
-    NotificationSent,
-    TemplateCreated,
-)
 from app.national.notification_platform.domain.repository import (
     DeliveryReportRepository,
     NotificationBatchRepository,
@@ -55,17 +45,14 @@ from app.national.notification_platform.domain.repository import (
 )
 from app.national.notification_platform.exceptions import (
     ChannelNotAvailableError,
-    DeliveryFailedError,
     NotificationNotFoundError,
-    NotificationPreferenceNotFoundError,
     QuietHoursBlockedError,
-    RateLimitExceededError,
     RecipientNotSpecifiedError,
-    ScheduleNotFoundError,
     TemplateNotFoundError,
     TemplateRenderError,
 )
-from app.notifications import NotificationService, get_service as get_notification_service
+from app.notifications import NotificationService
+from app.notifications import get_service as get_notification_service
 from app.tasks.queue import task_queue
 from app.tasks.schema import TaskPayload
 
@@ -232,9 +219,8 @@ class NotificationPlatformService:
             category=category,
             created_by=created_by,
         )
-        saved = await self._template_repo.save(template)
+        return await self._template_repo.save(template)
 
-        return saved
 
     async def render_template(
         self,
@@ -262,15 +248,9 @@ class NotificationPlatformService:
                 subject_t = None
                 body_t = None
 
-            if subject_t:
-                rendered_subject = subject_t.render(**data)
-            else:
-                rendered_subject = template.subject_template
+            rendered_subject = subject_t.render(**data) if subject_t else template.subject_template
 
-            if body_t:
-                rendered_body = body_t.render(**data)
-            else:
-                rendered_body = template.body_template
+            rendered_body = body_t.render(**data) if body_t else template.body_template
 
             return rendered_subject, rendered_body
         except Exception as exc:

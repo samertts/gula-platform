@@ -1,5 +1,6 @@
-from app.national.reference.base import ReferenceEntity
 from sqlalchemy import Column, String
+
+from app.national.reference.base import ReferenceEntity
 
 
 class Language(ReferenceEntity):

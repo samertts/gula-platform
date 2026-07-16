@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gula
+  labels:
+    region: eu
+    zone: eu-west1
+    topology.kubernetes.io/region: eu
+    topology.kubernetes.io/zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-backend
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-frontend
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-api-gateway
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-lab
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-patient
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-order
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-result
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-sample
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-notification
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-ai
+  namespace: gula
+  labels:
+    region: eu
+    zone: eu-west1

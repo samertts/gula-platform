@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from backend.app.kernel.config.secrets import SecretsLoader
+from app.kernel.config.secrets import SecretsLoader
 
 
 class TestSecretsLoader:

@@ -13,10 +13,7 @@ where possible.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
-
-from app._compat import UTC
 
 
 def _fhir_coding(system: str, code: str, display: str = "") -> dict:
@@ -117,7 +114,7 @@ def result_to_fhir(result) -> dict:
         "code": _fhir_codeable_concept(
             [_fhir_coding("http://loinc.org", result.loinc_code or result.test_code, result.test_name)]
         ),
-        "subject": _fhir_reference(f"Patient/{result.specimen.order.patient_id}" if hasattr(result, 'specimen') and hasattr(result.specimen, 'order') else "unknown"),
+        "subject": _fhir_reference(f"Patient/{result.specimen.order.patient_id}" if hasattr(result, "specimen") and hasattr(result.specimen, "order") else "unknown"),
         "specimen": _fhir_reference(f"Specimen/lims-spec-{result.specimen_id}"),
     }
 

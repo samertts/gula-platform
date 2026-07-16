@@ -5,7 +5,10 @@ from datetime import datetime
 from typing import Any
 
 from app._compat import UTC
-from app.national.rules_engine.domain.entities import RuleDefinition, RuleEvaluationContext, RuleEvaluationResult
+from app.national.rules_engine.domain.entities import (
+    RuleDefinition,
+    RuleEvaluationContext,
+)
 from app.national.rules_engine.domain.expression_engine import ExpressionEngine
 
 

@@ -4,8 +4,8 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.app.kernel import Kernel
-    from backend.app.kernel.plugin.manager import PluginManager
+    from app.kernel import Kernel
+    from app.kernel.plugin.manager import PluginManager
 
 logger = logging.getLogger("gula.kernel.plugin.hot_reload")
 

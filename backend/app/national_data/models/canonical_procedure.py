@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -20,15 +20,15 @@ class CanonicalProcedure(Base):
     patient_id: int
     order_id: int
     procedure_name: str
-    procedure_code: Optional[str]
+    procedure_code: str | None
     status: str
-    performed_at: Optional[datetime]
-    created_at: Optional[datetime]
-    doctor_name: Optional[str]
-    encounter_id: Optional[str]
-    facility_id: Optional[str]
-    national_patient_id: Optional[str]
-    citizen_id: Optional[str]
+    performed_at: datetime | None
+    created_at: datetime | None
+    doctor_name: str | None
+    encounter_id: str | None
+    facility_id: str | None
+    national_patient_id: str | None
+    citizen_id: str | None
 
     @classmethod
     def query_all(cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:

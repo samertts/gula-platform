@@ -26,6 +26,54 @@ from app.models import (
     LabOrder, LabResult, AuditLog, Sample, QualityControl,
 )
 
+# Include NationalBase and other declarative bases so Alembic detects their tables
+from app.national.base import NationalBase
+from app.ehr.base import EHRBase
+from app.citizen_platform.base import CitizenPlatformBase
+from app.clinical.base import ClinicalBase
+
+# Import EMS, Blood Bank, Critical Care, Biomedical models for Alembic autogenerate
+from app.ems.infrastructure.models import (  # noqa: F401, E402
+    EmergencyIncidentModel, AmbulanceModel, CrewMemberModel, DispatchModel,
+    DispatchAssignmentModel, TriageTagModel, MassCasualtyIncidentModel,
+    SceneSafetyModel, PatientAssessmentModel, PatientTransferOfCareModel,
+    PrehospitalCareReportModel, PatientEventLogModel, DispatchCommunicationModel,
+    DispatchHospitalModel, ResourceRequestModel, IncidentCommandModel,
+)
+from app.blood_bank.infrastructure.models import (  # noqa: F401, E402
+    BloodDonorModel, DonorDeferralModel, BloodDonationEventModel,
+    BloodComponentModel, BloodInventoryModel, BloodOrderModel,
+    CrossmatchRecordModel, BloodTransfusionRecordModel,
+    TransfusionAdverseEventModel, CompatibilityRuleModel, BloodBankModel,
+)
+from app.critical_care.infrastructure.models import (  # noqa: F401, E402
+    ICUAdmissionModel, ICUBedModel, ICUAssessmentModel, VitalSignsRecordModel,
+    VentilatorSettingModel, ContinuousInfusionModel, FluidBalanceModel,
+    EarlyWarningScoreModel, ICUScoreModel, CriticalAlertModel,
+    DeviceIntegrationModel, DailyChecklistModel, RoundRecordModel,
+)
+from app.biomedical.infrastructure.models import (  # noqa: F401, E402
+    MedicalDeviceModel, WorkOrderModel, CalibrationRecordModel,
+    SafetyInspectionModel, DeviceIncidentModel, DeviceRecallModel,
+    TechnicianModel, VendorModel, SparePartModel, ServiceContractModel,
+    MaintenanceScheduleModel, PerformanceVerificationModel,
+)
+from app.public_health.infrastructure.models import (  # noqa: F401, E402
+    DiseaseCaseModel, OutbreakAlertModel, ImmunizationRecordModel,
+    PublicHealthReportModel, SurveillanceSignalModel, EnvironmentalHealthModel,
+)
+from app.command_center.infrastructure.models import (  # noqa: F401, E402
+    EmergencyDeclarationModel, ResourceRequestModel, SituationReportModel, AfterActionReportModel,
+)
+from app.pilot_platform.infrastructure.models import (  # noqa: F401, E402
+    PilotProgramModel, PilotFacilityModel, ReadinessChecklistModel,
+    GoNoGoGateModel, DeploymentRecordModel,
+)
+from app.lifecycle_platform.infrastructure.models import (  # noqa: F401, E402
+    ComponentRegistryModel, ReleaseModel, CompatibilityMatrixModel,
+    UpgradePathModel, DeprecationNoticeModel,
+)
+
 # ── Alembic Config object ─────────────────────────────────────────────────────
 config = context.config
 
@@ -50,7 +98,15 @@ config.set_main_option("sqlalchemy.url", database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Base.metadata
+# Collect all declarative base metadata for autogenerate detection
+# (EHR, Clinical, Citizen, and National models use separate declarative bases)
+target_metadata = [
+    Base.metadata,
+    NationalBase.metadata,
+    EHRBase.metadata,
+    CitizenPlatformBase.metadata,
+    ClinicalBase.metadata,
+]
 
 
 # ── Offline mode (generates a .sql script) ───────────────────────────────────

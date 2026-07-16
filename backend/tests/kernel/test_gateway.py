@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel import Kernel
-from backend.app.kernel.gateway.discovery import ServiceDiscovery, ServiceEndpoint
-from backend.app.kernel.gateway.health_routing import HealthRouter
-from backend.app.kernel.gateway.routing import InternalRouter, Route
+from app.kernel import Kernel
+from app.kernel.gateway.discovery import ServiceDiscovery, ServiceEndpoint
+from app.kernel.gateway.health_routing import HealthRouter
+from app.kernel.gateway.routing import InternalRouter, Route
 
 
 class TestServiceDiscovery:

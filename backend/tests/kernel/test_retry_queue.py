@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.retry_queue import RetryEntry, RetryQueue
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.retry_queue import RetryEntry, RetryQueue
 
 
 class TestRetryQueue:

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from sqlalchemy import JSON, Boolean, Column, Float, Index, String, Text
+
 from app.national.base import BaseEntity, _ulid
 from app.national.search_platform.domain.enums import SearchIndexType
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum as SAEnum, Float, Index, Integer, String, Text
 
 
 class NationalSavedSearch(BaseEntity):

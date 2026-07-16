@@ -105,5 +105,6 @@ class NotificationBatch:
     total_count: int = 0
     success_count: int = 0
     failure_count: int = 0
+    created_by: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None

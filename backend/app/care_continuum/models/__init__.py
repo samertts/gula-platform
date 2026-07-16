@@ -1,11 +1,3 @@
-from .primary_care import (
-    CommunityClinicRecord,
-    FamilyMedicineRecord,
-    HealthAssessment,
-    PrimaryCareEncounter,
-    PreventiveCareRecord,
-)
-from .referral import ReferralAttachment, ReferralRequest, ReferralResponse, ReferralTimeline, CrossOrgReferral
 from .care_journey import (
     CareCoordination,
     CareJourney,
@@ -22,6 +14,14 @@ from .chronic_disease import (
     RiskStratification,
     SelfMonitoringRecord,
 )
+from .immunization import (
+    ColdChainMonitor,
+    Contraindication,
+    ImmunizationSchedule,
+    ReminderSchedule,
+    VaccinationRecord,
+    VaccineInventory,
+)
 from .maternal import (
     AntenatalCareVisit,
     BreastfeedingRecord,
@@ -31,13 +31,13 @@ from .maternal import (
     PostnatalCareVisit,
     PregnancyRecord,
 )
-from .immunization import (
-    ColdChainMonitor,
-    Contraindication,
-    ImmunizationSchedule,
-    ReminderSchedule,
-    VaccinationRecord,
-    VaccineInventory,
+from .patient_tasks import EducationalMaterialAssignment, PatientTask, SelfFollowUpTask
+from .primary_care import (
+    CommunityClinicRecord,
+    FamilyMedicineRecord,
+    HealthAssessment,
+    PreventiveCareRecord,
+    PrimaryCareEncounter,
 )
 from .public_health import (
     CommunityVisit,
@@ -48,7 +48,13 @@ from .public_health import (
     SchoolHealthVisit,
     ScreeningCampaign,
 )
-from .patient_tasks import EducationalMaterialAssignment, PatientTask, SelfFollowUpTask
+from .referral import (
+    CrossOrgReferral,
+    ReferralAttachment,
+    ReferralRequest,
+    ReferralResponse,
+    ReferralTimeline,
+)
 
 __all__ = [
     "AntenatalCareVisit",
@@ -60,8 +66,8 @@ __all__ = [
     "ClinicalHandover",
     "ClinicalPathwayEnrollment",
     "ColdChainMonitor",
-    "CommunityClinicRecord",
     "CommunityCareRecord",
+    "CommunityClinicRecord",
     "CommunityVisit",
     "Contraindication",
     "CrossOrgReferral",

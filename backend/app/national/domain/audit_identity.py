@@ -1,5 +1,6 @@
+from sqlalchemy import JSON, Boolean, Column, DateTime, Index, String, Text
+
 from app.national.base import AuditEntity
-from sqlalchemy import Boolean, Column, DateTime, Index, JSON, String, Text
 
 
 class IdentityAuditLog(AuditEntity):

@@ -1,8 +1,9 @@
-from datetime import date
+
+from sqlalchemy import JSON, Column, Date, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import Enum as SAEnum
 
 from app.ehr.base import EHRBaseEntity
 from app.ehr.enums import AllergySeverity, AllergyStatus
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey, Index, String, Text
 
 
 class AllergyIntolerance(EHRBaseEntity):

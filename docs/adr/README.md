@@ -80,6 +80,14 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-010](ADR-010-sndhs-government-integration.md) | SNDHS-lite Government Integration | Accepted | 2026-07-08 |
 | [ADR-011](ADR-011-notification-platform.md) | Notification Platform Architecture | Accepted | 2026-07-13 |
 | [ADR-012](ADR-012-engineering-automation.md) | Engineering Automation Platform | Accepted | 2026-07-13 |
+| [ADR-016](ADR-016-national-ehr.md) | National Electronic Health Record Platform | Accepted | 2026-07-15 |
+| [ADR-017](ADR-017-national-data-platform.md) | National Health Data Platform | Accepted | 2026-07-15 |
+| [ADR-018](ADR-018-national-operations.md) | National Platform Operations Center | Accepted | 2026-07-15 |
+| [ADR-019](ADR-019-national-ecosystem.md) | National Digital Health Ecosystem | Accepted | 2026-07-15 |
+| [ADR-020](ADR-020-citizen-super-app.md) | National Citizen Super App | Accepted | 2026-07-15 |
+| [ADR-021](ADR-021-national-intelligence.md) | National Health Intelligence Platform | Accepted | 2026-07-15 |
+| [ADR-022](ADR-022-doctor-workspace.md) | National Doctor Clinical Workspace | Accepted | 2026-07-15 |
+| [ADR-023](ADR-023-laboratory-desktop.md) | National Laboratory Desktop Professional | Accepted | 2026-07-15 |
 
 ## Constitution Reference
 

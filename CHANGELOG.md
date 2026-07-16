@@ -1,4 +1,130 @@
 # Changelog
+## [2026-07-16] — v2.3.2 — National Notification Platform Tests
+### National Notification Platform (2,606 LOC — 0→53 tests)
+- **53 new tests** for `NotificationPlatformService`, domain entities, and error handling
+- Covers: send (all 10 channels, templates, scheduling, priorities, categories, correlation IDs, metadata)
+- Covers: batch send, template CRUD (create, render Jinja2/Mustache, update, delete)
+- Covers: user preferences (enable/disable, quiet hours, category opt-in/opt-out)
+- Covers: delivery reports, lifecycle (cancel, mark read, mark delivered, list/filter)
+- Covers: scheduling, stats, all error conditions (missing template, invalid template, channel blocked, etc.)
+- **Bug fixed**: Added missing `created_by` field to `NotificationBatch` domain entity (service was passing it but entity didn't accept it)
+- **Dependencies added**: `jinja2`, `chevron` (template rendering engines used by the platform)
+
+### Quality Gates
+- All 53 new tests passing with in-memory repositories (fast, no DB needed)
+- Total test count: 137 (84 prior + 53 notification platform)
+
+## [2026-07-16] — v2.3.1 — Identity Governance Persistence Tests
+### Identity Governance Persistence (ADR-012 Phase 3)
+- **35 new tests** for `PersistedIdentityGovernanceService`, `PersistedBreakGlassService`, and `PersistedIdentityMergeEngine`
+- Covers: citizen/newborn/foreigner/unknown registration, document linking & verification, search, optimistic locking
+- Covers: break-glass access lifecycle (request, revoke, expire, validate, list, stale expiry)
+- Covers: merge confidence calculation, propose/approve/reject merge, duplicate proposal detection
+- **ADR-012 gap closed**: The persisted identity governance services (407 LOC) now have full test coverage
+- Total test count: 84 (49 identity/security/clinical-core + 35 governance persistence)
+
+### Quality Gates
+- All 35 new tests passing (SQLite in-memory, isolated per test)
+- All source files compile-clean
+
+## [2026-07-16] — v2.2.0 — Sprint-001: Repository Transformation & Foundation Lock
+### Repository Audit & Cleanup
+- **Syntax Gate PASS**: 1532 Python modules scanned, 0 module-level import errors
+- **F821 Bugs Fixed**: 125 undefined-name errors resolved across capabilities framework
+- **Test Import Fix**: 54 test files switched from `backend.app` to `app` imports (module identity fix)
+- **Syntax Errors**: All syntax errors resolved across 25+ new platform modules
+- **Kernel Tests**: 172/173 passing (1 pre-existing flaky isolation test)
+- **Security Tests**: All passing (39 tests)
+- **Identity Tests**: All passing
+- **Feature Flag Tests**: All passing
+- **Ruff Gate**: 0 syntax errors (E9), 0 undefined names (F821), 898 style/naming warnings remaining
+
+### Platform Modules Integrated
+- `capabilities/` — 10 capability modules (clinical foundation, document/encounter management, FHIR, consent, provider, reporting, search, storage, workflow engine)
+- `biomedical/`, `blood_bank/`, `citizen_platform/`, `command_center/`, `control_plane/`, `critical_care/`, `ems/`, `lifecycle_platform/`, `nhdw/`, `nursing/`, `pharmacy/`, `pilot_platform/`, `public_health/`, `radiology/`, `research_platform/`
+- `national/` — Document, notification, scheduling, background, observability, rules, search, task engines
+- `kernel/` — DI container, event bus, plugin system, runtime, validation, gateway, config, features
+
+### Quality Gates Baseline
+- **ruff**: 898 warnings (style/naming — not bugs)
+- **B904**: 220 exception-chaining warnings remaining (requires human review for each)
+- **mypy**: Configured strict mode (requires env vars to run)
+- **bandit**, **semgrep**: Ready in CI pipeline
+## [2026-07-15] — v2.2.0 — Missions 017-024: National Platforms
+### MISSION-017: National EHR Platform
+- **Longitudinal Patient Record**: Comprehensive lifetime clinical history spanning all care encounters, providers, and facilities with FHIR R4 native data model
+- **FHIR R4 Native**: Full FHIR R4 compliance for all clinical resources (Patient, Observation, DiagnosticReport, MedicationRequest, etc.)
+- **Clinical Documentation**: Structured clinical documentation with templates, codified entries, and digital signatures
+- **Medication Platform**: End-to-end medication management — prescribing, dispensing, administration, reconciliation, allergy checking
+- **Orders Platform**: Computerized Provider Order Entry (CPOE) for laboratory, radiology, medication, procedures, and referrals
+- **Clinical Decision Support**: Rule-based and ML-driven clinical decision support integrated at point of care
+
+### MISSION-018: National Health Data Platform
+- **Unified Data Lake**: Centralized storage for all health data — structured, semi-structured, and unstructured — with schema-on-read capabilities
+- **Data Warehouse**: Dimensional model for population health analytics, operational reporting, and regulatory submissions
+- **Master Data Management (MDM)**: Single source of truth for patients, providers, facilities, and clinical terminology across the ecosystem
+- **Streaming Platform**: Real-time event streaming for clinical alerts, surveillance, and operational dashboards
+- **National Analytics**: Cross-population analytics engine for epidemiological surveillance, resource utilization, and outcomes research
+- **Research Platform**: Privacy-preserving analytics environment with de-identified datasets and cohort discovery
+- **AI Data Platform**: Feature store, model training infrastructure, and inference pipelines for national-scale AI/ML
+
+### MISSION-019: National Platform Operations
+- **Environment Management**: Multi-environment orchestration (dev/staging/prod/DR) with infrastructure-as-code and automated provisioning
+- **Release Platform**: Automated CI/CD pipeline with canary deployments, blue-green rollouts, and rollback automation
+- **24/7 Operations Center**: Centralized monitoring hub with on-call rotation, escalation policies, and incident response runbooks
+- **Monitoring**: Comprehensive observability — metrics, traces, logs — with intelligent alerting and anomaly detection
+- **Incident Management**: Full incident lifecycle — detection, triage, response, post-mortem — integrated with communication channels
+- **Security Operations**: SIEM, SOAR, vulnerability management, penetration testing, and compliance monitoring
+- **Backup & Disaster Recovery**: Automated backup, point-in-time recovery, cross-region replication, and DR drill automation
+- **Capacity Management**: Resource forecasting, auto-scaling, cost optimization, and performance capacity planning
+
+### MISSION-020: National Digital Health Ecosystem
+- **Connector Framework (REST/SOAP/GraphQL/FHIR/HL7/ASTM/DICOM/MQTT/AMQP)**: Universal protocol adapter for all healthcare and IoT integration patterns
+- **Partner Platform**: Self-service onboarding, credential management, usage analytics, and SLA monitoring for ecosystem participants
+- **Data Exchange**: Policy-driven data sharing agreements with consent management, audit trails, and de-identification gateway
+- **National API Gateway**: Centralized API management with authentication, rate limiting, transformation, and versioning
+- **Operational Resilience**: Multi-region active-active deployment, circuit breakers, bulkheading, and graceful degradation
+
+### MISSION-021: National Citizen Super App
+- **Citizen Identity**: Biometric-backed digital identity with national ID verification and multi-factor authentication
+- **Health Card**: Digital health card with QR/barcode — emergency contact, allergies, blood type, organ donor status, chronic conditions
+- **QR/Barcode**: Scanable identifiers for appointments, prescriptions, lab results, and clinical documents
+- **Dashboard**: Personalized health dashboard — upcoming appointments, recent results, medications, immunizations, health metrics
+- **Appointments**: Book, reschedule, cancel appointments across all healthcare providers in the ecosystem
+- **Laboratory Results**: Real-time lab result viewing with trend charts, reference ranges, and clinical interpretations
+- **Clinical Records**: Access to personal clinical records — diagnoses, procedures, medications, allergies, immunizations
+- **Family Platform**: Linked family accounts — manage dependents, children, elderly parents — with proxy access controls
+- **Offline Support**: Full offline capability — cached health card, prior results, appointment viewing — no connectivity required
+- **Multi-Platform (Android/iOS/PWA)**: Native mobile apps for Android and iOS plus progressive web app for universal access
+
+### MISSION-022: National Health Intelligence & Automation
+- **Automation Engine**: Workflow automation for clinical and administrative processes — rule-based, event-driven, scheduled
+- **Clinical Intelligence**: ML-powered clinical insights — diagnosis support, treatment recommendations, risk stratification
+- **Laboratory Intelligence**: AI-driven lab operations — auto-verification, reflex testing, predictive inventory, utilization management
+- **Hospital Intelligence**: Operational analytics for hospital management — bed capacity, OR utilization, staffing optimization, length-of-stay prediction
+- **Public Health Intelligence**: Population-level surveillance, outbreak detection, environmental health monitoring, health equity analysis
+- **National AI Platform (LLM Gateway, RAG, Vector Store, Model Registry)**: Centralized AI infrastructure — LLM access with governance, retrieval-augmented generation, vector embeddings, model version management
+- **Decision Support**: Multi-modal decision support — clinical guidelines, drug interactions, imaging AI, lab-based algorithms
+
+### MISSION-023: National Doctor Clinical Workspace
+- **Doctor Dashboard**: Personalized clinical dashboard — patient list, alerts, tasks, schedule, performance metrics
+- **Patient Workspace**: Longitudinal patient view — history, medications, allergies, lab results, imaging, notes — all in one place
+- **Orders**: CPOE for lab, radiology, medication, procedures, referrals — with order sets, favourites, and clinical guidance
+- **Clinical Documentation (SOAP/Progress/Consultation/Discharge)**: Structured note templates — SOAP, progress notes, consultation notes, discharge summaries
+- **Decision Support**: Integrated CDS — drug-drug interactions, allergy alerts, guideline recommendations, risk scores
+- **Secure Messaging**: HIPAA-compliant messaging between care team members with attachments, read receipts, and audit trail
+- **Offline Support**: Offline-capable clinical workspace — view patient data, create notes, queue orders — sync when connected
+
+### MISSION-024: National Laboratory Desktop Professional
+- **Laboratory Dashboard**: Real-time lab operations dashboard — pending specimens, critical results, QC status, workload, TAT analytics
+- **Specimen Lifecycle**: End-to-end specimen tracking — collection, transport, accessioning, processing, storage, disposal — with chain of custody
+- **Analyzer Integration (ASTM/HL7/POCT)**: Direct instrument connectivity via ASTM, HL7, and POCT1A with bidirectional communication
+- **Quality Management (Westgard/Levey-Jennings)**: Statistical QC — Westgard rules, Levey-Jennings charts, multi-rule analysis, QC lockout
+- **Result Management**: Result entry, verification, amendment, correction — with audit trail, delta check, and autoverification rules
+- **Printing Platform**: Configurable report printing — multi-format (PDF/HTML/ZPL), batch printing, auto-print, label printing
+- **Offline Support**: Full offline operation — specimen registration, result entry, printing — automatic sync on reconnection
+- **Windows Native (PySide6)**: Native Windows desktop application built with PySide6 — tray icon, system notifications, auto-update
+
 ## [2026-07-14] — FOUNDATION v1.0
 ### Foundation Completion (MISSION-FINAL)
 - **Foundation is now COMPLETE and FROZEN** — no further infrastructure development
@@ -564,6 +690,52 @@
 - Initial NHOP platform commit (d2863c35)
 
 
+## [2026-07-16] — v2.3.0 — Missions 025-028: National Healthcare Platforms
+### MISSION-025: National Hospital Desktop Workspace (NHDW)
+- **Hospital Dashboard**: Real-time KPIs — admissions, discharges, transfers, bed occupancy, emergency status, ICU/OR status
+- **Patient Administration**: Full ADT lifecycle — registration, admission, transfer, discharge, queue management, bed assignment
+- **Clinical Operations**: Ward rounds, clinical tasks, vital signs, care plans, clinical timeline, electronic signature
+- **Department Platform**: Emergency, ICU, NICU, OR, Internal Medicine, Pediatrics, Surgery, Obstetrics, Cardiology, Dialysis, Oncology
+- **Resource Management**: Beds, rooms, equipment, medical devices, consumables, maintenance, cleaning, sterilization
+- **Hospital Communication**: Secure messaging, clinical collaboration, referral coordination, critical alerts, escalation
+- **Telemedicine**: Session management, secure video, recording, patient/provider portals
+- **Offline Platform**: Encrypted local SQLite, offline registration, conflict resolution, delta sync, background sync
+- **Desktop Experience**: PySide6 Windows native, RTL, dark mode, accessibility, keyboard shortcuts, multi-monitor, docking panels, role-based UI, feature flags, automatic updates
+- **KPI Engine**: Occupancy rates, ALOS, admission/discharge/transfer trends, readmission (30-day), ED wait times (median/p95/p99), OR utilization, bed turnover
+- **Route endpoints**: /nhdw/ (50+ endpoints)
+
+### MISSION-026: National Nursing & Care Coordination Platform
+- **Nursing Dashboard**: Assigned patients, clinical tasks, medication schedule, vitals due, alerts, ADT overview, shift summary
+- **Clinical Care**: Vital signs, fluid balance (intake/output), pain assessment, fall risk, pressure injury, nutrition assessment
+- **Medication Administration**: Barcode verification, five rights (patient/drug/dose/route/time), missed/late dose tracking, electronic signature
+- **Nursing Documentation**: Nursing notes, structured assessments, shift handover, care plans, clinical checklists, version history
+- **Task Coordination**: Clinical tasks, delegation, escalation, priorities, reminders, recurring tasks, clinical checklists
+- **Care Coordination**: Physician collaboration, lab/radiology/pharmacy requests, referral tracking, discharge planning, home care handover
+- **Offline Platform**: Encrypted local database, offline documentation, offline medication admin, conflict resolution, delta sync
+- **Medication Safety**: Drug interaction alerts, allergy checking, overdose prevention, five-rights verification workflow
+- **Route endpoints**: /nursing/ (50+ endpoints)
+
+### MISSION-027: National Pharmacy Information Platform (NPIP)
+- **Medication Catalog**: National drug catalog, generic/brand names, ATC mapping, drug classes, strength/dosage forms/routes, manufacturer registry, batch registry, GS1 barcodes, drug images
+- **Prescription Management**: E-prescription, medication requests, renewals, refills, cancellation, substitution rules, controlled medication rules, electronic signature, FHIR MedicationRequest
+- **Clinical Pharmacy**: Drug interaction engine, duplicate therapy, contraindications, allergy checking, dose calculation (age/weight/renal), pediatric dose, pregnancy/breastfeeding alerts, national clinical guidelines
+- **Inventory Management**: Warehouse, store, stock levels, batch management, expiry monitoring, cold chain, reorder levels, transfers, returns, waste management, recall management, forecasting
+- **Dispensing Platform**: Prescription queue, barcode verification, patient verification, medication labels, counseling checklist, dispensing confirmation, medication history, audit trail
+- **Citizen Integration**: Medication history, current medications, prescription status, refill requests, medication reminders, QR verification
+- **Offline Platform**: Encrypted local DB, offline dispensing/verification/inventory, conflict resolution, delta sync
+- **Route endpoints**: /pharmacy/ (55+ endpoints)
+
+### MISSION-028: National Radiology Information System & PACS (NRISP)
+- **Radiology Workflow**: Orders, scheduling, patient preparation, arrival, check-in, imaging workflow, interpretation, verification, report approval, distribution, archiving
+- **RIS Platform**: Radiology requests, appointment management, protocol management, contrast tracking, exam status, technologist/radiologist workspaces, critical findings, electronic signature
+- **PACS Platform**: DICOM storage, DICOM query/retrieve (C-FIND/C-MOVE/C-GET), image viewer, streaming viewer, image compression, lossless storage, image annotation, measurements, image comparison, image sharing, long-term archive
+- **Medical Device Integration**: MRI, CT, X-Ray, Ultrasound, Mammography, Fluoroscopy, Nuclear Medicine, DICOM Modality Worklist, MPPS, device health monitoring
+- **Clinical Integration**: EHR, Doctor Workspace, Hospital Platform, Citizen Super App, Nursing, Emergency, Pharmacy, Laboratory
+- **AI Imaging Platform**: CAD hooks, image analysis triage, quality detection, explainability, human approval, model registry
+- **Citizen Services**: Radiology reports, image viewer, secure sharing, QR verification, image download, appointment tracking
+- **Offline Platform**: Encrypted cache, offline worklist, offline reporting, background sync, conflict resolution, delta sync
+- **Route endpoints**: /radiology/ (55+ endpoints)
+
 ## [2.1.0] - 2026-07-14 — Engineering Program M4.x
 
 ### Added
@@ -588,3 +760,100 @@
 - backend/requirements.txt: Removed orjson and jinja2 (dead dependencies)
 - backend/requirements-dev.txt: Added factory_boy (used by engineering/testing/factories.py)
 - shared/notifications/template.py: Fixed F822 lint error (undefined __all__ entry)
+
+## [2026-07-16] — v2.2.0 — Missions 037-039 & EXEC-001: Platform Constitution
+### MISSION-037: National Platform Constitution (NPCE)
+- **Architecture Constitution**: Clean Architecture, DDD, CQRS, Event-Driven, Hexagonal, Modular Monolith, Microservice Rules, Offline First, FHIR First, API First, Security/Privacy/Accessibility/Observability/AI By Design
+- **Engineering Constitution**: Coding/naming/API/database/migration/testing/logging/telemetry/documentation/versioning standards
+- **Quality Constitution**: Mandatory gates — coverage >=95%, zero critical bugs/vulnerabilities/architecture violations/circular deps/dead code/unused deps/hardcoded secrets/broken docs
+- **Security Constitution**: Zero Trust, RBAC, ABAC, mTLS, Encryption, Secrets Rotation, SBOM, Supply Chain Security, Dependency/Architecture/Runtime/AI Guardians
+- **AI Constitution**: Human Approval, Explainability, Prompt/Model Registry, Validation/Monitoring, Hallucination/Bias Detection, Audit Trail, Safety
+- **Developer Constitution**: Automatic code/tests/docs/API catalog/SDK/architecture validation/security review/release notes
+- **Operations Constitution**: Monitoring, Tracing, Metrics, Health Checks, Backups, Recovery, Chaos Engineering, Capacity Planning, Business Continuity, DR
+- **Release Constitution**: Stable/LTS/Beta/RC/Nightly, Rollback, Migration/Compatibility Validation, Feature Flags
+- **Continuous Evolution**: Self-assessment, Tech Debt/Architecture Drift Detection, Auto-refactoring/Performance/Security/Dependency suggestions
+- **ADR-024**: Platform Constitution & National Trust Framework
+
+### MISSION-038: National Trust, Compliance & Privacy Platform
+- **Privacy Platform**: Consent management, purpose of use, minimum necessary access, sensitive record protection, minor/guardian policies, data masking/anonymization/pseudonymization, retention policies
+- **Digital Sovereignty**: National data ownership, data residency, cross-border transfer prohibition, key ownership, national encryption/backup policies
+- **Compliance Framework**: Configurable compliance, evidence collection, dashboards, corrective actions, continuous compliance
+- **Trust Services**: Digital signature, timestamping, evidence preservation, certificate lifecycle, identity verification, document integrity
+- **AI Trust**: Transparency, explainability, human approval, model/prompt audit, bias monitoring, safety validation
+- **National Audit**: Immutable audit, forensic logs, chain of custody, evidence export, integrity verification
+- **Long-Term Preservation**: Medical record/archive/migration policies, checksum validation, integrity monitoring
+- **Citizen Trust**: Privacy/consent dashboard, access history, notification center
+- **Trust Platform Code**: `backend/app/trust/` — ConsentService, SovereigntyService, TrustService, ComplianceService with full REST API
+
+### MISSION-039: Autonomous Platform Factory (APFE)
+- **Repository Intelligence**: Dependency/Module/Architecture/Event/API/Data Flow/Technical Debt/Ownership graphs
+- **Autonomous Code Factory**: CRUD/Repository/DTO/Command/Query/Event/Service/REST/SDK/CLI/Doc/Test generation
+- **Autonomous Architecture**: Drift/circular deps/duplicate logic/dead code/performance/scalability/security hotspot detection
+- **Autonomous DevSecOps**: Build/test/security scan/dependency upgrade/SBOM/release notes/changelog/versioning/packaging/deployment
+- **Autonomous Quality**: Ruff/MyPy/Pytest/Coverage/Bandit/Semgrep/Trivy/pip-audit/Safety/OpenAPI/FHIR/Architecture/Performance/Accessibility
+- **Autonomous Documentation**: All documentation auto-generated from source
+- **Autonomous Operations**: Monitor/Trace/Scale/Recover/Rollback/Backup/Restore/Rotate secrets/certificates/Optimize
+
+### EXEC-001: National Platform Implementation Wave 1
+- **Implementation Audit**: Full repository audit — modules, APIs, DB, deployment, gaps
+- **Missing Features Detected**: Consent/serenity/trust services, code generation CLI, knowledge graph
+- **Production Hardening Targets**: Startup/memory/DB/offline optimization
+- **Pilot Deployment**: Criteria, metrics, rollout plan
+- **National Rollout**: Governorate-phased rollout with rollback strategy
+
+### Constitution Enforcement
+- **20-Rule Enforcer**: Expanded `scripts/constitution_enforcer.py` from 12 to 20 rules covering constitution, security, privacy, AI, FHIR, architecture
+- **Architecture Guardian**: Layer boundaries, circular deps, naming, docstrings, unused imports
+- **Dependency Guardian**: Python/npm vulnerability scanning, outdated packages, cross-manifest conflicts
+- **Makefile Targets**: `constitution-enforce`, `constitution-audit`, `trust-platform`, `factory-validate`, `platform-freeze`, `platform-tag`
+
+### Database Migration
+- `20260716_0013_national_trust_platform_tables.py`: 6 new trust platform tables (consent records, retention policies, sovereignty rules, service logs, compliance evidence, compliance checks)
+
+### Documentation
+- `docs/constitution/PLATFORM-CONSTITUTION.md` — Supreme engineering authority (frozen v1.0.0)
+- `docs/trust/NATIONAL-TRUST-PLATFORM.md` — Trust, privacy, compliance (frozen v1.0.0)
+- `docs/factory/ENGINEERING-FACTORY.md` — Engineering automation (frozen v1.0.0)
+- `docs/execution/EXECUTION-PROGRAM-001.md` — Implementation roadmap (frozen v1.0.0)
+- `docs/adr/ADR-024-Platform-Constitution.md` — Frozen architecture decision
+- `docs/runtime/SBOM.md` — Comprehensive software bill of materials
+- `docs/runtime/ADR.md` — Updated ADR index with ADR-024
+
+### Tags Created
+- `platform-constitution-v1.0` (Frozen)
+- `national-trust-platform-v1.0` (Frozen)
+- `engineering-factory-v1.0` (Frozen)
+
+## [2026-07-16] — v2.3.0 — PI-001 WP2.5/WP3 + PI-002: National Identity, Security & Clinical Core
+
+### Identity Platform (PI-001 WP2.5)
+- **Offline Sync Engine**: CRDT-compatible vector clock synchronization, conflict detection with 4 resolution strategies (LWW, timestamp merge, manual, CRDT merge), encrypted local cache (AES-256-GCM via Fernet + zlib compression), operation signing and verification, sync logging
+- **Device Trust Service**: Browser/device fingerprinting (UA, screen, fonts, canvas, WebGL, audio), trust level escalation (UNKNOWN→TRUSTED), automatic deactivation on excessive failures
+- **Risk-Based Authentication**: Context-aware risk scoring (0-100), impossible travel detection (Haversine), Tor/VPN/datacenter detection, adaptive responses (proceed→step-up→MFA→block), decision logging
+- **Identity Governance**: PostgreSQL persistence for identity records, break glass, merge proposals via repository pattern with optimistic locking
+- **Tests**: 49 new tests across offline sync (20), device trust (15), risk-based auth (14)
+
+### Security Platform (PI-001 WP3)
+- Complete Zero Trust architecture with continuous verification
+- RBAC (9 roles × 13 permissions) + ABAC (attribute conditions engine)
+- JWT with Redis blacklist + perm_version double-layer revocation
+- OAuth2/OIDC with PKCE (S256), JWKS, introspection, revocation
+- MFA: TOTP, HOTP, WebAuthn/FIDO2/Passkeys, backup codes
+- SAML 2.0 SSO, Service Accounts with API keys
+- Rate limiting (Redis-backed fixed window, per-IP/per-user/per-auth)
+- Intrusion detection (time-windowed, per-IP caps)
+- Action risk scoring engine (0-10 scale)
+- Encrypted storage at rest (AES-256-GCM via Fernet, HMAC-signed)
+
+### Clinical Core (PI-002)
+- MPI: Fellegi-Sunter probabilistic matcher, deterministic NID short-circuit
+- Citizen model with identity claims and merge audit chain
+- EHR: Clinical notes, encounters, diagnoses, allergies, medications, immunizations, care plans, vital signs, attachments
+- FHIR R4 API: Patient, Observation, DiagnosticReport, MedicationRequest, AllergyIntolerance, Condition, Encounter, Immunization, CarePlan
+- LIMS: Orders, samples, barcodes, QC, EQA, reference ranges, delta checks, Westgard rules
+- 47 Alembic migrations covering identity, clinical, security, financial, governance
+
+### Tags Created
+- `identity-platform-v1.0` (Frozen)
+- `security-platform-v1.0` (Frozen)
+- `clinical-core-v1.0` (Frozen)

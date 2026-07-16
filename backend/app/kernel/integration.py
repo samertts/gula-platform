@@ -4,8 +4,8 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from backend.app.kernel import Kernel, KernelConfig
-from backend.app.kernel.runtime.shutdown import ShutdownHandler
+from app.kernel import Kernel, KernelConfig
+from app.kernel.runtime.shutdown import ShutdownHandler
 
 if TYPE_CHECKING:
     from fastapi import Request

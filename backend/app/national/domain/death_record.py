@@ -1,5 +1,6 @@
-from app.national.base import AuditEntity
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, String, Text
+
+from app.national.base import AuditEntity
 
 
 class DeathRecord(AuditEntity):

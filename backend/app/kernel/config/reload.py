@@ -5,7 +5,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.app.kernel.config.registry import ConfigurationRegistry
+    from app.kernel.config.registry import ConfigurationRegistry
 
 logger = logging.getLogger("gula.kernel.config.reload")
 

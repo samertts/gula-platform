@@ -1,9 +1,9 @@
-from datetime import date, datetime
 
-from app._compat import UTC
+from sqlalchemy import JSON, Column, Date, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.ehr.base import EHRBaseEntity
 from app.ehr.enums import CarePlanStatus
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
 
 
 class CarePlan(EHRBaseEntity):

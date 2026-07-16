@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.background.task_queue import Task, TaskQueue
+from app.kernel.background.task_queue import Task, TaskQueue
 
 
 class TestTaskQueue:

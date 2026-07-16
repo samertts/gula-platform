@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.services.reference.master_reference_data import (
+from app.services.reference.master_reference_data import (
     MasterReferenceDataService,
     ReferenceDataType,
     ReferenceEntry,
 )
-from backend.app.services.reference.universal_identifier import (
+from app.services.reference.universal_identifier import (
     IdentifierType,
     UniversalIdentifierService,
 )
-from backend.app.services.reference.national_lab_catalog import (
+from app.services.reference.national_lab_catalog import (
     LabTestDefinition,
     NationalLaboratoryCatalog,
     PanelDefinition,

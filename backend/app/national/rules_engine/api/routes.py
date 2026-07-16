@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.national.rules_engine.application.service import RulesEngineService
 from app.national.rules_engine.domain.entities import (
     RuleAction,
     RuleCondition,
@@ -15,27 +16,22 @@ from app.national.rules_engine.domain.entities import (
 from app.national.rules_engine.domain.enums import (
     Operator,
     RuleCategory,
-    RuleExecutionMode,
     RuleSeverity,
-    RuleStatus,
-    RuleTrigger,
 )
 from app.national.rules_engine.exceptions import (
-    RuleConflictError,
     RuleEvaluationError,
     RuleNotFoundError,
     RuleValidationError,
     RuleVersionError,
 )
 from app.national.rules_engine.infrastructure.repository import SQLAlchemyRuleRepository
-from app.national.rules_engine.application.service import RulesEngineService
 
 router = APIRouter(prefix="/national/rules", tags=["National Rules Engine"])
 
 
 def _get_service(db: Session = Depends(get_db)) -> RulesEngineService:
-    from app.kernel.event_bus.bus import EventBus
     from app.kernel import Kernel
+    from app.kernel.event_bus.bus import EventBus
 
     kernel = Kernel.get_instance()
     event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)

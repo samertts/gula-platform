@@ -5,25 +5,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from app._compat import UTC
-
 from ..database import get_db
 from ..hospital.models import (
     Bed,
     BedAssignment,
-    Building,
     Campus,
-    Clinic,
-    CostCenter,
     Department,
-    Floor,
     HospitalMaster,
     MedicalEquipment,
     OperationTheater,
-    Room,
-    Unit,
 )
-from ..models.organization import Appointment
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services.hospital_service import HospitalService
@@ -245,9 +236,7 @@ def _model_to_dict(model_instance) -> dict[str, Any]:
         if c.key in exclude:
             continue
         val = getattr(model_instance, c.key)
-        if isinstance(val, datetime):
-            val = val.isoformat()
-        elif isinstance(val, date) and not isinstance(val, datetime):
+        if isinstance(val, datetime) or (isinstance(val, date) and not isinstance(val, datetime)):
             val = val.isoformat()
         result[c.key] = val
     return result
@@ -275,7 +264,7 @@ def list_hospitals(
     hospitals = HospitalService.list_hospitals(db, current_user.lab_id, skip, limit)
     total = db.query(HospitalMaster).filter(
         HospitalMaster.lab_id == current_user.lab_id,
-        HospitalMaster.is_deleted == False,
+        ~HospitalMaster.is_deleted,
     ).count()
     return _paginated_response(
         [_model_to_dict(h) for h in hospitals], total, skip, limit,
@@ -584,11 +573,10 @@ def transfer_bed(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
-    result = HospitalService.transfer_bed(
+    return HospitalService.transfer_bed(
         db, current_user.lab_id, current_user.id,
         bed_id, body.to_bed_id, body.reason,
     )
-    return result
 
 
 # ── Occupancy ──────────────────────────────────────────────────────────────────
@@ -800,6 +788,6 @@ def bed_assignment_history(
     assignments = db.query(BedAssignment).filter(
         BedAssignment.bed_id == bed_id,
         BedAssignment.lab_id == current_user.lab_id,
-        BedAssignment.is_deleted == False,
+        ~BedAssignment.is_deleted,
     ).order_by(BedAssignment.admission_date.desc()).all()
     return [_model_to_dict(a) for a in assignments]

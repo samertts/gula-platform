@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.event_bus.outbox import OutboxMessage, OutboxPattern
+from app.kernel.event_bus.outbox import OutboxMessage, OutboxPattern
 
 
 class TestOutboxPattern:

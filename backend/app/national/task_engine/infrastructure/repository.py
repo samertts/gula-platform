@@ -3,36 +3,19 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import desc, text
+
 from backend.app._compat import UTC
 from backend.app.database import SessionLocal
 from backend.app.national.task_engine.domain.entities import (
     NationalTask,
-    TaskAssignment,
-    TaskAuditLog,
-    TaskComment,
-    TaskEscalation,
-    TaskQueue,
-    TaskSLADefinition,
 )
 from backend.app.national.task_engine.domain.repository import (
     NationalTaskRepository,
-    TaskAssignmentRepository,
-    TaskAuditLogRepository,
-    TaskCommentRepository,
-    TaskEscalationRepository,
-    TaskQueueRepository,
-    TaskSLARepository,
 )
 from backend.app.national.task_engine.infrastructure.models import (
-    NationalTaskAssignmentModel,
-    NationalTaskAuditLogModel,
-    NationalTaskCommentModel,
-    NationalTaskEscalationModel,
     NationalTaskModel,
-    NationalTaskQueueModel,
-    NationalTaskSLAModel,
 )
-from sqlalchemy import desc, text
 
 
 class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
@@ -170,7 +153,6 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
 
     def _model_to_domain(self, model: Any) -> NationalTask:
         from backend.app.national.task_engine.domain.enums import (
-            EscalationLevel,
             TaskCategory,
             TaskPriority,
             TaskStatus,

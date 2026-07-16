@@ -1,10 +1,10 @@
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+
 from ..enums import CompetencyLevel, LicenseStatus, ProductivityPeriod
 from ..models.workforce import (
     AttendanceRecord,

@@ -11,9 +11,7 @@ from app.national.observability.exceptions import (
     AlertEventNotFoundError,
     AlertRuleNotFoundError,
     DashboardNotFoundError,
-    HealthCheckNotFoundError,
     MetricQueryError,
-    ObservabilityError,
 )
 from app.national.observability.infrastructure.repository import (
     SQLAlchemyAlertEventRepository,
@@ -30,8 +28,8 @@ router = APIRouter(prefix="/national/observability", tags=["National Observabili
 
 
 def _get_service(db: Session = Depends(get_db)) -> ObservabilityService:
-    from app.kernel.event_bus.bus import EventBus
     from app.kernel import Kernel
+    from app.kernel.event_bus.bus import EventBus
 
     kernel = Kernel.get_instance()
     event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)
@@ -291,9 +289,11 @@ async def list_alert_events(
 @router.post("/alerts/events/{event_id}/acknowledge")
 async def acknowledge_alert(
     event_id: str,
-    body: dict[str, Any] = {},
+    body: dict[str, Any] | None = None,
     service: ObservabilityService = Depends(_get_service),
 ) -> dict[str, Any]:
+    if body is None:
+        body = {}
     try:
         event = await service.acknowledge_alert(
             event_id=event_id,

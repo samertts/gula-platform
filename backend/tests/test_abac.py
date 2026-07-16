@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.security.abac import (
+from app.security.abac import (
     ABACEngine,
     ABACRule,
     AttributeCondition,

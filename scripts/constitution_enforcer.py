@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-GULA Platform — Engineering Constitution Enforcement Script
-============================================================
+GULA Platform — Platform Constitution Enforcement Script
+===========================================================
 
-Enforces the 12 rules of the Engineering Constitution (ADR-001):
+Enforces the Platform Constitution (docs/constitution/PLATFORM-CONSTITUTION.md):
 
   Rule  1: No code without tests
   Rule  2: No module without documentation
@@ -17,6 +17,14 @@ Enforces the 12 rules of the Engineering Constitution (ADR-001):
   Rule 10: No commit if quality gates fail
   Rule 11: No merge if architecture score decreases
   Rule 12: Every change must improve the platform
+  Rule 13: No hardcoded secrets
+  Rule 14: No architecture violations (layer, circular deps)
+  Rule 15: No dead or unused code
+  Rule 16: FHIR compliance for health data
+  Rule 17: Privacy-by-design (consent check)
+  Rule 18: Security-by-design (zero trust)
+  Rule 19: No circular dependencies
+  Rule 20: AI safety and explainability
 
 Usage:
   python scripts/constitution_enforcer.py
@@ -688,6 +696,317 @@ def rule11_architecture_score() -> RuleResult:
     return make_rule(11, "No merge if architecture score decreases", status, details)
 
 
+def rule13_hardcoded_secrets(changed_py_files: list[str]) -> RuleResult:
+    details: list[str] = []
+    status = PASS
+
+    secret_patterns = [
+        r'["\'](SECRET_KEY|ENCRYPTION_KEY|NID_HMAC_KEY|DEVICE_HMAC_KEY|REFRESH_TOKEN_SECRET)["\']\s*[:=]\s*["\'][^"\']+["\']',
+        r'password\s*=\s*["\'][^"\']+["\']',
+        r'api_key\s*=\s*["\'][^"\']+["\']',
+        r'token\s*=\s*["\'][^"\']+["\']',
+    ]
+
+    for f in changed_py_files:
+        if not f.endswith(".py"):
+            continue
+        if "test_" in f:
+            continue
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for lineno, line in enumerate(text.splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''"):
+                continue
+            for pat in secret_patterns:
+                if re.search(pat, stripped):
+                    details.append(f"Potential hardcoded secret in {f}:{lineno} — {stripped[:80]}")
+                    status = FAIL
+                    break
+
+    if details:
+        details.insert(0, f"{len(details)} potential hardcoded secret(s) found")
+    if not details:
+        details.append("No hardcoded secrets detected")
+    return make_rule(13, "No hardcoded secrets", status, details)
+
+
+def rule14_architecture_violations() -> RuleResult:
+    details: list[str] = []
+    status = PASS
+
+    if ARCHITECTURE_GUARDIAN.exists():
+        details.append("Running Architecture Guardian...")
+        try:
+            result = subprocess.run(
+                [sys.executable, str(ARCHITECTURE_GUARDIAN), "--json"],
+                capture_output=True, text=True, timeout=60,
+            )
+            if result.returncode != 0:
+                try:
+                    data = json.loads(result.stdout)
+                    new_count = data.get("summary", {}).get("new", 0)
+                    total_count = data.get("summary", {}).get("total", 0)
+                    if new_count > 0:
+                        details.append(f"{new_count} new architecture violation(s)")
+                        status = FAIL
+                    if total_count > 0:
+                        details.append(f"{total_count} total architecture violation(s)")
+                        if status != FAIL:
+                            status = WARNING
+                except (json.JSONDecodeError, AttributeError):
+                    details.append("Could not parse Architecture Guardian output")
+                    status = WARNING
+            else:
+                details.append("Architecture Guardian: all clear")
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            details.append(f"Could not run Architecture Guardian: {exc}")
+            status = WARNING
+    else:
+        details.append("Architecture Guardian not found")
+        status = WARNING
+
+    if not details:
+        details.append("No architecture violations detected")
+    return make_rule(14, "No architecture violations", status, details)
+
+
+def rule15_dead_code(changed_py_files: list[str]) -> RuleResult:
+    details: list[str] = []
+    status = PASS
+    count = 0
+
+    for f in changed_py_files:
+        if not f.endswith(".py"):
+            continue
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            tree = ast.parse(full_path.read_text(encoding="utf-8"), filename=str(full_path))
+        except (SyntaxError, OSError):
+            continue
+
+        has_unused = False
+        defined = set()
+        used = set()
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                defined.add(node.name)
+            elif isinstance(node, ast.ClassDef):
+                defined.add(node.name)
+            elif isinstance(node, ast.Name) and not isinstance(node.ctx, (ast.Store, ast.Del)):
+                used.add(node.id)
+
+        unused = defined - used - {"main", "setup", "teardown"}
+        for name in sorted(unused):
+            count += 1
+            if count <= 10:
+                details.append(f"Possibly unused function/class '{name}' in {f}")
+            has_unused = True
+
+        if has_unused and count > 10 and len(details) <= 10:
+            pass
+
+    if count > 0:
+        details.insert(0, f"{count} potentially unused function(s)/class(es) detected")
+        status = WARNING if count <= 5 else FAIL
+    if not details:
+        details.append("No dead code detected")
+    return make_rule(15, "No dead or unused code", status, details)
+
+
+def rule16_fhir_compliance(changed_py_files: list[str]) -> RuleResult:
+    details: list[str] = []
+    status = PASS
+
+    fhir_files = [f for f in changed_py_files if "fhir" in f.lower()]
+    for f in changed_py_files:
+        if not f.endswith(".py"):
+            continue
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8")
+            if "patient" in f.lower() and "fhir" not in text.lower():
+                if any(marker in f for marker in ["models/patient", "routes/patients", "services/patient"]):
+                    details.append(f"Patient-related file {f} may lack FHIR mapping")
+                    status = WARNING
+        except OSError:
+            continue
+
+    if fhir_files:
+        details.append(f"{len(fhir_files)} FHIR-related file(s) changed — verify FHIR R4 compliance")
+    if not details:
+        details.append("No FHIR compliance issues detected")
+    return make_rule(16, "FHIR compliance for health data", status, details)
+
+
+def rule17_privacy_by_design(changed_py_files: list[str]) -> RuleResult:
+    details: list[str] = []
+    status = PASS
+
+    sensitive_patterns = ["national_id", "sndhs_health_id", "phone", "email", "address"]
+    for f in changed_py_files:
+        if not f.endswith(".py"):
+            continue
+        if "test_" in os.path.basename(f):
+            continue
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8")
+            tree = ast.parse(text, filename=str(full_path))
+        except (SyntaxError, OSError):
+            continue
+
+        has_sensitive = False
+        has_encryption = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Str) or isinstance(node, ast.Constant):
+                val = node.s if isinstance(node, ast.Str) else node.value
+                if isinstance(val, str):
+                    for pat in sensitive_patterns:
+                        if pat in val.lower():
+                            has_sensitive = True
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if "encrypt" in node.name.lower() or "decrypt" in node.name.lower():
+                    has_encryption = True
+
+        if has_sensitive and not has_encryption:
+            if "encrypt" not in text.lower() and "decrypt" not in text.lower():
+                details.append(f"Sensitive data in {f} may need encryption")
+                status = WARNING
+
+    if details:
+        details.insert(0, f"{len(details)} privacy consideration(s)")
+    if not details:
+        details.append("No privacy violations detected")
+    return make_rule(17, "Privacy-by-design", status, details)
+
+
+def rule18_security_by_design(changed_py_files: list[str]) -> RuleResult:
+    details: list[str] = []
+    status = PASS
+
+    route_files = [f for f in changed_py_files if f.startswith("backend/app/routes/") and f.endswith(".py")]
+    for f in route_files:
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8")
+            tree = ast.parse(text, filename=str(full_path))
+        except (SyntaxError, OSError):
+            continue
+
+        has_auth = False
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for decorator in node.decorator_list:
+                    if isinstance(decorator, ast.Call):
+                        func = decorator.func
+                        if isinstance(func, ast.Attribute):
+                            if "get_current_user" in ast.dump(decorator) or "require_role" in ast.dump(decorator) or "Depends" in ast.dump(decorator):
+                                has_auth = True
+
+        if not has_auth and "router" in text and ("@router." in text or "@router" in text):
+            if "health" not in f and "openapi" not in f and "docs" not in f:
+                details.append(f"Route file {f} may lack auth dependency injection")
+                status = WARNING
+
+    if details:
+        details.insert(0, f"{len(details)} security consideration(s)")
+    if not details:
+        details.append("No security violations detected")
+    return make_rule(18, "Security-by-design (zero trust)", status, details)
+
+
+def rule19_no_circular_dependencies() -> RuleResult:
+    details: list[str] = []
+    status = PASS
+
+    if ARCHITECTURE_GUARDIAN.exists():
+        try:
+            result = subprocess.run(
+                [sys.executable, str(ARCHITECTURE_GUARDIAN), "--json"],
+                capture_output=True, text=True, timeout=60,
+            )
+            if result.returncode == 0:
+                try:
+                    data = json.loads(result.stdout)
+                    cycles = [v for v in data.get("new_violations", []) if v.get("check") == "circular_dependency"]
+                    if cycles:
+                        for c in cycles:
+                            details.append(c.get("message", "Circular dependency detected"))
+                        status = FAIL
+                    else:
+                        details.append("No circular dependencies detected")
+                except (json.JSONDecodeError, AttributeError):
+                    details.append("Could not parse guardian output")
+                    status = WARNING
+            else:
+                details.append("Architecture Guardian found issues")
+                status = WARNING
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            details.append(f"Could not run Architecture Guardian: {exc}")
+            status = WARNING
+    else:
+        details.append("Architecture Guardian not found")
+        status = WARNING
+
+    if not details:
+        details.append("No circular dependencies detected")
+    return make_rule(19, "No circular dependencies", status, details)
+
+
+def rule20_ai_safety(changed_py_files: list[str]) -> RuleResult:
+    details: list[str] = []
+    status = PASS
+
+    ai_files = [f for f in changed_py_files if "ai" in f.lower() and f.endswith(".py")]
+    for f in ai_files:
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+
+        has_approval = "human_approval" in text.lower() or "approval" in text.lower() or "guardrail" in text.lower()
+        has_explainability = "explain" in text.lower() or "confidence" in text.lower()
+        has_safety = "hallucination" in text.lower() or "safety" in text.lower() or "guardrail" in text.lower()
+
+        if not has_approval:
+            details.append(f"AI file {f} may lack human approval mechanism")
+            status = WARNING
+        if not has_explainability:
+            details.append(f"AI file {f} may lack explainability")
+            if status != FAIL:
+                status = WARNING
+        if not has_safety:
+            details.append(f"AI file {f} may lack safety guardrails")
+            if status != FAIL:
+                status = WARNING
+
+    if not ai_files:
+        details.append("No AI files changed — check skipped")
+
+    if details:
+        details.insert(0, f"{len(details)} AI safety consideration(s)")
+    if not details:
+        details.append("No AI safety issues detected")
+    return make_rule(20, "AI safety and explainability", status, details)
+
+
 def rule12_aggregate_improvement(all_results: list[RuleResult]) -> RuleResult:
     details: list[str] = []
     status = PASS
@@ -893,6 +1212,14 @@ def main(argv: list[str] | None = None) -> int:
     results.append(rule10_quality_gates(changed_py_files))
     results.append(rule11_architecture_score())
     results.append(rule12_aggregate_improvement(results))
+    results.append(rule13_hardcoded_secrets(changed_py_files))
+    results.append(rule14_architecture_violations())
+    results.append(rule15_dead_code(changed_py_files))
+    results.append(rule16_fhir_compliance(changed_py_files))
+    results.append(rule17_privacy_by_design(changed_py_files))
+    results.append(rule18_security_by_design(changed_py_files))
+    results.append(rule19_no_circular_dependencies())
+    results.append(rule20_ai_safety(changed_py_files))
 
     score = _compute_score(results)
 
