@@ -6,7 +6,9 @@ import pytest
 class TestReporting_serviceCapability:
     @pytest.fixture
     def capability(self):
-        from backend.app.capabilities.reporting_service.capability import Reporting_serviceCapability
+        from app.capabilities.reporting_service.capability import (
+            Reporting_serviceCapability,
+        )
         return Reporting_serviceCapability()
 
     @pytest.mark.asyncio

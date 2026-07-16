@@ -1,7 +1,22 @@
-from datetime import datetime, date
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+
 from app._compat import UTC
-from ..base import GovernanceBase, GovernanceBaseEntity
+
+from ..base import GovernanceBaseEntity
 from ..enums import EQAResult, EquipmentStatus, LabType, QCStatus
 
 

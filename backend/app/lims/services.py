@@ -6,7 +6,7 @@ emit outbox events for async consumers, and enforce state machine rules.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -14,25 +14,18 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.services.audit_service import log_action
 
-from . import events as lims_events
 from .exceptions import (
     AccessionNumberConflict,
-    DeltaCheckFailed,
     DuplicateSpecimenBarcode,
-    InstrumentOffline,
 )
 from .models import (
+    IQC,
     Calibration,
-    DeltaCheckRule,
     ElectronicSignature,
     Instrument,
-    IQC,
     LabReport,
     Maintenance,
     Order,
-    Panel,
-    ReferenceRangeDef,
-    ReportAttachment,
     Result,
     ResultRelease,
     ResultValidation,
@@ -45,8 +38,7 @@ from .state_machine import (
     enforce_order_transition,
     enforce_specimen_transition,
 )
-from .workflows import auto_validate_result, process_critical_result
-
+from .workflows import auto_validate_result
 
 # ===========================================================================
 # Specimen Service
@@ -102,7 +94,7 @@ class SpecimenService:
             specimen.rejected_at = now
             specimen.rejected_by = user_id
 
-        setattr(specimen, "status", target_status)
+        specimen.status = target_status
         specimen.updated_by = user_id
         specimen.updated_at = now
 

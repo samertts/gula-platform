@@ -170,6 +170,26 @@ if not REDIS_URL:
         "Set REDIS_URL for full rate-limiting and cross-process session invalidation."
     )
 
+# ─── Redis Sentinel / Cluster (HA mode) ──────────────────────────────────────
+# When set, overrides REDIS_URL with Sentinel-managed HA Redis.
+REDIS_SENTINEL_HOSTS = os.getenv("REDIS_SENTINEL_HOSTS", "")
+REDIS_SENTINEL_MASTER = os.getenv("REDIS_SENTINEL_MASTER", "gula-redis-primary")
+REDIS_CLUSTER_NODES = os.getenv("REDIS_CLUSTER_NODES", "")
+
+# ─── Multi-Level Cache Configuration ─────────────────────────────────────────
+# Controls the L1 (in-memory) + L2 (Redis) cache coordinator in core/cache_manager.py
+CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+CACHE_L1_TTL = int(os.getenv("CACHE_L1_TTL", "60"))       # default L1 TTL (seconds)
+CACHE_L2_TTL = int(os.getenv("CACHE_L2_TTL", "300"))      # default L2 TTL (seconds)
+CACHE_L1_MAX_SIZE = int(os.getenv("CACHE_L1_MAX_SIZE", "10000"))
+CACHE_METRICS_ENABLED = os.getenv("CACHE_METRICS_ENABLED", "true").lower() == "true"
+
+# ─── Read Replica Database ───────────────────────────────────────────────────
+# When set, read queries are routed to this URL instead of DATABASE_URL.
+# Requires PgBouncer or similar connection pooler in front of replicas.
+READ_REPLICA_URL = os.getenv("READ_REPLICA_URL", "")
+READ_REPLICA_ENABLED = bool(READ_REPLICA_URL) or os.getenv("READ_REPLICA_ENABLED", "false").lower() == "true"
+
 # ─── AI Providers ────────────────────────────────────────────────────────────
 # All optional — platform functions without any AI key (rules-based fallback).
 # Google AI Studio (Gemini): free tier (1 500 req/day, 15 req/min).

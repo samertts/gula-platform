@@ -33,4 +33,12 @@ class LabUser(Base):
     # created_by: who created this account (for audit trail)
     created_by = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True)
 
+    # password reset
+    reset_token = Column(String(255), nullable=True, index=True)
+    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def full_name(self) -> str:
+        return self.name
+
     lab = relationship("Lab", back_populates="users")

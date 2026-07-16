@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Index, String
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import AuditEntity
 from app.national.enums import Gender
-from sqlalchemy import Boolean, Column, Date, Enum as SAEnum, ForeignKey, Index, String
 
 
 class Employee(AuditEntity):

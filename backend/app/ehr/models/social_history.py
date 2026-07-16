@@ -1,9 +1,11 @@
-from datetime import date, datetime
+from datetime import datetime
+
+from sqlalchemy import JSON, Column, Date, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
 
 from app._compat import UTC
 from app.ehr.base import EHRBaseEntity
 from app.ehr.enums import AlcoholStatus, DisabilityType, SmokingStatus
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey, Index, String, Text
 
 
 class SocialHistoryRecord(EHRBaseEntity):

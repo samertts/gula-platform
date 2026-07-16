@@ -1,5 +1,6 @@
-from app.national.base import BaseEntity
 from sqlalchemy import Boolean, Column, String, Text
+
+from app.national.base import BaseEntity
 
 
 class ReferenceEntity(BaseEntity):

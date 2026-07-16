@@ -5,17 +5,17 @@ import time
 
 import pytest
 
-from backend.app.kernel import Kernel
-from backend.app.kernel.background.distributed_locks import DistributedLockManager
-from backend.app.kernel.background.priority_queue import PriorityQueue, PriorityTask
-from backend.app.kernel.background.task_queue import Task, TaskQueue
-from backend.app.kernel.event_bus.bus import EventBus
-from backend.app.kernel.event_bus.dead_letter_queue import DeadLetterEntry, DeadLetterQueue
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.outbox import OutboxMessage, OutboxPattern
-from backend.app.kernel.event_bus.retry_queue import RetryEntry, RetryQueue
-from backend.app.kernel.event_bus.store import EventStore
-from backend.app.kernel.gateway.rate_limiting import RateLimiter
+from app.kernel import Kernel
+from app.kernel.background.distributed_locks import DistributedLockManager
+from app.kernel.background.priority_queue import PriorityQueue, PriorityTask
+from app.kernel.background.task_queue import Task, TaskQueue
+from app.kernel.event_bus.bus import EventBus
+from app.kernel.event_bus.dead_letter_queue import DeadLetterEntry, DeadLetterQueue
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.outbox import OutboxMessage, OutboxPattern
+from app.kernel.event_bus.retry_queue import RetryEntry, RetryQueue
+from app.kernel.event_bus.store import EventStore
+from app.kernel.gateway.rate_limiting import RateLimiter
 
 pytestmark = [
     pytest.mark.kernel,

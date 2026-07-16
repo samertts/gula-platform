@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel.config.registry import ConfigurationRegistry
-from backend.app.kernel.config.reload import RuntimeReloader
+from app.kernel.config.registry import ConfigurationRegistry
+from app.kernel.config.reload import RuntimeReloader
 
 
 class TestRuntimeReloader:

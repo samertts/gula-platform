@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel, KernelConfig
+from app.kernel import Kernel, KernelConfig
 
 pytestmark = [
     pytest.mark.kernel,

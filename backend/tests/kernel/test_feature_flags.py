@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.features.capabilities import CapabilityFlagManager
-from backend.app.kernel.features.experimental import ExperimentalFeatureManager
-from backend.app.kernel.features.flags import FeatureFlag, FeatureFlagManager
-from backend.app.kernel.features.kill_switch import EmergencyKillSwitch
-from backend.app.kernel.features.regional import RegionalFeatureManager
-from backend.app.kernel.features.tenant_features import TenantFeatureManager
+from app.kernel.features.capabilities import CapabilityFlagManager
+from app.kernel.features.experimental import ExperimentalFeatureManager
+from app.kernel.features.flags import FeatureFlag, FeatureFlagManager
+from app.kernel.features.kill_switch import EmergencyKillSwitch
+from app.kernel.features.regional import RegionalFeatureManager
+from app.kernel.features.tenant_features import TenantFeatureManager
 
 
 class TestFeatureFlags:

@@ -6,7 +6,6 @@ from typing import Any
 
 from app._compat import UTC
 from app.national.background_platform.domain.entities import JobDefinition, JobExecution
-from app.national.background_platform.domain.enums import JobStatus
 
 
 class JobExecutor(ABC):
@@ -49,9 +48,6 @@ class SimpleScheduleCalculator(ScheduleCalculator):
             parts = expression.strip().split()
             if len(parts) != 5:
                 return False
-            for part in parts:
-                if not part.strip():
-                    return False
-            return True
+            return all(part.strip() for part in parts)
         except Exception:
             return False

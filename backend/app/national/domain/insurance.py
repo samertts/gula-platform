@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, ForeignKey, Index, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import InsuranceType
-from sqlalchemy import Boolean, Column, Enum as SAEnum, ForeignKey, Index, String, Text
 
 
 class Insurance(TenantAuditEntity):

@@ -8,16 +8,17 @@ patient tasks through a unified service interface.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any
+
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.care_continuum.enums import (
     CareProgramStatus,
     ChronicDiseaseType,
-    DiseaseSeverity,
     FollowUpStatus,
-    HealthProgramType,
     PregnancyStatus,
     VaccinationStatus,
 )
@@ -32,14 +33,12 @@ from app.care_continuum.models.care_journey import (
 )
 from app.care_continuum.models.chronic_disease import (
     ChronicDiseaseRegistry,
-    ClinicalPathwayEnrollment,
     DiseaseManagementPlan,
     RiskStratification,
     SelfMonitoringRecord,
 )
 from app.care_continuum.models.immunization import (
     ColdChainMonitor,
-    Contraindication,
     ImmunizationSchedule,
     ReminderSchedule,
     VaccinationRecord,
@@ -63,8 +62,8 @@ from app.care_continuum.models.primary_care import (
     CommunityClinicRecord,
     FamilyMedicineRecord,
     HealthAssessment,
-    PrimaryCareEncounter,
     PreventiveCareRecord,
+    PrimaryCareEncounter,
 )
 from app.care_continuum.models.public_health import (
     CommunityVisit,
@@ -77,14 +76,11 @@ from app.care_continuum.models.public_health import (
 )
 from app.care_continuum.models.referral import (
     CrossOrgReferral,
-    ReferralAttachment,
     ReferralRequest,
     ReferralResponse,
     ReferralTimeline,
 )
-from app.national.enums import ReferralPriority, ReferralStatus
-from sqlalchemy import and_, func, or_
-from sqlalchemy.orm import Session
+from app.national.enums import ReferralStatus
 
 logger = logging.getLogger("gula.care_continuum.service")
 

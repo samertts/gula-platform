@@ -268,7 +268,7 @@ def list_pending_labs(
     limit: int = Query(default=50, le=200),
 ):
     """List labs pending activation (registered but not yet approved)."""
-    query = db.query(Lab).filter(Lab.is_active == False)
+    query = db.query(Lab).filter(not Lab.is_active)
 
     if actor.role == "province_admin" and actor.province_id:
         lab_ids_in_province = [

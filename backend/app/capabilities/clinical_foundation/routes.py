@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/clinical-foundation", tags=["Clinical Foundation"])
 
 
 @router.get("/")
-async def list_clinical-foundation(
+async def list_clinical_foundation(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_clinical-foundation(
 
 
 @router.get("/{id}")
-async def get_clinical-foundation(
+async def get_clinical_foundation(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_clinical-foundation(
 
 
 @router.post("/")
-async def create_clinical-foundation(
+async def create_clinical_foundation(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_clinical-foundation(
 
 
 @router.put("/{id}")
-async def update_clinical-foundation(
+async def update_clinical_foundation(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_clinical-foundation(
 
 
 @router.delete("/{id}")
-async def delete_clinical-foundation(
+async def delete_clinical_foundation(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

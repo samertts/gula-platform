@@ -1,5 +1,6 @@
-from app.national.base import BaseEntity
 from sqlalchemy import Boolean, Column, DateTime, Index, String, Text
+
+from app.national.base import BaseEntity
 
 
 class NationalIdentifierMapping(BaseEntity):

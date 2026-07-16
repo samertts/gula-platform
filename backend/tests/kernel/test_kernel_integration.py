@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel, KernelConfig, KernelState
+from app.kernel import Kernel, KernelConfig, KernelState
 
 pytestmark = [pytest.mark.kernel, pytest.mark.integration]
 
@@ -43,7 +43,7 @@ class TestKernelIntegration:
         assert not kernel.is_running
 
     def test_integration_init(self):
-        from backend.app.kernel.integration import get_kernel, init_kernel, is_kernel_ready
+        from app.kernel.integration import get_kernel, init_kernel, is_kernel_ready
 
         k = init_kernel()
         assert k is not None
@@ -53,7 +53,7 @@ class TestKernelIntegration:
 
     def test_integration_get_before_init(self):
         import backend.app.kernel.integration as ki
-        from backend.app.kernel.integration import get_kernel
+        from app.kernel.integration import get_kernel
         original = ki._kernel_instance
         ki._kernel_instance = None
         try:
@@ -64,7 +64,7 @@ class TestKernelIntegration:
         ki._kernel_instance = original
 
     def test_health_returns_relevant_fields(self):
-        from backend.app.kernel.integration import get_kernel_health, init_kernel
+        from app.kernel.integration import get_kernel_health, init_kernel
 
         k = init_kernel()
         asyncio.run(k.boot())
@@ -76,13 +76,13 @@ class TestKernelIntegration:
         Kernel.reset_instance()
 
     def test_stop_without_start(self):
-        from backend.app.kernel.integration import stop_kernel
+        from app.kernel.integration import stop_kernel
 
         res = asyncio.run(stop_kernel())
         assert res is None
 
     def test_warmup(self):
-        from backend.app.kernel.integration import init_kernel, warmup_kernel
+        from app.kernel.integration import init_kernel, warmup_kernel
 
         k = init_kernel()
         asyncio.run(k.boot())
@@ -93,7 +93,7 @@ class TestKernelIntegration:
         Kernel.reset_instance()
 
     def test_get_kernel_config(self):
-        from backend.app.kernel.integration import get_kernel_config
+        from app.kernel.integration import get_kernel_config
 
         config = get_kernel_config()
         assert config.name == "gula-kernel"
@@ -101,19 +101,19 @@ class TestKernelIntegration:
         assert config.environment == "production"
 
     def test_kill_switch_not_active(self):
-        from backend.app.kernel.integration import kernel_kill_switch_active
+        from app.kernel.integration import kernel_kill_switch_active
 
         result = kernel_kill_switch_active()
         assert not result
 
     def test_degraded_mode_not_active(self):
-        from backend.app.kernel.integration import kernel_degraded_mode
+        from app.kernel.integration import kernel_degraded_mode
 
         result = kernel_degraded_mode()
         assert not result
 
     def test_all_components_after_boot(self):
-        from backend.app.kernel.integration import get_kernel, init_kernel
+        from app.kernel.integration import get_kernel, init_kernel
 
         k = init_kernel()
         asyncio.run(k.boot())

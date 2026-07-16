@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.national.exceptions import NewbornRegistrationError, ForeignerRegistrationError
+from app.national.exceptions import ForeignerRegistrationError, NewbornRegistrationError
 from app.national.repositories.citizen_repository import CitizenRepository
 from app.national.services.citizen_service import CitizenService
 

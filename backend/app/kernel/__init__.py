@@ -28,7 +28,7 @@ Kernel (singleton)
 
 Usage
 -----
-    from backend.app.kernel import Kernel, KernelConfig
+    from app.kernel import Kernel, KernelConfig
 
     config = KernelConfig(environment="production")
     kernel = Kernel(config=config)
@@ -48,7 +48,7 @@ The CapabilityRegistry is auto-populated during boot phase 11 with all
 platform capabilities defined in capabilities_registry_populator.py.
 
 Access the Kernel from anywhere:
-    from backend.app.kernel.integration import get_kernel
+    from app.kernel.integration import get_kernel
     kernel = get_kernel()
     kernel.register_service("my_service", instance)
 """
@@ -61,7 +61,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
-from backend.app.kernel.runtime.bootloader import Bootloader
+from app.kernel.runtime.bootloader import Bootloader
 
 logger = logging.getLogger("gula.kernel")
 

@@ -6,8 +6,14 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+
 from ..enums import CardLifecycleEvent, HealthCardType, HealthNumberStatus, IdentityMergeAction
-from ..models.health_number import HealthCardLifecycle, HealthNumberAudit, HealthNumberRecord, MergedIdentityRecord
+from ..models.health_number import (
+    HealthCardLifecycle,
+    HealthNumberAudit,
+    HealthNumberRecord,
+    MergedIdentityRecord,
+)
 
 
 class HealthNumberGovernanceService:

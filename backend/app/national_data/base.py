@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from app._compat import UTC
 from sqlalchemy import Boolean, Column, DateTime, Integer
 
+from app._compat import UTC
 from app.database import Base
 
 

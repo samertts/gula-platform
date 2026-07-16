@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, DateTime, Index, SmallInteger, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import Gender
-from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, Index, SmallInteger, String, Text
 
 
 class UnknownPatient(TenantAuditEntity):

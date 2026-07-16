@@ -1,31 +1,27 @@
 from __future__ import annotations
 
-import json
 import logging
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any
+
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.clinical.cds.models import (
     CareBundle,
-    CareBundleElement,
     ClinicalAlert,
-    ClinicalAlertAction,
     Contraindication,
     DuplicateOrderRule,
     OrderSet,
-    OrderSetItem,
     PreventiveRecommendation,
-    ReminderRule,
 )
-from app.clinical.enums import GuidelineStatus, QualityIndicatorType, RegistryType
 from app.clinical.knowledge.models import (
     ClinicalGuideline,
     ClinicalPathway,
     ClinicalProtocol,
     ClinicalRecommendation,
     GuidelineApproval,
-    PathwayPhase,
     StandingOrder,
 )
 from app.clinical.quality.models import (
@@ -39,23 +35,16 @@ from app.clinical.quality.models import (
     QualityIndicator,
 )
 from app.clinical.terminology.models import (
-    ATCCode,
-    CPTCode,
     CodeSystem,
     ICD10Code,
-    ICD11Code,
     LOINCCode,
-    RxNormCode,
     SNOMEDCTCode,
     TerminologyCode,
     TerminologyMapping,
     TerminologyVersion,
-    UCUMCode,
     ValueSet,
     ValueSetMember,
 )
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger("gula.clinical_service")
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.background.cron import CronEngine, CronJob
+from app.kernel.background.cron import CronEngine, CronJob
 
 
 class TestCronEngine:

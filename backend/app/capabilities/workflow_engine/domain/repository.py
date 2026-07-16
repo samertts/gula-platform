@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
+from .entities import Workflow_engine
 
 
 class Workflow_engineRepository:
-    async def get(self, id: str) -> Optional[Workflow_engine]:
+    async def get(self, id: str) -> Workflow_engine | None:
         raise NotImplementedError
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[Workflow_engine]:

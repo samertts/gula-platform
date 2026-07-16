@@ -6,7 +6,9 @@ import pytest
 class TestFhir_interoperabilityCapability:
     @pytest.fixture
     def capability(self):
-        from backend.app.capabilities.fhir_interoperability.capability import Fhir_interoperabilityCapability
+        from app.capabilities.fhir_interoperability.capability import (
+            Fhir_interoperabilityCapability,
+        )
         return Fhir_interoperabilityCapability()
 
     @pytest.mark.asyncio

@@ -4,7 +4,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 
-from backend.app.kernel.event_bus.events import Event
+from app.kernel.event_bus.events import Event
 
 logger = logging.getLogger("gula.kernel.event_bus.dispatcher")
 

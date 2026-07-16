@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import time
 import uuid
 from datetime import datetime
 from typing import Any
@@ -29,14 +28,12 @@ from app.national.background_platform.domain.enums import (
 )
 from app.national.background_platform.domain.events import (
     JobCancelledEvent,
-    JobCompletedEvent,
     JobCreatedEvent,
     JobFailedEvent,
     JobPausedEvent,
     JobResumedEvent,
     JobScheduledEvent,
     JobStartedEvent,
-    JobTimedOutEvent,
 )
 from app.national.background_platform.domain.repository import (
     JobDependencyRepository,
@@ -46,7 +43,6 @@ from app.national.background_platform.domain.repository import (
 )
 from app.national.background_platform.exceptions import (
     JobDependencyError,
-    JobExecutionError,
     JobNotFoundError,
     JobScheduleNotFoundError,
     JobStateTransitionError,
@@ -202,11 +198,10 @@ class JobService:
                 setattr(job, key, value)
 
         job.version += 1
-        saved = await self.job_repository.save(job)
-        return saved
+        return await self.job_repository.save(job)
 
     async def delete_job(self, job_id: str) -> None:
-        job = await self.get_job(job_id)
+        await self.get_job(job_id)
         schedules = await self.schedule_repository.find_by_job_id(job_id)
         for s in schedules:
             await self.schedule_repository.delete(s.id)
@@ -382,10 +377,8 @@ class JobService:
                 cron_expression,
                 after=start_at or datetime.now(UTC),
             )
-        elif schedule_type == ScheduleType.INTERVAL and interval_seconds > 0:
+        elif (schedule_type == ScheduleType.INTERVAL and interval_seconds > 0) or schedule_type == ScheduleType.ONCE:
             schedule.next_run_at = (start_at or datetime.now(UTC))
-        elif schedule_type == ScheduleType.ONCE:
-            schedule.next_run_at = start_at or datetime.now(UTC)
 
         saved = await self.schedule_repository.save(schedule)
 
@@ -485,9 +478,7 @@ class JobService:
                 schedule.cron_expression,
                 after=schedule.start_at or datetime.now(UTC),
             )
-        elif schedule.schedule_type == ScheduleType.INTERVAL and schedule.interval_seconds > 0:
-            schedule.next_run_at = schedule.start_at or datetime.now(UTC)
-        elif schedule.schedule_type == ScheduleType.ONCE:
+        elif (schedule.schedule_type == ScheduleType.INTERVAL and schedule.interval_seconds > 0) or schedule.schedule_type == ScheduleType.ONCE:
             schedule.next_run_at = schedule.start_at or datetime.now(UTC)
 
         schedule.id = schedule.id or str(uuid.uuid4())
@@ -514,9 +505,9 @@ class JobService:
             return depends_on.status in (
                 JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED, JobStatus.DEAD, JobStatus.TIMED_OUT,
             )
-        elif dep.dependency_type == DependencyType.SUCCESS:
+        if dep.dependency_type == DependencyType.SUCCESS:
             return depends_on.status == JobStatus.COMPLETED
-        elif dep.dependency_type == DependencyType.FAILURE:
+        if dep.dependency_type == DependencyType.FAILURE:
             return depends_on.status in (JobStatus.FAILED, JobStatus.DEAD, JobStatus.TIMED_OUT)
         return False
 

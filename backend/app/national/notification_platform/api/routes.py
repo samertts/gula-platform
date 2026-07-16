@@ -9,17 +9,22 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.national.notification_platform.application.service import NotificationPlatformService
-from app.national.notification_platform.domain.entities import Notification, NotificationBatch, NotificationPreference, NotificationTemplate
-from app.national.notification_platform.domain.enums import NotificationCategory, NotificationChannel, NotificationPriority, NotificationStatus, TemplateEngine
+from app.national.notification_platform.domain.entities import (
+    Notification,
+    NotificationTemplate,
+)
+from app.national.notification_platform.domain.enums import (
+    NotificationCategory,
+    NotificationChannel,
+    NotificationPriority,
+    TemplateEngine,
+)
 from app.national.notification_platform.exceptions import (
     ChannelNotAvailableError,
-    DeliveryFailedError,
     NotificationNotFoundError,
-    NotificationPreferenceNotFoundError,
     QuietHoursBlockedError,
     RateLimitExceededError,
     RecipientNotSpecifiedError,
-    ScheduleNotFoundError,
     TemplateNotFoundError,
     TemplateRenderError,
 )

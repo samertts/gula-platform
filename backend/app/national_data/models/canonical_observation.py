@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -22,24 +22,24 @@ class CanonicalObservation(Base):
     patient_id: int
     order_id: int
     test_name: str
-    test_code: Optional[str]
-    value: Optional[str]
-    value_text: Optional[str]
-    value_numeric: Optional[float]
-    unit: Optional[str]
-    flag: Optional[str]
-    reference_range: Optional[str]
-    normal_range_low: Optional[str]
-    normal_range_high: Optional[str]
-    result_status: Optional[str]
-    observed_at: Optional[datetime]
-    created_at: Optional[datetime]
+    test_code: str | None
+    value: str | None
+    value_text: str | None
+    value_numeric: float | None
+    unit: str | None
+    flag: str | None
+    reference_range: str | None
+    normal_range_low: str | None
+    normal_range_high: str | None
+    result_status: str | None
+    observed_at: datetime | None
+    created_at: datetime | None
 
-    encounter_id: Optional[str]
-    practitioner_id: Optional[str]
-    facility_id: Optional[str]
-    national_patient_id: Optional[str]
-    citizen_id: Optional[str]
+    encounter_id: str | None
+    practitioner_id: str | None
+    facility_id: str | None
+    national_patient_id: str | None
+    citizen_id: str | None
 
     @classmethod
     def query_all(cls, db: Session, lab_id: int | None = None, patient_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:

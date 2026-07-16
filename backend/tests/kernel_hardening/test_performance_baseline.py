@@ -5,15 +5,15 @@ import time
 
 import pytest
 
-from backend.app.kernel import Kernel, KernelConfig
-from backend.app.kernel.background.scheduler import Scheduler
-from backend.app.kernel.config.registry import ConfigurationRegistry
-from backend.app.kernel.event_bus.bus import EventBus
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.runtime.context import ApplicationContext
-from backend.app.kernel.runtime.di_container import DIContainer
-from backend.app.kernel.runtime.service_registry import ServiceRegistry
-from backend.app.kernel.types import ServiceDescriptor, ServiceLifecycle
+from app.kernel import Kernel, KernelConfig
+from app.kernel.background.scheduler import Scheduler
+from app.kernel.config.registry import ConfigurationRegistry
+from app.kernel.event_bus.bus import EventBus
+from app.kernel.event_bus.events import Event
+from app.kernel.runtime.context import ApplicationContext
+from app.kernel.runtime.di_container import DIContainer
+from app.kernel.runtime.service_registry import ServiceRegistry
+from app.kernel.types import ServiceDescriptor, ServiceLifecycle
 
 pytestmark = [
     pytest.mark.kernel,

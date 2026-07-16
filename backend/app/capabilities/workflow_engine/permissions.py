@@ -4,10 +4,10 @@ from enum import Enum
 
 
 class Workflow_enginePermission(Enum):
-    WORKFLOW.CREATE = "workflow_engine:workflow.create"
-    WORKFLOW.READ = "workflow_engine:workflow.read"
-    WORKFLOW.TRANSITION = "workflow_engine:workflow.transition"
-    WORKFLOW.ADMIN = "workflow_engine:workflow.admin"
+    CREATE = "workflow_engine:workflow.create"
+    READ = "workflow_engine:workflow.read"
+    TRANSITION = "workflow_engine:workflow.transition"
+    ADMIN = "workflow_engine:workflow.admin"
 
     def describe(self) -> str:
         descriptions = {        "workflow_engine:workflow.create": "Workflow.Create",

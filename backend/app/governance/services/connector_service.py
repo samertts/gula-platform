@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+
 from ..enums import ConnectorMode, ConnectorType
 
 

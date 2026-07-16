@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 
-from backend.app.kernel.tenant.config import TenantConfiguration
-from backend.app.kernel.tenant.isolation import TenantIsolation
-from backend.app.kernel.tenant.quotas import TenantQuotaManager
-from backend.app.kernel.tenant.resolver import TenantResolver
-from backend.app.kernel.types import TenantDescriptor
+from app.kernel.tenant.config import TenantConfiguration
+from app.kernel.tenant.isolation import TenantIsolation
+from app.kernel.tenant.quotas import TenantQuotaManager
+from app.kernel.tenant.resolver import TenantResolver
+from app.kernel.types import TenantDescriptor
 
 logger = logging.getLogger("gula.kernel.tenant.registry")
 

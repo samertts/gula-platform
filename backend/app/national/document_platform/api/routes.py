@@ -12,17 +12,13 @@ from app.national.document_platform.domain.entities import Document
 from app.national.document_platform.domain.enums import (
     DocumentCategory,
     DocumentFormat,
-    DocumentStatus,
     RetentionPolicy,
 )
 from app.national.document_platform.exceptions import (
-    AttachmentNotFoundError,
     DocumentNotFoundError,
     DocumentStateTransitionError,
     DocumentValidationError,
-    HashMismatchError,
     QRCodeNotFoundError,
-    RetentionRuleNotFoundError,
     SignatureNotFoundError,
     SignatureVerificationError,
 )
@@ -39,8 +35,8 @@ router = APIRouter(prefix="/national/documents", tags=["National Document Platfo
 
 
 def _get_service(db: Session = Depends(get_db)) -> DocumentPlatformService:
-    from app.kernel.event_bus.bus import EventBus
     from app.kernel import Kernel
+    from app.kernel.event_bus.bus import EventBus
 
     kernel = Kernel.get_instance()
     event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)
@@ -193,9 +189,11 @@ async def update_document(
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(
     document_id: str,
-    body: dict[str, Any] = {},
+    body: dict[str, Any] | None = None,
     service: DocumentPlatformService = Depends(_get_service),
 ) -> None:
+    if body is None:
+        body = {}
     try:
         await service.delete_document(document_id, reason=body.get("reason", ""))
     except DocumentNotFoundError as e:
@@ -336,7 +334,7 @@ async def verify_document(
     signature_id = body.get("signature_id", "")
     if not signature_id:
         try:
-            document = await service.get_document(document_id)
+            await service.get_document(document_id)
             signatures = await service.signature_repository.list(document_id)
             if not signatures:
                 return {"valid": False, "reason": "No signatures found for this document"}
@@ -345,8 +343,7 @@ async def verify_document(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
     try:
-        result = await service.verify_signature(document_id, signature_id)
-        return result
+        return await service.verify_signature(document_id, signature_id)
     except (SignatureNotFoundError, DocumentNotFoundError) as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except SignatureVerificationError as e:
@@ -356,9 +353,11 @@ async def verify_document(
 @router.post("/{document_id}/qrcode", status_code=status.HTTP_201_CREATED)
 async def generate_qr_code(
     document_id: str,
-    body: dict[str, Any] = {},
+    body: dict[str, Any] | None = None,
     service: DocumentPlatformService = Depends(_get_service),
 ) -> dict[str, Any]:
+    if body is None:
+        body = {}
     try:
         qr = await service.generate_qr(
             document_id=document_id,
@@ -455,9 +454,11 @@ async def add_attachment(
 @router.post("/{document_id}/archive")
 async def archive_document(
     document_id: str,
-    body: dict[str, Any] = {},
+    body: dict[str, Any] | None = None,
     service: DocumentPlatformService = Depends(_get_service),
 ) -> dict[str, Any]:
+    if body is None:
+        body = {}
     try:
         document = await service.archive_document(document_id, reason=body.get("reason", ""))
         return {"id": document.id, "status": document.status.value, "archived": True}
@@ -470,9 +471,11 @@ async def archive_document(
 @router.post("/{document_id}/generate-pdf")
 async def generate_pdf(
     document_id: str,
-    body: dict[str, Any] = {},
+    body: dict[str, Any] | None = None,
     service: DocumentPlatformService = Depends(_get_service),
 ) -> dict[str, Any]:
+    if body is None:
+        body = {}
     try:
         pdf_bytes = await service.generate_pdf(document_id, template=body.get("template", ""))
         return {"document_id": document_id, "pdf_size_bytes": len(pdf_bytes), "generated": True}
@@ -488,8 +491,7 @@ async def apply_retention(
     service: DocumentPlatformService = Depends(_get_service),
 ) -> dict[str, Any]:
     try:
-        result = await service.apply_retention_policy(document_id)
-        return result
+        return await service.apply_retention_policy(document_id)
     except DocumentNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 

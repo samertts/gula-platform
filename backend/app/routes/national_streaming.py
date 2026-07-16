@@ -205,7 +205,7 @@ def get_cdc_feed(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(StoredEvent).filter(StoredEvent.is_deleted == False)
+    query = db.query(StoredEvent).filter(~~StoredEvent.is_deleted)
 
     if table_name:
         query = query.filter(StoredEvent.aggregate_type == table_name)
@@ -215,8 +215,8 @@ def get_cdc_feed(
         try:
             since_dt = datetime.fromisoformat(since)
             query = query.filter(StoredEvent.recorded_at >= since_dt)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid 'since' format. Use ISO 8601.")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail="Invalid 'since' format. Use ISO 8601.") from e
 
     events = query.order_by(StoredEvent.recorded_at.desc()).limit(limit).all()
 

@@ -8,7 +8,6 @@ from typing import Any, Generic, TypeVar
 
 from app._compat import UTC
 
-
 T = TypeVar("T")
 
 

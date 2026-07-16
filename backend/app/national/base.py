@@ -4,10 +4,17 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from app._compat import UTC
-from app.models.base import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin, TimestampMixin
 from sqlalchemy import Column, String
 from sqlalchemy.orm import declarative_base
+
+from app._compat import UTC
+from app.models.base import (
+    AuditMixin,
+    OptimisticLockMixin,
+    SoftDeleteMixin,
+    TenantMixin,
+    TimestampMixin,
+)
 
 NationalBase = declarative_base()
 

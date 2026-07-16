@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.event_bus.dead_letter_queue import DeadLetterEntry
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.inbox import InboxMessage
-from backend.app.kernel.event_bus.outbox import OutboxMessage
-from backend.app.kernel.event_bus.retry_queue import RetryEntry
+from app.kernel.event_bus.dead_letter_queue import DeadLetterEntry
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.inbox import InboxMessage
+from app.kernel.event_bus.outbox import OutboxMessage
+from app.kernel.event_bus.retry_queue import RetryEntry
 
 
 class TestEventDefaults:

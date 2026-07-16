@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel, KernelConfig
-from backend.app.kernel.runtime.bootloader import Bootloader
+from app.kernel import Kernel, KernelConfig
+from app.kernel.runtime.bootloader import Bootloader
 
 
 class TestBootloaderPhases:

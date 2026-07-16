@@ -1,8 +1,20 @@
 from __future__ import annotations
 
-from datetime import datetime
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    Time,
+)
+from sqlalchemy import Enum as SAEnum
 
-from app._compat import UTC
 from app.national.base import BaseEntity, _ulid
 from app.national.scheduling_platform.domain.enums import (
     AppointmentStatus,
@@ -10,7 +22,6 @@ from app.national.scheduling_platform.domain.enums import (
     ResourceType,
     SlotStatus,
 )
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Index, Integer, String, Text, Time
 
 
 class NationalAppointment(BaseEntity):

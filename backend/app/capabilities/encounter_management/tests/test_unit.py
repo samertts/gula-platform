@@ -6,7 +6,9 @@ import pytest
 class TestEncounter_managementCapability:
     @pytest.fixture
     def capability(self):
-        from backend.app.capabilities.encounter_management.capability import Encounter_managementCapability
+        from app.capabilities.encounter_management.capability import (
+            Encounter_managementCapability,
+        )
         return Encounter_managementCapability()
 
     @pytest.mark.asyncio

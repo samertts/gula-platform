@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/healthcare-consent", tags=["Healthcare Consent"])
 
 
 @router.get("/")
-async def list_healthcare-consent(
+async def list_healthcare_consent(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_healthcare-consent(
 
 
 @router.get("/{id}")
-async def get_healthcare-consent(
+async def get_healthcare_consent(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_healthcare-consent(
 
 
 @router.post("/")
-async def create_healthcare-consent(
+async def create_healthcare_consent(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_healthcare-consent(
 
 
 @router.put("/{id}")
-async def update_healthcare-consent(
+async def update_healthcare_consent(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_healthcare-consent(
 
 
 @router.delete("/{id}")
-async def delete_healthcare-consent(
+async def delete_healthcare_consent(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

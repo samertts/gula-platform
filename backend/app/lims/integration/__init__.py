@@ -10,9 +10,6 @@ Universal protocol support for lab instrument communication:
 Each protocol implements the AnalyzerProtocol interface.
 """
 
-from . import astm
-from . import hl7
-from . import device_registry
-from . import simulator
+from . import astm, device_registry, hl7, simulator
 
-__all__ = ["astm", "hl7", "device_registry", "simulator"]
+__all__ = ["astm", "device_registry", "hl7", "simulator"]

@@ -1,8 +1,9 @@
 from datetime import datetime
 
+from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, Text
+
 from app._compat import UTC
 from app.national_data.base import BaseEntity
-from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, Text
 
 
 class DataLineageEntry(BaseEntity):

@@ -1,5 +1,6 @@
-from app.national_data.base import BaseEntity
 from sqlalchemy import Column, Date, Index, Integer, String
+
+from app.national_data.base import BaseEntity
 
 
 class DimPatient(BaseEntity):

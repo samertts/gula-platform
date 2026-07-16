@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import HealthCardStatus
-from sqlalchemy import Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
 
 
 class HealthCard(TenantAuditEntity):

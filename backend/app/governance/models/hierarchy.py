@@ -1,8 +1,28 @@
 from datetime import datetime
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+
 from app._compat import UTC
-from ..base import GovernanceBase, GovernanceBaseEntity
-from ..enums import ActingRoleStatus, AdministrationType, DelegationStatus, DelegationType, GovernanceNodeType
+
+from ..base import GovernanceBaseEntity
+from ..enums import (
+    ActingRoleStatus,
+    AdministrationType,
+    DelegationStatus,
+    DelegationType,
+    GovernanceNodeType,
+)
 
 
 class GovernanceNode(GovernanceBaseEntity):

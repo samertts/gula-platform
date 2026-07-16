@@ -1,4 +1,4 @@
-from app.ehr.base import EHRBase, EHRBaseEntity, EHRTimestampMixin, EHRSoftDeleteMixin, _ulid
+from app.ehr.base import EHRBase, EHRBaseEntity, EHRSoftDeleteMixin, EHRTimestampMixin, _ulid
 from app.ehr.enums import (
     AlcoholStatus,
     AllergySeverity,

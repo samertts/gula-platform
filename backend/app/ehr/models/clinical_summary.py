@@ -1,8 +1,20 @@
-from datetime import date
 
-from app.ehr.base import EHRBaseEntity, _ulid
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import Enum as SAEnum
+
+from app.ehr.base import EHRBaseEntity
 from app.ehr.enums import DiagnosisType, ProblemStatus
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
 
 
 class ProblemListItem(EHRBaseEntity):

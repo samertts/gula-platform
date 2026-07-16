@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import CoverageStatus
-from sqlalchemy import Boolean, Column, Date, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
 
 
 class Coverage(TenantAuditEntity):

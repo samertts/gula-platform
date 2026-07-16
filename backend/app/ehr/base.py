@@ -4,9 +4,10 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from app._compat import UTC
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
+
+from app._compat import UTC
 
 EHRBase = declarative_base()
 

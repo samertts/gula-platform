@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.database import Base
-from app.ehr.models.clinical_note import ClinicalNote
 from app.ehr.models.attachment import ClinicalAttachment
+from app.ehr.models.clinical_note import ClinicalNote
 from app.national.domain.patient import Patient as NationalPatient
 
 
@@ -17,16 +17,16 @@ class CanonicalDocument(Base):
     document_id: str
     source: str
     document_type: str
-    title: Optional[str]
-    content_summary: Optional[str]
+    title: str | None
+    content_summary: str | None
     patient_id: str
-    citizen_id: Optional[str]
-    encounter_id: Optional[str]
-    practitioner_id: Optional[str]
-    created_at: Optional[datetime]
-    lab_id: Optional[int]
-    file_url: Optional[str]
-    mime_type: Optional[str]
+    citizen_id: str | None
+    encounter_id: str | None
+    practitioner_id: str | None
+    created_at: datetime | None
+    lab_id: int | None
+    file_url: str | None
+    mime_type: str | None
 
     @classmethod
     def query_all(cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:

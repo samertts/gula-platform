@@ -5,7 +5,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from backend.app.kernel import Kernel
+    from app.kernel import Kernel
 
 logger = logging.getLogger("gula.kernel.bootloader")
 
@@ -56,11 +56,11 @@ class Bootloader:
 
     async def _phase_initialize_core_components(self) -> None:
         logger.info("Boot phase: initialize core components")
-        from backend.app.kernel.runtime.capability_registry import CapabilityRegistry
-        from backend.app.kernel.runtime.context import ApplicationContext
-        from backend.app.kernel.runtime.di_container import DIContainer
-        from backend.app.kernel.runtime.lifecycle import LifecycleManager
-        from backend.app.kernel.runtime.service_registry import ServiceRegistry
+        from app.kernel.runtime.capability_registry import CapabilityRegistry
+        from app.kernel.runtime.context import ApplicationContext
+        from app.kernel.runtime.di_container import DIContainer
+        from app.kernel.runtime.lifecycle import LifecycleManager
+        from app.kernel.runtime.service_registry import ServiceRegistry
 
         context = ApplicationContext(self.kernel)
         self.kernel.register_component("application_context", context)
@@ -77,8 +77,8 @@ class Bootloader:
         lifecycle = LifecycleManager()
         self.kernel.register_component("lifecycle_manager", lifecycle)
 
-        from backend.app.kernel.runtime.startup import StartupManager
-        from backend.app.kernel.runtime.shutdown import ShutdownManager
+        from app.kernel.runtime.shutdown import ShutdownManager
+        from app.kernel.runtime.startup import StartupManager
 
         startup_manager = StartupManager()
         self.kernel.register_component("startup_manager", startup_manager)
@@ -99,7 +99,7 @@ class Bootloader:
     async def _phase_initialize_config(self) -> None:
         logger.info("Boot phase: initialize configuration")
         if self.kernel.config.enable_config_engine:
-            from backend.app.kernel.config.registry import ConfigurationRegistry
+            from app.kernel.config.registry import ConfigurationRegistry
 
             config_registry = ConfigurationRegistry()
             self.kernel.register_component("config_registry", config_registry)
@@ -108,7 +108,7 @@ class Bootloader:
     async def _phase_initialize_plugins(self) -> None:
         logger.info("Boot phase: initialize plugins")
         if self.kernel.config.enable_plugins:
-            from backend.app.kernel.plugin.manager import PluginManager
+            from app.kernel.plugin.manager import PluginManager
 
             pm = PluginManager(self.kernel)
             self.kernel.register_component("plugin_manager", pm)
@@ -117,7 +117,7 @@ class Bootloader:
     async def _phase_initialize_modules(self) -> None:
         logger.info("Boot phase: initialize modules")
         if self.kernel.config.enable_modules:
-            from backend.app.kernel.module.loader import ModuleLoader
+            from app.kernel.module.loader import ModuleLoader
 
             ml = ModuleLoader(self.kernel)
             self.kernel.register_component("module_loader", ml)
@@ -126,7 +126,7 @@ class Bootloader:
     async def _phase_initialize_event_bus(self) -> None:
         logger.info("Boot phase: initialize event bus")
         if self.kernel.config.enable_event_bus:
-            from backend.app.kernel.event_bus.bus import EventBus
+            from app.kernel.event_bus.bus import EventBus
 
             eb = EventBus(self.kernel)
             self.kernel.register_component("event_bus", eb)
@@ -135,7 +135,7 @@ class Bootloader:
     async def _phase_initialize_background(self) -> None:
         logger.info("Boot phase: initialize background processing")
         if self.kernel.config.enable_background_processing:
-            from backend.app.kernel.background.scheduler import Scheduler
+            from app.kernel.background.scheduler import Scheduler
 
             scheduler = Scheduler(self.kernel)
             self.kernel.register_component("scheduler", scheduler)
@@ -144,7 +144,7 @@ class Bootloader:
     async def _phase_initialize_tenant(self) -> None:
         logger.info("Boot phase: initialize multi-tenant engine")
         if self.kernel.config.enable_multi_tenant:
-            from backend.app.kernel.tenant.registry import TenantRegistry
+            from app.kernel.tenant.registry import TenantRegistry
 
             tr = TenantRegistry()
             self.kernel.register_component("tenant_registry", tr)
@@ -153,7 +153,7 @@ class Bootloader:
     async def _phase_initialize_gateway(self) -> None:
         logger.info("Boot phase: initialize internal gateway")
         if self.kernel.config.enable_internal_gateway:
-            from backend.app.kernel.gateway.discovery import ServiceDiscovery
+            from app.kernel.gateway.discovery import ServiceDiscovery
 
             sd = ServiceDiscovery(self.kernel)
             self.kernel.register_component("service_discovery", sd)
@@ -162,8 +162,8 @@ class Bootloader:
     async def _phase_initialize_feature_management(self) -> None:
         logger.info("Boot phase: initialize feature management")
         if self.kernel.config.enable_feature_management:
-            from backend.app.kernel.features.capabilities import CapabilityFlagManager
-            from backend.app.kernel.features.flags import FeatureFlagManager
+            from app.kernel.features.capabilities import CapabilityFlagManager
+            from app.kernel.features.flags import FeatureFlagManager
 
             ffm = FeatureFlagManager(self.kernel)
             self.kernel.register_component("feature_flag_manager", ffm)
@@ -178,7 +178,7 @@ class Bootloader:
         logger.info("Boot phase: populate capability registry")
         cr = self.kernel.get_component("capability_registry")
         if cr:
-            from backend.app.kernel.capabilities_registry_populator import populate_registry
+            from app.kernel.capabilities_registry_populator import populate_registry
 
             count = populate_registry(cr)
             logger.info(

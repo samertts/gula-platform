@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.plugin.sandbox import PluginSandbox
+from app.kernel.plugin.sandbox import PluginSandbox
 
 
 class TestPluginSandbox:

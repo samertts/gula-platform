@@ -1,7 +1,6 @@
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..enums import EQAResult, EquipmentStatus, LabType, QCStatus

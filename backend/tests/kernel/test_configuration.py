@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.config.registry import ConfigurationRegistry
-from backend.app.kernel.config.validation import ConfigurationValidator
+from app.kernel.config.registry import ConfigurationRegistry
+from app.kernel.config.validation import ConfigurationValidator
 
 
 class TestConfigurationRegistry:

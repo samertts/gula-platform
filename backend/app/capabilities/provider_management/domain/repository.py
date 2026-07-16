@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
+from .entities import Provider_management
 
 
 class Provider_managementRepository:
-    async def get(self, id: str) -> Optional[Provider_management]:
+    async def get(self, id: str) -> Provider_management | None:
         raise NotImplementedError
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[Provider_management]:

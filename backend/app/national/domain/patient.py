@@ -1,6 +1,8 @@
+from sqlalchemy import JSON, Boolean, Column, Date, ForeignKey, Index, Integer, SmallInteger, String
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import Gender, MaritalStatus
-from sqlalchemy import JSON, Boolean, Column, Date, Enum as SAEnum, ForeignKey, Index, Integer, SmallInteger, String
 
 
 class Patient(TenantAuditEntity):

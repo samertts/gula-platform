@@ -71,7 +71,24 @@ if _SENTRY_DSN:
         logger.warning("SENTRY_DSN set but sentry-sdk not installed; skipping")
 
 # Import all models so they are registered with Base.metadata (needed for create_all + alembic)
+from .hospital.models import (  # noqa: F401, E402 register hospital tables with Base metadata
+    Bed,
+    BedAssignment,
+    Building,
+    Campus,
+    Clinic,
+    CostCenter,
+    Department,
+    Floor,
+    HospitalMaster,
+    MedicalEquipment,
+    OperationTheater,
+    Room,
+    Unit,
+)
 from .lims.models import (  # noqa: F401, E402 register LIMS tables with Base metadata
+    EQA,
+    IQC,
     AutoValidationRule,
     Calibration,
     ChainOfCustody,
@@ -79,11 +96,9 @@ from .lims.models import (  # noqa: F401, E402 register LIMS tables with Base me
     DeltaCheckRule,
     Department,
     ElectronicSignature,
-    EQA,
     EquipmentLog,
     Instrument,
     InstrumentModel,
-    IQC,
     LabReport,
     Lot,
     Maintenance,
@@ -113,26 +128,89 @@ from .models import (  # noqa: F401, E402
     LabOrder,
     LabResult,
     LabUser,
-    Patient,    QualityControl,
+    Patient,
+    QualityControl,
     Sample,
     TestType,
     User,
 )
 from .models.outbox import OutboxEvent  # noqa: E402  register OutboxEvent with Base metadata
-from .hospital.models import (  # noqa: F401, E402 register hospital tables with Base metadata
-    Bed,
-    BedAssignment,
-    Building,
-    Campus,
-    Clinic,
-    CostCenter,
-    Department,
-    Floor,
-    HospitalMaster,
-    MedicalEquipment,
-    OperationTheater,
-    Room,
-    Unit,
+from .nhdw.models import (  # noqa: F401, E402 register NHDW tables with Base metadata
+    Admission,
+    CarePlan,
+    ClinicalTask,
+    DashboardConfiguration,
+    Discharge,
+    HospitalAlert,
+    HospitalMessage,
+    QueueEntry,
+    ResourceSchedule,
+    ShiftReport,
+    TelemedicineSession,
+    Transfer,
+    WaitingListEntry,
+    WardRound,
+)
+from .nursing.models import (  # noqa: F401, E402 register Nursing tables with Base metadata
+    ClinicalChecklist,
+    Delegation,
+    EscalationRecord,
+    FallRiskAssessment,
+    FluidBalance,
+    NursingCarePlan,
+    NursingNote,
+    NursingShift,
+    NursingTask,
+    NutritionAssessment,
+    PainAssessment,
+    PatientAssignment,
+    PressureInjuryAssessment,
+    ShiftHandover,
+)
+from .pharmacy.models import (  # noqa: F401, E402 register Pharmacy tables with Base metadata
+    AllergyRule,
+    ClinicalGuideline,
+    ContraindicationRule,
+    DispenseQueue,
+    DispenseRecord,
+    DoseGuideline,
+    DrugBatch,
+    DrugCatalog,
+    DrugInteractionRule,
+    DrugMonitoring,
+    DrugReturn,
+    DrugSupplier,
+    InventoryForecast,
+    InventoryTransfer,
+    InventoryTransferItem,
+    Prescription,
+    PrescriptionItem,
+    Recall,
+    StockLevel,
+    StockMovement,
+    Store,
+    Warehouse,
+    WasteRecord,
+)
+from .radiology.models import (  # noqa: F401, E402 register Radiology tables with Base metadata
+    MPPS,
+    AIAnalysisJob,
+    CriticalFinding,
+    DICOMStorage,
+    DICOMStudy,
+    ImageAnnotation,
+    ImageMeasurement,
+    ImageShare,
+    ModalityDevice,
+    Protocol,
+    RadiologyAppointment,
+    RadiologyExam,
+    RadiologyImage,
+    RadiologyOrder,
+    RadiologyReport,
+    RadiologySeries,
+    ReportTemplate,
+    WorklistEntry,
 )
 
 # Schema management: create_all is safe and idempotent (checkfirst=True by default).
@@ -710,10 +788,40 @@ from .services.mpi import router as mpi_router  # noqa: E402
 
 app.include_router(mpi_router)
 
+# Canonical Patient Unification — unified MPI citizen + LIMS patient records
+from .routes import canonical_patient as canonical_patient_routes  # noqa: E402
+
+app.include_router(canonical_patient_routes.router)
+
 # Consent layer — governing access control for reads of citizen data
 from .routes import consent as consent_routes  # noqa: E402
 
 app.include_router(consent_routes.router)
+
+# MFA (Multi-Factor Authentication) — TOTP, WebAuthn/FIDO2
+from .routes import mfa as mfa_routes  # noqa: E402
+
+app.include_router(mfa_routes.router)
+
+# Password Reset — forgot / reset / change password
+from .routes import password_reset as password_reset_routes  # noqa: E402
+
+app.include_router(password_reset_routes.router)
+
+# OAuth2 / OpenID Connect authorization server
+from .routes import oauth2 as oauth2_routes  # noqa: E402
+
+app.include_router(oauth2_routes.router)
+
+# SAML2 Service Provider
+from .routes import saml as saml_routes  # noqa: E402
+
+app.include_router(saml_routes.router)
+
+# Service Accounts — machine-to-machine API keys
+from .routes import service_accounts as service_accounts_routes  # noqa: E402
+
+app.include_router(service_accounts_routes.router)
 
 # External integrations health + probe (gov NID, insurance, residency, Cloudflare)
 from .routes import integrations as integrations_routes  # noqa: E402
@@ -755,8 +863,8 @@ app.include_router(ai_telemetry_routes.router)
 
 # ===== CLINICAL PLATFORM ROUTES =====
 from .routes import clinical as clinical_routes  # noqa: E402
-from .routes import clinical_orders as clinical_orders_routes  # noqa: E402
 from .routes import clinical_documentation as clinical_documentation_routes  # noqa: E402
+from .routes import clinical_orders as clinical_orders_routes  # noqa: E402
 from .routes import clinical_quality as clinical_quality_routes  # noqa: E402
 
 app.include_router(clinical_routes.router)
@@ -777,7 +885,7 @@ app.include_router(kernel_routes.router)
 # All future modules MUST inherit policies from this layer.
 # Do NOT modify Foundation or National Healthcare Domain.
 # Extend only through governance services.
-from .governance.routes import governance_router, analytics_router  # noqa: E402
+from .governance.routes import analytics_router, governance_router  # noqa: E402
 
 app.include_router(governance_router)
 app.include_router(analytics_router)
@@ -785,43 +893,8 @@ app.include_router(analytics_router)
 # ===== NATIONAL LIMS LAYER ROUTES =====
 # The National LIMS is the canonical laboratory information management system.
 # It builds on the existing foundation and governance layers without modifying them.
-from .lims.models import (  # noqa: E402, F401  register LIMS tables with Base metadata
-    AutoValidationRule,
-    Calibration,
-    ChainOfCustody,
-    Consumable,
-    DeltaCheckRule,
-    Department,
-    ElectronicSignature,
-    EQA,
-    EquipmentLog,
-    Instrument,
-    InstrumentModel,
-    IQC,
-    LabReport,
-    Lot,
-    Maintenance,
-    Manufacturer,
-    Order,
-    Panel,
-    PanelTest,
-    QCProgram,
-    Reagent,
-    ReferenceRangeDef,
-    ReportAttachment,
-    Result,
-    ResultRelease,
-    ResultValidation,
-    Section,
-    Specimen,
-    SpecimenCatalog,
-    Storage,
-    Supplier,
-    TemperatureLog,
-    Transportation,
-    Workstation,
-)
 from .lims import routes as lims_routes  # noqa: E402
+
 app.include_router(lims_routes.router)
 
 # ===== NATIONAL PLATFORM RUNTIME ROUTES =====
@@ -832,30 +905,41 @@ app.include_router(lims_routes.router)
 # and Security infrastructure without modifying them.
 
 from .national.rules_engine.api.routes import router as rules_router  # noqa: E402
+
 app.include_router(rules_router)
 
 from .national.background_platform.api.routes import router as background_router  # noqa: E402
+
 app.include_router(background_router)
 
 from .national.workflow_runtime.api.routes import router as workflow_router  # noqa: E402
+
 app.include_router(workflow_router)
 
 from .national.task_engine.api.routes import router as task_router  # noqa: E402
+
 app.include_router(task_router)
 
-from .national.notification_platform.api.routes import router as notification_platform_router  # noqa: E402
+from .national.notification_platform.api.routes import (
+    router as notification_platform_router,
+)
+
 app.include_router(notification_platform_router)
 
 from .national.document_platform.api.routes import router as document_router  # noqa: E402
+
 app.include_router(document_router)
 
 from .national.scheduling_platform.api.routes import router as scheduling_router  # noqa: E402
+
 app.include_router(scheduling_router)
 
 from .national.search_platform.api.routes import router as search_router  # noqa: E402
+
 app.include_router(search_router)
 
 from .national.observability.api.routes import router as observability_router  # noqa: E402
+
 app.include_router(observability_router)
 
 # ===== NATIONAL DATA PLATFORM ROUTES =====
@@ -864,60 +948,59 @@ app.include_router(observability_router)
 # It builds on existing LIMS, National, EHR, and clinical models.
 
 from .national_data.models import (  # noqa: E402, F401
-    CanonicalPatient,
-    CanonicalEncounter,
-    CanonicalObservation,
-    CanonicalMedication,
-    CanonicalProcedure,
     CanonicalDocument,
-)
-from .national_data.models.mdm import (  # noqa: E402, F401
-    GoldenRecord,
-    DuplicateRecord,
-    MergeAction,
-    SourceSystem,
-    ProviderRegistry,
-    DeviceRegistry,
-    LocationRegistry,
-    TerminologyRegistry,
-)
-from .national_data.models.event_store import (  # noqa: E402, F401
-    StoredEvent,
-    EventSnapshot,
-    EventRetentionPolicy,
-)
-from .national_data.models.warehouse import (  # noqa: E402, F401
-    FactPatientVisit,
-    FactLabResult,
-    FactDiagnosis,
-    DimPatient,
-    DimDate,
-    DimFacility,
-    DimProvider,
-    DimDiagnosis,
-)
-from .national_data.models.governance import (  # noqa: E402, F401
-    DataLineageEntry,
-    DataCatalogEntry,
-    MetadataEntry,
-    DataQualityRule,
-    DataQualityCheck,
-    DataSteward,
-    DataClassification,
-    RetentionPolicy,
-    ConsentDirective,
+    CanonicalEncounter,
+    CanonicalMedication,
+    CanonicalObservation,
+    CanonicalPatient,
+    CanonicalProcedure,
 )
 from .national_data.models.ai_data import (  # noqa: E402, F401
+    DeidentificationJob,
     FeatureStore,
     FeatureValue,
-    TrainingDataset,
-    DeidentificationJob,
-    SyntheticDataJob,
-    VectorEmbedding,
-    KnowledgeGraphNode,
     KnowledgeGraphEdge,
+    KnowledgeGraphNode,
+    SyntheticDataJob,
+    TrainingDataset,
+    VectorEmbedding,
 )
-
+from .national_data.models.event_store import (  # noqa: E402, F401
+    EventRetentionPolicy,
+    EventSnapshot,
+    StoredEvent,
+)
+from .national_data.models.governance import (  # noqa: E402, F401
+    ConsentDirective,
+    DataCatalogEntry,
+    DataClassification,
+    DataLineageEntry,
+    DataQualityCheck,
+    DataQualityRule,
+    DataSteward,
+    MetadataEntry,
+    RetentionPolicy,
+)
+from .national_data.models.mdm import (  # noqa: E402, F401
+    DeviceRegistry,
+    DuplicateRecord,
+    GoldenRecord,
+    LocationRegistry,
+    MergeAction,
+    ProviderRegistry,
+    SourceSystem,
+    TerminologyRegistry,
+)
+from .national_data.models.warehouse import (  # noqa: E402, F401
+    DimDate,
+    DimDiagnosis,
+    DimFacility,
+    DimPatient,
+    DimProvider,
+    FactDiagnosis,
+    FactLabResult,
+    FactPatientVisit,
+)
 from .routes import national_data as national_data_routes  # noqa: E402
 from .routes import national_streaming as national_streaming_routes  # noqa: E402
 
@@ -926,13 +1009,169 @@ app.include_router(national_streaming_routes.router)
 
 logger.info("National Data Platform initialized — routes registered")
 
+# ===== PLATFORM FOUNDATION MODULES (MISSION-017A) =====
+from .platform.routes import router as platform_router  # noqa: E402
+
+app.include_router(platform_router)
+logger.info("Platform Foundation modules registered — MISSION-017A")
+
+# ===== PLATFORM CONTRACTS (MISSION-017A) =====
+from .contracts.routes import router as contracts_router  # noqa: E402
+
+app.include_router(contracts_router)
+logger.info("Platform Contracts registered — MISSION-017A")
+
+# ===== INTEGRATION CONNECTORS (PHASE 11) =====
+from .integration.connectors.routes import router as connectors_router  # noqa: E402
+
+app.include_router(connectors_router)
+logger.info("National Integration Connectors registered — PHASE 11")
+
 # ===== HOSPITAL INFORMATION SYSTEM =====
 from .routes import hospital as hospital_routes  # noqa: E402
 
 app.include_router(hospital_routes.router)
 
-logger.info("National Platform Runtime initialized — 9 modules registered")
+# ===== NATIONAL HOSPITAL DESKTOP WORKSPACE (NHDW) (MISSION-025) =====
+from .nhdw.routes import router as nhdw_router  # noqa: E402
 
+app.include_router(nhdw_router)
+logger.info("National Hospital Desktop Workspace registered — MISSION-025")
+
+# ===== NATIONAL NURSING & CARE COORDINATION PLATFORM (MISSION-026) =====
+from .nursing.routes import router as nursing_router  # noqa: E402
+
+app.include_router(nursing_router)
+logger.info("National Nursing & Care Coordination Platform registered — MISSION-026")
+
+# ===== NATIONAL PHARMACY INFORMATION PLATFORM (MISSION-027) =====
+from .pharmacy.routes import router as pharmacy_router  # noqa: E402
+
+app.include_router(pharmacy_router)
+logger.info("National Pharmacy Information Platform registered — MISSION-027")
+
+# ===== NATIONAL RADIOLOGY INFORMATION SYSTEM & PACS (MISSION-028) =====
+from .radiology.routes import router as radiology_router  # noqa: E402
+
+app.include_router(radiology_router)
+logger.info("National Radiology Information System & PACS registered — MISSION-028")
+
+# ===== DIGITAL TWIN PLATFORM (MISSION-027) =====
+from .simulation.routes import router as simulation_router  # noqa: E402
+
+app.include_router(simulation_router)
+logger.info("Digital Twin Platform registered — MISSION-027")
+
+# ===== COMMAND INTELLIGENCE (MISSION-029) =====
+from .command_intelligence.routes import router as command_intelligence_router  # noqa: E402
+
+app.include_router(command_intelligence_router)
+logger.info("Command Intelligence registered — MISSION-029")
+
+# ===== PLATFORM KNOWLEDGE GRAPH (MISSION-017B) =====
+from .knowledge_graph.routes import router as knowledge_graph_router  # noqa: E402
+
+app.include_router(knowledge_graph_router)
+logger.info("Platform Knowledge Graph registered — MISSION-017B")
+
+# ===== MASTER ROADMAP ENGINE (MISSION-017B) =====
+from .roadmap.routes import router as roadmap_router  # noqa: E402
+
+app.include_router(roadmap_router)
+logger.info("Master Roadmap Engine registered — MISSION-017B")
+
+# ===== HEALTH DATA LAKE (MISSION-017C) =====
+from .health_data.routes import router as health_data_router  # noqa: E402
+
+app.include_router(health_data_router)
+logger.info("Health Data Lake registered — MISSION-017C")
+
+# ===== ENTERPRISE CONTROL PLANE (MISSION-017E) =====
+from .control_plane.routes import router as control_plane_router  # noqa: E402
+
+app.include_router(control_plane_router)
+logger.info("Enterprise Control Plane registered — MISSION-017E")
+
+# ===== RUNTIME KERNEL EXTENSIONS (MISSION-017D) =====
+from .kernel.runtime_routes import router as runtime_kernel_router  # noqa: E402
+
+app.include_router(runtime_kernel_router)
+logger.info("Runtime Kernel Extensions registered — MISSION-017D")
+
+# ===== NATIONAL INTEGRATION PLATFORM (MISSION-018) =====
+from .integration.integration import IntegrationPlatform  # noqa: E402
+
+IntegrationPlatform.initialize(app)
+logger.info("National Integration Platform registered — MISSION-018")
+
+# ===== CITIZEN DIGITAL HEALTH PLATFORM (MISSION-019) =====
+from .citizen_platform.routes import router as citizen_platform_router  # noqa: E402
+
+app.include_router(citizen_platform_router)
+logger.info("Citizen Digital Health Platform registered — MISSION-019")
+
+# ===== NATIONAL AI & INTELLIGENCE FABRIC (MISSION-020) =====
+from .ai_fabric.routes import router as ai_fabric_router  # noqa: E402
+
+app.include_router(ai_fabric_router)
+logger.info("National AI & Intelligence Fabric registered — MISSION-020")
+
+# ===== NATIONAL RESEARCH & ANALYTICS PLATFORM (MISSION-021) =====
+from .research_platform.routes import router as research_platform_router  # noqa: E402
+
+app.include_router(research_platform_router)
+logger.info("National Research & Analytics Platform registered — MISSION-021")
+
+# ===== CERTIFICATION & ENGINEERING METRICS (MISSION-017C) =====
+from .certification.routes import router as certification_router  # noqa: E402
+
+app.include_router(certification_router)
+logger.info("Certification & Engineering Metrics Engine registered — MISSION-017C")
+
+# ===== NATIONAL ECOSYSTEM PLATFORM (MISSION-020) =====
+from .national.ecosystem.gateway.routes import router as ecosystem_gateway_router  # noqa: E402
+from .national.ecosystem.partners.models import (  # noqa: F401, E402  register with Base metadata
+    Partner,
+    PartnerAgreement,
+    PartnerAuditLog,
+    PartnerCertificate,
+    PartnerCredential,
+    PartnerRateLimit,
+)
+from .national.ecosystem.routes import router as ecosystem_router  # noqa: E402
+
+app.include_router(ecosystem_router)
+app.include_router(ecosystem_gateway_router)
+logger.info("National Ecosystem Platform registered — MISSION-020")
+
+# ===== NATIONAL INTELLIGENCE PLATFORM (MISSION-022) =====
+from .national.intelligence.routes import router as intelligence_router  # noqa: E402
+
+app.include_router(intelligence_router)
+logger.info("National Intelligence Platform registered — MISSION-022")
+
+logger.info("National Platform Runtime initialized — 19 modules registered (MISSIONS 017C-022)")
+
+from .ems.api.routes import router as ems_router  # noqa: E402
+
+# ===== NATIONAL EMS & DISASTER RESPONSE PLATFORM (MISSION-029) =====
+from .ems.infrastructure.models import (  # noqa: E402, F401
+    AmbulanceModel,
+    CrewMemberModel,
+    DispatchAssignmentModel,
+    DispatchCommunicationModel,
+    DispatchHospitalModel,
+    DispatchModel,
+    IncidentCommandModel,
+    MassCasualtyIncidentModel,
+    PatientAssessmentModel,
+    PatientEventLogModel,
+    PatientTransferOfCareModel,
+    PrehospitalCareReportModel,
+    ResourceRequestModel,
+    SceneSafetyModel,
+    TriageTagModel,
+)
 from .models.ai_interaction import (  # noqa: E402, F401  register with Base metadata
     AIFeedback,
     AIInteraction,
@@ -941,6 +1180,126 @@ from .models.ai_interaction import (  # noqa: E402, F401  register with Base met
     MedicalTerminologyNormalized,
 )
 
+app.include_router(ems_router)
+logger.info("National EMS & Disaster Response Platform registered — MISSION-029")
+
+# ===== NATIONAL BLOOD BANK & TRANSFUSION PLATFORM (MISSION-030) =====
+from .blood_bank.api.routes import router as blood_bank_router  # noqa: E402
+from .blood_bank.infrastructure.models import (  # noqa: E402, F401
+    BloodBankModel,
+    BloodComponentModel,
+    BloodDonationEventModel,
+    BloodDonorDeferralModel,
+    BloodDonorModel,
+    BloodInventoryModel,
+    BloodOrderModel,
+    BloodTransfusionRecordModel,
+    CompatibilityRuleModel,
+    CrossmatchRecordModel,
+    TransfusionAdverseEventModel,
+)
+
+app.include_router(blood_bank_router)
+logger.info("National Blood Bank & Transfusion Platform registered — MISSION-030")
+
+# ===== NATIONAL CRITICAL CARE PLATFORM (MISSION-031) =====
+from .critical_care.api.routes import router as critical_care_router  # noqa: E402
+from .critical_care.infrastructure.models import (  # noqa: E402, F401
+    ContinuousInfusionModel,
+    CriticalAlertModel,
+    DailyChecklistModel,
+    DeviceIntegrationModel,
+    EarlyWarningScoreModel,
+    FluidBalanceModel,
+    ICUAdmissionModel,
+    ICUAssessmentModel,
+    ICUBedModel,
+    ICUScoreModel,
+    RoundRecordModel,
+    VentilatorSettingModel,
+    VitalSignsRecordModel,
+)
+
+app.include_router(critical_care_router)
+logger.info("National Critical Care Platform registered — MISSION-031")
+
+# ===== NATIONAL BIOMEDICAL ENGINEERING PLATFORM (MISSION-033) =====
+from .biomedical.api.routes import router as biomedical_router  # noqa: E402
+from .biomedical.infrastructure.models import (  # noqa: E402, F401
+    CalibrationRecordModel,
+    DeviceIncidentModel,
+    DeviceRecallModel,
+    MaintenanceScheduleModel,
+    MedicalDeviceModel,
+    PerformanceVerificationModel,
+    SafetyInspectionModel,
+    ServiceContractModel,
+    SparePartModel,
+    TechnicianModel,
+    VendorModel,
+    WorkOrderModel,
+)
+
+app.include_router(biomedical_router)
+logger.info("National Biomedical Engineering Platform registered — MISSION-033")
+
+# ===== NATIONAL PUBLIC HEALTH & DISEASE SURVEILLANCE PLATFORM (MISSION-032) =====
+from .public_health.api.routes import router as public_health_router  # noqa: E402
+from .public_health.infrastructure.models import (  # noqa: E402, F401
+    DiseaseCaseModel,
+    EnvironmentalHealthModel,
+    ImmunizationRecordModel,
+    OutbreakAlertModel,
+    PublicHealthReportModel,
+    SurveillanceSignalModel,
+)
+
+app.include_router(public_health_router)
+logger.info("National Public Health & Disease Surveillance Platform registered — MISSION-032")
+
+# ===== NATIONAL HEALTH COMMAND, OPERATIONS & CRISIS CENTER (MISSION-034) =====
+from .command_center.api.routes import router as command_center_router  # noqa: E402
+from .command_center.infrastructure.models import (  # noqa: E402, F401
+    AfterActionReportModel,
+    EmergencyDeclarationModel,
+    ResourceRequestModel,
+    SituationReportModel,
+)
+
+app.include_router(command_center_router)
+logger.info("National Health Command Center registered — MISSION-034")
+
+# ===== NATIONAL PILOT DEPLOYMENT & OPERATIONAL READINESS (MISSION-035) =====
+from .pilot_platform.api.routes import router as pilot_platform_router  # noqa: E402
+from .pilot_platform.infrastructure.models import (  # noqa: E402, F401
+    DeploymentRecordModel,
+    GoNoGoGateModel,
+    PilotFacilityModel,
+    PilotProgramModel,
+    ReadinessChecklistModel,
+)
+
+app.include_router(pilot_platform_router)
+logger.info("National Pilot Deployment & Readiness Platform registered — MISSION-035")
+
+# ===== NATIONAL PLATFORM LIFECYCLE, GOVERNANCE & EVOLUTION (MISSION-036) =====
+from .lifecycle_platform.api.routes import router as lifecycle_router  # noqa: E402
+from .lifecycle_platform.infrastructure.models import (  # noqa: E402, F401
+    CompatibilityMatrixModel,
+    ComponentRegistryModel,
+    DeprecationNoticeModel,
+    ReleaseModel,
+    UpgradePathModel,
+)
+
+app.include_router(lifecycle_router)
+logger.info("National Platform Lifecycle & Governance Platform registered — MISSION-036")
+
+# Trust Platform — consent, sovereignty, trust services, compliance
+from .trust.routes import router as trust_router  # noqa: E402
+
+app.include_router(trust_router)
+logger.info("National Trust Platform registered — MISSION-038")
 
 # ===== HEALTH ALERT WATCHDOG =====
 async def _health_alert_loop():

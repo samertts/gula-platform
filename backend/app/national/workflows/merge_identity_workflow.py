@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from app.national.workflows.base import WorkflowContext, WorkflowEngine, WorkflowState, WorkflowStep, WorkflowStepStatus
+from app.national.workflows.base import (
+    WorkflowContext,
+    WorkflowEngine,
+    WorkflowState,
+    WorkflowStep,
+    WorkflowStepStatus,
+)
 
 
 class MergeIdentityWorkflow(WorkflowEngine[dict]):

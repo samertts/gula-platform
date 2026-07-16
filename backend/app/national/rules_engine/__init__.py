@@ -1,3 +1,12 @@
+from .application.service import RulesEngineService
+from .domain.entities import (
+    RuleAction,
+    RuleCondition,
+    RuleDefinition,
+    RuleEvaluationContext,
+    RuleEvaluationResult,
+    RuleSet,
+)
 from .domain.enums import (
     Operator,
     RuleCategory,
@@ -7,7 +16,6 @@ from .domain.enums import (
     RuleStatus,
     RuleTrigger,
 )
-from .domain.entities import RuleAction, RuleCondition, RuleDefinition, RuleEvaluationContext, RuleEvaluationResult, RuleSet
 from .domain.events import (
     RuleActivatedEvent,
     RuleCreatedEvent,
@@ -20,7 +28,6 @@ from .domain.events import (
 from .domain.expression_engine import EvaluationResult, ExpressionEngine
 from .domain.repository import RuleRepository
 from .domain.simulation import SimulationEngine
-from .application.service import RulesEngineService
 from .exceptions import (
     RuleConflictError,
     RuleEvaluationError,
@@ -41,10 +48,10 @@ __all__ = [
     "RuleCreatedEvent",
     "RuleDeactivatedEvent",
     "RuleDefinition",
+    "RuleEvaluatedEvent",
     "RuleEvaluationContext",
     "RuleEvaluationError",
     "RuleEvaluationResult",
-    "RuleEvaluatedEvent",
     "RuleExecutionMode",
     "RuleNotFoundError",
     "RuleOutcome",

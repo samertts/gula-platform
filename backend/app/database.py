@@ -8,7 +8,7 @@ import time
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from .config import DATABASE_URL
+from .config import DATABASE_URL, READ_REPLICA_ENABLED, READ_REPLICA_URL
 
 logger = logging.getLogger("gula.database")
 
@@ -236,6 +236,35 @@ def set_pg_session_config(dbapi_conn, connection_record):
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# ── Read Replica Engine ───────────────────────────────────────────────────────
+# Separate engine for read queries when READ_REPLICA_URL is configured.
+# Routes use get_read_db() for read-only operations to distribute load.
+read_engine = None
+if READ_REPLICA_ENABLED and READ_REPLICA_URL:
+    _REPLICA_POOL_SIZE = max(2, int(os.getenv("REPLICA_POOL_SIZE", "10")))
+    _REPLICA_MAX_OVERFLOW = max(0, int(os.getenv("REPLICA_MAX_OVERFLOW", "20")))
+    try:
+        read_engine = create_engine(
+            READ_REPLICA_URL,
+            pool_pre_ping=True,
+            pool_size=_REPLICA_POOL_SIZE,
+            max_overflow=_REPLICA_MAX_OVERFLOW,
+            pool_timeout=10,
+            pool_recycle=1800,
+            connect_args={"connect_timeout": 5},
+            echo=False,
+        )
+        logger.info(
+            "Read-replica engine configured: pool=%d overflow=%d",
+            _REPLICA_POOL_SIZE,
+            _REPLICA_MAX_OVERFLOW,
+        )
+    except Exception as exc:
+        logger.warning("Read-replica engine creation failed (falling back to primary): %s", exc)
+        read_engine = None
+
+ReadSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=read_engine or engine)
+
 Base = declarative_base()
 
 # Block edge_* table access from API/test/CLI runtimes. No-op inside worker.
@@ -255,6 +284,23 @@ def get_db():
     ``conftest.py`` fixture already does this — never bypass it.
     """
     db = SessionLocal()
+    try:
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def get_read_db():
+    """Read-replica session dependency.
+
+    Routes that perform read-only queries should use this instead of
+    get_db() to distribute read load across replicas. Falls back to the
+    primary engine if no replica is configured.
+    """
+    db = ReadSessionLocal()
     try:
         yield db
     except Exception:
@@ -462,16 +508,26 @@ def get_pool_status() -> dict:
     """
     pool = engine.pool
 
-    def _call(name: str) -> int:
-        fn = getattr(pool, name, None)
+    def _call(p, name: str) -> int:
+        fn = getattr(p, name, None)
         try:
             return fn() if callable(fn) else 0
         except Exception:
             return 0
 
-    return {
-        "pool_size": _call("size"),
-        "checked_out": _call("checkedout"),
-        "overflow": _call("overflow"),
-        "checked_in": _call("checkedin"),
+    result = {
+        "pool_size": _call(pool, "size"),
+        "checked_out": _call(pool, "checkedout"),
+        "overflow": _call(pool, "overflow"),
+        "checked_in": _call(pool, "checkedin"),
+        "read_replica_enabled": READ_REPLICA_ENABLED and read_engine is not None,
     }
+    if read_engine is not None:
+        rp = read_engine.pool
+        result["replica"] = {
+            "pool_size": _call(rp, "size"),
+            "checked_out": _call(rp, "checkedout"),
+            "overflow": _call(rp, "overflow"),
+            "checked_in": _call(rp, "checkedin"),
+        }
+    return result

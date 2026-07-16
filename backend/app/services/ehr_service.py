@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from app._compat import UTC
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.ehr.models import (
     AllergyIntolerance,
     CarePlan,
@@ -24,10 +26,7 @@ from app.ehr.models import (
     RiskFactorRecord,
     SocialHistoryRecord,
 )
-from app.ehr.enums import TimelineEventType
 from app.national.domain.patient import Patient as NationalPatient
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
 
 
 def get_national_patient_or_404(

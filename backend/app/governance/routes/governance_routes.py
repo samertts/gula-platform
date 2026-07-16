@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,39 +6,34 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.security.dependencies import get_current_user
 from app.security.rbac import require_role
 
 from ..enums import (
-    CardLifecycleEvent,
-    ConnectorType,
-    GovernanceNodeType,
-    HealthCardType,
-    ProductivityPeriod,
-    LabType,
-    ClinicalPolicyType,
-    SecurityPolicyCategory,
-    InteropProtocolType,
+    AIAuditAction,
     AIGuardrailType,
     AIRiskLevel,
-    AIAuditAction,
+    ClinicalPolicyType,
+    ConnectorType,
+    GovernanceNodeType,
+    InteropProtocolType,
+    LabType,
+    ProductivityPeriod,
+    SecurityPolicyCategory,
     ThreatSeverity,
 )
 from ..policies.governance_policies import (
     GovernanceAction,
-    GovernanceRiskLevel,
-    GovernancePolicyDecision,
     governance_policy_engine,
 )
-from ..services.hierarchy_service import GovernanceHierarchyService
-from ..services.health_number_service import HealthNumberGovernanceService
-from ..services.connector_service import CitizenRegistryConnectorService
-from ..services.workforce_service import WorkforceGovernanceService
-from ..services.laboratory_service import LaboratoryGovernanceService
-from ..services.clinical_governance_service import ClinicalGovernanceService
-from ..services.security_governance_service import SecurityGovernanceService
-from ..services.interoperability_service import InteroperabilityGovernanceService
 from ..services.ai_governance_service import AIGovernanceService
+from ..services.clinical_governance_service import ClinicalGovernanceService
+from ..services.connector_service import CitizenRegistryConnectorService
+from ..services.health_number_service import HealthNumberGovernanceService
+from ..services.hierarchy_service import GovernanceHierarchyService
+from ..services.interoperability_service import InteroperabilityGovernanceService
+from ..services.laboratory_service import LaboratoryGovernanceService
+from ..services.security_governance_service import SecurityGovernanceService
+from ..services.workforce_service import WorkforceGovernanceService
 
 router = APIRouter(prefix="/governance", tags=["governance"])
 
@@ -111,10 +106,9 @@ def get_children(node_id: int, db: Session = Depends(get_db)):
 
 @router.get("/nodes/by-type/{node_type}")
 def get_nodes_by_type(node_type: GovernanceNodeType, db: Session = Depends(get_db)):
-    svc = GovernanceHierarchyService(db)
+    GovernanceHierarchyService(db)
     from ..models.hierarchy import GovernanceNode
-    nodes = db.query(GovernanceNode).filter(GovernanceNode.node_type == node_type).all()
-    return nodes
+    return db.query(GovernanceNode).filter(GovernanceNode.node_type == node_type).all()
 
 
 @router.post("/nodes/{node_id}/deactivate", dependencies=[admin_dep])
@@ -246,15 +240,13 @@ def get_health_number_history(health_number: str, db: Session = Depends(get_db))
 @router.get("/connectors/{connector_type}/lookup", dependencies=[elevated_dep])
 def connector_lookup(connector_type: ConnectorType, query: str = Query(...), db: Session = Depends(get_db)):
     svc = CitizenRegistryConnectorService(db)
-    result = svc.lookup(connector_type, {"query": query})
-    return result
+    return svc.lookup(connector_type, {"query": query})
 
 
 @router.get("/connectors/{connector_type}/verify", dependencies=[elevated_dep])
 def connector_verify(connector_type: ConnectorType, db: Session = Depends(get_db)):
     svc = CitizenRegistryConnectorService(db)
-    result = svc.verify(connector_type, {})
-    return result
+    return svc.verify(connector_type, {})
 
 
 @router.get("/connectors")
@@ -700,8 +692,7 @@ def get_model_risk(model_name: str, db: Session = Depends(get_db)):
 
 @router.get("/policy/evaluate")
 def evaluate_governance_action(action: GovernanceAction, context: str | None = None):
-    decision = governance_policy_engine.evaluate(action, {"context": context} if context else None)
-    return decision
+    return governance_policy_engine.evaluate(action, {"context": context} if context else None)
 
 
 # ── Governance Health ─────────────────────────────────────────────────────────

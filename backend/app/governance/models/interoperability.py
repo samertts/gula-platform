@@ -1,7 +1,10 @@
-from datetime import datetime, date
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum, ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum, Integer, String, Text
+
 from app._compat import UTC
-from ..base import GovernanceBase, GovernanceBaseEntity
+
+from ..base import GovernanceBaseEntity
 from ..enums import InteropProtocolStatus, InteropProtocolType
 
 

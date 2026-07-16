@@ -6,7 +6,11 @@ from datetime import datetime
 from typing import Any
 
 from app._compat import UTC
-from app.national.rules_engine.domain.entities import RuleCondition, RuleDefinition, RuleEvaluationResult
+from app.national.rules_engine.domain.entities import (
+    RuleCondition,
+    RuleDefinition,
+    RuleEvaluationResult,
+)
 from app.national.rules_engine.domain.enums import Operator, RuleOutcome, RuleSeverity
 
 
@@ -55,14 +59,13 @@ class ExpressionEngine:
         conditions = expression.get("conditions", [])
         if op == "and":
             return self._evaluate_and(conditions, context)
-        elif op == "or":
+        if op == "or":
             return self._evaluate_or(conditions, context)
-        elif op == "not":
+        if op == "not":
             if conditions:
                 return self._evaluate_not(conditions[0], context)
             return EvaluationResult(passed=True, error="NOT operator requires exactly one condition")
-        result = self._evaluate_single_condition(expression, context)
-        return result
+        return self._evaluate_single_condition(expression, context)
 
     def _evaluate_and(self, conditions: list[dict[str, Any]], context: dict[str, Any]) -> EvaluationResult:
         details: list[str] = []
@@ -190,8 +193,8 @@ class ExpressionEngine:
     def _determine_failure_outcome(self, rule: RuleDefinition) -> RuleOutcome:
         if rule.severity == RuleSeverity.BLOCKER:
             return RuleOutcome.BLOCK
-        elif rule.severity == RuleSeverity.CRITICAL:
+        if rule.severity == RuleSeverity.CRITICAL:
             return RuleOutcome.ERROR
-        elif rule.severity == RuleSeverity.WARNING:
+        if rule.severity == RuleSeverity.WARNING:
             return RuleOutcome.WARNING
         return RuleOutcome.FAIL

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 
-from backend.app.kernel import Kernel
+from app.kernel import Kernel
 
 logger = logging.getLogger("gula.kernel.validation.stress")
 

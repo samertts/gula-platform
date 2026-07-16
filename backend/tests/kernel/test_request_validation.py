@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.gateway.validation import RequestValidator
+from app.kernel.gateway.validation import RequestValidator
 
 
 class TestRequestValidator:

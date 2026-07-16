@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.config.versioned import ConfigVersion, VersionedConfiguration
-from backend.app.kernel.event_bus.events import Event
-from backend.app.kernel.event_bus.versioning import EventVersioning
+from app.kernel.config.versioned import ConfigVersion, VersionedConfiguration
+from app.kernel.event_bus.events import Event
+from app.kernel.event_bus.versioning import EventVersioning
 
 
 class TestEventVersioning:

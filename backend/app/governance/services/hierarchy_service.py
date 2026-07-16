@@ -1,8 +1,10 @@
 from datetime import datetime
+
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+
 from ..enums import (
     ActingRoleStatus,
     AdministrationType,
@@ -92,7 +94,7 @@ class GovernanceHierarchyService:
         return ancestors
 
     def get_path(self, node_id: int) -> list[GovernanceNode]:
-        return self.get_ancestors(node_id) + [self.get_node(node_id)]
+        return [*self.get_ancestors(node_id), self.get_node(node_id)]
 
     def deactivate_node(self, node_id: int) -> GovernanceNode | None:
         node = self.get_node(node_id)

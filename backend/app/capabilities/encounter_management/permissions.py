@@ -4,10 +4,10 @@ from enum import Enum
 
 
 class Encounter_managementPermission(Enum):
-    ENCOUNTER.READ = "encounter_management:encounter.read"
-    ENCOUNTER.CREATE = "encounter_management:encounter.create"
-    ENCOUNTER.UPDATE = "encounter_management:encounter.update"
-    ENCOUNTER.ADMIN = "encounter_management:encounter.admin"
+    READ = "encounter_management:encounter.read"
+    CREATE = "encounter_management:encounter.create"
+    UPDATE = "encounter_management:encounter.update"
+    ADMIN = "encounter_management:encounter.admin"
 
     def describe(self) -> str:
         descriptions = {        "encounter_management:encounter.read": "Encounter.Read",

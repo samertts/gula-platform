@@ -1,6 +1,6 @@
-from sqlalchemy import Boolean, Column, Integer
+from sqlalchemy import Boolean, Column
 
-from shared.models import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin, TimestampMixin
+from shared.models import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin
 
 from ..database import Base
 

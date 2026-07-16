@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/document-management", tags=["Document Management"])
 
 
 @router.get("/")
-async def list_document-management(
+async def list_document_management(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_document-management(
 
 
 @router.get("/{id}")
-async def get_document-management(
+async def get_document_management(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_document-management(
 
 
 @router.post("/")
-async def create_document-management(
+async def create_document_management(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_document-management(
 
 
 @router.put("/{id}")
-async def update_document-management(
+async def update_document_management(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_document-management(
 
 
 @router.delete("/{id}")
-async def delete_document-management(
+async def delete_document_management(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from backend.app.kernel.gateway.rate_limiting import RateLimiter
+from app.kernel.gateway.rate_limiting import RateLimiter
 
 
 class TestRateLimiter:

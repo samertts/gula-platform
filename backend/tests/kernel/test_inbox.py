@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.event_bus.inbox import InboxMessage, InboxPattern
+from app.kernel.event_bus.inbox import InboxMessage, InboxPattern
 
 
 class TestInboxPattern:

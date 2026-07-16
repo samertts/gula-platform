@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, Date, DateTime, Index, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import Gender
-from sqlalchemy import Boolean, Column, Date, DateTime, Enum as SAEnum, Index, String, Text
 
 
 class Visitor(TenantAuditEntity):

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
-
 # ===========================================================================
 # Specimen State Machine
 # ===========================================================================

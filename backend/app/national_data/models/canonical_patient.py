@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -17,29 +17,29 @@ class CanonicalPatient(Base):
 
     id: int
     lab_id: int
-    health_id: Optional[str]
-    national_id_hash: Optional[str]
-    family_id_hash: Optional[str]
+    health_id: str | None
+    national_id_hash: str | None
+    family_id_hash: str | None
     full_name: str
     phone: str
-    birth_date: Optional[date]
-    gender: Optional[str]
-    email: Optional[str]
-    guardian_id: Optional[int]
+    birth_date: date | None
+    gender: str | None
+    email: str | None
+    guardian_id: int | None
 
-    national_patient_id: Optional[str]
-    citizen_id: Optional[str]
-    first_name: Optional[str]
-    father_name: Optional[str]
-    grandfather_name: Optional[str]
-    last_name: Optional[str]
-    mother_name: Optional[str]
-    full_name_ar: Optional[str]
-    date_of_birth: Optional[date]
-    blood_group: Optional[str]
-    governorate: Optional[str]
-    district: Optional[str]
-    nationality: Optional[str]
+    national_patient_id: str | None
+    citizen_id: str | None
+    first_name: str | None
+    father_name: str | None
+    grandfather_name: str | None
+    last_name: str | None
+    mother_name: str | None
+    full_name_ar: str | None
+    date_of_birth: date | None
+    blood_group: str | None
+    governorate: str | None
+    district: str | None
+    nationality: str | None
 
     @classmethod
     def query_all(cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:

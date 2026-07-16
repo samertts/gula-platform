@@ -19,7 +19,11 @@
         sast dast dependency-scan secret-scan container-scan iac-scan sbom \
         continuous-backup pitr-recover cert-renew secret-rotate key-rotate \
         chaos-run snapshot-create snapshot-list snapshot-cleanup \
-        tag-release performance-report security-report
+        tag-release performance-report security-report \
+        constitution-enforce constitution-audit \
+        trust-platform trust-check \
+        factory-validate factory-generate \
+        platform-freeze platform-tag
 
 BACKEND_URL ?= http://localhost:8080
 
@@ -61,6 +65,16 @@ help:
 	@echo "    make self-audit        AI self-audit (report only)"
 	@echo "    make self-audit-fix    AI self-audit + auto-apply safe fixes"
 	@echo "    make scale             Scale to REPLICAS=N backend instances"
+	@echo ""
+	@echo "  ── Constitution & Governance ─────────────────────────────────────"
+	@echo "    make constitution-enforce  Run constitution enforcer (20 rules)"
+	@echo "    make constitution-audit    Run full constitution audit"
+	@echo "    make trust-platform        Verify trust platform compliance"
+	@echo "    make trust-check           Check trust services health"
+	@echo "    make factory-validate      Validate engineering factory"
+	@echo "    make factory-generate      Generate code from schemas"
+	@echo "    make platform-freeze       Freeze and tag current platform"
+	@echo "    make platform-tag          Tag release with constitution version"
 	@echo ""
 	@echo "  ── Monitoring (optional profile) ─────────────────────────────────"
 	@echo "    make monitoring       Start Prometheus + Grafana"
@@ -445,6 +459,61 @@ security-report:
 tag-release:
 	@echo "=== Release Tagging ==="
 	bash scripts/tag-release.sh ${VERSION:-production-platform-v1.0}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Constitution & Governance
+# ─────────────────────────────────────────────────────────────────────────────
+constitution-enforce:
+	@echo "=== Constitution Enforcer (20 rules) ==="
+	python3 scripts/constitution_enforcer.py --verbose
+
+constitution-audit:
+	@echo "=== Constitution Full Audit ==="
+	python3 scripts/constitution_enforcer.py --verbose
+	python3 scripts/architecture_guardian.py --verbose
+	python3 scripts/dependency_guardian.py --skip-audit
+
+trust-platform:
+	@echo "=== Trust Platform Check ==="
+	python3 -c "from app.trust import *; print('✓ Trust platform package loaded')"
+
+trust-check:
+	@echo "=== Trust Services Health ==="
+	@echo "Checking trust platform endpoints..."
+	@curl -sf http://localhost:8080/api/v1/trust/sovereignty/rules > /dev/null 2>&1 && \
+	  echo "✓ Trust API reachable" || echo "⚠ Trust API not reachable (run 'make up' first)"
+
+factory-validate:
+	@echo "=== Engineering Factory Validation ==="
+	python3 config/quality-gates/architecture-gate.py
+	python3 config/quality-gates/security-gate.py
+
+factory-generate:
+	@echo "=== Code Generation ==="
+	@echo "Use: gula generate --help"
+	python3 -m backend.app.engineering.productivity.cli generate --help
+
+platform-freeze:
+	@echo "=== Platform Freeze ==="
+	@echo "Freezing all constitution artifacts..."
+	@echo "  ✓ docs/constitution/PLATFORM-CONSTITUTION.md"
+	@echo "  ✓ docs/trust/NATIONAL-TRUST-PLATFORM.md"
+	@echo "  ✓ docs/factory/ENGINEERING-FACTORY.md"
+	@echo "  ✓ docs/execution/EXECUTION-PROGRAM-001.md"
+	@echo "  ✓ docs/adr/ADR-024-Platform-Constitution.md"
+	@echo "  ✓ docs/runtime/SBOM.md"
+	@echo "  ✓ scripts/constitution_enforcer.py"
+	@echo "  ✓ scripts/architecture_guardian.py"
+	@echo "  ✓ backend/app/trust/"
+	@echo ""
+	$(MAKE) platform-tag VERSION=platform-constitution-v1.0
+	$(MAKE) platform-tag VERSION=national-trust-platform-v1.0
+	$(MAKE) platform-tag VERSION=engineering-factory-v1.0
+
+platform-tag:
+	@echo "=== Tag: $(VERSION) ==="
+	git tag -f $(VERSION) -m "Frozen: $(VERSION)"
+	@echo "✓ Tagged $(VERSION)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Admin

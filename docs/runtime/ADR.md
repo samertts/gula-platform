@@ -1,50 +1,43 @@
-# Architecture Decision Records — National Platform Runtime
+# Runtime Architecture Decision Records
 
-## ADR-RUNTIME-001: Modular Bounded Contexts as Python Packages
+**Version:** 1.0.0
+**Last Updated:** 2026-07-16
 
-**Status:** Accepted
-**Context:** The National Platform Runtime needs 9 distinct engines that can be developed, tested, and deployed independently while sharing common infrastructure.
-**Decision:** Each engine is a standalone Python package under `backend/app/national/` with its own domain, application, infrastructure, and API layers. All modules share the same `NationalBase` declarative base and reuse existing Kernel services.
-**Consequence:** Each module can be tested independently. No module imports from another runtime module — only from the frozen Kernel and infrastructure layers.
+## Active ADRs
 
-## ADR-RUNTIME-002: Event-Driven Inter-Module Communication
+| ID | Title | Status | Date |
+|----|-------|--------|------|
+| ADR-001 | Platform Architecture | ACCEPTED | 2026-03-22 |
+| ADR-002 | Monolith-first Strategy | ACCEPTED | 2026-03-22 |
+| ADR-003 | Lab ID Tenant Isolation | ACCEPTED | 2026-03-22 |
+| ADR-004 | JWT Authentication | ACCEPTED | 2026-03-23 |
+| ADR-005 | Audit Hash Chain | ACCEPTED | 2026-03-24 |
+| ADR-006 | Optimistic Locking for Results | ACCEPTED | 2026-03-29 |
+| ADR-007 | Subscription-based Feature Flags | ACCEPTED | 2026-03-29 |
+| ADR-008 | Outbox Pattern for Events | ACCEPTED | 2026-04-07 |
+| ADR-009 | Self-healing with Circuit Breaker | ACCEPTED | 2026-04-13 |
+| ADR-010 | SNDHS Government Integration | ACCEPTED | 2026-05-05 |
+| ADR-011 | Patient Card HMAC Tokens | ACCEPTED | 2026-05-06 |
+| ADR-012 | Edge Platform Sync Model | ACCEPTED | 2026-04-28 |
+| ADR-013 | Master Patient Index Design | ACCEPTED | 2026-04-13 |
+| ADR-014 | Consent Management Model | ACCEPTED | 2026-04-17 |
+| ADR-015 | Financial Engine Schema-first | ACCEPTED | 2026-05-06 |
+| ADR-016 | AI Interaction Safety Model | ACCEPTED | 2026-05-11 |
+| ADR-017 | National LIMS Architecture | ACCEPTED | 2026-07-14 |
+| ADR-018 | National Ecosystem Partners | ACCEPTED | 2026-07-15 |
+| ADR-019 | NHDW Data Warehouse Architecture | ACCEPTED | 2026-07-16 |
+| ADR-020 | Nursing Platform Design | ACCEPTED | 2026-07-16 |
+| ADR-021 | Pharmacy Platform Design | ACCEPTED | 2026-07-16 |
+| ADR-022 | Radiology Platform Design | ACCEPTED | 2026-07-16 |
+| ADR-023 | National EMS, Blood Bank, Critical Care, Biomedical, Public Health, Command Center, Pilot, Lifecycle Platforms | ACCEPTED | 2026-07-16 |
+| **ADR-024** | **Platform Constitution & National Trust Framework** | **ACCEPTED (FROZEN)** | **2026-07-16** |
 
-**Status:** Accepted
-**Context:** Modules must react to state changes in other modules without direct coupling (e.g., workflow completion triggers notifications, task completion triggers workflows).
-**Decision:** All modules publish domain events to the Kernel EventBus. Modules subscribe to relevant events through the event bus dispatcher. No direct inter-module imports.
-**Consequence:** Modules remain decoupled. New modules can react to existing events without modifying event publishers.
+## Full ADR List
 
-## ADR-RUNTIME-003: Dual-Layer Task Execution
+Complete ADR documentation available at: `docs/adr/`
 
-**Status:** Accepted
-**Context:** The platform needs both low-level task execution (Redis-backed queue with retry/DLQ) and high-level task management (assignment, SLA, escalation).
-**Decision:** Two layers: (1) Existing `tasks/` module provides the execution substrate (queue, registry, worker, retry). (2) New `task_engine/` and `background_platform/` provide management and scheduling on top. The execution layer never references the management layer.
-**Consequence:** Tasks work without the management layer. Management adds value without modifying the execution substrate.
+## Decision Flow
 
-## ADR-RUNTIME-004: Workflow Definitions as Data, Not Code
-
-**Status:** Accepted
-**Context:** Clinical workflows must be modifiable by domain experts without deploying code. They must support versioning and parallel execution of multiple versions.
-**Decision:** Workflow definitions are stored as JSON in PostgreSQL (steps, transitions, handlers). The workflow runtime interprets these definitions at execution time. Step handlers are registered Python functions referenced by name.
-**Consequence:** Workflows can be modified via API without deployments. Multiple workflow versions can run simultaneously. New step handlers require code deployment but workflow topology changes do not.
-
-## ADR-RUNTIME-005: Pluggable Notification Channel Adapters
-
-**Status:** Accepted
-**Context:** The notification platform must support multiple channels (Email, SMS, Push, WhatsApp, Telegram, Government Gateway) with different delivery characteristics and provider dependencies.
-**Decision:** Each channel has an abstract `NotificationChannelAdapter` interface. Adapters are registered in a channel registry. The notification service selects channels based on user preferences and notification category. External provider implementations are stub adapters that abstract the underlying API.
-**Consequence:** Adding a new channel requires only implementing the adapter interface and registering it. Production deployments plug in real provider implementations behind the same interface.
-
-## ADR-RUNTIME-006: Document Hash Chain Integrity
-
-**Status:** Accepted
-**Context:** Healthcare documents must have tamper-evident integrity. Electronic signatures must be verifiable independently of the platform.
-**Decision:** Every document version stores SHA-256 hash of content. Signatures chain the document hash with signer identity and timestamp. QR codes encode a verification URL that includes the document hash for client-side verification.
-**Consequence:** Document integrity is verifiable without accessing the database. QR code scanning enables field verification by patients and auditors.
-
-## ADR-RUNTIME-007: Unified Search with Pluggable Backends
-
-**Status:** Accepted
-**Context:** Different deployment scenarios need different search backends (PostgreSQL FTS for small deployments, Elasticsearch/OpenSearch for national scale). The API must be backend-agnostic.
-**Decision:** `IndexAdapter` abstract interface with implementations for PostgreSQL FTS, Elasticsearch, FHIR, and in-memory. The search service delegates to the configured adapter. FHIR search parameters are mapped to adapter-specific queries.
-**Consequence:** Deployments choose their search backend via configuration. The unified search API remains consistent across all backends.
+```
+New Decision Need → Draft ADR → Review → Accept/Supersede → Index Updated
+```

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.kernel.integration import (
+from app.kernel.integration import (
     get_kernel,
     get_kernel_health,
     is_kernel_ready,
     kernel_kill_switch_active,
 )
-from backend.app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/kernel", tags=["kernel"])
 

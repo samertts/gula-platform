@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, Date, Index, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import Gender, MaritalStatus
-from sqlalchemy import Boolean, Column, Date, Enum as SAEnum, Index, String, Text
 
 
 class Foreigner(TenantAuditEntity):

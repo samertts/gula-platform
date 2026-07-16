@@ -6,9 +6,7 @@ Implements ISO 15189, CAP, and CLSI compliant quality management.
 from __future__ import annotations
 
 import math
-from collections import deque
-from typing import Sequence
-
+from collections.abc import Sequence
 
 # ===========================================================================
 # Westgard Rules Engine
@@ -90,9 +88,7 @@ def evaluate_westgard(
     violation = None
     if "1_3s" in triggered or "2_2s" in triggered or "R_4s" in triggered or "10x" in triggered or "12x" in triggered:
         violation = "out_of_control"
-    elif "4_1s" in triggered or "8x" in triggered:
-        violation = "warning"
-    elif "1_2s" in triggered:
+    elif "4_1s" in triggered or "8x" in triggered or "1_2s" in triggered:
         violation = "warning"
 
     return violation, triggered

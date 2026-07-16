@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel
-from backend.app.kernel.background.scheduler import Scheduler
+from app.kernel import Kernel
+from app.kernel.background.scheduler import Scheduler
 
 
 class TestScheduler:
@@ -15,19 +15,19 @@ class TestScheduler:
         asyncio.run(scheduler.stop())
 
     def test_cron_job_defaults(self):
-        from backend.app.kernel.background.cron import CronJob
+        from app.kernel.background.cron import CronJob
         job = CronJob(name="test", schedule="* * * * *", handler=lambda: None)
         assert job.enabled
 
     def test_retry_policy_defaults(self):
-        from backend.app.kernel.background.job_retry import RetryPolicy
+        from app.kernel.background.job_retry import RetryPolicy
         rp = RetryPolicy()
         assert rp.max_retries == 3
         assert rp.backoff_base == 1.0
         assert rp.backoff_multiplier == 2.0
 
     def test_task_defaults(self):
-        from backend.app.kernel.background.task_queue import Task
+        from app.kernel.background.task_queue import Task
         task = Task(id="t1", name="test", handler=lambda: None)
         assert task.id == "t1"
         assert task.created_at > 0

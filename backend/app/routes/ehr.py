@@ -3,29 +3,28 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from app._compat import UTC
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
 from app.ehr.enums import (
+    AlcoholStatus,
     AllergySeverity,
     AllergyStatus,
     CarePlanStatus,
     ClinicalNoteType,
     DiagnosisType,
+    DisabilityType,
     MedicationAdministrationStatus,
     MedicationOrderStatus,
     ProblemStatus,
     RiskLevel,
     SmokingStatus,
-    AlcoholStatus,
-    DisabilityType,
-    TimelineEventType,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user, require_permission
+from ..security.dependencies import get_current_user
 from ..services import ehr_service
 
 router = APIRouter(prefix="/ehr", tags=["ehr"])

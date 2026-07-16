@@ -4,10 +4,10 @@ from enum import Enum
 
 
 class Provider_managementPermission(Enum):
-    PROVIDER.READ = "provider_management:provider.read"
-    PROVIDER.CREATE = "provider_management:provider.create"
-    PROVIDER.UPDATE = "provider_management:provider.update"
-    PROVIDER.ADMIN = "provider_management:provider.admin"
+    READ = "provider_management:provider.read"
+    CREATE = "provider_management:provider.create"
+    UPDATE = "provider_management:provider.update"
+    ADMIN = "provider_management:provider.admin"
 
     def describe(self) -> str:
         descriptions = {        "provider_management:provider.read": "Provider.Read",

@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any, TypeVar
 
-from backend.app.kernel.exceptions import ServiceNotFoundError
-from backend.app.kernel.types import ServiceDescriptor, ServiceLifecycle
+from app.kernel.exceptions import ServiceNotFoundError
+from app.kernel.types import ServiceDescriptor, ServiceLifecycle
 
 logger = logging.getLogger("gula.kernel.di")
 

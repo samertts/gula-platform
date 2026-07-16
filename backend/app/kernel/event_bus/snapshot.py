@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.app.kernel.event_bus.events import Event
+from app.kernel.event_bus.events import Event
 
 logger = logging.getLogger("gula.kernel.event_bus.snapshot")
 

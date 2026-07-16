@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.national.document_platform.domain.enums import DocumentCategory, DocumentFormat, RetentionPolicy, SignatureStatus
+from app.national.document_platform.domain.enums import (
+    DocumentCategory,
+    DocumentFormat,
+    RetentionPolicy,
+)
 from app.national.events.base import NationalDomainEvent
 
 

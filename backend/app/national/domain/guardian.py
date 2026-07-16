@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Index, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
 from app.national.enums import GuardianType
-from sqlalchemy import Boolean, Column, Date, Enum as SAEnum, ForeignKey, Index, String, Text
 
 
 class Guardian(TenantAuditEntity):

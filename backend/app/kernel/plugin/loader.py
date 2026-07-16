@@ -6,11 +6,11 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from backend.app.kernel.exceptions import PluginLoadError
-from backend.app.kernel.types import PluginDescriptor
+from app.kernel.exceptions import PluginLoadError
+from app.kernel.types import PluginDescriptor
 
 if TYPE_CHECKING:
-    from backend.app.kernel import Kernel
+    from app.kernel import Kernel
 
 logger = logging.getLogger("gula.kernel.plugin.loader")
 

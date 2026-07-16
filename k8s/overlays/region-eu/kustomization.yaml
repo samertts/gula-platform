@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gula
+
+bases:
+  - ../../base
+
+patchesStrategicMerge:
+  - patch-region-labels.yaml
+  - patch-topology-spread.yaml
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /metadata/annotations/region
+        value: eu
+    target:
+      kind: Namespace
+      name: gula
+
+images:
+  - name: ghcr.io/samertts/gula-platform/backend
+    newTag: latest-region-eu
+  - name: ghcr.io/samertts/gula-platform/svc-lab
+    newTag: latest-region-eu
+  - name: ghcr.io/samertts/gula-platform/svc-order
+    newTag: latest-region-eu
+  - name: ghcr.io/samertts/gula-platform/svc-patient
+    newTag: latest-region-eu
+  - name: ghcr.io/samertts/gula-platform/svc-result
+    newTag: latest-region-eu
+  - name: ghcr.io/samertts/gula-platform/svc-sample
+    newTag: latest-region-eu
+  - name: ghcr.io/samertts/gula-platform/svc-notification
+    newTag: latest-region-eu
+  - name: ghcr.io/samertts/gula-platform/svc-ai
+    newTag: latest-region-eu
+
+configMapGenerator:
+  - name: gula-config
+    behavior: merge
+    literals:
+      - ENV=production
+      - REGION=eu
+      - ZONE=eu-west1
+      - BASE_URL=https://eu.gula-platform.org
+      - RUNTIME_MODE=api

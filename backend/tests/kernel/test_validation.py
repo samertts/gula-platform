@@ -4,13 +4,13 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel
-from backend.app.kernel.validation.architecture import ArchitectureValidator
-from backend.app.kernel.validation.dependencies import DependencyValidator
-from backend.app.kernel.validation.memory import MemoryValidator
-from backend.app.kernel.validation.performance import PerformanceValidator
-from backend.app.kernel.validation.security import SecurityValidator
-from backend.app.kernel.validation.stress import StressTester
+from app.kernel import Kernel
+from app.kernel.validation.architecture import ArchitectureValidator
+from app.kernel.validation.dependencies import DependencyValidator
+from app.kernel.validation.memory import MemoryValidator
+from app.kernel.validation.performance import PerformanceValidator
+from app.kernel.validation.security import SecurityValidator
+from app.kernel.validation.stress import StressTester
 
 
 class TestArchitectureValidator:

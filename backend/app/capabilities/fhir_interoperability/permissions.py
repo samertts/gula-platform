@@ -4,10 +4,9 @@ from enum import Enum
 
 
 class Fhir_interoperabilityPermission(Enum):
-    FHIR.READ = "fhir_interoperability:fhir.read"
-    FHIR.WRITE = "fhir_interoperability:fhir.write"
-    FHIR.ADMIN = "fhir_interoperability:fhir.admin"
-    TERMINOLOGY.READ = "fhir_interoperability:terminology.read"
+    READ = "fhir_interoperability:fhir.read"
+    WRITE = "fhir_interoperability:fhir.write"
+    ADMIN = "fhir_interoperability:fhir.admin"
 
     def describe(self) -> str:
         descriptions = {        "fhir_interoperability:fhir.read": "Fhir.Read",

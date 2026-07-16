@@ -51,9 +51,7 @@ class RuleDefinition:
         now = datetime.now(UTC)
         if self.effective_from and now < self.effective_from:
             return False
-        if self.effective_to and now > self.effective_to:
-            return False
-        return True
+        return not (self.effective_to and now > self.effective_to)
 
     @property
     def is_active(self) -> bool:

@@ -1,9 +1,11 @@
 from datetime import datetime
 
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Index, Integer, SmallInteger, String
+from sqlalchemy import Enum as SAEnum
+
 from app._compat import UTC
 from app.national.base import BaseEntity
 from app.national.enums import Gender, IdentityStatus, MaritalStatus
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum as SAEnum, Index, Integer, SmallInteger, String
 
 
 class Citizen(BaseEntity):

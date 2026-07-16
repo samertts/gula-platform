@@ -5,7 +5,12 @@ from app.national.security.break_glass import BreakGlassReason, BreakGlassServic
 from app.national.security.minimum_necessary import MinimumNecessaryEngine
 from app.national.security.minor_protection import MinorProtectionService
 from app.national.security.purpose_of_use import PurposeOfUse, PurposeOfUseEngine
-from app.national.security.rbac import NationalPermission, NationalRole, RBACEngine, ROLE_PERMISSIONS
+from app.national.security.rbac import (
+    ROLE_PERMISSIONS,
+    NationalPermission,
+    NationalRole,
+    RBACEngine,
+)
 from app.national.security.sensitive_records import SensitiveRecordService, SensitivityLevel
 
 

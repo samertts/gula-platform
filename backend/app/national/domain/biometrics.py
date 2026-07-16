@@ -1,6 +1,8 @@
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import AuditEntity
 from app.national.enums import BiometricType
-from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
 
 
 class BiometricRecord(AuditEntity):

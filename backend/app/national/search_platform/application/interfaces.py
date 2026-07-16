@@ -3,13 +3,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from app.national.search_platform.domain.enums import SearchIndexType
 from app.national.search_platform.domain.entities import (
     SearchFacet,
     SearchQuery,
     SearchResult,
     SearchSuggestion,
 )
+from app.national.search_platform.domain.enums import SearchIndexType
 
 
 class IndexAdapter(ABC):
@@ -45,7 +45,7 @@ class PostgresFullTextSearch(IndexAdapter):
         if not query.query_text:
             return [], 0
         tsquery = " & ".join(query.query_text.strip().split())
-        sql = f"""
+        sql = """
             SELECT * FROM (
                 SELECT id AS resource_id, 'patient' AS index_type,
                        name AS title, name AS description,
@@ -63,7 +63,7 @@ class PostgresFullTextSearch(IndexAdapter):
             LIMIT :limit OFFSET :offset
         """
         rows = self.db.execute(sql, {"q": tsquery, "limit": query.limit, "offset": query.offset}).fetchall()
-        count_sql = f"""
+        count_sql = """
             SELECT COUNT(*) FROM (
                 SELECT id FROM patients WHERE to_tsvector('simple', name || ' ' || COALESCE(phone, '') || ' ' || COALESCE(national_id, '')) @@ to_tsquery('simple', :q)
                 UNION ALL

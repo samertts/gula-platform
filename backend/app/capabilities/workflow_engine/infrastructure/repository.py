@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import Optional
+from sqlalchemy import select
 
-from backend.app.capabilities.workflow_engine.domain.entities import Workflow_engine
-from backend.app.capabilities.workflow_engine.domain.repository import Workflow_engineRepository
+from app.capabilities.workflow_engine.domain.entities import Workflow_engine
+from app.capabilities.workflow_engine.domain.repository import Workflow_engineRepository
 
 
 class SQLAlchemyWorkflow_engineRepository(Workflow_engineRepository):
     def __init__(self, session_factory):
         self._session_factory = session_factory
 
-    async def get(self, id: str) -> Optional[Workflow_engine]:
+    async def get(self, id: str) -> Workflow_engine | None:
         async with self._session_factory() as session:
             return await session.get(Workflow_engine, id)
 

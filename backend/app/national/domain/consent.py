@@ -1,9 +1,11 @@
 from datetime import datetime
 
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app._compat import UTC
 from app.national.base import TenantAuditEntity
-from app.national.enums import ConsentStatus, ConsentScope
-from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
+from app.national.enums import ConsentScope, ConsentStatus
 
 
 class Consent(TenantAuditEntity):

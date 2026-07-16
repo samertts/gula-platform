@@ -6,7 +6,9 @@ import pytest
 class TestHealthcare_consentCapability:
     @pytest.fixture
     def capability(self):
-        from backend.app.capabilities.healthcare_consent.capability import Healthcare_consentCapability
+        from app.capabilities.healthcare_consent.capability import (
+            Healthcare_consentCapability,
+        )
         return Healthcare_consentCapability()
 
     @pytest.mark.asyncio

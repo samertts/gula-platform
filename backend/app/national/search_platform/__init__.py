@@ -1,10 +1,11 @@
-from app.national.search_platform.domain.enums import (
-    FilterOperator,
-    SearchIndexType,
-    SearchMode,
-    SearchOperator,
-    SortOrder,
+from app.national.search_platform.application.interfaces import (
+    ElasticsearchAdapter,
+    FHIRSearchAdapter,
+    IndexAdapter,
+    InMemoryIndex,
+    PostgresFullTextSearch,
 )
+from app.national.search_platform.application.service import SearchPlatformService
 from app.national.search_platform.domain.entities import (
     FacetValue,
     SavedSearch,
@@ -14,6 +15,13 @@ from app.national.search_platform.domain.entities import (
     SearchResponse,
     SearchResult,
     SearchSuggestion,
+)
+from app.national.search_platform.domain.enums import (
+    FilterOperator,
+    SearchIndexType,
+    SearchMode,
+    SearchOperator,
+    SortOrder,
 )
 from app.national.search_platform.domain.events import (
     DocumentIndexed,
@@ -25,14 +33,12 @@ from app.national.search_platform.domain.repository import (
     SavedSearchRepository,
     SearchResultRepository,
 )
-from app.national.search_platform.application.interfaces import (
-    ElasticsearchAdapter,
-    FHIRSearchAdapter,
-    InMemoryIndex,
-    IndexAdapter,
-    PostgresFullTextSearch,
+from app.national.search_platform.exceptions import (
+    IndexAdapterError,
+    InvalidSearchQueryError,
+    SavedSearchNotFoundError,
+    SearchExecutionError,
 )
-from app.national.search_platform.application.service import SearchPlatformService
 from app.national.search_platform.infrastructure.models import (
     NationalSavedSearch,
     NationalSearchResult,
@@ -40,12 +46,6 @@ from app.national.search_platform.infrastructure.models import (
 from app.national.search_platform.infrastructure.repository import (
     SQLAlchemySavedSearchRepository,
     SQLAlchemySearchResultRepository,
-)
-from app.national.search_platform.exceptions import (
-    IndexAdapterError,
-    InvalidSearchQueryError,
-    SavedSearchNotFoundError,
-    SearchExecutionError,
 )
 
 __all__ = [

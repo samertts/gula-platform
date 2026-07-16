@@ -1,9 +1,9 @@
-from datetime import datetime
 
-from app._compat import UTC
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.ehr.base import EHRBaseEntity
 from app.ehr.enums import TimelineEventType
-from sqlalchemy import JSON, Column, DateTime, Enum as SAEnum, ForeignKey, Index, String, Text
 
 
 class PatientTimelineEvent(EHRBaseEntity):

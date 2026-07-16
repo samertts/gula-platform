@@ -2,11 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from sqlalchemy import JSON, Column, DateTime, Float, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app._compat import UTC
 from app.national.base import AuditEntity, _ulid
-from app.national.rules_engine.domain.enums import RuleCategory, RuleOutcome, RuleSeverity, RuleStatus, RuleTrigger
-from sqlalchemy import JSON, Column, DateTime, Enum as SAEnum, Float, Integer, String, Text
-from sqlalchemy import Index
+from app.national.rules_engine.domain.enums import (
+    RuleCategory,
+    RuleOutcome,
+    RuleSeverity,
+    RuleStatus,
+    RuleTrigger,
+)
 
 
 class RuleModel(AuditEntity):
@@ -37,7 +44,11 @@ class RuleModel(AuditEntity):
     )
 
     def to_domain(self):
-        from app.national.rules_engine.domain.entities import RuleAction, RuleCondition, RuleDefinition
+        from app.national.rules_engine.domain.entities import (
+            RuleAction,
+            RuleCondition,
+            RuleDefinition,
+        )
 
         conditions = []
         for c in (self.conditions or []):

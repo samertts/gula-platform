@@ -7,8 +7,8 @@ from app.national.exceptions import (
     ForeignerRegistrationError,
     IdentityMergeError,
     InvalidStateTransitionError,
-    NewbornRegistrationError,
     NationalDomainError,
+    NewbornRegistrationError,
     OptimisticLockError,
 )
 

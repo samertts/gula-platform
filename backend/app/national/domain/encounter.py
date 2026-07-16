@@ -1,6 +1,8 @@
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app.national.base import TenantAuditEntity
-from app.national.enums import EncounterType, EncounterStatus
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
+from app.national.enums import EncounterStatus, EncounterType
 
 
 class Encounter(TenantAuditEntity):

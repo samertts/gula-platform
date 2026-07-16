@@ -3,6 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app._compat import UTC
 from app.national.search_platform.domain.entities import SavedSearch, SearchResult
 from app.national.search_platform.domain.repository import (
@@ -13,8 +16,6 @@ from app.national.search_platform.infrastructure.models import (
     NationalSavedSearch,
     NationalSearchResult,
 )
-from sqlalchemy import func
-from sqlalchemy.orm import Session
 
 
 class SQLAlchemySavedSearchRepository(SavedSearchRepository):
@@ -51,7 +52,7 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
     async def get(self, search_id: str) -> SavedSearch | None:
         model = self.db.query(NationalSavedSearch).filter(
             NationalSavedSearch.id == search_id,
-            NationalSavedSearch.is_deleted == False,
+            ~NationalSavedSearch.is_deleted,
         ).first()
         if not model:
             return None
@@ -63,7 +64,7 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[SavedSearch]:
-        query = self.db.query(NationalSavedSearch).filter(NationalSavedSearch.is_deleted == False)
+        query = self.db.query(NationalSavedSearch).filter(~~NationalSavedSearch.is_deleted)
         if created_by:
             query = query.filter(NationalSavedSearch.created_by == created_by)
         models = query.order_by(NationalSavedSearch.created_at.desc()).offset(skip).limit(limit).all()
@@ -72,7 +73,7 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
     async def delete(self, search_id: str) -> None:
         model = self.db.query(NationalSavedSearch).filter(
             NationalSavedSearch.id == search_id,
-            NationalSavedSearch.is_deleted == False,
+            ~NationalSavedSearch.is_deleted,
         ).first()
         if model:
             model.is_deleted = True
@@ -81,8 +82,8 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
 
     async def find_scheduled(self) -> list[SavedSearch]:
         models = self.db.query(NationalSavedSearch).filter(
-            NationalSavedSearch.scheduled == True,
-            NationalSavedSearch.is_deleted == False,
+            NationalSavedSearch.scheduled,
+            ~NationalSavedSearch.is_deleted,
         ).all()
         return [m.to_domain() for m in models]
 

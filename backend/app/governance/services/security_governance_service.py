@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+
 from ..enums import (
     CertificateStatus,
     DataClassificationLevel,

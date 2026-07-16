@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from backend.app.kernel import Kernel, KernelConfig
-from backend.app.kernel.integration import get_kernel, get_kernel_health, is_kernel_ready
+from app.kernel import Kernel, KernelConfig
+from app.kernel.integration import get_kernel, get_kernel_health, is_kernel_ready
 
 
 class TestObservabilityHealth:

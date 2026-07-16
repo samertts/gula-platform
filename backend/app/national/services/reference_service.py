@@ -14,7 +14,7 @@ class ReferenceService:
             "snomed": ("ref_snomed_concepts", "concept_id"),
             "ucum": ("ref_ucum_units", "ucum_code"),
         }
-        table, column = models.get(ref_type, (None, None))
+        table, _column = models.get(ref_type, (None, None))
         if not table:
             return None
         return {"ref_type": ref_type, "code": code}

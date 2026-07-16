@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from backend.app.kernel.runtime.capability_registry import CapabilityRegistry
-from backend.app.kernel.types import (
+from app.kernel.runtime.capability_registry import CapabilityRegistry
+from app.kernel.types import (
     CapabilityAPI,
     CapabilityCommand,
     CapabilityDescriptor,

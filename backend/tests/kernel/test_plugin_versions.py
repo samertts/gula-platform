@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.kernel.plugin.version_manager import PluginVersionManager
-from backend.app.kernel.types import PluginDescriptor
+from app.kernel.plugin.version_manager import PluginVersionManager
+from app.kernel.types import PluginDescriptor
 
 
 class TestPluginVersionManager:

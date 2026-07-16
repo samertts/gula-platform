@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -16,21 +16,21 @@ class CanonicalEncounter(Base):
     __abstract__ = True
 
     id: str
-    encounter_type: Optional[str]
-    status: Optional[str]
-    patient_id: Optional[str]
-    citizen_id: Optional[str]
-    organization_id: Optional[str]
-    facility_id: Optional[str]
-    practitioner_id: Optional[str]
-    period_start: Optional[datetime]
-    period_end: Optional[datetime]
-    reason_code: Optional[str]
-    reason_description: Optional[str]
-    diagnosis_code: Optional[str]
-    icd10_code: Optional[str]
-    lab_id: Optional[int]
-    lab_order_id: Optional[int]
+    encounter_type: str | None
+    status: str | None
+    patient_id: str | None
+    citizen_id: str | None
+    organization_id: str | None
+    facility_id: str | None
+    practitioner_id: str | None
+    period_start: datetime | None
+    period_end: datetime | None
+    reason_code: str | None
+    reason_description: str | None
+    diagnosis_code: str | None
+    icd10_code: str | None
+    lab_id: int | None
+    lab_order_id: int | None
 
     @classmethod
     def query_all(cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:

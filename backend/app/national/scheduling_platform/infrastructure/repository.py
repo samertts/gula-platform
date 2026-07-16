@@ -3,6 +3,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app._compat import UTC
 from app.national.scheduling_platform.domain.entities import (
     Appointment,
@@ -32,8 +35,6 @@ from app.national.scheduling_platform.infrastructure.models import (
     NationalTimeSlot,
     NationalWaitingList,
 )
-from sqlalchemy import and_, func, or_
-from sqlalchemy.orm import Session
 
 
 class SQLAlchemyAppointmentRepository(AppointmentRepository):
@@ -92,7 +93,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
     async def get(self, appointment_id: str) -> Appointment | None:
         model = self.db.query(NationalAppointment).filter(
             NationalAppointment.id == appointment_id,
-            NationalAppointment.is_deleted == False,
+            ~NationalAppointment.is_deleted,
         ).first()
         if not model:
             return None
@@ -104,7 +105,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[Appointment]:
-        query = self.db.query(NationalAppointment).filter(NationalAppointment.is_deleted == False)
+        query = self.db.query(NationalAppointment).filter(~~NationalAppointment.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalAppointment, key) and value is not None:
                 query = query.filter(getattr(NationalAppointment, key) == value)
@@ -114,7 +115,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
     async def delete(self, appointment_id: str, soft: bool = True) -> None:
         model = self.db.query(NationalAppointment).filter(
             NationalAppointment.id == appointment_id,
-            NationalAppointment.is_deleted == False,
+            ~NationalAppointment.is_deleted,
         ).first()
         if model:
             if soft:
@@ -132,7 +133,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
     ) -> list[Appointment]:
         models = self.db.query(NationalAppointment).filter(
             NationalAppointment.patient_id == patient_id,
-            NationalAppointment.is_deleted == False,
+            ~NationalAppointment.is_deleted,
         ).order_by(NationalAppointment.start_at.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -144,7 +145,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
     ) -> list[Appointment]:
         models = self.db.query(NationalAppointment).filter(
             NationalAppointment.practitioner_id == practitioner_id,
-            NationalAppointment.is_deleted == False,
+            ~NationalAppointment.is_deleted,
         ).order_by(NationalAppointment.start_at.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -156,7 +157,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
     ) -> list[Appointment]:
         models = self.db.query(NationalAppointment).filter(
             NationalAppointment.status == status,
-            NationalAppointment.is_deleted == False,
+            ~NationalAppointment.is_deleted,
         ).order_by(NationalAppointment.start_at.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -169,7 +170,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
         exclude_id: str | None = None,
     ) -> list[Appointment]:
         query = self.db.query(NationalAppointment).filter(
-            NationalAppointment.is_deleted == False,
+            ~~NationalAppointment.is_deleted,
             NationalAppointment.start_at < end_at,
             NationalAppointment.end_at > start_at,
             NationalAppointment.status.notin_([
@@ -190,7 +191,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
     async def count_by_status(self, status: AppointmentStatus) -> int:
         return self.db.query(func.count(NationalAppointment.id)).filter(
             NationalAppointment.status == status,
-            NationalAppointment.is_deleted == False,
+            ~NationalAppointment.is_deleted,
         ).scalar() or 0
 
 
@@ -230,7 +231,7 @@ class SQLAlchemyResourceRepository(ResourceRepository):
     async def get(self, resource_id: str) -> Resource | None:
         model = self.db.query(NationalResource).filter(
             NationalResource.id == resource_id,
-            NationalResource.is_deleted == False,
+            ~NationalResource.is_deleted,
         ).first()
         if not model:
             return None
@@ -242,7 +243,7 @@ class SQLAlchemyResourceRepository(ResourceRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[Resource]:
-        query = self.db.query(NationalResource).filter(NationalResource.is_deleted == False)
+        query = self.db.query(NationalResource).filter(~~NationalResource.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalResource, key) and value is not None:
                 query = query.filter(getattr(NationalResource, key) == value)
@@ -252,7 +253,7 @@ class SQLAlchemyResourceRepository(ResourceRepository):
     async def delete(self, resource_id: str, soft: bool = True) -> None:
         model = self.db.query(NationalResource).filter(
             NationalResource.id == resource_id,
-            NationalResource.is_deleted == False,
+            ~NationalResource.is_deleted,
         ).first()
         if model:
             if soft:
@@ -271,7 +272,7 @@ class SQLAlchemyResourceRepository(ResourceRepository):
         from app.national.scheduling_platform.domain.enums import ResourceType as RT
         models = self.db.query(NationalResource).filter(
             NationalResource.type == RT(type),
-            NationalResource.is_deleted == False,
+            ~NationalResource.is_deleted,
         ).order_by(NationalResource.name.asc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -308,7 +309,7 @@ class SQLAlchemyScheduleRepository(ScheduleRepository):
     async def get(self, schedule_id: str) -> Schedule | None:
         model = self.db.query(NationalSchedule).filter(
             NationalSchedule.id == schedule_id,
-            NationalSchedule.is_deleted == False,
+            ~NationalSchedule.is_deleted,
         ).first()
         if not model:
             return None
@@ -320,7 +321,7 @@ class SQLAlchemyScheduleRepository(ScheduleRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[Schedule]:
-        query = self.db.query(NationalSchedule).filter(NationalSchedule.is_deleted == False)
+        query = self.db.query(NationalSchedule).filter(~~NationalSchedule.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalSchedule, key) and value is not None:
                 query = query.filter(getattr(NationalSchedule, key) == value)
@@ -330,7 +331,7 @@ class SQLAlchemyScheduleRepository(ScheduleRepository):
     async def delete(self, schedule_id: str) -> None:
         model = self.db.query(NationalSchedule).filter(
             NationalSchedule.id == schedule_id,
-            NationalSchedule.is_deleted == False,
+            ~NationalSchedule.is_deleted,
         ).first()
         if model:
             model.is_deleted = True
@@ -345,7 +346,7 @@ class SQLAlchemyScheduleRepository(ScheduleRepository):
     ) -> list[Schedule]:
         models = self.db.query(NationalSchedule).filter(
             NationalSchedule.resource_id == resource_id,
-            NationalSchedule.is_deleted == False,
+            ~NationalSchedule.is_deleted,
         ).order_by(NationalSchedule.date.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -357,7 +358,7 @@ class SQLAlchemyScheduleRepository(ScheduleRepository):
         model = self.db.query(NationalSchedule).filter(
             NationalSchedule.resource_id == resource_id,
             NationalSchedule.date == date,
-            NationalSchedule.is_deleted == False,
+            ~NationalSchedule.is_deleted,
         ).first()
         if not model:
             return None
@@ -473,7 +474,7 @@ class SQLAlchemyTimeSlotRepository(TimeSlotRepository):
             NationalTimeSlot.status == SlotStatus.AVAILABLE,
             NationalTimeSlot.start_at >= date_from,
             NationalTimeSlot.end_at <= date_to,
-            NationalSchedule.is_deleted == False,
+            ~NationalSchedule.is_deleted,
         ).order_by(NationalTimeSlot.start_at.asc()).all()
         return [m.to_domain() for m in models]
 
@@ -516,7 +517,7 @@ class SQLAlchemyWaitingListRepository(WaitingListRepository):
     async def get(self, entry_id: str) -> WaitingList | None:
         model = self.db.query(NationalWaitingList).filter(
             NationalWaitingList.id == entry_id,
-            NationalWaitingList.is_deleted == False,
+            ~NationalWaitingList.is_deleted,
         ).first()
         if not model:
             return None
@@ -528,7 +529,7 @@ class SQLAlchemyWaitingListRepository(WaitingListRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[WaitingList]:
-        query = self.db.query(NationalWaitingList).filter(NationalWaitingList.is_deleted == False)
+        query = self.db.query(NationalWaitingList).filter(~~NationalWaitingList.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalWaitingList, key) and value is not None:
                 query = query.filter(getattr(NationalWaitingList, key) == value)
@@ -538,7 +539,7 @@ class SQLAlchemyWaitingListRepository(WaitingListRepository):
     async def delete(self, entry_id: str) -> None:
         model = self.db.query(NationalWaitingList).filter(
             NationalWaitingList.id == entry_id,
-            NationalWaitingList.is_deleted == False,
+            ~NationalWaitingList.is_deleted,
         ).first()
         if model:
             model.is_deleted = True
@@ -551,7 +552,7 @@ class SQLAlchemyWaitingListRepository(WaitingListRepository):
     ) -> list[WaitingList]:
         models = self.db.query(NationalWaitingList).filter(
             NationalWaitingList.patient_id == patient_id,
-            NationalWaitingList.is_deleted == False,
+            ~NationalWaitingList.is_deleted,
         ).order_by(NationalWaitingList.created_at.desc()).all()
         return [m.to_domain() for m in models]
 
@@ -563,7 +564,7 @@ class SQLAlchemyWaitingListRepository(WaitingListRepository):
         models = self.db.query(NationalWaitingList).filter(
             NationalWaitingList.resource_id == resource_id,
             NationalWaitingList.status == status,
-            NationalWaitingList.is_deleted == False,
+            ~NationalWaitingList.is_deleted,
         ).order_by(NationalWaitingList.priority.desc(), NationalWaitingList.created_at.asc()).all()
         return [m.to_domain() for m in models]
 
@@ -598,7 +599,7 @@ class SQLAlchemyCalendarRepository(CalendarRepository):
     async def get(self, calendar_id: str) -> Calendar | None:
         model = self.db.query(NationalCalendar).filter(
             NationalCalendar.id == calendar_id,
-            NationalCalendar.is_deleted == False,
+            ~NationalCalendar.is_deleted,
         ).first()
         if not model:
             return None
@@ -610,14 +611,14 @@ class SQLAlchemyCalendarRepository(CalendarRepository):
         limit: int = 100,
     ) -> list[Calendar]:
         models = self.db.query(NationalCalendar).filter(
-            NationalCalendar.is_deleted == False,
+            ~~NationalCalendar.is_deleted,
         ).order_by(NationalCalendar.name.asc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
     async def delete(self, calendar_id: str) -> None:
         model = self.db.query(NationalCalendar).filter(
             NationalCalendar.id == calendar_id,
-            NationalCalendar.is_deleted == False,
+            ~NationalCalendar.is_deleted,
         ).first()
         if model:
             model.is_deleted = True
@@ -695,6 +696,6 @@ class SQLAlchemyAppointmentReminderRepository(AppointmentReminderRepository):
         ).filter(
             NationalAppointmentReminder.status == "scheduled",
             NationalAppointment.start_at <= cutoff,
-            NationalAppointment.is_deleted == False,
+            ~NationalAppointment.is_deleted,
         ).order_by(NationalAppointment.start_at.asc()).all()
         return [m.to_domain() for m in models]

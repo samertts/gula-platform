@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any
 
 logger = logging.getLogger("gula.lims.integration.astm")
 
@@ -101,7 +100,7 @@ def build_astm_query(specimen_barcode: str, test_codes: list[str] | None = None)
     lines = [
         f"H|\\^&|||LIS|||||ASTM_E1394|{seq:04d}|",
         f"Q|1|{specimen_barcode}||ALL",
-        f"L|1|N",
+        "L|1|N",
     ]
     return "\r".join(lines)
 
@@ -109,7 +108,7 @@ def build_astm_query(specimen_barcode: str, test_codes: list[str] | None = None)
 def serialize_astm_result(result: ASTMResult) -> str:
     """Serialize a result back to ASTM format (for device bridge responses)."""
     lines = [
-        f"H|\\^&|||LIS|||||ASTM_E1394|0001|",
+        "H|\\^&|||LIS|||||ASTM_E1394|0001|",
         f"P|1|{result.specimen_id}",
         f"O|1|{result.specimen_id}|{result.test_code}",
     ]

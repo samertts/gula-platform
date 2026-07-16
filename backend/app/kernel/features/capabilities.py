@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.app.kernel.runtime.capability_registry import CapabilityRegistry
+    from app.kernel.runtime.capability_registry import CapabilityRegistry
 
 logger = logging.getLogger("gula.kernel.features.capabilities")
 

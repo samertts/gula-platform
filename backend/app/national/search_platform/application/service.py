@@ -5,7 +5,6 @@ import time
 import uuid
 from typing import Any
 
-from app._compat import UTC
 from app.kernel.event_bus.bus import EventBus
 from app.kernel.event_bus.events import Event
 from app.national.search_platform.application.interfaces import IndexAdapter
@@ -15,7 +14,6 @@ from app.national.search_platform.domain.entities import (
     SearchFilter,
     SearchQuery,
     SearchResponse,
-    SearchResult,
     SearchSuggestion,
 )
 from app.national.search_platform.domain.enums import (
@@ -256,7 +254,6 @@ class SearchPlatformService:
                 total += count
             except Exception as exc:
                 raise IndexAdapterError(f"Failed to rebuild index {t}: {exc}")
-
         self._publish_event(IndexRebuilt(
             index_type=index_type or "all",
             documents_indexed=total,
@@ -276,7 +273,6 @@ class SearchPlatformService:
             await self.index_adapter.index_document(index_type, document_id, data)
         except Exception as exc:
             raise IndexAdapterError(f"Failed to index document {index_type}/{document_id}: {exc}")
-
         self._publish_event(DocumentIndexed(
             resource_type=index_type,
             resource_id=document_id,
@@ -289,7 +285,6 @@ class SearchPlatformService:
             await self.index_adapter.remove_document(index_type, document_id)
         except Exception as exc:
             raise IndexAdapterError(f"Failed to remove document {index_type}/{document_id}: {exc}")
-
     async def get_search_stats(self) -> dict[str, Any]:
         return await self.search_result_repository.get_stats()
 

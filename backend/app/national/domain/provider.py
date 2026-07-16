@@ -1,5 +1,6 @@
-from app.national.base import AuditEntity
 from sqlalchemy import Boolean, Column, ForeignKey, Index, String
+
+from app.national.base import AuditEntity
 
 
 class Provider(AuditEntity):

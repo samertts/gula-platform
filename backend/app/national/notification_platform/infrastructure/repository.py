@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import datetime
 from typing import Any
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.national.notification_platform.domain.entities import (
@@ -35,8 +37,6 @@ from app.national.notification_platform.infrastructure.models import (
     NationalNotificationPreferenceModel,
     NationalNotificationTemplateModel,
 )
-from sqlalchemy import func
-from sqlalchemy.orm import Session
 
 
 def _ulid() -> str:

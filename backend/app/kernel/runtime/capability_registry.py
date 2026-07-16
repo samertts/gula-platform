@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-from backend.app.kernel.types import CapabilityDescriptor, CapabilityStatus
+from app.kernel.types import CapabilityDescriptor, CapabilityStatus
 
 logger = logging.getLogger("gula.kernel.capability_registry")
 

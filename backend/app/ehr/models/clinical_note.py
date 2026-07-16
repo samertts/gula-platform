@@ -1,9 +1,11 @@
 from datetime import datetime
 
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+
 from app._compat import UTC
 from app.ehr.base import EHRBaseEntity
 from app.ehr.enums import ClinicalNoteType
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text
 
 
 class ClinicalNote(EHRBaseEntity):

@@ -1,6 +1,20 @@
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import Enum as SAEnum
+
 from app.care_continuum.base import CareContinuumTenantAuditEntity
-from app.care_continuum.enums import FollowUpStatus, PregnancyStatus
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Index, Integer, String, Text
+from app.care_continuum.enums import PregnancyStatus
 
 
 class PregnancyRecord(CareContinuumTenantAuditEntity):

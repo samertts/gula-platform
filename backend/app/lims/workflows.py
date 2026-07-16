@@ -9,12 +9,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from app._compat import UTC
 from sqlalchemy.orm import Session
 
-from . import events as lims_events
-from . import state_machine
-
+from app._compat import UTC
 
 # ===========================================================================
 # Result Auto-Validation Workflow
@@ -47,7 +44,6 @@ def auto_validate_result(
         AutoValidationRule,
         DeltaCheckRule,
         ReferenceRangeDef,
-        Result,
     )
 
     result: dict[str, Any] = {
@@ -65,7 +61,7 @@ def auto_validate_result(
     # Step 1: Reference range check
     range_query = db.query(ReferenceRangeDef).filter(
         ReferenceRangeDef.test_code == test_code,
-        ReferenceRangeDef.is_active == True,
+        ReferenceRangeDef.is_active,
     )
     if lab_id:
         range_query = range_query.filter(
@@ -115,7 +111,7 @@ def auto_validate_result(
     if previous_value is not None and previous_days is not None:
         delta_rule = db.query(DeltaCheckRule).filter(
             DeltaCheckRule.test_code == test_code,
-            DeltaCheckRule.is_active == True,
+            DeltaCheckRule.is_active,
             DeltaCheckRule.window_days >= previous_days,
         ).first()
 
@@ -139,7 +135,7 @@ def auto_validate_result(
         rules = db.query(AutoValidationRule).filter(
             AutoValidationRule.test_code == test_code,
             AutoValidationRule.lab_id == lab_id,
-            AutoValidationRule.is_active == True,
+            AutoValidationRule.is_active,
         ).order_by(AutoValidationRule.priority.desc()).all()
 
         can_auto_validate = True
@@ -175,7 +171,7 @@ def _evaluate_rule_conditions(conditions: dict, value: float, result: dict) -> b
     if not conditions:
         return True
 
-    condition_type = conditions.get("type")
+    conditions.get("type")
     operator = conditions.get("operator", "and")
     rules = conditions.get("rules", [])
 
@@ -212,7 +208,7 @@ def _evaluate_rule_conditions(conditions: dict, value: float, result: dict) -> b
 
     if operator == "and":
         return all(results_list)
-    elif operator == "or":
+    if operator == "or":
         return any(results_list)
     return True
 
@@ -290,9 +286,7 @@ def determine_reflex_tests(
             continue
         condition_met = False
         cond = rule.get("condition")
-        if cond == "above" and value > rule.get("threshold", float("inf")):
-            condition_met = True
-        elif cond == "below" and value < rule.get("threshold", 0):
+        if (cond == "above" and value > rule.get("threshold", float("inf"))) or (cond == "below" and value < rule.get("threshold", 0)):
             condition_met = True
         elif cond == "range":
             min_v = rule.get("threshold_min", float("-inf"))

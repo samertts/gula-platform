@@ -1,5 +1,6 @@
-from app.national.base import BaseEntity
 from sqlalchemy import Boolean, Column, Index, Integer, String
+
+from app.national.base import BaseEntity
 
 
 class HealthNumberSequence(BaseEntity):

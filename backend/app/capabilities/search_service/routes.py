@@ -4,13 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/search-service", tags=["Search Service"])
 
 
 @router.get("/")
-async def list_search-service(
+async def list_search_service(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -19,7 +19,7 @@ async def list_search-service(
 
 
 @router.get("/{id}")
-async def get_search-service(
+async def get_search_service(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -27,7 +27,7 @@ async def get_search-service(
 
 
 @router.post("/")
-async def create_search-service(
+async def create_search_service(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -35,7 +35,7 @@ async def create_search-service(
 
 
 @router.put("/{id}")
-async def update_search-service(
+async def update_search_service(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -44,7 +44,7 @@ async def update_search-service(
 
 
 @router.delete("/{id}")
-async def delete_search-service(
+async def delete_search_service(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:

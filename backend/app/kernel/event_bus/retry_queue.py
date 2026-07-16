@@ -4,7 +4,7 @@ import logging
 import time
 from dataclasses import dataclass
 
-from backend.app.kernel.event_bus.events import Event
+from app.kernel.event_bus.events import Event
 
 logger = logging.getLogger("gula.kernel.event_bus.retry")
 

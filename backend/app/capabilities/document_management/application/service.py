@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional
+from app.capabilities.document_management.domain.entities import Document_management
+from app.capabilities.document_management.domain.repository import Document_managementRepository
 
 
 class Document_managementService:
     def __init__(self, repository: Document_managementRepository):
         self._repository = repository
 
-    async def get(self, id: str) -> Optional[Document_management]:
+    async def get(self, id: str) -> Document_management | None:
         return await self._repository.get(id)
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[Document_management]:

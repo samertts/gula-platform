@@ -6,7 +6,7 @@ import pytest
 class TestStorage_serviceCapability:
     @pytest.fixture
     def capability(self):
-        from backend.app.capabilities.storage_service.capability import Storage_serviceCapability
+        from app.capabilities.storage_service.capability import Storage_serviceCapability
         return Storage_serviceCapability()
 
     @pytest.mark.asyncio
