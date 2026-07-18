@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -51,8 +51,7 @@ class TwinResponse(BaseModel):
     created_at: str | None
     updated_at: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SimulationRequest(BaseModel):
@@ -74,8 +73,7 @@ class SimulationResponse(BaseModel):
     triggered_by: int | None
     created_at: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PredictionRequest(BaseModel):
@@ -95,8 +93,7 @@ class PredictionResponse(BaseModel):
     actual_value: dict | None
     created_at: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DashboardTwinSummary(BaseModel):

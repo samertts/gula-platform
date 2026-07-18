@@ -403,8 +403,8 @@ class TransformationEngine:
 
     def _xml_to_dict(self, data: Any) -> Any:
         if isinstance(data, str):
-            from xml.etree import ElementTree
-            root = ElementTree.fromstring(data)
+            from defusedxml.ElementTree import fromstring as safe_xml_parse
+            root = safe_xml_parse(data)
             return self._element_to_dict(root)
         return data
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator, Callable
@@ -461,11 +462,9 @@ class SafetyFilter:
         for category in rules:
             patterns = self._blocked_categories.get(category, [])
             for pattern in patterns:
-                import re
                 if re.search(pattern, prompt, re.IGNORECASE):
                     violations.append(f"{category}: matched pattern {pattern}")
         for pattern in self._blocked_patterns:
-            import re
             if re.search(pattern, prompt, re.IGNORECASE):
                 violations.append(f"custom_block: {pattern}")
         return {
@@ -482,7 +481,6 @@ class SafetyFilter:
         for category in categories:
             patterns = self._blocked_categories.get(category, [])
             match_count = 0
-            import re
             for pattern in patterns:
                 if re.search(pattern, content, re.IGNORECASE):
                     match_count += 1

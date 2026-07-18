@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 from datetime import datetime, timedelta
 from typing import Any
@@ -25,6 +26,8 @@ from shared.auth.webauthn import (
 )
 
 MFA_SESSION_TTL_MINUTES = 10
+
+logger = logging.getLogger("gula.security.mfa")
 
 
 class MFAService:
@@ -86,21 +89,19 @@ class MFAService:
             user_display_name=user_display_name,
             existing_credentials=existing_creds,
         )
-        import redis
+        from .redis_client import cache
         try:
-            r = redis.Redis.from_url("redis://localhost:6379/0")
-            r.setex(f"webauthn:challenge:{user_id}", 300, options["challenge"])
+            cache.set(f"webauthn:challenge:{user_id}", options["challenge"], ex=300)
         except Exception as exc:
             logger.warning("WebAuthn registration challenge cache failed for user %s: %s", user_id, exc)
         return options
 
     def complete_webauthn_registration(self, user_id: int, credential: dict[str, Any],
-                                        device_name: str = "Security Key") -> MFADevice:
-        import redis
+                                        device_name: str = "Security Key") -> MFADevice:  # noqa: E127
+        from .redis_client import cache
         challenge = ""
         try:
-            r = redis.Redis.from_url("redis://localhost:6379/0")
-            challenge = r.get(f"webauthn:challenge:{user_id}") or ""
+            challenge = cache.get(f"webauthn:challenge:{user_id}") or ""
         except Exception as exc:
             logger.warning("WebAuthn registration challenge read failed for user %s: %s", user_id, exc)
         result = verify_registration(credential, challenge)
@@ -129,10 +130,9 @@ class MFAService:
             for d in devices if d.credential_id
         ]
         options = generate_authentication_options_for_user(creds)
-        import redis
+        from .redis_client import cache
         try:
-            r = redis.Redis.from_url("redis://localhost:6379/0")
-            r.setex(f"webauthn:challenge:{user_id}", 300, options["challenge"])
+            cache.set(f"webauthn:challenge:{user_id}", options["challenge"], ex=300)
         except Exception as exc:
             logger.warning("WebAuthn authentication challenge cache failed for user %s: %s", user_id, exc)
         return options
@@ -145,11 +145,10 @@ class MFAService:
         ).first()
         if not device:
             return False
-        import redis
+        from .redis_client import cache
         challenge = ""
         try:
-            r = redis.Redis.from_url("redis://localhost:6379/0")
-            challenge = r.get(f"webauthn:challenge:{user_id}") or ""
+            challenge = cache.get(f"webauthn:challenge:{user_id}") or ""
         except Exception as exc:
             logger.warning("WebAuthn authentication challenge read failed for user %s: %s", user_id, exc)
         pk = json.loads(device.public_key) if device.public_key else {}

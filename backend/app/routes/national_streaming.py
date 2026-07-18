@@ -56,7 +56,7 @@ class EventStreamingPayload(BaseModel):
 
 class CDCChangeRecord(BaseModel):
     table_name: str
-    operation: str = Field(..., regex="^(insert|update|delete)$")
+    operation: str = Field(..., pattern="^(insert|update|delete)$")
     primary_key: str
     primary_key_value: str
     before: dict[str, Any] | None = None

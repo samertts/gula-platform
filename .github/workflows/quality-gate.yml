@@ -134,19 +134,31 @@ jobs:
       - offline-gate
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          echo "# Production Quality Gates Report" >> $GITHUB_STEP_SUMMARY
+      - name: Summarize gate results
+        run: |
+          echo "### Quality Gate Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Architecture | ${{ needs.architecture-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | ${{ needs.performance-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Database | ${{ needs.database-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API | ${{ needs.api-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| FHIR | ${{ needs.fhir-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Scalability | ${{ needs.scalability-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Accessibility | ${{ needs.accessibility-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Offline | ${{ needs.offline-gate.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Gate | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
-          for gate in architecture performance security database api fhir scalability accessibility offline; do
-            result="${{ needs.${gate}-gate.result }}"
-            echo "| ${gate} | ${result} |" >> $GITHUB_STEP_SUMMARY
+          has_failure=false
+          for result in "${{ needs.architecture-gate.result }}" "${{ needs.performance-gate.result }}" "${{ needs.security-gate.result }}" "${{ needs.database-gate.result }}" "${{ needs.api-gate.result }}" "${{ needs.fhir-gate.result }}" "${{ needs.scalability-gate.result }}" "${{ needs.accessibility-gate.result }}" "${{ needs.offline-gate.result }}"; do
+            if [ "$result" = "failure" ]; then
+              has_failure=true
+              break
+            fi
           done
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-            echo ":x: **RELEASE BLOCKED** — One or more quality gates failed" >> $GITHUB_STEP_SUMMARY
+          if [ "$has_failure" = true ]; then
+            echo "❌ **RELEASE BLOCKED** — One or more quality gates failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           else
-            echo ":white_check_mark: **All gates pass** — Release ready" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **All gates pass** — Release ready" >> $GITHUB_STEP_SUMMARY
           fi

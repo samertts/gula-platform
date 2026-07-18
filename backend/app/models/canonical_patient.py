@@ -22,9 +22,7 @@ class CanonicalPatient(Base):
     __tablename__ = "canonical_patients"
     __table_args__ = (
         Index("ix_canonical_patients_nid_hash", "national_id_hash"),
-        Index("ix_canonical_patients_health_id", "health_id"),
         Index("ix_canonical_patients_name", "full_name"),
-        Index("ix_canonical_patients_lab_id", "lab_id"),
         Index("ix_canonical_patients_source", "source_system", "source_id"),
     )
 

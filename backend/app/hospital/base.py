@@ -1,11 +1,12 @@
 from sqlalchemy import Boolean, Column
+from sqlalchemy.orm import declarative_base
 
 from shared.models import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin
 
-from ..database import Base
+HospitalBase = declarative_base()
 
 
-class HospitalBaseEntity(Base, AuditMixin, SoftDeleteMixin, TenantMixin, OptimisticLockMixin):
+class HospitalBaseEntity(HospitalBase, AuditMixin, SoftDeleteMixin, TenantMixin, OptimisticLockMixin):
     __abstract__ = True
 
     is_active = Column(Boolean, default=True, nullable=False, index=True)

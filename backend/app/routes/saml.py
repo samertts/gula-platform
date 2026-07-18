@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..config import BASE_URL
 from ..database import get_db
-from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
 from ..security.saml_service import (
     extract_assertion,
     extract_attributes,
@@ -37,12 +34,10 @@ class SAMLResponseModel(BaseModel):
 
 @router.get("/metadata")
 def metadata():
-    from ..security.saml_service import generate_sp_metadata
     xml = generate_sp_metadata(
         entity_id=SAML_ENTITY_ID,
         acs_url=SAML_ACS_URL,
     )
-    from fastapi.responses import PlainTextResponse
     return PlainTextResponse(content=xml, media_type="application/xml")
 
 
@@ -51,12 +46,6 @@ def acs(
     data: SAMLResponseModel,
     db: Session = Depends(get_db),
 ):
-    from ..security.saml_service import (
-        extract_assertion,
-        extract_attributes,
-        parse_saml_response,
-        validate_assertion,
-    )
 
     saml_response = parse_saml_response(data.SAMLResponse)
     if saml_response is None:

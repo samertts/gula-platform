@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
-from ..hospital.models import Bed, Department, OperationTheater, Room
+from ..hospital.models import Bed, HospitalDepartment as Department, OperationTheater, Room
 from .models import Admission, Discharge, QueueEntry, Transfer
 
 

@@ -5,17 +5,19 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Column, String
+from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
-from app.database import Base
 from shared.models import OptimisticLockMixin, SoftDeleteMixin, TimestampMixin
+
+RadiologyBase = declarative_base()
 
 
 def _rli() -> str:
     return str(uuid.uuid4()).replace("-", "").upper()[:26]
 
 
-class RadiologyBaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, Base):
+class RadiologyBaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, RadiologyBase):
     __abstract__ = True
 
     id = Column(String(26), primary_key=True, default=_rli)

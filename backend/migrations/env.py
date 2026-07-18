@@ -31,6 +31,10 @@ from app.national.base import NationalBase
 from app.ehr.base import EHRBase
 from app.citizen_platform.base import CitizenPlatformBase
 from app.clinical.base import ClinicalBase
+from app.health_data.base import HealthDataBase
+from app.trust.base import TrustBase
+from app.governance.base import GovernanceBase
+from app.care_continuum.base import CareContinuumBase
 
 # Import EMS, Blood Bank, Critical Care, Biomedical models for Alembic autogenerate
 from app.ems.infrastructure.models import (  # noqa: F401, E402
@@ -74,6 +78,27 @@ from app.lifecycle_platform.infrastructure.models import (  # noqa: F401, E402
     UpgradePathModel, DeprecationNoticeModel,
 )
 
+# ClinicalBase models
+import app.clinical.terminology.models  # noqa: F401, E402
+import app.clinical.cds.models  # noqa: F401, E402
+import app.clinical.knowledge.models  # noqa: F401, E402
+import app.clinical.quality.models  # noqa: F401, E402
+
+# HealthDataBase models
+import app.health_data.canonical.models  # noqa: F401, E402
+import app.health_data.mdm.models  # noqa: F401, E402
+import app.health_data.ods.models  # noqa: F401, E402
+import app.health_data.warehouse.models  # noqa: F401, E402
+
+# TrustBase models
+from app.trust import models as _trust_models  # noqa: F401, E402
+
+# GovernanceBase models
+import app.governance.models  # noqa: F401, E402
+
+# CareContinuumBase models
+import app.care_continuum.models  # noqa: F401, E402
+
 # ── Alembic Config object ─────────────────────────────────────────────────────
 config = context.config
 
@@ -106,6 +131,10 @@ target_metadata = [
     EHRBase.metadata,
     CitizenPlatformBase.metadata,
     ClinicalBase.metadata,
+    HealthDataBase.metadata,
+    TrustBase.metadata,
+    GovernanceBase.metadata,
+    CareContinuumBase.metadata,
 ]
 
 

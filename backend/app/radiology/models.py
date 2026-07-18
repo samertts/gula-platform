@@ -55,7 +55,7 @@ class RadiologyOrder(RadiologyBaseEntity):
     scheduled_date = Column(DateTime(timezone=True), nullable=True)
     ordering_department_id = Column(String(26), nullable=True)
     notes = Column(Text, nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class RadiologyAppointment(RadiologyBaseEntity):
@@ -76,7 +76,7 @@ class RadiologyAppointment(RadiologyBaseEntity):
     arrival_time = Column(DateTime(timezone=True), nullable=True)
     check_in_time = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class Protocol(RadiologyBaseEntity):
@@ -95,7 +95,7 @@ class Protocol(RadiologyBaseEntity):
     positioning_instructions = Column(Text, nullable=True)
     series_parameters = Column(JSON, default=dict)
     is_active = Column(Boolean, default=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 # ==============================================================================
@@ -131,7 +131,7 @@ class RadiologyExam(RadiologyBaseEntity):
     series_count = Column(Integer, default=0)
     image_quality = Column(Enum(ImageQuality), nullable=True)
     notes = Column(Text, nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class RadiologySeries(RadiologyBaseEntity):
@@ -154,7 +154,7 @@ class RadiologySeries(RadiologyBaseEntity):
     slice_thickness = Column(Float, nullable=True)
     fov = Column(String(32), nullable=True)
     matrix_size = Column(String(32), nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class RadiologyImage(RadiologyBaseEntity):
@@ -172,7 +172,7 @@ class RadiologyImage(RadiologyBaseEntity):
     storage_path = Column(String(512), nullable=False)
     storage_tier = Column(Enum(ArchiveTier), default=ArchiveTier.HOT)
     checksum = Column(String(128), nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class ImageAnnotation(RadiologyBaseEntity):
@@ -183,7 +183,7 @@ class ImageAnnotation(RadiologyBaseEntity):
     annotated_by = Column(String(26), nullable=False)
     annotation_type = Column(Enum(AnnotationType), nullable=False)
     annotation_data = Column(JSON, nullable=False)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
 
@@ -199,7 +199,7 @@ class ImageMeasurement(RadiologyBaseEntity):
     location = Column(String(128), nullable=True)
     finding_code = Column(String(32), nullable=True)
     finding_description = Column(String(256), nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 # ==============================================================================
@@ -236,7 +236,7 @@ class RadiologyReport(RadiologyBaseEntity):
     version = Column(Integer, default=1)
     prior_report_id = Column(String(26), nullable=True)
     dictation_file = Column(String(256), nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class CriticalFinding(RadiologyBaseEntity):
@@ -253,7 +253,7 @@ class CriticalFinding(RadiologyBaseEntity):
     acknowledged_by = Column(String(26), nullable=True)
     status = Column(Enum(CriticalFindingStatus), default=CriticalFindingStatus.PENDING, nullable=False)
     notes = Column(Text, nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class ReportTemplate(RadiologyBaseEntity):
@@ -266,7 +266,7 @@ class ReportTemplate(RadiologyBaseEntity):
     body_part = Column(String(128), nullable=True)
     structured_template = Column(JSON, default=dict)
     is_active = Column(Boolean, default=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 # ==============================================================================
@@ -293,7 +293,7 @@ class ModalityDevice(RadiologyBaseEntity):
     status = Column(Enum(DeviceStatus), default=DeviceStatus.OFFLINE)
     software_version = Column(String(64), nullable=True)
     serial_number = Column(String(128), nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class WorklistEntry(RadiologyBaseEntity):
@@ -312,7 +312,7 @@ class WorklistEntry(RadiologyBaseEntity):
     scheduled_datetime = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(20), default="scheduled")
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class MPPS(RadiologyBaseEntity):
@@ -325,7 +325,7 @@ class MPPS(RadiologyBaseEntity):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     performed_steps = Column(JSON, default=list)
     notes = Column(Text, nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 # ==============================================================================
@@ -351,7 +351,7 @@ class DICOMStorage(RadiologyBaseEntity):
     compression_type = Column(Enum(StorageCompressionType), default=StorageCompressionType.NONE)
     retention_days = Column(Integer, nullable=True)
     is_archived = Column(Boolean, default=False)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class DICOMStudy(RadiologyBaseEntity):
@@ -369,7 +369,7 @@ class DICOMStudy(RadiologyBaseEntity):
     storage_size_bytes = Column(Integer, default=0)
     storage_tier = Column(Enum(ArchiveTier), default=ArchiveTier.HOT)
     is_archived = Column(Boolean, default=False)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 class ImageShare(RadiologyBaseEntity):
@@ -384,4 +384,4 @@ class ImageShare(RadiologyBaseEntity):
     is_revoked = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     access_count = Column(Integer, default=0)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)

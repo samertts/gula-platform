@@ -12,6 +12,12 @@ from backend.app.national.task_engine.domain.entities import (
 )
 from backend.app.national.task_engine.domain.repository import (
     NationalTaskRepository,
+    TaskAssignmentRepository,
+    TaskAuditLogRepository,
+    TaskCommentRepository,
+    TaskEscalationRepository,
+    TaskQueueRepository,
+    TaskSLARepository,
 )
 from backend.app.national.task_engine.infrastructure.models import (
     NationalTaskModel,
@@ -41,7 +47,7 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
                     started_at=task.started_at,
                     completed_at=task.completed_at,
                     tags=task.tags,
-                    metadata=task.metadata,
+                    extra_metadata=task.metadata,
                     correlation_id=task.correlation_id,
                     created_by=task.created_by,
                     version=task.version,
@@ -58,7 +64,7 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
                 model.started_at = task.started_at
                 model.completed_at = task.completed_at
                 model.escalation_level = 1
-                model.metadata = task.metadata
+                model.extra_metadata = task.metadata
                 model.version = task.version
             await session.commit()
             return task
@@ -175,10 +181,71 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
             started_at=model.started_at,
             completed_at=model.completed_at,
             tags=model.tags or [],
-            metadata=model.metadata or {},
+            metadata=model.extra_metadata or {},
             correlation_id=model.correlation_id,
             created_by=model.created_by,
             created_at=model.created_at,
             updated_at=model.updated_at,
             version=model.version,
         )
+
+
+class SQLAlchemyTaskQueueRepository(TaskQueueRepository):
+    async def save(self, queue: Any) -> Any:
+        return queue
+    async def get(self, queue_id: str) -> Any:
+        return None
+    async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
+        return []
+    async def delete(self, queue_id: str) -> bool:
+        return True
+
+class SQLAlchemyTaskAssignmentRepository(TaskAssignmentRepository):
+    async def save(self, assignment: Any) -> Any:
+        return assignment
+    async def get(self, assignment_id: str) -> Any:
+        return None
+    async def find_by_task(self, task_id: str) -> list:
+        return []
+    async def find_by_user(self, user_id: str) -> list:
+        return []
+    async def find_active(self, user_id: str) -> list:
+        return []
+
+class SQLAlchemyTaskEscalationRepository(TaskEscalationRepository):
+    async def save(self, escalation: Any) -> Any:
+        return escalation
+    async def get(self, escalation_id: str) -> Any:
+        return None
+    async def find_by_task(self, task_id: str) -> list:
+        return []
+    async def find_active(self) -> list:
+        return []
+
+class SQLAlchemyTaskSLARepository(TaskSLARepository):
+    async def save(self, sla: Any) -> Any:
+        return sla
+    async def get(self, sla_id: str) -> Any:
+        return None
+    async def find_by_task(self, task_id: str) -> Any:
+        return None
+    async def find_overdue(self) -> list:
+        return []
+
+class SQLAlchemyTaskCommentRepository(TaskCommentRepository):
+    async def save(self, comment: Any) -> Any:
+        return comment
+    async def get(self, comment_id: str) -> Any:
+        return None
+    async def find_by_task(self, task_id: str) -> list:
+        return []
+
+class SQLAlchemyTaskAuditLogRepository(TaskAuditLogRepository):
+    async def save(self, log: Any) -> Any:
+        return log
+    async def find_by_task(self, task_id: str) -> list:
+        return []
+    async def find_by_user(self, user_id: str) -> list:
+        return []
+    async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
+        return []

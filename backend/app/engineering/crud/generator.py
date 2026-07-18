@@ -185,7 +185,7 @@ class {spec.name}Service:
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class {spec.name}Create(BaseModel):
@@ -202,8 +202,7 @@ class {spec.name}Response(BaseModel):
     updated_at: datetime
     version: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 """
         self._write(f"dtos/{module}_dto.py", content)
 

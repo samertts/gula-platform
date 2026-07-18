@@ -1,0 +1,55 @@
+{
+  "overall": "FAIL",
+  "checks": [
+    {
+      "name": "architecture",
+      "status": "FAIL",
+      "details": [
+        "architecture compliance score: 7/100"
+      ]
+    },
+    {
+      "name": "scorecard",
+      "status": "WARNING",
+      "details": [
+        "repository scorecard: 72/100 (grade C)"
+      ]
+    },
+    {
+      "name": "debt",
+      "status": "FAIL",
+      "details": [
+        "technical debt: 647 items (P0=4, P1=13)",
+        "P0 items found \u2014 blocking"
+      ]
+    },
+    {
+      "name": "metrics",
+      "status": "PASS",
+      "details": [
+        "quality index: 673/1000 (grade D)"
+      ]
+    },
+    {
+      "name": "secrets",
+      "status": "PASS",
+      "details": [
+        "skipped (bypass)"
+      ]
+    },
+    {
+      "name": "syntax",
+      "status": "PASS",
+      "details": [
+        "skipped (bypass)"
+      ]
+    },
+    {
+      "name": "migrations",
+      "status": "PASS",
+      "details": [
+        "skipped (bypass)"
+      ]
+    }
+  ]
+}

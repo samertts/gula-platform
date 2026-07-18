@@ -6,11 +6,8 @@ import logging
 import time
 import zlib
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import Any
-
-from app._compat import UTC
 
 logger = logging.getLogger("gula.offline.sync")
 

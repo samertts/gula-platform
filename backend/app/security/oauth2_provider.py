@@ -1,22 +1,20 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import secrets
-from base64 import urlsafe_b64decode, urlsafe_b64encode
-from datetime import datetime, timedelta, timezone
+from base64 import urlsafe_b64encode
+from datetime import datetime, timedelta
+from app._compat import UTC
 from typing import Any
 from uuid import uuid4
 
-from jose import JWTError, jwk, jwt
+from jose import JWTError, jwt
 from pydantic import BaseModel
 
 from shared.auth import create_access_token, decode_access_token
-from shared.auth.passwords import hash_password, verify_password
 
 from ..config import BASE_URL, JWT_ALGORITHM, JWT_EXPIRE_MINUTES, SECRET_KEY
-from ..database import Base, SessionLocal
 
 logger = logging.getLogger("gula.oauth2")
 
@@ -78,7 +76,7 @@ def verify_pkce(code_verifier: str, code_challenge: str, method: str) -> bool:
             hashlib.sha256(code_verifier.encode("ascii")).digest()
         ).rstrip(b"=").decode()
         return computed == code_challenge
-    elif method == "plain":
+    if method == "plain":
         return code_verifier == code_challenge
     return False
 
@@ -89,7 +87,7 @@ def create_id_token(
     nonce: str | None = None,
     extra_claims: dict[str, Any] | None = None,
 ) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "iss": f"{BASE_URL}/oauth2",
         "sub": str(user_id),
@@ -167,13 +165,12 @@ def decode_oauth2_refresh_token(token: str) -> dict[str, Any] | None:
 
 
 def get_jwks() -> list[dict[str, Any]]:
-    key_data = {
-        "kty": "oct",
-        "alg": JWT_ALGORITHM,
-        "k": urlsafe_b64encode(SECRET_KEY.encode()).decode(),
-    }
-    public_key = jwk.construct(key_data)
-    return [public_key.to_dict()]
+    logger.warning(
+        "JWKS endpoint called with symmetric HMAC signing — "
+        "no asymmetric public keys are available. "
+        "Clients expecting RSA/EC keys will receive an empty set."
+    )
+    return []
 
 
 def build_openid_config() -> dict[str, Any]:

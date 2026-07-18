@@ -32,12 +32,12 @@ from .enums import (
 class Admission(NHDWBaseEntity):
     __tablename__ = "nhdw_admissions"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
     encounter_id = Column(String(64), nullable=True, index=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="RESTRICT"), nullable=False, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="RESTRICT"), nullable=False, index=True)
-    room_id = Column(Integer, ForeignKey("hospital_rooms.id", ondelete="SET NULL"), nullable=True, index=True)
-    bed_id = Column(Integer, ForeignKey("hospital_beds.id", ondelete="SET NULL"), nullable=True, index=True)
+    hospital_id = Column(Integer, nullable=False, index=True)
+    department_id = Column(Integer, nullable=False, index=True)
+    room_id = Column(Integer, nullable=True, index=True)
+    bed_id = Column(Integer, nullable=True, index=True)
     admission_type = Column(SAEnum(AdmissionType), nullable=False, index=True)
     admission_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     expected_discharge_date = Column(DateTime(timezone=True), nullable=True)
@@ -56,7 +56,7 @@ class Admission(NHDWBaseEntity):
 
     patient = relationship("Patient", foreign_keys=[patient_id])
     hospital = relationship("HospitalMaster", foreign_keys=[hospital_id])
-    department = relationship("Department", foreign_keys=[department_id])
+    department = relationship("HospitalDepartment", foreign_keys=[department_id])
     room = relationship("Room", foreign_keys=[room_id])
     bed = relationship("Bed", foreign_keys=[bed_id])
 
@@ -71,7 +71,7 @@ class Discharge(NHDWBaseEntity):
     __tablename__ = "nhdw_discharges"
 
     admission_id = Column(String(26), ForeignKey("nhdw_admissions.id", ondelete="RESTRICT"), nullable=False, index=True)
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
     encounter_id = Column(String(64), nullable=True, index=True)
     discharge_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     discharge_type = Column(SAEnum(DischargeType), nullable=False, index=True)
@@ -98,13 +98,13 @@ class Discharge(NHDWBaseEntity):
 class Transfer(NHDWBaseEntity):
     __tablename__ = "nhdw_transfers"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    from_department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="RESTRICT"), nullable=False, index=True)
-    to_department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="RESTRICT"), nullable=False, index=True)
-    from_room_id = Column(Integer, ForeignKey("hospital_rooms.id", ondelete="SET NULL"), nullable=True)
-    to_room_id = Column(Integer, ForeignKey("hospital_rooms.id", ondelete="SET NULL"), nullable=True)
-    from_bed_id = Column(Integer, ForeignKey("hospital_beds.id", ondelete="SET NULL"), nullable=True)
-    to_bed_id = Column(Integer, ForeignKey("hospital_beds.id", ondelete="SET NULL"), nullable=True)
+    patient_id = Column(Integer, nullable=False, index=True)
+    from_department_id = Column(Integer, nullable=False, index=True)
+    to_department_id = Column(Integer, nullable=False, index=True)
+    from_room_id = Column(Integer, nullable=True)
+    to_room_id = Column(Integer, nullable=True)
+    from_bed_id = Column(Integer, nullable=True)
+    to_bed_id = Column(Integer, nullable=True)
     from_doctor_id = Column(Integer, nullable=True)
     to_doctor_id = Column(Integer, nullable=True)
     reason = Column(String(500), nullable=False)
@@ -128,10 +128,10 @@ class Transfer(NHDWBaseEntity):
 class QueueEntry(NHDWBaseEntity):
     __tablename__ = "nhdw_queue_entries"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
     encounter_id = Column(String(64), nullable=True, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="RESTRICT"), nullable=False, index=True)
-    clinic_id = Column(Integer, ForeignKey("hospital_clinics.id", ondelete="SET NULL"), nullable=True, index=True)
+    department_id = Column(Integer, nullable=False, index=True)
+    clinic_id = Column(Integer, nullable=True, index=True)
     priority = Column(SAEnum(QueuePriority), nullable=False, default=QueuePriority.MEDIUM, index=True)
     queue_date = Column(Date, nullable=False, index=True)
     check_in_time = Column(DateTime(timezone=True), nullable=True)
@@ -144,7 +144,7 @@ class QueueEntry(NHDWBaseEntity):
     metadata_ = Column("metadata", JSON, nullable=True)
 
     patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("Department", foreign_keys=[department_id])
+    department = relationship("HospitalDepartment", foreign_keys=[department_id])
     clinic = relationship("Clinic", foreign_keys=[clinic_id])
 
     __table_args__ = (
@@ -157,8 +157,8 @@ class QueueEntry(NHDWBaseEntity):
 class WaitingListEntry(NHDWBaseEntity):
     __tablename__ = "nhdw_waiting_list_entries"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
+    department_id = Column(Integer, nullable=False, index=True)
     procedure_code = Column(String(50), nullable=True, index=True)
     procedure_name = Column(String(300), nullable=True)
     priority = Column(SAEnum(QueuePriority), nullable=False, default=QueuePriority.MEDIUM, index=True)
@@ -169,7 +169,7 @@ class WaitingListEntry(NHDWBaseEntity):
     metadata_ = Column("metadata", JSON, nullable=True)
 
     patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("Department", foreign_keys=[department_id])
+    department = relationship("HospitalDepartment", foreign_keys=[department_id])
 
     __table_args__ = (
         Index("ix_nhdw_waiting_patient", "patient_id"),
@@ -180,7 +180,7 @@ class WaitingListEntry(NHDWBaseEntity):
 class ClinicalTask(NHDWBaseEntity):
     __tablename__ = "nhdw_clinical_tasks"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
     encounter_id = Column(String(64), nullable=True, index=True)
     assigned_to = Column(Integer, nullable=False, index=True)
     assigned_by = Column(Integer, nullable=False)
@@ -210,9 +210,9 @@ class ClinicalTask(NHDWBaseEntity):
 class WardRound(NHDWBaseEntity):
     __tablename__ = "nhdw_ward_rounds"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
     encounter_id = Column(String(64), nullable=True, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="RESTRICT"), nullable=False, index=True)
+    department_id = Column(Integer, nullable=False, index=True)
     lead_doctor_id = Column(Integer, nullable=False, index=True)
     round_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     participants = Column(JSON, nullable=True)
@@ -226,7 +226,7 @@ class WardRound(NHDWBaseEntity):
     metadata_ = Column("metadata", JSON, nullable=True)
 
     patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("Department", foreign_keys=[department_id])
+    department = relationship("HospitalDepartment", foreign_keys=[department_id])
 
     __table_args__ = (
         Index("ix_nhdw_rounds_patient", "patient_id"),
@@ -237,7 +237,7 @@ class WardRound(NHDWBaseEntity):
 class CarePlan(NHDWBaseEntity):
     __tablename__ = "nhdw_care_plans"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
     encounter_id = Column(String(64), nullable=True, index=True)
     diagnosis = Column(Text, nullable=True)
     goals = Column(JSON, nullable=True)
@@ -256,7 +256,7 @@ class CarePlan(NHDWBaseEntity):
 
     __table_args__ = (
         Index("ix_nhdw_care_plans_patient", "patient_id"),
-        Index("ix_nhdw_care_plans_status", "status"),
+        # ix_nhdw_care_plans_status is auto-generated by index=True on status column
     )
 
 
@@ -268,16 +268,16 @@ class HospitalAlert(NHDWBaseEntity):
     title = Column(String(300), nullable=False)
     title_ar = Column(String(300), nullable=True)
     description = Column(Text, nullable=True)
-    source_department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    source_department_id = Column(Integer, nullable=True, index=True)
     triggered_by = Column(Integer, nullable=False)
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(Integer, nullable=True, index=True)
     is_resolved = Column(Boolean, default=False, nullable=False, index=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolved_by = Column(Integer, nullable=True)
     acknowledged_by = Column(JSON, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    source_department = relationship("Department", foreign_keys=[source_department_id])
+    source_department = relationship("HospitalDepartment", foreign_keys=[source_department_id])
     patient = relationship("Patient", foreign_keys=[patient_id])
 
     __table_args__ = (
@@ -296,12 +296,12 @@ class HospitalMessage(NHDWBaseEntity):
     priority = Column(String(20), nullable=False, default="normal", index=True)
     is_read = Column(Boolean, default=False, nullable=False, index=True)
     read_at = Column(DateTime(timezone=True), nullable=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    department_id = Column(Integer, nullable=True, index=True)
     parent_message_id = Column(String(26), ForeignKey("nhdw_hospital_messages.id", ondelete="SET NULL"), nullable=True)
     has_attachments = Column(Boolean, default=False, nullable=False)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    department = relationship("Department", foreign_keys=[department_id])
+    department = relationship("HospitalDepartment", foreign_keys=[department_id])
     parent = relationship("HospitalMessage", remote_side="HospitalMessage.id", foreign_keys=[parent_message_id])
 
     __table_args__ = (
@@ -314,7 +314,7 @@ class HospitalMessage(NHDWBaseEntity):
 class TelemedicineSession(NHDWBaseEntity):
     __tablename__ = "nhdw_telemedicine_sessions"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
     provider_id = Column(Integer, nullable=False, index=True)
     scheduled_at = Column(DateTime(timezone=True), nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
@@ -347,7 +347,7 @@ class ResourceSchedule(NHDWBaseEntity):
     end_time = Column(DateTime(timezone=True), nullable=False)
     status = Column(String(50), nullable=False, default="scheduled", index=True)
     booked_by = Column(Integer, nullable=True)
-    booked_for_patient_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True)
+    booked_for_patient_id = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
@@ -364,7 +364,7 @@ class DashboardConfiguration(NHDWBaseEntity):
 
     user_id = Column(Integer, nullable=True, index=True)
     role = Column(String(50), nullable=True, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    department_id = Column(Integer, nullable=True, index=True)
     config_json = Column(JSON, nullable=False)
     is_default = Column(Boolean, default=False, nullable=False)
 
@@ -377,7 +377,7 @@ class DashboardConfiguration(NHDWBaseEntity):
 class ShiftReport(NHDWBaseEntity):
     __tablename__ = "nhdw_shift_reports"
 
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="RESTRICT"), nullable=False, index=True)
+    department_id = Column(Integer, nullable=False, index=True)
     shift_type = Column(SAEnum(ShiftType), nullable=False, index=True)
     shift_date = Column(Date, nullable=False, index=True)
     start_time = Column(DateTime(timezone=True), nullable=False)
@@ -393,7 +393,7 @@ class ShiftReport(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    department = relationship("Department", foreign_keys=[department_id])
+    department = relationship("HospitalDepartment", foreign_keys=[department_id])
 
     __table_args__ = (
         Index("ix_nhdw_shift_reports_dept_date", "department_id", "shift_date"),

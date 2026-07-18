@@ -5,11 +5,11 @@
 the `lab_devices` instrument that produced it.
 
 NOTE: this module is intentionally NOT yet re-exported from
-``app/models/__init__.py``.  The FK to ``lab_devices`` points at a table
-that is not present in the current schema — wiring the model into
-``Base.metadata`` before a migration adds that table would break
-``create_all`` on fresh deployments.  Add the import once the matching
-Alembic revision lands.
+``app/models/__init__.py``.  The original FK to ``lab_devices`` has been
+replaced with a plain Integer column because the table does not exist in
+the current schema.  Wire the model into ``Base.metadata`` once the
+matching Alembic revision for ``lab_devices`` lands; at that point you
+may also restore the ForeignKey on ``device_id``.
 """
 
 from datetime import datetime
@@ -63,7 +63,6 @@ class TestResult(Base):
     )
     device_id = Column(
         Integer,
-        ForeignKey("lab_devices.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

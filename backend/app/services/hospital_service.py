@@ -16,7 +16,7 @@ from ..hospital.models import (
     Campus,
     Clinic,
     CostCenter,
-    Department,
+    HospitalDepartment,
     Floor,
     HospitalMaster,
     MedicalEquipment,
@@ -177,32 +177,32 @@ class HospitalService:
             Floor.building_id == building_id, Floor.lab_id == lab_id, ~Floor.is_deleted,
         ).all()
 
-    # ── Department CRUD ────────────────────────────────────────────────────────
+    # ── HospitalDepartment CRUD ────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_department(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> Department:
+    def create_department(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> HospitalDepartment:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         if data.get("parent_id"):
-            HospitalService._get_entity(db, Department, data["parent_id"], lab_id, Department.hospital_id == hospital_id)
-        dept = Department(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
+            HospitalService._get_entity(db, HospitalDepartment, data["parent_id"], lab_id, HospitalDepartment.hospital_id == hospital_id)
+        dept = HospitalDepartment(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(dept)
         db.flush()
         return dept
 
     @staticmethod
-    def list_departments(db: Session, lab_id: int, hospital_id: int, parent_id: int | None = None) -> list[Department]:
-        q = db.query(Department).filter(
-            Department.hospital_id == hospital_id, Department.lab_id == lab_id, ~Department.is_deleted,
+    def list_departments(db: Session, lab_id: int, hospital_id: int, parent_id: int | None = None) -> list[HospitalDepartment]:
+        q = db.query(HospitalDepartment).filter(
+            HospitalDepartment.hospital_id == hospital_id, HospitalDepartment.lab_id == lab_id, ~HospitalDepartment.is_deleted,
         )
         if parent_id is not None:
-            q = q.filter(Department.parent_id == parent_id)
+            q = q.filter(HospitalDepartment.parent_id == parent_id)
         return q.all()
 
     # ── Clinic CRUD ────────────────────────────────────────────────────────────
 
     @staticmethod
     def create_clinic(db: Session, lab_id: int, user_id: int, department_id: int, data: dict) -> Clinic:
-        dept = HospitalService._get_entity(db, Department, department_id, lab_id)
+        dept = HospitalService._get_entity(db, HospitalDepartment, department_id, lab_id)
         data.setdefault("hospital_id", dept.hospital_id)
         clinic = Clinic(lab_id=lab_id, created_by=user_id, department_id=department_id, **data)
         db.add(clinic)
@@ -220,7 +220,7 @@ class HospitalService:
 
     @staticmethod
     def create_room(db: Session, lab_id: int, user_id: int, department_id: int, data: dict) -> Room:
-        HospitalService._get_entity(db, Department, department_id, lab_id)
+        HospitalService._get_entity(db, HospitalDepartment, department_id, lab_id)
         room = Room(lab_id=lab_id, created_by=user_id, department_id=department_id, **data)
         db.add(room)
         db.flush()
@@ -352,7 +352,7 @@ class HospitalService:
     def bed_occupancy_stats(db: Session, lab_id: int, hospital_id: int | None = None) -> dict[str, Any]:
         q = db.query(Bed).filter(Bed.lab_id == lab_id, ~Bed.is_deleted)
         if hospital_id is not None:
-            q = q.join(Room).join(Department).filter(Department.hospital_id == hospital_id)
+            q = q.join(Room).join(HospitalDepartment).filter(HospitalDepartment.hospital_id == hospital_id)
         total = q.count()
         available = q.filter(Bed.status == "available").count()
         occupied = q.filter(Bed.status == "occupied").count()
@@ -453,10 +453,10 @@ class HospitalService:
     @staticmethod
     def dashboard(db: Session, lab_id: int, hospital_id: int) -> dict[str, Any]:
         HospitalService.get_hospital(db, hospital_id, lab_id)
-        dept_count = db.query(func.count(Department.id)).filter(
-            Department.hospital_id == hospital_id,
-            Department.lab_id == lab_id,
-            ~Department.is_deleted,
+        dept_count = db.query(func.count(HospitalDepartment.id)).filter(
+            HospitalDepartment.hospital_id == hospital_id,
+            HospitalDepartment.lab_id == lab_id,
+            ~HospitalDepartment.is_deleted,
         ).scalar() or 0
         clinic_count = db.query(func.count(Clinic.id)).filter(
             Clinic.hospital_id == hospital_id,
@@ -464,10 +464,10 @@ class HospitalService:
         ).scalar() or 0
         room_count = db.query(func.count(Room.id)).filter(
             Room.department_id.in_(
-                db.query(Department.id).filter(
-                    Department.hospital_id == hospital_id,
-                    Department.lab_id == lab_id,
-                    ~Department.is_deleted,
+                db.query(HospitalDepartment.id).filter(
+                    HospitalDepartment.hospital_id == hospital_id,
+                    HospitalDepartment.lab_id == lab_id,
+                    ~HospitalDepartment.is_deleted,
                 )
             ),
             ~Room.is_deleted,

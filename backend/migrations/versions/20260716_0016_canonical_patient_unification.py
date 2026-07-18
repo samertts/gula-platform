@@ -21,8 +21,8 @@ revision: str = "20260716_0016"
 down_revision: Union[str, None] = "20260716_0015"
 
 
-def _table_exists(name: str) -> bool:
-    return inspect(op.get_bind()).has_table(name)
+def _table_exists(table: str) -> bool:
+    return inspect(op.get_bind()).has_table(table)
 
 
 def _has_column(table: str, column: str) -> bool:

@@ -6,13 +6,13 @@ from typing import Any
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.database import Base
+from app.national_data.base import DataPlatformBase
 from app.models.patient import Patient as LimsPatient
 from app.national.domain.citizen import Citizen
 from app.national.domain.patient import Patient as NationalPatient
 
 
-class CanonicalPatient(Base):
+class CanonicalPatient(DataPlatformBase):
     __abstract__ = True
 
     id: int

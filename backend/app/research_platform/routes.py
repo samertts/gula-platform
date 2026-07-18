@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.health_data.warehouse.service import WarehouseQuery
-from app.research_platform.kpi_engine import KpiDefinition
+from app.research_platform.kpi_engine import KPIDefinition as KpiDefinition
 from app.research_platform.sdk import AnalyticsSDK, ResearchSDK
 
 logger = logging.getLogger("gula.research_platform.routes")

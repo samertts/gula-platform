@@ -4,7 +4,7 @@ from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -16,7 +16,6 @@ from app.pharmacy.enums import (
     StorageCondition,
 )
 from app.pharmacy.models import (
-    DispenseQueue,
     Prescription,
 )
 from app.pharmacy.services import PharmacyService
@@ -121,8 +120,7 @@ class DrugCatalogResponse(BaseModel):
     created_at: str | None
     updated_at: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DrugCatalogListResponse(BaseModel):
@@ -162,8 +160,7 @@ class DrugBatchResponse(BaseModel):
     selling_price: float | None
     is_quarantined: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SupplierCreate(BaseModel):
@@ -191,8 +188,7 @@ class SupplierResponse(BaseModel):
     license_number: str | None
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PrescriptionCreate(BaseModel):
@@ -230,8 +226,7 @@ class PrescriptionResponse(BaseModel):
     substitution_allowed: bool
     note: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PrescriptionItemCreate(BaseModel):
@@ -277,8 +272,7 @@ class PrescriptionItemResponse(BaseModel):
     substitution_allowed: bool
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DispenseRecordCreate(BaseModel):
@@ -318,8 +312,7 @@ class DispenseRecordResponse(BaseModel):
     total_amount: float | None
     pharmacist_notes: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StockLevelResponse(BaseModel):
@@ -337,8 +330,7 @@ class StockLevelResponse(BaseModel):
     storage_condition: str | None
     last_count_date: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StockAdjustRequest(BaseModel):
@@ -420,8 +412,7 @@ class RecallResponse(BaseModel):
     actions_taken: str | None
     notes: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InteractionCheckRequest(BaseModel):
@@ -474,8 +465,7 @@ class MovementResponse(BaseModel):
     movement_date: str
     notes: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TransferResponse(BaseModel):
@@ -489,8 +479,7 @@ class TransferResponse(BaseModel):
     received_date: str | None
     notes: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DashboardResponse(BaseModel):
@@ -805,7 +794,7 @@ async def substitute_prescription_item(
 # ── Dispensing Routes ──────────────────────────────────────────────────────────
 
 
-@router.get("/dispense-queue", response_model=list[DispenseQueue])
+@router.get("/dispense-queue")
 async def get_dispense_queue(
     status_filter: str | None = Query(None, alias="status"),
     priority: str | None = Query(None),

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
-import pickle
 import threading
 import time
 import uuid
@@ -116,7 +116,7 @@ class StateRecovery:
         self._checkpoints[component] = cp
         filepath = self._checkpoint_dir / f"{component}_{cp.id}.ckpt"
         try:
-            filepath.write_bytes(pickle.dumps({"id": cp.id, "component": cp.component, "state": cp.state, "version": cp.version}))
+            filepath.write_text(json.dumps({"id": cp.id, "component": cp.component, "state": cp.state, "version": cp.version}, default=str))
             logger.info("Checkpoint saved", extra={"component": component, "path": str(filepath)})
         except Exception as exc:
             logger.error("Checkpoint write failed", extra={"component": component, "error": str(exc)})
@@ -130,7 +130,7 @@ class StateRecovery:
         try:
             files = sorted(self._checkpoint_dir.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True)
             if files:
-                data = pickle.loads(files[0].read_bytes())
+                data = json.loads(files[0].read_text())
                 cp = Checkpoint(id=data["id"], component=data["component"], state=data["state"], version=data.get("version", 1))
                 self._checkpoints[component] = cp
                 return cp

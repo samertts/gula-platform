@@ -5,15 +5,15 @@ import json
 import logging
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from shared.auth.passwords import hash_password, verify_password
 
 from ..database import get_db
-from ..models.lab_user import LabUser
 from ..models.oauth2_client import OAuth2Client
 from ..models.oauth2_token import OAuth2Token
 from ..security.dependencies import get_current_user
@@ -33,7 +33,6 @@ from ..security.oauth2_provider import (
     hash_token,
     verify_pkce,
 )
-from shared.auth.passwords import hash_password, verify_password
 
 logger = logging.getLogger("gula.routes.oauth2")
 
@@ -145,12 +144,11 @@ def token(
 
     if data.grant_type == "authorization_code":
         return _handle_auth_code_grant(data, client, db)
-    elif data.grant_type == "client_credentials":
+    if data.grant_type == "client_credentials":
         return _handle_client_credentials_grant(data, client, db)
-    elif data.grant_type == "refresh_token":
+    if data.grant_type == "refresh_token":
         return _handle_refresh_token_grant(data, client, db)
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported grant_type")
+    raise HTTPException(status_code=400, detail="Unsupported grant_type")
 
 
 @router.post("/introspect")

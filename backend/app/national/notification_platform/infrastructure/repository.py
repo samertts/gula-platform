@@ -61,7 +61,7 @@ def _model_to_notification(m: NationalNotificationModel) -> Notification:
         read_at=m.read_at,
         failed_at=m.failed_at,
         error_message=m.error_message,
-        metadata=m.metadata,
+        metadata=m.extra_metadata,
         correlation_id=m.correlation_id,
         created_by=m.created_by,
         created_at=m.created_at,
@@ -87,7 +87,7 @@ def _notification_to_model(m: NationalNotificationModel, e: Notification) -> Nat
     m.read_at = e.read_at
     m.failed_at = e.failed_at
     m.error_message = e.error_message
-    m.metadata = e.metadata
+    m.extra_metadata = e.metadata
     m.correlation_id = e.correlation_id
     m.created_by = e.created_by
     m.created_at = e.created_at

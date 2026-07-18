@@ -1,0 +1,35 @@
+name: Foundation Gate
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  foundation-gate:
+    name: Foundation Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -q -r backend/requirements.txt 2>/dev/null || true
+
+      - name: Run Foundation Quality Gate
+        env:
+          ENV: test
+        run: |
+          python3 scripts/quality_gate.py --ci --strict
+          echo "exit_code=$?" >> $GITHUB_OUTPUT

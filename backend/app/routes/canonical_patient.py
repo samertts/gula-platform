@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -7,11 +6,10 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models.canonical_patient import CanonicalPatient, CitizenLink, PatientLink
+from ..models.canonical_patient import CanonicalPatient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services.mpi.canonical_service import (
-    find_or_create_canonical,
     get_canonical_by_citizen,
     get_canonical_by_patient,
     link_citizen,

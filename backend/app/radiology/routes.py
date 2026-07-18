@@ -1283,7 +1283,7 @@ def citizen_reports(
     items = []
     for r in reports:
         d = _to_dict(r)
-        d.pop("metadata", None)
+        d.pop("extra_metadata", None)
         items.append(d)
     return {"items": items, "total": len(items), "skip": skip, "limit": limit}
 

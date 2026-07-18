@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from backend.app.integration.esb.message_bus import ESBMessage
+from backend.app.integration.esb.types import ESBMessage
 
 logger = logging.getLogger("gula.integration.esb.router")
 

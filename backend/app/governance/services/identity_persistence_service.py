@@ -10,11 +10,18 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.governance.models.health_number import MergedIdentityRecord
-from app.governance.models.identity import GovernanceBreakGlassAccess, GovernanceIdentityRecord, MergeProposal
+from app.governance.models.identity import (
+    GovernanceBreakGlassAccess,
+    GovernanceIdentityRecord,
+    MergeProposal,
+)
+from app.governance.repositories.base import OptimisticLockError
 from app.governance.repositories.break_glass_repository import BreakGlassAccessRepository
 from app.governance.repositories.identity_repository import IdentityRecordRepository
-from app.governance.repositories.merge_repository import MergeProposalRepository, MergedIdentityRecordRepository
-from app.governance.repositories.base import OptimisticLockError
+from app.governance.repositories.merge_repository import (
+    MergedIdentityRecordRepository,
+    MergeProposalRepository,
+)
 
 PERSISTED_IDENTITY_VERSION = 1
 

@@ -889,7 +889,7 @@ class Specimen(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
-    parent = relationship("Specimen", remote_side="Specimen.id", backref="aliquots")
+    parent = relationship("Specimen", remote_side="Specimen.id", foreign_keys=[parent_specimen_id], backref="aliquots")
     storage = relationship("Storage", backref="specimens")
     __table_args__ = (
         Index("ix_lims_spec_lab_status", "lab_id", "status"),

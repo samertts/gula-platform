@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import base64
 import logging
-import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
-from typing import Any
-
-from ..config import BASE_URL
+from defusedxml import ElementTree as ET
+from datetime import datetime, timedelta
+from app._compat import UTC
 
 logger = logging.getLogger("gula.saml")
 
@@ -47,7 +45,7 @@ def validate_assertion(
     if conditions is not None:
         not_before = conditions.get("NotBefore")
         not_on_or_after = conditions.get("NotOnOrAfter")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if not_before:
             nb = datetime.fromisoformat(not_before.replace("Z", "+00:00"))
             if now < nb - timedelta(seconds=allowed_clock_skew_s):

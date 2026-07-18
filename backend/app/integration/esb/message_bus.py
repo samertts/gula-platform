@@ -2,38 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
-import uuid
 from collections.abc import Callable
-from dataclasses import dataclass, field
-from typing import Any
 
 from backend.app.integration.esb.dead_letter import DeadLetterService
 from backend.app.integration.esb.idempotency import IdempotencyService
 from backend.app.integration.esb.priority import PriorityService
 from backend.app.integration.esb.router import ESBRouter
+from backend.app.integration.esb.types import ESBMessage
 
 logger = logging.getLogger("gula.integration.esb.message_bus")
-
-
-@dataclass
-class ESBMessage:
-    id: str = ""
-    event_name: str = ""
-    payload: dict[str, Any] = field(default_factory=dict)
-    source: str = ""
-    destination: str = ""
-    priority: int = 5
-    correlation_id: str = ""
-    tenant_id: str = ""
-    timestamp: float = 0.0
-    ttl_seconds: int = 3600
-
-    def __post_init__(self):
-        if not self.id:
-            self.id = str(uuid.uuid4())
-        if not self.timestamp:
-            self.timestamp = time.time()
 
 
 class ESBMessageBus:

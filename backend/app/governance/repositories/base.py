@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Generic, Type, TypeVar
+from typing import Any, Generic, TypeVar
 
-from sqlalchemy import Column, Integer
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -17,7 +16,7 @@ class OptimisticLockError(Exception):
 
 
 class GovernanceRepository(Generic[T]):
-    def __init__(self, db: Session, model_cls: Type[T], audit_resource: str = ""):
+    def __init__(self, db: Session, model_cls: type[T], audit_resource: str = ""):
         self._db = db
         self._model = model_cls
         self._audit_resource = audit_resource or model_cls.__tablename__
@@ -45,7 +44,7 @@ class GovernanceRepository(Generic[T]):
                     f"{self._model.__name__} id={getattr(entity, 'id', '?')} "
                     f"version {current} != expected {expected_version}"
                 )
-            setattr(entity, "version", current + 1 if current is not None else 1)
+            entity.version = current + 1 if current is not None else 1
         self._write_audit("update", str(getattr(entity, "id", "")))
         return entity
 
@@ -53,7 +52,7 @@ class GovernanceRepository(Generic[T]):
         if soft and hasattr(entity, "is_deleted"):
             if isinstance(getattr(entity, "is_deleted", None), bool):
                 entity.is_deleted = True
-            setattr(entity, "deleted_at", datetime.now(UTC))
+            entity.deleted_at = datetime.now(UTC)
         elif soft and hasattr(entity, "is_active"):
             entity.is_active = False
         else:

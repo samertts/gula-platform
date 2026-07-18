@@ -9,9 +9,14 @@ Public surface:
   - Citizen, IdentityClaim, MergeAudit: SQLAlchemy models
 """
 
-from .api import router
 from .models import Citizen, IdentityClaim, MergeAudit
 from .resolver import merge_citizens, resolve_identity
+
+def __getattr__(name):
+    if name == "router":
+        from .api import router
+        return router
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "Citizen",

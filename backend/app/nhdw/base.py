@@ -1,17 +1,18 @@
 import uuid
 
 from sqlalchemy import JSON, Column, String
+from sqlalchemy.orm import declarative_base
 
 from shared.models import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin
 
-from ..database import Base
+NHDWBase = declarative_base()
 
 
 def _nhdw_ulid() -> str:
     return str(uuid.uuid4()).replace("-", "").upper()[:26]
 
 
-class NHDWBaseEntity(Base, AuditMixin, SoftDeleteMixin, TenantMixin, OptimisticLockMixin):
+class NHDWBaseEntity(NHDWBase, AuditMixin, SoftDeleteMixin, TenantMixin, OptimisticLockMixin):
     __abstract__ = True
 
     id = Column(String(26), primary_key=True, default=_nhdw_ulid)

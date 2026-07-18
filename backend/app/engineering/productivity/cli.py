@@ -9,7 +9,6 @@ from backend.app.engineering.crud.generator import CRUDGenerator, EntityField, E
 from backend.app.engineering.generators.capability import (
     CapabilityGenerator,
     CapabilitySpec,
-    EntityField,
 )
 from backend.app.engineering.generators.microservice import MicroserviceGenerator, MicroserviceSpec
 from backend.app.engineering.generators.module import ModuleGenerator, ModuleSpec

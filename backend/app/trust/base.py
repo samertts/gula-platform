@@ -1,4 +1,9 @@
-"""Base classes for the Trust platform."""
+"""Base classes for the Trust platform.
+
+NOTE: Uses DateTime-based soft-delete pattern (is_deleted is DateTime, nullable).
+This differs from the canonical Boolean-based SoftDeleteMixin in shared.models.
+Consolidation requires schema migration — deferred to Phase 3.
+"""
 
 from datetime import datetime
 from typing import Any

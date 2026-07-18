@@ -48,6 +48,8 @@ jobs:
 
   blue-green-deploy:
     runs-on: ubuntu-latest
+    outputs:
+      active: ${{ steps.slots.outputs.active }}
     needs: check-ci
     if: needs.check-ci.outputs.should_deploy == 'true'
     timeout-minutes: 20

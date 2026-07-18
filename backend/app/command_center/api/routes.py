@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.command_center.application.service import CommandCenterService
-from app.command_center.domain.models import (
+from app.command_center.domain.entities import (
     AfterActionReport,
     EmergencyDeclaration,
     ResourceRequest,

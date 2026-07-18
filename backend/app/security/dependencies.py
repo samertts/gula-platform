@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,6 +13,9 @@ from ..models.lab_user import LabUser
 from .auth import decode_token, is_token_blacklisted
 from .rbac import get_permissions_for_role
 from .session import get_perm_version
+
+if TYPE_CHECKING:
+    from ..models.service_account import ServiceAccount
 
 logger = logging.getLogger("gula.security.auth")
 
@@ -143,7 +147,6 @@ def require_service_account(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     if raw_token.startswith("gula_"):
-        from ..models.service_account import ServiceAccount
         from .service_accounts import validate_api_key
 
         account = validate_api_key(db, raw_token)
@@ -154,4 +157,3 @@ def require_service_account(
         return account
 
     return get_current_user(request, credentials, db)
-

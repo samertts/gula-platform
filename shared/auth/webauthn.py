@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 from typing import Any
 
@@ -46,7 +47,7 @@ def generate_registration_options_for_user(
             user_verification=UserVerificationRequirement.PREFERRED,
         ),
     )
-    return json.loads(options.model_dump_json())
+    return json.loads(json.dumps(dataclasses.asdict(options), default=str))
 
 
 def verify_registration(
@@ -56,7 +57,7 @@ def verify_registration(
     expected_rp_id: str = RP_ID,
 ) -> dict[str, Any]:
     verification = verify_registration_response(
-        credential=RegistrationCredential.model_validate(credential),
+        credential=credential,  # dict is accepted by webauthn 3.x
         expected_challenge=expected_challenge.encode(),
         expected_origin=expected_origin,
         expected_rp_id=expected_rp_id,
@@ -82,7 +83,7 @@ def generate_authentication_options_for_user(
         allow_credentials=allow_credentials,
         user_verification=UserVerificationRequirement(user_verification),
     )
-    return json.loads(options.model_dump_json())
+    return json.loads(json.dumps(dataclasses.asdict(options), default=str))
 
 
 def verify_authentication(
@@ -94,7 +95,7 @@ def verify_authentication(
     credential_current_sign_count: int = 0,
 ) -> dict[str, Any]:
     verification = verify_authentication_response(
-        credential=AuthenticationCredential.model_validate(credential),
+        credential=credential,  # dict is accepted by webauthn 3.x
         expected_challenge=expected_challenge.encode(),
         expected_origin=expected_origin,
         expected_rp_id=expected_rp_id,

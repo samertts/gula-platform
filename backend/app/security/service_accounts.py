@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import secrets
-from datetime import datetime, timezone
-from typing import Any
-from uuid import uuid4
+from datetime import datetime
+from app._compat import UTC
 
 from sqlalchemy.orm import Session
 
@@ -64,12 +62,12 @@ def rotate_api_key(db: Session, account_id: int) -> str | None:
 def validate_api_key(db: Session, api_key: str) -> ServiceAccount | None:
     if not api_key.startswith("gula_"):
         return None
-    accounts = db.query(ServiceAccount).filter(ServiceAccount.is_active == True).all()
+    accounts = db.query(ServiceAccount).filter(ServiceAccount.is_active.is_(True)).all()
     for account in accounts:
         if verify_password(api_key, account.api_key_hash):
-            if account.expires_at and account.expires_at < datetime.now(timezone.utc):
+            if account.expires_at and account.expires_at < datetime.now(UTC):
                 return None
-            account.last_used_at = datetime.now(timezone.utc)
+            account.last_used_at = datetime.now(UTC)
             db.commit()
             return account
     return None

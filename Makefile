@@ -5,6 +5,8 @@
 # All targets assume docker compose and curl are available.
 # =============================================================================
 
+Q ?= @
+
 .PHONY: help up down restart ps logs logs-backend logs-db logs-redis \
         health health-deep status backup restore \
         lint test ci monitoring monitoring-down \
@@ -13,7 +15,10 @@
         self-audit self-audit-fix scale scale-down \
         manage kill-switch-on kill-switch-off control-stats \
         helm-deploy helm-uninstall helm-package helm-template helm-lint \
-        quality-gate canary-deploy blue-green-deploy auto-rollback \
+        quality-gate quality-gate-strict \
+        compliance scorecard debt metrics \
+        foundation-check foundation-ci \
+        canary-deploy blue-green-deploy auto-rollback \
         dr-failover dr-failback dr-test dr-validate \
         load-test stress-test spike-test soak-test recovery-test \
         sast dast dependency-scan secret-scan container-scan iac-scan sbom \
@@ -75,6 +80,16 @@ help:
 	@echo "    make factory-generate      Generate code from schemas"
 	@echo "    make platform-freeze       Freeze and tag current platform"
 	@echo "    make platform-tag          Tag release with constitution version"
+	@echo ""
+	@echo "  ── Foundation Automation ─────────────────────────────────────────"
+	@echo "    make quality-gate          Run unified quality gate (CI mode)"
+	@echo "    make quality-gate-strict   Run quality gate (strict mode)"
+	@echo "    make compliance            Run architecture compliance engine"
+	@echo "    make scorecard             Run repository scorecard"
+	@echo "    make debt                  Run technical debt registry (summary)"
+	@echo "    make metrics               Run enterprise metrics dashboard"
+	@echo "    make foundation-check      Run all foundation tools sequentially"
+	@echo "    make foundation-ci         Run all foundation tools (CI output)"
 	@echo ""
 	@echo "  ── Monitoring (optional profile) ─────────────────────────────────"
 	@echo "    make monitoring       Start Prometheus + Grafana"
@@ -293,17 +308,51 @@ helm-uninstall:
 # Quality Gates
 # ─────────────────────────────────────────────────────────────────────────────
 quality-gate:
-	@echo "=== Running Production Quality Gates ==="
-	@python3 config/quality-gates/architecture-gate.py || true
-	@python3 config/quality-gates/performance-gate.py || true
-	@python3 config/quality-gates/security-gate.py || true
-	@python3 config/quality-gates/database-gate.py || true
-	@python3 config/quality-gates/api-gate.py || true
-	@python3 config/quality-gates/fhir-gate.py || true
-	@python3 config/quality-gates/scalability-gate.py || true
-	@python3 config/quality-gates/offline-gate.py || true
-	@node config/quality-gates/accessibility-gate.js || true
-	@echo "=== All quality gates complete ==="
+	$(Q)echo "=== Running Unified Quality Gate ==="
+	$(Q)python3 scripts/quality_gate.py --ci || true
+
+quality-gate-strict:
+	$(Q)echo "=== Running Unified Quality Gate (strict) ==="
+	$(Q)python3 scripts/quality_gate.py --ci --strict || true
+
+compliance:
+	$(Q)echo "=== Architecture Compliance Engine ==="
+	$(Q)python3 scripts/architecture_compliance_engine.py
+
+scorecard:
+	$(Q)echo "=== Repository Scorecard ==="
+	$(Q)python3 scripts/repository_scorecard.py
+
+debt:
+	$(Q)echo "=== Technical Debt Registry ==="
+	$(Q)python3 scripts/technical_debt_registry.py --summary
+
+metrics:
+	$(Q)echo "=== Enterprise Metrics ==="
+	$(Q)python3 scripts/enterprise_metrics.py
+
+foundation-check:
+	$(Q)echo "=== Foundation Automation: Full Check ==="
+	$(Q)echo "  → Compliance"
+	$(Q)python3 scripts/architecture_compliance_engine.py --json | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'    Score: {d.get(\"score\",0)}/100')" 2>/dev/null || echo "    ⚠ Could not parse"
+	$(Q)echo "  → Scorecard"
+	$(Q)python3 scripts/repository_scorecard.py --summary || true
+	$(Q)echo "  → Technical Debt"
+	$(Q)python3 scripts/technical_debt_registry.py --summary || true
+	$(Q)echo "  → Enterprise Metrics"
+	$(Q)python3 scripts/enterprise_metrics.py --chart || true
+	$(Q)echo "  → Quality Gate"
+	$(Q)python3 scripts/quality_gate.py --ci || true
+	$(Q)echo "=== Foundation check complete ==="
+
+foundation-ci:
+	$(Q)echo "=== Foundation Automation: CI Pipeline ==="
+	$(Q)python3 scripts/architecture_compliance_engine.py --json
+	$(Q)python3 scripts/repository_scorecard.py --json
+	$(Q)python3 scripts/technical_debt_registry.py --json --refresh
+	$(Q)python3 scripts/enterprise_metrics.py --json
+	$(Q)python3 scripts/quality_gate.py --ci --strict
+	$(Q)echo "=== Foundation CI check complete ==="
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Deployment Strategies

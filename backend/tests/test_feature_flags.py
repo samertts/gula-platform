@@ -42,6 +42,7 @@ from app.core.feature_flags import (
     resolve_lab_features,
 )
 from app.database import Base
+from app.national.base import NationalBase
 from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -53,7 +54,10 @@ def db():
     import app.models.lab
     import app.models.lab_user
     import app.models.subscription
+    from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    import app.national.domain  # noqa: F401
+    NationalBase.metadata.create_all(engine)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     s = Session()

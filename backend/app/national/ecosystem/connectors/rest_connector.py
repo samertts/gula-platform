@@ -5,6 +5,7 @@ import json
 import time
 from typing import Any
 from xml.etree import ElementTree
+from defusedxml.ElementTree import fromstring as safe_xml_parse, ParseError as SafeXMLParseError
 
 import httpx
 
@@ -197,16 +198,16 @@ class RESTConnector(BaseConnector):
                 return response.text
         if "application/xml" in content_type or "text/xml" in content_type:
             try:
-                root = ElementTree.fromstring(response.content)
+                root = safe_xml_parse(response.content)
                 return self._xml_to_dict(root)
-            except ElementTree.ParseError:
+            except SafeXMLParseError:
                 return response.text
         try:
             return response.json()
         except (json.JSONDecodeError, ValueError):
             return response.text
 
-    def _xml_to_dict(self, element: ElementTree.Element) -> dict:
+    def _xml_to_dict(self, element) -> dict:
         result: dict = {}
         for child in element:
             if len(child):

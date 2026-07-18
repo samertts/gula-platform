@@ -299,9 +299,18 @@ def check_column_types(migrations_dir: pathlib.Path) -> list[dict[str, Any]]:
     return failures
 
 
+def has_migration_revisions(migrations_dir: pathlib.Path) -> bool:
+    versions = [f for f in migrations_dir.glob("*.py") if f.name != "__init__.py"]
+    return len(versions) > 0
+
+
 def check_migration_revert(migrations_dir: pathlib.Path) -> list[dict[str, Any]]:
     failures: list[dict[str, Any]] = []
     if not migrations_dir.is_dir():
+        return failures
+
+    if not has_migration_revisions(migrations_dir):
+        logger.info("No migration revisions found, skipping revert check")
         return failures
 
     try:
@@ -311,6 +320,10 @@ def check_migration_revert(migrations_dir: pathlib.Path) -> list[dict[str, Any]]
             cwd=str(ROOT / "backend"),
         )
         if result.returncode != 0:
+            stderr_lower = result.stderr.strip().lower()
+            if "no revisions" in stderr_lower or "can't find revision" in stderr_lower:
+                logger.info("No revisions have been applied yet, skipping revert check")
+                return failures
             failures.append({
                 "check": "migration_revert",
                 "severity": "error",
@@ -394,6 +407,7 @@ def run_all_checks(migrations_dir: pathlib.Path) -> list[dict[str, Any]]:
         ("Enum consistency", lambda: check_enum_consistency(migrations_dir)),
         ("Column types", lambda: check_column_types(migrations_dir)),
         ("Table naming conventions", lambda: check_table_naming(migrations_dir)),
+        ("Migration revert", lambda: check_migration_revert(migrations_dir)),
     ]
 
     for name, check_fn in checks:

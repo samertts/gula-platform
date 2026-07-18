@@ -35,7 +35,6 @@ async def boot_control_plane() -> None:
 
 
 async def stop_control_plane() -> None:
-    global _control_plane_instance
     if _control_plane_instance:
         await _control_plane_instance.shutdown()
         logger.info("ControlPlane stopped")
