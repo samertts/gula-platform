@@ -560,7 +560,7 @@ class TestPreferences:
     async def test_quiet_hours_blocks_send(self, svc, repos):
         pref = NotificationPreference(
             user_id="u-qh", channel=NotificationChannel.EMAIL,
-            enabled=True, quiet_hours_start="08:00", quiet_hours_end="18:00",
+            enabled=True, quiet_hours_start="00:00", quiet_hours_end="23:59",
         )
         await repos["preference"].save(pref)
         with pytest.raises(QuietHoursBlockedError):

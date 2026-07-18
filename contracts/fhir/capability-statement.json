@@ -30,8 +30,8 @@
       ]
     }
   ],
-  "description": "CapabilityStatement for the GULA Medical Laboratory Platform FHIR R4 implementation. The platform exposes 10 FHIR R4 resource types across two endpoint families: Compliance (government audit / Ministry of Health integration) and LIMS (laboratory information management system). Resources include Patient, Practitioner, Organization, Encounter, Observation, DiagnosticReport, Specimen, ServiceRequest, Device, and Bundle. Authentication is via JWT Bearer tokens (HS256) with per-lab tenant isolation and role-based access control. Arabic-first bilingual platform (ar/en).",
-  "description_ar": "وصف قدرات FHIR R4 لمنصة غولا الصحية للمختبرات. توفر المنصة 10 أنواع من موارد FHIR R4 عبر مجموعتين من نقاط النهاية: الامتثال (تدقيق حكومي / تكامل مع وزارة الصحة) ونظام معلومات المختبرات. تشمل الموارد: المريض والممارس الصحي والمنظمة والزيارة والملاحظة والتقرير التشخيصي والعينة وطلب الخدمة والجهاز والحزمة. المصادقة عبر JWT Bearer مع عزل بيانات لكل مختبر والتحكم في الوصول على أساس الدور. منصة ثنائية اللغة (العربية / الإنجليزية) تدعم العربية أولاً.",
+"description": "CapabilityStatement for the GULA Medical Laboratory Platform FHIR R4 implementation. The platform exposes 17 FHIR R4 resource types: Patient, Practitioner, Organization, Encounter, Observation, DiagnosticReport, Specimen, ServiceRequest, Device, Bundle, Condition, MedicationRequest, MedicationStatement, AllergyIntolerance, Immunization, CarePlan, DocumentReference, Composition, and Procedure. Authentication is via JWT Bearer tokens (HS256) with per-lab tenant isolation and role-based access control. Arabic-first bilingual platform (ar/en).",
+      "description_ar": "وصف قدرات FHIR R4 لمنصة غولا الصحية للمختبرات. توفر المنصة 17 نوع من موارد FHIR R4. تشمل الموارد: المريض والممارس الصحي والمنظمة والزيارة والملاحظة والتقرير التشخيصي والعينة وطلب الخدمة والجهاز والحزمة والحالة وطلب الدواء وبيان الدواء والحساسية والتحصين وخطة الرعاية ومرجع المستند والتأليف والإجراء. المصادقة عبر JWT Bearer مع عزل بيانات لكل مختبر والتحكم في الوصول على أساس الدور. منصة ثنائية اللغة (العربية / الإنجليزية) تدعم العربية أولاً.",
   "kind": "instance",
   "instantiates": ["http://hl7.org/fhir/StructureDefinition/CapabilityStatement"],
   "imports": [],
@@ -328,6 +328,96 @@
           "versioning": "no-version",
           "readHistory": false,
           "updateCreate": false
+        },
+        {
+          "type": "Condition",
+          "profile": "http://hl7.org/fhir/StructureDefinition/Condition",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-condition"],
+          "documentation": "Condition resource — maps from ConditionRecord and DiagnosisRecord models. Clinical conditions with ICD-10 codes, clinical status, and verification status.",
+          "interaction": [
+            {"code": "read", "documentation": "Read Condition by ID via GET /fhir/Condition/{id}"},
+            {"code": "search-type", "documentation": "Search Condition via GET /fhir/Condition: patient, encounter, clinical-status"}
+          ]
+        },
+        {
+          "type": "MedicationRequest",
+          "profile": "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-medication-request"],
+          "documentation": "MedicationRequest resource — maps from MedicationRequest model. Prescriptions with dosage, route, dispense details.",
+          "interaction": [
+            {"code": "read", "documentation": "Read MedicationRequest by ID via GET /fhir/MedicationRequest/{id}"},
+            {"code": "search-type", "documentation": "Search MedicationRequest: patient, status"}
+          ]
+        },
+        {
+          "type": "MedicationStatement",
+          "profile": "http://hl7.org/fhir/StructureDefinition/MedicationStatement",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-medication-statement"],
+          "documentation": "MedicationStatement resource — maps from MedicationStatement model. Patient-reported or clinician-recorded medication use.",
+          "interaction": [
+            {"code": "read", "documentation": "Read MedicationStatement by ID via GET /fhir/MedicationStatement/{id}"},
+            {"code": "search-type", "documentation": "Search MedicationStatement: patient, status"}
+          ]
+        },
+        {
+          "type": "AllergyIntolerance",
+          "profile": "http://hl7.org/fhir/StructureDefinition/AllergyIntolerance",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-allergy-intolerance"],
+          "documentation": "AllergyIntolerance resource — maps from AllergyIntolerance model. Patient allergies and adverse reactions.",
+          "interaction": [
+            {"code": "read", "documentation": "Read AllergyIntolerance by ID via GET /fhir/AllergyIntolerance/{id}"},
+            {"code": "search-type", "documentation": "Search AllergyIntolerance: patient, clinical-status"}
+          ]
+        },
+        {
+          "type": "Immunization",
+          "profile": "http://hl7.org/fhir/StructureDefinition/Immunization",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-immunization"],
+          "documentation": "Immunization resource — maps from ImmunizationRecord model. Vaccine administration records with dose tracking.",
+          "interaction": [
+            {"code": "read", "documentation": "Read Immunization by ID via GET /fhir/Immunization/{id}"},
+            {"code": "search-type", "documentation": "Search Immunization: patient, status"}
+          ]
+        },
+        {
+          "type": "CarePlan",
+          "profile": "http://hl7.org/fhir/StructureDefinition/CarePlan",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-care-plan"],
+          "documentation": "CarePlan resource — maps from CarePlan model. Planned healthcare activities with goals and activities.",
+          "interaction": [
+            {"code": "read", "documentation": "Read CarePlan by ID via GET /fhir/CarePlan/{id}"},
+            {"code": "search-type", "documentation": "Search CarePlan: patient, status"}
+          ]
+        },
+        {
+          "type": "DocumentReference",
+          "profile": "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-document-reference"],
+          "documentation": "DocumentReference resource — maps from ClinicalAttachment model. Patient documents with content type, storage path, hash.",
+          "interaction": [
+            {"code": "read", "documentation": "Read DocumentReference by ID via GET /fhir/DocumentReference/{id}"},
+            {"code": "search-type", "documentation": "Search DocumentReference: patient, category"}
+          ]
+        },
+        {
+          "type": "Composition",
+          "profile": "http://hl7.org/fhir/StructureDefinition/Composition",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-composition"],
+          "documentation": "Composition resource — maps from ClinicalNote model. Clinical notes in FHIR Composition format with sections.",
+          "interaction": [
+            {"code": "read", "documentation": "Read Composition by ID via GET /fhir/Composition/{id}"},
+            {"code": "search-type", "documentation": "Search Composition: patient, status"}
+          ]
+        },
+        {
+          "type": "Procedure",
+          "profile": "http://hl7.org/fhir/StructureDefinition/Procedure",
+          "supportedProfile": ["https://gula-platform.org/fhir/profiles/gula-procedure"],
+          "documentation": "Procedure resource — maps from ClinicalNote with procedure-related content. Performed procedures with body site, outcome, performer.",
+          "interaction": [
+            {"code": "read", "documentation": "Read Procedure by ID via GET /fhir/Procedure/{id}"},
+            {"code": "search-type", "documentation": "Search Procedure: patient, status"}
+          ]
         }
       ],
       "interaction": [

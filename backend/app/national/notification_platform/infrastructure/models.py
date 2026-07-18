@@ -40,7 +40,7 @@ class NationalNotificationModel(NationalBase):
     created_by = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
-    batch_id = Column(String(26), nullable=True, index=True)
+    batch_id = Column(String(26), ForeignKey("national_notification_batches.id"), nullable=True, index=True)
 
     delivery_reports = relationship("NationalDeliveryReportModel", back_populates="notification", lazy="selectin")
     batch = relationship("NationalNotificationBatchModel", back_populates="notifications_rel", foreign_keys=[batch_id])

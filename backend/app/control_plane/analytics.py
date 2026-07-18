@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+from app._compat import UTC
 from typing import Any
 
 from app.control_plane.registry.component import ComponentRegistry

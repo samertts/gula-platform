@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
+from ..audit import audit_log
 from ..database import get_db
 from ..ehr.models import (
     AllergyIntolerance,
@@ -26,6 +28,22 @@ from ..security.dependencies import get_current_user
 from ..services import ehr_service
 
 router = APIRouter(prefix="/fhir", tags=["fhir"])
+
+_SUPPORTED_CREATE = frozenset({
+    "AllergyIntolerance", "CarePlan", "Composition", "Condition",
+    "DocumentReference", "Encounter", "Immunization", "MedicationRequest",
+    "MedicationStatement", "Observation", "Patient", "Procedure",
+})
+_SUPPORTED_UPDATE = frozenset({
+    "AllergyIntolerance", "CarePlan", "Composition", "Condition",
+    "DocumentReference", "Encounter", "Immunization", "MedicationRequest",
+    "MedicationStatement", "Observation", "Patient", "Procedure",
+})
+_SUPPORTED_DELETE = frozenset({
+    "AllergyIntolerance", "CarePlan", "Composition", "Condition",
+    "DocumentReference", "Encounter", "Immunization", "MedicationRequest",
+    "MedicationStatement", "Observation", "Procedure",
+})
 
 
 def _fmt_fhir_datetime(val: datetime | None) -> str | None:
@@ -623,7 +641,7 @@ def _care_plan_to_fhir(db: Session, rec: CarePlan) -> dict:
     }
 
 
-# ── Procedure (placeholder) ──────────────────────────────────────────────
+# ── Procedure (from clinical notes with procedure type) ──────────────────
 
 
 @router.get("/Procedure/{procedure_id}", summary="FHIR Procedure resource")
@@ -632,7 +650,66 @@ def fhir_read_procedure(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    raise HTTPException(status_code=501, detail="Procedure FHIR resource not yet implemented")
+    record = ehr_service.get_clinical_note(db, procedure_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Procedure not found")
+    ehr_service.get_national_patient_or_404(db, record.patient_id, current_user.lab_id)
+
+    from app.national.fhir.procedure import FHIRProcedureMapper
+
+    data = {
+        "id": record.id,
+        "status": "completed" if record.is_final else "in-progress",
+        "code": record.note_type.value if hasattr(record.note_type, "value") else str(record.note_type or ""),
+        "display": record.title or "",
+        "display_ar": record.title_ar or "",
+        "performed_start": _fmt_fhir_datetime(record.authored_at),
+        "practitioner_id": record.author_id,
+        "notes": record.content[:500] if record.content else "",
+    }
+    return FHIRProcedureMapper.from_dict(data, patient_id=record.patient_id, encounter_id=record.encounter_id)
+
+
+@router.get("/Procedure", summary="FHIR Procedure search")
+def fhir_search_procedure(
+    patient: str | None = Query(None, alias="patient"),
+    status: str | None = Query(None, alias="status"),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if patient:
+        ehr_service.get_national_patient_or_404(db, patient, current_user.lab_id)
+    from app.ehr.models.clinical_note import ClinicalNote
+    q = db.query(ClinicalNote).filter(ClinicalNote.is_deleted.is_(False))
+    if patient:
+        q = q.filter(ClinicalNote.patient_id == patient)
+    if status:
+        if status == "completed":
+            q = q.filter(ClinicalNote.is_final.is_(True))
+        elif status == "in-progress":
+            q = q.filter(ClinicalNote.is_final.is_(False))
+    records = q.order_by(ClinicalNote.authored_at.desc()).limit(100).all()
+
+    from app.national.fhir.procedure import FHIRProcedureMapper
+    entries = []
+    for r in records:
+        data = {
+            "id": r.id,
+            "status": "completed" if r.is_final else "in-progress",
+            "code": r.note_type.value if hasattr(r.note_type, "value") else str(r.note_type or ""),
+            "display": r.title or "",
+            "performed_start": _fmt_fhir_datetime(r.authored_at),
+            "practitioner_id": r.author_id,
+            "notes": (r.content or "")[:300],
+        }
+        resource = FHIRProcedureMapper.from_dict(data, patient_id=r.patient_id, encounter_id=r.encounter_id)
+        entries.append({"resource": resource, "fullUrl": f"Procedure/{r.id}"})
+    return {
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "entry": entries,
+        "total": len(entries),
+    }
 
 
 # ── AllergyIntolerance ───────────────────────────────────────────────────
@@ -991,13 +1068,379 @@ def fhir_search_composition(
     }
 
 
-# ── Bundle (generic search results) ──────────────────────────────────────
+# ── Bundle / Patient-everything ──────────────────────────────────────────
 
 
-@router.get("/Bundle/{bundle_id}", summary="FHIR Bundle read")
+@router.get("/Bundle/{bundle_id}", summary="FHIR Bundle read - returns patient-everything")
 def fhir_read_bundle(
     bundle_id: str,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    raise HTTPException(status_code=501, detail="Bundle read not implemented; use search endpoints")
+    patient = ehr_service.get_national_patient_or_404(db, bundle_id, current_user.lab_id)
+    patient_resource = fhir_read_patient(bundle_id, current_user, db)
+    entries = [{"resource": patient_resource, "fullUrl": f"Patient/{bundle_id}"}]
+
+    encounters = (
+        db.query(Encounter)
+        .filter(Encounter.patient_id == bundle_id, Encounter.is_deleted.is_(False))
+        .limit(50)
+        .all()
+    )
+    for enc in encounters:
+        entries.append({
+            "resource": {
+                "resourceType": "Encounter",
+                "id": enc.id,
+                "status": enc.status.value if enc.status else "unknown",
+                "subject": {"reference": f"Patient/{bundle_id}"},
+                "period": {
+                    "start": _fmt_fhir_datetime(enc.period_start),
+                    "end": _fmt_fhir_datetime(enc.period_end),
+                },
+            },
+            "fullUrl": f"Encounter/{enc.id}",
+        })
+
+    from app.ehr.models.clinical_note import ClinicalNote
+    notes = (
+        db.query(ClinicalNote)
+        .filter(ClinicalNote.patient_id == bundle_id, ClinicalNote.is_deleted.is_(False))
+        .limit(50)
+        .all()
+    )
+    for note in notes:
+        entries.append({
+            "resource": {
+                "resourceType": "Composition",
+                "id": note.id,
+                "status": "final" if note.is_final else "preliminary",
+                "subject": {"reference": f"Patient/{bundle_id}"},
+                "title": note.title or "",
+                "date": _fmt_fhir_datetime(note.authored_at),
+            },
+            "fullUrl": f"Composition/{note.id}",
+        })
+
+    from app.ehr.models import ConditionRecord
+    conditions = (
+        db.query(ConditionRecord)
+        .filter(ConditionRecord.patient_id == bundle_id, ConditionRecord.is_deleted.is_(False))
+        .limit(50)
+        .all()
+    )
+    for cond in conditions:
+        entries.append({
+            "resource": {
+                "resourceType": "Condition",
+                "id": cond.id,
+                "subject": {"reference": f"Patient/{bundle_id}"},
+                "code": {"text": cond.code_display or ""},
+                "clinicalStatus": {"coding": [{"code": cond.clinical_status or "active"}]},
+            },
+            "fullUrl": f"Condition/{cond.id}",
+        })
+
+    from ..models.lab_order import LabOrder
+    from ..models.lab_result import LabResult
+    orders = (
+        db.query(LabOrder)
+        .filter(LabOrder.patient_id == bundle_id, LabOrder.lab_id == current_user.lab_id)
+        .limit(50)
+        .all()
+    )
+    for order in orders:
+        entries.append({
+            "resource": {
+                "resourceType": "ServiceRequest",
+                "id": str(order.id),
+                "status": order.status or "unknown",
+                "intent": "order",
+                "subject": {"reference": f"Patient/{bundle_id}"},
+                "code": {"text": order.test_name or ""},
+                "authoredOn": _fmt_fhir_datetime(order.created_at),
+            },
+            "fullUrl": f"ServiceRequest/{order.id}",
+        })
+        results = (
+            db.query(LabResult)
+            .filter(LabResult.order_id == order.id)
+            .limit(50)
+            .all()
+        )
+        for r in results:
+            entries.append({
+                "resource": {
+                    "resourceType": "Observation",
+                    "id": str(r.id),
+                    "status": "final",
+                    "code": {"text": r.test_name or ""},
+                    "subject": {"reference": f"Patient/{bundle_id}"},
+                    "valueQuantity": {"value": r.value, "unit": r.unit or ""} if r.value is not None else None,
+                    "effectiveDateTime": _fmt_fhir_datetime(order.created_at),
+                },
+                "fullUrl": f"Observation/{r.id}",
+            })
+
+    return {
+        "resourceType": "Bundle",
+        "id": bundle_id,
+        "type": "searchset",
+        "entry": entries,
+        "total": len(entries),
+    }
+
+
+# ── Generic Create ──────────────────────────────────────────────────────
+
+
+@router.post("/{resource_type}", summary="FHIR Create resource", status_code=201)
+@audit_log(action="fhir.create")
+def fhir_create_resource(
+    resource_type: str,
+    body: dict[str, Any],
+    request: Request,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if resource_type not in _SUPPORTED_CREATE:
+        raise HTTPException(status_code=422, detail=f"Create not supported for {resource_type}")
+    resource_id = str(uuid4())
+    now = datetime.now(timezone.utc)
+    patient_id = _extract_patient_ref(body)
+    encounter_id = _extract_encounter_ref(body)
+    if patient_id and resource_type != "Patient":
+        ehr_service.get_national_patient_or_404(db, patient_id, current_user.lab_id)
+    _create_fhir_resource(db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now)
+    db.commit()
+    return {"resourceType": resource_type, "id": resource_id}
+
+
+# ── Generic Update ──────────────────────────────────────────────────────
+
+
+@router.put("/{resource_type}/{resource_id}", summary="FHIR Update resource")
+@audit_log(action="fhir.update")
+def fhir_update_resource(
+    resource_type: str,
+    resource_id: str,
+    body: dict[str, Any],
+    request: Request,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if resource_type not in _SUPPORTED_UPDATE:
+        raise HTTPException(status_code=422, detail=f"Update not supported for {resource_type}")
+    _get_fhir_resource_or_404(db, resource_type, resource_id, current_user)
+    now = datetime.now(timezone.utc)
+    patient_id = _extract_patient_ref(body)
+    encounter_id = _extract_encounter_ref(body)
+    _update_fhir_resource(db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now)
+    db.commit()
+    return {"resourceType": resource_type, "id": resource_id}
+
+
+# ── Generic Delete (soft-delete) ────────────────────────────────────────
+
+
+@router.delete("/{resource_type}/{resource_id}", summary="FHIR Delete resource")
+@audit_log(action="fhir.delete")
+def fhir_delete_resource(
+    resource_type: str,
+    resource_id: str,
+    request: Request,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if resource_type not in _SUPPORTED_DELETE:
+        raise HTTPException(status_code=422, detail=f"Delete not supported for {resource_type}")
+    record = _get_fhir_resource_or_404(db, resource_type, resource_id, current_user)
+    if hasattr(record, "is_deleted"):
+        record.is_deleted = True
+    if hasattr(record, "deleted_at"):
+        record.deleted_at = datetime.now(timezone.utc)
+    if hasattr(record, "deleted_by"):
+        record.deleted_by = current_user.id
+    db.commit()
+    return {"resourceType": resource_type, "id": resource_id, "status": "deleted"}
+
+
+# ── Batch / Transaction support ─────────────────────────────────────────
+
+
+@router.post("", summary="FHIR Batch or Transaction")
+def fhir_batch(
+    body: dict[str, Any],
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    bundle_type = body.get("type", "batch")
+    if bundle_type not in ("batch", "transaction"):
+        raise HTTPException(status_code=422, detail=f"Unsupported bundle type: {bundle_type}")
+    entries = body.get("entry", [])
+    results: list[dict[str, Any]] = []
+    for entry in entries:
+        resource = entry.get("resource", {})
+        rt = resource.get("resourceType", "")
+        req = entry.get("request", {})
+        method = req.get("method", "POST").upper()
+        url = req.get("url", "")
+        resource_id = url.split("/")[-1] if "/" in url else str(uuid4())
+        status_code = 200
+        try:
+            if method == "POST":
+                if rt in _SUPPORTED_CREATE:
+                    now = datetime.now(timezone.utc)
+                    pid = _extract_patient_ref(resource)
+                    eid = _extract_encounter_ref(resource)
+                    _create_fhir_resource(db, rt, resource_id, resource, pid, eid, current_user, now)
+                    status_code = 201
+                else:
+                    status_code = 422
+            elif method == "PUT":
+                if rt in _SUPPORTED_UPDATE:
+                    rec = db.query(_fhir_model_class(rt)).filter_by(id=resource_id).first()
+                    if rec and hasattr(rec, "lab_id") and getattr(rec, "lab_id", None) != current_user.lab_id:
+                        status_code = 403
+                    elif rec:
+                        now = datetime.now(timezone.utc)
+                        pid = _extract_patient_ref(resource)
+                        eid = _extract_encounter_ref(resource)
+                        _update_fhir_resource(db, rt, resource_id, resource, pid, eid, current_user, now)
+                    else:
+                        status_code = 404
+                else:
+                    status_code = 422
+            elif method == "DELETE":
+                if rt in _SUPPORTED_DELETE:
+                    rec = db.query(_fhir_model_class(rt)).filter_by(id=resource_id).first()
+                    if rec and hasattr(rec, "lab_id") and getattr(rec, "lab_id", None) != current_user.lab_id:
+                        status_code = 403
+                    elif rec:
+                        if hasattr(rec, "is_deleted"):
+                            rec.is_deleted = True
+                        if hasattr(rec, "deleted_at"):
+                            rec.deleted_at = datetime.now(timezone.utc)
+                        if hasattr(rec, "deleted_by"):
+                            rec.deleted_by = current_user.id
+                    else:
+                        status_code = 404
+                else:
+                    status_code = 422
+            else:
+                status_code = 405
+        except HTTPException as exc:
+            status_code = exc.status_code
+        results.append({
+            "resourceType": "Bundle",
+            "type": bundle_type,
+            "entry": [{"response": {"status": str(status_code), "location": f"{rt}/{resource_id}"}}],
+        })
+    if bundle_type == "transaction":
+        db.commit()
+    return {"resourceType": "Bundle", "type": f"{bundle_type}-response", "entry": results}
+
+
+# ── Generic helpers ─────────────────────────────────────────────────────
+
+
+def _extract_patient_ref(body: dict) -> str | None:
+    subj = body.get("subject") or body.get("patient") or {}
+    if isinstance(subj, dict):
+        ref = subj.get("reference", "")
+        if ref.startswith("Patient/"):
+            return ref.split("/", 1)[1]
+    return None
+
+
+def _extract_encounter_ref(body: dict) -> str | None:
+    enc = body.get("encounter") or {}
+    if isinstance(enc, dict):
+        ref = enc.get("reference", "")
+        if ref.startswith("Encounter/"):
+            return ref.split("/", 1)[1]
+    return None
+
+
+def _fhir_model_class(resource_type: str):
+    import sys
+    from ..national.domain.encounter import Encounter as EncModel
+    from ..ehr.models import (
+        AllergyIntolerance as AI, CarePlan as CP, ClinicalNote as CN,
+        ClinicalAttachment as CA, ConditionRecord as CR, DiagnosisRecord as DR,
+        ImmunizationRecord as IR, MedicationRequest as MR, MedicationStatement as MS,
+    )
+    _map: dict[str, Any] = {
+        "AllergyIntolerance": AI, "CarePlan": CP, "Composition": CN,
+        "Condition": CR, "DiagnosisRecord": DR, "DocumentReference": CA,
+        "Encounter": EncModel, "Immunization": IR, "MedicationRequest": MR,
+        "MedicationStatement": MS,
+    }
+    return _map.get(resource_type)
+
+
+def _get_fhir_resource_or_404(db: Session, resource_type: str, resource_id: str, user: LabUser):
+    model = _fhir_model_class(resource_type)
+    if not model:
+        raise HTTPException(status_code=422, detail=f"Unknown resource type: {resource_type}")
+    record = db.query(model).filter(model.id == resource_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail=f"{resource_type} not found")
+    if hasattr(record, "is_deleted") and record.is_deleted:
+        raise HTTPException(status_code=410, detail=f"{resource_type} has been deleted")
+    if hasattr(record, "lab_id") and getattr(record, "lab_id", None) and getattr(record, "lab_id") != user.lab_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if hasattr(record, "patient_id") and getattr(record, "patient_id", None):
+        ehr_service.get_national_patient_or_404(db, record.patient_id, user.lab_id)
+    return record
+
+
+def _create_fhir_resource(
+    db: Session, resource_type: str, resource_id: str, body: dict[str, Any],
+    patient_id: str | None, encounter_id: str | None,
+    user: LabUser, now: datetime,
+):
+    model = _fhir_model_class(resource_type)
+    if not model:
+        raise HTTPException(status_code=422, detail=f"Unknown resource type: {resource_type}")
+    record = model(id=resource_id)
+    if hasattr(record, "lab_id"):
+        record.lab_id = user.lab_id
+    if hasattr(record, "patient_id") and patient_id:
+        record.patient_id = patient_id
+    if hasattr(record, "encounter_id") and encounter_id:
+        record.encounter_id = encounter_id
+    if hasattr(record, "created_at"):
+        record.created_at = now
+    if hasattr(record, "updated_at"):
+        record.updated_at = now
+    if hasattr(record, "created_by"):
+        record.created_by = user.id
+    if hasattr(record, "version"):
+        record.version = 1
+    if hasattr(record, "status"):
+        record.status = body.get("status", "active")
+    if hasattr(record, "is_deleted"):
+        record.is_deleted = False
+    db.add(record)
+    return record
+
+
+def _update_fhir_resource(
+    db: Session, resource_type: str, resource_id: str, body: dict[str, Any],
+    patient_id: str | None, encounter_id: str | None,
+    user: LabUser, now: datetime,
+):
+    record = _get_fhir_resource_or_404(db, resource_type, resource_id, user)
+    if hasattr(record, "updated_at"):
+        record.updated_at = now
+    if hasattr(record, "updated_by"):
+        record.updated_by = user.id
+    if hasattr(record, "version"):
+        version = getattr(record, "version", 0) or 0
+        record.version = version + 1
+    if patient_id and hasattr(record, "patient_id"):
+        record.patient_id = patient_id
+    if encounter_id and hasattr(record, "encounter_id"):
+        record.encounter_id = encounter_id
+    return record

@@ -1,8 +1,9 @@
 from datetime import datetime
-from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from .._compat import StrEnum
 
 
 class ContractFormat(StrEnum):

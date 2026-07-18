@@ -68,6 +68,19 @@ VALID_CODE_SYSTEMS = {
     "http://terminology.hl7.org/CodeSystem/diagnostic-report-status": "DiagnosticReportStatus",
     "http://terminology.hl7.org/CodeSystem/request-intent": "RequestIntent",
     "http://terminology.hl7.org/CodeSystem/request-status": "RequestStatus",
+    "http://terminology.hl7.org/CodeSystem/restful-security-service": "RestfulSecurityService",
+    "http://terminology.hl7.org/CodeSystem/v3-ActCode": "v3ActCode",
+    "http://terminology.hl7.org/CodeSystem/condition-clinical": "ConditionClinical",
+    "http://terminology.hl7.org/CodeSystem/condition-ver-status": "ConditionVerStatus",
+    "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical": "AllergyIntoleranceClinical",
+    "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification": "AllergyIntoleranceVerification",
+    "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation": "ObservationInterpretation",
+    "http://terminology.hl7.org/CodeSystem/medicationrequest-status": "MedicationRequestStatus",
+    "http://terminology.hl7.org/CodeSystem/medication-statement-status": "MedicationStatementStatus",
+    "http://terminology.hl7.org/CodeSystem/careplan-intent": "CarePlanIntent",
+    "http://hl7.org/fhir/sid/icd-10": "ICD10",
+    "http://unitsofmeasure.org": "UCUM",
+    "urn:gula:health-number": "GULA HealthNumber",
 }
 
 MUST_SUPPORT_ELEMENTS: dict[str, list[str]] = {
@@ -86,12 +99,13 @@ def check_fhir_resource_structure(fhir_dir: pathlib.Path) -> list[dict[str, Any]
         return failures
 
     for py_file in sorted(fhir_dir.rglob("*.py")):
-        if py_file.name == "__init__.py":
+        if py_file.name.startswith("_"):
             continue
         try:
             text = py_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        rel = py_file.resolve().relative_to(ROOT)
 
         for resource_type in FHIR_RESOURCE_TYPES:
             if resource_type in text:
@@ -99,13 +113,13 @@ def check_fhir_resource_structure(fhir_dir: pathlib.Path) -> list[dict[str, Any]
                     failures.append({
                         "check": "fhir_resource_structure",
                         "severity": "error",
-                        "message": f"{py_file.relative_to(ROOT)} references {resource_type} but missing resourceType field",
+                        "message": f"{rel} references {resource_type} but missing resourceType field",
                     })
                 if "id" not in text:
                     failures.append({
                         "check": "fhir_resource_structure",
                         "severity": "error",
-                        "message": f"{py_file.relative_to(ROOT)} references {resource_type} but missing id field",
+                        "message": f"{rel} references {resource_type} but missing id field",
                     })
 
     return failures
@@ -117,12 +131,13 @@ def check_required_fields(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
         return failures
 
     for py_file in sorted(fhir_dir.rglob("*.py")):
-        if py_file.name == "__init__.py":
+        if py_file.name.startswith("_"):
             continue
         try:
             text = py_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        rel = py_file.resolve().relative_to(ROOT)
 
         for resource_type, required in REQUIRED_FIELDS.items():
             if resource_type in text:
@@ -131,7 +146,7 @@ def check_required_fields(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
                         failures.append({
                             "check": "fhir_required_fields",
                             "severity": "error",
-                            "message": f"{py_file.relative_to(ROOT)} references {resource_type} but missing required field '{field}'",
+                            "message": f"{rel} references {resource_type} but missing required field '{field}'",
                         })
 
     return failures
@@ -143,7 +158,7 @@ def check_code_systems(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
         return failures
 
     for py_file in sorted(fhir_dir.rglob("*.py")):
-        if py_file.name == "__init__.py":
+        if py_file.name.startswith("_"):
             continue
         try:
             text = py_file.read_text(encoding="utf-8")
@@ -173,12 +188,13 @@ def check_reference_integrity(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
         return failures
 
     for py_file in sorted(fhir_dir.rglob("*.py")):
-        if py_file.name == "__init__.py":
+        if py_file.name.startswith("_"):
             continue
         try:
             text = py_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        rel = py_file.resolve().relative_to(ROOT)
 
         ref_pattern = re.compile(r'reference["\']?\s*[:=]\s*["\']([^"\']+)["\']', re.IGNORECASE)
         for match in ref_pattern.finditer(text):
@@ -189,7 +205,7 @@ def check_reference_integrity(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
                     failures.append({
                         "check": "fhir_reference_integrity",
                         "severity": "error",
-                        "message": f"Invalid FHIR reference type '{resource_type}' in {py_file.relative_to(ROOT)}",
+                        "message": f"Invalid FHIR reference type '{resource_type}' in {rel}",
                     })
 
     return failures
@@ -201,12 +217,13 @@ def check_must_support_elements(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
         return failures
 
     for py_file in sorted(fhir_dir.rglob("*.py")):
-        if py_file.name == "__init__.py":
+        if py_file.name.startswith("_"):
             continue
         try:
             text = py_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        rel = py_file.resolve().relative_to(ROOT)
 
         for resource_type, elements in MUST_SUPPORT_ELEMENTS.items():
             if resource_type in text:
@@ -215,7 +232,7 @@ def check_must_support_elements(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
                         failures.append({
                             "check": "fhir_must_support",
                             "severity": "warning",
-                            "message": f"{py_file.relative_to(ROOT)} references {resource_type} but missing MustSupport element '{element}'",
+                            "message": f"{rel} references {resource_type} but missing MustSupport element '{element}'",
                         })
 
     return failures
@@ -227,12 +244,13 @@ def check_extension_formatting(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
         return failures
 
     for py_file in sorted(fhir_dir.rglob("*.py")):
-        if py_file.name == "__init__.py":
+        if py_file.name.startswith("_"):
             continue
         try:
             text = py_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        rel = py_file.resolve().relative_to(ROOT)
 
         extension_pattern = re.compile(r'extension["\']?\s*[:=]', re.IGNORECASE)
         for match in extension_pattern.finditer(text):
@@ -243,7 +261,7 @@ def check_extension_formatting(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
                 failures.append({
                     "check": "fhir_extension_format",
                     "severity": "warning",
-                    "message": f"Extension in {py_file.relative_to(ROOT)} missing url or value fields",
+                    "message": f"Extension in {rel} missing url or value fields",
                 })
 
     return failures
@@ -255,12 +273,13 @@ def check_arabic_translations(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
         return failures
 
     for py_file in sorted(fhir_dir.rglob("*.py")):
-        if py_file.name == "__init__.py":
+        if py_file.name.startswith("_"):
             continue
         try:
             text = py_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        rel = py_file.resolve().relative_to(ROOT)
 
         has_designation = "designation" in text
         has_translation = "translation" in text or "ar" in text.lower()
@@ -270,7 +289,7 @@ def check_arabic_translations(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
             failures.append({
                 "check": "fhir_arabic_translation",
                 "severity": "warning",
-                "message": f"{py_file.relative_to(ROOT)} contains Arabic text but no designation/translation pattern detected",
+                "message": f"{rel} contains Arabic text but no designation/translation pattern detected",
             })
 
     return failures

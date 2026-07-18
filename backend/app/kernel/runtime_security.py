@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from enum import StrEnum
+from app._compat import StrEnum
 from pathlib import Path
 from threading import Lock
 from typing import Any

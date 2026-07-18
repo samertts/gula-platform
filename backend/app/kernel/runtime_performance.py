@@ -4,7 +4,7 @@ import logging
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from enum import StrEnum
+from app._compat import StrEnum
 from threading import Lock
 from typing import Any
 
