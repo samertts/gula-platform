@@ -63,7 +63,7 @@ class KnowledgeNode(Base):
     name = Column(String(255), nullable=False)
     qualified_name = Column(String(512), nullable=False, unique=True, index=True)
     description = Column(Text, default="")
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
     source_path = Column(String(512), default="")
     tags = Column(JSON, default=list)
     version = Column(String(20), default="1.0.0")
@@ -99,7 +99,7 @@ class KnowledgeEdge(Base):
         Integer, ForeignKey("knowledge_nodes.id", ondelete="CASCADE"), nullable=False, index=True
     )
     edge_type = Column(String(50), nullable=False, index=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
     weight = Column(Float, default=1.0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
@@ -123,5 +123,5 @@ class KnowledgeGraphSnapshot(Base):
     node_count = Column(Integer, nullable=False, default=0)
     edge_count = Column(Integer, nullable=False, default=0)
     graph_hash = Column(String(64), nullable=False)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

@@ -24,11 +24,6 @@ from .health_number import (
     HealthNumberRecord,
     MergedIdentityRecord,
 )
-from .identity import (
-    GovernanceBreakGlassAccess,
-    GovernanceIdentityRecord,
-    MergeProposal,
-)
 from .hierarchy import (
     ActingAppointment,
     Delegation,
@@ -36,6 +31,11 @@ from .hierarchy import (
     GovernanceNode,
     GovernanceRole,
     TemporaryAdministration,
+)
+from .identity import (
+    GovernanceBreakGlassAccess,
+    GovernanceIdentityRecord,
+    MergeProposal,
 )
 from .interoperability import (
     CanonicalMapping,

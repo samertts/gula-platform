@@ -6,6 +6,7 @@ Audit, Tenant, and OptimisticLock patterns.
 
 from shared.models import (
     AuditMixin,
+    BaseEntityMixin,
     OptimisticLockMixin,
     SoftDeleteMixin,
     TenantMixin,
@@ -17,6 +18,7 @@ from ..database import Base
 __all__ = [
     "AuditMixin",
     "Base",
+    "BaseEntityMixin",
     "OptimisticLockMixin",
     "SoftDeleteMixin",
     "TenantMixin",

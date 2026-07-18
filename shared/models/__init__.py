@@ -1,5 +1,6 @@
 from .base import (
     AuditMixin,
+    BaseEntityMixin,
     OptimisticLockMixin,
     SoftDeleteMixin,
     TenantMixin,
@@ -8,6 +9,7 @@ from .base import (
 
 __all__ = [
     "AuditMixin",
+    "BaseEntityMixin",
     "OptimisticLockMixin",
     "SoftDeleteMixin",
     "TenantMixin",

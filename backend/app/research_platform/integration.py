@@ -26,7 +26,7 @@ def register_routes(app: FastAPI) -> None:
 
 def seed_default_kpis(sdk: ResearchSDK | None = None) -> None:
     from app.research_platform.enums import KpiCategory
-    from app.research_platform.kpi_engine import KpiDefinition
+    from app.research_platform.kpi_engine import KPIDefinition as KpiDefinition
 
     svc = sdk or get_research_sdk()
     default_kpis = [

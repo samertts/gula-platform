@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ContractFormat(StrEnum):
@@ -62,8 +62,7 @@ class JSONSchema(BaseModel):
     required: list[str] = Field(default_factory=list)
     definitions: dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class FHIRProfile(BaseModel):
@@ -90,8 +89,7 @@ class GraphQLSchema(BaseModel):
     subscription: str | None = None
     types: dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ContractExport(BaseModel):

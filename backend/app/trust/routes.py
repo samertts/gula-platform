@@ -9,8 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.security.auth import get_current_user
-from app.security.dependencies import require_role
+from app.security.dependencies import get_current_user
+from app.security.rbac import require_role
 from app.trust.enums import (
     ConsentPurpose,
     DataCategory,

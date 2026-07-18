@@ -55,7 +55,7 @@ def _get_or_create_node(
         existing.name = name
         existing.description = description or existing.description
         existing.tags = tags or existing.tags
-        existing.metadata = metadata or existing.metadata
+        existing.extra_metadata = metadata or existing.extra_metadata
         existing.source_path = source_path or existing.source_path
         existing.updated_at = func.now()
         return existing
@@ -64,7 +64,7 @@ def _get_or_create_node(
         name=name,
         qualified_name=qualified_name,
         description=description,
-        metadata=metadata or {},
+        extra_metadata=metadata or {},
         source_path=source_path,
         tags=tags or [],
         version=version,
@@ -453,7 +453,7 @@ class _ASTScanner:
                     )
                     tablename_match = _TABLENAME_PATTERN.search(source)
                     if tablename_match:
-                        node.metadata = {**(node.metadata or {}), "table_name": tablename_match.group(1)}
+                        node.extra_metadata = {**(node.extra_metadata or {}), "table_name": tablename_match.group(1)}
                     count += 1
         self.commit()
         return count

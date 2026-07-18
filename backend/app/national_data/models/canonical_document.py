@@ -5,13 +5,13 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.database import Base
+from app.national_data.base import DataPlatformBase
 from app.ehr.models.attachment import ClinicalAttachment
 from app.ehr.models.clinical_note import ClinicalNote
 from app.national.domain.patient import Patient as NationalPatient
 
 
-class CanonicalDocument(Base):
+class CanonicalDocument(DataPlatformBase):
     __abstract__ = True
 
     document_id: str

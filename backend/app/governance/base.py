@@ -1,3 +1,9 @@
+"""Governance base classes.
+
+NOTE: Uses DateTime-based soft-delete pattern (same as Trust).
+Consolidation with canonical shared.models requires schema migration — deferred to Phase 3.
+"""
+
 from datetime import datetime
 from typing import Any
 

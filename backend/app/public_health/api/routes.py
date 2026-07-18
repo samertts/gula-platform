@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.public_health.application.service import PublicHealthService
-from app.public_health.domain.models import (
+from app.public_health.domain.entities import (
     DiseaseCase,
     ImmunizationRecord,
     OutbreakAlert,

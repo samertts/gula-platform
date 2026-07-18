@@ -7,6 +7,7 @@ from .ai_interaction import (
     MedicalTerminologyNormalized,
 )
 from .audit_log import AuditLog
+from .canonical_patient import CanonicalPatient, CitizenLink, PatientLink
 from .consent import Consent
 from .edge import (
     EdgeDevice,
@@ -21,17 +22,16 @@ from .lab import Lab
 from .lab_order import LabOrder
 from .lab_result import LabResult
 from .lab_user import LabUser
+from .oauth2_client import OAuth2Client
+from .oauth2_token import OAuth2Token
 from .organization import Appointment, Facility, Organization
 from .outbox import OutboxEvent
-from .canonical_patient import CanonicalPatient, CitizenLink, PatientLink
 from .patient import Patient
 from .quality_control import QualityControl
 from .sample import Sample
+from .service_account import ServiceAccount
 from .subscription import FeatureFlag, LabSubscription, UpgradeDemandScore, UpgradeRequest
 from .test_type import TestType
-from .oauth2_client import OAuth2Client
-from .oauth2_token import OAuth2Token
-from .service_account import ServiceAccount
 from .user import User
 
 __all__ = [
@@ -61,11 +61,11 @@ __all__ = [
     "OAuth2Client",
     "OAuth2Token",
     "OutboxEvent",
-    "ServiceAccount",
     "Patient",
     "PatientLink",
     "QualityControl",
     "Sample",
+    "ServiceAccount",
     "TestType",
     "UpgradeDemandScore",
     "UpgradeRequest",

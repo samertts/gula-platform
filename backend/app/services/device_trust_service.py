@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-import hmac
 import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import Any
-
-from app._compat import UTC
 
 logger = logging.getLogger("gula.security.device")
 

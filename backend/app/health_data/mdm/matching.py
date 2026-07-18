@@ -37,11 +37,11 @@ class ExactMatcher(Matcher):
         fields = ["national_id_hash", "health_number", "license_number", "registration_number"]
         features: dict[str, Any] = {}
 
-        for field in fields:
-            src_val = source.get(field)
-            tgt_val = target.get(field)
+        for fname in fields:
+            src_val = source.get(fname)
+            tgt_val = target.get(fname)
             if src_val and tgt_val and src_val == tgt_val:
-                features[field] = True
+                features[fname] = True
                 return MatchResult(
                     score=1.0,
                     method="exact",

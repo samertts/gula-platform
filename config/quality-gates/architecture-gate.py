@@ -30,6 +30,7 @@ import logging
 import os
 import pathlib
 import re
+import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -229,9 +230,14 @@ def check_migration_modifications(migrations_dir: pathlib.Path) -> list[dict[str
         return failures
 
     try:
-        result = os.popen("cd /home/samertts/workspace/projects/gula-platform && git diff --name-only HEAD -- backend/migrations/versions/").read()
-        if result.strip():
-            for line in result.strip().split("\n"):
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD", "--", "backend/migrations/versions/"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(ROOT),
+        )
+        output = result.stdout.strip()
+        if output:
+            for line in output.split("\n"):
                 fname = pathlib.Path(line.strip()).name
                 if fname.endswith(".py") and fname not in IMMUTABLE_MIGRATIONS:
                     if "2025" in fname or "2026" in fname:

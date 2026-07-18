@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -34,10 +34,10 @@ class AIAnalysisJob(RadiologyBaseEntity):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     findings = Column(JSON, default=dict)
     confidence_score = Column(Float, nullable=True)
-    is_urgent = Column(bool, default=False)
+    is_urgent = Column(Boolean, default=False)
     error_message = Column(Text, nullable=True)
     processing_time_ms = Column(Integer, nullable=True)
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
 
 
 # ==============================================================================
@@ -184,7 +184,7 @@ class TriageService:
                     finding_type=finding_type,
                     finding_description=finding_description,
                     status="pending",
-                    metadata={
+                    extra_metadata={
                         "source": "ai_triage",
                         "confidence": confidence,
                         "criticality": criticality,
@@ -209,14 +209,14 @@ class TriageService:
     def _update_exam_critical_flag(self, exam_id: str) -> None:
         exam = self.db.query(RadiologyExam).filter(RadiologyExam.id == exam_id).first()
         if exam:
-            exam.metadata = exam.metadata or {}
-            exam.metadata["has_ai_critical_finding"] = True
+            exam.extra_metadata = exam.extra_metadata or {}
+            exam.extra_metadata["has_ai_critical_finding"] = True
             self.db.commit()
 
     def get_critical_exams(self, date_from: datetime | None = None, date_to: datetime | None = None) -> list[RadiologyExam]:
         q = self.db.query(RadiologyExam).filter(
             ~~RadiologyExam.is_deleted,
-            RadiologyExam.metadata["has_ai_critical_finding"].astext == "true",
+            RadiologyExam.extra_metadata["has_ai_critical_finding"].astext == "true",
         )
         if date_from:
             q = q.filter(RadiologyExam.created_at >= date_from)
@@ -321,10 +321,10 @@ class HumanApprovalService:
         job = self.db.query(AIAnalysisJob).filter(AIAnalysisJob.id == job_id).first()
         if not job:
             return {"success": False, "error": "Job not found"}
-        job.metadata = job.metadata or {}
-        job.metadata["approved_by"] = approved_by
-        job.metadata["approved_at"] = datetime.now(UTC).isoformat()
-        job.metadata["modifications"] = modifications or {}
+        job.extra_metadata = job.extra_metadata or {}
+        job.extra_metadata["approved_by"] = approved_by
+        job.extra_metadata["approved_at"] = datetime.now(UTC).isoformat()
+        job.extra_metadata["modifications"] = modifications or {}
         job.status = "approved"
         self.db.commit()
         logger.info("AI findings approved for job %s by %s", job_id, approved_by)
@@ -334,9 +334,9 @@ class HumanApprovalService:
         job = self.db.query(AIAnalysisJob).filter(AIAnalysisJob.id == job_id).first()
         if not job:
             return {"success": False, "error": "Job not found"}
-        job.metadata = job.metadata or {}
-        job.metadata["rejected_by"] = rejected_by
-        job.metadata["rejection_reason"] = reason
+        job.extra_metadata = job.extra_metadata or {}
+        job.extra_metadata["rejected_by"] = rejected_by
+        job.extra_metadata["rejection_reason"] = reason
         job.status = "rejected"
         self.db.commit()
         logger.info("AI findings rejected for job %s by %s: %s", job_id, rejected_by, reason)
@@ -356,7 +356,7 @@ class HumanApprovalService:
             status="pending",
             requested_by=requested_by,
             is_urgent=is_urgent,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(job)
         self.db.commit()

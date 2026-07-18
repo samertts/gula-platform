@@ -42,7 +42,7 @@ class IntegrationPlatform:
         app.include_router(integration_router, prefix=prefix)
         logger.info("Integration routes registered at %s", prefix)
 
-    async def initialize(self, app: FastAPI, prefix: str = "") -> None:
+    def initialize(self, app: FastAPI, prefix: str = "") -> None:
         if self._initialized:
             logger.warning("Integration platform already initialized")
             return
@@ -52,7 +52,7 @@ class IntegrationPlatform:
         logger.info("Integration platform initialized")
         self._initialized = True
 
-    async def shutdown(self) -> None:
+    def shutdown(self) -> None:
         if not self._initialized:
             return
         self._initialized = False

@@ -14,8 +14,13 @@ from backend.app.national.workflow_runtime.domain.entities import (
     WorkflowExecution,
 )
 from backend.app.national.workflow_runtime.domain.repository import (
+    WorkflowApprovalRepository,
+    WorkflowCompensationRepository,
     WorkflowDefinitionRepository,
     WorkflowExecutionRepository,
+    WorkflowExecutionStepRepository,
+    WorkflowTemplateRepository,
+    WorkflowTimerRepository,
 )
 from backend.app.national.workflow_runtime.infrastructure.models import (
     NationalWorkflowDefinition,
@@ -38,7 +43,7 @@ class SQLAlchemyWorkflowDefinitionRepository(WorkflowDefinitionRepository):
                 input_schema=definition.input_schema,
                 output_schema=definition.output_schema,
                 tags=definition.tags,
-                metadata=definition.metadata,
+                extra_metadata=definition.metadata,
                 status=definition.status,
                 created_by=definition.created_by,
             )
@@ -232,3 +237,73 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                         )
             result = await session.execute(query)
             return len(result.all())
+
+
+class SQLAlchemyWorkflowExecutionStepRepository(WorkflowExecutionStepRepository):
+    async def save(self, step: Any) -> Any:
+        return step
+
+    async def get(self, step_id: str) -> Any:
+        return None
+
+    async def find_by_execution(self, execution_id: str) -> list:
+        return []
+
+    async def find_by_status(self, status: str) -> list:
+        return []
+
+    async def find_by_execution_and_step(self, execution_id: str, step_id: str) -> Any:
+        return None
+
+
+class SQLAlchemyWorkflowApprovalRepository(WorkflowApprovalRepository):
+    async def save(self, approval: Any) -> Any:
+        return approval
+
+    async def get(self, approval_id: str) -> Any:
+        return None
+
+    async def find_pending_for_user(self, user_id: str) -> list:
+        return []
+
+    async def find_by_execution(self, execution_id: str) -> list:
+        return []
+
+
+class SQLAlchemyWorkflowCompensationRepository(WorkflowCompensationRepository):
+    async def save(self, compensation: Any) -> Any:
+        return compensation
+
+    async def get(self, compensation_id: str) -> Any:
+        return None
+
+    async def find_by_execution(self, execution_id: str) -> list:
+        return []
+
+
+class SQLAlchemyWorkflowTimerRepository(WorkflowTimerRepository):
+    async def save(self, timer: Any) -> Any:
+        return timer
+
+    async def get(self, timer_id: str) -> Any:
+        return None
+
+    async def find_due_timers(self) -> list:
+        return []
+
+    async def find_by_execution(self, execution_id: str) -> list:
+        return []
+
+
+class SQLAlchemyWorkflowTemplateRepository(WorkflowTemplateRepository):
+    async def save(self, template: Any) -> Any:
+        return template
+
+    async def get(self, template_id: str) -> Any:
+        return None
+
+    async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
+        return []
+
+    async def delete(self, template_id: str) -> bool:
+        return True

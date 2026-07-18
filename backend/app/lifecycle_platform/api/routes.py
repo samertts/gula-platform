@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.lifecycle_platform.application.service import LifecycleService
-from app.lifecycle_platform.domain.models import (
+from app.lifecycle_platform.domain.entities import (
     CompatibilityEntry,
     Component,
     DeprecationNotice,

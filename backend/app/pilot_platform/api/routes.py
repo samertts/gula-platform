@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.pilot_platform.application.service import PilotPlatformService
-from app.pilot_platform.domain.models import (
+from app.pilot_platform.domain.entities import (
     DeploymentRecord,
     GoNoGoGate,
     PilotFacility,

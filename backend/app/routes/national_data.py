@@ -517,7 +517,7 @@ def create_quality_check(
 def get_data_lineage(
     entity_type: str = Query(...),
     entity_id: str = Query(...),
-    direction: str = Query("both", regex="^(upstream|downstream|both)$"),
+    direction: str = Query("both", pattern="^(upstream|downstream|both)$"),
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):

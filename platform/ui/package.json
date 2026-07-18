@@ -1,0 +1,31 @@
+{
+  "name": "@gula/ui-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./design-system/tokens/*": "./design-system/tokens/*.ts",
+    "./theme/*": "./theme/*.tsx",
+    "./components/*": "./components/*/index.ts",
+    "./hooks/*": "./hooks/*.ts",
+    "./utils/*": "./utils/*.ts",
+    "./i18n/*": "./i18n/*.tsx",
+    "./icons/*": "./icons/*.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "clsx": "^2.1.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tailwind-merge": "^3.6.0",
+    "typescript": "~5.8.2"
+  }
+}

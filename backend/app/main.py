@@ -71,15 +71,15 @@ if _SENTRY_DSN:
         logger.warning("SENTRY_DSN set but sentry-sdk not installed; skipping")
 
 # Import all models so they are registered with Base.metadata (needed for create_all + alembic)
-from .hospital.models import (  # noqa: F401, E402 register hospital tables with Base metadata
+from .hospital.models import (  # noqa: F401, E402 register hospital tables with HospitalBase metadata
     Bed,
     BedAssignment,
     Building,
     Campus,
     Clinic,
     CostCenter,
-    Department,
     Floor,
+    HospitalDepartment,
     HospitalMaster,
     MedicalEquipment,
     OperationTheater,
@@ -94,7 +94,6 @@ from .lims.models import (  # noqa: F401, E402 register LIMS tables with Base me
     ChainOfCustody,
     Consumable,
     DeltaCheckRule,
-    Department,
     ElectronicSignature,
     EquipmentLog,
     Instrument,
@@ -135,7 +134,7 @@ from .models import (  # noqa: F401, E402
     User,
 )
 from .models.outbox import OutboxEvent  # noqa: E402  register OutboxEvent with Base metadata
-from .nhdw.models import (  # noqa: F401, E402 register NHDW tables with Base metadata
+from .nhdw.models import (  # noqa: F401, E402 register NHDW tables with NHDWBase metadata
     Admission,
     CarePlan,
     ClinicalTask,
@@ -151,7 +150,7 @@ from .nhdw.models import (  # noqa: F401, E402 register NHDW tables with Base me
     WaitingListEntry,
     WardRound,
 )
-from .nursing.models import (  # noqa: F401, E402 register Nursing tables with Base metadata
+from .nursing.models import (  # noqa: F401, E402 register Nursing tables with NationalBase metadata
     ClinicalChecklist,
     Delegation,
     EscalationRecord,
@@ -167,7 +166,7 @@ from .nursing.models import (  # noqa: F401, E402 register Nursing tables with B
     PressureInjuryAssessment,
     ShiftHandover,
 )
-from .pharmacy.models import (  # noqa: F401, E402 register Pharmacy tables with Base metadata
+from .pharmacy.models import (  # noqa: F401, E402 register Pharmacy tables with NationalBase metadata
     AllergyRule,
     ClinicalGuideline,
     ContraindicationRule,
@@ -192,9 +191,9 @@ from .pharmacy.models import (  # noqa: F401, E402 register Pharmacy tables with
     Warehouse,
     WasteRecord,
 )
+from .radiology.ai import AIAnalysisJob  # noqa: E402, F401 — register AI model with Base metadata
 from .radiology.models import (  # noqa: F401, E402 register Radiology tables with Base metadata
     MPPS,
-    AIAnalysisJob,
     CriticalFinding,
     DICOMStorage,
     DICOMStudy,
@@ -532,7 +531,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
             "connect-src 'self' https://gula-platform.org; "
@@ -1101,7 +1100,7 @@ logger.info("Runtime Kernel Extensions registered — MISSION-017D")
 # ===== NATIONAL INTEGRATION PLATFORM (MISSION-018) =====
 from .integration.integration import IntegrationPlatform  # noqa: E402
 
-IntegrationPlatform.initialize(app)
+IntegrationPlatform().initialize(app)
 logger.info("National Integration Platform registered — MISSION-018")
 
 # ===== CITIZEN DIGITAL HEALTH PLATFORM (MISSION-019) =====
@@ -1156,21 +1155,17 @@ from .ems.api.routes import router as ems_router  # noqa: E402
 
 # ===== NATIONAL EMS & DISASTER RESPONSE PLATFORM (MISSION-029) =====
 from .ems.infrastructure.models import (  # noqa: E402, F401
+    AmbulanceCrewModel,
     AmbulanceModel,
-    CrewMemberModel,
+    CrewShiftModel,
     DispatchAssignmentModel,
-    DispatchCommunicationModel,
-    DispatchHospitalModel,
-    DispatchModel,
+    EmergencyIncidentModel,
+    HospitalStatusModel,
     IncidentCommandModel,
     MassCasualtyIncidentModel,
-    PatientAssessmentModel,
-    PatientEventLogModel,
-    PatientTransferOfCareModel,
-    PrehospitalCareReportModel,
-    ResourceRequestModel,
-    SceneSafetyModel,
-    TriageTagModel,
+    ShelterModel,
+    TriageAssessmentModel,
+    ePCRModel,
 )
 from .models.ai_interaction import (  # noqa: E402, F401  register with Base metadata
     AIFeedback,
@@ -1186,17 +1181,14 @@ logger.info("National EMS & Disaster Response Platform registered — MISSION-02
 # ===== NATIONAL BLOOD BANK & TRANSFUSION PLATFORM (MISSION-030) =====
 from .blood_bank.api.routes import router as blood_bank_router  # noqa: E402
 from .blood_bank.infrastructure.models import (  # noqa: E402, F401
-    BloodBankModel,
     BloodComponentModel,
-    BloodDonationEventModel,
-    BloodDonorDeferralModel,
+    BloodDonationModel,
     BloodDonorModel,
     BloodInventoryModel,
-    BloodOrderModel,
-    BloodTransfusionRecordModel,
-    CompatibilityRuleModel,
-    CrossmatchRecordModel,
-    TransfusionAdverseEventModel,
+    BloodRequestModel,
+    CrossmatchModel,
+    DonorDeferralModel,
+    TransfusionModel,
 )
 
 app.include_router(blood_bank_router)
@@ -1262,7 +1254,6 @@ from .command_center.api.routes import router as command_center_router  # noqa: 
 from .command_center.infrastructure.models import (  # noqa: E402, F401
     AfterActionReportModel,
     EmergencyDeclarationModel,
-    ResourceRequestModel,
     SituationReportModel,
 )
 

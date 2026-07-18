@@ -72,7 +72,7 @@ class TerminologyMapping(BaseEntity):
     source_code_id = Column(String(26), ForeignKey("clinical_terminology_codes.id"), nullable=False)
     target_system = Column(Enum(TerminologySystem), nullable=False)
     target_code_id = Column(String(26), ForeignKey("clinical_terminology_codes.id"), nullable=False)
-    relationship = Column(String(32), default="equivalent", nullable=False)
+    mapping_relationship = Column(String(32), default="equivalent", nullable=False)
     mapping_priority = Column(Integer, default=0, nullable=False)
     evidence = Column(Text, nullable=True)
 

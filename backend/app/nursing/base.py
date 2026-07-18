@@ -5,17 +5,19 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import JSON, Column, String
+from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
-from app.database import Base
 from shared.models import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin
+
+NursingBase = declarative_base()
 
 
 def _ulid() -> str:
     return str(uuid.uuid4()).replace("-", "").upper()[:26]
 
 
-class NursingBaseEntity(TenantMixin, AuditMixin, SoftDeleteMixin, OptimisticLockMixin, Base):
+class NursingBaseEntity(TenantMixin, AuditMixin, SoftDeleteMixin, OptimisticLockMixin, NursingBase):
     __abstract__ = True
 
     id = Column(String(26), primary_key=True, default=_ulid)

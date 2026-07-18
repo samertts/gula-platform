@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.database import Base
+from app.national_data.base import DataPlatformBase
 from app.ehr.models.medication import (
     MedicationAdministration,
     MedicationDispense,
@@ -15,7 +15,7 @@ from app.ehr.models.medication import (
 from app.national.domain.patient import Patient as NationalPatient
 
 
-class CanonicalMedication(Base):
+class CanonicalMedication(DataPlatformBase):
     __abstract__ = True
 
     source: str

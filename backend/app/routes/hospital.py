@@ -10,7 +10,7 @@ from ..hospital.models import (
     Bed,
     BedAssignment,
     Campus,
-    Department,
+    HospitalDepartment,
     HospitalMaster,
     MedicalEquipment,
     OperationTheater,
@@ -447,7 +447,7 @@ def update_department(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
-    dept = HospitalService._get_entity(db, Department, dept_id, current_user.lab_id)
+    dept = HospitalService._get_entity(db, HospitalDepartment, dept_id, current_user.lab_id)
     data = body.model_dump()
     for k, v in data.items():
         setattr(dept, k, v)

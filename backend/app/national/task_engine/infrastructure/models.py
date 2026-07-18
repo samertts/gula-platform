@@ -29,7 +29,7 @@ class NationalTaskModel(BaseEntity, NationalBase):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     escalation_level = Column(Integer, default=1, nullable=True)
     tags = Column(JSON, default=list, nullable=True)
-    metadata = Column(JSON, default=dict, nullable=True)
+    extra_metadata = Column(JSON, default=dict, nullable=True)
     correlation_id = Column(String(255), nullable=True, index=True)
     created_by = Column(String(100), nullable=True)
     updated_at = Column(

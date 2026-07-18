@@ -136,7 +136,7 @@ def get_node(
         "name": node.name,
         "qualified_name": node.qualified_name,
         "description": node.description,
-        "metadata": node.metadata,
+        "metadata": node.extra_metadata,
         "source_path": node.source_path,
         "tags": node.tags,
         "version": node.version,

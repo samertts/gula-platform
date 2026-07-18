@@ -180,7 +180,7 @@ class TrustService:
 
         log = TrustServiceLog(
             service_type=TrustServiceType.DIGITAL_SIGNATURE,
-            request_id=hashlib.md5(f"{document_hash}:{time.time()}".encode()).hexdigest(),
+            request_id=hashlib.md5(f"{document_hash}:{time.time()}".encode(), usedforsecurity=False).hexdigest(),
             user_id=user_id,
             lab_id=lab_id,
             document_hash=document_hash,
@@ -205,7 +205,7 @@ class TrustService:
 
         log = TrustServiceLog(
             service_type=TrustServiceType.TIMESTAMPING,
-            request_id=hashlib.md5(f"ts:{document_hash}:{time.time()}".encode()).hexdigest(),
+            request_id=hashlib.md5(f"ts:{document_hash}:{time.time()}".encode(), usedforsecurity=False).hexdigest(),
             user_id=user_id,
             lab_id=lab_id,
             document_hash=document_hash,

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import ast
 import subprocess
-import xml.etree.ElementTree as ET
 from pathlib import Path
+
+from defusedxml.ElementTree import parse as safe_xml_parse
 
 from . import DimensionEvaluator, DimensionResult
 
@@ -126,7 +127,7 @@ class TestCoverageEvaluator(DimensionEvaluator):
         xml_path = target / "coverage.xml" or target.parent / "coverage.xml"
         if xml_path.exists():
             try:
-                tree = ET.parse(xml_path)
+                tree = safe_xml_parse(xml_path)
                 root = tree.getroot()
                 for package in root.iter("package"):
                     if "line-rate" in package.attrib:
@@ -135,7 +136,7 @@ class TestCoverageEvaluator(DimensionEvaluator):
                 pass
         try:
             result = subprocess.run(
-                ["python", "-m", "coverage", "report", "--precision=1"],
+                ["python3", "-m", "coverage", "report", "--precision=1"],
                 capture_output=True,
                 text=True,
                 cwd=str(target),
@@ -154,7 +155,7 @@ class TestCoverageEvaluator(DimensionEvaluator):
         xml_path = target / "coverage.xml" or target.parent / "coverage.xml"
         if xml_path.exists():
             try:
-                tree = ET.parse(xml_path)
+                tree = safe_xml_parse(xml_path)
                 root = tree.getroot()
                 for package in root.iter("package"):
                     if "branch-rate" in package.attrib:

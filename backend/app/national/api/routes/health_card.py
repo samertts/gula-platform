@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -65,7 +65,7 @@ async def issue_health_card(
         card_number=_generate_card_number(db),
         card_type=data.card_type,
         status=HealthCardStatus.ACTIVE,
-        issued_at=datetime.now(timezone.utc),
+        issued_at=datetime.now(UTC),
         is_active=True,
     )
     db.add(card)

@@ -84,7 +84,7 @@ class RadiologyService:
             requested_date=datetime.now(UTC),
             ordering_department_id=ordering_department_id,
             notes=notes,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(order)
         self.db.commit()
@@ -166,7 +166,7 @@ class RadiologyService:
             contrast_required=contrast_required,
             contrast_details=contrast_details,
             notes=notes,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(appointment)
         self.db.commit()
@@ -253,7 +253,7 @@ class RadiologyService:
             exam_name=exam_name,
             technologist_id=technologist_id,
             radiologist_id=radiologist_id,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(exam)
         self.db.commit()
@@ -391,7 +391,7 @@ class RadiologyService:
             slice_thickness=slice_thickness,
             fov=fov,
             matrix_size=matrix_size,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(series)
         self.db.commit()
@@ -427,7 +427,7 @@ class RadiologyService:
             storage_path=storage_path,
             storage_tier=storage_tier,
             checksum=checksum,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(image)
         self.db.commit()
@@ -477,7 +477,7 @@ class RadiologyService:
             body_text=body_text,
             transcribed_by=transcribed_by,
             draft_at=datetime.now(UTC),
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(report)
         self.db.commit()
@@ -609,7 +609,7 @@ class RadiologyService:
             body_part=body_part,
             structured_template=structured_template or {},
             is_active=True,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(template)
         self.db.commit()
@@ -646,7 +646,7 @@ class RadiologyService:
             notified_to=notified_to,
             status=CriticalFindingStatus.PENDING,
             notes=notes,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(finding)
         self.db.commit()
@@ -767,7 +767,7 @@ class RadiologyService:
             positioning_instructions=positioning_instructions,
             series_parameters=series_parameters or {},
             is_active=True,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(protocol)
         self.db.commit()
@@ -916,7 +916,7 @@ class RadiologyService:
             annotated_by=annotated_by,
             annotation_type=annotation_type,
             annotation_data=annotation_data,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(ann)
         self.db.commit()
@@ -946,7 +946,7 @@ class RadiologyService:
             location=location,
             finding_code=finding_code,
             finding_description=finding_description,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
         )
         self.db.add(meas)
         self.db.commit()

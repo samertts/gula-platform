@@ -1,8 +1,12 @@
 # Digital Constitution — GULA Platform
 
+> **DEPRECATED:** This document is superseded by the Platform Constitution.
+> See `docs/constitution/PLATFORM-CONSTITUTION.md` for the current authority.
+> This file is retained for historical reference only and will be removed in a future release.
+
 **Version:** 1.0.0
 **Date:** 2026-07-08
-**Classification:** Internal — Engineering
+**Classification:** Internal — Engineering (DEPRECATED)
 
 ---
 

@@ -29,8 +29,8 @@ class StorageBackend(ABC):
 
 
 class LocalStorageBackend(StorageBackend):
-    def __init__(self, base_path: str = "/data/lake"):
-        self.base_path = base_path
+    def __init__(self, base_path: str | None = None):
+        self.base_path = base_path or os.environ.get("GULA_DATA_LAKE_PATH", "/tmp/gula/data/lake")
         os.makedirs(self.base_path, exist_ok=True)
 
     def _resolve(self, path: str) -> str:

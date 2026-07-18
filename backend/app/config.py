@@ -90,6 +90,13 @@ _WEAK_PATTERNS = (
     "password",
     "12345",
     "abcdef",
+    "admin",
+    "qwerty",
+    "letmein",
+    "welcome",
+    "pass",
+    "00000",
+    "11111",
 )
 
 

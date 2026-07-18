@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .engine import CertificationEngine
 from .enums import CertificationDimension, MetricCategory, ReleaseGate
@@ -22,8 +22,7 @@ gate_checker = ReleaseGateChecker()
 class ReleaseCheckRequest(BaseModel):
     gates: list[ReleaseGate] | None = Field(default=None, description="Specific gates to check")
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ReleaseCheckResponse(BaseModel):
@@ -61,7 +60,7 @@ async def get_certification_level(module_path: str | None = None):
 @router.get("/report/{module_path:path}")
 async def get_report(
     module_path: str | None = None,
-    format: str = Query("json", regex="^(json|markdown|html|pdf)$"),
+    format: str = Query("json", pattern="^(json|markdown|html|pdf)$"),
 ):
     target = Path(module_path) if module_path else Path.cwd()
     report = engine.evaluate_module(str(target))

@@ -248,7 +248,7 @@ jobs:
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          response=$(curl -sf --max-time 10 "http://$SERVER_HOST/health" 2>/dev/null || echo "FAILED")
+          response=$(curl -sfL --max-time 10 "http://$SERVER_HOST/health" 2>/dev/null || echo "FAILED")
           echo "API Response: $response"
           if echo "$response" | grep -q '"status"'; then
             echo "API is healthy!"

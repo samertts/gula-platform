@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
+from defusedxml.ElementTree import fromstring as safe_xml_parse
 
 from .base import BaseConnector, ConnectorConfig, ConnectorResult, ConnectorStatus
 
@@ -182,7 +183,7 @@ class FileConnector(BaseConnector):
         if fmt == "json":
             return json.loads(content)
         if fmt == "xml":
-            root = ElementTree.fromstring(content)
+            root = safe_xml_parse(content)
             return self._xml_to_dict(root)
         if fmt == "csv":
             reader = csv.DictReader(io.StringIO(content))

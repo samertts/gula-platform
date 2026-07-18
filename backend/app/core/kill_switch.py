@@ -48,8 +48,6 @@ def is_kill_switch_active() -> bool:
     Return True if kill switch is active.
     Checks (in order): in-memory flag → Redis key → env var.
     """
-    global _in_memory_active
-
     # In-memory (fastest, set by API)
     if _in_memory_active:
         return True

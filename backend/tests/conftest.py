@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 
 # ── Must come before any app import ──────────────────────────────────────────
 # Runtime isolation: tests run in a process that must NEVER spawn background
@@ -35,46 +36,113 @@ import pytest
 from app.database import Base, get_db
 from app.security.auth import create_token, hash_password
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# ── DB fixture ────────────────────────────────────────────────────────────────
+# ── SQLite compatibility: JSONB → JSON ────────────────────────────────────────
+# Several production models use PostgreSQL's JSONB type. SQLite does not support
+# it, so we register a type compiler that renders JSONB as JSON (which SQLite
+# stores as TEXT). This must be set up before any models are imported.
+from sqlalchemy.types import JSON as _SQLiteJSON, TypeDecorator
 
-@pytest.fixture()
-def db_engine():
-    # StaticPool: all connections share the same in-memory database so that
-    # create_all() and subsequent session checkouts see the same tables.
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    # Import every model so Base.metadata knows about all tables
-    import app.models.audit_log
-    import app.models.claim
-    import app.models.consent
-    import app.models.edge
-    import app.models.lab
-    import app.models.lab_order
-    import app.models.lab_result
-    import app.models.lab_user
-    import app.models.outbox
-    import app.models.patient
-    import app.models.quality_control
-    import app.models.sample
-    import app.models.subscription
-    import app.models.user
-    from app.services.mpi.models import Citizen, IdentityClaim
-    Base.metadata.create_all(engine)
+
+class _JSONB_as_JSON(TypeDecorator):
+    """JSONB stored as JSON for SQLite."""
+    impl = _SQLiteJSON
+    cache_ok = True
+
+
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy import BigInteger
+
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_sqlite(element, compiler, **kw):
+    return compiler.visit_JSON(element, **kw)
+
+
+@compiles(BigInteger, "sqlite")
+def _compile_bigint_sqlite(element, compiler, **kw):
+    return "INTEGER"
+
+
+# ── Module-level model imports ─────────────────────────────────────────────
+# These must be here (not inside a fixture) so that SQLAlchemy relationship
+# resolution works even in tests that never request a DB fixture.  In
+# particular CitizenLink.citizen = relationship("Citizen") requires class
+# "Citizen" be registered on Base *before* any mapper configuration fires.
+from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
+
+# ── Session-scoped engine & DDL (once per test run) ───────────────────────────
+# Creating hundreds of tables on every test function is too slow (~80s per test).
+# We use a session-scoped SQLite temp file and a per-test savepoint-based
+# rollback to achieve both isolation and speed.
+
+@pytest.fixture(scope="session")
+def _session_engine():
+    """Create engine + all tables once per test session."""
+    _f = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    _db_path = _f.name
+    _f.close()
+    engine = create_engine(f"sqlite:///{_db_path}", connect_args={"check_same_thread": False})
+    # Import ALL models via app.main — registers Base + NationalBase + all
+    # other domain models on their respective metadata namespaces.  This
+    # must happen BEFORE table creation so the combined DDL metadata can
+    # resolve cross-metadata FK references (nursing→lab_users, EHR→national,
+    # etc.).  Without this, ForeignKey("lab_users.id") in a NationalBase
+    # table fails because lab_users lives in Base.metadata.
+    import app.main  # noqa: F401 — triggers all model imports
+
+    from app.national.base import NationalBase
+    from sqlalchemy import MetaData as _CombinedMeta
+
+    _all_metas = [Base.metadata, NationalBase.metadata]
+    _ddl_meta = _CombinedMeta()
+    for _meta in _all_metas:
+        for _tname, _tbl in list(_meta.tables.items()):
+            if _tname not in _ddl_meta.tables:
+                _tbl.to_metadata(_ddl_meta)
+
+    # Deduplicate indexes (column index=True + same Index in __table_args__)
+    for _tbl in list(_ddl_meta.tables.values()):
+        _seen_idx = {}
+        for _idx in list(_tbl.indexes):
+            if _idx.name in _seen_idx:
+                _tbl.indexes.discard(_idx)
+            else:
+                _seen_idx[_idx.name] = _idx
+
+    _ddl_meta.create_all(engine)
     yield engine
-    Base.metadata.drop_all(engine)
+    _ddl_meta.drop_all(engine)
     engine.dispose()
+    os.unlink(_db_path)
 
 
 @pytest.fixture()
-def db(db_engine):
-    Session = sessionmaker(bind=db_engine, autoflush=False)
+def _savepoint_conn(_session_engine):
+    """Per-test connection with a savepoint that rolls back on teardown."""
+    conn = _session_engine.connect()
+    conn.begin()
+    try:
+        yield conn
+    finally:
+        conn.rollback()
+        conn.close()
+
+
+@pytest.fixture()
+def db_engine(_savepoint_conn):
+    """Expose the session-scoped engine (savepoint ensures isolation)."""
+    return _savepoint_conn.engine
+
+
+@pytest.fixture()
+def db(db_engine, _savepoint_conn):
+    """Per-test session that rolls back when the test finishes."""
+    Session = sessionmaker(bind=_savepoint_conn)
     session = Session()
     try:
         yield session

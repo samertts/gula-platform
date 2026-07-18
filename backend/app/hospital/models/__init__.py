@@ -76,7 +76,7 @@ class Floor(HospitalBaseEntity):
     rooms = relationship("Room", back_populates="floor", cascade="all, delete-orphan")
 
 
-class Department(HospitalBaseEntity):
+class HospitalDepartment(HospitalBaseEntity):
     __tablename__ = "hospital_departments"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -89,7 +89,7 @@ class Department(HospitalBaseEntity):
     phone = Column(String(20), nullable=True)
 
     hospital = relationship("HospitalMaster", back_populates="departments")
-    children = relationship("Department", backref=backref("parent", remote_side=[id]), cascade="all, delete-orphan")
+    children = relationship("HospitalDepartment", backref=backref("parent", remote_side=[id]), cascade="all, delete-orphan")
     clinics = relationship("Clinic", back_populates="department", cascade="all, delete-orphan")
     rooms = relationship("Room", back_populates="department", cascade="all, delete-orphan")
     operation_theaters = relationship("OperationTheater", back_populates="department", cascade="all, delete-orphan")
@@ -139,7 +139,7 @@ class Bed(HospitalBaseEntity):
     bed_number = Column(String(20), nullable=False)
     bed_type = Column(String(30), nullable=False, default="standard", index=True)
     status = Column(String(20), nullable=False, default="available", index=True)
-    current_patient_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True)
+    current_patient_id = Column(Integer, nullable=True, index=True)
 
     room = relationship("Room", back_populates="beds")
     current_patient = relationship("Patient", foreign_keys=[current_patient_id])
@@ -217,7 +217,7 @@ class BedAssignment(HospitalBaseEntity):
 
     id = Column(Integer, primary_key=True, index=True)
     bed_id = Column(Integer, ForeignKey("hospital_beds.id", ondelete="CASCADE"), nullable=False, index=True)
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
     admission_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     discharge_date = Column(DateTime(timezone=True), nullable=True)
     reason = Column(String(500), nullable=True)

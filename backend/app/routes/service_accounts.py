@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime
-from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app._compat import UTC
-
 from ..database import get_db
-from ..models.lab_user import LabUser
-from ..models.service_account import ServiceAccount
 from ..security.dependencies import get_current_user
 from ..security.service_accounts import (
     create_service_account,
@@ -56,7 +49,6 @@ def create(
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can create service accounts")
 
-    from ..security.service_accounts import create_service_account
 
     account, api_key = create_service_account(
         db=db,
@@ -83,7 +75,6 @@ def list_all(
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can list service accounts")
 
-    from ..security.service_accounts import list_service_accounts
 
     accounts = list_service_accounts(db)
     return [
@@ -110,7 +101,6 @@ def revoke(
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can revoke service accounts")
 
-    from ..security.service_accounts import revoke_service_account
 
     if not revoke_service_account(db, account_id):
         raise HTTPException(status_code=404, detail="Service account not found")
@@ -126,7 +116,6 @@ def rotate(
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can rotate API keys")
 
-    from ..security.service_accounts import rotate_api_key
 
     new_key = rotate_api_key(db, account_id)
     if not new_key:

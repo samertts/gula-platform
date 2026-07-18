@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
@@ -40,8 +39,8 @@ async def forgot_password(
     user = db.query(LabUser).filter(LabUser.email == req.email).first()
     if not user:
         return {"message": "If the email exists, a reset link has been sent"}
-    import secrets
     import hashlib
+    import secrets
     token = secrets.token_urlsafe(32)
     hashed = hashlib.sha256(token.encode()).hexdigest()
     user.reset_token = hashed

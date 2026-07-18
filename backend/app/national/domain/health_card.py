@@ -35,6 +35,5 @@ class HealthCard(TenantAuditEntity):
 
     __table_args__ = (
         Index("ix_national_health_cards_citizen", "citizen_id"),
-        Index("ix_national_health_cards_card_number", "card_number"),
         {"extend_existing": True},
     )

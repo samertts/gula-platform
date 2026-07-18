@@ -1,0 +1,279 @@
+{
+  "repository": "gula-platform",
+  "overall_score": 72,
+  "grade": "C",
+  "axes": [
+    {
+      "name": "Code Quality",
+      "weight": 15,
+      "description": "Lint errors, type annotations, syntax validity, code complexity",
+      "score": 85,
+      "weighted": 12.75,
+      "checks": {
+        "Syntax valid": 100,
+        "Static analysis": 100,
+        "Type annotations": 0,
+        "Functions \u2264100 lines": 100
+      },
+      "findings": [
+        "\u2713 Syntax valid: 150/150 files pass syntax check (0 subprocess calls)",
+        "\u2713 Static analysis: 0 files with syntax errors found",
+        "\u2717 Type annotations: 37/75 non-init files use type hints (49%)",
+        "\u2713 Functions \u2264100 lines: 0/565 functions exceed 100 lines (0.0%)"
+      ],
+      "recommendations": []
+    },
+    {
+      "name": "Test Coverage",
+      "weight": 15,
+      "description": "Coverage percentage, test-module spread, integration tests, stability",
+      "score": 55,
+      "weighted": 8.25,
+      "checks": {
+        "Test-to-module ratio": 0,
+        "Integration tests": 100,
+        "Fixtures (conftest)": 100,
+        "No flaky test markers": 0,
+        "Coverage data available": 100
+      },
+      "findings": [
+        "\u2717 Test-to-module ratio: 105 test files for 1264 app modules (0.08)",
+        "\u2713 Integration tests: 9 integration/stress/comprehensive test files",
+        "\u2713 Fixtures (conftest): 3 conftest.py files found",
+        "\u2717 No flaky test markers: 10 files contain flaky patterns",
+        "\u2713 Coverage data available: No coverage report \u2014 run `pytest --cov`"
+      ],
+      "recommendations": [
+        "Add more tests \u2014 currently 105 test files for 1264 modules",
+        "Enable coverage tracking: `pip install pytest-cov && pytest --cov=app tests/`",
+        "Remove flaky patterns in 10 test files \u2014 use robust assertions and mocks"
+      ]
+    },
+    {
+      "name": "Documentation",
+      "weight": 10,
+      "description": "README files, docstrings, missing docs, constitution",
+      "score": 85,
+      "weighted": 8.5,
+      "checks": {
+        "Root README": 100,
+        "README per module": 100,
+        "Module docstrings": 0,
+        "Constitution docs": 100,
+        "Essential docs": 100,
+        "ADR documentation": 100
+      },
+      "findings": [
+        "\u2713 Root README: 2 root README file(s)",
+        "\u2713 README per module: 3/9 modules have README",
+        "\u2717 Module docstrings: 8/1582 files have module docstrings (1%)",
+        "\u2713 Constitution docs: 6 constitution files",
+        "\u2713 Essential docs: 4/4 found (CHANGELOG.md, CONTRIBUTING.md, SECURITY.md, ARCHITECTURE.md)",
+        "\u2713 ADR documentation: 26 ADR files"
+      ],
+      "recommendations": []
+    },
+    {
+      "name": "Security",
+      "weight": 15,
+      "description": "Secrets scanning, CVEs, bandit, JWT/auth, encryption",
+      "score": 90,
+      "weighted": 13.5,
+      "checks": {
+        "No hardcoded secrets in .env.example": 100,
+        "Required secrets configured": 0,
+        "Security module": 100,
+        "Encryption module": 100,
+        "Rate limiting": 100,
+        "No raw SQL injection vectors": 100,
+        "Input validation (Pydantic)": 0,
+        "Bandit security scan": 100,
+        "JWT algorithm secure": 100
+      },
+      "findings": [
+        "\u2713 No hardcoded secrets in .env.example: 0 placeholder secrets found",
+        "\u2717 Required secrets configured: 3/4 required secrets found",
+        "\u2713 Security module: 15 security modules (auth.py, rbac.py, encryption.py, rate_limit.py, etc.)",
+        "\u2713 Encryption module: app/security/encryption.py exists",
+        "\u2713 Rate limiting: app/security/rate_limit.py exists",
+        "\u2713 No raw SQL injection vectors: 0 potential raw SQL patterns \u2014 verify they use parameterized queries",
+        "\u2717 Input validation (Pydantic): ~0 files use Pydantic models",
+        "\u2713 Bandit security scan: 0 bandit issues found",
+        "\u2713 JWT algorithm secure: No insecure JWT algorithm detected"
+      ],
+      "recommendations": []
+    },
+    {
+      "name": "Architecture Compliance",
+      "weight": 15,
+      "description": "Layer violations, circular deps, forbidden imports",
+      "score": 7,
+      "weighted": 1.05,
+      "checks": {
+        "Architecture compliance engine": 100,
+        "Compliance score from engine": 0,
+        "Rule L1": 0,
+        "Rule L2": 0,
+        "Rule L3": 0,
+        "Rule L4": 0,
+        "Rule L5": 0,
+        "Rule L6": 0,
+        "Rule L7": 0
+      },
+      "findings": [
+        "\u2713 Architecture compliance engine: scripts/architecture_compliance_engine.py exists",
+        "\u2717 Compliance score from engine: Architecture compliance score: 7.1/100",
+        "\u2717 Rule L1: L1: FAIL (122/148 checks passed)",
+        "\u2717 Rule L2: L2: FAIL (7/7 checks passed)",
+        "\u2717 Rule L3: L3: FAIL (1170/1222 checks passed)",
+        "\u2717 Rule L4: L4: FAIL (596/961 checks passed)",
+        "\u2717 Rule L5: L5: FAIL (10854/10921 checks passed)",
+        "\u2717 Rule L6: L6: FAIL (859/1227 checks passed)",
+        "\u2717 Rule L7: L7: WARNING (327/3004 checks passed)"
+      ],
+      "recommendations": [
+        "Run `python scripts/architecture_compliance_engine.py` to see detailed violations and fix them"
+      ]
+    },
+    {
+      "name": "Dependency Health",
+      "weight": 10,
+      "description": "Outdated packages, dependency count, pinned versions, dev/prod separation",
+      "score": 85,
+      "weighted": 8.5,
+      "checks": {
+        "Requirements files": 100,
+        "Dependencies < 50": 100,
+        "Pinned versions (>= with == lockfile)": 0,
+        "Dev/Prod separation (root)": 100,
+        "Dev/Prod separation (frontend-v2)": 100,
+        "No legacy dependency pins": 100
+      },
+      "findings": [
+        "\u2713 Requirements files: 2 requirements files found",
+        "\u2713 Dependencies < 50: 25 total dependencies",
+        "\u2717 Pinned versions (>= with == lockfile): 0 pinned, 22 floating (>=) \u2014 pip-compile recommended",
+        "\u2713 Dev/Prod separation (root): 30 prod, 31 dev",
+        "\u2713 Dev/Prod separation (frontend-v2): 29 prod, 7 dev",
+        "\u2713 No legacy dependency pins: 0 legacy pins found"
+      ],
+      "recommendations": []
+    },
+    {
+      "name": "CI/CD Maturity",
+      "weight": 10,
+      "description": "Pipeline completeness, gates, artifacts, deployment automation",
+      "score": 100,
+      "weighted": 10.0,
+      "checks": {
+        "CI pipeline": 100,
+        "Deployment pipeline": 100,
+        "Workflow files": 100,
+        "CI \u2014 syntax gate": 100,
+        "CI \u2014 test step": 100,
+        "CI \u2014 security scan": 100,
+        "CI \u2014 build/push": 100,
+        "Advanced deployment strategy": 100,
+        "Quality gate": 100,
+        "Makefile CI target": 100
+      },
+      "findings": [
+        "\u2713 CI pipeline: .github/workflows/ci.yml",
+        "\u2713 Deployment pipeline: .github/workflows/deploy.yml",
+        "\u2713 Workflow files: 7 workflow files",
+        "\u2713 CI \u2014 syntax gate: py_compile or syntax check in CI",
+        "\u2713 CI \u2014 test step: pytest in CI",
+        "\u2713 CI \u2014 security scan: security scanning in CI",
+        "\u2713 CI \u2014 build/push: container build in CI",
+        "\u2713 Advanced deployment strategy: blue-green or canary deploy exists",
+        "\u2713 Quality gate: .github/workflows/quality-gate.yml exists",
+        "\u2713 Makefile CI target: `make ci` target exists"
+      ],
+      "recommendations": []
+    },
+    {
+      "name": "Git Hygiene",
+      "weight": 5,
+      "description": "Commit messages, branch naming, PR template, .gitignore quality",
+      "score": 90,
+      "weighted": 4.5,
+      "checks": {
+        ".gitignore quality": 100,
+        "PR template": 0,
+        "Conventional commits (recent 20)": 0,
+        "Branch naming convention": 100,
+        "Fast-forward merge strategy": 0
+      },
+      "findings": [
+        "\u2713 .gitignore quality: 7/7 essential patterns found",
+        "\u2717 PR template: No PR template",
+        "\u2717 Conventional commits (recent 20): 4/20 follow conventional commits",
+        "\u2713 Branch naming convention: Current branch: main",
+        "\u2717 Fast-forward merge strategy: No ff-only merge policy"
+      ],
+      "recommendations": []
+    },
+    {
+      "name": "DevOps/Infrastructure",
+      "weight": 3,
+      "description": "Dockerfile quality, compose files, healthchecks, observability",
+      "score": 95,
+      "weighted": 2.85,
+      "checks": {
+        "Dockerfile": 100,
+        "Multi-stage build": 100,
+        "Non-root user": 100,
+        "HEALTHCHECK in Dockerfile": 100,
+        "Docker Compose files": 100,
+        "Healthcheck in compose": 100,
+        "Service dependency ordering": 100,
+        "Prometheus config": 100,
+        "Grafana dashboards": 0,
+        "Makefile health target": 100,
+        "Makefile monitoring target": 100,
+        "Makefile backup target": 100
+      },
+      "findings": [
+        "\u2713 Dockerfile: Root Dockerfile",
+        "\u2713 Multi-stage build: Multi-stage Dockerfile",
+        "\u2713 Non-root user: USER directive in Dockerfile",
+        "\u2713 HEALTHCHECK in Dockerfile: HEALTHCHECK directive present",
+        "\u2713 Docker Compose files: 3 compose files: docker-compose.yml, docker-compose.full.yml, docker-compose.scale.yml",
+        "\u2713 Healthcheck in compose: healthcheck directives in compose",
+        "\u2713 Service dependency ordering: depends_on in compose",
+        "\u2713 Prometheus config: Prometheus scrape config present",
+        "\u2717 Grafana dashboards: No Grafana dashboards",
+        "\u2713 Makefile health target: `make health` exists",
+        "\u2713 Makefile monitoring target: `make monitoring` exists",
+        "\u2713 Makefile backup target: `make backup` exists"
+      ],
+      "recommendations": []
+    },
+    {
+      "name": "Healthcare Compliance",
+      "weight": 2,
+      "description": "Audit trail, data retention, patient isolation, lab_id filtering",
+      "score": 100,
+      "weighted": 2.0,
+      "checks": {
+        "Audit log model": 100,
+        "Audit hash chain": 100,
+        "lab_id tenant isolation": 100,
+        "Patient data encryption": 100,
+        "Patient consent tracking": 100,
+        "RBAC permissions": 100,
+        "Privacy/retention patterns": 100
+      },
+      "findings": [
+        "\u2713 Audit log model: app/models/audit_log.py exists",
+        "\u2713 Audit hash chain: Immutable audit chain",
+        "\u2713 lab_id tenant isolation: 27 files use lab_id filtering, 4 without visible lab_id filter",
+        "\u2713 Patient data encryption: Field-level encryption available",
+        "\u2713 Patient consent tracking: app/models/consent.py exists",
+        "\u2713 RBAC permissions: app/security/rbac.py exists",
+        "\u2713 Privacy/retention patterns: 6 files reference privacy/retention concepts"
+      ],
+      "recommendations": []
+    }
+  ]
+}

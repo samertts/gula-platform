@@ -27,6 +27,7 @@ import logging
 import os
 import pathlib
 import sys
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any

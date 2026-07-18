@@ -77,6 +77,12 @@ jobs:
               ]' 2>/dev/null || true
           fi
 
+      - name: Port forward to service
+        run: |
+          kubectl port-forward service/gula-backend 18000:8000 &
+          sleep 3
+          trap "kill %1 2>/dev/null || true" EXIT
+
       - name: Verify rollback
         run: |
           for i in $(seq 1 12); do

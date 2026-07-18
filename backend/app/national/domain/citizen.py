@@ -68,7 +68,6 @@ class Citizen(BaseEntity):
     version = Column(Integer, default=1, nullable=False)
 
     __table_args__ = (
-        Index("ix_national_citizens_health_number", "health_number"),
         Index("ix_national_citizens_name_blocking", "name_blocking_key", "birth_year", "gender"),
         Index("ix_national_citizens_identity_status", "identity_status"),
         Index("ix_national_citizens_merged", "merged_into_id"),

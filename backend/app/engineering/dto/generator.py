@@ -71,8 +71,7 @@ class DTOGenerator(BaseGenerator):
             parts.append(f"""class {mod}Response(BaseModel):
 {chr(10).join(resp_fields)}
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 """)
 
         content = f"""\"\"\"DTOs for {mod}.\"\"\"
@@ -81,7 +80,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 {chr(10).join(parts)}
 """

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger("gula.kernel.integration")
 
 _kernel_instance: Kernel | None = None
-_kernel_ready: bool = False
 
 
 def get_kernel_config() -> KernelConfig:
@@ -39,7 +38,7 @@ def get_kernel_config() -> KernelConfig:
 
 
 def init_kernel() -> Kernel:
-    global _kernel_instance, _kernel_ready
+    global _kernel_instance
     if _kernel_instance is not None:
         return _kernel_instance
     config = get_kernel_config()
@@ -58,7 +57,6 @@ def is_kernel_ready() -> bool:
 
 
 async def boot_kernel() -> None:
-    global _kernel_ready
     try:
         kernel = init_kernel()
         logger.info("Booting kernel")
@@ -150,6 +148,8 @@ async def get_kernel_health() -> dict:
 
 
 async def kernel_middleware(request: Request, call_next):
+    if not is_kernel_ready():
+        return await call_next(request)
     kernel = get_kernel()
     ctx = kernel.get_component("application_context")
     if ctx:

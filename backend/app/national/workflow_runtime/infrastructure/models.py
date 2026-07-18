@@ -21,7 +21,7 @@ class NationalWorkflowDefinition(BaseEntity, NationalBase):
     input_schema = Column(JSON, default=dict, nullable=True)
     output_schema = Column(JSON, default=dict, nullable=True)
     tags = Column(JSON, default=list, nullable=True)
-    metadata = Column(JSON, default=dict, nullable=True)
+    extra_metadata = Column(JSON, default=dict, nullable=True)
     status = Column(String(50), default="active", nullable=False, index=True)
     timeout_policy = Column(String(50), default="fail", nullable=True)
     compensation_strategy = Column(String(50), default="reverse_order", nullable=True)
@@ -53,7 +53,7 @@ class NationalWorkflowDefinition(BaseEntity, NationalBase):
             input_schema=self.input_schema or {},
             output_schema=self.output_schema or {},
             tags=self.tags or [],
-            metadata=self.metadata or {},
+            metadata=self.extra_metadata or {},
             status=self.status,
             created_by=self.created_by,
             created_at=self.created_at,
