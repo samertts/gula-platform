@@ -95,10 +95,32 @@ def _session_engine():
     # table fails because lab_users lives in Base.metadata.
     import app.main  # noqa: F401 — triggers all model imports
 
+    from app.ehr.base import EHRBase
+    from app.financial.models import FinBase
     from app.national.base import NationalBase
+    from app.care_continuum.base import CareContinuumBase
+    from app.citizen_platform.base import CitizenPlatformBase
+    from app.clinical.base import ClinicalBase
+    from app.governance.base import GovernanceBase
+    from app.health_data.base import HealthDataBase
+    from app.hospital.base import HospitalBase
+    from app.national_data.base import DataPlatformBase
+    from app.nhdw.base import NHDWBase
+    from app.nursing.base import NursingBase
+    from app.pharmacy.base import PharmacyBase
+    from app.radiology.base import RadiologyBase
+    from app.trust.base import TrustBase
     from sqlalchemy import MetaData as _CombinedMeta
 
-    _all_metas = [Base.metadata, NationalBase.metadata]
+    _all_metas = [
+        Base.metadata, NationalBase.metadata, EHRBase.metadata,
+        CareContinuumBase.metadata, CitizenPlatformBase.metadata,
+        ClinicalBase.metadata, GovernanceBase.metadata,
+        HealthDataBase.metadata, HospitalBase.metadata,
+        DataPlatformBase.metadata, NHDWBase.metadata,
+        NursingBase.metadata, PharmacyBase.metadata,
+        RadiologyBase.metadata, TrustBase.metadata, FinBase.metadata,
+    ]
     _ddl_meta = _CombinedMeta()
     for _meta in _all_metas:
         for _tname, _tbl in list(_meta.tables.items()):

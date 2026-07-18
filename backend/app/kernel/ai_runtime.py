@@ -4,7 +4,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import StrEnum
+from app._compat import StrEnum
 from typing import Any
 
 from app.ai.approval import ApprovalStore, PendingApproval

@@ -697,6 +697,7 @@ from .routes import (  # noqa: E402
     dashboard,
     device_results,
     ehr,
+    ehr_fhir,
     id_scan,
     identity,
     insurance,
@@ -739,6 +740,7 @@ app.include_router(id_scan.router)
 app.include_router(identity.router)
 app.include_router(notifications.router)
 app.include_router(ehr.router)
+app.include_router(ehr_fhir.router)
 app.include_router(security.router)
 app.include_router(device_results.router)
 
@@ -758,6 +760,10 @@ app.include_router(compliance.router)
 
 # Subscription tier management
 app.include_router(tiers_routes.router)
+
+# Financial Engine (gated by ENABLE_FINANCIAL_ENGINE flag)
+from .financial import register_routes as register_financial_routes  # noqa: E402
+register_financial_routes(app)
 
 # Citizen / patient portal
 app.include_router(citizen_portal_routes.router)
