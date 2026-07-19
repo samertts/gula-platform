@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir fastapi uvicorn[standard] asyncpg pika prometheus-client pydantic python-jose passlib bcrypt
+RUN pip install --no-cache-dir fastapi uvicorn[standard] asyncpg pika prometheus-client pydantic joserfc passlib bcrypt
 
 COPY lab/main.py .
 COPY shared /app/shared
