@@ -4,20 +4,18 @@ Works in both online mode (direct DB connection) and offline mode (SQL script).
 DATABASE_URL is read from the environment / .env via the app's own config module.
 """
 import os
-import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-# ── Make the app importable from migrations/env.py ───────────────────────────
-# alembic.ini sets prepend_sys_path = . (backend/), so `app` is importable.
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-# Prevent config.py from calling sys.exit() for missing prod keys when alembic
-# runs without a full app environment (e.g. the migration-gate CI step only
-# sets DATABASE_URL but not SECRET_KEY/ENCRYPTION_KEY/NID_HMAC_KEY).
-os.environ.setdefault("ENV", "test")
+# Migration mode: config.py will accept defaults for missing secrets
+os.environ["RUNTIME_MODE"] = "migration"
+os.environ.setdefault("ENV", "migration")
+os.environ.setdefault("SECRET_KEY", "alembic-migration-key-" + "x" * 48)
+os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
+os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
+os.environ.setdefault("REDIS_URL", "")
 
 # ── Import models so their tables are visible to autogenerate ─────────────────
 from app.database import Base

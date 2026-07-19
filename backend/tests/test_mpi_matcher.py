@@ -10,7 +10,6 @@ Covers:
 import hashlib
 import json
 import os
-import sys
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///test_mpi.db")
@@ -18,9 +17,6 @@ os.environ.setdefault("SECRET_KEY", "test-secret-mpi-not-for-prod-" + "x" * 32)
 os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
-
-# Make sure `backend/` is on the path so `app.*` imports resolve
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from app.services.identity import jaro_similarity, jaro_winkler, normalize_name

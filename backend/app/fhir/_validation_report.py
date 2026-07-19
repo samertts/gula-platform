@@ -1,14 +1,7 @@
 from __future__ import annotations
 
-import os
-import sys
-
-_BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..")
-if _BACKEND_DIR not in sys.path:
-    sys.path.insert(0, _BACKEND_DIR)
-
-from app.fhir._capabilities import IMPLEMENTED_RESOURCES, PLANNED_RESOURCES, STUBBED_RESOURCES
-from app.fhir._reference import validate_resource_coverage
+from ._capabilities import IMPLEMENTED_RESOURCES, PLANNED_RESOURCES, STUBBED_RESOURCES
+from ._reference import validate_resource_coverage
 
 VALIDATION_REPORT = {
     "report_title": "GULA Platform FHIR R4 Validation Report",

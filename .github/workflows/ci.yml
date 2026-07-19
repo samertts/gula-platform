@@ -252,7 +252,7 @@ jobs:
         continue-on-error: false
 
       - name: Scan for secrets with Gitleaks
-        uses: gitleaks/gitleaks-action@v3
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

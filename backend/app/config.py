@@ -29,7 +29,7 @@ IS_PRODUCTION = ENV == "production"
 # anything other than the worker runtime so the API process stays cleanly
 # isolated by default.
 RUNTIME_MODE = os.getenv("RUNTIME_MODE", "api").lower()
-if RUNTIME_MODE not in {"api", "worker", "test", "cli"}:
+if RUNTIME_MODE not in {"api", "worker", "test", "cli", "migration", "openapi"}:
     sys.exit(1)
 
 IS_WORKER_RUNTIME = RUNTIME_MODE == "worker"

@@ -5,9 +5,6 @@ Manages laboratories, devices, and lab operations
 
 import logging
 import os
-import sys
-
-sys.path.insert(0, "/app/shared")
 
 from datetime import datetime
 

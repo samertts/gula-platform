@@ -11,13 +11,9 @@ Run: pytest backend/tests/test_control_layer.py -v
 from __future__ import annotations
 
 import os
-import sys
 import time
 import unittest
 from unittest.mock import MagicMock, patch
-
-# ── Path setup ────────────────────────────────────────────────────────────────
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # ── Set test environment BEFORE any app imports ───────────────────────────────
 os.environ.setdefault("ENV", "test")

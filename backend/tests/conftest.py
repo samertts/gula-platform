@@ -3,11 +3,13 @@
 Sets up an in-memory SQLite database, a FastAPI TestClient with the DB
 dependency overridden, and lightweight factories for common models.
 All fixtures are function-scoped so each test starts with a clean slate.
+
+The backend/ package is installed via `pip install -e backend/` (or through
+the backend/pyproject.toml). No sys.path manipulation is needed.
 """
 from __future__ import annotations
 
 import os
-import sys
 import tempfile
 
 # ── Must come before any app import ──────────────────────────────────────────
@@ -24,11 +26,6 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production-" + "x" 
 os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 os.environ.setdefault("REDIS_URL", "")
-
-_BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_REPO_ROOT = os.path.dirname(_BACKEND_DIR)
-sys.path.insert(0, _BACKEND_DIR)
-sys.path.insert(0, _REPO_ROOT)
 
 import contextlib
 

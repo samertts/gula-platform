@@ -20,12 +20,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Ensure backend is importable
 _BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "backend")
 _REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
-for p in (_BACKEND_DIR, _REPO_ROOT):
-    if p not in sys.path:
-        sys.path.insert(0, p)
 
 os.environ["RUNTIME_MODE"] = "test"
 os.environ["FEATURE_BACKGROUND_TASKS"] = "false"

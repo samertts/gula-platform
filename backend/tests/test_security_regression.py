@@ -22,7 +22,6 @@ Blast radius: zero. Pure regression suite.
 from __future__ import annotations
 
 import os
-import sys
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -36,8 +35,6 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production-" + "x" 
 os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 os.environ.setdefault("REDIS_URL", "")
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from app.config import JWT_ALGORITHM, SECRET_KEY

@@ -2,19 +2,13 @@ from __future__ import annotations
 
 import json
 import os
-import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-_BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "backend")
-_REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
-_SRC_DIR = os.path.join(_BACKEND_DIR, "app")
-sys.path.insert(0, _BACKEND_DIR)
-sys.path.insert(0, _REPO_ROOT)
+_BACKEND_DIR = Path(os.path.dirname(__file__)).parent.parent / "backend"
 
 os.environ["RUNTIME_MODE"] = "test"
 os.environ["FEATURE_BACKGROUND_TASKS"] = "false"
