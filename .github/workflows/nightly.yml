@@ -284,7 +284,7 @@ jobs:
           docker build -t gula-backend:nightly ./backend
 
       - name: Run Trivy scan
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: gula-backend:nightly
           format: table
@@ -344,20 +344,30 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `🌙 Nightly Build Failed - $(date -u +'%Y-%m-%d')`,
-              body: `## Nightly Build Failure\n\n**Date:** $(date -u)\n**Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n### Failed Components\n- Android: ${{ needs.android-nightly.result }}\n- iOS: ${{ needs.ios-nightly.result }}\n- Desktop: ${{ needs.desktop-nightly.result }}\n- Backend Integration: ${{ needs.backend-integration.result }}\n- Chaos Tests: ${{ needs.chaos-tests.result }}\n- Performance: ${{ needs.performance-benchmarks.result }}\n- Security: ${{ needs.container-security.result }}\n\nPlease investigate and fix.`,
+              body: `## Nightly Build Failure\n\n**Date:** $(date -u)\n` +
+                `**Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n` +
+                `### Failed Components\n` +
+                `- Android: ${{ needs.android-nightly.result }}\n` +
+                `- iOS: ${{ needs.ios-nightly.result }}\n` +
+                `- Desktop: ${{ needs.desktop-nightly.result }}\n` +
+                `- Backend Integration: ${{ needs.backend-integration.result }}\n` +
+                `- Chaos Tests: ${{ needs.chaos-tests.result }}\n` +
+                `- Performance: ${{ needs.performance-benchmarks.result }}\n` +
+                `- Security: ${{ needs.container-security.result }}\n\n` +
+                `Please investigate and fix.`,
               labels: ['nightly', 'bug']
             })
 
       - name: Send Slack notification
         if: ${{ !github.event.inputs.skip_notify }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v2
         with:
           payload: |
             {
               "channel": "#nightly-builds",
               "username": "GULA Nightly Bot",
               "icon_emoji": ":night_with_stars:",
-              "text": "🌙 Nightly Build Report - $(date -u +'%Y-%m-%d')\nAndroid: ${{ needs.android-nightly.result }}\niOS: ${{ needs.ios-nightly.result }}\nDesktop: ${{ needs.desktop-nightly.result }}\nBackend: ${{ needs.backend-integration.result }}\nChaos: ${{ needs.chaos-tests.result }}\nPerformance: ${{ needs.performance-benchmarks.result }}\nSecurity: ${{ needs.container-security.result }}\nFull report: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "🌙 Nightly Build Report - $(date -u +'%Y-%m-%d')\nAndroid: ${{ needs.android-nightly.result }}\niOS: ${{ needs.ios-nightly.result }}\nDesktop: ${{ needs.desktop-nightly.result }}\nBackend: ${{ needs.backend-integration.result }}\nChaos: ${{ needs.chaos-tests.result }}\nPerf: ${{ needs.performance-benchmarks.result }}\nSecurity: ${{ needs.container-security.result }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -366,7 +376,7 @@ jobs:
 
       - name: Send Telegram notification
         if: ${{ !github.event.inputs.skip_notify }}
-        uses: appleboy/telegram-action@1.2.0
+        uses: appleboy/telegram-action@1.1.0
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}

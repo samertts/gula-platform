@@ -84,7 +84,7 @@ jobs:
 
       # ── Setup kubectl ─────────────────────────────────────────────────────
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@v4
         with:
           version: "v1.28.0"
 
@@ -271,7 +271,7 @@ jobs:
     needs: blue-green-deploy
     steps:
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@v4
         with:
           version: "v1.28.0"
 

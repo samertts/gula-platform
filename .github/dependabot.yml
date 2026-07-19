@@ -181,6 +181,299 @@ updates:
       - "samertts"
 
   # ============================================================================
+  # Gradle — Android
+  # ============================================================================
+  - package-ecosystem: "gradle"
+    directory: "/mobile/android/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "gradle"
+      - "android"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Gradle — Kotlin SDK
+  # ============================================================================
+  - package-ecosystem: "gradle"
+    directory: "/contracts/sdk/kotlin/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "gradle"
+      - "kotlin-sdk"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Pub/Dart — Flutter Desktop
+  # ============================================================================
+  - package-ecosystem: "pub"
+    directory: "/mobile/desktop/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "dart"
+      - "flutter"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Pub/Dart — Dart SDK
+  # ============================================================================
+  - package-ecosystem: "pub"
+    directory: "/contracts/sdk/dart/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "dart"
+      - "dart-sdk"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Docker — Root application
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Docker — NHOP Platform
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/nhop-platform/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "nhop"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Docker — Platform
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/platform/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "platform"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Docker — Microservices (lab, order, patient, result, sample, notification, ai, autonomous_manager)
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/services/lab/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/order/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/patient/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/result/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/sample/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/notification/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/ai/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/autonomous_manager/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
   # GitHub Actions — CI/CD workflows
   # ============================================================================
   - package-ecosystem: "github-actions"

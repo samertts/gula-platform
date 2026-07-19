@@ -173,7 +173,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run instrumented tests (API ${{ matrix.api-level }})
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@v3
         with:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.target }}
@@ -301,7 +301,7 @@ jobs:
   upload-to-play-store:
     name: Upload to Google Play Store
     needs: [assemble-release]
-    if: github.ref == 'refs/heads/main' && startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
