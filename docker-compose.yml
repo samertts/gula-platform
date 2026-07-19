@@ -233,8 +233,7 @@ services:
   # ---------------------------------------------------------------------------
 
   frontend:
-    image: nginx:1.25-alpine
-    container_name: gula-frontend
+    image: nginx:1.27-alpine
     restart: always
     security_opt:
       - no-new-privileges:true
@@ -259,7 +258,7 @@ services:
   # ---------------------------------------------------------------------------
 
   api-gateway:
-    image: nginx:1.25-alpine
+    image: nginx:1.27-alpine
     container_name: gula-api-gateway
     restart: always
     security_opt:
@@ -300,7 +299,7 @@ services:
   # ---------------------------------------------------------------------------
 
   prometheus:
-    image: prom/prometheus:v2.50.1
+    image: prom/prometheus:v2.55.1
     container_name: gula-prometheus
     restart: always
     profiles: ["monitoring"]
@@ -333,7 +332,7 @@ services:
       start_period: 15s
 
   grafana:
-    image: grafana/grafana:10.3.3
+    image: grafana/grafana:11.5.2
     container_name: gula-grafana
     restart: always
     profiles: ["monitoring"]
