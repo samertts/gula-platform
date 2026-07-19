@@ -4,6 +4,7 @@ Bridges LIMS Patient records and national Citizen records into a single
 canonical identity. Provides find-or-create, merge, and link operations.
 """
 
+import contextlib
 from datetime import datetime
 
 from fastapi import HTTPException
@@ -67,10 +68,8 @@ def find_or_create_canonical(
         bd = patient_or_citizen.birth_day
         dob = None
         if by is not None and bm is not None and bd is not None:
-            try:
+            with contextlib.suppress(ValueError, OverflowError):
                 dob = datetime(by, bm, bd, tzinfo=UTC)
-            except (ValueError, OverflowError):
-                pass
         canonical = CanonicalPatient(
             national_id_hash=patient_or_citizen.nid_hash,
             full_name=patient_or_citizen.name_canonical,

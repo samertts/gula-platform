@@ -79,9 +79,8 @@ class PatientValidationService:
             phone=patient.phone,
             lab_id=patient.lab_id,
         )
-        if existing is not None:
-            if existing.name.strip() == patient.name.strip():
-                raise DuplicatePatientError("name", patient.name)
+        if existing is not None and existing.name.strip() == patient.name.strip():
+            raise DuplicatePatientError("name", patient.name)
 
     @staticmethod
     def normalize_name(raw: str) -> str:

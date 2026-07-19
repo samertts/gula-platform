@@ -105,6 +105,6 @@ async def scan_input(text: str) -> AISecurityScanResult:
 
 async def sanitize_response(text: str) -> str:
     result = text
-    for pii_type, label, pattern in _PII_PATTERNS:
+    for _pii_type, _label, pattern in _PII_PATTERNS:
         result = pattern.sub(lambda m: _mask(m.group()), result)
     return result
