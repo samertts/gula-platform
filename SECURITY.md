@@ -70,6 +70,11 @@ Do not publish vulnerabilities publicly until they are fixed.
 1. Integration layer uses `0.0.0.0` binding in dev mode (Medium bandit finding)
 2. passlib/bcrypt deprecation warning (non-functional, bcrypt 4.1.3 compatible)
 3. 268 test fixture errors in tenant isolation tests (test infrastructure, not production code)
+4. **ecdsa PYSEC-2026-1325** — Minerva timing side-channel on P-256 curve.
+   Accepted risk: `python-jose[cryptography]` uses cryptography library's C
+   implementation for JWT signing (not ecdsa pure-Python). No fix available
+   (ecdsa project considers side-channels out of scope). Real-world network
+   exploitation of this timing attack is not feasible against the API.
 
 ## Security Checklist
 
