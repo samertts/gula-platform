@@ -95,7 +95,7 @@ class SearchPlatformService:
         try:
             results, total = await self.index_adapter.search(search_query)
         except Exception as exc:
-            raise SearchExecutionError(str(exc))
+            raise SearchExecutionError(str(exc)) from exc
 
         suggestions = await self.index_adapter.suggest(query_text, index_types)
         facets = await self.index_adapter.get_facets(search_query)
@@ -253,7 +253,7 @@ class SearchPlatformService:
                 results[t] = count
                 total += count
             except Exception as exc:
-                raise IndexAdapterError(f"Failed to rebuild index {t}: {exc}")
+                raise IndexAdapterError(f"Failed to rebuild index {t}: {exc}") from exc
         self._publish_event(IndexRebuilt(
             index_type=index_type or "all",
             documents_indexed=total,
@@ -272,7 +272,7 @@ class SearchPlatformService:
         try:
             await self.index_adapter.index_document(index_type, document_id, data)
         except Exception as exc:
-            raise IndexAdapterError(f"Failed to index document {index_type}/{document_id}: {exc}")
+            raise IndexAdapterError(f"Failed to index document {index_type}/{document_id}: {exc}") from exc
         self._publish_event(DocumentIndexed(
             resource_type=index_type,
             resource_id=document_id,
@@ -284,7 +284,7 @@ class SearchPlatformService:
         try:
             await self.index_adapter.remove_document(index_type, document_id)
         except Exception as exc:
-            raise IndexAdapterError(f"Failed to remove document {index_type}/{document_id}: {exc}")
+            raise IndexAdapterError(f"Failed to remove document {index_type}/{document_id}: {exc}") from exc
     async def get_search_stats(self) -> dict[str, Any]:
         return await self.search_result_repository.get_stats()
 

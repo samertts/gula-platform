@@ -44,7 +44,7 @@ async def register_component(
     try:
         return _component_to_dict(service.register_component(body))
     except VersionConflictError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 @router.get("/components")
@@ -66,7 +66,7 @@ async def get_component(
     try:
         return _component_to_dict(service.get_component(component_id))
     except ComponentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.get("/components/name/{name}")
@@ -77,7 +77,7 @@ async def find_component(
     try:
         return _component_to_dict(service.find_component(name))
     except ComponentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.put("/components/{component_id}/stage")
@@ -89,7 +89,7 @@ async def update_component_stage(
     try:
         return _component_to_dict(service.update_component_stage(component_id, body.get("stage", "")))
     except ComponentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 # ── Releases ──
@@ -122,7 +122,7 @@ async def get_release(
     try:
         return _release_to_dict(service.get_release(release_id))
     except ReleaseNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/releases/{release_id}/approve")
@@ -134,7 +134,7 @@ async def approve_release(
     try:
         return _release_to_dict(service.approve_release(release_id, body))
     except ReleaseNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 # ── Compatibility Matrix ──
@@ -198,7 +198,7 @@ async def find_upgrade_path(
     try:
         return _upgrade_to_dict(service.find_upgrade_path(component, from_version, to_version))
     except UpgradePathNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 # ── Deprecation ──

@@ -11,6 +11,7 @@ __all__ = [
     "GovernancePolicy",
     "LineageEdge",
     "LineageNode",
+    "LineageTracker",
     "PolicyEngine",
     "RetentionPolicy",
 ]

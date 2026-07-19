@@ -210,7 +210,7 @@ class WorkflowRuntimeService:
                 if step_exec.attempt < retry_policy.max_retries:
                     step_exec.status = WorkflowStepStatus.RETRYING
                     await self._step_repo.save(step_exec)
-                    raise WorkflowStepFailedError(execution.id, step_def.id, str(e))
+                    raise WorkflowStepFailedError(execution.id, step_def.id, str(e)) from e
 
                 execution.status = WorkflowExecutionStatus.FAILED
                 execution.error = f"Step {step_def.name} failed: {e}"

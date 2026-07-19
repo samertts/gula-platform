@@ -84,7 +84,7 @@ async def query_metrics(
             limit=limit,
         )
     except MetricQueryError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
 
 
 @router.post("/traces", status_code=status.HTTP_201_CREATED)
@@ -226,7 +226,7 @@ async def get_alert_rule(
         rule = await service.get_alert_rule(rule_id)
         return _alert_rule_to_dict(rule)
     except AlertRuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.put("/alerts/rules/{rule_id}")
@@ -239,7 +239,7 @@ async def update_alert_rule(
         rule = await service.update_alert_rule(rule_id, body)
         return _alert_rule_to_dict(rule)
     except AlertRuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.delete("/alerts/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -250,7 +250,7 @@ async def delete_alert_rule(
     try:
         await service.delete_alert_rule(rule_id)
     except AlertRuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/alerts/rules/{rule_id}/evaluate")
@@ -264,7 +264,7 @@ async def evaluate_alert_rule(
             return _alert_event_to_dict(event)
         return {"status": "ok", "message": "No alert triggered"}
     except AlertRuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.get("/alerts/events")
@@ -301,7 +301,7 @@ async def acknowledge_alert(
         )
         return _alert_event_to_dict(event)
     except AlertEventNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/alerts/events/{event_id}/silence")
@@ -313,7 +313,7 @@ async def silence_alert(
         event = await service.silence_alert(event_id)
         return _alert_event_to_dict(event)
     except AlertEventNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/dashboards", status_code=status.HTTP_201_CREATED)
@@ -350,7 +350,7 @@ async def get_dashboard(
         dashboard = await service.get_dashboard(dashboard_id)
         return _dashboard_to_dict(dashboard)
     except DashboardNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.put("/dashboards/{dashboard_id}")
@@ -367,7 +367,7 @@ async def update_dashboard(
         )
         return _dashboard_to_dict(dashboard)
     except DashboardNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.delete("/dashboards/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -378,7 +378,7 @@ async def delete_dashboard(
     try:
         await service.delete_dashboard(dashboard_id)
     except DashboardNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.get("/overview")

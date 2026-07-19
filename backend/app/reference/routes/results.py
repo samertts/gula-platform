@@ -54,13 +54,13 @@ async def submit_result(
     try:
         saved = await service.submit_result(result)
     except InvalidOrderError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except CriticalResultError as e:
         result.is_critical = True
         result.flagged = "حرج"
         return _result_to_response(result, critical_warning=str(e))
     except DomainError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     return _result_to_response(saved)
 
@@ -93,7 +93,7 @@ async def get_result(
     try:
         result = await service.get_result(result_id)
     except ResultNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _result_to_response(result)
 
 

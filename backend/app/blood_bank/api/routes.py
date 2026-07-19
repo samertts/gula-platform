@@ -59,7 +59,7 @@ async def get_donor(
     try:
         return _donor_to_dict(service.get_donor(donor_id))
     except DonorNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/donors/{donor_id}/defer")
@@ -74,7 +74,7 @@ async def defer_donor(
                 "deferred_until": deferral.deferred_until.isoformat() if deferral.deferred_until else None,
                 "reason": deferral.reason}
     except DonorNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 # ---- Donations ----
@@ -88,9 +88,9 @@ async def register_donation(
         donation = service.register_donation(body)
         return _donation_to_dict(donation)
     except DonorNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except DonorDeferredError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 @router.post("/donations/{donation_id}/complete")
@@ -144,7 +144,7 @@ async def issue_units(
         )
         return [_unit_to_dict(u) for u in units]
     except InsufficientStockError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 # ---- Crossmatch ----
@@ -158,7 +158,7 @@ async def perform_crossmatch(
         crossmatch = service.perform_crossmatch(body)
         return _crossmatch_to_dict(crossmatch)
     except CrossmatchConflictError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 @router.post("/crossmatch/check")
@@ -197,7 +197,7 @@ async def start_transfusion(
     try:
         return _transfusion_to_dict(service.start_transfusion(transfusion_id))
     except TransfusionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/transfusions/{transfusion_id}/complete")
@@ -208,7 +208,7 @@ async def complete_transfusion(
     try:
         return _transfusion_to_dict(service.complete_transfusion(transfusion_id))
     except TransfusionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 # ---- Blood Requests ----

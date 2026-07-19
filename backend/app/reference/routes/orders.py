@@ -35,9 +35,9 @@ async def create_order(
     try:
         created = await service.create_order(order)
     except (InvalidOrderError, PatientNotFoundError) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except DomainError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _order_to_response(created)
 
 
@@ -49,7 +49,7 @@ async def get_order(
     try:
         order = await service.get_order(order_id)
     except OrderNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _order_to_response(order)
 
 

@@ -95,7 +95,7 @@ async def register_newborn(
             health_number=result["health_number"],
         )
     except NewbornRegistrationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/foreigner", response_model=IdentityResponse, status_code=201)
@@ -111,7 +111,7 @@ async def register_foreigner(
             health_number=result["health_number"],
         )
     except ForeignerRegistrationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/visitor", response_model=IdentityResponse, status_code=201)
