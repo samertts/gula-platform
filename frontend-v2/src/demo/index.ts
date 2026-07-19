@@ -1,5 +1,6 @@
 export { DemoAuthProvider, useDemoAuth } from './demoAuth';
-export { FeatureFlagProvider, useFeatureFlag, FeatureFlags } from './featureFlags';
+export { FeatureFlagProvider, useFeatureFlag } from './featureFlags';
+export type { FeatureFlags } from './featureFlags';
 export { DemoBanner } from './demoBanner';
 export { RoleSwitcher } from './roleSwitcher';
 export { DemoDataPanel } from './demoDataPanel';
