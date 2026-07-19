@@ -4,27 +4,35 @@
   "buildCommand": "cd frontend-v2 && npm run build",
   "outputDirectory": "frontend-v2/dist",
   "installCommand": "cd frontend-v2 && npm ci --legacy-peer-deps",
+  "devCommand": "cd frontend-v2 && npm run dev",
   "github": {
-    "silent": false
+    "silent": true,
+    "autoJobCancelation": true
   },
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://api.gula-platform.org/api/:path*"
-    },
-    {
-      "source": "/((?!api/|assets/|favicon.ico).*)",
-      "destination": "/index.html"
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "develop": true,
+      "preview": true
     }
-  ],
+  },
+  "regions": ["cdg1"],
+  "public": false,
+  "functions": {
+    "api/mock/*.ts": {
+      "memory": 128,
+      "maxDuration": 10
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options",   "value": "nosniff" },
-        { "key": "X-Frame-Options",          "value": "DENY" },
-        { "key": "Referrer-Policy",          "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy",       "value": "camera=(), microphone=(), geolocation=()" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+        { "key": "X-DNS-Prefetch-Control", "value": "on" }
       ]
     },
     {
@@ -32,6 +40,31 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
+    },
+    {
+      "source": "/(.*\\.(svg|png|jpg|jpeg|webp|ico|woff2?))",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
     }
-  ]
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.gula-platform.org/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/docs/:path*",
+      "destination": "https://docs.gula-platform.org/:path*",
+      "permanent": false
+    }
+  ],
+  "trailingSlash": false,
+  "cleanUrls": true
 }
