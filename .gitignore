@@ -9,6 +9,7 @@ venv/
 .venv/
 __pycache__/
 .coverage
+coverage.xml
 *.pyc
 *.pyo
 *.egg-info/
@@ -26,6 +27,9 @@ logs/
 # Data
 data/db/
 *.sqlite3
+
+# Reports
+reports/
 
 # OS
 .DS_Store
