@@ -41,7 +41,7 @@ runs:
     - uses: actions/checkout@v4
 
     - name: Setup Flutter
-      uses: subosito/flutter-action@v2
+      uses: subosito/flutter-action@v3
       with:
         channel: stable
         flutter-version: ${{ inputs.flutter-version }}
