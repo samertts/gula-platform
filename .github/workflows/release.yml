@@ -264,7 +264,7 @@ jobs:
 
   notify:
     name: Send Release Notification
-    needs: [deploy-to-stores, create-github-release]
+    needs: [build-all, build-ios, build-desktop, deploy-to-stores, create-github-release]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

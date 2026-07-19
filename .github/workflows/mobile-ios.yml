@@ -1,6 +1,18 @@
 name: Mobile - iOS CI/CD
 
 on:
+  workflow_call:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: false
+        default: 'debug'
+        type: string
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main, develop]
     paths:
@@ -331,16 +343,5 @@ jobs:
             --password "@keychain:AC_PASSWORD" \
             --asc-provider "$APP_STORE_CONNECT_TEAM_ID"
 
-  dependency-submission:
-    name: Dependency Graph
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: apple-actions/import-codesign-certs@v3
-        if: false
-      - name: Submit SPM dependency graph
-        uses: actions/dependency-submission@v4
-        with:
-          path: mobile/ios
+  # Note: SPM dependency graph submission is not available as a standard GitHub Action.
+  # iOS dependency tracking is handled externally.

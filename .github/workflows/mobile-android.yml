@@ -1,6 +1,18 @@
 name: Mobile - Android CI/CD
 
 on:
+  workflow_call:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: false
+        default: 'debug'
+        type: string
+      run_instrumented_tests:
+        description: 'Run instrumented tests on emulator'
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main, develop]
     paths:
@@ -64,6 +76,9 @@ jobs:
           gradle-home-cache-cleanup: true
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Run ktlint
         run: ./gradlew ktlintCheck
 
@@ -104,6 +119,9 @@ jobs:
         with:
           gradle-home-cache-cleanup: true
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
@@ -151,6 +169,9 @@ jobs:
           gradle-home-cache-cleanup: true
           cache-read-only: true
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Run instrumented tests (API ${{ matrix.api-level }})
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -196,6 +217,9 @@ jobs:
           gradle-home-cache-cleanup: true
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Assemble debug APK
         run: ./gradlew assembleDebug
 
@@ -234,6 +258,9 @@ jobs:
         with:
           gradle-home-cache-cleanup: true
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
       - name: Decode keystore
         env:
@@ -294,6 +321,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-home-cache-cleanup: true
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
       - name: Decode keystore
         env:
@@ -358,7 +388,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@v4
         with:
-          gradle-version: wrapper
+          build-root-directory: mobile/android

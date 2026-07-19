@@ -55,6 +55,11 @@ runs:
       with:
         gradle-home-cache-cleanup: true
         cache-read-only: false
+        build-root-directory: ${{ github.workspace }}/mobile/android
+
+    - name: Make gradlew executable
+      shell: bash
+      run: chmod +x ${{ github.workspace }}/mobile/android/gradlew
 
     - name: Decode keystore
       if: inputs.signing-enabled == 'true' && inputs.keystore-base64 != ''
