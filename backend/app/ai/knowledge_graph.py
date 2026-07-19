@@ -152,7 +152,7 @@ class KnowledgeGraph:
                 if neighbor_id in visited:
                     continue
                 visited.add(neighbor_id)
-                new_path = path + [neighbor_id]
+                new_path = [*path, neighbor_id]
                 if neighbor_id == target_id:
                     return [self.nodes[nid] for nid in new_path]
                 queue.append(new_path)

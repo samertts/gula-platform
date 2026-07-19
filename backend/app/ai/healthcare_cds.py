@@ -80,7 +80,7 @@ class ClinicalDecisionSupport:
         conditions: list[str] = []
         for node in kg_results:
             neighbors = knowledge_graph.get_neighbors(node.id, relationship="indicates")
-            for neighbor, rel, weight in neighbors:
+            for neighbor, _rel, _weight in neighbors:
                 if neighbor.node_type == "condition":
                     conditions.append(neighbor.label)
 
@@ -121,7 +121,7 @@ class ClinicalDecisionSupport:
                 nodes = knowledge_graph.search_nodes(alert.test_name, node_type="lab_test", limit=3)
                 for node in nodes:
                     neighbors = knowledge_graph.get_neighbors(node.id, relationship="indicates")
-                    for neighbor, rel, weight in neighbors:
+                    for neighbor, _rel, _weight in neighbors:
                         if neighbor.node_type == "condition":
                             condition_map[neighbor.label] = condition_map.get(neighbor.label, 0) + 1
 

@@ -120,4 +120,4 @@ def print_validation_report() -> str:
 
 
 if __name__ == "__main__":
-    print(print_validation_report())
+    pass

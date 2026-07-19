@@ -211,7 +211,7 @@ class RiskBasedAuthService:
                 risk_level=AuthRiskLevel.CRITICAL,
                 risk_score=100,
                 required_action=RequiredAction.BLOCKED,
-                factors=factors + ["impossible_travel"],
+                factors=[*factors, "impossible_travel"],
                 message="Blocked due to impossible travel detection",
             )
 

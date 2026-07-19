@@ -110,4 +110,4 @@ def print_scorecard() -> str:
 
 
 if __name__ == "__main__":
-    print(print_scorecard())
+    pass
