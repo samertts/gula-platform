@@ -23,6 +23,9 @@ __all__ = [
     "InteroperabilityGovernanceService",
     "LaboratoryGovernanceService",
     "NationalAnalyticsService",
+    "PersistedBreakGlassService",
+    "PersistedIdentityGovernanceService",
+    "PersistedIdentityMergeEngine",
     "SecurityGovernanceService",
     "WorkforceGovernanceService",
 ]

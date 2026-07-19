@@ -117,7 +117,7 @@ async def create_job(
             "status": job.status.value,
         }
     except JobValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
 
 
 @router.get("/")
@@ -194,7 +194,7 @@ async def get_job(
             ],
         }
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.put("/{job_id}")
@@ -212,11 +212,11 @@ async def update_job(
             "version": job.version,
         }
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except JobStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except JobValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -227,7 +227,7 @@ async def delete_job(
     try:
         await service.delete_job(job_id)
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/{job_id}/execute")
@@ -244,11 +244,11 @@ async def execute_job_now(
             "attempt": execution.attempt,
         }
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except JobStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except JobDependencyError as e:
-        raise HTTPException(status_code=status.HTTP_424_FAILED_DEPENDENCY, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_424_FAILED_DEPENDENCY, detail=str(e)) from e
 
 
 @router.post("/{job_id}/cancel")
@@ -263,9 +263,9 @@ async def cancel_job(
         await service.cancel_job(job_id, reason=body.get("reason", ""))
         return {"status": "cancelled", "job_id": job_id}
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except JobStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 @router.post("/{job_id}/pause")
@@ -277,9 +277,9 @@ async def pause_job(
         await service.pause_job(job_id)
         return {"status": "paused", "job_id": job_id}
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except JobStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 @router.post("/{job_id}/resume")
@@ -291,9 +291,9 @@ async def resume_job(
         await service.resume_job(job_id)
         return {"status": "pending", "job_id": job_id}
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except JobStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 @router.get("/{job_id}/executions")
@@ -322,7 +322,7 @@ async def get_execution_history(
             for e in executions
         ]
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.get("/{job_id}/schedules")
@@ -349,7 +349,7 @@ async def get_schedules(
             for s in schedules
         ]
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/{job_id}/schedules", status_code=status.HTTP_201_CREATED)
@@ -377,9 +377,9 @@ async def create_schedule(
             "enabled": schedule.enabled,
         }
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except JobValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
 
 
 @router.delete("/{job_id}/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -391,7 +391,7 @@ async def delete_schedule(
     try:
         await service.delete_schedule(job_id, schedule_id)
     except (JobNotFoundError, JobScheduleNotFoundError) as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.get("/stats")

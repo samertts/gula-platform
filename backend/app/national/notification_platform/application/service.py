@@ -254,7 +254,7 @@ class NotificationPlatformService:
 
             return rendered_subject, rendered_body
         except Exception as exc:
-            raise TemplateRenderError(template_id, str(exc))
+            raise TemplateRenderError(template_id, str(exc)) from exc
 
     async def get_delivery_report(self, notification_id: str) -> list[DeliveryReport]:
         notification = await self._notification_repo.get(notification_id)

@@ -26,7 +26,7 @@ async def get_patient(
     try:
         patient = await service.get_patient(patient_id)
     except PatientNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _patient_to_response(patient)
 
 
@@ -53,11 +53,11 @@ async def create_patient(
     try:
         created = await service.create_patient(patient)
     except InvalidPatientDataError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except DuplicatePatientError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except DomainError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _patient_to_response(created)
 
 

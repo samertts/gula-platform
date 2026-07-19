@@ -148,7 +148,7 @@ class ObservabilityService:
                 limit=limit,
             )
         except Exception as exc:
-            raise MetricQueryError(str(exc))
+            raise MetricQueryError(str(exc)) from exc
 
     async def start_span(
         self,

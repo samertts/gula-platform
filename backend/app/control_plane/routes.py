@@ -37,7 +37,7 @@ async def list_components(
             ct = PlatformComponent(component_type)
             components = sdk.registry.list(ct)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid component type: {component_type}")
+            raise HTTPException(status_code=400, detail=f"Invalid component type: {component_type}") from None
     else:
         components = sdk.registry.list()
     return {
@@ -87,7 +87,7 @@ async def update_component(name: str, data: dict[str, Any], user=Depends(_user))
             status = ComponentStatus(data["status"])
             sdk.registry.update_status(name, status)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid status: {data['status']}")
+            raise HTTPException(status_code=400, detail=f"Invalid status: {data['status']}") from None
     return {"status": "updated", "name": name}
 
 
@@ -115,7 +115,7 @@ async def get_config(scope: str, component: str, key: str | None = Query(None), 
     try:
         s = ConfigurationScope(scope)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid scope: {scope}")
+        raise HTTPException(status_code=400, detail=f"Invalid scope: {scope}") from None
     if key:
         value = sdk.config.get(key, scope=s, component=component)
         return {"key": key, "value": value, "scope": scope, "component": component}
@@ -127,7 +127,7 @@ async def set_config(scope: str, component: str, data: dict[str, Any], user=Depe
     try:
         s = ConfigurationScope(scope)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid scope: {scope}")
+        raise HTTPException(status_code=400, detail=f"Invalid scope: {scope}") from None
     for key, value in data.get("config", {}).items():
         sdk.config.set(key, value, scope=s, component=component)
     return {"status": "updated", "scope": scope, "component": component}
@@ -145,7 +145,7 @@ async def list_policies(domain: str | None = Query(None), user=Depends(_user)):
         try:
             domain_enum = PolicyDomain(domain)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid domain: {domain}")
+            raise HTTPException(status_code=400, detail=f"Invalid domain: {domain}") from None
     policies = sdk.policies.list(domain_enum)
     return {
         "policies": [
@@ -176,7 +176,7 @@ async def create_policy(data: dict[str, Any], user=Depends(_user)):
             enabled=data.get("enabled", True),
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     sdk.policies.register(policy)
     return {"status": "created", "name": policy.name, "domain": policy.domain.value}
 
@@ -243,7 +243,7 @@ async def list_releases(
         try:
             channel_enum = ReleaseChannel(channel)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid channel: {channel}")
+            raise HTTPException(status_code=400, detail=f"Invalid channel: {channel}") from None
     releases = sdk.releases.list_releases(component, channel_enum, status)
     return {
         "releases": [

@@ -25,7 +25,6 @@ class GRPCGateway(MessageGateway):
 
     async def connect(self) -> bool:
         try:
-            import grpc
             from grpc import aio
             self._channel = aio.insecure_channel(
                 self.config.endpoint,

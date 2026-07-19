@@ -38,7 +38,7 @@ async def admit_patient(
         admission = service.admit_patient(body)
         return _admission_to_dict(admission)
     except BedNotAvailableError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 @router.get("/admissions")
@@ -60,7 +60,7 @@ async def get_admission(
     try:
         return _admission_to_dict(service.get_admission(admission_id))
     except ICUAdmissionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/admissions/{admission_id}/discharge")
@@ -72,7 +72,7 @@ async def discharge_patient(
     try:
         return _admission_to_dict(service.discharge_patient(admission_id, body))
     except ICUAdmissionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 # ---- Beds ----
@@ -143,7 +143,7 @@ async def calculate_ews(
         ews = service.calculate_ews(patient_id, body.get("admission_id", ""), body.get("vitals_id"))
         return _ews_to_dict(ews)
     except MonitoringRecordNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.post("/sofa/{patient_id}")
@@ -174,7 +174,7 @@ async def stop_infusion(
     try:
         return _infusion_to_dict(service.stop_infusion(infusion_id))
     except InfusionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 # ---- Fluid Balance ----

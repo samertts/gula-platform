@@ -62,7 +62,7 @@ async def get_case(
     try:
         return _case_to_dict(service.get_case(case_id))
     except DiseaseCaseNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.get("/disease-cases/stats")
@@ -104,7 +104,7 @@ async def get_alert(
     try:
         return _alert_to_dict(service.get_alert(alert_id))
     except OutbreakNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.put("/outbreak-alerts/{alert_id}/status")
@@ -116,7 +116,7 @@ async def update_alert_status(
     try:
         return _alert_to_dict(service.update_alert_status(alert_id, body.get("status", ""), body.get("notes", "")))
     except OutbreakNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 # ── Surveillance Signals ──

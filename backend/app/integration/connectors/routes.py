@@ -16,7 +16,7 @@ async def _get_connector_instance(name: str, config: dict[str, Any] | None = Non
     try:
         cls = ConnectorRegistry.get(name)
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Connector not found: {name}")
+        raise HTTPException(status_code=404, detail=f"Connector not found: {name}") from None
     return cls(name=name, config=config or {})
 
 
@@ -39,7 +39,7 @@ async def get_connector(name: str) -> dict[str, Any]:
     try:
         cls = ConnectorRegistry.get(name)
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Connector not found: {name}")
+        raise HTTPException(status_code=404, detail=f"Connector not found: {name}") from None
     return {
         "name": name,
         "connector_class": cls.__name__,
@@ -56,7 +56,7 @@ async def connect_connector(name: str) -> dict[str, Any]:
             return {"name": name, "connected": True}
         raise HTTPException(status_code=502, detail=f"Failed to connect {name}")
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/{name}/disconnect")
@@ -66,7 +66,7 @@ async def disconnect_connector(name: str) -> dict[str, Any]:
         disconnected = await connector.disconnect()
         return {"name": name, "disconnected": disconnected}
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.get("/{name}/health")
@@ -78,7 +78,7 @@ async def connector_health(name: str) -> dict[str, Any]:
         health = await connector.health_check()
         return {"name": name, **health}
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/{name}/send")
@@ -90,7 +90,7 @@ async def send_through_connector(name: str, data: dict[str, Any]) -> dict[str, A
         result = await connector.send(data)
         return {"name": name, "result": result}
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/{name}/configure")

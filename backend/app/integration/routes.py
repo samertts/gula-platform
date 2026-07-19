@@ -102,7 +102,7 @@ async def send_via_gateway(
         }
     except Exception as exc:
         logger.error("Gateway send failed: %s", exc)
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/gateway/{protocol}/receive")
@@ -120,7 +120,7 @@ async def receive_via_gateway(
         return {"success": True, "message": message}
     except Exception as exc:
         logger.error("Gateway receive failed: %s", exc)
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.get("/catalog")
@@ -215,7 +215,7 @@ async def run_transformation(
         return result
     except Exception as exc:
         logger.error("Transformation failed: %s", exc)
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.get("/monitoring/dashboard")
@@ -239,7 +239,7 @@ async def run_integration_tests(
         return {"test_results": results}
     except Exception as exc:
         logger.error("Test run failed: %s", exc)
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/offline/sync")
@@ -250,7 +250,7 @@ async def trigger_offline_sync() -> dict[str, Any]:
         return await _offline_sync.sync_all()
     except Exception as exc:
         logger.error("Offline sync failed: %s", exc)
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.get("/health")
