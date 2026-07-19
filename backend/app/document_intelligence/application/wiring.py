@@ -952,6 +952,38 @@ def build_orchestrator(
         engine = create_engine("sqlite:///docint.db")
         session_factory = sessionmaker(bind=engine)
 
+    from ..infrastructure.repository import (
+        SqlAccessControlRepository,
+        SqlDocumentEventRepository,
+        SqlGovernanceEventRepository,
+        SqlGovernancePolicyRepository,
+        SqlGovernmentDocumentRepository,
+        SqlGraphEdgeRepository,
+        SqlLifecycleRepository,
+        SqlPipelineHealthRepository,
+        SqlPreservationRepository,
+        SqlRetentionRepository,
+        SqlReviewRepository,
+        SqlAnnotationRepository,
+        SqlVersionRepository,
+        SqlWebhookRepository,
+    )
+    from ..infrastructure.services import (
+        InfrastructureAccessControlService,
+        InfrastructureCollaborationService,
+        InfrastructureDocumentLifecycleService,
+        InfrastructureEventBusService,
+        InfrastructureGovernmentRecordsService,
+        InfrastructureGovernanceService,
+        InfrastructureKnowledgeGraphService,
+        InfrastructureNationalArchiveService,
+        InfrastructureObservabilityService,
+        InfrastructureSemanticSearchService,
+        InfrastructureVersioningService,
+        InfrastructureWebhookService,
+        InfrastructureDocumentLifecycleManager,
+    )
+
     doc_repo: DocumentRepository = SqlDocumentRepository(session_factory)
     ocr_repo: OcrResultRepository = SqlOcrResultRepository(session_factory)
     entity_repo: EntityRepository = SqlEntityRepository(session_factory)
@@ -960,6 +992,21 @@ def build_orchestrator(
     classifier_repo: ClassificationResultRepository = SqlClassificationResultRepository(session_factory)
     pipeline_repo: PipelineResultRepository = SqlPipelineResultRepository(session_factory)
     storage: StorageRepository = LocalStorageRepository(storage_path)
+
+    gov_doc_repo = SqlGovernmentDocumentRepository(session_factory)
+    review_repo = SqlReviewRepository(session_factory)
+    annotation_repo = SqlAnnotationRepository(session_factory)
+    preservation_repo = SqlPreservationRepository(session_factory)
+    policy_repo = SqlGovernancePolicyRepository(session_factory)
+    gov_event_repo = SqlGovernanceEventRepository(session_factory)
+    doc_event_repo = SqlDocumentEventRepository(session_factory)
+    lifecycle_repo = SqlLifecycleRepository(session_factory)
+    webhook_repo = SqlWebhookRepository(session_factory)
+    edge_repo = SqlGraphEdgeRepository(session_factory)
+    health_repo = SqlPipelineHealthRepository(session_factory)
+    access_repo = SqlAccessControlRepository(session_factory)
+    retention_repo = SqlRetentionRepository(session_factory)
+    version_repo = SqlVersionRepository(session_factory)
 
     encryptor = DefaultEncryptionService()
     audit = DefaultAuditService()
@@ -1002,8 +1049,20 @@ def build_orchestrator(
     fhir_service = DefaultFhirMappingService(fhir_mapper, events, audit)
     knowledge_service = DefaultKnowledgePipelineService(knowledge_extractor, search_indexer, events, audit)
     search_service = DefaultSearchService(search_indexer)
-    lifecycle = DefaultDocumentLifecycleManager()
+    real_lifecycle = InfrastructureDocumentLifecycleManager(doc_repo, retention_repo, lifecycle_repo, preservation_repo)
     remediation = DefaultRemediationService(doc_repo)
+
+    gov_service = InfrastructureGovernmentRecordsService(gov_doc_repo, doc_repo)
+    collab_service = InfrastructureCollaborationService(review_repo, annotation_repo)
+    gov_service_ = InfrastructureGovernanceService(policy_repo, gov_event_repo, doc_repo)
+    archive_service = InfrastructureNationalArchiveService(preservation_repo, doc_repo, storage)
+    kg_service = InfrastructureKnowledgeGraphService(edge_repo)
+    webhook_service = InfrastructureWebhookService(webhook_repo, doc_event_repo)
+    obs_service = InfrastructureObservabilityService(health_repo)
+    access_service = InfrastructureAccessControlService(access_repo)
+    semantic_service = InfrastructureSemanticSearchService(doc_repo)
+    lifecycle_service = InfrastructureDocumentLifecycleService(lifecycle_repo)
+    event_bus = InfrastructureEventBusService(doc_event_repo)
 
     orchestrator = DocumentIntelligenceOrchestrator(
         ingestion=ingestion,
@@ -1013,12 +1072,23 @@ def build_orchestrator(
         fhir_mapper=fhir_service,
         knowledge_pipeline=knowledge_service,
         search=search_service,
-        lifecycle=lifecycle,
+        lifecycle=real_lifecycle,
         remediation=remediation,
         doc_repo=doc_repo,
         pipeline_repo=pipeline_repo,
         event_publisher=events,
         audit=audit,
+        gov_service=gov_service,
+        collab_service=collab_service,
+        gov_service_=gov_service_,
+        archive_service=archive_service,
+        kg_service=kg_service,
+        webhook_service=webhook_service,
+        obs_service=obs_service,
+        access_service=access_service,
+        semantic_service=semantic_service,
+        lifecycle_service=lifecycle_service,
+        event_bus=event_bus,
     )
 
     global _orchestrator, _document_repo

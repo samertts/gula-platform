@@ -65,6 +65,38 @@ from .domain.events import (
     DocumentProcessed,
     DocumentProcessingFailed,
 )
+from .backup_dr import BackupManifest, BackupEntry, BackupScheduler, BackupService
+from .distributed.batch_processor import BatchProcessor, BatchJob
+from .distributed.partition_manager import PartitionManager
+from .distributed.task_queue import Task, TaskQueue, TaskPriority, TaskStatus
+from .distributed.worker_pool import WorkerPool
+from .multitenancy import Tenant, TenantContext, TenantManager, QuotaManager
+from .observability import (
+    AlertManager,
+    HealthChecker,
+    MetricsCollector,
+    Span,
+    StructuredLogger,
+    Tracer,
+    get_logger,
+    get_metrics,
+    get_tracer,
+)
+from .performance import (
+    AsyncMemoizer,
+    BatchAggregator,
+    ConnectionPool,
+    LRUCache,
+    ProcessingTimeTracker,
+)
+from .security import (
+    AuditLogger,
+    EncryptionService,
+    InputValidator,
+    IntegrityChecker,
+    RateLimiter,
+    get_audit_logger,
+)
 from .exceptions import (
     ClassificationError,
     DocumentIntelligenceError,
@@ -107,6 +139,42 @@ from .infrastructure.models import (
 )
 
 __all__ = [
+    "BackupManifest",
+    "BackupEntry",
+    "BackupScheduler",
+    "BackupService",
+    "BatchProcessor",
+    "BatchJob",
+    "PartitionManager",
+    "Task",
+    "TaskQueue",
+    "TaskPriority",
+    "TaskStatus",
+    "WorkerPool",
+    "Tenant",
+    "TenantContext",
+    "TenantManager",
+    "QuotaManager",
+    "AlertManager",
+    "HealthChecker",
+    "MetricsCollector",
+    "Span",
+    "StructuredLogger",
+    "Tracer",
+    "get_logger",
+    "get_metrics",
+    "get_tracer",
+    "AsyncMemoizer",
+    "BatchAggregator",
+    "ConnectionPool",
+    "LRUCache",
+    "ProcessingTimeTracker",
+    "AuditLogger",
+    "EncryptionService",
+    "InputValidator",
+    "IntegrityChecker",
+    "RateLimiter",
+    "get_audit_logger",
     "ScannedDocument",
     "DocumentPage",
     "OcrResult",

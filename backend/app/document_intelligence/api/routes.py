@@ -268,15 +268,11 @@ async def classify_text(
     text: str = Form(...),
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
-    from ..application.service import DefaultClassifierService
-    classifier = DefaultClassifierService.__new__(DefaultClassifierService)  # placeholder
-    from ..domain.entities import ClassificationResult
-    result = ClassificationResult(
-        category=DocumentCategory.unknown,
-    )
+    result = await orchestrator.classify_text(text)
     return {
         "category": str(result.category),
         "confidence": result.confidence_score,
+        "alternatives": [(str(c), s) for c, s in result.alternatives],
     }
 
 
