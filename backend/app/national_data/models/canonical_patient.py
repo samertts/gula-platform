@@ -6,10 +6,10 @@ from typing import Any
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.national_data.base import DataPlatformBase
 from app.models.patient import Patient as LimsPatient
 from app.national.domain.citizen import Citizen
 from app.national.domain.patient import Patient as NationalPatient
+from app.national_data.base import DataPlatformBase
 
 
 class CanonicalPatient(DataPlatformBase):

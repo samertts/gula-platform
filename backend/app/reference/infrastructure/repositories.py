@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional, Sequence
 
-from sqlalchemy import Select, and_, func, or_, select, text
+from sqlalchemy import and_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.reference.domain.interfaces import (

@@ -21,6 +21,10 @@ concurrency:
   group: gula-blue-green-deploy
   cancel-in-progress: false    # never cancel an in-progress blue-green switch
 
+permissions:
+  contents: read
+  packages: read
+
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/gula-platform

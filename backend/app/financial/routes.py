@@ -15,7 +15,12 @@ from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services.audit_service import log_action
-from .models import FinInvoice, FinPayment, FinPricingRule, FinProvider, FinSubscription, FinTransaction
+from .models import (
+    FinPricingRule,
+    FinProvider,
+    FinSubscription,
+    FinTransaction,
+)
 from .services import (
     BillingService,
     FinancialReportService,

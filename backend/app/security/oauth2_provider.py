@@ -5,14 +5,15 @@ import logging
 import secrets
 from base64 import urlsafe_b64encode
 from datetime import datetime, timedelta
-from app._compat import UTC
 from typing import Any
 from uuid import uuid4
 
-from jose import JWTError, jwt
 from pydantic import BaseModel
 
-from shared.auth import create_access_token, decode_access_token
+from app._compat import UTC
+from joserfc import jwt as jose_jwt
+from joserfc import jwk
+from shared.auth import JWTError, create_access_token, decode_access_token
 
 from ..config import BASE_URL, JWT_ALGORITHM, JWT_EXPIRE_MINUTES, SECRET_KEY
 
@@ -101,7 +102,7 @@ def create_id_token(
         payload["nonce"] = nonce
     if extra_claims:
         payload.update(extra_claims)
-    return jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
+    return jose_jwt.encode({"alg": JWT_ALGORITHM}, payload, jwk.OctKey.import_key(SECRET_KEY))
 
 
 def create_access_token_oauth2(

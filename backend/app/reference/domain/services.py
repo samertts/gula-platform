@@ -12,7 +12,7 @@ from .exceptions import (
     InvalidPatientDataError,
     PatientNotFoundError,
 )
-from .interfaces import PatientRepository, OrderRepository, ResultRepository
+from .interfaces import OrderRepository, PatientRepository
 from .models import (
     Gender,
     LabOrderDomain,
@@ -20,9 +20,7 @@ from .models import (
     OrderStatus,
     PatientDomain,
     Priority,
-    ReferenceRange,
 )
-
 
 _NAME_NORMALIZATION_PATTERN = re.compile(r"[^\u0600-\u06FF\s]")
 

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import base64
 import logging
-from defusedxml import ElementTree as ET
 from datetime import datetime, timedelta
+
+from defusedxml import ElementTree as ET
+
 from app._compat import UTC
 
 logger = logging.getLogger("gula.saml")

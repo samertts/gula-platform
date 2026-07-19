@@ -5,11 +5,11 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from app._compat import StrEnum
 from pathlib import Path
 from threading import Lock
 from typing import Any
 
+from app._compat import StrEnum
 from app.kernel.config.secrets import SecretsManager
 
 logger = logging.getLogger("gula.kernel.runtime_security")

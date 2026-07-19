@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>ar</string>
+    <key>CFBundleDisplayName</key>
+    <string>GULA</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>GULA</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(MARKETING_VERSION)</string>
+    <key>CFBundleVersion</key>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>ar</string>
+    </array>
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+        <string>arkit</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
+    <key>UIStatusBarStyle</key>
+    <string>UIStatusBarStyleDefault</string>
+    <key>UIAppFonts</key>
+    <array>
+        <string>NotoKufiArabic-Regular.ttf</string>
+        <string>NotoKufiArabic-Bold.ttf</string>
+        <string>NotoKufiArabic-Medium.ttf</string>
+        <string>NotoKufiArabic-SemiBold.ttf</string>
+        <string>NotoKufiArabic-Light.ttf</string>
+        <string>Inter-Regular.ttf</string>
+        <string>Inter-Bold.ttf</string>
+        <string>Inter-Medium.ttf</string>
+        <string>Inter-SemiBold.ttf</string>
+        <string>Inter-Light.ttf</string>
+    </array>
+    <key>NSCameraUsageDescription</key>
+    <string>$(PRODUCT_NAME) uses the camera to scan barcodes on patient samples, QR codes on patient cards, and lab equipment labels for efficient tracking and data entry.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>$(PRODUCT_NAME) may use the microphone for voice notes in clinical records.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>$(PRODUCT_NAME) uses Face ID to provide secure and fast authentication, protecting patient data access.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>$(PRODUCT_NAME) uses Bluetooth to connect with lab instruments and printers for direct data transfer and label printing.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>$(PRODUCT_NAME) communicates with Bluetooth-enabled lab devices and printers.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>$(PRODUCT_NAME) can save report PDFs and lab result images to your photo library.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>$(PRODUCT_NAME) saves generated reports and documents to your photo library.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>$(PRODUCT_NAME) accesses the local network to communicate with lab instruments and network printers.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_ipp._tcp</string>
+        <string>_printer._tcp</string>
+        <string>_pdl-datastream._tcp</string>
+    </array>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>api.gula.iq</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <false/>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+                <key>NSTemporaryExceptionMinimumTLSVersion</key>
+                <string>TLSv1.2</string>
+            </dict>
+            <key>gula.iq</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <false/>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.gula.sync</string>
+        <string>com.gula.cleanup</string>
+        <string>com.gula.refresh</string>
+    </array>
+    <key>UIApplicationSupportsMultipleScenes</key>
+    <true/>
+    <key>UISceneConfigurations</key>
+    <dict/>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+</dict>
+</plist>

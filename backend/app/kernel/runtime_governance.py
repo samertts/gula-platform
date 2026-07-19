@@ -4,9 +4,9 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from app._compat import StrEnum
 from typing import Any
 
+from app._compat import StrEnum
 from app.core.policy_engine import ActionType, evaluate_policy
 
 logger = logging.getLogger("gula.kernel.runtime_governance")

@@ -1,0 +1,163 @@
+name: gula_desktop
+description: GULA Platform Desktop Application — Medical Laboratory LIMS for Windows, Linux, macOS.
+version: 2.1.0
+homepage: https://github.com/samertts/gula-platform
+repository: https://github.com/samertts/gula-platform
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.1.0 <4.0.0'
+  flutter: '>=3.13.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # HTTP & API
+  dio: ^5.4.0
+  connectivity_plus: ^5.0.2
+
+  # Local Database
+  drift: ^2.14.1
+  sqlite3_flutter_libs: ^0.5.17
+  sqlite3: ^2.1.0
+  path_provider: ^2.1.1
+  path: ^1.8.3
+
+  # State Management
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+
+  # Auth & Security
+  flutter_secure_storage: ^9.0.0
+  local_auth: ^2.1.8
+  crypto: ^3.0.3
+  pointycastle: ^3.7.3
+
+  # Desktop
+  window_manager: ^0.3.7
+  system_tray: ^2.0.3
+  local_notifier: ^0.1.6
+  auto_updater: ^0.1.0
+  launch_at_startup: ^0.2.2
+  tray_manager: ^0.2.1
+
+  # Printing
+  printing: ^5.11.1
+  esc_pos_bluetooth: ^2.1.1
+  esc_pos_utils: ^1.1.0
+  flutter_blue_plus: ^1.28.12
+  bluetooth_low_energy: ^5.0.0
+
+  # PDF
+  pdf: ^3.10.4
+
+  # Barcode
+  barcode: ^2.2.8
+  barcode_widget: ^2.0.4
+  mobile_scanner: ^3.5.5
+  qr_flutter: ^4.1.0
+
+  # UI
+  google_fonts: ^6.1.0
+  flex_color_scheme: ^7.3.1
+  shimmer: ^3.0.0
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.0
+  animations: ^2.0.8
+  flutter_animate: ^4.3.0
+
+  # Charts
+  fl_chart: ^0.66.0
+
+  # Tables
+  pluto_grid: ^8.0.2
+
+  # Calendar
+  table_calendar: ^3.0.9
+
+  # Utilities
+  intl: ^0.19.0
+  uuid: ^4.2.1
+  logger: ^2.0.2
+  url_launcher: ^6.2.1
+  share_plus: ^7.2.1
+  open_file: ^3.3.2
+  file_picker: ^6.1.1
+  permission_handler: ^11.1.0
+  package_info_plus: ^5.0.1
+  collection: ^1.18.0
+  meta: ^1.9.1
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
+  equatable: ^2.0.5
+
+  # Push Notifications
+  flutter_local_notifications: ^16.3.2
+
+  # Crash Reporting
+  sentry_flutter: ^7.11.0
+
+  # Localization
+  flutter_oss_licenses: ^2.0.2
+
+  # P2P / Sync
+  p2plib: ^0.0.3
+
+  # Context
+  universal_platform: ^1.0.1
+
+  # Device Info
+  device_info_plus: ^9.1.0
+
+  # QR
+  qr: ^3.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  build_runner: ^2.4.7
+  drift_dev: ^2.14.1
+  json_serializable: ^6.7.1
+  freezed: ^2.4.6
+  riverpod_generator: ^2.3.9
+  riverpod_annotation: ^2.3.3
+  mockito: ^5.4.4
+  mocktail: ^1.0.1
+  flutter_lints: ^3.0.1
+  test: ^1.24.9
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/fonts/
+
+  fonts:
+    - family: NotoSansArabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansArabic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansArabic-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansArabic-Bold.ttf
+          weight: 700
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700

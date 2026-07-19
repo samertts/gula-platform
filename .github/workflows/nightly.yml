@@ -1,0 +1,383 @@
+name: Nightly Build
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      skip_notify:
+        description: 'Skip notifications'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.12'
+  FLUTTER_VERSION: '3.27.0'
+
+jobs:
+  android-nightly:
+    name: Android Nightly Build
+    uses: ./.github/workflows/mobile-android.yml
+    secrets: inherit
+
+  ios-nightly:
+    name: iOS Nightly Build
+    uses: ./.github/workflows/mobile-ios.yml
+    secrets: inherit
+
+  desktop-nightly:
+    name: Desktop Nightly Build
+    uses: ./.github/workflows/mobile-flutter-desktop.yml
+    secrets: inherit
+
+  backend-integration:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: labdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
+
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: nightly-secret-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: nightly-refresh-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          ENV: test
+          RUNTIME_MODE: test
+          FEATURE_BACKGROUND_TASKS: "false"
+        run: |
+          cd backend
+          alembic upgrade head
+          python -m pytest tests/ -v --tb=long -ra --maxfail=5 \
+            --junitxml=pytest-integration.xml \
+            -m "integration"
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: backend/pytest-integration.xml
+          retention-days: 14
+
+  chaos-tests:
+    name: Chaos Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: labdb
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
+
+      - name: Run chaos test suite
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: chaos-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: chaos-test-refresh-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          ENV: test
+          RUNTIME_MODE: test
+          FEATURE_BACKGROUND_TASKS: "false"
+        run: |
+          cd backend
+          make chaos 2>&1 | tee chaos-results.log
+
+      - name: Upload chaos results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-test-results
+          path: backend/chaos-results.log
+          retention-days: 14
+
+  performance-benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: labdb
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
+          pip install locust
+
+      - name: Start backend
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: bench-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          REFRESH_TOKEN_SECRET: bench-test-refresh-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+          ENV: development
+          RUNTIME_MODE: api
+          FEATURE_BACKGROUND_TASKS: "false"
+        run: |
+          cd backend
+          alembic upgrade head
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2 &
+          sleep 5
+          curl -sf http://127.0.0.1:8000/health/ready
+
+      - name: Run Locust benchmark
+        run: |
+          locust -f tests/performance/locustfile.py \
+            --host http://127.0.0.1:8000 \
+            --headless \
+            --users 50 \
+            --spawn-rate 5 \
+            --run-time 5m \
+            --csv benchmark-results \
+            --html benchmark-report.html
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-benchmark
+          path: |
+            benchmark-results*.csv
+            benchmark-report.html
+          retention-days: 30
+
+      - name: Check performance thresholds
+        run: |
+          python3 - <<'PYEOF'
+          import csv, sys
+
+          thresholds = {
+              'p95_response_time_ms': 500,
+              'p99_response_time_ms': 1000,
+              'error_rate_pct': 1.0,
+          }
+
+          try:
+              with open('benchmark-results_stats.csv') as f:
+                  reader = csv.DictReader(f)
+                  for row in reader:
+                      method = row.get('Method', '')
+                      p95 = float(row.get('95%', 0))
+                      p99 = float(row.get('99%', 0))
+                      if method and (p95 > thresholds['p95_response_time_ms'] or p99 > thresholds['p99_response_time_ms']):
+                          print(f"WARNING: {method} exceeds thresholds: p95={p95}, p99={p99}")
+          except FileNotFoundError:
+              print("No benchmark stats file found")
+
+          try:
+              with open('benchmark-results_stats.csv') as f:
+                  reader = csv.DictReader(f)
+                  total_requests = 0
+                  total_failures = 0
+                  for row in reader:
+                      total_requests += int(row.get('Request Count', 0))
+                      total_failures += int(row.get('Failure Count', 0))
+                  if total_requests > 0:
+                      error_rate = (total_failures / total_requests) * 100
+                      print(f"Total requests: {total_requests}, Failures: {total_failures}, Error rate: {error_rate:.2f}%")
+                      if error_rate > thresholds['error_rate_pct']:
+                          print(f"WARNING: Error rate {error_rate:.2f}% exceeds threshold {thresholds['error_rate_pct']}%")
+          except FileNotFoundError:
+              print("No benchmark stats file found")
+          PYEOF
+
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t gula-backend:nightly ./backend
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: gula-backend:nightly
+          format: table
+          severity: CRITICAL,HIGH,MEDIUM
+          output: trivy-report.txt
+          exit-code: 0
+
+      - name: Run Grype scan
+        uses: anchore/scan-action@v5
+        with:
+          image: gula-backend:nightly
+          fail-build: true
+          severity-cutoff: high
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-security-reports
+          path: trivy-report.txt
+          retention-days: 30
+
+  report:
+    name: Nightly Report
+    needs: [android-nightly, ios-nightly, desktop-nightly, backend-integration, chaos-tests, performance-benchmarks, container-security]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Generate nightly report
+        run: |
+          echo "# Nightly Build Report - $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Android Nightly | ${{ needs.android-nightly.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| iOS Nightly | ${{ needs.ios-nightly.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Desktop Nightly | ${{ needs.desktop-nightly.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Integration | ${{ needs.backend-integration.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Chaos Tests | ${{ needs.chaos-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance Benchmarks | ${{ needs.performance-benchmarks.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container Security | ${{ needs.container-security.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🌙 Nightly Build Failed - $(date -u +'%Y-%m-%d')`,
+              body: `## Nightly Build Failure\n\n**Date:** $(date -u)\n**Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n### Failed Components\n- Android: ${{ needs.android-nightly.result }}\n- iOS: ${{ needs.ios-nightly.result }}\n- Desktop: ${{ needs.desktop-nightly.result }}\n- Backend Integration: ${{ needs.backend-integration.result }}\n- Chaos Tests: ${{ needs.chaos-tests.result }}\n- Performance: ${{ needs.performance-benchmarks.result }}\n- Security: ${{ needs.container-security.result }}\n\nPlease investigate and fix.`,
+              labels: ['nightly', 'bug']
+            })
+
+      - name: Send Slack notification
+        if: ${{ !github.event.inputs.skip_notify }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          payload: |
+            {
+              "channel": "#nightly-builds",
+              "username": "GULA Nightly Bot",
+              "icon_emoji": ":night_with_stars:",
+              "text": "🌙 Nightly Build Report - $(date -u +'%Y-%m-%d')\nAndroid: ${{ needs.android-nightly.result }}\niOS: ${{ needs.ios-nightly.result }}\nDesktop: ${{ needs.desktop-nightly.result }}\nBackend: ${{ needs.backend-integration.result }}\nChaos: ${{ needs.chaos-tests.result }}\nPerformance: ${{ needs.performance-benchmarks.result }}\nSecurity: ${{ needs.container-security.result }}\nFull report: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
+
+      - name: Send Telegram notification
+        if: ${{ !github.event.inputs.skip_notify }}
+        uses: appleboy/telegram-action@1.2.0
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            🌙 *GULA Nightly Build* — $(date -u +'%Y-%m-%d')
+            Android: ${{ needs.android-nightly.result }}
+            iOS: ${{ needs.ios-nightly.result }}
+            Desktop: ${{ needs.desktop-nightly.result }}
+            Backend: ${{ needs.backend-integration.result }}
+            Chaos: ${{ needs.chaos-tests.result }}
+            Perf: ${{ needs.performance-benchmarks.result }}
+            Security: ${{ needs.container-security.result }}
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        continue-on-error: true

@@ -34,7 +34,6 @@ from app.reference.domain.services import (
     ResultValidationService,
 )
 
-
 # ---------------------------------------------------------------------------
 # PatientValidationService tests
 # ---------------------------------------------------------------------------

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from jose import JWTError
+from shared.auth import JWTError
 
 from shared.auth import (
     create_access_token as _shared_create_access_token,

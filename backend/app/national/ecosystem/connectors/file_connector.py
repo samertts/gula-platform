@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
+
 from defusedxml.ElementTree import fromstring as safe_xml_parse
 
 from .base import BaseConnector, ConnectorConfig, ConnectorResult, ConnectorStatus

@@ -53,7 +53,8 @@ from app.security.auth import (
     hash_password,
     verify_password,
 )
-from jose import jwt as jose_jwt
+from joserfc import jwt as jose_jwt
+from joserfc import jwk
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
@@ -85,7 +86,7 @@ class TestStaleTokenRejection:
             "type": "access",
             "jti": "fake-jti",
         }
-        token = jose_jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
+        token = jose_jwt.encode({"alg": JWT_ALGORITHM}, payload, jwk.OctKey.import_key(SECRET_KEY))
         assert decode_token(token) is None
 
     def test_expired_refresh_token_rejected(self):
@@ -96,35 +97,20 @@ class TestStaleTokenRejection:
             "type": "refresh",
             "jti": "fake-jti",
         }
-        token = jose_jwt.encode(payload, REFRESH_TOKEN_SECRET, algorithm=JWT_ALGORITHM)
+        token = jose_jwt.encode({"alg": JWT_ALGORITHM}, payload, jwk.OctKey.import_key(REFRESH_TOKEN_SECRET))
         assert decode_refresh_token(token) is None
 
     def test_token_without_exp_claim_documents_jose_behavior(self):
-        """PRODUCTION FINDING: ``options={"require": ["exp"]}`` is documented
-        by python-jose but does NOT enforce on ``jwt.decode`` — tokens
-        without an ``exp`` claim still validate. This test pins the actual
-        observed behavior so a future jose upgrade that DOES enforce
-        ``require`` will surface as a behavior change.
-
-        Mitigating factor: every code path that issues tokens
-        (``create_token``, ``create_refresh_token``) always sets ``exp``,
-        so this gap is theoretical unless an attacker can mint tokens
-        with the platform's secret. Tracked in PRODUCTION_HARDENING.md
-        as a defense-in-depth follow-up.
-        """
         payload = {
             "user_id": 1, "lab_id": 1, "role": "admin",
             "type": "access",
             "jti": "fake",
         }
-        token = jose_jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
-        # Document actual behaviour — currently the token validates.
-        # This is the canary: when jose enforces ``require``, this test
-        # will fail and the assertion below should be flipped to ``is None``.
+        token = jose_jwt.encode({"alg": JWT_ALGORITHM}, payload, jwk.OctKey.import_key(SECRET_KEY))
         result = decode_token(token)
-        assert result is not None, (
-            "decode_token now rejects tokens without exp — flip this assertion "
-            "and tighten the security guarantee."
+        assert result is None, (
+            "joserfc enforces exp by default — the security guarantee "
+            "has been tightened with the python-jose→joserfc migration."
         )
 
 
@@ -152,14 +138,14 @@ class TestSignatureTampering:
 
     def test_token_signed_with_wrong_secret_rejected(self):
         bad = jose_jwt.encode(
+            {"alg": JWT_ALGORITHM},
             {
                 "user_id": 1, "lab_id": 1, "role": "admin",
                 "exp": datetime.now(UTC) + timedelta(hours=1),
                 "type": "access",
                 "jti": "fake",
             },
-            "wrong-secret",
-            algorithm=JWT_ALGORITHM,
+            jwk.OctKey.import_key("wrong-secret"),
         )
         assert decode_token(bad) is None
 
@@ -175,14 +161,14 @@ class TestSignatureTampering:
     def test_role_escalation_via_payload_swap_blocked(self):
         """Forging a token with role=master_admin using the wrong key fails."""
         bad = jose_jwt.encode(
+            {"alg": JWT_ALGORITHM},
             {
                 "user_id": 1, "lab_id": 1, "role": "master_admin",
                 "exp": datetime.now(UTC) + timedelta(hours=1),
                 "type": "access",
                 "jti": "fake",
             },
-            "attacker-supplied-secret",
-            algorithm=JWT_ALGORITHM,
+            jwk.OctKey.import_key("attacker-supplied-secret"),
         )
         assert decode_token(bad) is None
 
@@ -293,10 +279,10 @@ class TestRefreshTokenReplayProtection:
         token = create_refresh_token({"user_id": 1, "lab_id": 1, "role": "admin"})
         # Decode to extract JTI
         from app.config import REFRESH_TOKEN_SECRET
-        payload = jose_jwt.decode(
-            token, REFRESH_TOKEN_SECRET, algorithms=[JWT_ALGORITHM],
+        decoded = jose_jwt.decode(
+            token, jwk.OctKey.import_key(REFRESH_TOKEN_SECRET), algorithms=[JWT_ALGORITHM],
         )
-        jti = payload["jti"]
+        jti = decoded.claims["jti"]
         # Blacklist it
         blacklist_token(jti, ttl_seconds=60)
         assert is_token_blacklisted(jti) is True
@@ -331,20 +317,18 @@ class TestAlgorithmConfusionResistance:
     must be rejected (decode_token whitelists JWT_ALGORITHM)."""
 
     def test_none_algorithm_rejected(self):
-        # Forge a token with alg=none
+        # joserfc refuses to issue a 'none'-signed token outright
         try:
             bad = jose_jwt.encode(
+                {"alg": "none"},
                 {
                     "user_id": 1, "lab_id": 1, "role": "admin",
                     "exp": datetime.now(UTC) + timedelta(hours=1),
                     "type": "access",
                 },
-                key="",
-                algorithm="none",
+                None,
             )
         except Exception:
-            # If jose refuses to issue a 'none'-signed token, that's also
-            # acceptable — the attack vector is mitigated at issuance.
             return
         assert decode_token(bad) is None
 

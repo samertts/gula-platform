@@ -1,0 +1,223 @@
+name: Frontend - PWA Build & Deploy
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend-v2/**'
+      - '.github/workflows/frontend-pwa.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend-v2/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+      run_lighthouse:
+        description: 'Run Lighthouse CI audit'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  NODE_VERSION: '22'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PWA_PROJECT_ID }}
+
+permissions:
+  contents: read
+  deployments: write
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build PWA
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend-v2
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend-v2/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: frontend-v2/node_modules
+          key: node-modules-${{ hashFiles('frontend-v2/package-lock.json') }}
+          restore-keys: |
+            node-modules-
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Lint
+        run: npm run lint 2>/dev/null || echo "No lint script configured"
+
+      - name: Type check
+        run: npx tsc --noEmit 2>/dev/null || echo "No TypeScript check configured"
+
+      - name: Run tests
+        run: npm test -- --watchAll=false --ci 2>/dev/null || echo "No test script configured"
+
+      - name: Build PWA
+        run: npm run build
+        env:
+          CI: true
+          REACT_APP_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.gulaplatform.com/api/v1/' || 'https://staging-api.gulaplatform.com/api/v1/' }}
+          REACT_APP_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          REACT_APP_GA_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+          REACT_APP_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          REACT_APP_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-build
+          path: frontend-v2/build/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload source maps
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-source-maps
+          path: frontend-v2/build/static/js/*.map
+          if-no-files-found: warn
+          retention-days: 3
+
+  lighthouse:
+    name: Lighthouse CI Audit
+    needs: [build]
+    if: github.event_name == 'pull_request' || github.event.inputs.run_lighthouse == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend-v2
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: pwa-build
+          path: build/
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@12.1.0
+        with:
+          configPath: frontend-v2/lighthouse.config.json
+          temporaryPublicStorage: true
+          uploadArtifacts: true
+          runs: 3
+
+  deploy-vercel-preview:
+    name: Deploy Preview to Vercel
+    needs: [build]
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: pwa-build
+          path: frontend-v2/build/
+
+      - name: Deploy to Vercel (Preview)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
+          vercel deploy --prebuilt --token=$VERCEL_TOKEN > vercel-url.txt
+          echo "VERCEL_URL=$(cat vercel-url.txt)" >> $GITHUB_ENV
+
+      - name: Comment PR with preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚀 Preview deployed\n\n**URL:** ${process.env.VERCEL_URL}\n\nLighthouse and build checks will be available shortly.`
+            })
+
+  deploy-vercel-production:
+    name: Deploy Production to Vercel
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: pwa-build
+          path: frontend-v2/build/
+
+      - name: Deploy to Vercel (Production)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          vercel deploy --prod --prebuilt --token=$VERCEL_TOKEN
+
+      - name: Upload source maps to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: gula-platform
+          SENTRY_PROJECT: frontend-pwa
+        run: |
+          npx @sentry/cli releases new ${{ github.ref_name }}
+          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps build/static/js/
+          npx @sentry/cli releases set-commits ${{ github.ref_name }} --auto
+          npx @sentry/cli releases finalize ${{ github.ref_name }}

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Sequence
 
-from app.reference.domain.exceptions import OrderNotFoundError, PatientNotFoundError
+from app.reference.domain.exceptions import OrderNotFoundError
 from app.reference.domain.interfaces import OrderRepository, PatientRepository
 from app.reference.domain.models import LabOrderDomain
-from app.reference.domain.services import OrderProcessingService, PatientValidationService
+from app.reference.domain.services import OrderProcessingService
 
 
 class OrderService:

@@ -1077,7 +1077,7 @@ def fhir_read_bundle(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    patient = ehr_service.get_national_patient_or_404(db, bundle_id, current_user.lab_id)
+    ehr_service.get_national_patient_or_404(db, bundle_id, current_user.lab_id)
     patient_resource = fhir_read_patient(bundle_id, current_user, db)
     entries = [{"resource": patient_resource, "fullUrl": f"Patient/{bundle_id}"}]
 
@@ -1363,13 +1363,34 @@ def _extract_encounter_ref(body: dict) -> str | None:
 
 
 def _fhir_model_class(resource_type: str):
-    import sys
-    from ..national.domain.encounter import Encounter as EncModel
     from ..ehr.models import (
-        AllergyIntolerance as AI, CarePlan as CP, ClinicalNote as CN,
-        ClinicalAttachment as CA, ConditionRecord as CR, DiagnosisRecord as DR,
-        ImmunizationRecord as IR, MedicationRequest as MR, MedicationStatement as MS,
+        AllergyIntolerance as AI,
     )
+    from ..ehr.models import (
+        CarePlan as CP,
+    )
+    from ..ehr.models import (
+        ClinicalAttachment as CA,
+    )
+    from ..ehr.models import (
+        ClinicalNote as CN,
+    )
+    from ..ehr.models import (
+        ConditionRecord as CR,
+    )
+    from ..ehr.models import (
+        DiagnosisRecord as DR,
+    )
+    from ..ehr.models import (
+        ImmunizationRecord as IR,
+    )
+    from ..ehr.models import (
+        MedicationRequest as MR,
+    )
+    from ..ehr.models import (
+        MedicationStatement as MS,
+    )
+    from ..national.domain.encounter import Encounter as EncModel
     _map: dict[str, Any] = {
         "AllergyIntolerance": AI, "CarePlan": CP, "Composition": CN,
         "Condition": CR, "DiagnosisRecord": DR, "DocumentReference": CA,

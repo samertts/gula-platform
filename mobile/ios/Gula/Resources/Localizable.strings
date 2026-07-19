@@ -1,0 +1,315 @@
+/* GULA iOS App - English Localization */
+
+/* App */
+"app_name" = "GULA";
+"app_subtitle" = "Medical Laboratory Management";
+
+/* Auth */
+"login" = "Login";
+"logout" = "Logout";
+"email" = "Email";
+"password" = "Password";
+"email_placeholder" = "Enter your email";
+"password_placeholder" = "Enter your password";
+"forgot_password" = "Forgot Password?";
+"remember_me" = "Remember me";
+"login_with_faceid" = "Login with Face ID";
+"login_with_touchid" = "Login with Touch ID";
+"authenticate_reason" = "Authenticate to access GULA";
+"use_passcode" = "Use Passcode";
+"mfa_title" = "Two-Factor Authentication";
+"mfa_instructions" = "Enter the verification code sent to your device";
+"mfa_code_placeholder" = "000000";
+"mfa_resend_code" = "Resend code";
+"verify" = "Verify";
+"biometric_setup_title" = "Enable Biometric Login";
+"biometric_faceid_description" = "Use Face ID for quick and secure access to patient data";
+"biometric_touchid_description" = "Use Touch ID for quick and secure access to patient data";
+"biometric_fast_login" = "Fast login without password";
+"biometric_secure" = "Enterprise-grade security";
+"enable_faceid" = "Enable Face ID";
+"enable_touchid" = "Enable Touch ID";
+"session_expired" = "Your session has expired. Please login again.";
+
+/* Errors */
+"auth_error" = "Invalid email or password";
+"permission_denied" = "You don't have permission to perform this action";
+"resource_not_found" = "The requested resource was not found";
+"resource_conflict" = "The request conflicts with the current state";
+"validation_error" = "Please check your input and try again";
+"rate_limited" = "Too many requests. Please try again in %d seconds";
+"server_error_format" = "Server error (code %d)";
+"network_error" = "Network connection error";
+"request_timeout" = "Request timed out";
+"offline_message" = "You are offline. Data will sync when connected.";
+"offline_recovery" = "Connect to the internet to continue";
+"unknown_error" = "An unexpected error occurred";
+"try_again" = "Please try again";
+"data_error" = "Could not process the data";
+"error_occurred" = "An error occurred";
+"retry" = "Retry";
+"dismiss" = "Dismiss";
+"biometric_not_available" = "Biometric authentication is not available on this device";
+"biometric_not_enrolled" = "No biometric data enrolled. Please set up Face ID or Touch ID in Settings";
+"biometric_lockout" = "Biometric authentication is locked. Use your passcode";
+"biometric_cancelled" = "Authentication cancelled";
+"biometric_failed" = "Authentication failed";
+"camera_not_authorized" = "Camera access is required for barcode scanning. Please enable in Settings";
+"camera_not_available" = "Camera is not available on this device";
+"camera_config_failed" = "Failed to configure camera";
+"camera_capture_failed" = "Failed to capture image";
+"printing_not_available" = "Printing is not available on this device";
+"session_expired_message" = "Your session has expired for security reasons";
+
+/* Navigation / Tab Bar */
+"dashboard" = "Dashboard";
+"patients" = "Patients";
+"orders" = "Orders";
+"samples" = "Samples";
+"results" = "Results";
+"notifications" = "Notifications";
+"settings" = "Settings";
+"search" = "Search";
+"admin" = "Admin";
+"reports" = "Reports";
+
+/* Dashboard */
+"welcome_back" = "Welcome back";
+"quick_actions" = "Quick Actions";
+"recent_orders" = "Recent Orders";
+"pending_samples" = "Pending Samples";
+"critical_alerts" = "Critical Alerts";
+"orders_today" = "Orders Today";
+"pending_results" = "Pending Results";
+"samples_today" = "Samples Today";
+"new_patient" = "New Patient";
+"new_order" = "New Order";
+"scan_barcode" = "Scan Barcode";
+"new_sample" = "New Sample";
+"enter_result" = "Enter Result";
+"critical_results_banner" = "%d Critical Results Require Attention";
+
+/* Patients */
+"add_patient" = "Add Patient";
+"edit_patient" = "Edit Patient";
+"no_patients" = "No Patients";
+"no_patients_message" = "Add your first patient to get started";
+"search_patients" = "Search Patients";
+"patient_detail" = "Patient Details";
+"full_name" = "Full Name";
+"phone" = "Phone";
+"birth_date" = "Date of Birth";
+"gender" = "Gender";
+"male" = "Male";
+"female" = "Female";
+"national_id" = "National ID";
+"scan_qr_info" = "Scan this QR code with the GULA app to access patient information";
+"patient_id" = "Patient ID";
+"personal_info" = "Personal Information";
+"additional_info" = "Additional Information";
+
+/* Orders */
+"create_order" = "Create Order";
+"no_orders" = "No Orders";
+"no_orders_message" = "Create an order to start tracking lab tests";
+"order_detail" = "Order Details";
+"order_id_prefix" = "Order";
+"doctor" = "Doctor";
+"doctor_name" = "Doctor Name";
+"created_at" = "Created";
+"updated_at" = "Updated";
+"priority" = "Priority";
+"priority_urgent" = "Urgent";
+"priority_stat" = "STAT";
+"priority_high" = "High";
+"cancel_order" = "Cancel Order";
+"cancel_order_confirm" = "Are you sure?";
+"cancel_order_message" = "This action cannot be undone";
+"confirm_cancel" = "Confirm Cancel";
+"add_test" = "Add Test";
+"test_name" = "Test Name";
+"tests" = "Tests";
+"patient_info" = "Patient Information";
+"search_patient" = "Search Patient";
+"change" = "Change";
+"create" = "Create";
+"all" = "All";
+
+/* Samples */
+"sample_detail" = "Sample Details";
+"no_samples" = "No Samples";
+"no_samples_message" = "Register samples to begin tracking";
+"barcode" = "Barcode";
+"sample_type" = "Sample Type";
+"new_sample" = "New Sample";
+"collect_sample" = "Collect Sample";
+"register_sample" = "Register Sample";
+"receive_sample" = "Receive Sample";
+"reject_sample" = "Reject Sample";
+"rejection_reason" = "Rejection Reason";
+"reject_sample_message" = "Please provide a reason for rejection";
+"confirm_reject" = "Confirm Rejection";
+"collected_by" = "Collected By";
+"collected_at" = "Collected At";
+"storage_location" = "Storage Location";
+"notes" = "Notes";
+"sample_info" = "Sample Information";
+"scan_barcode_instructions" = "Point the camera at the barcode";
+"invalid_order_id" = "Invalid Order ID";
+"print_label" = "Print Label";
+
+/* Results */
+"result_detail" = "Result Details";
+"no_results" = "No Results";
+"no_results_message" = "Results will appear here once tests are completed";
+"enter_result" = "Enter Result";
+"validate_results" = "Validate Results";
+"validate" = "Validate";
+"reject" = "Reject";
+"flag" = "Flag";
+"verify_result" = "Verify Result";
+"flag_as_critical" = "Flag as Critical";
+"amend_result" = "Amend Result";
+"print_result" = "Print Result";
+"critical_value" = "Critical Value";
+"critical_value_warning" = "This result exceeds critical thresholds";
+"reference_range" = "Reference: %.1f - %.1f";
+"mark_as_critical" = "Mark as Critical";
+"mark_as_abnormal" = "Mark as Abnormal";
+"save_result" = "Save Result";
+"test_code" = "Test Code";
+"test_name_en" = "Test Name (English)";
+"test_name_ar" = "Test Name (Arabic)";
+"category" = "Category";
+"value" = "Value";
+"unit" = "Unit";
+"reference_min" = "Reference Min";
+"reference_max" = "Reference Max";
+"result_text" = "Result Text";
+"ordering_physician" = "Ordering Physician";
+"clinical_notes" = "Clinical Notes";
+"sample_barcode" = "Sample Barcode";
+"no_pending_validation" = "No Pending Validations";
+"no_pending_validation_message" = "All results have been validated";
+"confirm_action" = "Confirm Action";
+"confirm_validation_message" = "Are you sure you want to proceed with this action?";
+"validation" = "Validation";
+"validation_notes" = "Validation Notes";
+"signature_hash" = "Digital Signature";
+"test_info" = "Test Information";
+
+/* Notifications */
+"no_notifications" = "No Notifications";
+"no_notifications_message" = "You're all caught up";
+"mark_all_read" = "Mark All Read";
+"show_unread" = "Show Unread";
+
+/* Reports */
+"no_reports" = "No Reports";
+"no_reports_message" = "Generate reports from completed results";
+
+/* Settings */
+"profile" = "Profile";
+"appearance" = "Appearance";
+"theme" = "Theme";
+"theme_system" = "System";
+"theme_light" = "Light";
+"theme_dark" = "Dark";
+"language" = "Language";
+"high_contrast" = "High Contrast";
+"security" = "Security";
+"face_id" = "Face ID";
+"touch_id" = "Touch ID";
+"sync_settings" = "Sync Settings";
+"auto_sync" = "Auto Sync";
+"sync_wifi_only" = "Wi-Fi Only Sync";
+"storage" = "Storage";
+"cache" = "Cache";
+"clear_cache" = "Clear Cache";
+"about" = "About";
+"app_version" = "Version";
+"push_notifications" = "Push Notifications";
+
+/* Admin */
+"admin_panel" = "Admin Panel";
+"users" = "Users";
+"labs" = "Labs";
+"system" = "System";
+"system_info" = "System Information";
+"actions" = "Actions";
+"trigger_maintenance" = "Trigger Maintenance";
+
+/* Search */
+"search_global_placeholder" = "Search patients, orders, samples...";
+"search_global_hint" = "Start typing to search across the platform";
+
+/* General */
+"cancel" = "Cancel";
+"save" = "Save";
+"delete" = "Delete";
+"done" = "Done";
+"ok" = "OK";
+"back" = "Back";
+"skip" = "Skip";
+"confirm" = "Confirm";
+"loading" = "Loading...";
+"syncing" = "Syncing...";
+"synced_at" = "Synced";
+"searching" = "Searching...";
+"no_results" = "No Results";
+"no_search_results" = "Try a different search term";
+"or" = "or";
+"show_all" = "Show All";
+
+/* Status */
+"status_active" = "Active";
+"status_pending" = "Pending";
+"status_completed" = "Completed";
+"status_cancelled" = "Cancelled";
+"status_verified" = "Verified";
+"status_rejected" = "Rejected";
+"status_processing" = "Processing";
+"status_collected" = "Collected";
+"status_received" = "Received";
+"status_critical" = "Critical";
+"status_analyzed" = "Analyzed";
+"critical" = "Critical";
+"abnormal" = "Abnormal";
+
+/* Roles */
+"role_lab_admin" = "Lab Admin";
+"role_technician" = "Technician";
+"role_doctor" = "Doctor";
+"role_staff" = "Staff";
+"role_receptionist" = "Receptionist";
+"role_master_admin" = "Master Admin";
+"role_ministry_admin" = "Ministry Admin";
+"role_province_admin" = "Province Admin";
+"role_patient" = "Patient";
+"role_citizen" = "Citizen";
+"role_monitoring" = "Monitoring";
+
+/* Alert Types */
+"alert_info" = "Info";
+"alert_success" = "Success";
+"alert_warning" = "Warning";
+"alert_error" = "Error";
+
+/* Validity */
+"field_required" = "This field is required";
+"invalid_email" = "Please enter a valid email";
+"password_min_length" = "Password must be at least 6 characters";
+"auth_error_recovery" = "Please check your credentials and try again";
+"rate_limited_recovery" = "Please wait %d seconds before trying again";
+
+/* Jailbreak */
+"jailbreak_none" = "Device is secure";
+"jailbreak_low" = "Low risk detected";
+"jailbreak_medium" = "Medium risk detected";
+"jailbreak_high" = "High risk detected - device may be compromised";
+
+/* Conflicts */
+"conflict_version" = "Version conflict for %@ (local: %d, remote: %d)";
+"conflict_data" = "Data mismatch for %@ field %@";
+"conflict_deletion" = "Deletion conflict for %@";
+"conflict_create" = "Creation conflict for %@";

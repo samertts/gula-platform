@@ -1,0 +1,30 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          sqlite_modules:
+            - json1
+            - fts5
+          named_parameters: true
+          store_date_time_values_as_text: false
+          mutable_web_database: false
+      json_serializable:
+        options:
+          any_map: true
+          checked: true
+          create_factory: true
+          create_to_json: true
+          disallow_unrecognized_keys: false
+          explicit_to_json: true
+          field_rename: snake
+          ignore_unannotated: false
+          include_if_null: false
+      freezed:
+        options:
+          generic_argument_factories: true
+          runtime_equals: true
+      riverpod_generator:
+        options:
+          provider_class_suffix: Provider
+          family_provider_class_suffix: FamilyProvider

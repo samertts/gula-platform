@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>GULA Platform</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.gula.platform.desktop</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>GULA Platform</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>2.1.0</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>2.1.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>GULA uses Bluetooth to connect to lab instruments and thermal printers.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>GULA needs Bluetooth access to communicate with lab equipment.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>GULA uses the camera to scan barcodes on sample tubes and patient cards.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>GULA uses microphone for voice input in clinical notes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GULA can attach photos to patient records and reports.</string>
+	<key>NSPrintUsageDescription</key>
+	<string>GULA prints lab reports, barcode labels, and receipts.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>GULA creates reminders for critical result follow-ups.</string>
+	<key>NSSavePanelUsageDescription</key>
+	<string>GULA saves exported reports and PDFs.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GULA uses location to tag sample collection sites.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>GULA may send notifications to other apps.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.gula.platform</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>gula</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2025 GULA Platform. All rights reserved.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>LSUIElement</key>
+	<false/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSSupportsAutomaticTermination</key>
+	<true/>
+	<key>NSSupportsSuddenTermination</key>
+	<true/>
+</dict>
+</plist>

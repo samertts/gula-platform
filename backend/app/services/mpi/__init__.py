@@ -12,6 +12,7 @@ Public surface:
 from .models import Citizen, IdentityClaim, MergeAudit
 from .resolver import merge_citizens, resolve_identity
 
+
 def __getattr__(name):
     if name == "router":
         from .api import router

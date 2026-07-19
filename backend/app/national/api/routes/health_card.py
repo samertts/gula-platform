@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from app._compat import UTC
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import get_db
 from app.national.domain.health_card import HealthCard
 from app.national.enums import HealthCardStatus

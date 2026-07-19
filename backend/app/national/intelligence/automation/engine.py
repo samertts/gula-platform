@@ -6,9 +6,10 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from app._compat import UTC
 from enum import Enum
 from typing import Any
+
+from app._compat import UTC
 
 logger = logging.getLogger("gula.national.intelligence.automation")
 

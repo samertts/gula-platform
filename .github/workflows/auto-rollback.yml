@@ -16,6 +16,9 @@ concurrency:
   group: gula-blue-green-deploy
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 env:
   NAMESPACE: gula
   ROLLBACK_REASON: ${{ github.event.inputs.reason || 'Auto-rollback triggered by monitoring alert' }}

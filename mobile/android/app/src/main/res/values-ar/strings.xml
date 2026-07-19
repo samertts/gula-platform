@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">جولا</string>
+
+    <!-- General -->
+    <string name="ok">موافق</string>
+    <string name="cancel">إلغاء</string>
+    <string name="confirm">تأكيد</string>
+    <string name="save">حفظ</string>
+    <string name="delete">حذف</string>
+    <string name="edit">تعديل</string>
+    <string name="back">رجوع</string>
+    <string name="next">التالي</string>
+    <string name="retry">إعادة المحاولة</string>
+    <string name="refresh">تحديث</string>
+    <string name="search">بحث</string>
+    <string name="loading">جارٍ التحميل…</string>
+    <string name="no_data">لا توجد بيانات</string>
+    <string name="error_generic">حدث خطأ ما</string>
+    <string name="error_network">خطأ في الشبكة. يرجى التحقق من اتصالك.</string>
+    <string name="offline_banner">أنت غير متصل. ستتم المزامنة عند الاتصال.</string>
+
+    <!-- Auth -->
+    <string name="login_title">تسجيل الدخول</string>
+    <string name="login_email">البريد الإلكتروني</string>
+    <string name="login_password">كلمة المرور</string>
+    <string name="login_button">تسجيل الدخول</string>
+    <string name="login_biometric">تسجيل الدخول بالبصمة</string>
+    <string name="login_register">إنشاء حساب جديد</string>
+    <string name="login_forgot_password">نسيت كلمة المرور؟</string>
+    <string name="logout">تسجيل الخروج</string>
+    <string name="logout_confirm">هل أنت متأكد من تسجيل الخروج؟</string>
+    <string name="mfa_title">التحقق بخطوتين</string>
+    <string name="mfa_subtitle">أدخل رمز التحقق المرسل إلى جهازك</string>
+    <string name="mfa_code">رمز التحقق</string>
+    <string name="mfa_verify">تحقق</string>
+    <string name="register_title">إنشاء حساب</string>
+    <string name="register_lab">مختبر</string>
+    <string name="register_staff">موظف</string>
+    <string name="register_lab_name">اسم المختبر</string>
+    <string name="register_admin_name">اسم المسؤول</string>
+    <string name="register_full_name">الاسم الكامل</string>
+    <string name="register_email">البريد الإلكتروني</string>
+    <string name="register_password">كلمة المرور</string>
+    <string name="register_confirm_password">تأكيد كلمة المرور</string>
+    <string name="register_button">إنشاء حساب</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">لوحة التحكم</string>
+    <string name="nav_patients">المرضى</string>
+    <string name="nav_orders">الطلبات</string>
+    <string name="nav_results">النتائج</string>
+    <string name="nav_alerts">التنبيهات</string>
+    <string name="nav_samples">العينات</string>
+    <string name="nav_reports">التقارير</string>
+    <string name="nav_inventory">المخزون</string>
+    <string name="nav_settings">الإعدادات</string>
+    <string name="nav_admin">لوحة الإدارة</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">لوحة التحكم</string>
+    <string name="dashboard_overview">نظرة عامة</string>
+    <string name="dashboard_patients">المرضى</string>
+    <string name="dashboard_orders_today">طلبات اليوم</string>
+    <string name="dashboard_pending_results">نتائج معلقة</string>
+    <string name="dashboard_samples_today">عينات اليوم</string>
+    <string name="dashboard_critical_alerts">تنبيهات حرجة</string>
+    <string name="dashboard_quick_actions">إجراءات سريعة</string>
+    <string name="dashboard_new_patient">مريض جديد</string>
+    <string name="dashboard_new_order">طلب جديد</string>
+    <string name="dashboard_collect_sample">جمع عينة</string>
+    <string name="dashboard_enter_results">إدخال نتائج</string>
+
+    <!-- Patients -->
+    <string name="patients_title">المرضى</string>
+    <string name="patients_add">إضافة مريض</string>
+    <string name="patients_search">ابحث عن مريض بالاسم أو رقم الهاتف…</string>
+    <string name="patients_empty_title">لا يوجد مرضى</string>
+    <string name="patients_empty_message">أضف أول مريض للبدء</string>
+    <string name="patients_detail">تفاصيل المريض</string>
+    <string name="patients_new">مريض جديد</string>
+    <string name="patients_edit">تعديل المريض</string>
+    <string name="patients_full_name">الاسم الكامل</string>
+    <string name="patients_phone">رقم الهاتف</string>
+    <string name="patients_email">البريد الإلكتروني</string>
+    <string name="patients_birth_date">تاريخ الميلاد</string>
+    <string name="patients_gender">الجنس</string>
+    <string name="patients_male">ذكر</string>
+    <string name="patients_female">أنثى</string>
+    <string name="patients_national_id">الرقم الوطني</string>
+    <string name="patients_health_id">الرقم الصحي</string>
+    <string name="patients_family_id">رقم العائلة</string>
+    <string name="patients_contact_info">معلومات الاتصال</string>
+    <string name="patients_demographics">البيانات الديموغرافية</string>
+    <string name="patients_create_button">إنشاء مريض</string>
+    <string name="patients_update_button">تحديث المريض</string>
+
+    <!-- Orders -->
+    <string name="orders_title">الطلبات</string>
+    <string name="orders_create">طلب جديد</string>
+    <string name="orders_empty_title">لا توجد طلبات</string>
+    <string name="orders_empty_message">أنشئ أول طلب للبدء</string>
+    <string name="orders_detail">تفاصيل الطلب</string>
+    <string name="orders_patient">المريض</string>
+    <string name="orders_doctor">الطبيب</string>
+    <string name="orders_tests">الاختبارات</string>
+    <string name="orders_add_test">إضافة اختبار</string>
+    <string name="orders_test_name">اسم الاختبار</string>
+    <string name="orders_value">القيمة</string>
+    <string name="orders_unit">الوحدة</string>
+    <string name="orders_create_button">إنشاء طلب</string>
+    <string name="orders_cancel">إلغاء الطلب</string>
+    <string name="orders_validate">التحقق</string>
+    <string name="orders_cancel_confirm">هل أنت متأكد من إلغاء هذا الطلب؟</string>
+
+    <!-- Samples -->
+    <string name="samples_title">العينات</string>
+    <string name="samples_collect">جمع عينة</string>
+    <string name="samples_empty_title">لا توجد عينات</string>
+    <string name="samples_empty_message">اجمع أول عينة للبدء</string>
+    <string name="samples_detail">تفاصيل العينة</string>
+    <string name="samples_barcode">الباركود</string>
+    <string name="samples_type">نوع العينة</string>
+    <string name="samples_status">الحالة</string>
+    <string name="samples_collected_by">تم الجمع بواسطة</string>
+    <string name="samples_collection_time">وقت الجمع</string>
+    <string name="samples_storage">موقع التخزين</string>
+    <string name="samples_notes">ملاحظات</string>
+    <string name="samples_update_status">تحديث الحالة</string>
+
+    <!-- Results -->
+    <string name="results_title">النتائج</string>
+    <string name="results_enter">إدخال نتائج</string>
+    <string name="results_empty_title">لا توجد نتائج</string>
+    <string name="results_empty_message">أدخل نتائج الاختبار للبدء</string>
+    <string name="results_detail">تفاصيل النتيجة</string>
+    <string name="results_validate">التحقق من النتيجة</string>
+    <string name="results_critical_alert">تنبيه حرج</string>
+    <string name="results_abnormal">غير طبيعي</string>
+    <string name="results_critical">حرج</string>
+    <string name="results_reference_range">النطاق المرجعي</string>
+    <string name="results_acknowledge">إقرار</string>
+    <string name="results_clinical_notes">ملاحظات سريرية</string>
+    <string name="results_save">حفظ النتائج</string>
+    <string name="results_validated">تم التحقق من النتيجة بنجاح</string>
+
+    <!-- Notifications -->
+    <string name="notifications_title">الإشعارات</string>
+    <string name="notifications_empty">لا توجد إشعارات</string>
+    <string name="notifications_caught_up">كل شيء محدث!</string>
+    <string name="notifications_mark_all_read">تحديد الكل كمقروء</string>
+
+    <!-- Settings -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_preferences">التفضيلات</string>
+    <string name="settings_profile">الملف الشخصي</string>
+    <string name="settings_language">اللغة</string>
+    <string name="settings_dark_mode">الوضع الداكن</string>
+    <string name="settings_biometric">تسجيل الدخول بالبصمة</string>
+    <string name="settings_sync">المزامنة</string>
+    <string name="settings_sync_now">مزامنة الآن</string>
+    <string name="settings_pending">العناصر المعلقة</string>
+    <string name="settings_failed">العناصر الفاشلة</string>
+    <string name="settings_last_synced">آخر مزامنة</string>
+    <string name="settings_about">حول</string>
+    <string name="settings_version">الإصدار</string>
+    <string name="settings_system">النظام</string>
+    <string name="settings_light">فاتح</string>
+    <string name="settings_dark">داكن</string>
+    <string name="settings_arabic">العربية</string>
+    <string name="settings_english">English</string>
+
+    <!-- Inventory -->
+    <string name="inventory_title">المخزون</string>
+    <string name="inventory_search">ابحث في المخزون…</string>
+    <string name="inventory_empty">لا توجد عناصر في المخزون</string>
+    <string name="inventory_add">إضافة عنصر</string>
+
+    <!-- Reports -->
+    <string name="reports_title">التقارير</string>
+    <string name="reports_empty">لا توجد تقارير</string>
+    <string name="reports_generate">قم بإنشاء تقارير لعرضها هنا</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">ابحث عن مرضى، طلبات، نتائج…</string>
+    <string name="search_no_results">لا توجد نتائج</string>
+
+    <!-- Admin -->
+    <string name="admin_title">لوحة الإدارة</string>
+    <string name="admin_access_denied">تم رفض الوصول</string>
+    <string name="admin_no_permission">ليس لديك صلاحيات المشرف</string>
+
+    <!-- Sync -->
+    <string name="syncing">جارٍ المزامنة…</string>
+    <string name="synced">تمت المزامنة</string>
+</resources>
