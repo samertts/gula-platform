@@ -381,7 +381,7 @@ class DefaultDocumentClassifier(DocumentClassifier):
         self, text: str, pages: list[Any] | None = None
     ) -> Any:
         from ..domain.entities import ClassificationResult
-        from ..domain.enums import ClassificationConfidence
+        from ..domain.enums import ClassificationConfidence, DocumentCategory
 
         text_lower = text.lower()
         scores: dict[DocumentCategory, float] = {}
