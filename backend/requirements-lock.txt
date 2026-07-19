@@ -48,9 +48,9 @@ pyflakes==3.4.0
 Pygments==2.20.0
 pyOpenSSL==26.3.0
 PyOTP==2.10.0
-pytest==8.4.2
+pytest==9.1.1
 pytest-anyio==0.0.0
-pytest-asyncio==0.26.0
+pytest-asyncio==1.0.2
 python-bidi==0.6.11
 python-dotenv==1.2.2
 python-jose==3.5.0
