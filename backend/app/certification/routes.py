@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -74,7 +76,8 @@ async def get_report(
         from fastapi.responses import HTMLResponse
         return HTMLResponse(content=report.to_html())
     if format == "pdf":
-        output = Path("/tmp") / f"certification_report_{target.name}.pdf"
+        output_dir = Path(os.environ.get("GULA_TEMP_DIR", tempfile.gettempdir()))
+        output = output_dir / f"certification_report_{target.name}.pdf"
         generate_pdf_report(report, output)
         from fastapi.responses import FileResponse
         return FileResponse(str(output), media_type="application/pdf", filename=output.name)

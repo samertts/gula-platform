@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from .models import LabOrderDomain, LabResultDomain, PatientDomain
 
@@ -13,17 +13,17 @@ class PatientRepository(ABC):
         ...
 
     @abstractmethod
-    async def get_by_id(self, patient_id: str) -> Optional[PatientDomain]:
+    async def get_by_id(self, patient_id: str) -> PatientDomain | None:
         ...
 
     @abstractmethod
     async def search(
         self,
         *,
-        name: Optional[str] = None,
-        phone: Optional[str] = None,
-        lab_id: Optional[str] = None,
-        national_id: Optional[str] = None,
+        name: str | None = None,
+        phone: str | None = None,
+        lab_id: str | None = None,
+        national_id: str | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[Sequence[PatientDomain], int]:
@@ -35,7 +35,7 @@ class PatientRepository(ABC):
         name: str,
         phone: str,
         lab_id: str,
-    ) -> Optional[PatientDomain]:
+    ) -> PatientDomain | None:
         ...
 
 
@@ -46,7 +46,7 @@ class OrderRepository(ABC):
         ...
 
     @abstractmethod
-    async def get_by_id(self, order_id: str) -> Optional[LabOrderDomain]:
+    async def get_by_id(self, order_id: str) -> LabOrderDomain | None:
         ...
 
     @abstractmethod
@@ -66,7 +66,7 @@ class ResultRepository(ABC):
         ...
 
     @abstractmethod
-    async def get_by_id(self, result_id: str) -> Optional[LabResultDomain]:
+    async def get_by_id(self, result_id: str) -> LabResultDomain | None:
         ...
 
     @abstractmethod

@@ -97,7 +97,7 @@ class MFAService:
         return options
 
     def complete_webauthn_registration(self, user_id: int, credential: dict[str, Any],
-                                        device_name: str = "Security Key") -> MFADevice:  # noqa: E127
+                                        device_name: str = "Security Key") -> MFADevice:
         from .redis_client import cache
         challenge = ""
         try:

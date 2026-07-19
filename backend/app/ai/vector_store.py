@@ -4,13 +4,13 @@ import hashlib
 import json
 import logging
 import os
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.ai.embeddings import cosine_similarity, embed_batch, embed_text
-from app.database import get_db
 from sqlalchemy import text
+
+from app.ai.embeddings import cosine_similarity, embed_text
+from app.database import get_db
 
 logger = logging.getLogger("gula.ai.vector_store")
 
@@ -159,7 +159,7 @@ class VectorStore:
                 text("id, content_type, content_id, text, metadata")
             ).select_from(text("ai_embeddings"))
             if lab_id or self.lab_id:
-                query = query.where(text(f"lab_id = :lab"))
+                query = query.where(text("lab_id = :lab"))
             if content_type:
                 query = query.where(text("content_type = :ct"))
             rows = db.execute(query).fetchall()
@@ -203,7 +203,7 @@ class VectorStore:
     def search_by_metadata(self, metadata_filter: dict[str, Any], limit: int = 50) -> list[VectorSearchResult]:
         db = next(get_db())
         try:
-            filter_pairs = [f"metadata @> :filter_json::jsonb"]
+            filter_pairs = ["metadata @> :filter_json::jsonb"]
             params: dict[str, Any] = {"filter_json": json.dumps(metadata_filter), "limit": limit}
             if self.lab_id is not None:
                 filter_pairs.append("lab_id = :lab")

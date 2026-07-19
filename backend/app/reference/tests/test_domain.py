@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, Sequence
+from typing import Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

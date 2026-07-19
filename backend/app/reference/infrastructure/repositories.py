@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
 from sqlalchemy import and_, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,7 +76,7 @@ class SQLPatientRepository(PatientRepository):
 
         return self._row_to_domain(row)
 
-    async def get_by_id(self, patient_id: str) -> Optional[PatientDomain]:
+    async def get_by_id(self, patient_id: str) -> PatientDomain | None:
         stmt = text("""
             SELECT id AS patient_id, name, date_of_birth, gender, phone,
                    lab_id, national_id, address, created_at, updated_at
@@ -91,10 +91,10 @@ class SQLPatientRepository(PatientRepository):
     async def search(
         self,
         *,
-        name: Optional[str] = None,
-        phone: Optional[str] = None,
-        lab_id: Optional[str] = None,
-        national_id: Optional[str] = None,
+        name: str | None = None,
+        phone: str | None = None,
+        lab_id: str | None = None,
+        national_id: str | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[Sequence[PatientDomain], int]:
@@ -153,7 +153,7 @@ class SQLPatientRepository(PatientRepository):
         name: str,
         phone: str,
         lab_id: str,
-    ) -> Optional[PatientDomain]:
+    ) -> PatientDomain | None:
         stmt = text("""
             SELECT id AS patient_id, name, date_of_birth, gender, phone,
                    lab_id, national_id, address, created_at, updated_at
@@ -226,7 +226,7 @@ class SQLOrderRepository(OrderRepository):
         ).mappings().one()
         return self._row_to_domain(row)
 
-    async def get_by_id(self, order_id: str) -> Optional[LabOrderDomain]:
+    async def get_by_id(self, order_id: str) -> LabOrderDomain | None:
         stmt = text("""
             SELECT id AS order_id, patient_id, lab_id, test_type, status,
                    priority, notes, created_at, updated_at, performed_by
@@ -337,7 +337,7 @@ class SQLResultRepository(ResultRepository):
         ).mappings().one()
         return self._row_to_domain(row)
 
-    async def get_by_id(self, result_id: str) -> Optional[LabResultDomain]:
+    async def get_by_id(self, result_id: str) -> LabResultDomain | None:
         stmt = text("""
             SELECT id AS result_id, order_id, analyte, value, unit,
                    min_value, max_value, min_critical, max_critical,
@@ -415,7 +415,7 @@ class SQLResultRepository(ResultRepository):
 
     @staticmethod
     def _row_to_domain(row) -> LabResultDomain:
-        rr: Optional[ReferenceRange] = None
+        rr: ReferenceRange | None = None
         if any(
             row.get(c) is not None
             for c in ("min_value", "max_value", "min_critical", "max_critical")

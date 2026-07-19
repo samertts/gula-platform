@@ -4,17 +4,17 @@ import asyncio
 import json
 import logging
 import time
-import uuid
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from typing import Any
 
+from sqlalchemy import text
+
 from app.ai.approval import ApprovalStore, PendingApproval
 from app.ai.guardrails import ai_suggest
 from app.ai.memory import memory_store
-from app.ai.sandbox import AISandbox, SandboxResult
+from app.ai.sandbox import SandboxResult
 from app.database import get_db
-from sqlalchemy import text
 
 logger = logging.getLogger("gula.ai.agent")
 

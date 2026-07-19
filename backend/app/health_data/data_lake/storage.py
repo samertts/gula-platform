@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import logging
 import os
+import tempfile
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger("gula.health_data.data_lake.storage")
@@ -30,7 +31,7 @@ class StorageBackend(ABC):
 
 class LocalStorageBackend(StorageBackend):
     def __init__(self, base_path: str | None = None):
-        self.base_path = base_path or os.environ.get("GULA_DATA_LAKE_PATH", "/tmp/gula/data/lake")
+        self.base_path = base_path or os.environ.get("GULA_DATA_LAKE_PATH") or os.path.join(tempfile.gettempdir(), "gula", "data", "lake")
         os.makedirs(self.base_path, exist_ok=True)
 
     def _resolve(self, path: str) -> str:

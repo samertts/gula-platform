@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from app.reference.domain.exceptions import OrderNotFoundError
 from app.reference.domain.interfaces import OrderRepository, PatientRepository

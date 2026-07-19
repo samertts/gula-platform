@@ -4,8 +4,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.database import get_db
 from sqlalchemy import text
+
+from app.database import get_db
 
 logger = logging.getLogger("gula.ai.knowledge_graph")
 

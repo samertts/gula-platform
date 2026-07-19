@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 
 class Gender(str, Enum):
@@ -28,19 +27,19 @@ class Priority(str, Enum):
 
 @dataclass
 class PatientDomain:
-    patient_id: Optional[str] = None
+    patient_id: str | None = None
     name: str = ""
-    date_of_birth: Optional[date] = None
-    gender: Optional[Gender] = None
+    date_of_birth: date | None = None
+    gender: Gender | None = None
     phone: str = ""
     lab_id: str = ""
-    national_id: Optional[str] = None
+    national_id: str | None = None
     address: str = ""
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     @property
-    def age(self) -> Optional[int]:
+    def age(self) -> int | None:
         if self.date_of_birth is None:
             return None
         today = date.today()
@@ -56,46 +55,46 @@ class PatientDomain:
 
 @dataclass
 class LabOrderDomain:
-    order_id: Optional[str] = None
+    order_id: str | None = None
     patient_id: str = ""
     lab_id: str = ""
     test_type: str = ""
     status: OrderStatus = OrderStatus.PENDING
     priority: Priority = Priority.ROUTINE
     notes: str = ""
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    performed_by: Optional[str] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    performed_by: str | None = None
 
 
 @dataclass
 class ReferenceRange:
     analyte: str = ""
     unit: str = ""
-    min_value: Optional[Decimal] = None
-    max_value: Optional[Decimal] = None
-    min_critical: Optional[Decimal] = None
-    max_critical: Optional[Decimal] = None
+    min_value: Decimal | None = None
+    max_value: Decimal | None = None
+    min_critical: Decimal | None = None
+    max_critical: Decimal | None = None
 
 
 @dataclass
 class LabResultDomain:
-    result_id: Optional[str] = None
+    result_id: str | None = None
     order_id: str = ""
     analyte: str = ""
     value: Decimal = Decimal("0")
     unit: str = ""
-    reference_range: Optional[ReferenceRange] = None
+    reference_range: ReferenceRange | None = None
     is_critical: bool = False
     flagged: str = ""
     notes: str = ""
-    created_at: Optional[datetime] = None
-    performed_by: Optional[str] = None
+    created_at: datetime | None = None
+    performed_by: str | None = None
 
 
 @dataclass
 class TestPanelDomain:
-    panel_id: Optional[str] = None
+    panel_id: str | None = None
     name: str = ""
     component_tests: list[str] = field(default_factory=list)
     lab_id: str = ""

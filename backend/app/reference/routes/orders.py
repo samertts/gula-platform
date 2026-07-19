@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.reference.infrastructure.dependencies import get_order_service
@@ -23,7 +21,7 @@ async def create_order(
     patient_id: str = Query(..., description="معرف المريض"),
     lab_id: str = Query(..., description="معرف المختبر"),
     test_type: str = Query(..., description="نوع الفحص"),
-    priority: Optional[Priority] = Query(None, description="الأولوية"),
+    priority: Priority | None = Query(None, description="الأولوية"),
     notes: str = Query("", description="ملاحظات"),
     service: OrderService = Depends(get_order_service),
 ) -> dict:

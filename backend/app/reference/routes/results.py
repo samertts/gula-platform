@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -25,14 +24,14 @@ async def submit_result(
     analyte: str = Query(..., description="اسم التحليل"),
     value: Decimal = Query(..., description="القيمة"),
     unit: str = Query(..., description="وحدة القياس"),
-    min_value: Optional[Decimal] = Query(None, description="الحد الأدنى الطبيعي"),
-    max_value: Optional[Decimal] = Query(None, description="الحد الأعلى الطبيعي"),
-    min_critical: Optional[Decimal] = Query(None, description="الحد الأدنى الحرج"),
-    max_critical: Optional[Decimal] = Query(None, description="الحد الأعلى الحرج"),
+    min_value: Decimal | None = Query(None, description="الحد الأدنى الطبيعي"),
+    max_value: Decimal | None = Query(None, description="الحد الأعلى الطبيعي"),
+    min_critical: Decimal | None = Query(None, description="الحد الأدنى الحرج"),
+    max_critical: Decimal | None = Query(None, description="الحد الأعلى الحرج"),
     notes: str = Query("", description="ملاحظات"),
     service: ResultService = Depends(get_result_service),
 ) -> dict:
-    reference_range: Optional[ReferenceRange] = None
+    reference_range: ReferenceRange | None = None
     if any(x is not None for x in (min_value, max_value, min_critical, max_critical)):
         reference_range = ReferenceRange(
             analyte=analyte,
@@ -100,7 +99,7 @@ async def get_result(
 
 def _result_to_response(
     result: LabResultDomain,
-    critical_warning: Optional[str] = None,
+    critical_warning: str | None = None,
 ) -> dict:
     resp = {
         "result_id": result.result_id,
