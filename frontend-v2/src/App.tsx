@@ -1,39 +1,45 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
-import { DashboardView } from './views/DashboardView';
-import { RecordsView } from './views/RecordsView';
-import { AppointmentsView } from './views/AppointmentsView';
-import { LabResultsView } from './views/LabResultsView';
-import { SettingsView } from './views/SettingsView';
-import { LandingAuthView } from './views/LandingAuthView';
-import { LabDashboard } from './views/lab/LabDashboard';
-import { WorkQueue } from './views/lab/WorkQueue';
-import { DeviceMonitoring } from './views/lab/DeviceMonitoring';
-import { InventoryManagement } from './views/lab/InventoryManagement';
-import { SampleTracking } from './views/lab/SampleTracking';
-import { QualityControl } from './views/lab/QualityControl';
-import { DoctorIntelligence } from './views/doctor/DoctorIntelligence';
-import { PatientProfile } from './views/doctor/PatientProfile';
-import { ImagingLabView } from './views/ImagingLabView';
-import { CitizenHealth } from './views/citizen/CitizenHealth';
-import { PatientRegistration } from './views/citizen/PatientRegistration';
-import { IdentityVerificationView } from './views/citizen/IdentityVerificationView';
-import { ConsentManagementView } from './views/citizen/ConsentManagementView';
-import { MedicalHistoryView } from './views/citizen/MedicalHistoryView';
-import { AuditLog } from './views/admin/AuditLog';
-import { InfrastructureView } from './views/admin/InfrastructureView';
-import { IntegrationHub } from './views/admin/IntegrationHub';
-import { SystemsArchitectureView } from './views/admin/SystemsArchitectureView';
-import { ResearcherDashboard } from './views/research/ResearcherDashboard';
-import { CitizenDashboard } from './views/citizen/CitizenDashboard';
-import { SmartResultsView } from './views/citizen/SmartResultsView';
-import { CitizenAssistant } from './views/citizen/CitizenAssistant';
-import { FamilyManagement } from './views/citizen/FamilyManagement';
-import { MedicationCenter } from './views/citizen/MedicationCenter';
-import { NationalHealthGrid } from './views/ministry/NationalHealthGrid';
-import { EpidemiologicalIntelligence } from './views/ministry/EpidemiologicalIntelligence';
-import { DataSovereigntyAudit } from './views/ministry/DataSovereigntyAudit';
+import { lazy } from 'react';
+
+function lazyNamed<T extends { [K in N]: React.ComponentType<unknown> }, N extends string>(load: () => Promise<T>, name: N) {
+  return lazy(() => load().then(m => ({ default: m[name] })));
+}
+
+const DashboardView = lazyNamed(() => import('./views/DashboardView'), 'DashboardView');
+const RecordsView = lazyNamed(() => import('./views/RecordsView'), 'RecordsView');
+const AppointmentsView = lazyNamed(() => import('./views/AppointmentsView'), 'AppointmentsView');
+const LabResultsView = lazyNamed(() => import('./views/LabResultsView'), 'LabResultsView');
+const SettingsView = lazyNamed(() => import('./views/SettingsView'), 'SettingsView');
+const LandingAuthView = lazyNamed(() => import('./views/LandingAuthView'), 'LandingAuthView');
+const LabDashboard = lazyNamed(() => import('./views/lab/LabDashboard'), 'LabDashboard');
+const WorkQueue = lazyNamed(() => import('./views/lab/WorkQueue'), 'WorkQueue');
+const DeviceMonitoring = lazyNamed(() => import('./views/lab/DeviceMonitoring'), 'DeviceMonitoring');
+const InventoryManagement = lazyNamed(() => import('./views/lab/InventoryManagement'), 'InventoryManagement');
+const SampleTracking = lazyNamed(() => import('./views/lab/SampleTracking'), 'SampleTracking');
+const QualityControl = lazyNamed(() => import('./views/lab/QualityControl'), 'QualityControl');
+const DoctorIntelligence = lazyNamed(() => import('./views/doctor/DoctorIntelligence'), 'DoctorIntelligence');
+const PatientProfile = lazyNamed(() => import('./views/doctor/PatientProfile'), 'PatientProfile');
+const ImagingLabView = lazyNamed(() => import('./views/ImagingLabView'), 'ImagingLabView');
+const CitizenHealth = lazyNamed(() => import('./views/citizen/CitizenHealth'), 'CitizenHealth');
+const PatientRegistration = lazyNamed(() => import('./views/citizen/PatientRegistration'), 'PatientRegistration');
+const IdentityVerificationView = lazyNamed(() => import('./views/citizen/IdentityVerificationView'), 'IdentityVerificationView');
+const ConsentManagementView = lazyNamed(() => import('./views/citizen/ConsentManagementView'), 'ConsentManagementView');
+const MedicalHistoryView = lazyNamed(() => import('./views/citizen/MedicalHistoryView'), 'MedicalHistoryView');
+const AuditLog = lazyNamed(() => import('./views/admin/AuditLog'), 'AuditLog');
+const InfrastructureView = lazyNamed(() => import('./views/admin/InfrastructureView'), 'InfrastructureView');
+const IntegrationHub = lazyNamed(() => import('./views/admin/IntegrationHub'), 'IntegrationHub');
+const SystemsArchitectureView = lazyNamed(() => import('./views/admin/SystemsArchitectureView'), 'SystemsArchitectureView');
+const ResearcherDashboard = lazyNamed(() => import('./views/research/ResearcherDashboard'), 'ResearcherDashboard');
+const CitizenDashboard = lazyNamed(() => import('./views/citizen/CitizenDashboard'), 'CitizenDashboard');
+const SmartResultsView = lazyNamed(() => import('./views/citizen/SmartResultsView'), 'SmartResultsView');
+const CitizenAssistant = lazyNamed(() => import('./views/citizen/CitizenAssistant'), 'CitizenAssistant');
+const FamilyManagement = lazyNamed(() => import('./views/citizen/FamilyManagement'), 'FamilyManagement');
+const MedicationCenter = lazyNamed(() => import('./views/citizen/MedicationCenter'), 'MedicationCenter');
+const NationalHealthGrid = lazyNamed(() => import('./views/ministry/NationalHealthGrid'), 'NationalHealthGrid');
+const EpidemiologicalIntelligence = lazyNamed(() => import('./views/ministry/EpidemiologicalIntelligence'), 'EpidemiologicalIntelligence');
+const DataSovereigntyAudit = lazyNamed(() => import('./views/ministry/DataSovereigntyAudit'), 'DataSovereigntyAudit');
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -46,7 +52,7 @@ import { ShortcutsModal } from './components/ShortcutsModal';
 import { RouteErrorBoundary } from './components/ui/ErrorBoundary';
 import { useKeySequence } from './lib/useShortcut';
 import { WifiOff, Activity as ActivityIcon } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
@@ -71,6 +77,11 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <RouteErrorBoundary resetKey={location.pathname}>
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-screen">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }>
       <Routes location={location} key={location.pathname}>
         {/* Doctor Wing */}
         <Route path="/" element={<DashboardView />} />
@@ -150,6 +161,7 @@ function AnimatedRoutes() {
         <Route path="/settings" element={<SettingsView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       </RouteErrorBoundary>
     </AnimatePresence>
   );
