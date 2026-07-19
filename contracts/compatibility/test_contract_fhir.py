@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from datetime import datetime
 from typing import Any
 
@@ -10,8 +9,6 @@ import pytest
 
 _BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "backend")
 _REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
-sys.path.insert(0, _BACKEND_DIR)
-sys.path.insert(0, _REPO_ROOT)
 
 os.environ["RUNTIME_MODE"] = "test"
 os.environ["FEATURE_BACKGROUND_TASKS"] = "false"

@@ -12,7 +12,6 @@ Run:
   cd backend && python -m pytest tests/test_domain.py -v
 """
 import os
-import sys
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///test_domain.db")
@@ -36,18 +35,14 @@ class TestOrderStateMachine:
     """Verify every branch of the transition graph."""
 
     def _can(self, frm, to):
-        # Add backend to path so imports work regardless of cwd
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.domain.order_state import can_transition
         return can_transition(frm, to)
 
     def _enforce(self, frm, to):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.domain.order_state import enforce_transition
         enforce_transition(frm, to)
 
     def _not_locked(self, locked_at=None):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.domain.order_state import assert_not_locked
         order = MagicMock()
         order.id = 1
@@ -55,7 +50,6 @@ class TestOrderStateMachine:
         assert_not_locked(order)
 
     def _not_cancelled(self, status):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.domain.order_state import assert_not_cancelled
         order = MagicMock()
         order.id = 1
@@ -135,7 +129,6 @@ class TestRBACPermissions:
     """Verify the permission matrix is consistent and complete."""
 
     def _perms(self):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.security.rbac import ROLE_PERMISSIONS
         return ROLE_PERMISSIONS
 
@@ -196,7 +189,6 @@ class TestAuditLogHashChain:
     """Verify the SHA-256 hash chaining logic."""
 
     def _compute_hash(self, record_id, action, resource_type, resource_id, user_id, timestamp_str, prev_hash):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         try:
             from app.services.audit_service import compute_audit_hash
             return compute_audit_hash(record_id, action, resource_type, resource_id, user_id, timestamp_str, prev_hash)
@@ -240,7 +232,6 @@ class TestResultFlagDerivation:
     """Result flags must be correctly derived from value vs. normal range."""
 
     def _flag(self, value, low, high, test_name="Generic"):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.services.interpretation import get_flag
         return get_flag(value, low, high, test_name)
 
@@ -282,7 +273,6 @@ class TestPatientMultiTenantIsolation:
     """Verify that patient model table_args enforce lab isolation at DB level."""
 
     def test_patient_table_has_lab_id_index(self):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.models.patient import Patient
         index_names = [idx.name for idx in Patient.__table__.indexes]
         assert any("lab_id" in name for name in index_names), (
@@ -290,7 +280,6 @@ class TestPatientMultiTenantIsolation:
         )
 
     def test_patient_table_has_composite_lab_phone_index(self):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.models.patient import Patient
         for idx in Patient.__table__.indexes:
             cols = [c.name for c in idx.columns]
@@ -299,7 +288,6 @@ class TestPatientMultiTenantIsolation:
         pytest.fail("Missing composite index on (lab_id, phone) — duplicate patient checks will full-scan")
 
     def test_patient_table_has_composite_lab_nid_index(self):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.models.patient import Patient
         for idx in Patient.__table__.indexes:
             cols = [c.name for c in idx.columns]
@@ -308,7 +296,6 @@ class TestPatientMultiTenantIsolation:
         pytest.fail("Missing composite index on (lab_id, national_id_hash)")
 
     def test_lab_result_has_expires_at_index(self):
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from app.models.lab_result import LabResult
         col = LabResult.__table__.columns["expires_at"]
         assert col.index or any(

@@ -9,9 +9,9 @@ Generates openapi.json in the project root so it can be imported by:
   - Any OpenAPI-compatible code generator
 
 Usage:
-    python3 scripts/export_openapi.py                    # writes openapi.json
-    python3 scripts/export_openapi.py --out my-spec.json # custom path
-    python3 scripts/export_openapi.py --format yaml      # YAML output
+    PYTHONPATH=backend:. python3 scripts/export_openapi.py              # writes openapi.json
+    PYTHONPATH=backend:. python3 scripts/export_openapi.py --out my-spec.json
+    PYTHONPATH=backend:. python3 scripts/export_openapi.py --format yaml
 
 The spec is stripped of internal/debug endpoints and enriched with:
   - Detailed descriptions for every route (English + Arabic)
@@ -24,22 +24,31 @@ import json
 import os
 import sys
 
-# Point imports at the backend package
-_BACKEND = os.path.join(os.path.dirname(__file__), "..", "backend")
-sys.path.insert(0, os.path.abspath(_BACKEND))
-
-# Set test env so the app can import without real DB
-os.environ.setdefault("ENV", "development")
-os.environ.setdefault("DATABASE_URL", "sqlite:///./export.db")
-os.environ.setdefault("SECRET_KEY", "export-only-key-" + "x" * 48)
-os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
-os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
-os.environ.setdefault("REDIS_URL", "")
-os.environ.setdefault("ENABLE_API_DOCS", "true")
-
 
 def _load_spec() -> dict:
-    from app.main import app
+    """Load the OpenAPI spec using the factory in openapi mode.
+
+    This mode skips DB, Redis, AI, Financial Engine, and background worker
+    initialization — only route registration is performed.
+    """
+    os.environ["OPENAPI_EXPORT"] = "true"
+    os.environ.setdefault("ENV", "development")
+    os.environ.setdefault("DATABASE_URL", "sqlite://")
+    os.environ.setdefault("SECRET_KEY", "export-only-key-" + "x" * 48)
+    os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
+    os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
+    os.environ.setdefault("REDIS_URL", "")
+    os.environ.setdefault("ENABLE_API_DOCS", "true")
+
+    try:
+        from app.factory import create_app
+    except ModuleNotFoundError:
+        sys.exit(
+            "Could not import app.factory. Make sure the backend package is installed\n"
+            "and PYTHONPATH includes the backend/ directory:\n\n"
+            "    PYTHONPATH=backend:. python3 scripts/export_openapi.py\n"
+        )
+    app = create_app(override_mode="openapi")
     return app.openapi()
 
 

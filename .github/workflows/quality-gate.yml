@@ -58,7 +58,7 @@ jobs:
           flake8 backend/app --select=E9,F821 --max-line-length=200 --statistics
 
       - name: Shell check
-        uses: ludeeus/action-shellcheck@2
+        uses: ludeeus/action-shellcheck@v2
         with:
           scandir: ./scripts/
           severity: warning
@@ -96,7 +96,7 @@ jobs:
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4
         with:
-          category: "/language:python,javascript,typescript"
+          category: "/language:python,/language:javascript,/language:typescript"
           upload: true
 
   dependency-scan:
@@ -136,7 +136,7 @@ jobs:
         continue-on-error: true
 
       - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@1
+        uses: dependency-check/Dependency-Check_Action@v1
         with:
           project: 'GULA Platform'
           path: '.'
@@ -271,7 +271,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Gitleaks scan
-        uses: gitleaks/gitleaks-action@v3
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

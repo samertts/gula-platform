@@ -50,3 +50,6 @@ docker-compose.override.yml
 config/ssl/*.crt
 config/ssl/*.key
 wheels
+openapi.json
+*.pyc
+__pycache__/

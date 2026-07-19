@@ -11,11 +11,7 @@ Or with inline args (non-interactive):
 """
 import argparse
 import getpass
-import os
 import sys
-
-# Allow running from repo root or inside container
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
 
 def main():

@@ -15,7 +15,6 @@ import types
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 
 _BACKEND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _BACKEND)
 
 _cfg = types.ModuleType("app.config")
 class _S:

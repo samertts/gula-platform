@@ -2,24 +2,18 @@
 
 Each test gets a fresh in-memory SQLite DB so the suite can run in any order
 without state leaking between modules.
+
+Run tests from the nhop-platform directory:
+    cd nhop-platform && python -m pytest tests/
 """
 from __future__ import annotations
 
-import os
-import sys
 import uuid
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-# Make the nhop-platform package importable when pytest is invoked from the
-# repo root with `pytest nhop-platform/tests`.
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 
 @pytest.fixture()

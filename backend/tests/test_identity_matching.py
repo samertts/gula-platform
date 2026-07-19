@@ -6,7 +6,6 @@ No database is required — ``find_duplicates`` is exercised via a fake
 query object so the matcher logic is tested in isolation.
 """
 import os
-import sys
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///test_identity_matching.db")
@@ -14,8 +13,6 @@ os.environ.setdefault("SECRET_KEY", "test-secret-idm-not-for-prod-" + "x" * 32)
 os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
 os.environ.setdefault("NID_HMAC_KEY", "b" * 64)
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from datetime import date
 
