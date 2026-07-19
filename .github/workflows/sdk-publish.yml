@@ -161,6 +161,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-home-cache-cleanup: true
+          build-root-directory: contracts/sdk/kotlin
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
       - name: Build SDK
         run: ./gradlew build

@@ -1,6 +1,13 @@
 name: Mobile - Flutter Desktop CI/CD
 
 on:
+  workflow_call:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: false
+        default: 'release'
+        type: string
   push:
     branches: [main, develop]
     paths:
