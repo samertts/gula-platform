@@ -763,6 +763,7 @@ app.include_router(tiers_routes.router)
 
 # Financial Engine (gated by ENABLE_FINANCIAL_ENGINE flag)
 from .financial import register_routes as register_financial_routes  # noqa: E402
+
 register_financial_routes(app)
 
 # Citizen / patient portal
@@ -782,6 +783,11 @@ app.include_router(ai_routes.router)
 
 # AI System Optimizer (admin-only, read-only performance monitoring)
 app.include_router(optimizer_routes.router)
+
+# AI Platform v2 — vector search, RAG, knowledge graph, agents, orchestration, CDS, governance
+from .routes import ai_platform as ai_platform_routes  # noqa: E402
+
+app.include_router(ai_platform_routes.router)
 
 # Statistics & Trends — cached time-series analytics
 from .routes import stats as stats_routes  # noqa: E402
