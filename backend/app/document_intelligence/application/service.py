@@ -7,22 +7,45 @@ from uuid import UUID
 
 from ..domain.entities import (
     ClassificationResult,
+    CollaborationSession,
+    DigitalPreservationRecord,
+    DocumentAnnotation,
+    DocumentEvent,
     DocumentIntelligenceResult,
+    DocumentLifecycleRecord,
     DocumentPage,
+    DocumentReview,
     ExtractedEntity,
     ExtractedField,
     ExtractedTable,
+    GovernmentDocument,
+    GovernanceEvent,
+    GovernancePolicy,
+    KnowledgeGraphEdge,
     OcrResult,
+    PipelineHealth,
     ProcessingPipelineResult,
     ScannedDocument,
+    SemanticQuery,
+    SemanticSearchResult,
 )
 from ..domain.enums import (
+    CollaborationRole,
+    ConfidentialityLevel,
+    DigitalPreservationStandard,
     DocumentCategory,
     DocumentStatus,
+    EventChannel,
+    GovernanceDomain,
+    GovernancePolicyAction,
+    GovernanceRuleSeverity,
+    KnowledgeGraphRelation,
     OcrEngine,
     OcrLanguage,
     ProcessingPhase,
     ProcessingPriority,
+    RetentionPolicy,
+    ReviewDecision,
 )
 from ..domain.events import (
     DocumentClassificationFailed,
@@ -45,23 +68,32 @@ from ..exceptions import (
     SearchError,
 )
 from .interfaces import (
+    AccessControlService,
     AiIntegrationService,
     AuditService,
+    CollaborationService,
     DocumentClassifier,
     DocumentClassifierService,
     DocumentIngestionService,
     DocumentLifecycleManager,
+    DocumentLifecycleService,
     DocumentParser,
     EncryptionService,
     EntityExtractionService,
     EntityExtractor,
+    EventBusService,
     FhirMapper,
     FhirMappingService,
+    GovernmentRecordsService,
+    GovernanceService,
     ImagePreprocessor,
     KnowledgeExtractor,
+    KnowledgeGraphService,
     KnowledgePipelineService,
     LayoutDetector,
     MedicalParser,
+    NationalArchiveService,
+    ObservabilityService,
     OcrPipelineService,
     OcrProvider,
     PipelineEventPublisher,
@@ -69,7 +101,9 @@ from .interfaces import (
     RemediationService,
     SearchIndexer,
     SearchService,
+    SemanticSearchService,
     VersioningService,
+    WebhookService,
 )
 from ..domain.repository import (
     ClassificationResultRepository,
@@ -81,7 +115,6 @@ from ..domain.repository import (
     StorageRepository,
     TableRepository,
 )
-
 logger = logging.getLogger("gula.document_intelligence")
 
 
@@ -671,6 +704,17 @@ class DocumentIntelligenceOrchestrator:
         pipeline_repo: PipelineResultRepository,
         event_publisher: PipelineEventPublisher,
         audit: AuditService,
+        gov_service: GovernmentRecordsService | None = None,
+        collab_service: CollaborationService | None = None,
+        gov_service_: GovernanceService | None = None,
+        archive_service: NationalArchiveService | None = None,
+        kg_service: KnowledgeGraphService | None = None,
+        webhook_service: WebhookService | None = None,
+        obs_service: ObservabilityService | None = None,
+        access_service: AccessControlService | None = None,
+        semantic_service: SemanticSearchService | None = None,
+        lifecycle_service: DocumentLifecycleService | None = None,
+        event_bus: EventBusService | None = None,
     ) -> None:
         self._ingestion = ingestion
         self._ocr = ocr_pipeline
@@ -685,6 +729,17 @@ class DocumentIntelligenceOrchestrator:
         self._pipeline_repo = pipeline_repo
         self._events = event_publisher
         self._audit = audit
+        self._gov = gov_service
+        self._collab = collab_service
+        self._gov_ = gov_service_
+        self._archive = archive_service
+        self._kg = kg_service
+        self._webhook = webhook_service
+        self._obs = obs_service
+        self._access = access_service
+        self._semantic = semantic_service
+        self._lifecycle_svc = lifecycle_service
+        self._event_bus = event_bus
 
     async def process_document(
         self,
@@ -885,3 +940,210 @@ class DocumentIntelligenceOrchestrator:
                          DocumentStatus.entity_extraction_failed, DocumentStatus.fhir_mapping_failed)
             ),
         }
+
+    @property
+    def classifier(self) -> DocumentClassifierService:
+        return self._classifier
+
+    async def classify_text(self, text: str) -> ClassificationResult:
+        return await self._classifier.classify_text(text)
+
+    # ── Government Records ──
+    async def register_government_document(self, gov: GovernmentDocument) -> GovernmentDocument:
+        if self._gov is None:
+            raise RuntimeError("GovernmentRecordsService not configured")
+        return await self._gov.register_government_document(gov.document_id, gov)
+
+    async def get_government_document(self, document_id: UUID) -> GovernmentDocument | None:
+        if self._gov is None:
+            raise RuntimeError("GovernmentRecordsService not configured")
+        return await self._gov.get_government_document(document_id)
+
+    async def search_government_documents(self, query: str) -> list[GovernmentDocument]:
+        if self._gov is None:
+            raise RuntimeError("GovernmentRecordsService not configured")
+        return await self._gov.search_government_documents(query)
+
+    async def track_order_lifecycle(self, document_id: UUID) -> list[dict[str, Any]]:
+        if self._gov is None:
+            raise RuntimeError("GovernmentRecordsService not configured")
+        return await self._gov.track_order_lifecycle(document_id)
+
+    # ── Collaboration ──
+    async def assign_reviewer(self, document_id: UUID, reviewer_id: str, role: CollaborationRole = CollaborationRole.reviewer) -> DocumentReview:
+        if self._collab is None:
+            raise RuntimeError("CollaborationService not configured")
+        return await self._collab.assign_reviewer(document_id, reviewer_id, role)
+
+    async def submit_review(self, review_id: UUID, decision: ReviewDecision, comments: str = "") -> DocumentReview:
+        if self._collab is None:
+            raise RuntimeError("CollaborationService not configured")
+        return await self._collab.submit_review(review_id, decision, comments)
+
+    async def get_reviews(self, document_id: UUID) -> list[DocumentReview]:
+        if self._collab is None:
+            raise RuntimeError("CollaborationService not configured")
+        return await self._collab.get_reviews(document_id)
+
+    async def add_annotation(self, annotation: DocumentAnnotation) -> DocumentAnnotation:
+        if self._collab is None:
+            raise RuntimeError("CollaborationService not configured")
+        return await self._collab.add_annotation(annotation)
+
+    async def get_annotations(self, document_id: UUID) -> list[DocumentAnnotation]:
+        if self._collab is None:
+            raise RuntimeError("CollaborationService not configured")
+        return await self._collab.get_annotations(document_id)
+
+    async def create_session(self, document_id: UUID) -> CollaborationSession:
+        if self._collab is None:
+            raise RuntimeError("CollaborationService not configured")
+        return await self._collab.create_session(document_id)
+
+    # ── Governance ──
+    async def create_policy(self, policy: GovernancePolicy) -> GovernancePolicy:
+        if self._gov_ is None:
+            raise RuntimeError("GovernanceService not configured")
+        return await self._gov_.create_policy(policy)
+
+    async def list_policies(self, domain: GovernanceDomain | None = None) -> list[GovernancePolicy]:
+        if self._gov_ is None:
+            raise RuntimeError("GovernanceService not configured")
+        return await self._gov_.list_policies(domain)
+
+    async def delete_policy(self, policy_id: UUID) -> None:
+        if self._gov_ is None:
+            raise RuntimeError("GovernanceService not configured")
+        await self._gov_.delete_policy(policy_id)
+
+    async def evaluate_document(self, document_id: UUID) -> list[GovernanceEvent]:
+        if self._gov_ is None:
+            raise RuntimeError("GovernanceService not configured")
+        return await self._gov_.evaluate_document(document_id)
+
+    async def get_governance_events(self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None) -> list[GovernanceEvent]:
+        if self._gov_ is None:
+            raise RuntimeError("GovernanceService not configured")
+        return await self._gov_.get_governance_events(document_id, severity)
+
+    # ── Archive & Preservation ──
+    async def preserve_document(self, document_id: UUID, standard: DigitalPreservationStandard = DigitalPreservationStandard.oais) -> DigitalPreservationRecord:
+        if self._archive is None:
+            raise RuntimeError("NationalArchiveService not configured")
+        return await self._archive.preserve_document(document_id, standard)
+
+    async def get_preservation_record(self, document_id: UUID) -> DigitalPreservationRecord | None:
+        if self._archive is None:
+            raise RuntimeError("NationalArchiveService not configured")
+        return await self._archive.get_preservation_record(document_id)
+
+    async def check_integrity(self, document_id: UUID) -> dict[str, Any]:
+        if self._archive is None:
+            raise RuntimeError("NationalArchiveService not configured")
+        return await self._archive.check_integrity(document_id)
+
+    async def apply_retention(self, document_id: UUID, policy: RetentionPolicy = RetentionPolicy.standard_7y) -> None:
+        if self._lifecycle is None:
+            raise RuntimeError("DocumentLifecycleManager not configured")
+        await self._lifecycle.apply_retention_policy(document_id)
+
+    async def purge_expired(self) -> list[UUID]:
+        if self._archive is None:
+            raise RuntimeError("NationalArchiveService not configured")
+        return await self._archive.purge_expired()
+
+    # ── Knowledge Graph ──
+    async def find_related_documents(self, document_id: UUID, max_depth: int = 3) -> list[dict[str, Any]]:
+        if self._kg is None:
+            raise RuntimeError("KnowledgeGraphService not configured")
+        return await self._kg.find_related_documents(document_id, max_depth)
+
+    async def get_entity_network(self, entity_name: str) -> dict[str, Any]:
+        if self._kg is None:
+            raise RuntimeError("KnowledgeGraphService not configured")
+        return await self._kg.get_entity_network(entity_name)
+
+    async def get_document_subgraph(self, document_id: UUID) -> dict[str, Any]:
+        if self._kg is None:
+            raise RuntimeError("KnowledgeGraphService not configured")
+        return await self._kg.get_document_subgraph(document_id)
+
+    async def rebuild_graph(self) -> None:
+        if self._kg is None:
+            raise RuntimeError("KnowledgeGraphService not configured")
+        await self._kg.rebuild_graph()
+
+    # ── Webhooks ──
+    async def register_webhook(self, url: str, events: list[EventChannel], secret: str | None = None) -> dict[str, Any]:
+        if self._webhook is None:
+            raise RuntimeError("WebhookService not configured")
+        return await self._webhook.register_webhook(url, events, secret)
+
+    async def unregister_webhook(self, webhook_id: UUID) -> None:
+        if self._webhook is None:
+            raise RuntimeError("WebhookService not configured")
+        await self._webhook.unregister_webhook(webhook_id)
+
+    # ── Observability ──
+    async def get_pipeline_health(self) -> list[PipelineHealth]:
+        if self._obs is None:
+            raise RuntimeError("ObservabilityService not configured")
+        return await self._obs.get_pipeline_health()
+
+    async def get_dashboard_data(self) -> dict[str, Any]:
+        if self._obs is None:
+            raise RuntimeError("ObservabilityService not configured")
+        return await self._obs.get_dashboard_data()
+
+    async def get_document_statistics(self) -> dict[str, Any]:
+        if self._obs is None:
+            raise RuntimeError("ObservabilityService not configured")
+        return await self._obs.get_document_statistics()
+
+    async def get_throughput_metrics(self) -> dict[str, Any]:
+        if self._obs is None:
+            raise RuntimeError("ObservabilityService not configured")
+        return await self._obs.get_throughput_metrics()
+
+    # ── Access Control ──
+    async def check_access(self, document_id: UUID, user_id: str, permission: str = "viewer") -> bool:
+        if self._access is None:
+            raise RuntimeError("AccessControlService not configured")
+        return await self._access.check_access(document_id, user_id, permission)
+
+    async def grant_access(self, document_id: UUID, user_id: str, role: CollaborationRole) -> None:
+        if self._access is None:
+            raise RuntimeError("AccessControlService not configured")
+        await self._access.grant_access(document_id, user_id, role)
+
+    async def revoke_access(self, document_id: UUID, user_id: str) -> None:
+        if self._access is None:
+            raise RuntimeError("AccessControlService not configured")
+        await self._access.revoke_access(document_id, user_id)
+
+    # ── Semantic Search ──
+    async def semantic_search(self, query: SemanticQuery) -> list[SemanticSearchResult]:
+        if self._semantic is None:
+            raise RuntimeError("SemanticSearchService not configured")
+        return await self._semantic.search(query)
+
+    async def similar_documents(self, document_id: UUID, limit: int = 10) -> list[SemanticSearchResult]:
+        if self._semantic is None:
+            raise RuntimeError("SemanticSearchService not configured")
+        return await self._semantic.similar_documents(document_id, limit)
+
+    async def suggest_queries(self, partial: str) -> list[str]:
+        if self._semantic is None:
+            raise RuntimeError("SemanticSearchService not configured")
+        return await self._semantic.suggest_queries(partial)
+
+    # ── Lifecycle ──
+    async def get_lifecycle(self, document_id: UUID) -> list[DocumentLifecycleRecord]:
+        if self._lifecycle_svc is None:
+            raise RuntimeError("DocumentLifecycleService not configured")
+        return await self._lifecycle_svc.get_lifecycle(document_id)
+
+    async def get_expiring_documents(self, days: int = 30) -> list[DocumentLifecycleRecord]:
+        if self._lifecycle_svc is None:
+            raise RuntimeError("DocumentLifecycleService not configured")
+        return await self._lifecycle_svc.get_expiring_documents(days)

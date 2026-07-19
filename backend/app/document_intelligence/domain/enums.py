@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from enum import StrEnum, auto
+from enum import auto
+
+from app.document_intelligence.domain.compat import StrEnum
 
 
 class DocumentCategory(StrEnum):
