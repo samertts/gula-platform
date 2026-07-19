@@ -5,7 +5,6 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.national_data.base import DataPlatformBase
 from app.ehr.models.medication import (
     MedicationAdministration,
     MedicationDispense,
@@ -13,6 +12,7 @@ from app.ehr.models.medication import (
     MedicationStatement,
 )
 from app.national.domain.patient import Patient as NationalPatient
+from app.national_data.base import DataPlatformBase
 
 
 class CanonicalMedication(DataPlatformBase):

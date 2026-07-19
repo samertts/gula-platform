@@ -6,7 +6,8 @@ import psycopg2
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from jose import jwt
+from joserfc import jwt as jose_jwt
+from joserfc import jwk
 from passlib.hash import bcrypt
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -89,10 +90,10 @@ def login(username: str, password: str):
     if not bcrypt.verify(password, hashed):
         raise HTTPException(401, "Invalid credentials")
 
-    token = jwt.encode(
+    token = jose_jwt.encode(
+        {"alg": ALGORITHM},
         {"user_id": uid, "exp": datetime.utcnow() + timedelta(hours=12)},
-        SECRET_KEY,
-        algorithm=ALGORITHM,
+        jwk.OctKey.import_key(SECRET_KEY),
     )
 
     return {"token": token}

@@ -1,0 +1,57 @@
+{
+  "version": "2.5.0",
+  "versionCode": 20500,
+  "buildNumber": 1745280000,
+  "releaseDate": "2026-07-15T10:00:00Z",
+  "minimumOSVersion": "16.0",
+  "minimumAndroidSDK": 26,
+  "android": {
+    "applicationId": "io.gula.android",
+    "versionName": "2.5.0",
+    "versionCode": 20500,
+    "minSdk": 26,
+    "targetSdk": 35,
+    "compileSdk": 35
+  },
+  "ios": {
+    "bundleId": "io.gula.ios",
+    "versionName": "2.5.0",
+    "buildNumber": 20500,
+    "minimumOSVersion": "16.0",
+    "swiftVersion": "5.9"
+  },
+  "desktop": {
+    "windows": {
+      "version": "2.5.0",
+      "minimumOS": "10.0.17763"
+    },
+    "macos": {
+      "version": "2.5.0",
+      "minimumOS": "14.0"
+    },
+    "linux": {
+      "version": "2.5.0",
+      "minimumDistro": "ubuntu-22.04"
+    }
+  },
+  "flutter": {
+    "version": "3.27.0",
+    "channel": "stable",
+    "dartSdk": "3.6.0"
+  },
+  "backend": {
+    "version": "2.5.0",
+    "apiVersion": "v1"
+  },
+  "pwa": {
+    "version": "2.5.0",
+    "nodeVersion": "20",
+    "firebaseVersion": "10.14"
+  },
+  "sdks": {
+    "typescript": "2.5.0",
+    "python": "2.5.0",
+    "dart": "2.5.0",
+    "kotlin": "2.5.0"
+  }
+}

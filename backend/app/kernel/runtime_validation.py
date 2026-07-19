@@ -4,9 +4,9 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from app._compat import StrEnum
 from typing import Any
 
+from app._compat import StrEnum
 from app.kernel import Kernel
 from app.kernel.validation.architecture import ArchitectureValidator as CoreArchValidator
 

@@ -6,12 +6,12 @@ from typing import Any
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.national_data.base import DataPlatformBase
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
 from app.models.patient import Patient
 from app.national.domain.encounter import Encounter
 from app.national.domain.patient import Patient as NationalPatient
+from app.national_data.base import DataPlatformBase
 
 
 class CanonicalObservation(DataPlatformBase):

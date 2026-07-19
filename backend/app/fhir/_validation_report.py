@@ -83,7 +83,7 @@ def print_validation_report() -> str:
     lines.append(f"  Status: {r['overall_status']}")
     lines.append("=" * 60)
     lines.append("")
-    lines.append(f"  Summary:")
+    lines.append("  Summary:")
     lines.append(f"    Total resources:   {r['summary']['total_resources']}")
     lines.append(f"    Implemented:       {r['summary']['implemented']}")
     lines.append(f"    Stubs:             {r['summary']['stubs']}")

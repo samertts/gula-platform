@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from app._compat import UTC
 from typing import Any
 
+from app._compat import UTC
 from app.control_plane.registry.component import ComponentRegistry
 from app.control_plane.registry.health import HealthAggregator
 from app.kernel.integration import get_kernel

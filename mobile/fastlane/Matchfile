@@ -1,0 +1,28 @@
+git_url ENV["MATCH_GIT_URL"] || "git@github.com:samertts/gula-platform-certs.git"
+
+git_branch ENV["MATCH_GIT_BRANCH"] || "main"
+
+storage_mode ENV["MATCH_STORAGE_MODE"] || "git"
+
+type ENV["MATCH_TYPE"] || "appstore"
+
+app_identifier [
+  "io.gula.android",
+  "io.gula.ios"
+]
+
+username ENV["APPLE_ID"] || "apps@gulaplatform.com"
+
+team_id ENV["APPLE_TEAM_ID"] || "ABCDEF1234"
+
+keychain_name ENV["MATCH_KEYCHAIN_NAME"] || "login.keychain"
+
+readonly ENV["MATCH_READONLY"] || true
+
+generate_apple_certs ENV["MATCH_GENERATE_CERTS"] || true
+
+skip_docs ENV["MATCH_SKIP_DOCS"] || true
+
+platform ENV["MATCH_PLATFORM"] || "ios"
+
+force ENV["MATCH_FORCE"] || false

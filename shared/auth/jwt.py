@@ -4,9 +4,28 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
+from joserfc import jwt as jose_jwt
+from joserfc import jwk
+from joserfc.jwt import JWTClaimsRegistry
 
 logger = logging.getLogger("gula.auth.jwt")
+
+
+class JWTError(Exception):
+    """Generic JWT error, kept for backward compatibility with shared.auth consumers."""
+
+
+def _make_key(secret: str) -> jwk.OctKey:
+    return jwk.OctKey.import_key(secret)
+
+
+def _validate_claims(claims: dict[str, Any]) -> None:
+    """Validate JWT claims (exp, iat) using joserfc's registry."""
+    registry = JWTClaimsRegistry(
+        exp={"essential": True},
+        iat={"essential": True},
+    )
+    registry.validate(claims)
 
 
 def create_access_token(
@@ -21,7 +40,8 @@ def create_access_token(
     to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
     if extra_claims:
         to_encode.update(extra_claims)
-    return jwt.encode(to_encode, secret_key, algorithm=algorithm)
+    key = _make_key(secret_key)
+    return jose_jwt.encode({"alg": algorithm}, to_encode, key)
 
 
 def create_refresh_token(
@@ -33,7 +53,8 @@ def create_refresh_token(
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=expire_days)
     to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "refresh"})
-    return jwt.encode(to_encode, refresh_secret, algorithm=algorithm)
+    key = _make_key(refresh_secret)
+    return jose_jwt.encode({"alg": algorithm}, to_encode, key)
 
 
 def decode_access_token(
@@ -42,16 +63,14 @@ def decode_access_token(
     algorithms: list[str] | None = None,
 ) -> dict[str, Any]:
     try:
-        payload = jwt.decode(
-            token,
-            secret_key,
-            algorithms=algorithms or ["HS256"],
-            options={"require": ["exp", "iat"]},
-        )
-        return payload
-    except JWTError as exc:
+        key = _make_key(secret_key)
+        decoded = jose_jwt.decode(token, key, algorithms=algorithms or ["HS256"])
+        claims = dict(decoded.claims)
+        _validate_claims(claims)
+        return claims
+    except Exception as exc:
         logger.warning("JWT decode failed: %s", exc)
-        raise
+        raise JWTError(str(exc)) from exc
 
 
 def decode_refresh_token(

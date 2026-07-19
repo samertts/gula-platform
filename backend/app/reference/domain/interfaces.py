@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, Sequence
 
-from .models import PatientDomain, LabOrderDomain, LabResultDomain
+from .models import LabOrderDomain, LabResultDomain, PatientDomain
 
 
 class PatientRepository(ABC):

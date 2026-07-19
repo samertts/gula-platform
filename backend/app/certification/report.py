@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from app._compat import UTC
 from pathlib import Path
 from typing import Any
+
+from app._compat import UTC
 
 from .dimensions import DimensionResult
 from .enums import CertificationDimension, CertificationLevel

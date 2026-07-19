@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.reference.domain.exceptions import (
     CriticalResultError,
@@ -35,7 +35,6 @@ from app.reference.domain.services import (
 from app.reference.services.order_service import OrderService
 from app.reference.services.patient_service import PatientService
 from app.reference.services.result_service import ResultService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -125,12 +124,12 @@ def _make_app_with_overrides(
     resolves to the provided mocks instead of the real implementation.
     """
     from app.reference.infrastructure.dependencies import (
-        get_patient_service,
         get_order_service,
+        get_patient_service,
         get_result_service,
     )
-    from app.reference.routes.patients import router as patients_router
     from app.reference.routes.orders import router as orders_router
+    from app.reference.routes.patients import router as patients_router
     from app.reference.routes.results import router as results_router
 
     application = FastAPI()

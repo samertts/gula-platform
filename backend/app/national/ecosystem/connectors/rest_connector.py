@@ -5,9 +5,10 @@ import json
 import time
 from typing import Any
 from xml.etree import ElementTree
-from defusedxml.ElementTree import fromstring as safe_xml_parse, ParseError as SafeXMLParseError
 
 import httpx
+from defusedxml.ElementTree import ParseError as SafeXMLParseError
+from defusedxml.ElementTree import fromstring as safe_xml_parse
 
 from .base import BaseConnector, ConnectorConfig, ConnectorResult, ConnectorStatus
 

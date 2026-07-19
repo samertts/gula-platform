@@ -14,7 +14,6 @@ click==8.4.2
 cryptography==49.0.0
 defusedxml==0.7.1
 dnspython==2.8.0
-ecdsa==0.19.2
 email-validator==2.3.0
 factory_boy==3.3.3
 Faker==40.28.1
@@ -49,17 +48,15 @@ Pygments==2.20.0
 pyOpenSSL==26.3.0
 PyOTP==2.10.0
 pytest==9.1.1
-pytest-anyio==0.0.0
-pytest-asyncio==1.0.2
+pytest-asyncio==1.4.0
 python-bidi==0.6.11
 python-dotenv==1.2.2
-python-jose==3.5.0
+joserfc==1.7.3
 python-multipart==0.0.32
 PyYAML==6.0.3
 qrcode==8.2
 redis==8.0.1
 reportlab==5.0.0
-rsa==4.9.1
 sentry-sdk==2.65.0
 six==1.17.0
 SQLAlchemy==2.0.51

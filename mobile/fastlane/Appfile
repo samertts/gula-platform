@@ -1,0 +1,10 @@
+app_identifier ENV["APP_IDENTIFIER"] || [
+  "io.gula.android",
+  "io.gula.ios"
+]
+
+apple_id ENV["APPLE_ID"] || "apps@gulaplatform.com"
+
+team_id ENV["APPLE_TEAM_ID"] || "ABCDEF1234"
+
+itc_team_id ENV["ITC_TEAM_ID"] || "123456789"

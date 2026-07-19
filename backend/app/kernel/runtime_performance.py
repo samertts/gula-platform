@@ -4,10 +4,10 @@ import logging
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from app._compat import StrEnum
 from threading import Lock
 from typing import Any
 
+from app._compat import StrEnum
 from app.kernel import Kernel
 
 logger = logging.getLogger("gula.kernel.runtime_performance")

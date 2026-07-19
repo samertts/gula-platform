@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from app.fhir._capabilities import IMPLEMENTED_RESOURCES, PLANNED_RESOURCES, STUBBED_RESOURCES
-from app.fhir._reference import validate_resource_coverage
-
 SCORECARD = {
     "report_title": "GULA Platform — Verified Enterprise Scorecard",
     "report_date": "2026-07-18",

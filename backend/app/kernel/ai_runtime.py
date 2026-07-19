@@ -4,9 +4,9 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from app._compat import StrEnum
 from typing import Any
 
+from app._compat import StrEnum
 from app.ai.approval import ApprovalStore, PendingApproval
 from app.ai.approval import approval_store as _default_approval_store
 from app.ai.guardrails import AISuggestion, ai_suggest

@@ -4,10 +4,10 @@ import json
 import logging
 import secrets
 from datetime import datetime
-from app._compat import UTC
 
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from shared.auth.passwords import hash_password, verify_password
 
 from ..models.service_account import ServiceAccount
