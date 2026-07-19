@@ -198,7 +198,11 @@ def import_all_models() -> None:
     from .document_intelligence.infrastructure.models import (  # noqa: F401
         ScannedDocumentModel, OcrResultModel, ExtractedEntityModel,
         ExtractedFieldModel, ExtractedTableModel, ClassificationResultModel,
-        PipelineResultModel,
+        PipelineResultModel, DocumentVersionModel, GovernmentDocumentModel,
+        DocumentReviewModel, DocumentAnnotationModel, DigitalPreservationRecordModel,
+        GovernancePolicyModel, GovernanceEventModel, DocumentEventModel,
+        DocumentLifecycleModel, WebhookRegistrationModel, KnowledgeGraphEdgeModel,
+        PipelineHealthModel, AccessControlModel, DocumentRetentionModel,
     )
 
 

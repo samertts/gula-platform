@@ -6,15 +6,27 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from .enums import (
+    ArchiveStatus,
     ClassificationConfidence,
+    CollaborationRole,
+    ConfidentialityLevel,
+    DigitalPreservationStandard,
     DocumentCategory,
     DocumentStatus,
     EntityType,
+    EventChannel,
     ExtractedFieldType,
+    GovernanceDomain,
+    GovernancePolicyAction,
+    GovernanceRuleSeverity,
+    IntegrityCheckMethod,
+    KnowledgeGraphRelation,
     OcrEngine,
     OcrLanguage,
     ProcessingPhase,
     ProcessingPriority,
+    RetentionPolicy,
+    ReviewDecision,
     StorageBackend,
 )
 
@@ -208,3 +220,190 @@ class DocumentIntelligenceResult:
     processing_summary: dict[str, Any] = field(default_factory=dict)
     success: bool = False
     error: str = ""
+
+
+@dataclass
+class GovernmentDocument:
+    id: UUID = field(default_factory=uuid4)
+    document_id: UUID | None = None
+    reference_number: str = ""
+    issuing_authority: str = ""
+    recipient_authority: str = ""
+    subject: str = ""
+    classification: ConfidentialityLevel = ConfidentialityLevel.internal
+    decision_number: str = ""
+    committee_name: str = ""
+    contract_number: str = ""
+    procurement_number: str = ""
+    legal_basis: str = ""
+    signatory_name: str = ""
+    signatory_title: str = ""
+    effective_date: datetime | None = None
+    expiry_date: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class DocumentReview:
+    id: UUID = field(default_factory=uuid4)
+    document_id: UUID | None = None
+    reviewer_id: str = ""
+    reviewer_name: str = ""
+    role: CollaborationRole = CollaborationRole.reviewer
+    decision: ReviewDecision | None = None
+    comments: str = ""
+    suggested_changes: list[str] = field(default_factory=list)
+    assigned_at: datetime = field(default_factory=datetime.utcnow)
+    completed_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class DocumentAnnotation:
+    id: UUID = field(default_factory=uuid4)
+    document_id: UUID | None = None
+    page_number: int = 0
+    author_id: str = ""
+    author_name: str = ""
+    content: str = ""
+    annotation_type: str = "comment"
+    bounding_box: tuple[float, float, float, float] | None = None
+    resolved: bool = False
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class DigitalPreservationRecord:
+    id: UUID = field(default_factory=uuid4)
+    document_id: UUID | None = None
+    standard: DigitalPreservationStandard = DigitalPreservationStandard.oais
+    preservation_level: str = "full"
+    original_format: str = ""
+    preservation_format: str = ""
+    original_checksum: str = ""
+    preservation_checksum: str = ""
+    checksum_method: IntegrityCheckMethod = IntegrityCheckMethod.sha256
+    preservation_location: str = ""
+    cold_storage_location: str = ""
+    integrity_log: list[dict[str, Any]] = field(default_factory=list)
+    preservation_date: datetime = field(default_factory=datetime.utcnow)
+    next_integrity_check: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class KnowledgeGraphEdge:
+    source_document_id: UUID | None = None
+    target_document_id: UUID | None = None
+    source_entity: str = ""
+    target_entity: str = ""
+    relation: KnowledgeGraphRelation = KnowledgeGraphRelation.associated_with
+    confidence: float = 0.0
+    weight: float = 1.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SemanticQuery:
+    query_text: str = ""
+    query_vector: list[float] = field(default_factory=list)
+    category_filter: list[DocumentCategory] = field(default_factory=list)
+    entity_filter: dict[str, str] = field(default_factory=dict)
+    date_range: tuple[datetime | None, datetime | None] = (None, None)
+    confidentiality_filter: list[ConfidentialityLevel] = field(default_factory=list)
+    limit: int = 20
+    offset: int = 0
+    hybrid_search: bool = True
+    arabic_boost: bool = True
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SemanticSearchResult:
+    document_id: UUID | None = None
+    score: float = 0.0
+    text_snippet: str = ""
+    category: DocumentCategory | None = None
+    entities: list[ExtractedEntity] = field(default_factory=list)
+    highlights: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class GovernancePolicy:
+    id: UUID = field(default_factory=uuid4)
+    name: str = ""
+    description: str = ""
+    domain: GovernanceDomain = GovernanceDomain.document_classification
+    severity: GovernanceRuleSeverity = GovernanceRuleSeverity.warning
+    action: GovernancePolicyAction = GovernancePolicyAction.flag
+    conditions: dict[str, Any] = field(default_factory=dict)
+    enabled: bool = True
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class GovernanceEvent:
+    id: UUID = field(default_factory=uuid4)
+    document_id: UUID | None = None
+    policy_id: UUID | None = None
+    domain: GovernanceDomain = GovernanceDomain.document_classification
+    severity: GovernanceRuleSeverity = GovernanceRuleSeverity.info
+    message: str = ""
+    action_taken: GovernancePolicyAction = GovernancePolicyAction.notify
+    details: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class DocumentEvent:
+    id: UUID = field(default_factory=uuid4)
+    document_id: UUID | None = None
+    channel: EventChannel = EventChannel.document_ingested
+    actor_id: str = ""
+    actor_name: str = ""
+    payload: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class PipelineHealth:
+    pipeline_name: str = ""
+    phase: str = ""
+    status: str = "healthy"
+    documents_processed: int = 0
+    documents_failed: int = 0
+    avg_processing_time_ms: float = 0.0
+    p95_processing_time_ms: float = 0.0
+    error_rate: float = 0.0
+    throughput_per_minute: float = 0.0
+    last_error: str = ""
+    last_error_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class DocumentLifecycleRecord:
+    id: UUID = field(default_factory=uuid4)
+    document_id: UUID | None = None
+    event_type: str = ""
+    previous_status: DocumentStatus | None = None
+    new_status: DocumentStatus | None = None
+    actor: str = ""
+    reason: str = ""
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CollaborationSession:
+    id: UUID = field(default_factory=uuid4)
+    document_id: UUID | None = None
+    participants: list[dict[str, Any]] = field(default_factory=list)
+    status: str = "active"
+    started_at: datetime = field(default_factory=datetime.utcnow)
+    ended_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
