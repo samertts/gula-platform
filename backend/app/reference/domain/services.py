@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, Sequence
 
 from .exceptions import (
     CriticalResultError,
@@ -89,7 +89,7 @@ class PatientValidationService:
         return " ".join(normalized.split())
 
     @staticmethod
-    def compute_age(date_of_birth: Optional[date]) -> Optional[int]:
+    def compute_age(date_of_birth: date | None) -> int | None:
         if date_of_birth is None:
             return None
         today = date.today()
@@ -201,10 +201,7 @@ class ResultValidationService:
         flag = ResultValidationService.NORMAL_FLAG
         is_critical = False
 
-        if rr.min_critical is not None and result.value <= rr.min_critical:
-            is_critical = True
-            flag = ResultValidationService.CRITICAL_FLAG
-        elif rr.max_critical is not None and result.value >= rr.max_critical:
+        if (rr.min_critical is not None and result.value <= rr.min_critical) or (rr.max_critical is not None and result.value >= rr.max_critical):
             is_critical = True
             flag = ResultValidationService.CRITICAL_FLAG
         elif rr.min_value is not None and result.value < rr.min_value:

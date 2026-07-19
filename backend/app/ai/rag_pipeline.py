@@ -5,7 +5,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.ai.embeddings import cosine_similarity
 from app.ai.vector_store import VectorSearchResult, VectorStore, vector_store
 from app.gateways.google_ai import generate_chat
 

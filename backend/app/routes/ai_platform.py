@@ -10,17 +10,14 @@ No route mutates clinical state directly — AI is always an assistant.
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
-from app.ai.agent_runtime import AgentContext, agent_runtime, list_tools
-from app.ai.approval import approval_store
+from app.ai.agent_runtime import agent_runtime, list_tools
 from app.ai.embeddings import embedding_model_info
 from app.ai.governance import evaluator, model_registry, prompt_manager
 from app.ai.healthcare_cds import cds
@@ -29,9 +26,8 @@ from app.ai.memory import memory_store
 from app.ai.observability import get_metrics, track_request
 from app.ai.orchestrator import orchestrator
 from app.ai.rag_pipeline import rag
-from app.ai.security import sanitize_response, scan_input
+from app.ai.security import scan_input
 from app.ai.vector_store import vector_store
-from app.database import get_db
 from app.security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.ai.platform")
@@ -402,8 +398,8 @@ def get_ai_metrics():
 
 @router.get("/metrics/prometheus", summary="Prometheus-formatted metrics")
 def get_prometheus_metrics():
-    from app.ai.observability import format_for_prometheus
-
     from fastapi.responses import PlainTextResponse
+
+    from app.ai.observability import format_for_prometheus
 
     return PlainTextResponse(format_for_prometheus())

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+
+from app._compat import UTC
 
 from ..audit import audit_log
 from ..database import get_db
@@ -1206,7 +1208,7 @@ def fhir_create_resource(
     if resource_type not in _SUPPORTED_CREATE:
         raise HTTPException(status_code=422, detail=f"Create not supported for {resource_type}")
     resource_id = str(uuid4())
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     patient_id = _extract_patient_ref(body)
     encounter_id = _extract_encounter_ref(body)
     if patient_id and resource_type != "Patient":
@@ -1232,7 +1234,7 @@ def fhir_update_resource(
     if resource_type not in _SUPPORTED_UPDATE:
         raise HTTPException(status_code=422, detail=f"Update not supported for {resource_type}")
     _get_fhir_resource_or_404(db, resource_type, resource_id, current_user)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     patient_id = _extract_patient_ref(body)
     encounter_id = _extract_encounter_ref(body)
     _update_fhir_resource(db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now)
@@ -1258,7 +1260,7 @@ def fhir_delete_resource(
     if hasattr(record, "is_deleted"):
         record.is_deleted = True
     if hasattr(record, "deleted_at"):
-        record.deleted_at = datetime.now(timezone.utc)
+        record.deleted_at = datetime.now(UTC)
     if hasattr(record, "deleted_by"):
         record.deleted_by = current_user.id
     db.commit()
@@ -1290,7 +1292,7 @@ def fhir_batch(
         try:
             if method == "POST":
                 if rt in _SUPPORTED_CREATE:
-                    now = datetime.now(timezone.utc)
+                    now = datetime.now(UTC)
                     pid = _extract_patient_ref(resource)
                     eid = _extract_encounter_ref(resource)
                     _create_fhir_resource(db, rt, resource_id, resource, pid, eid, current_user, now)
@@ -1303,7 +1305,7 @@ def fhir_batch(
                     if rec and hasattr(rec, "lab_id") and getattr(rec, "lab_id", None) != current_user.lab_id:
                         status_code = 403
                     elif rec:
-                        now = datetime.now(timezone.utc)
+                        now = datetime.now(UTC)
                         pid = _extract_patient_ref(resource)
                         eid = _extract_encounter_ref(resource)
                         _update_fhir_resource(db, rt, resource_id, resource, pid, eid, current_user, now)
@@ -1320,7 +1322,7 @@ def fhir_batch(
                         if hasattr(rec, "is_deleted"):
                             rec.is_deleted = True
                         if hasattr(rec, "deleted_at"):
-                            rec.deleted_at = datetime.now(timezone.utc)
+                            rec.deleted_at = datetime.now(UTC)
                         if hasattr(rec, "deleted_by"):
                             rec.deleted_by = current_user.id
                     else:
@@ -1409,7 +1411,7 @@ def _get_fhir_resource_or_404(db: Session, resource_type: str, resource_id: str,
         raise HTTPException(status_code=404, detail=f"{resource_type} not found")
     if hasattr(record, "is_deleted") and record.is_deleted:
         raise HTTPException(status_code=410, detail=f"{resource_type} has been deleted")
-    if hasattr(record, "lab_id") and getattr(record, "lab_id", None) and getattr(record, "lab_id") != user.lab_id:
+    if hasattr(record, "lab_id") and getattr(record, "lab_id", None) and record.lab_id != user.lab_id:
         raise HTTPException(status_code=403, detail="Access denied")
     if hasattr(record, "patient_id") and getattr(record, "patient_id", None):
         ehr_service.get_national_patient_or_404(db, record.patient_id, user.lab_id)

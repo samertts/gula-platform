@@ -8,11 +8,11 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+from joserfc import jwk
+from joserfc import jwt as jose_jwt
 from pydantic import BaseModel
 
 from app._compat import UTC
-from joserfc import jwt as jose_jwt
-from joserfc import jwk
 from shared.auth import JWTError, create_access_token, decode_access_token
 
 from ..config import BASE_URL, JWT_ALGORITHM, JWT_EXPIRE_MINUTES, SECRET_KEY

@@ -283,11 +283,19 @@ jobs:
           echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Rollback — restore previous slot
-        env:
-          PREVIOUS_SLOT: ${{ needs.blue-green-deploy.outputs.active }}
+      - name: Determine previous active slot from cluster state
+        id: prev_slot
         run: |
-          PREV="${PREVIOUS_SLOT:-blue}"
+          PREV=$(kubectl get svc gula-backend-active \
+            -n ${{ env.NAMESPACE }} \
+            -o jsonpath='{.metadata.annotations.blue-green/active-slot}' \
+            2>/dev/null || echo "blue")
+          echo "previous=$PREV" >> "$GITHUB_OUTPUT"
+          echo "Previous active slot: $PREV"
+
+      - name: Rollback — restore previous slot
+        run: |
+          PREV="${{ steps.prev_slot.outputs.previous }}"
           echo "Rolling back to slot: $PREV"
 
           kubectl patch svc gula-backend-active \

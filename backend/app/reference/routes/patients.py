@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -34,11 +33,11 @@ async def get_patient(
 @router.post("")
 async def create_patient(
     name: str = Query(..., description="اسم المريض"),
-    date_of_birth: Optional[date] = Query(None, description="تاريخ الميلاد"),
-    gender: Optional[Gender] = Query(None, description="الجنس (ذكر / أنثى)"),
+    date_of_birth: date | None = Query(None, description="تاريخ الميلاد"),
+    gender: Gender | None = Query(None, description="الجنس (ذكر / أنثى)"),
     phone: str = Query("", description="رقم الهاتف"),
     lab_id: str = Query(..., description="معرف المختبر"),
-    national_id: Optional[str] = Query(None, description="الرقم الوطني"),
+    national_id: str | None = Query(None, description="الرقم الوطني"),
     address: str = Query("", description="العنوان"),
     service: PatientService = Depends(get_patient_service),
 ) -> dict:
@@ -64,10 +63,10 @@ async def create_patient(
 
 @router.get("")
 async def search_patients(
-    name: Optional[str] = Query(None, description="البحث بالاسم"),
-    phone: Optional[str] = Query(None, description="رقم الهاتف"),
-    lab_id: Optional[str] = Query(None, description="معرف المختبر"),
-    national_id: Optional[str] = Query(None, description="الرقم الوطني"),
+    name: str | None = Query(None, description="البحث بالاسم"),
+    phone: str | None = Query(None, description="رقم الهاتف"),
+    lab_id: str | None = Query(None, description="معرف المختبر"),
+    national_id: str | None = Query(None, description="الرقم الوطني"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     service: PatientService = Depends(get_patient_service),

@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
 from app.ai.knowledge_graph import knowledge_graph
-from app.ai.rag_pipeline import rag
-from app.database import get_db
-from sqlalchemy import text
 
 logger = logging.getLogger("gula.ai.cds")
 

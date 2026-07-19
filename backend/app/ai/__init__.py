@@ -45,7 +45,14 @@ Security:
 from app.ai.agent_runtime import AgentRuntime, AgentTool, agent_runtime, register_tool
 from app.ai.approval import ApprovalStore, PendingApproval, approval_store
 from app.ai.embeddings import cosine_similarity, embed_text
-from app.ai.governance import Evaluator, ModelRegistry, PromptManager, evaluator, model_registry, prompt_manager
+from app.ai.governance import (
+    Evaluator,
+    ModelRegistry,
+    PromptManager,
+    evaluator,
+    model_registry,
+    prompt_manager,
+)
 from app.ai.guardrails import AIOperationType, AISuggestion, ai_suggest
 from app.ai.healthcare_cds import ClinicalDecisionSupport, cds
 from app.ai.knowledge_graph import KnowledgeGraph, knowledge_graph

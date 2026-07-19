@@ -7,8 +7,9 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.database import get_db
 from sqlalchemy import text
+
+from app.database import get_db
 
 logger = logging.getLogger("gula.ai.memory")
 
@@ -196,7 +197,7 @@ class MemoryStore:
             try:
                 db.execute(text("DELETE FROM ai_conversations WHERE session_id = :sid"), {"sid": session_id})
                 db.commit()
-            except Exception as exc:
+            except Exception:
                 db.rollback()
             finally:
                 db.close()

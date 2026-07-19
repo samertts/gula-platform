@@ -65,19 +65,17 @@ jobs:
 
           echo "Canary deployed at 10% traffic"
 
-      - name: Port forward to canary
-        run: |
-          kubectl port-forward deployment/gula-backend-canary 8080:8000 &
-          sleep 3
-          trap "kill %1 2>/dev/null || true" EXIT
-
       - name: Monitor canary (10%)
         run: |
+          kubectl port-forward deployment/gula-backend-canary 8080:8000 &
+          PF_PID=$!
+          sleep 5
           for i in $(seq 1 ${{ env.ANALYSIS_PERIOD_MIN }}); do
             STATUS=$(curl -sf --max-time 5 http://localhost:8080/health 2>/dev/null || echo "FAIL")
             echo "Minute $i: $STATUS"
             sleep 60
           done
+          kill $PF_PID 2>/dev/null || true
 
       - name: Promote to 25%
         if: success()
@@ -93,11 +91,15 @@ jobs:
 
       - name: Monitor canary (25%)
         run: |
+          kubectl port-forward deployment/gula-backend-canary 8080:8000 &
+          PF_PID=$!
+          sleep 5
           for i in $(seq 1 ${{ env.ANALYSIS_PERIOD_MIN }}); do
             STATUS=$(curl -sf --max-time 5 http://localhost:8080/health 2>/dev/null || echo "FAIL")
             echo "Minute $i: $STATUS"
             sleep 60
           done
+          kill $PF_PID 2>/dev/null || true
 
       - name: Promote to 50%
         if: success()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from app.reference.domain.exceptions import PatientNotFoundError
 from app.reference.domain.interfaces import PatientRepository
@@ -34,10 +34,10 @@ class PatientService:
     async def search_patients(
         self,
         *,
-        name: Optional[str] = None,
-        phone: Optional[str] = None,
-        lab_id: Optional[str] = None,
-        national_id: Optional[str] = None,
+        name: str | None = None,
+        phone: str | None = None,
+        lab_id: str | None = None,
+        national_id: str | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[Sequence[PatientDomain], int]:

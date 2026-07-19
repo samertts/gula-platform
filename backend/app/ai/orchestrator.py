@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.ai.agent_runtime import AgentContext, AgentResult, AgentRuntime, agent_runtime
-from app.ai.memory import memory_store
+from app.ai.agent_runtime import AgentContext, AgentRuntime, agent_runtime
 from app.ai.rag_pipeline import rag
 from app.gateways.google_ai import generate_chat
 
@@ -97,14 +94,13 @@ class AIOrchestrator:
     ) -> dict[str, Any]:
         if intent == "clinical":
             return await self._handle_clinical(query, lab_id)
-        elif intent == "patient":
+        if intent == "patient":
             return await self._handle_patient(query, lab_id)
-        elif intent == "knowledge":
+        if intent == "knowledge":
             return await self._handle_knowledge(query)
-        elif intent == "agent":
+        if intent == "agent":
             return await self._handle_agent(query, lab_id, user_id, session_id)
-        else:
-            return await self._handle_chat(query)
+        return await self._handle_chat(query)
 
     async def _handle_clinical(self, query: str, lab_id: int | None) -> dict[str, Any]:
         rag_result = await rag.query(query, content_type="lab_result", lab_id=lab_id)
@@ -150,7 +146,7 @@ class AIOrchestrator:
             response = await generate_chat(query)
             return {"type": "chat", "response": response}
         except Exception as exc:
-            return {"type": "chat", "response": f"عذراً: {str(exc)}"}
+            return {"type": "chat", "response": f"عذراً: {exc!s}"}
 
     def get_task(self, task_id: str) -> OrchestrationTask | None:
         return self._tasks.get(task_id)
