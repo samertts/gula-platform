@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 interface DataPoint {
@@ -13,7 +14,7 @@ interface Props {
   showForecast?: boolean;
 }
 
-export function HealthTrendChart({ data, color = "#4f46e5", type = 'line', showForecast = false }: Props) {
+export const HealthTrendChart = memo(function HealthTrendChart({ data, color = "#4f46e5", type = 'line', showForecast = false }: Props) {
   if (type === 'area') {
     return (
       <div className="w-full h-40">
@@ -95,4 +96,4 @@ export function HealthTrendChart({ data, color = "#4f46e5", type = 'line', showF
       </ResponsiveContainer>
     </div>
   );
-}
+});

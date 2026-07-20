@@ -1,10 +1,10 @@
-import React from 'react';
+import { memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
 
-export function Breadcrumbs() {
+export const Breadcrumbs = memo(function Breadcrumbs() {
   const location = useLocation();
   const { t, isRtl } = useLanguage();
   const pathnames = location.pathname.split('/').filter((x) => x);
@@ -58,4 +58,4 @@ export function Breadcrumbs() {
       </ol>
     </nav>
   );
-}
+});

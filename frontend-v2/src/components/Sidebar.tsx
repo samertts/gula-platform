@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -42,7 +43,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { UserWing } from '../types/domain';
 
-export function Sidebar() {
+export const Sidebar = memo(function Sidebar() {
   const { t, dir } = useLanguage();
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -503,4 +504,4 @@ export function Sidebar() {
       )}
     </>
   );
-}
+});
