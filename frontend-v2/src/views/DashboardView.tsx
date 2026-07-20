@@ -45,16 +45,6 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { PageTransition } from '../components/PageTransition';
 import { ClickToCopy } from '../components/ClickToCopy';
 
-const data = [
-  { name: '00:00', value: 400 },
-  { name: '04:00', value: 300 },
-  { name: '08:00', value: 600 },
-  { name: '12:00', value: 800 },
-  { name: '16:00', value: 500 },
-  { name: '20:00', value: 900 },
-  { name: '23:59', value: 700 },
-];
-
 const StatCard = ({ label, value, progress, color = "bg-indigo-600", icon: Icon }: { label: string, value: string, progress: number, color?: string, icon?: any }) => (
   <div className="flex flex-col group p-6 rounded-[2.5rem] bg-white/40 backdrop-blur-md border border-white/60 shadow-sm hover:shadow-xl hover:bg-white hover:-translate-y-1 transition-all cursor-help relative overflow-hidden">
     <div className="flex items-center justify-between mb-4">
@@ -151,56 +141,6 @@ export function DashboardView() {
         if (snap.exists()) {
           const data = snap.data() as UserProfile;
           setProfile(data);
-          
-          // Decision Intelligence Alerts
-          setAlerts([
-            {
-              id: 'ALT-01',
-              type: 'critical',
-              title: 'Critical Bio-Sync Anomaly',
-              description: 'Unexpected variation detected in regional bio-node stabilization. Data suggests a 15% deviation from baseline safety protocols.',
-              timestamp: 'Just Now',
-              actionLabel: 'Initialize Protocol-9',
-              onAction: () => console.log('Protocol-9 triggered')
-            },
-            {
-              id: 'ALT-02',
-              type: 'warning',
-              title: 'Predictive Load Warning',
-              description: 'Incoming data flow from North-East corridor expected to exceed capacity within 4 hours based on pre-diagnostic patterns.',
-              timestamp: '12m ago',
-              actionLabel: 'Scale Bandwidth'
-            }
-          ]);
-
-          // Seed dummy diagnostic tasks
-          setActiveTasks([
-            { 
-              id: 'TASK-102', 
-              title: 'Atypical Viral Load Verification', 
-              type: 'validation', 
-              status: 'pending', 
-              priority: 'critical', 
-              entityId: 'LAB-SOUTH', 
-              relatedResourceId: 'PATIENT-8812', 
-              slaDeadline: new Date(Date.now() + 1000 * 60 * 45).toISOString(),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            { 
-              id: 'TASK-105', 
-              title: 'Reagent Stock Optimization', 
-              type: 'inventory_check', 
-              status: 'in_progress', 
-              priority: 'medium', 
-              entityId: 'W-01', 
-              relatedResourceId: 'ST-900', 
-              slaDeadline: new Date(Date.now() + 1000 * 60 * 120).toISOString(),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              assignedTo: user.uid
-            }
-          ]);
         }
       }
       setLoading(false);
@@ -438,33 +378,9 @@ export function DashboardView() {
                     <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{t.capacityTrend}</h4>
                     <TrendingUp size={16} className="text-emerald-500" />
                  </div>
-                 <div className="flex-1 -mx-6">
-                   <ResponsiveContainer width="100%" height="100%">
-                     <AreaChart data={data}>
-                       <XAxis dataKey="name" hide />
-                       <YAxis hide />
-                       <defs>
-                         <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                           <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                           <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                         </linearGradient>
-                       </defs>
-                       <Tooltip 
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              return (
-                                <div className="bg-slate-900 px-3 py-2 rounded-xl text-[10px] font-bold text-white shadow-xl border border-white/10">
-                                  {payload[0].value} OPS/SEC
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                       />
-                       <Area type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorVal)" />
-                     </AreaChart>
-                   </ResponsiveContainer>
-                 </div>
+                  <div className="flex-1 -mx-6 flex items-center justify-center">
+                    <p className="text-xs text-slate-400 font-medium">No capacity data yet</p>
+                  </div>
               </div>
               <div className="bg-white p-8 rounded-[3rem] border border-slate-100 flex flex-col justify-center gap-4 relative overflow-hidden group">
                  <div className="absolute bottom-0 right-0 p-8 opacity-[0.02] group-hover:rotate-6 transition-all">
@@ -503,11 +419,8 @@ export function DashboardView() {
                   <Download size={18} />
                 </button>
               </div>
-              <div className="space-y-2 flex-1">
-                <ActivityItem icon={Microscope} title="Hematology Sync" subtitle="12:40 PM" status={t.normal} statusColor="bg-emerald-50 text-emerald-700" patientId="P-9021" />
-                <ActivityItem icon={Users} title="Rapid Admission" subtitle="11:15 AM" status={t.pending} statusColor="bg-amber-50 text-amber-900" patientId="P-8842" />
-                <ActivityItem icon={AlertTriangle} title="Critical Bio-Sync" subtitle="10:55 AM" status={t.urgent} statusColor="bg-rose-50 text-rose-700" patientId="P-7721" />
-                <ActivityItem icon={ActivityIcon} title="Node Stabilization" subtitle="09:30 AM" status={t.optimal} statusColor="bg-indigo-50 text-indigo-700" />
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-xs text-slate-400 font-medium">No recent activity to display</p>
               </div>
               <button className="w-full mt-10 py-5 bg-slate-50 text-slate-400 font-bold text-xs uppercase tracking-widest rounded-3xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
                 {t.viewAllIntelligence}
@@ -529,29 +442,8 @@ export function DashboardView() {
                         <Globe size={28} className="text-slate-400 group-hover:text-white transition-colors" />
                      </div>
                   </div>
-                  <div className="space-y-6">
-                     {[
-                        { name: t.kurdistan, capacity: 82, trend: 'up' },
-                        { name: t.iraqCentral, capacity: 74, trend: 'down' },
-                        { name: t.turkeyBorder, capacity: 91, trend: 'up' }
-                     ].map((r, i) => (
-                        <div key={i} className="group/row">
-                           <div className="flex justify-between items-center text-xs mb-3 flex-row-reverse">
-                              <span className="font-bold opacity-70 group-hover/row:opacity-100 transition-opacity">{r.name}</span>
-                              <span className={cn(
-                                 "px-2 py-0.5 rounded text-[9px] font-black uppercase",
-                                 r.trend === 'up' ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
-                              )}>{r.capacity}% LOAD</span>
-                           </div>
-                           <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                whileInView={{ width: `${r.capacity}%` }}
-                                className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
-                              />
-                           </div>
-                        </div>
-                     ))}
+                  <div className="flex items-center justify-center py-10">
+                    <p className="text-sm text-slate-500 font-medium">Regional health data will appear once nodes are connected.</p>
                   </div>
                </div>
                <div className="relative z-10 pt-10 mt-10 border-t border-white/5 flex flex-col gap-4">

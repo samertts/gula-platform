@@ -1,12 +1,11 @@
-import { Microscope, FileText, Download, CheckCircle2, AlertCircle, FileSearch, Plus, Loader2, ShieldCheck, X } from 'lucide-react';
+import { Microscope, FileText, Download, CheckCircle2, AlertCircle, FileSearch, ShieldCheck, Loader2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn, formatDate } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, auth, handleFirestoreError } from '../firebase';
-import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { AISummary } from '../components/AISummary';
-import { toast } from 'sonner';
 
 interface LabReport {
   id?: string;
@@ -21,15 +20,10 @@ export function LabResultsView() {
   const { t, language } = useLanguage();
   const [reports, setReports] = useState<LabReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
-  const [showSimulateModal, setShowSimulateModal] = useState(false);
-  const [newTestName, setNewTestName] = useState("");
 
   useEffect(() => {
     if (!auth.currentUser) return;
 
-    // We query for current user's patients' lab results
-    // We filter by ownerId to match security rules
     const q = query(
       collection(db, 'lab_results'), 
       where('ownerId', '==', auth.currentUser.uid),
@@ -42,7 +36,6 @@ export function LabResultsView() {
         return { 
           id: doc.id, 
           ...data,
-          // Fallback to title if testName is missing for legacy data
           testName: data.testName || data.title || "Unknown Test"
         } as LabReport;
       });
@@ -55,36 +48,6 @@ export function LabResultsView() {
     return () => unsubscribe();
   }, []);
 
-  const addTestReport = async () => {
-    if (!auth.currentUser) return;
-    
-    // Validation: Ensure testName is not empty
-    if (!newTestName.trim()) {
-      toast.error('Test Name is required');
-      return;
-    }
-
-    setIsAdding(true);
-    try {
-      await addDoc(collection(db, 'lab_results'), {
-        testName: newTestName.trim(),
-        title: newTestName.trim(), // Keep title for legacy support
-        findings: "Glucose levels stable",
-        status: "Normal",
-        date: serverTimestamp(),
-        patientId: "TEST-001",
-        ownerId: auth.currentUser.uid
-      });
-      setNewTestName("");
-      setShowSimulateModal(false);
-      toast.success('Simulation successful: Result added');
-    } catch (error) {
-      handleFirestoreError(error, 'create', 'lab_results');
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 w-full">
@@ -93,72 +56,12 @@ export function LabResultsView() {
           <h2 className="font-headline text-3xl lg:text-4xl font-bold text-slate-900 mt-1 tracking-tight">Diagnostics Hub</h2>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <button 
-            onClick={() => setShowSimulateModal(true)}
-            disabled={isAdding}
-            className="flex-1 sm:flex-none px-5 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <Plus size={18} />
-            Simulate Lab Data
-          </button>
           <button className="flex-1 sm:flex-none px-5 py-2.5 bg-white text-slate-600 font-bold text-sm rounded-xl border border-slate-100 shadow-sm flex items-center justify-center gap-2">
             <FileSearch size={18} />
             Search Archive
           </button>
         </div>
       </div>
-
-      {/* Simulation Modal */}
-      <AnimatePresence>
-        {showSimulateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowSimulateModal(false)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-slate-200"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-xl text-slate-900">Simulate Result</h3>
-                <button onClick={() => setShowSimulateModal(false)} className="p-2 hover:bg-slate-50 rounded-full transition-colors">
-                  <X size={20} className="text-slate-400" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 tracking-widest mb-1.5">{t.testName}</label>
-                  <input 
-                    autoFocus
-                    type="text"
-                    value={newTestName}
-                    onChange={(e) => setNewTestName(e.target.value)}
-                    placeholder="e.g. Complete Blood Count"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
-                    onKeyDown={(e) => e.key === 'Enter' && addTestReport()}
-                  />
-                </div>
-                
-                <button 
-                  onClick={addTestReport}
-                  disabled={isAdding}
-                  className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors"
-                >
-                  {isAdding ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
-                  Add Result
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {isLoading ? (
         <div className="flex justify-center py-20">

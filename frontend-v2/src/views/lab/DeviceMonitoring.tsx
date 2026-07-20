@@ -23,41 +23,7 @@ interface DeviceStatus {
 
 export function DeviceMonitoring() {
   const { t } = useLanguage();
-  const [devices, setDevices] = useState<DeviceStatus[]>([
-    {
-      id: 'DEV-882',
-      name: 'Roche Cobas 8000',
-      type: 'Chemistry Analyzer',
-      status: 'online',
-      throughput: 840,
-      temperature: 36.5,
-      lastMaintenance: '2026-04-10',
-      uptime: '14d 2h',
-      errors: []
-    },
-    {
-      id: 'DEV-104',
-      name: 'Sysmex XN-3000',
-      type: 'Hematology Line',
-      status: 'warning',
-      throughput: 410,
-      temperature: 38.2,
-      lastMaintenance: '2026-03-15',
-      uptime: '122d 8h',
-      errors: ['Temp threshold exceeded', 'Reagent low']
-    },
-    {
-      id: 'DEV-455',
-      name: 'Beckman Coulter DxC',
-      type: 'Immunoassay',
-      status: 'calibrating',
-      throughput: 0,
-      temperature: 36.1,
-      lastMaintenance: '2026-04-18',
-      uptime: '1h 12m',
-      errors: []
-    }
-  ]);
+  const [devices, setDevices] = useState<DeviceStatus[]>([]);
 
   return (
     <div className="p-10 max-w-7xl mx-auto space-y-12 min-h-screen">
@@ -98,7 +64,15 @@ export function DeviceMonitoring() {
 
       {/* Connectivity Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {devices.map((device, i) => (
+        {devices.length === 0 ? (
+          <div className="lg:col-span-3 text-center py-20 bg-slate-50 rounded-[4rem] border-2 border-dashed border-slate-200">
+            <div className="w-16 h-16 bg-slate-100 rounded-[2rem] flex items-center justify-center text-slate-300 mx-auto mb-4">
+              <Cpu size={32} />
+            </div>
+            <p className="text-slate-500 font-bold text-lg">No instruments connected</p>
+            <p className="text-slate-400 text-sm mt-2">Connect a lab instrument to begin monitoring telemetry.</p>
+          </div>
+        ) : devices.map((device, i) => (
           <motion.div
             key={device.id}
             initial={{ opacity: 0, y: 20 }}

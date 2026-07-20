@@ -658,10 +658,45 @@ export interface Translation {
   verified: string;
   delivered: string;
   workloadDistribution: string;
-  saveResults: string;
-  printLabel: string;
-  cancel: string;
-}
+   saveResults: string;
+   printLabel: string;
+   cancel: string;
+   // New Navigation Architecture
+   home?: string;
+   patients?: string;
+   clinical?: string;
+   administration?: string;
+   system?: string;
+   pinned?: string;
+   recent?: string;
+   searchNav?: string;
+   roleAdaptive?: string;
+   registerPatient?: string;
+   imagingLab?: string;
+   tracking?: string;
+   newOrder?: string;
+   enterResult?: string;
+   integrations?: string;
+   architecture?: string;
+   systemOverview?: string;
+   supplies?: string;
+   diagnostics?: string;
+   vitals?: string;
+   preferences?: string;
+   nationalOverview?: string;
+   surveillance?: string;
+   identity?: string;
+    newRegistration?: string;
+    research?: string;
+    quickCreate?: string;
+    emergencyAlerts?: string;
+   searchEverything?: string;
+   language?: string;
+   notifications?: string;
+   commandPaletteTitle?: string;
+   online?: string;
+   offline?: string;
+ }
 
 export const translations: Record<Language, Translation> = {
   EN: {
@@ -1322,6 +1357,41 @@ export const translations: Record<Language, Translation> = {
     saveResults: "Save Results",
     printLabel: "Print Label",
     cancel: "Cancel",
+    // New Navigation Architecture
+    home: "Home",
+    patients: "Patients",
+    clinical: "Clinical",
+    administration: "Administration",
+    system: "System",
+    pinned: "Pinned",
+    recent: "Recent",
+    searchNav: "Search menu...",
+    roleAdaptive: "Role-adaptive dashboard",
+    registerPatient: "Register Patient",
+     imagingLab: "Imaging Lab",
+    newOrder: "New Order",
+    enterResult: "Enter Result",
+    integrations: "Integrations",
+    architecture: "Architecture",
+    systemOverview: "System Overview",
+    research: "Research",
+    supplies: "Supplies",
+    diagnostics: "Diagnostics",
+    vitals: "Vitals",
+    preferences: "Preferences",
+    nationalOverview: "National Overview",
+    surveillance: "Surveillance",
+    identity: "Identity",
+    tracking: "Tracking",
+    newRegistration: "New Registration",
+    quickCreate: "Quick Create",
+    emergencyAlerts: "Emergency Alerts",
+    searchEverything: "Search everything...",
+    language: "Language",
+    notifications: "Notifications",
+    commandPaletteTitle: "Command Palette",
+    online: "Online",
+    offline: "Offline",
   },
   AR: {
     appName: "منصة جولا",

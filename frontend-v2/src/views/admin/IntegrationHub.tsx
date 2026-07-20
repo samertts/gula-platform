@@ -62,21 +62,9 @@ export function IntegrationHub() {
         <div className="col-span-12 lg:col-span-4 bg-white rounded-[2.5rem] border border-slate-100 p-8 space-y-8">
            <div className="space-y-4">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Active Endpoints</h3>
-              <div className="space-y-3">
-                 {[
-                   { label: 'FHIR Patient Resource', status: 'Optimal', load: '12%', color: 'text-green-500' },
-                   { label: 'LOINC Diagnostic Report', status: 'Optimal', load: '45%', color: 'text-green-500' },
-                   { label: 'SMART-on-FHIR Auth', status: 'Warning', load: '88%', color: 'text-amber-500' },
-                 ].map((api, i) => (
-                   <div key={i} className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between group hover:bg-indigo-50 transition-colors">
-                      <div>
-                         <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{api.label}</p>
-                         <p className="text-[9px] font-bold text-slate-400 mt-0.5">{api.load} Load</p>
-                      </div>
-                      <span className={`text-[8px] font-black uppercase tracking-widest ${api.color}`}>{api.status}</span>
-                   </div>
-                 ))}
-              </div>
+               <div className="text-center py-12">
+                 <p className="text-slate-400 text-sm font-medium">No API endpoints connected. Configure integrations to see metrics.</p>
+               </div>
            </div>
 
            <div className="bg-slate-900 rounded-[2rem] p-6 text-white overflow-hidden relative">

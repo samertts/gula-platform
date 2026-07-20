@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  CheckCircle2, AlertCircle, Shield, 
-  Zap, Save, ArrowRight, History, 
-  Dna, Beaker, Terminal, Keyboard
+  AlertCircle, Shield, 
+  Zap, History, 
+  Dna, Terminal, Keyboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
 
 interface TestParameter {
   id: string;
@@ -32,11 +34,11 @@ interface ResultEntryUIProps {
 export function ResultEntryUI({ taskId, sampleId, patientName, testName, onSave, onCancel }: ResultEntryUIProps) {
   const { t } = useLanguage();
   const [params, setParams] = useState<TestParameter[]>([
-    { id: '1', name: 'Leukocytes (WBC)', code: 'WBC', value: '', unit: '10^3/µL', referenceRange: '4.5 - 11.0', status: 'none', previousValue: '7.2' },
-    { id: '2', name: 'Erythrocytes (RBC)', code: 'RBC', value: '', unit: '10^6/µL', referenceRange: '4.5 - 5.9', status: 'none', previousValue: '5.1' },
-    { id: '3', name: 'Hemoglobin (HGB)', code: 'HGB', value: '', unit: 'g/dL', referenceRange: '13.5 - 17.5', status: 'none', previousValue: '14.8' },
-    { id: '4', name: 'Hematocrit (HCT)', code: 'HCT', value: '', unit: '%', referenceRange: '40.5 - 52.0', status: 'none', previousValue: '44.2' },
-    { id: '5', name: 'Platelets (PLT)', code: 'PLT', value: '', unit: '10^3/µL', referenceRange: '150 - 450', status: 'none', previousValue: '210' },
+    { id: '1', name: 'Leukocytes (WBC)', code: 'WBC', value: '', unit: '10^3/µL', referenceRange: '4.5 - 11.0', status: 'none' },
+    { id: '2', name: 'Erythrocytes (RBC)', code: 'RBC', value: '', unit: '10^6/µL', referenceRange: '4.5 - 5.9', status: 'none' },
+    { id: '3', name: 'Hemoglobin (HGB)', code: 'HGB', value: '', unit: 'g/dL', referenceRange: '13.5 - 17.5', status: 'none' },
+    { id: '4', name: 'Hematocrit (HCT)', code: 'HCT', value: '', unit: '%', referenceRange: '40.5 - 52.0', status: 'none' },
+    { id: '5', name: 'Platelets (PLT)', code: 'PLT', value: '', unit: '10^3/µL', referenceRange: '150 - 450', status: 'none' },
   ]);
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -83,7 +85,7 @@ export function ResultEntryUI({ taskId, sampleId, patientName, testName, onSave,
     input?.focus();
   }, [activeIndex]);
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     const unfilledCount = params.filter(p => !p.value).length;
     if (unfilledCount > 0) {
       toast.warning(`${unfilledCount} parameters are still empty`);
@@ -98,13 +100,26 @@ export function ResultEntryUI({ taskId, sampleId, patientName, testName, onSave,
     }
 
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      const ref = doc(db, 'lab_results', `${sampleId}_${Date.now()}`);
+      await setDoc(ref, {
+        taskId,
+        sampleId,
+        patientName,
+        testName,
+        parameters: params,
+        enteredBy: auth.currentUser?.uid || 'unknown',
+        createdAt: serverTimestamp(),
+      });
       setIsSaving(false);
       onSave(params);
       toast.success('Results Synchronized', {
         description: `Task for ${sampleId} moved to validation phase.`
       });
-    }, 1500);
+    } catch (err) {
+      setIsSaving(false);
+      toast.error('Failed to save results');
+    }
   };
 
   return (
@@ -198,9 +213,8 @@ export function ResultEntryUI({ taskId, sampleId, patientName, testName, onSave,
            <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t.labLoad}</p>
-                 <div className="flex items-center gap-1.5 justify-end">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-xs font-black text-slate-900 uppercase tracking-tighter">Cluster Sync Active</span>
+               <div className="flex items-center gap-1.5 justify-end">
+                     <span className="text-xs font-black text-slate-900 uppercase tracking-tighter">Awaiting Connection</span>
                  </div>
               </div>
               <button 
@@ -223,66 +237,39 @@ export function ResultEntryUI({ taskId, sampleId, patientName, testName, onSave,
 
       {/* AI Inspector & Context Sidebar */}
       <div className="w-full lg:w-96 space-y-6">
-        <div className="bg-indigo-600 rounded-[3rem] p-8 text-white shadow-2xl shadow-indigo-100 relative overflow-hidden group">
-           <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none scale-150 rotate-12">
-              <Zap size={120} />
-           </div>
-           <div className="flex items-center gap-3 mb-8 relative z-10">
-              <div className="p-3 bg-white/10 rounded-2xl border border-white/20">
-                <Dna size={18} className="animate-pulse" />
-              </div>
-              <h3 className="text-sm font-black uppercase tracking-[0.2em]">Clinical AI Validator</h3>
-           </div>
+         <div className="bg-indigo-600 rounded-[3rem] p-8 text-white shadow-2xl shadow-indigo-100 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none scale-150 rotate-12">
+               <Zap size={120} />
+            </div>
+            <div className="flex items-center gap-3 mb-8 relative z-10">
+               <div className="p-3 bg-white/10 rounded-2xl border border-white/20">
+                 <Dna size={18} className="animate-pulse" />
+               </div>
+               <h3 className="text-sm font-black uppercase tracking-[0.2em]">Clinical AI Validator</h3>
+            </div>
 
-           <div className="space-y-6 relative z-10">
-              <div className="p-6 bg-white/10 rounded-[2rem] border border-white/5 backdrop-blur-sm">
-                 <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Automated Insight</p>
-                 <p className="text-sm font-medium leading-relaxed italic">
-                    "Pattern suggests mild inflammation. Correlating with patient's historical data from Jan 2024. No immediate high-risk outliers detected."
-                 </p>
-              </div>
+            <div className="space-y-6 relative z-10">
+               <div className="p-6 bg-white/10 rounded-[2rem] border border-white/5 backdrop-blur-sm">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Automated Insight</p>
+                  <p className="text-sm font-medium leading-relaxed italic">
+                     Enter results to receive AI-powered validation and clinical context.
+                  </p>
+               </div>
 
-              <div className="space-y-4">
-                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                    <span>Fidelity Score</span>
-                    <span className="text-indigo-200">98.4%</span>
-                 </div>
-                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <motion.div 
-                       initial={{ width: 0 }}
-                       animate={{ width: '98%' }}
-                       className="h-full bg-white shadow-[0_0_10px_white]"
-                    />
-                 </div>
-              </div>
-
-              <button className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-900/20 hover:scale-105 active:scale-95 transition-all">
-                 Full AI Breakdown
-              </button>
-           </div>
-        </div>
+               <button className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-900/20 hover:scale-105 active:scale-95 transition-all">
+                  Full AI Breakdown
+               </button>
+            </div>
+         </div>
 
         <div className="bg-white rounded-[3rem] border border-slate-200 p-8 shadow-sm">
-           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">{t.deviceStatus}</h3>
-           <div className="space-y-4">
-              {[
-                { name: 'X-Gen Hemato-04', status: 'Online', perf: 100, color: 'emerald' },
-                { name: 'Sysmex Calibrator', status: 'Active', perf: 92, color: 'indigo' },
-                { name: 'Cluster Data Link', status: 'Stable', perf: 100, color: 'emerald' }
-              ].map((device, i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                   <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full bg-${device.color}-500 animate-pulse`} />
-                      <span className="text-[10px] font-black text-slate-900 uppercase">{device.name}</span>
-                   </div>
-                   <span className="text-[10px] font-bold text-slate-400">{device.perf}%</span>
-                </div>
-              ))}
-           </div>
-           <button className="w-full mt-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center justify-center gap-2">
-              <Beaker size={14} /> {t.autoImport}
-           </button>
-        </div>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">{t.deviceStatus}</h3>
+            <div className="text-center py-8 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+               <Terminal size={24} className="text-slate-300 mx-auto mb-2" />
+               <p className="text-slate-400 font-bold text-sm">No instruments connected</p>
+               <p className="text-slate-400 text-xs mt-1">Device status will appear once paired.</p>
+            </div>
+         </div>
 
         <AnimatePresence>
           {showShortcuts && (

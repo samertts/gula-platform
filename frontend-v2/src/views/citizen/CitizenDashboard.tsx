@@ -17,23 +17,25 @@ export function CitizenDashboard() {
   const { t } = useLanguage();
   const [showScoreBreakdown, setShowScoreBreakdown] = useState(false);
 
-  const healthScore = 85;
+  const healthScore = null;
 
-  const todayTasks = [
-    { id: 't1', title: 'Fasting Glucose Test', time: '08:00 AM', type: 'test', location: 'Central Lab', status: 'upcoming' },
-    { id: 't2', title: 'Metformin 500mg', time: '08:00 AM', type: 'medication', dosage: '1 Pill', status: 'due' },
-    { id: 't3', title: 'Cardiologist Follow-up', time: '11:45 AM', type: 'appointment', doctor: 'Dr. Sarah', status: 'upcoming' },
-    { id: 't4', title: 'Vitamin D3', time: '01:00 PM', type: 'medication', dosage: '2000 IU', status: 'future' },
-  ];
+  const todayTasks: {
+    id: string;
+    title: string;
+    time: string;
+    type: string;
+    location?: string;
+    dosage?: string;
+    doctor?: string;
+    status: string;
+  }[] = [];
 
-  const criticalAlerts = [
-    { 
-      id: 'a1', 
-      title: 'Action Recommended', 
-      description: 'Your Vitamin D levels (22 ng/mL) remain below optimal range despite supplementation.', 
-      severity: 'warning' 
-    }
-  ];
+  const criticalAlerts: {
+    id: string;
+    title: string;
+    description: string;
+    severity: string;
+  }[] = [];
 
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto p-4 md:p-8 animate-in fade-in duration-500 pb-20">
@@ -107,7 +109,7 @@ export function CitizenDashboard() {
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-black text-slate-900 leading-none">{healthScore}</span>
+                 <span className="text-4xl font-black text-slate-900 leading-none">{healthScore ?? '--'}</span>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Health Score</span>
               </div>
             </div>
@@ -148,7 +150,7 @@ export function CitizenDashboard() {
               <h3 className="font-black text-lg uppercase tracking-widest">{t.medicalIntelligence}</h3>
             </div>
             <p className="text-lg font-medium leading-relaxed italic text-indigo-50">
-              "You are on a 5-day streak of taking your medications on time. Keep it up! Your next Vitamin D check is due in 12 days."
+              Connect your health data to receive personalized AI insights and recommendations.
             </p>
             <div className="pt-4 flex items-center justify-between">
                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">System Outlook: Stable</span>
@@ -288,14 +290,7 @@ export function CitizenDashboard() {
 }
 
 function TrendCard({ label, value, unit, status, color }: { label: string, value: string, unit: string, status: string, color: string }) {
-  const mockData = [
-     { time: '08:00', value: 80 },
-     { time: '10:00', value: 85 },
-     { time: '12:00', value: 95 },
-     { time: '14:00', value: 90 },
-     { time: '16:00', value: 82 },
-     { time: '18:00', value: 88 },
-  ];
+  const trendData: { time: string; value: number }[] = [];
 
   return (
     <div className="space-y-6 group">
@@ -312,7 +307,7 @@ function TrendCard({ label, value, unit, status, color }: { label: string, value
           </div>
        </div>
        <div className="h-24 overflow-hidden rounded-2xl">
-          <HealthTrendChart data={mockData} color={color} type="area" />
+           <HealthTrendChart data={trendData} color={color} type="area" />
        </div>
     </div>
   );

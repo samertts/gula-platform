@@ -89,7 +89,7 @@ export function MinistryDashboard() {
           </div>
           <p className="text-sm text-slate-500 font-medium max-w-xl">
              Centralized analytical oversight of the national health infrastructure. 
-             Real-time monitoring across 882 active lab nodes and major clinical centers.
+             Real-time monitoring across active lab nodes and clinical centers.
           </p>
         </div>
 
@@ -138,13 +138,7 @@ export function MinistryDashboard() {
                     <path d="M400 50 L550 150 L650 300 L600 450 L450 550 L250 520 L150 400 L180 200 Z" className="fill-slate-100 stroke-slate-200 stroke-2" />
                     
                     {/* Interconnected Nodes */}
-                    {[
-                      { x: 380, y: 150, label: 'Erbil', val: 92, color: '#4f46e5', hospitals: 12, critical: 2 },
-                      { x: 450, y: 220, label: 'Sulaymaniyah', val: 84, color: '#4f46e5', hospitals: 8, critical: 0 },
-                      { x: 320, y: 280, label: 'Duhok', val: 78, color: '#4f46e5', hospitals: 6, critical: 1 },
-                      { x: 400, y: 380, label: 'Kirkuk', val: 65, color: '#ef4444', hospitals: 5, critical: 3 },
-                      { x: 300, y: 450, label: 'Baghdad', val: 98, color: '#4f46e5', hospitals: 24, critical: 8 }
-                    ].map((node, i) => (
+                    {[].map((node: any, i: number) => (
                       <g 
                         key={i} 
                         className="cursor-pointer group/node"
@@ -234,33 +228,15 @@ export function MinistryDashboard() {
         <div className="col-span-12 lg:col-span-4 space-y-8">
            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-[80px] -mr-16 -mt-16" />
-             <h3 className="text-lg font-black uppercase tracking-tight mb-6">{t.supplyChain}</h3>
-             
-             <div className="space-y-6">
-                {[
-                  { label: 'Reagent Reserve', val: '84%', color: 'bg-indigo-400' },
-                  { label: 'PPE Stocks', val: '92%', color: 'bg-green-400' },
-                  { label: 'Medical Kits', val: '65%', color: 'bg-amber-400' },
-                ].map((item, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-wider opacity-60">
-                      <span>{item.label}</span>
-                      <span>{item.val}</span>
-                    </div>
-                    <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: item.val }}
-                        className={`h-full ${item.color}`}
-                      />
-                    </div>
-                  </div>
-                ))}
-             </div>
-             
-             <button className="w-full mt-10 py-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border border-white/10">
-                {t.manageCredentials}
-             </button>
+              <h3 className="text-lg font-black uppercase tracking-tight mb-6">{t.supplyChain}</h3>
+              
+              <div className="text-center py-8">
+                <p className="text-slate-400 text-sm font-medium">Supply chain data will appear once inventory is configured.</p>
+              </div>
+              
+              <button className="w-full mt-10 py-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border border-white/10">
+                 {t.manageCredentials}
+              </button>
            </div>
         </div>
       </div>
