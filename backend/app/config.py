@@ -155,6 +155,15 @@ if not NID_HMAC_KEY:
     NID_HMAC_KEY = ENCRYPTION_KEY or SECRET_KEY
     logger.warning("NID_HMAC_KEY not set. Set a stable key in .env for production.")
 
+# ─── Audit Anchor HMAC ──────────────────────────────────────────────────────
+# Separate key from NID_HMAC_KEY for key separation best practice.
+AUDIT_ANCHOR_KEY = os.getenv("AUDIT_ANCHOR_KEY", "")
+if not AUDIT_ANCHOR_KEY:
+    if IS_PRODUCTION:
+        sys.exit(1)
+    AUDIT_ANCHOR_KEY = NID_HMAC_KEY
+    logger.warning("AUDIT_ANCHOR_KEY not set. Set in .env for production.")
+
 # ─── Result Links ────────────────────────────────────────────────────────────
 RESULT_TOKEN_LENGTH = 32
 RESULT_LINK_EXPIRE_DAYS = 90

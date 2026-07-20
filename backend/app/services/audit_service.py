@@ -24,9 +24,7 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
-# Core chain computation available in shared.audit if needed for future use
-# from shared.audit import AuditService, compute_chain_hash, create_audit_entry
-from ..config import NID_HMAC_KEY as _CONFIG_NID_HMAC_KEY
+from ..config import AUDIT_ANCHOR_KEY
 from ..models.audit_log import AuditLog
 
 logger = logging.getLogger("gula.audit")
@@ -38,17 +36,13 @@ _ANCHOR_INTERVAL = 100
 
 _ANCHOR_KEY_VERSION = int(os.getenv("ANCHOR_KEY_VERSION", "1"))
 
-_raw_anchor_key = os.getenv("NID_HMAC_KEY", "")
+_raw_anchor_key = os.getenv("AUDIT_ANCHOR_KEY", "")
 if not _raw_anchor_key:
-    if not _CONFIG_NID_HMAC_KEY:
+    if not AUDIT_ANCHOR_KEY:
         sys.exit(1)
-    _raw_anchor_key = _CONFIG_NID_HMAC_KEY
-    logger.warning(
-        "[SECURITY] NID_HMAC_KEY not set — audit anchor HMAC uses derived key. "
-        "Set NID_HMAC_KEY in .env for production."
-    )
+    _raw_anchor_key = AUDIT_ANCHOR_KEY
 _ANCHOR_HMAC_KEY = _raw_anchor_key.encode("utf-8")
-_ANCHOR_HMAC_KEY_PREV = os.getenv("NID_HMAC_KEY_PREV", "").encode("utf-8")
+_ANCHOR_HMAC_KEY_PREV = os.getenv("AUDIT_ANCHOR_KEY_PREV", "").encode("utf-8")
 _KEY_TAG = f"v{_ANCHOR_KEY_VERSION}"
 
 

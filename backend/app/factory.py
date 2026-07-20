@@ -296,6 +296,7 @@ def _register_routes(app: FastAPI) -> None:
         patients, qr, quality_control, register, results, samples,
         security, setup, test_results,
     )
+    from .routes import admin_log_level
     from .routes import ai as ai_routes
     from .routes import citizen_portal as citizen_portal_routes
     from .routes import optimizer as optimizer_routes
@@ -310,7 +311,7 @@ def _register_routes(app: FastAPI) -> None:
         security, device_results,
     ]
     advanced_routes = [quality_control, critical_alerts, batch]
-    admin_routes = [admin]
+    admin_routes = [admin, admin_log_level]
     mobile_routes = [mobile]
     compliance_routes = [compliance]
 

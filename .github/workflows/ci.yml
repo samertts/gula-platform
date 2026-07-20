@@ -229,7 +229,7 @@ jobs:
       - name: Check Python dependencies for known CVEs
         run: |
           safety check -r backend/requirements.txt --output text
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Run Bandit SAST (fail on HIGH/CRITICAL severity)
         run: |
@@ -255,7 +255,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Verify no /tmp password files
         run: |

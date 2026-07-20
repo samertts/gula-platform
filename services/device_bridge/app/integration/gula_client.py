@@ -32,7 +32,7 @@ class GulaClient:
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(f"{self.base_url}/api/v1/results", json=payload)
+                response = await client.post(f"{self.base_url}/device/results", json=payload)
                 response.raise_for_status()
                 return response.json()
         except Exception as exc:
