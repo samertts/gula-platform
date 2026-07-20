@@ -1,16 +1,30 @@
-import { GoogleGenAI } from "@google/genai";
+type AiClient = import("@google/genai").GoogleGenAI;
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+let aiPromise: Promise<AiClient | null> | null = null;
 
-const ai = apiKey
-  ? new GoogleGenAI({ apiKey })
-  : null;
+async function getAi(): Promise<AiClient | null> {
+  if (aiPromise !== null) return aiPromise;
 
-if (!apiKey) {
-  console.warn("VITE_GEMINI_API_KEY is not set — Gemini AI features are disabled.");
+  aiPromise = (async () => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("VITE_GEMINI_API_KEY is not set — Gemini AI features are disabled.");
+      return null;
+    }
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      return new GoogleGenAI({ apiKey });
+    } catch (error) {
+      console.error("Failed to initialize GoogleGenAI:", error);
+      return null;
+    }
+  })();
+
+  return aiPromise;
 }
 
 export const generateSmartDiagnosis = async (patientData: string, symptoms: string) => {
+  const ai = await getAi();
   if (!ai) return "AI features are disabled — no API key configured.";
   try {
     const response = await ai.models.generateContent({
@@ -31,6 +45,7 @@ export const generateSmartDiagnosis = async (patientData: string, symptoms: stri
 };
 
 export const analyzeLabTrends = async (labResults: any[]) => {
+  const ai = await getAi();
   if (!ai) return "Trend analysis unavailable — AI features are disabled.";
   try {
     const response = await ai.models.generateContent({
@@ -55,6 +70,7 @@ export const analyzeLabTrends = async (labResults: any[]) => {
 };
 
 export const askFollowUp = async (context: string, question: string) => {
+  const ai = await getAi();
   if (!ai) return "Follow-up questions unavailable — AI features are disabled.";
   try {
     const response = await ai.models.generateContent({
