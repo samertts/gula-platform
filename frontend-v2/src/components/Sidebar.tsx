@@ -40,7 +40,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { signOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth } from '../firebase-auth';
 import { UserWing } from '../types/domain';
 
 export const Sidebar = memo(function Sidebar() {

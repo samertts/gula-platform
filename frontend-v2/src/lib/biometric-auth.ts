@@ -112,7 +112,7 @@ export async function registerBiometric(userId: string, userEmail: string, userD
       credentialId: arrayBufferToBase64Url(cred.rawId),
       publicKey: arrayBufferToBase64Url(response.getPublicKey()!),
       counter: 0,
-      transports: response.getTransports?.() || [],
+      transports: (response.getTransports?.() || []) as AuthenticatorTransport[],
       createdAt: Date.now(),
       deviceName: await getDeviceName(),
     };

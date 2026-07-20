@@ -4,7 +4,7 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { NotificationCenter } from './NotificationCenter';
 import { Language } from '../translations';
 import { cn } from '../lib/utils';
-import { auth } from '../firebase';
+import { auth } from '../firebase-auth';
 import { useState, useEffect, memo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';

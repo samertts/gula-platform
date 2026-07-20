@@ -42,7 +42,10 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 650,
+      cssCodeSplit: false,
+      sourcemap: false,
+      reportCompressedSize: true,
       rollupOptions: {
         output: {
           manualChunks(id) {

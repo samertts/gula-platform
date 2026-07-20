@@ -16,9 +16,9 @@ import {
   FlaskConical, Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, formatNumber, formatTime } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
-import { auth } from '../firebase';
+import { auth } from '../firebase-auth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -142,7 +142,7 @@ const SectionCard: React.FC<{
           <Icon size={18} />
         </div>
         <h3 className="font-black text-slate-800 text-sm tracking-tight">
-          {language === 'ar' ? titleAr : title}
+          {language === 'AR' ? titleAr : title}
         </h3>
       </div>
       {children}
@@ -191,35 +191,35 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
 
   useEffect(() => { load(); }, [load]);
 
-  const isAr = language === 'ar';
+  const isAr = language === 'AR';
 
   // ── Summary counters ───────────────────────────────────────────────────────
   const summaryCards = summary
     ? [
         {
           label: isAr ? 'إجمالي المرضى' : 'Total Patients',
-          value: summary.totals.patients.toLocaleString(),
+          value: formatNumber(summary.totals.patients, language),
           icon: Users,
           color: 'bg-violet-600',
-          sub: isAr ? `${summary.today.orders} طلب اليوم` : `${summary.today.orders} orders today`,
+          sub: isAr ? `${formatNumber(summary.today.orders, language)} طلب اليوم` : `${formatNumber(summary.today.orders, language)} orders today`,
         },
         {
           label: isAr ? 'إجمالي الطلبات' : 'Total Orders',
-          value: summary.totals.orders.toLocaleString(),
+          value: formatNumber(summary.totals.orders, language),
           icon: FlaskConical,
           color: 'bg-indigo-600',
-          sub: isAr ? `هذا الشهر: ${summary.this_month.orders}` : `This month: ${summary.this_month.orders}`,
+          sub: isAr ? `هذا الشهر: ${formatNumber(summary.this_month.orders, language)}` : `This month: ${formatNumber(summary.this_month.orders, language)}`,
         },
         {
           label: isAr ? 'إجمالي الفحوصات' : 'Total Tests',
-          value: summary.totals.tests.toLocaleString(),
+          value: formatNumber(summary.totals.tests, language),
           icon: Activity,
           color: 'bg-sky-600',
           sub: isAr ? 'منذ البداية' : 'All time',
         },
         {
           label: isAr ? 'نتائج خطيرة' : 'Critical Results',
-          value: summary.totals.critical_results.toLocaleString(),
+          value: formatNumber(summary.totals.critical_results, language),
           icon: AlertCircle,
           color: 'bg-red-600',
           sub: `${summary.totals.critical_rate_pct}%`,
@@ -250,7 +250,7 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
           {lastUpdated && (
             <p className="text-[11px] text-slate-400 mt-0.5">
               {isAr ? 'آخر تحديث: ' : 'Last updated: '}
-              {lastUpdated.toLocaleTimeString()}
+              {formatTime(lastUpdated, language)}
             </p>
           )}
         </div>
@@ -373,7 +373,7 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className="text-xs font-bold text-slate-700 truncate">{t.test_name}</span>
-                      <span className="text-xs text-slate-400 ml-2 shrink-0">{t.count.toLocaleString()}</span>
+                      <span className="text-xs text-slate-400 ml-2 shrink-0">{formatNumber(t.count, language)}</span>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <motion.div

@@ -11,7 +11,7 @@ import {
   Dna, Cpu, Box
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../../lib/utils';
+import { cn, formatTime } from '../../lib/utils';
 import { toast } from 'sonner';
 import { ResultEntryUI } from '../../components/lab/ResultEntryUI';
 
@@ -36,7 +36,7 @@ interface LabTask {
 }
 
 export function WorkQueue() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { profile } = useAuth();
   const [viewMode, setViewMode] = useState<'technician' | 'pathologist' | 'manager'>('technician');
   const [filterSection, setFilterSection] = useState('All');
@@ -579,7 +579,7 @@ export function WorkQueue() {
                                 <div className="flex items-center gap-1.5">
                                    <Clock size={12} className="text-slate-300" />
                                    <span className="text-[10px] font-bold text-slate-500 uppercase">
-                                      Due: {task.dueAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      Due: {formatTime(task.dueAt, language)}
                                    </span>
                                 </div>
                              </div>

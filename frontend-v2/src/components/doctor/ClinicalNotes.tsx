@@ -5,8 +5,9 @@ import {
   Undo2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../../lib/utils';
+import { cn, formatTime } from '../../lib/utils';
 import { toast } from 'sonner';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export function ClinicalNotes() {
   const [note, setNote] = useState({
@@ -18,6 +19,7 @@ export function ClinicalNotes() {
   const [history, setHistory] = useState<typeof note[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const { language } = useLanguage();
   const [isListening, setIsListening] = useState(false);
 
   const handleSave = () => {
@@ -85,7 +87,7 @@ export function ClinicalNotes() {
         <div className="flex items-center gap-4">
            {lastSaved && (
              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
-               Last synced {lastSaved.toLocaleTimeString()}
+               Last synced {formatTime(lastSaved, language)}
              </span>
            )}
            <div className="flex gap-2">

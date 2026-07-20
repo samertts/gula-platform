@@ -1,6 +1,6 @@
 import { Microscope, FileText, Download, CheckCircle2, AlertCircle, FileSearch, Plus, Loader2, ShieldCheck, X } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { cn } from '../lib/utils';
+import { cn, formatDate } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, auth, handleFirestoreError } from '../firebase';
 import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, where } from 'firebase/firestore';
@@ -18,7 +18,7 @@ interface LabReport {
 }
 
 export function LabResultsView() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [reports, setReports] = useState<LabReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -190,7 +190,7 @@ export function LabResultsView() {
                       <span className="text-[10px] text-slate-400 font-mono tracking-tighter truncate max-w-[100px]">{report.id}</span>
                       <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
                       <span className="text-[10px] text-slate-400 font-medium uppercase">
-                        {report.date?.toDate ? report.date.toDate().toLocaleDateString() : 'Pending'}
+                        {report.date?.toDate ? formatDate(report.date.toDate(), language) : 'Pending'}
                       </span>
                     </div>
                   </div>
