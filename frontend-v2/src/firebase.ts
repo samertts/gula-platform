@@ -80,12 +80,4 @@ export function handleFirestoreError(error: any, operationType: FirestoreErrorIn
   };
 
   console.error("Firestore Error:", errorInfo);
-
-  try {
-    const serialized = JSON.stringify(errorInfo);
-    throw new Error(serialized);
-  } catch (stringifyError) {
-    console.error("Failed to stringify Firestore error info:", stringifyError);
-    throw new Error(`Firestore Error [${operationType}] on [${path}]: ${errorMessage}`);
-  }
 }
