@@ -1,6 +1,18 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { Language, translations, Translation } from '../translations';
 import { getDir } from '../lib/utils';
+
+const LANG_KEY = 'gula_language';
+
+function getInitialLanguage(): Language {
+  try {
+    const stored = localStorage.getItem(LANG_KEY);
+    if (stored === 'AR' || stored === 'EN' || stored === 'KU' || stored === 'TR' || stored === 'SY') {
+      return stored;
+    }
+  } catch {}
+  return 'AR';
+}
 
 interface LanguageContextType {
   language: Language;
@@ -13,7 +25,12 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('EN');
+  const [language, setLanguage] = useState<Language>(getInitialLanguage);
+
+  const handleSetLanguage = useCallback((lang: Language) => {
+    setLanguage(lang);
+    try { localStorage.setItem(LANG_KEY, lang); } catch {}
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = language.toLowerCase();
@@ -22,7 +39,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const value = {
     language,
-    setLanguage,
+    setLanguage: handleSetLanguage,
     t: translations[language],
     dir: getDir(language),
     isRtl: getDir(language) === 'rtl'

@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { PermissionResource, PermissionAction, PermissionScope } from '../types/domain';
 import { Lock } from 'lucide-react';
@@ -12,7 +12,7 @@ interface PermissionGuardProps {
   fallback?: React.ReactNode;
 }
 
-export const PermissionGuard: React.FC<PermissionGuardProps> = ({ 
+export const PermissionGuard = memo<PermissionGuardProps>(({ 
   children, 
   resource, 
   action, 
@@ -67,4 +67,4 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
   }
 
   return <>{children}</>;
-};
+});

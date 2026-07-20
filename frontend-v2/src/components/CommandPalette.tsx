@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { motion } from 'motion/react';
 import { ChevronRight, Command as CommandIcon, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +25,7 @@ import {
  * - aria roles: combobox (input) + listbox (results) + option (rows).
  * - Visual identity preserved from the previous version.
  */
-export function CommandPalette() {
+export const CommandPalette = memo(function CommandPalette() {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -350,4 +350,4 @@ export function CommandPalette() {
         </motion.div>
       </div>
   );
-}
+});

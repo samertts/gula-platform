@@ -5,14 +5,14 @@ import { NotificationCenter } from './NotificationCenter';
 import { Language } from '../translations';
 import { cn } from '../lib/utils';
 import { auth } from '../firebase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { NeuralSparkline } from './NeuralSparkline';
 import { SystemDiagnosticsDrawer } from './SystemDiagnosticsDrawer';
 import { toast } from 'sonner';
 
-export function TopBar() {
+export const TopBar = memo(function TopBar() {
   const { t, setLanguage, language, dir } = useLanguage();
   const { unreadCount } = useNotifications();
   const { user, profile, logout } = useAuth();
@@ -288,4 +288,4 @@ export function TopBar() {
     </header>
     </div>
   );
-}
+});
