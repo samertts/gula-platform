@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
 from app.security.rate_limit import rate_limit_auth
+from app.services.audit_service import log_action
 from shared.auth.passwords import hash_password
 
 router = APIRouter(prefix="/auth", tags=["password-reset"])
@@ -39,13 +40,17 @@ async def forgot_password(
     user = db.query(LabUser).filter(LabUser.email == req.email).first()
     if not user:
         return {"message": "If the email exists, a reset link has been sent"}
-    import hashlib
     import secrets
+    from shared.auth.passwords import hash_password
     token = secrets.token_urlsafe(32)
-    hashed = hashlib.sha256(token.encode()).hexdigest()
-    user.reset_token = hashed
+    user.reset_token = hash_password(token)
     user.reset_token_expires = datetime.now(UTC) + timedelta(hours=1)
     db.commit()
+    if user:
+        try:
+            log_action(db, action="password_reset_requested", resource_type="password_reset", user_id=user.id)
+        except Exception:
+            pass
     return {"message": "If the email exists, a reset link has been sent"}
 
 
@@ -55,18 +60,22 @@ async def reset_password(
     db: Session = Depends(get_db),
     _rate=Depends(rate_limit_auth),
 ):
-    import hashlib
-    hashed = hashlib.sha256(req.token.encode()).hexdigest()
-    user = db.query(LabUser).filter(
-        LabUser.reset_token == hashed,
+    from shared.auth.passwords import verify_password
+    users = db.query(LabUser).filter(
+        LabUser.reset_token.isnot(None),
         LabUser.reset_token_expires > datetime.now(UTC),
-    ).first()
+    ).all()
+    user = next((u for u in users if verify_password(req.token, u.reset_token)), None)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
     user.password_hash = hash_password(req.new_password)
     user.reset_token = None
     user.reset_token_expires = None
     db.commit()
+    try:
+        log_action(db, action="password_reset_completed", resource_type="password_reset", user_id=user.id)
+    except Exception:
+        pass
     return {"message": "Password reset successful"}
 
 

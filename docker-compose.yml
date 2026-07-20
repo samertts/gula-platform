@@ -119,6 +119,7 @@ services:
       # Generate: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       NID_HMAC_KEY: ${NID_HMAC_KEY:-}
+      AUDIT_ANCHOR_KEY: ${AUDIT_ANCHOR_KEY:-}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-8}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-30}
       BASE_URL: ${BASE_URL:-http://localhost}
@@ -212,6 +213,7 @@ services:
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       NID_HMAC_KEY: ${NID_HMAC_KEY:-}
+      AUDIT_ANCHOR_KEY: ${AUDIT_ANCHOR_KEY:-}
       DEVICE_HMAC_KEY: ${DEVICE_HMAC_KEY:-}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       HEALTH_ALERT_INTERVAL_SECONDS: ${HEALTH_ALERT_INTERVAL_SECONDS:-60}
@@ -292,11 +294,36 @@ services:
       - gula-net
 
   # ---------------------------------------------------------------------------
-  # MONITORING (Prometheus + Grafana)
+  # MONITORING (Prometheus + Alertmanager + Grafana)
   # Internal only — no external port exposure. Access via SSH tunnel:
-  #   ssh -L 9090:localhost:9090 -L 3000:localhost:3000 user@server
+  #   ssh -L 9090:localhost:9090 -L 9093:localhost:9093 -L 3000:localhost:3000 user@server
   # Enable: ENABLE_MONITORING=true in .env (or uncomment profiles below)
   # ---------------------------------------------------------------------------
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: gula-alertmanager
+    restart: always
+    profiles: ["monitoring"]
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    volumes:
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    expose:
+      - "9093"
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9093/-/healthy | grep -q OK"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   prometheus:
     image: prom/prometheus:v2.55.1
@@ -415,6 +442,8 @@ volumes:
   prometheus-data:
     driver: local
   grafana-data:
+    driver: local
+  alertmanager-data:
     driver: local
 
 # =============================================================================

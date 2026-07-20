@@ -5,10 +5,11 @@ Fail-fast, atomic sequential validation chain that runs before the app
 accepts traffic.
 
 Sequence (all-or-nothing):
-  1. validate_config()     — secrets present and not weak/default
-  2. wait_for_db()         — DB reachable with exponential backoff
-  3. check_migrations()    — alembic_version table has at least one row
-  4. seed_critical_data()  — perm_version migration, test types, master admin
+   1. validate_config()     — secrets present and not weak/default
+   2. wait_for_db()         — DB reachable with exponential backoff
+   3. check_redis()         — Redis reachable (fatal — restart container if down)
+   4. check_migrations()    — alembic_version table has at least one row
+   5. seed_critical_data()  — perm_version migration, test types, master admin
 
 Only if every step above passes does system_ready become True.
 A single failure keeps system_ready = False and crashes the process so the
@@ -113,7 +114,7 @@ def _is_weak(value: str) -> bool:
 
 def validate_config() -> None:
     """Fail fast if any required secret is missing or dangerously weak."""
-    from ..config import ENCRYPTION_KEY, IS_PRODUCTION, NID_HMAC_KEY, SECRET_KEY
+    from ..config import AUDIT_ANCHOR_KEY, ENCRYPTION_KEY, IS_PRODUCTION, NID_HMAC_KEY, SECRET_KEY
 
     errors: list[str] = []
 
@@ -154,6 +155,12 @@ def validate_config() -> None:
             )
     elif IS_PRODUCTION and _is_weak(NID_HMAC_KEY):
         errors.append("NID_HMAC_KEY looks like a placeholder. Set a stable random key.")
+
+    if not AUDIT_ANCHOR_KEY:
+        if IS_PRODUCTION:
+            errors.append("AUDIT_ANCHOR_KEY is not set. Set in .env for audit chain integrity.")
+    elif IS_PRODUCTION and _is_weak(AUDIT_ANCHOR_KEY):
+        errors.append("AUDIT_ANCHOR_KEY looks like a placeholder. Set a stable random key.")
 
     if errors:
         for err in errors:
@@ -234,7 +241,47 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
     return False
 
 
-# ─── Step 3: Migration Check ─────────────────────────────────────────────────
+# ─── Step 3: Redis Connectivity ──────────────────────────────────────────────
+
+
+async def check_redis(max_retries: int = 5, delay: int = 2) -> None:
+    """Verify Redis is reachable at startup. Fatal if unreachable after retries.
+
+    Redis is critical at startup because:
+    - Rate limiting depends on it (without Redis, rates are per-worker, unscalable)
+    - Token blacklisting depends on it (JWT revocation across workers)
+    - perm_version caching depends on it (session invalidation across workers)
+
+    Runtime Redis failures are tolerated (in-memory fallback), but startup
+    failures are fatal — they indicate misconfiguration.
+    """
+    import asyncio
+
+    from ..config import REDIS_URL
+
+    for attempt in range(max_retries):
+        try:
+            import redis as _redis_check
+            r = _redis_check.from_url(REDIS_URL, socket_timeout=2, decode_responses=True)
+            r.ping()
+            r.close()
+            logger.info("[STARTUP GUARD] Redis connection OK (attempt %d)", attempt + 1)
+            return
+        except Exception as exc:
+            logger.warning(
+                "[STARTUP GUARD] Redis not ready (attempt %d/%d) — %s — retrying in %ds",
+                attempt + 1, max_retries, exc, delay,
+            )
+        await asyncio.sleep(delay)
+
+    raise RuntimeError(
+        "[STARTUP GUARD] Redis unreachable after %d attempts. "
+        "Check REDIS_URL / REDIS_PASSWORD and redis container status. "
+        "Without Redis, token blacklisting and rate limiting are per-worker only."
+    )
+
+
+# ─── Step 4: Migration Check ─────────────────────────────────────────────────
 
 # Tables that MUST exist for the app to function. If any are missing, migrations
 # have not been applied and the app must not start.
@@ -653,7 +700,8 @@ async def run_startup_guard() -> None:
             # Do not exit early. Allow the process to continue, but system_ready will remain False.
             # The global exception handler will then return 503 for all requests.
             return
-        await check_migrations()  # Step 3 — migration state
+        await check_redis()  # Step 3 — Redis reachable
+        await check_migrations()  # Step 4 — migration state
 
         # If all critical steps (config, DB, migrations) pass, then the system is ready.
         # The seed_critical_data step is now more resilient and won't prevent system_ready from being True.

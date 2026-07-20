@@ -26,6 +26,10 @@ redis>=5.0.0
 # orjson>=3.9.0  # removed — dead dependency (not imported anywhere)
 # Error tracking — optional, activates only when SENTRY_DSN env var is set
 sentry-sdk[fastapi]>=2.0.0
+# WebAuthn / Passkeys / FIDO2 — production MFA support
+webauthn>=2.0.0
+# TOTP — production MFA support (pyotp is imported in mfa service)
+pyotp>=2.10.0
 # Google AI Studio — official Gemini SDK (OPTIONAL — not installed by default)
 # The platform works without this: raw HTTPS fallback is used automatically.
 # Install manually to unlock proper system_instruction + structured safety settings:
