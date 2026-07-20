@@ -21,6 +21,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .config import APP_NAME, APP_VERSION, IS_PRODUCTION, RUNTIME_MODE
+from .domain.exceptions import DomainError
 
 logger = logging.getLogger("gula.factory")
 
@@ -222,28 +223,9 @@ def _build_middleware_stack(app: FastAPI) -> None:
     app.add_middleware(RequestIDMiddleware)
 
     if IS_PRODUCTION:
-        from .security.auth import decode_token
-        from starlette.middleware.base import BaseHTTPMiddleware
+        from .middleware import DocsAuthMiddleware
 
-        class _DocsAuthMiddleware(BaseHTTPMiddleware):
-            _PROTECTED = {"/docs", "/redoc", "/openapi.json"}
-
-            async def dispatch(self, request, call_next):
-                if request.url.path not in self._PROTECTED:
-                    return await call_next(request)
-                token = request.cookies.get("access_token")
-                if not token:
-                    auth_header = request.headers.get("Authorization", "")
-                    if auth_header.startswith("Bearer "):
-                        token = auth_header[7:]
-                if not token:
-                    return JSONResponse(status_code=401, content={"detail": "Authentication required"})
-                payload = decode_token(token)
-                if not payload or payload.get("role") not in ("admin", "master_admin"):
-                    return JSONResponse(status_code=403, content={"detail": "Admin access required"})
-                return await call_next(request)
-
-        app.add_middleware(_DocsAuthMiddleware)
+        app.add_middleware(DocsAuthMiddleware)
 
     _allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
     _allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
@@ -541,7 +523,7 @@ def _build_lifespan():
         if not _should_init_background_tasks():
             logger.info("Runtime mode '%s' — skipping background task init", RUNTIME_MODE)
         else:
-            from .main import start_background_workers, warmup
+            from .core.startup import start_background_workers, warmup
             await start_background_workers()
             await warmup()
 
@@ -559,7 +541,7 @@ def _build_lifespan():
         yield
 
         if _should_init_background_tasks():
-            from .main import _bg_tasks
+            from .core.startup import _bg_tasks
             logger.info("Shutting down %d background task(s)...", len(_bg_tasks))
             from .kernel.integration import stop_kernel
             try:
@@ -578,6 +560,15 @@ def _build_lifespan():
             logger.info("Database connections closed")
 
     return _lifespan
+
+
+def _domain_exception_handler(request: Request, exc: "DomainError") -> JSONResponse:
+    """Translate domain errors to the appropriate HTTP response."""
+    request_id = getattr(request.state, "request_id", "unknown")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message, "detail_ar": exc.message, "request_id": request_id},
+    )
 
 
 def _exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -676,6 +667,7 @@ def create_app(override_mode: str | None = None) -> FastAPI:
         license_info={"name": "Proprietary - Ministry of Health Iraq Compliant"},
     )
 
+    app.exception_handler(DomainError)(_domain_exception_handler)
     app.exception_handler(Exception)(_exception_handler)
 
     _build_middleware_stack(app)

@@ -605,7 +605,7 @@ def _run_seed_test_types() -> None:
 
 def _run_ensure_master_admin() -> None:
     """Create master admin on first startup if not exists."""
-    from ..routes.admin import ensure_master_admin
+    from .seeds import ensure_master_admin
 
     ensure_master_admin()
 
@@ -613,7 +613,7 @@ def _run_ensure_master_admin() -> None:
 def _run_seed_default_subscriptions() -> None:
     """Ensure every active lab has a LabSubscription row — idempotent."""
     from ..database import SessionLocal
-    from ..routes.tiers import seed_default_subscriptions
+    from .seeds import seed_default_subscriptions
 
     db = SessionLocal()
     try:

@@ -7,7 +7,6 @@ canonical identity. Provides find-or-create, merge, and link operations.
 import contextlib
 from datetime import datetime
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -103,15 +102,16 @@ def merge_canonicals(
     The source record is NOT deleted — it remains orphaned for audit trail.
     """
     if target_id == source_id:
-        raise HTTPException(status_code=400, detail="cannot merge a canonical into itself")
+        from app.domain.exceptions import ConflictError, NotFoundError
+        raise ConflictError("cannot merge a canonical into itself")
 
     target = db.query(CanonicalPatient).filter(CanonicalPatient.id == target_id).first()
     if target is None:
-        raise HTTPException(status_code=404, detail="target canonical not found")
+        raise NotFoundError("target canonical not found")
 
     source = db.query(CanonicalPatient).filter(CanonicalPatient.id == source_id).first()
     if source is None:
-        raise HTTPException(status_code=404, detail="source canonical not found")
+        raise NotFoundError("source canonical not found")
 
     db.query(PatientLink).filter(PatientLink.canonical_id == source_id).update(
         {"canonical_id": target_id}

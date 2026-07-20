@@ -7,18 +7,14 @@ Access levels:
   admin            50  — can manage staff/doctor/technician within their lab
 """
 
-import hashlib
-import hmac
 import json
 import logging
-import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..config import NID_HMAC_KEY
 from ..database import SessionLocal, get_db
 from ..models.audit_log import AuditLog
 from ..models.lab import Lab
@@ -43,16 +39,6 @@ from ..services.audit_service import log_action
 logger = logging.getLogger("gula.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-# ── NID hashing ───────────────────────────────────────────────────────────────
-# Use the same key from config to ensure consistent hashes with the rest of the app
-_NID_KEY = NID_HMAC_KEY.encode()
-
-
-def _hash_nid(nid: str) -> str:
-    """HMAC-SHA256 of a national ID — never store raw NID."""
-    return hmac.new(_NID_KEY, nid.strip().encode(), hashlib.sha256).hexdigest()
-
 
 # ── Access control helpers ────────────────────────────────────────────────────
 
@@ -965,89 +951,9 @@ def get_audit_logs(
 # BOOTSTRAP — Master Admin
 # =============================================================================
 
-
-def ensure_master_admin() -> None:
-    """Seed the MASTER_ADMIN account on a brand-new database.
-
-    Environment variables consumed:
-      GULA_ADMIN_EMAIL         — email for login (default: admin@gula-platform.org)
-      GULA_ADMIN_NAME          — display name
-      GULA_ADMIN_PASSWORD      — plaintext password (hashed at runtime)
-      GULA_ADMIN_PASSWORD_HASH — pre-hashed password (takes priority)
-      MASTER_ADMIN_NID         — national ID to associate (raw, hashed server-side)
-
-    Rules:
-    - Runs only when no master_admin row exists (fresh DB).
-    - Skips silently if password is not configured.
-    - If master_admin already exists AND MASTER_ADMIN_NID is set but not yet
-      linked, this function will link the NID to the existing account.
-    """
-    db = SessionLocal()
-    try:
-        existing = db.query(LabUser).filter(LabUser.role == "master_admin").first()
-
-        if not existing:
-            email = os.getenv("GULA_ADMIN_EMAIL", "admin@gula-platform.org")
-            name = os.getenv("GULA_ADMIN_NAME", "GULA Admin")
-
-            password_hash = os.getenv("GULA_ADMIN_PASSWORD_HASH", "").strip() or None
-            if not password_hash:
-                plaintext = os.getenv("GULA_ADMIN_PASSWORD", "").strip() or None
-                if not plaintext:
-                    logger.error(
-                        "Bootstrap SKIPPED: GULA_ADMIN_PASSWORD not set. "
-                        "Set it in .env and restart."
-                    )
-                    return
-                password_hash = hash_password(plaintext)
-
-            platform_lab = db.query(Lab).filter(Lab.name == "GULA Platform").first()
-            if not platform_lab:
-                platform_lab = Lab(name="GULA Platform", city="Platform", is_active=True)
-                db.add(platform_lab)
-                db.flush()
-
-            existing = LabUser(
-                lab_id=platform_lab.id,
-                name=name,
-                email=email,
-                password_hash=password_hash,
-                role="master_admin",
-                is_active=True,
-            )
-            db.add(existing)
-            db.flush()
-            logger.info("Bootstrap: master_admin created (%s, id=%d)", email, existing.id)
-
-        # ── Link national ID if provided and not yet set ──────────────────────
-        nid_raw = os.getenv("MASTER_ADMIN_NID", "").strip()
-        if nid_raw and not existing.national_id_hash:
-            nid_hash = _hash_nid(nid_raw)
-            # Check no other user already has this hash (safety)
-            conflict = (
-                db.query(LabUser)
-                .filter(
-                    LabUser.national_id_hash == nid_hash,
-                    LabUser.id != existing.id,
-                )
-                .first()
-            )
-            if conflict:
-                logger.error(
-                    "Bootstrap: MASTER_ADMIN_NID hash already belongs to user %d — skipping NID link",
-                    conflict.id,
-                )
-            else:
-                existing.national_id_hash = nid_hash
-                logger.info("Bootstrap: national_id linked to master_admin (id=%d)", existing.id)
-
-        db.commit()
-
-    except Exception as exc:
-        db.rollback()
-        logger.error("Bootstrap: failed — %s", exc)
-    finally:
-        db.close()
+# Re-exported from core/seeds for backward compatibility.
+# Startup import path: core/startup_guard → core/seeds (not routes).
+from app.core.seeds import ensure_master_admin, hash_nid as _hash_nid  # noqa: F401
 
 
 # =============================================================================

@@ -55,18 +55,22 @@ export const Sidebar = memo(function Sidebar() {
   const isRtl = dir === 'rtl';
 
   useEffect(() => {
-    const savedPinned = localStorage.getItem('gula_pinned_nav');
-    if (savedPinned) {
-      try {
+    try {
+      const savedPinned = localStorage.getItem('gula_pinned_nav');
+      if (savedPinned) {
         setPinnedPaths(JSON.parse(savedPinned));
-      } catch (e) {
-        console.error('Failed to parse pinned items');
       }
+    } catch (e) {
+      console.error('Failed to read pinned items from localStorage');
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('gula_pinned_nav', JSON.stringify(pinnedPaths));
+    try {
+      localStorage.setItem('gula_pinned_nav', JSON.stringify(pinnedPaths));
+    } catch (e) {
+      console.error('Failed to write pinned items to localStorage');
+    }
   }, [pinnedPaths]);
 
   const togglePin = (e: React.MouseEvent, path: string) => {

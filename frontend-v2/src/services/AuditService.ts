@@ -32,8 +32,8 @@ export const AuditService = {
         resourceId: params.resourceId,
         changes: params.changes || null,
         metadata: {
-          ip: 'client-side-logged', // In a real system, this would be server-side
-          userAgent: navigator.userAgent,
+          ip: 'client-side-logged',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
           severity: params.severity || 'info'
         }
       });

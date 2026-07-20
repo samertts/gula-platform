@@ -11,6 +11,7 @@ if (!apiKey) {
 }
 
 export const generateSmartDiagnosis = async (patientData: string, symptoms: string) => {
+  if (!ai) return "AI features are disabled — no API key configured.";
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -30,6 +31,7 @@ export const generateSmartDiagnosis = async (patientData: string, symptoms: stri
 };
 
 export const analyzeLabTrends = async (labResults: any[]) => {
+  if (!ai) return "Trend analysis unavailable — AI features are disabled.";
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -53,6 +55,7 @@ export const analyzeLabTrends = async (labResults: any[]) => {
 };
 
 export const askFollowUp = async (context: string, question: string) => {
+  if (!ai) return "Follow-up questions unavailable — AI features are disabled.";
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",

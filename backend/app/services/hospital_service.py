@@ -1,9 +1,10 @@
 """Hospital service — business logic for the National HIS Platform."""
 
 from datetime import datetime
+
+from app.domain.exceptions import ConflictError, NotFoundError
 from typing import Any
 
-from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -47,11 +48,7 @@ class HospitalService:
             ~HospitalMaster.is_deleted,
         ).first()
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Hospital with code '{data['code']}' already exists",
-                detail_ar=f"مستشفى برمز '{data['code']}' موجود بالفعل",
-            )
+            raise ConflictError(f"Hospital with code '{data['code']}' already exists")
         hospital = HospitalMaster(lab_id=lab_id, created_by=user_id, **data)
         db.add(hospital)
         db.flush()
@@ -72,7 +69,7 @@ class HospitalService:
             ~HospitalMaster.is_deleted,
         ).first()
         if not hospital:
-            raise HTTPException(status_code=404, detail="Hospital not found")
+            raise NotFoundError("Hospital not found")
         for k, v in data.items():
             setattr(hospital, k, v)
         hospital.updated_by = user_id
@@ -90,7 +87,7 @@ class HospitalService:
             ~HospitalMaster.is_deleted,
         ).first()
         if not hospital:
-            raise HTTPException(status_code=404, detail="Hospital not found")
+            raise NotFoundError("Hospital not found")
         hospital.is_active = False
         hospital.updated_by = user_id
         db.flush()
@@ -104,7 +101,7 @@ class HospitalService:
             ~HospitalMaster.is_deleted,
         ).first()
         if not hospital:
-            raise HTTPException(status_code=404, detail="Hospital not found")
+            raise NotFoundError("Hospital not found")
         return hospital
 
     @staticmethod
@@ -125,7 +122,7 @@ class HospitalService:
             q = q.filter(parent_filter)
         entity = q.first()
         if not entity:
-            raise HTTPException(status_code=404, detail=f"{model.__tablename__} not found")
+            raise NotFoundError(f"{model.__tablename__} not found")
         return entity
 
     # ── Campus CRUD ────────────────────────────────────────────────────────────
@@ -272,13 +269,9 @@ class HospitalService:
             Patient.id == patient_id, Patient.lab_id == lab_id,
         ).first()
         if not patient:
-            raise HTTPException(status_code=404, detail="Patient not found")
+            raise NotFoundError("Patient not found")
         if bed.status != "available":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Bed is currently {bed.status}",
-                detail_ar=f"السرير حالياً {bed.status}",
-            )
+            raise ConflictError(f"Bed is currently {bed.status}")
         bed.status = "occupied"
         bed.current_patient_id = patient_id
         assignment = BedAssignment(
@@ -301,11 +294,7 @@ class HospitalService:
     ) -> Bed:
         bed = HospitalService._get_entity(db, Bed, bed_id, lab_id)
         if bed.status != "occupied":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Bed is not currently occupied",
-                detail_ar="السرير غير مشغول حالياً",
-            )
+            raise ConflictError("Bed is not currently occupied")
         active_assignment = db.query(BedAssignment).filter(
             BedAssignment.bed_id == bed_id,
             BedAssignment.discharge_date.is_(None),
@@ -331,10 +320,7 @@ class HospitalService:
         source = HospitalService.discharge_bed(db, lab_id, user_id, from_bed_id, reason)
         target = HospitalService._get_entity(db, Bed, to_bed_id, lab_id)
         if target.status != "available":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Target bed is {target.status}",
-            )
+            raise ConflictError(f"Target bed is {target.status}")
         patient_id = source.current_patient_id
         target.status = "occupied"
         target.current_patient_id = patient_id

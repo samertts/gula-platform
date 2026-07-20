@@ -142,6 +142,29 @@ class ReadinessMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class DocsAuthMiddleware(BaseHTTPMiddleware):
+    """Guard /docs, /redoc, /openapi.json behind admin JWT in production."""
+
+    _PROTECTED = {"/docs", "/redoc", "/openapi.json"}
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path not in self._PROTECTED:
+            return await call_next(request)
+        token = request.cookies.get("access_token")
+        if not token:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+        if not token:
+            return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+        from .security.auth import decode_token
+
+        payload = decode_token(token)
+        if not payload or payload.get("role") not in ("admin", "master_admin"):
+            return JSONResponse(status_code=403, content={"detail": "Admin access required"})
+        return await call_next(request)
+
+
 class KernelMiddleware(BaseHTTPMiddleware):
     """Attach kernel context to every request."""
 

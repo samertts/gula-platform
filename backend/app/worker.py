@@ -82,7 +82,7 @@ async def _run_worker() -> None:
     from .core.auto_repair import auto_repair as _auto_repair
     from .core.self_healing import RecoveryWorker
     from .database import restore_db_window_from_redis
-    from .main import _adaptive_concurrency_loop, _health_alert_loop
+    from .core.startup import _adaptive_concurrency_loop, _health_alert_loop
     from .services.outbox_service import OutboxWorker
     from .tasks.queue import task_queue
     from .tasks.worker import TaskWorker
