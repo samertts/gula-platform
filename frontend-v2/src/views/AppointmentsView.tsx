@@ -14,12 +14,14 @@ const chartData = [
 export function AppointmentsView() {
   const { t } = useLanguage();
 
-  const appointments = [
-    { patient: "Naser Mohammad", id: "P-102", time: "09:30 AM", doctor: "Dr. Julian Vance", specialty: "Cardiology", status: "Confirmed" },
-    { patient: "Sara Ahmed", id: "P-205", time: "10:15 AM", doctor: "Dr. Layla Demir", specialty: "Pediatrics", status: "Pending" },
-    { patient: "Karwan H.", id: "P-301", time: "11:00 AM", doctor: "Dr. Ahmed M.", specialty: "Neurology", status: "Confirmed" },
-    { patient: "Elias J.", id: "P-115", time: "01:30 PM", doctor: "Dr. Julian Vance", specialty: "General Practice", status: "Cancelled" }
-  ];
+  const appointments: {
+    patient: string;
+    id: string;
+    time: string;
+    doctor: string;
+    specialty: string;
+    status: string;
+  }[] = [];
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700 max-w-7xl mx-auto w-full p-4 md:p-8">

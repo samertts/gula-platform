@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   FileText, Save, History, Sparkles, 
   Mic, User, Activity, AlertCircle, CheckCircle2,
@@ -8,6 +8,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatTime } from '../../lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase';
+import { useParams } from 'react-router-dom';
 
 export function ClinicalNotes() {
   const [note, setNote] = useState({
@@ -21,15 +24,29 @@ export function ClinicalNotes() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const { language } = useLanguage();
   const [isListening, setIsListening] = useState(false);
+  const { patientId } = useParams<{ patientId: string }>();
 
-  const handleSave = () => {
+  const handleSave = useCallback(async () => {
+    if (!patientId) {
+      toast.error('No patient selected');
+      return;
+    }
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const ref = doc(db, 'clinical_notes', `${patientId}_${Date.now()}`);
+      await setDoc(ref, {
+        patientId,
+        ...note,
+        createdAt: serverTimestamp(),
+      });
       setLastSaved(new Date());
-    }, 800);
-  };
+      toast.success('Clinical note saved');
+    } catch (err) {
+      toast.error('Failed to save note');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [note, patientId]);
 
   // Auto-save every 10 seconds
   useEffect(() => {
@@ -67,11 +84,7 @@ export function ClinicalNotes() {
   };
 
   const handleAIComplete = () => {
-    toast.success('AI Suggestion: Consider acute bronchitis based on objective findings.');
-    updateNote({
-      ...note,
-      assessment: note.assessment + (note.assessment ? ' ' : '') + 'Differential diagnosis includes acute bronchitis vs pneumonia.'
-    });
+    toast.success('AI Suggestion: Connect to GULA AI service to generate assessment suggestions based on clinical findings.');
   };
 
   return (

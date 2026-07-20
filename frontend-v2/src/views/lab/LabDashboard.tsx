@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FlaskConical, Activity as ActivityIcon, AlertCircle, 
-  Clock, CheckCircle2, TrendingUp,
+  Clock, CheckCircle2,
   BarChart3, Microscope, Beaker, Search, Bell, Plus,
-  Cpu, Zap, Radio, Boxes
+  Cpu, Zap, Boxes
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
@@ -124,9 +124,9 @@ export function LabDashboard() {
   };
 
   const metrics = [
-    { title: t.samplesInQueue, value: tasks.filter(t => t.status !== 'completed').length, icon: FlaskConical, color: 'text-indigo-600', bg: 'bg-indigo-600', trend: "-12%" },
-    { title: t.avgTat, value: '2.4h', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-600', trend: "Optimal" },
-    { title: t.validatedToday, value: tasks.filter(t => t.status === 'completed').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-600', trend: "+4%" },
+    { title: t.samplesInQueue, value: tasks.filter(t => t.status !== 'completed').length, icon: FlaskConical, color: 'text-indigo-600', bg: 'bg-indigo-600' },
+    { title: t.avgTat, value: '--', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-600' },
+    { title: t.validatedToday, value: tasks.filter(t => t.status === 'completed').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-600' },
     { title: t.qcAnomalies, value: '0', icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-50' },
   ];
 
@@ -151,13 +151,11 @@ export function LabDashboard() {
              </div>
              <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase font-headline">{t.labManagement}</h1>
           </div>
-          <div className="flex items-center gap-4 mt-2">
-             <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 italic">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Robotic Subsystems Online</span>
-             </div>
-             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Next automated batch in 14m</div>
-          </div>
+           <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-400 rounded-full border border-slate-200 italic">
+                 <span className="text-[10px] font-black uppercase tracking-widest">System Status: Awaiting Connection</span>
+              </div>
+           </div>
         </div>
 
         <div className="flex items-center gap-3 w-full lg:w-auto">
@@ -193,7 +191,7 @@ export function LabDashboard() {
                   Inter-Cluster <br /><span className="text-indigo-400">Resource</span> Logistics
                </h2>
                <p className="text-base text-indigo-100/60 font-medium leading-relaxed max-w-xl">
-                 Unified view of reagents, consumables, and strategic reserves across the National Grid. Predictive re-routing active for Basrah & Nineveh nodes.
+                 Unified view of reagents, consumables, and strategic reserves across the National Grid. Connect lab instruments to begin monitoring.
                </p>
                <div className="flex flex-wrap gap-4 pt-4">
                   <button className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-900/40 hover:scale-[1.02] active:scale-95 transition-all">
@@ -204,20 +202,11 @@ export function LabDashboard() {
                   </button>
                </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-2 gap-4 w-full xl:w-fit mt-8 xl:mt-0">
-               {[
-                 { label: 'Global Reagents', val: '92%', status: 'Stable' },
-                 { label: 'Consumables', val: 'Low', status: 'Alert' },
-                 { label: 'Reserve Energy', val: '100%', status: 'Nominal' },
-                 { label: 'Asset Reliability', val: '99.2%', status: 'High' }
-               ].map((item, i) => (
-                 <div key={i} className="p-6 bg-white/10 border border-white/10 rounded-[2rem] backdrop-blur-md min-w-[160px] flex flex-col justify-center">
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-50 block mb-1">{item.label}</span>
-                    <p className="text-xl font-black mb-1">{item.val}</p>
-                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-white/10 rounded-lg self-start">{item.status}</span>
-                 </div>
-               ))}
-            </div>
+             <div className="text-center py-12 px-8 bg-white/5 border border-white/10 rounded-[2rem] backdrop-blur-md w-full xl:w-fit mt-8 xl:mt-0">
+                <Boxes size={32} className="text-indigo-400/30 mx-auto mb-3" />
+                <p className="text-indigo-200 font-bold">No supply data yet</p>
+                <p className="text-indigo-400/60 text-sm mt-1">Inventory levels will appear once configured.</p>
+             </div>
          </div>
 
          <div className="relative z-10 flex flex-wrap items-center gap-4">
@@ -355,70 +344,39 @@ export function LabDashboard() {
         </div>
 
         <div className="col-span-12 lg:col-span-4 space-y-6">
-           <div className="bg-slate-900 rounded-[40px] p-8 text-white relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-[80px] -mr-16 -mt-16" />
-             <div className="relative z-10">
-               <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-black uppercase tracking-tight">{t.chemicalReagents}</h3>
-                  <div className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-[9px] font-black uppercase animate-pulse">Low Stock</div>
-               </div>
+            <div className="bg-slate-900 rounded-[40px] p-8 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-[80px] -mr-16 -mt-16" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                   <h3 className="text-lg font-black uppercase tracking-tight">{t.chemicalReagents}</h3>
+                </div>
 
-               <div className="space-y-6">
-                  {[
-                    { label: 'Analyzer Fluid Delta', val: 'Low', progress: 15, color: 'bg-red-400' },
-                    { label: 'Immunoassay Packs', val: 'Opt', progress: 85, color: 'bg-green-400' },
-                    { label: 'Biopsy Cassettes', val: 'Med', progress: 45, color: 'bg-amber-400' },
-                  ].map((item, i) => (
-                    <div key={i} className="space-y-2">
-                       <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-60">
-                          <span>{item.label}</span>
-                          <span>{item.val}</span>
-                       </div>
-                       <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${item.progress}%` }}
-                            className={cn("h-full", item.color)}
-                          />
-                       </div>
-                    </div>
-                  ))}
-               </div>
+                <div className="text-center py-12 bg-white/5 rounded-[2rem]">
+                  <FlaskConical size={32} className="text-indigo-400/30 mx-auto mb-3" />
+                  <p className="text-indigo-200 font-bold">No inventory data</p>
+                  <p className="text-indigo-400/60 text-sm mt-1">Reagent levels will appear once stock is configured.</p>
+                </div>
 
-               <button className="w-full mt-10 py-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-white/5">
-                 {t.orderSupplies} <Plus size={14} />
-               </button>
-             </div>
-           </div>
-
-           <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
-                 <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                    <Cpu size={18} />
-                 </div>
-                 <h3 className="text-sm font-black uppercase tracking-tight">Automation Twin</h3>
+                <button className="w-full mt-10 py-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-white/5">
+                  {t.orderSupplies} <Plus size={14} />
+                </button>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 {[
-                   { name: 'Centrifuge 01', status: 'Spinning', rpm: '4.5k', color: 'emerald' },
-                   { name: 'Incubator Alpha', status: 'Stable', temp: '37.1°C', color: 'indigo' },
-                   { name: 'Robotic Arm 04', status: 'Waiting', load: '0%', color: 'amber' },
-                   { name: 'Analyzer Gamma', status: 'Active', load: '88%', color: 'rose' },
-                 ].map((mod, i) => (
-                   <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-indigo-200 transition-all">
-                      <div className="flex justify-between items-start mb-2">
-                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{mod.name}</span>
-                         <div className={`w-1.5 h-1.5 rounded-full bg-${mod.color}-500 animate-pulse`} />
-                      </div>
-                      <div className="flex items-baseline gap-1">
-                         <span className="text-sm font-black text-slate-900">{mod.rpm || mod.temp || mod.load}</span>
-                         <span className="text-[9px] font-bold text-slate-400 uppercase">{mod.status}</span>
-                      </div>
-                   </div>
-                 ))}
-              </div>
-           </div>
+            </div>
+
+            <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-sm">
+               <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                     <Cpu size={18} />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-tight">Automation Twin</h3>
+               </div>
+               
+               <div className="text-center py-12 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                  <Cpu size={32} className="text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 font-bold">No automation modules connected</p>
+                  <p className="text-slate-400 text-sm mt-1">Device status will appear once instruments are paired.</p>
+               </div>
+            </div>
         </div>
         </div>
 

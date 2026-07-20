@@ -1,509 +1,608 @@
-import { memo } from 'react';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Settings,
-  Image as ImageIcon,
-  Menu,
-  X,
-  Stethoscope,
-  Microscope,
-  User,
-  Activity as ActivityIcon,
-  Box,
-  Server,
-  ClipboardList,
-  ShieldCheck,
-  CreditCard,
-  FlaskConical,
-  Fingerprint,
-  LogOut,
-  Pill,
-  Users,
-  BrainCircuit,
-  TestTube,
-  Shield,
-  Globe,
-  Building2,
-  Code2,
-  History,
-  ChevronDown,
-  ChevronRight,
-  Pin,
-  PinOff,
-  Zap as QuickZap
+import { memo, useMemo, useState, useRef, useCallback, useEffect } from 'react';
+import {
+  LayoutDashboard, Users, Stethoscope, Microscope, FlaskConical,
+  Calendar, FileText, Activity, Pill, BrainCircuit, Building2,
+  Shield, Settings, Search, Heart, ClipboardList, TestTube,
+  Box, ShieldCheck, Image, Globe, BarChart3, Server, Code2,
+  History, Clock, Star, Pin, GripVertical, X, Menu,
+  ChevronLeft, ChevronRight, Zap, BellRing, User,
+  LogOut, ChevronDown, ChevronUp, Plus, Grip,
+  Sparkles, Target, Hash, Bookmark, ArrowLeftRight,
+  Wifi, WifiOff, Bot, Home, HelpCircle, Command,
+  Notebook, ListTodo, Hash as Hashtag,
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { cn } from '../lib/utils';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase-auth';
-import { UserWing } from '../types/domain';
+import { UserWing, UserRole } from '../types/domain';
+import { useNavigationStore } from '../stores/navigationStore';
+import { Badge, Avatar, Tooltip, Kbd } from './ui';
+
+interface NavItem {
+  to: string;
+  icon: any;
+  label: string;
+  description?: string;
+  keywords?: string[];
+  roles?: UserRole[];
+  badge?: number;
+  wing?: UserWing;
+}
+
+interface NavGroup {
+  id: string;
+  icon: any;
+  label: string;
+  items: NavItem[];
+  roles?: UserRole[];
+  wing?: UserWing;
+}
+
+const ROLE_WING_MAP: Record<UserRole, UserWing[]> = {
+  master_admin: ['admin', 'ministry', 'doctor', 'lab', 'citizen', 'researcher', 'regulator', 'system'],
+  admin: ['admin', 'ministry', 'doctor', 'lab', 'citizen', 'researcher', 'regulator'],
+  ministry_admin: ['ministry', 'citizen'],
+  ministry_analyst: ['ministry', 'citizen', 'researcher'],
+  ministry_inspector: ['ministry', 'citizen', 'regulator'],
+  physician: ['doctor', 'citizen'],
+  technician: ['lab', 'citizen'],
+  pathologist: ['lab', 'citizen'],
+  lab_admin: ['lab', 'citizen'],
+  researcher: ['researcher', 'citizen'],
+  regulator: ['regulator', 'citizen'],
+  auditor: ['regulator', 'citizen'],
+  integration_service: ['admin', 'system'],
+  citizen: ['citizen'],
+};
+
+const ICON_MAP: Record<string, any> = {
+  LayoutDashboard, Users, Stethoscope, Microscope, FlaskConical,
+  Calendar, FileText, Activity, Pill, BrainCircuit, Building2,
+  Shield, Settings, Heart, ClipboardList, TestTube,
+  Box, ShieldCheck, Image, Globe, BarChart3, Server, Code2,
+  History, Clock, Star, Pin, User, Home, Hash,
+  Sparkles, Bot, Notebook, ListTodo,
+};
+
+function resolveIcon(name: string): any {
+  return ICON_MAP[name] || LayoutDashboard;
+}
+
+function buildNavGroups(t: any, role: UserRole): NavGroup[] {
+  const wings = ROLE_WING_MAP[role] || ['citizen'];
+  const has = (...w: UserWing[]) => w.some(w2 => wings.includes(w2));
+
+  const groups: NavGroup[] = [
+    {
+      id: 'home',
+      icon: 'LayoutDashboard',
+      label: String(t.dashboard || 'Dashboard'),
+      items: [
+        { to: '/', icon: LayoutDashboard, label: String(t.home || 'Home'), description: String(t.roleAdaptive || 'Adaptive dashboard'), keywords: ['home', 'dashboard', 'start'], wing: 'doctor' },
+      ],
+    },
+    {
+      id: 'patients',
+      icon: 'Users',
+      label: String(t.patients || 'Patients'),
+      roles: ['master_admin', 'admin', 'physician', 'lab_admin', 'technician', 'pathologist'],
+      items: [
+        ...(has('doctor', 'admin') ? [{ to: '/patients', icon: Users, label: String(t.patientRegistry || 'Patient Registry'), description: String(t.healthRecords || 'Health Records'), keywords: ['patients', 'registry', 'records'], wing: 'doctor' as UserWing }] : []),
+        ...(has('citizen') ? [{ to: '/citizen/register', icon: User, label: String(t.registerPatient || 'Register Patient'), description: String(t.newRegistration || 'New Registration'), keywords: ['register', 'new', 'patient'], wing: 'citizen' as UserWing }] : []),
+        ...(has('citizen') ? [{ to: '/citizen/family', icon: Users, label: String(t.familyManagement || 'Family'), description: String(t.familyNetwork || 'Family Network'), keywords: ['family', 'dependents'], wing: 'citizen' as UserWing }] : []),
+      ].filter(Boolean) as NavItem[],
+    },
+    {
+      id: 'clinical',
+      icon: 'Stethoscope',
+      label: String(t.clinical || 'Clinical'),
+      roles: ['master_admin', 'admin', 'physician', 'lab_admin', 'technician', 'pathologist', 'citizen'],
+      items: [
+        ...(has('doctor', 'admin', 'lab') ? [{ to: '/lab/queue', icon: ClipboardList, label: String(t.workQueue || 'Work Queue'), description: String(t.processing || 'Processing'), keywords: ['queue', 'tasks', 'pending'], wing: 'lab' as UserWing }] : []),
+        ...(has('doctor', 'admin', 'lab', 'citizen') ? [{ to: '/appointments', icon: Calendar, label: String(t.appointments || 'Appointments'), description: String(t.schedules || 'Schedules'), keywords: ['appointments', 'schedule', 'booking'], wing: 'doctor' as UserWing }] : []),
+        ...(has('doctor', 'admin') ? [{ to: '/intelligence', icon: BrainCircuit, label: String(t.medicalIntelligence || 'AI Intelligence'), description: String(t.aiSupport || 'AI Support'), keywords: ['ai', 'intelligence', 'insights'], wing: 'doctor' as UserWing }] : []),
+        ...(has('citizen') ? [{ to: '/citizen/history', icon: History, label: String(t.medicalHistory || 'Medical History'), description: String(t.records || 'Records'), keywords: ['history', 'records', 'past'], wing: 'citizen' as UserWing }] : []),
+      ].filter(Boolean) as NavItem[],
+    },
+    {
+      id: 'lab',
+      icon: 'Microscope',
+      label: String(t.labOperations || 'Lab Operations'),
+      roles: ['master_admin', 'admin', 'lab_admin', 'technician', 'pathologist'],
+      items: [
+        { to: '/lab/dashboard', icon: LayoutDashboard, label: String(t.dashboard || 'Dashboard'), description: String(t.limsOverview || 'LIMS Overview'), keywords: ['lab', 'dashboard', 'lims'], wing: 'lab' },
+        { to: '/lab/queue', icon: TestTube, label: String(t.workQueue || 'Work Queue'), description: String(t.processing || 'Processing'), keywords: ['queue', 'samples', 'tests'], wing: 'lab' },
+        { to: '/lab/samples', icon: Box, label: String(t.sampleTracking || 'Samples'), description: String(t.tracking || 'Tracking'), keywords: ['samples', 'specimens', 'tracking'], wing: 'lab' },
+        { to: '/lab/devices', icon: Server, label: String(t.deviceManagement || 'Devices'), description: String(t.connectivity || 'Connectivity'), keywords: ['devices', 'analyzers', 'instruments'], wing: 'lab' },
+        { to: '/lab/inventory', icon: Box, label: String(t.inventory || 'Inventory'), description: String(t.supplies || 'Supplies'), keywords: ['inventory', 'stock', 'reagents'], wing: 'lab' },
+        { to: '/lab/qc', icon: ShieldCheck, label: String(t.qualityControl || 'Quality Control'), description: String(t.standardization || 'Standardization'), keywords: ['qc', 'quality', 'control'], wing: 'lab' },
+        { to: '/lab/imaging', icon: Image, label: String(t.imagingLab || 'Imaging Lab'), description: String(t.diagnostics || 'Diagnostics'), keywords: ['imaging', 'radiology', 'scan'], wing: 'lab' },
+      ],
+    },
+    {
+      id: 'health',
+      icon: 'Heart',
+      label: String(t.myHealth || 'My Health'),
+      roles: ['citizen'],
+      items: [
+        { to: '/citizen/dashboard', icon: LayoutDashboard, label: String(t.dashboard || 'Dashboard'), description: String(t.healthOS || 'Health OS'), keywords: ['health', 'dashboard', 'overview'], wing: 'citizen' },
+        { to: '/citizen/profile', icon: Activity, label: String(t.healthTrends || 'Health Trends'), description: String(t.vitals || 'Vitals'), keywords: ['trends', 'vitals', 'health'], wing: 'citizen' },
+        { to: '/citizen/results', icon: FlaskConical, label: String(t.labResults || 'Lab Results'), description: String(t.interpretation || 'Interpretation'), keywords: ['results', 'lab', 'tests'], wing: 'citizen' },
+        { to: '/citizen/medications', icon: Pill, label: String(t.medications || 'Medications'), description: String(t.medicineCabinet || 'Medicine Cabinet'), keywords: ['medications', 'drugs', 'prescriptions'], wing: 'citizen' },
+        { to: '/citizen/assistant', icon: BrainCircuit, label: String(t.aiAssistant || 'AI Assistant'), description: String(t.healthCoach || 'Health Coach'), keywords: ['ai', 'assistant', 'help'], wing: 'citizen' },
+        { to: '/citizen/consent', icon: Shield, label: String(t.consentManagement || 'Consent'), description: String(t.privacy || 'Privacy'), keywords: ['consent', 'privacy', 'sharing'], wing: 'citizen' },
+        { to: '/citizen/verification', icon: ShieldCheck, label: String(t.identityVerification || 'Verification'), description: String(t.identity || 'Identity'), keywords: ['verify', 'identity', 'biometric'], wing: 'citizen' },
+      ],
+    },
+    {
+      id: 'ministry',
+      icon: 'Building2',
+      label: String(t.ministry || 'Ministry'),
+      roles: ['master_admin', 'ministry_admin', 'ministry_analyst', 'ministry_inspector', 'admin'],
+      items: [
+        { to: '/ministry/dashboard', icon: Globe, label: String(t.populationHealth || 'Population Health'), description: String(t.nationalOverview || 'National Overview'), keywords: ['population', 'national', 'health'], wing: 'ministry' },
+        { to: '/ministry/epidemiology', icon: Activity, label: String(t.epidemiology || 'Epidemiology'), description: String(t.surveillance || 'Surveillance'), keywords: ['epidemiology', 'outbreak', 'disease'], wing: 'ministry' },
+        { to: '/ministry/analytics', icon: BarChart3, label: String(t.analytics || 'Analytics'), description: String(t.research || 'Research'), keywords: ['analytics', 'research', 'data'], wing: 'ministry' },
+        { to: '/ministry/audit', icon: Shield, label: String(t.dataSovereignty || 'Data Sovereignty'), description: String(t.compliance || 'Compliance'), keywords: ['audit', 'sovereignty', 'compliance'], wing: 'ministry' },
+      ],
+    },
+    {
+      id: 'admin',
+      icon: 'Shield',
+      label: String(t.administration || 'Administration'),
+      roles: ['master_admin', 'admin', 'integration_service'],
+      items: [
+        { to: '/admin/infrastructure', icon: Server, label: String(t.infrastructure || 'Infrastructure'), description: String(t.clusterHealth || 'Cluster Health'), keywords: ['infrastructure', 'cluster', 'servers'], wing: 'admin' },
+        { to: '/admin/integrations', icon: Globe, label: String(t.integrations || 'Integrations'), description: String(t.connectedApis || 'Connected APIs'), keywords: ['integrations', 'api', 'connections'], wing: 'admin' },
+        { to: '/admin/audit', icon: History, label: String(t.auditLogs || 'Audit Logs'), description: String(t.compliance || 'Compliance'), keywords: ['audit', 'logs', 'compliance'], wing: 'admin' },
+        { to: '/settings', icon: Settings, label: String(t.settings || 'Settings'), description: String(t.preferences || 'Preferences'), keywords: ['settings', 'preferences', 'config'], wing: 'admin' },
+      ],
+    },
+    {
+      id: 'system',
+      icon: 'Code2',
+      label: String(t.system || 'System'),
+      roles: ['master_admin'],
+      items: [
+        { to: '/admin/architecture', icon: Code2, label: String(t.architecture || 'Architecture'), description: String(t.systemOverview || 'System Overview'), keywords: ['architecture', 'system', 'overview'], wing: 'system' },
+        { to: '/research/analytics', icon: BarChart3, label: String(t.research || 'Research'), description: String(t.analytics || 'Analytics'), keywords: ['research', 'analytics'], wing: 'researcher' },
+      ],
+    },
+    {
+      id: 'shortcuts',
+      icon: 'Zap',
+      label: 'Quick Access',
+      roles: [],
+      items: [
+        { to: '/settings', icon: Settings, label: String(t.settings || 'Settings'), keywords: ['settings'], wing: 'admin' },
+      ],
+    },
+  ];
+
+  return groups.filter(g => {
+    if (!g.roles || g.roles.length === 0) return true;
+    return g.roles.includes(role);
+  });
+}
+
+function QuickSearch({ expanded, searchQuery, setSearchQuery, results, onNavigate, onClear, t }: {
+  expanded: boolean;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  results: NavItem[];
+  onNavigate: (to: string) => void;
+  onClear: () => void;
+  t: any;
+}) {
+  if (!expanded) return null;
+  return (
+    <div className="px-3 pt-3">
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={String(t.searchNav || 'Search menu...')}
+          className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all outline-none placeholder:text-slate-400"
+        />
+        {searchQuery && (
+          <button onClick={onClear} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600">
+            <X size={12} />
+          </button>
+        )}
+      </div>
+      <AnimatePresence>
+        {searchQuery && results.length > 0 && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden pt-2"
+          >
+            <div className="space-y-0.5 bg-indigo-50 rounded-xl p-1.5 border border-indigo-100">
+              {results.slice(0, 6).map(item => {
+                const IconComp = item.icon;
+                return (
+                  <button
+                    key={item.to}
+                    onClick={() => onNavigate(item.to)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-white hover:text-indigo-600 transition-all"
+                  >
+                    <IconComp size={14} className="text-slate-400" />
+                    <span>{item.label}</span>
+                    {item.description && (
+                      <span className="text-[9px] text-slate-400 ml-auto">{item.description}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export const Sidebar = memo(function Sidebar() {
   const { t, dir } = useLanguage();
   const { profile } = useAuth();
+  const { unreadCount } = useNotifications();
+  const { state, dispatch, isPinned, getAdaptiveOrder } = useNavigationStore();
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeWing, setActiveWing] = useState<UserWing>('citizen');
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-  const [pinnedPaths, setPinnedPaths] = useState<string[]>([]);
-  
+  const location = useLocation();
   const isRtl = dir === 'rtl';
 
-  useEffect(() => {
-    try {
-      const savedPinned = localStorage.getItem('gula_pinned_nav');
-      if (savedPinned) {
-        setPinnedPaths(JSON.parse(savedPinned));
-      }
-    } catch (e) {
-      console.error('Failed to read pinned items from localStorage');
-    }
-  }, []);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [dragPath, setDragPath] = useState<string | null>(null);
+
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  const role = (profile?.role || 'citizen') as UserRole;
+  const navGroups = useMemo(() => buildNavGroups(t, role), [t, role]);
+
+  const isCollapsed = state.isCollapsed;
+  const expanded = isCollapsed ? isHovering : true;
+  const searchQuery = state.searchQuery;
 
   useEffect(() => {
-    try {
-      localStorage.setItem('gula_pinned_nav', JSON.stringify(pinnedPaths));
-    } catch (e) {
-      console.error('Failed to write pinned items to localStorage');
-    }
-  }, [pinnedPaths]);
+    window.dispatchEvent(new CustomEvent('sidebar-expanded', { detail: expanded }));
+  }, [expanded]);
 
-  const togglePin = (e: React.MouseEvent, path: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setPinnedPaths(prev => 
-      prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+  useEffect(() => {
+    if (navGroups.length > 0 && !state.expandedGroups[navGroups[0].id]) {
+      dispatch({ type: 'TOGGLE_GROUP', payload: navGroups[0].id });
+    }
+  }, [navGroups]);
+
+  useEffect(() => {
+    dispatch({ type: 'TRACK_VISIT', payload: location.pathname });
+  }, [location.pathname]);
+
+  const allItems = useMemo(() => navGroups.flatMap(g => g.items), [navGroups]);
+
+  const pinnedItems = useMemo(
+    () => allItems.filter(i => state.pinned.includes(i.to)),
+    [allItems, state.pinned]
+  );
+
+  const recentItems = useMemo(
+    () => state.recent.map(p => allItems.find(i => i.to === p)).filter(Boolean) as NavItem[],
+    [state.recent, allItems]
+  );
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return allItems.filter(i =>
+      i.label.toLowerCase().includes(q) ||
+      (i.description && i.description.toLowerCase().includes(q)) ||
+      (i.keywords && i.keywords.some(k => k.toLowerCase().includes(q)))
+    ).slice(0, 8);
+  }, [searchQuery, allItems]);
+
+  const handleNavClick = useCallback((to: string) => {
+    navigate(to);
+    setIsMobileOpen(false);
+  }, [navigate]);
+
+  const handleLogout = useCallback(async () => {
+    await signOut(auth);
+    navigate('/');
+  }, [navigate]);
+
+  const toggleGroup = useCallback((id: string) => {
+    dispatch({ type: 'TOGGLE_GROUP', payload: id });
+  }, [dispatch]);
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) => cn(
+    'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative',
+    isActive
+      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+  );
+
+  const renderNavItem = (item: NavItem, index: number) => {
+    const IconComp = item.icon;
+    const isItemPinned = isPinned(item.to);
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        onClick={() => handleNavClick(item.to)}
+        className={navLinkClass}
+        draggable
+        onDragStart={() => setDragPath(item.to)}
+        onDragEnd={() => setDragPath(null)}
+      >
+        {({ isActive }) => (
+          <>
+            <div className="relative shrink-0">
+              <IconComp size={expanded ? 18 : 20} className={cn(isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-600')} />
+              {item.badge && item.badge > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 border-2 border-white rounded-full text-[7px] font-black text-white flex items-center justify-center">
+                  {item.badge > 9 ? '9+' : item.badge}
+                </span>
+              )}
+            </div>
+            {expanded && (
+              <>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-sm font-bold truncate">{item.label}</span>
+                  {item.description && (
+                    <span className={cn('text-[9px] font-bold uppercase tracking-wider truncate', isActive ? 'text-indigo-200' : 'text-slate-400')}>
+                      {item.description}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); dispatch({ type: 'TOGGLE_PINNED', payload: item.to }); }}
+                    className={cn('p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10', isItemPinned && 'opacity-100')}
+                  >
+                    <Pin size={12} className={isItemPinned ? 'fill-current text-amber-400' : ''} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); dispatch({ type: 'TOGGLE_FAVORITE', payload: item.to }); }}
+                    className={cn('p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 hidden md:block', state.favorites.includes(item.to) && 'opacity-100')}
+                  >
+                    <Star size={12} className={state.favorites.includes(item.to) ? 'fill-current text-amber-400' : ''} />
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </NavLink>
     );
   };
 
-  useEffect(() => {
-    if (profile?.wing) {
-      setActiveWing(profile.wing);
-      setExpandedSections(prev => ({ ...prev, [profile.wing]: true }));
-    }
-  }, [profile]);
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
+      {/* Logo + collapse toggle */}
+      <div className={cn('flex items-center px-4 h-16 border-b border-slate-100', expanded ? 'justify-between' : 'justify-center')}>
+        {expanded ? (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                <span className="text-sm font-black text-white font-headline">G</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-base font-black text-slate-900 uppercase tracking-tighter leading-none font-headline">{t.appName || 'GULA'}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-indigo-600 opacity-70">{t.medicalIntelligence || 'MEDICAL'}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => dispatch({ type: 'SET_COLLAPSED', payload: true })}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+            >
+              <ChevronLeft size={16} className={isRtl ? 'rotate-180' : ''} />
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => { dispatch({ type: 'SET_COLLAPSED', payload: false }); setIsHovering(false); }}
+            className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 hover:scale-105 transition-transform"
+          >
+            <span className="text-sm font-black text-white font-headline">G</span>
+          </button>
+        )}
+      </div>
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigate('/');
-  };
+      {/* Intelligent Search */}
+      <QuickSearch
+        expanded={expanded}
+        searchQuery={searchQuery}
+        setSearchQuery={(q) => dispatch({ type: 'SET_SEARCH', payload: q })}
+        results={searchResults}
+        onNavigate={handleNavClick}
+        onClear={() => dispatch({ type: 'SET_SEARCH', payload: '' })}
+        t={t}
+      />
 
-  const availableWings = useMemo((): UserWing[] => {
-    if (!profile) return ['citizen'];
-    const role = profile.role;
-    
-    const wingMapping: Record<string, UserWing[]> = {
-      master_admin: ['admin', 'ministry', 'doctor', 'lab', 'citizen', 'researcher', 'regulator', 'system'],
-      admin: ['admin', 'ministry', 'doctor', 'lab', 'citizen', 'researcher', 'regulator'],
-      ministry_admin: ['ministry', 'citizen'],
-      ministry_analyst: ['ministry', 'citizen', 'researcher'],
-      ministry_inspector: ['ministry', 'citizen', 'regulator'],
-      physician: ['doctor', 'citizen'],
-      technician: ['lab', 'citizen'],
-      pathologist: ['lab', 'citizen'],
-      lab_admin: ['lab', 'citizen'],
-      researcher: ['researcher', 'citizen'],
-      regulator: ['regulator', 'citizen'],
-      auditor: ['regulator', 'citizen'],
-      integration_service: ['admin', 'system'],
-      citizen: ['citizen']
-    };
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1 custom-scrollbar">
+        {/* Pinned items section */}
+        {expanded && pinnedItems.length > 0 && (
+          <div className="mb-3">
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
+              <Pin size={10} className="text-amber-500" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-amber-600">{t.pinned || 'Pinned'}</span>
+            </div>
+            <div className="space-y-0.5">
+              {pinnedItems.map(item => renderNavItem(item, 0))}
+            </div>
+            <div className="border-t border-slate-100 my-3" />
+          </div>
+        )}
 
-    return wingMapping[role] || ['citizen'];
-  }, [profile]);
+        {/* Recent items */}
+        {expanded && recentItems.length > 0 && pinnedItems.length === 0 && (
+          <div className="mb-3">
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
+              <History size={10} className="text-slate-400" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t.recent || 'Recent'}</span>
+            </div>
+            <div className="space-y-0.5">
+              {recentItems.slice(0, 3).map(item => renderNavItem(item, 0))}
+            </div>
+            <div className="border-t border-slate-100 my-3" />
+          </div>
+        )}
 
-  const navSections = useMemo(() => {
-    const sections: Record<UserWing, { icon: any; label: string; items: any[] }> = {
-      doctor: {
-        icon: Stethoscope,
-        label: t.doctorWing,
-        items: [
-          { to: '/', icon: LayoutDashboard, label: t.dashboard, subtext: t.clinicalOps },
-          { to: '/patients', icon: User, label: t.healthRecords, subtext: t.patientRegistry },
-          { to: '/appointments', icon: Calendar, label: t.appointments, subtext: t.schedules },
-          { to: '/intelligence', icon: BrainCircuit, label: t.medicalIntelligence, subtext: t.aiSupport },
-        ],
-      },
-      lab: {
-        icon: Microscope,
-        label: t.labWing,
-        items: [
-          { to: '/lab/dashboard', icon: LayoutDashboard, label: t.dashboard, subtext: t.limsOverview },
-          { to: '/lab/queue', icon: TestTube, label: t.workQueue, subtext: t.processing },
-          { to: '/lab/samples', icon: Box, label: t.sampleTracking, subtext: t.inventory },
-          { to: '/lab/qc', icon: ShieldCheck, label: t.qcControl, subtext: t.standardization },
-          { to: '/lab/imaging', icon: ImageIcon, label: "Imaging Lab", subtext: "Image Intelligence" },
-          { to: '/lab/devices', icon: Microscope, label: t.deviceManagement, subtext: t.connectivity },
-        ],
-      },
-      citizen: {
-        icon: User,
-        label: t.citizenWing,
-        items: [
-          { to: '/citizen/dashboard', icon: LayoutDashboard, label: t.dashboard, subtext: t.healthOS },
-          { to: '/citizen/assistant', icon: BrainCircuit, label: "AI Assistant", subtext: "GULA Intelligence" },
-          { to: '/citizen/profile', icon: ActivityIcon, label: t.myHealth, subtext: t.healthTrends },
-          { to: '/citizen/results', icon: TestTube, label: t.labResults, subtext: t.interpretation },
-          { to: '/citizen/medications', icon: Pill, label: t.medicineCabinet, subtext: t.medicationAdherence },
-          { to: '/citizen/appointments', icon: Calendar, label: t.appointments, subtext: t.consultDoctor },
-          { to: '/citizen/family', icon: Users, label: t.familyManagement, subtext: t.familyNetwork },
-          { to: '/citizen/security', icon: ShieldCheck, label: t.privacyDashboard, subtext: t.dataControl },
-        ],
-      },
-      admin: {
-        icon: Shield,
-        label: t.adminWing,
-        items: [
-          { to: '/', icon: LayoutDashboard, label: t.systemDashboard, subtext: t.globalStatus, roles: ['master_admin', 'admin'] },
-          { to: '/admin/audit', icon: History, label: t.auditLogs, subtext: t.compliance, roles: ['master_admin', 'admin', 'ministry_inspector'] },
-          { to: '/admin/architecture', icon: Code2, label: t.systemsArchitecture, subtext: t.globalStatus, roles: ['master_admin'] },
-          { to: '/admin/integrations', icon: Globe, label: t.connectedApis, subtext: t.interoperability, roles: ['master_admin', 'admin', 'integration_service'] },
-          { to: '/admin/infrastructure', icon: Server, label: t.clusterHealth, subtext: t.nodeNetwork, roles: ['master_admin'] },
-          { to: '/settings', icon: Settings, label: t.infrastructure, subtext: t.settings, roles: ['master_admin', 'admin', 'integration_service'] },
-        ],
-      },
-      researcher: {
-        icon: BrainCircuit,
-        label: t.researcherWing,
-        items: [
-          { to: '/research/analytics', icon: BrainCircuit, label: t.predictiveTrends, subtext: t.aiIntelligence, roles: ['researcher', 'ministry_analyst', 'master_admin'] },
-          { to: '/research/population', icon: Globe, label: t.populationHealth, subtext: t.gisSurveillance, roles: ['researcher', 'ministry_analyst', 'master_admin'] },
-        ],
-      },
-      regulator: {
-        icon: ShieldCheck,
-        label: t.regulatorWing,
-        items: [
-          { to: '/admin/audit', icon: History, label: t.auditLogs, subtext: t.compliance, roles: ['regulator', 'ministry_inspector', 'master_admin', 'auditor'] },
-          { to: '/lab/dashboard', icon: LayoutDashboard, label: t.standardization, subtext: t.qualityControl, roles: ['regulator', 'master_admin'] },
-        ],
-      },
-      ministry: {
-        icon: Building2,
-        label: t.ministryWing,
-        items: [
-          { to: '/ministry/dashboard', icon: LayoutDashboard, label: t.dashboard, subtext: t.populationHealth, roles: ['ministry_admin', 'ministry_analyst', 'master_admin'] },
-          { to: '/ministry/analytics', icon: ActivityIcon, label: t.analytics, subtext: t.predictiveTrends, roles: ['ministry_analyst', 'master_admin'] },
-          { to: '/ministry/inspections', icon: ShieldCheck, label: t.compliance, subtext: t.ministryInspector, roles: ['ministry_inspector', 'master_admin'] },
-          { to: '/ministry/registry', icon: ClipboardList, label: t.patientRegistry, subtext: t.globalStatus, roles: ['ministry_admin', 'master_admin'] },
-        ],
-      },
-      system: {
-        icon: Server,
-        label: "System",
-        items: [
-          { to: '/', icon: LayoutDashboard, label: t.systemDashboard, subtext: t.globalStatus, roles: ['master_admin'] },
-          { to: '/admin/audit', icon: History, label: t.auditLogs, subtext: t.compliance, roles: ['master_admin'] },
-          { to: '/admin/architecture', icon: Code2, label: t.systemsArchitecture, subtext: t.globalStatus, roles: ['master_admin'] },
-        ],
-      }
-    };
+        {/* Nav groups with adaptive ordering */}
+        {navGroups.map((group) => {
+          const ordered = expanded ? getAdaptiveOrder(group.items) : group.items;
+          const IconComp = resolveIcon(group.icon);
+          return (
+            <div key={group.id}>
+              {expanded ? (
+                <>
+                  <button
+                    onClick={() => toggleGroup(group.id)}
+                    className={cn(
+                      'w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all',
+                      state.expandedGroups[group.id] ? 'text-indigo-700 bg-indigo-50/50' : 'text-slate-500 hover:bg-slate-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <IconComp size={16} className="shrink-0" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">{group.label}</span>
+                    </div>
+                    {state.expandedGroups[group.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                  <AnimatePresence>
+                    {state.expandedGroups[group.id] && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden space-y-0.5 pl-2 mt-0.5"
+                      >
+                        {ordered.map((item, i) => renderNavItem(item as NavItem, i))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              ) : (
+                <Tooltip content={group.label} side={isRtl ? 'left' : 'right'}>
+                  <div className="flex justify-center py-2">
+                    <button
+                      onClick={() => { toggleGroup(group.id); if (group.items[0]) handleNavClick(group.items[0].to); }}
+                      className={cn(
+                        'relative p-2 rounded-xl transition-all',
+                        group.items.some(i => location.pathname === i.to) ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                      )}
+                    >
+                      <IconComp size={20} />
+                      {group.id === 'lab' && unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full text-[7px] font-black leading-none bg-red-100 text-red-700">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                      )}
+                    </button>
+                  </div>
+                </Tooltip>
+              )}
+            </div>
+          );
+        })}
+      </nav>
 
-    return Object.entries(sections)
-      .filter(([wing]) => availableWings.includes(wing as UserWing))
-      .map(([wing, config]) => ({
-        wing: wing as UserWing,
-        ...config,
-        items: config.items.filter(item => {
-          if (!item.roles) return true;
-          return profile && item.roles.includes(profile.role);
-        })
-      }))
-      .filter(section => section.items.length > 0);
-  }, [availableWings, t, profile]);
+      {/* Quick actions footer */}
+      {expanded && (
+        <div className="px-3 pb-2 space-y-1">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+            className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-500 hover:text-indigo-600 transition-all"
+          >
+            <Command size={14} />
+            <span>{t.commandPalette || 'Command Palette'}</span>
+            <Kbd className="ml-auto">⌘K</Kbd>
+          </button>
+        </div>
+      )}
 
-  const pinnedItems = useMemo(() => {
-    const allItems = navSections.flatMap(s => s.items);
-    // Remove duplicates by path
-    const uniqueItems = Array.from(new Map(allItems.map(item => [item.to, item])).values());
-    return uniqueItems.filter(item => pinnedPaths.includes(item.to));
-  }, [navSections, pinnedPaths]);
+      {/* User profile footer */}
+      <div className={cn('border-t border-slate-100 p-3', expanded ? 'block' : 'flex justify-center')}>
+        <div className={cn('flex items-center gap-3', !expanded && 'flex-col')}>
+          <Avatar
+            name={profile?.name || 'User'}
+            size={expanded ? 'md' : 'sm'}
+            status={navigator.onLine ? 'online' : 'offline'}
+          />
+          {expanded && (
+            <>
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-sm font-bold text-slate-900 truncate">{profile?.name || 'User'}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">{profile?.role || ''}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                title={String(t.signOut || 'Sign Out')}
+              >
+                <LogOut size={16} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "lg:hidden fixed z-50 p-3 bg-white shadow-xl rounded-2xl top-4 border border-slate-100 flex items-center justify-center transition-all active:scale-95",
-          isRtl ? 'left-4' : 'right-4'
-        )}
+      {/* Mobile hamburger */}
+      <button
+        onClick={() => setIsMobileOpen(true)}
+        className="lg:hidden fixed z-50 top-4 left-4 p-2.5 bg-white shadow-lg rounded-xl border border-slate-100"
       >
-        {isOpen ? <X size={24} className="text-indigo-600" /> : <Menu size={24} className="text-slate-600" />}
+        <Menu size={20} className="text-slate-600" />
       </button>
 
-      <aside className={cn(
-        "fixed inset-y-0 z-40 w-72 bg-white border-slate-200 shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col",
-        isRtl ? "right-0 border-l" : "left-0 border-r",
-        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full")
-      )}>
-        <div className="px-6 py-10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-indigo-600 rounded-[1.25rem] flex items-center justify-center shadow-2xl shadow-indigo-200 transition-transform hover:rotate-6 group cursor-pointer overflow-hidden relative">
-             <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent" />
-             <div className="w-7 h-7 text-white bg-white/20 rounded-full flex items-center justify-center border border-white/30 backdrop-blur-sm relative z-10">
-                <span className="text-[10px] font-black font-headline tracking-tighter">G</span>
-             </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1 font-headline">{t.appName}</span>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 opacity-80 leading-none">{t.medicalIntelligence}</span>
-          </div>
-        </div>
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileOpen(false)}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden"
+          />
+        )}
+      </AnimatePresence>
 
-        <div className="px-4 mb-6">
-          <div className="bg-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.3)] p-1.5 rounded-[2.5rem] border border-white/10 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-rose-500/5 pointer-events-none" />
-            <div className="flex items-center justify-between px-5 py-2 border-b border-white/5 mb-1 relative z-10">
-               <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.25em]">{t.switchWing}</span>
-               <div className="flex items-center gap-2">
-                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_bg-emerald-400]" />
-                 <span className="text-[9px] font-black text-emerald-400/90 uppercase tracking-tighter italic">N_LINK: ACTIVE</span>
-               </div>
-            </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 px-1">
-              {availableWings.map((wing) => (
-                <button
-                  key={wing}
-                  onClick={() => {
-                    setActiveWing(wing);
-                    setExpandedSections(prev => ({ ...prev, [wing]: true }));
-                    if (wing === 'doctor') navigate('/');
-                    if (wing === 'lab') navigate('/lab/dashboard');
-                    if (wing === 'citizen') navigate('/citizen/profile');
-                    if (wing === 'admin') navigate('/');
-                    if (wing === 'ministry') navigate('/ministry/dashboard');
-                    if (wing === 'researcher') navigate('/research/analytics');
-                    if (wing === 'regulator') navigate('/admin/audit');
-                  }}
-                  className={cn(
-                    "flex-none flex flex-col items-center justify-center py-3 px-3 min-w-[70px] rounded-[2rem] transition-all relative group",
-                    activeWing === wing 
-                      ? "bg-white shadow-[0_0_20px_rgba(99,102,241,0.2)] text-indigo-600" 
-                      : "text-white/40 hover:text-white/80 hover:bg-white/5"
-                  )}
-                >
-                  <div className="relative z-10 transition-transform group-hover:scale-110">
-                    {wing === 'doctor' && <Stethoscope size={18} />}
-                    {wing === 'lab' && <Microscope size={18} />}
-                    {wing === 'citizen' && <User size={18} />}
-                    {wing === 'admin' && <Shield size={18} />}
-                    {wing === 'ministry' && <Building2 size={18} />}
-                    {wing === 'researcher' && <BrainCircuit size={18} />}
-                    {wing === 'regulator' && <Shield size={18} />}
-                  </div>
-                  
-                  <span className="text-[8px] font-black mt-2 uppercase leading-none tracking-tighter">
-                    {wing === 'admin' ? t.adminWing.split(' ')[0] : t[`${wing}Wing` as keyof typeof t]?.toString().split(' ')[0]}
-                  </span>
-
-                  {activeWing === wing && (
-                     <motion.div 
-                       layoutId="wing-glow"
-                       className="absolute inset-0 bg-white rounded-[2rem] -z-0"
-                     />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-3 overflow-y-auto pt-2 custom-scrollbar">
-          {pinnedItems.length > 0 && (
-            <div className="mb-6 space-y-2">
-              <div className="px-4 py-2 flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">{t.quickAccess || 'Quick Access'}</span>
-                <QuickZap size={10} className="text-indigo-400 group-hover:animate-pulse" />
-              </div>
-              <div className="space-y-1 bg-slate-50/50 rounded-[2rem] p-2 border border-slate-100/50 backdrop-blur-sm">
-                {pinnedItems.map((item) => (
-                  <NavLink
-                    key={`pinned-${item.to}`}
-                    to={item.to}
-                    onClick={() => setIsOpen(false)}
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-300 group relative",
-                      isActive 
-                        ? "bg-white text-indigo-600 shadow-sm border border-slate-100" 
-                        : "text-slate-500 hover:text-slate-900 hover:bg-white"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
-                      "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white"
-                    )}>
-                      <item.icon size={14} />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold tracking-tight truncate">{item.label}</span>
-                    </div>
-                    <button 
-                      onClick={(e) => togglePin(e, item.to)}
-                      className="ml-auto p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-rose-500"
-                    >
-                      <PinOff size={12} />
-                    </button>
-                  </NavLink>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {navSections.map((section) => (
-            <div key={section.wing} className="space-y-1.5">
-              <button
-                onClick={() => setExpandedSections(prev => ({ ...prev, [section.wing]: !prev[section.wing] }))}
-                className={cn(
-                  "w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all group relative overflow-hidden",
-                  expandedSections[section.wing] ? "text-indigo-700 bg-indigo-50/50" : "text-slate-500 hover:bg-slate-50"
-                )}
-              >
-                <div className="flex items-center gap-3.5 relative z-10">
-                  <div className={cn(
-                    "p-2 rounded-xl transition-all shadow-sm",
-                    expandedSections[section.wing] ? "bg-white text-indigo-600 shadow-xl shadow-indigo-100/50" : "bg-slate-100 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-indigo-100"
-                  )}>
-                    <section.icon size={18} />
-                  </div>
-                  <span className="text-[11px] font-black uppercase tracking-[0.15em] font-headline">{section.label}</span>
-                </div>
-                {expandedSections[section.wing] ? <ChevronDown size={14} className="text-indigo-400" /> : <ChevronRight size={14} className="text-slate-300" />}
-              </button>
-              
-              <AnimatePresence initial={false}>
-                {expandedSections[section.wing] && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                    className="overflow-hidden space-y-1 ml-6 border-l-2 border-slate-100 pl-3 py-1"
-                  >
-                    {section.items.map((item: any) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setIsOpen(false)}
-                        className={({ isActive }) => cn(
-                          "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 ease-out group relative",
-                          isActive 
-                            ? "bg-slate-900 text-white font-bold shadow-xl shadow-slate-200" 
-                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                        )}
-                      >
-                        {({ isActive }) => (
-                          <>
-                            <item.icon size={18} className={cn("transition-colors", isActive ? "text-indigo-400" : "text-slate-400 group-hover:text-indigo-600")} />
-                            <div className="flex flex-col">
-                              <span className="text-sm tracking-tight">{item.label}</span>
-                              <span className={cn("text-[9px] font-black uppercase tracking-widest", isActive ? "text-indigo-300" : "text-slate-400 opacity-60 group-hover:opacity-100")}>{item.subtext}</span>
-                            </div>
-                            <button 
-                              onClick={(e) => togglePin(e, item.to)}
-                              className={cn(
-                                "ml-auto p-2 opacity-0 group-hover:opacity-100 transition-all active:scale-90",
-                                pinnedPaths.includes(item.to) ? "text-indigo-500 opacity-100" : "text-slate-300 hover:text-indigo-600"
-                              )}
-                            >
-                              {pinnedPaths.includes(item.to) ? <Pin size={14} className="fill-current" /> : <Pin size={14} />}
-                            </button>
-                            {isActive && (
-                              <motion.div 
-                                layoutId="active-nav-bg"
-                                className="absolute inset-0 bg-slate-950 rounded-2xl -z-10"
-                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                              />
-                            )}
-                          </>
-                        )}
-                      </NavLink>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
-          <div className="pt-4 border-t border-slate-50 mt-4 space-y-1">
-            <NavLink
-              to="/settings"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 transition-colors"
-            >
-              <Settings size={20} className="text-slate-400" />
-              <div className="flex flex-col">
-                <span className="text-sm tracking-tight">{t.settings}</span>
-              </div>
-            </NavLink>
-          </div>
-        </nav>
-
-        <div className="p-4 bg-slate-50/50 mt-auto border-t border-slate-100">
-           <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm mb-4 group hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-3">
-                 <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Network Interlink</span>
-                 <div className="flex items-center gap-1.5">
-                    <span className="text-[7px] font-black text-emerald-500 uppercase tracking-tighter">SECURE</span>
-                    <div className="relative">
-                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                       <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping opacity-75" />
-                    </div>
-                 </div>
-              </div>
-              <div className="space-y-2">
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                       <div className="w-1 h-3 bg-indigo-500 rounded-full animate-pulse" />
-                       <span className="text-[9px] text-slate-600 font-bold">Node-9 Erbil</span>
-                    </div>
-                    <span className="text-[8px] font-black text-slate-400">14MS</span>
-                 </div>
-                 <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: "30%" }}
-                      animate={{ width: ["30%", "70%", "30%"] }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                      className="h-full bg-indigo-400"
-                    />
-                 </div>
-                 <div className="flex items-center justify-between pt-1">
-                    <span className="text-[7px] font-black text-slate-300 uppercase tracking-widest">Last Bio-Sync</span>
-                    <span className="text-[7px] font-black text-indigo-500 uppercase tracking-widest">JUST NOW</span>
-                 </div>
-              </div>
-           </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden border border-slate-200 shadow-sm transition-transform hover:scale-110">
-              <img 
-                className="w-full h-full object-cover" 
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.name || 'User')}&background=6366f1&color=fff&bold=true`} 
-                alt="Profile"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold text-slate-900 truncate">{profile?.name || 'Connecting...'}</span>
-              <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider truncate">
-                {profile?.role === 'master_admin' ? t.masterAdmin : (
-                  profile?.role === 'ministry_admin' ? t.ministryAdmin : (
-                    profile?.role === 'ministry_analyst' ? t.ministryAnalyst : (
-                      profile?.role === 'ministry_inspector' ? t.ministryInspector : profile?.role?.replace('_', ' ')
-                    )
-                  )
-                ) || 'Authenticating'}
-              </span>
-            </div>
-          </div>
-        </div>
+      {/* Sidebar */}
+      <aside
+        ref={sidebarRef}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => { setIsHovering(false); dispatch({ type: 'SET_SEARCH', payload: '' }); }}
+        className={cn(
+          'fixed inset-y-0 z-50 flex flex-col bg-white border-slate-200 shadow-2xl transition-all duration-300 ease-out',
+          isRtl ? 'right-0 border-l' : 'left-0 border-r',
+          expanded ? 'w-64' : 'w-16',
+          isMobileOpen ? 'translate-x-0' : (isRtl ? 'translate-x-full' : '-translate-x-full'),
+          'lg:translate-x-0'
+        )}
+      >
+        {sidebarContent}
       </aside>
 
-      {isOpen && (
-        <div 
-          onClick={() => setIsOpen(false)}
-          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm lg:hidden"
+      {/* Collapsed hover trigger zone */}
+      {isCollapsed && !isHovering && (
+        <div
+          onMouseEnter={() => setIsHovering(true)}
+          className={cn(
+            'fixed inset-y-0 z-40 w-4 cursor-pointer',
+            isRtl ? 'right-0' : 'left-0'
+          )}
         />
       )}
     </>

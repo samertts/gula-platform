@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
-import { lazy } from 'react';
+import { lazy, useState } from 'react';
 
 function lazyNamed<T extends { [K in N]: React.ComponentType<unknown> }, N extends string>(load: () => Promise<T>, name: N) {
   return lazy(() => load().then(m => ({ default: m[name] })));
@@ -52,16 +52,23 @@ import { ShortcutsModal } from './components/ShortcutsModal';
 import { RouteErrorBoundary } from './components/ui/ErrorBoundary';
 import { useKeySequence } from './lib/useShortcut';
 import { WifiOff, Activity as ActivityIcon } from 'lucide-react';
-import { useState, useEffect, Suspense } from 'react';
+import { useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { NavigationProvider } from './stores/navigationStore';
+import { WorkspaceProvider } from './stores/workspaceStore';
+import { Badge, Button } from './components/ui';
 
 export default function App() {
   return (
     <AuthProvider>
       <LanguageProvider>
         <NotificationProvider>
-          <Toaster position="top-right" richColors />
-          <AppContent />
+          <NavigationProvider>
+            <WorkspaceProvider>
+              <Toaster position="top-right" richColors />
+              <AppContent />
+            </WorkspaceProvider>
+          </NavigationProvider>
         </NotificationProvider>
       </LanguageProvider>
     </AuthProvider>
@@ -79,7 +86,10 @@ function AnimatedRoutes() {
       <RouteErrorBoundary resetKey={location.pathname}>
       <Suspense fallback={
         <div className="flex items-center justify-center h-screen">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Loading...</span>
+          </div>
         </div>
       }>
       <Routes location={location} key={location.pathname}>
@@ -112,51 +122,35 @@ function AnimatedRoutes() {
         <Route path="/citizen/verification" element={<IdentityVerificationView />} />
         <Route path="/citizen/consent" element={<ConsentManagementView />} />
         <Route path="/citizen/register" element={<PatientRegistration />} />
-        
+
         {/* Admin Wing */}
         <Route path="/admin/audit" element={
-          <PermissionGuard resource="audit_log" action="read">
-            <AuditLog />
-          </PermissionGuard>
+          <PermissionGuard resource="audit_log" action="read"><AuditLog /></PermissionGuard>
         } />
         <Route path="/admin/infrastructure" element={
-          <PermissionGuard resource="infrastructure" action="read">
-            <InfrastructureView />
-          </PermissionGuard>
+          <PermissionGuard resource="infrastructure" action="read"><InfrastructureView /></PermissionGuard>
         } />
         <Route path="/admin/architecture" element={
-          <PermissionGuard resource="architecture" action="read">
-            <SystemsArchitectureView />
-          </PermissionGuard>
+          <PermissionGuard resource="architecture" action="read"><SystemsArchitectureView /></PermissionGuard>
         } />
         <Route path="/admin/integrations" element={
-          <PermissionGuard resource="integration" action="read">
-            <IntegrationHub />
-          </PermissionGuard>
+          <PermissionGuard resource="integration" action="read"><IntegrationHub /></PermissionGuard>
         } />
 
         {/* Ministry Wing */}
         <Route path="/ministry/dashboard" element={
-          <PermissionGuard resource="patient" action="read" scope="global">
-            <NationalHealthGrid />
-          </PermissionGuard>
+          <PermissionGuard resource="patient" action="read" scope="global"><NationalHealthGrid /></PermissionGuard>
         } />
         <Route path="/ministry/epidemiology" element={
-          <PermissionGuard resource="patient" action="read" scope="global">
-            <EpidemiologicalIntelligence />
-          </PermissionGuard>
+          <PermissionGuard resource="patient" action="read" scope="global"><EpidemiologicalIntelligence /></PermissionGuard>
         } />
         <Route path="/ministry/audit" element={
-          <PermissionGuard resource="patient" action="manage" scope="global">
-            <DataSovereigntyAudit />
-          </PermissionGuard>
+          <PermissionGuard resource="patient" action="manage" scope="global"><DataSovereigntyAudit /></PermissionGuard>
         } />
         <Route path="/ministry/analytics" element={
-          <PermissionGuard resource="research" action="read">
-            <ResearcherDashboard />
-          </PermissionGuard>
+          <PermissionGuard resource="research" action="read"><ResearcherDashboard /></PermissionGuard>
         } />
-        
+
         {/* Shared */}
         <Route path="/settings" element={<SettingsView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -167,15 +161,7 @@ function AnimatedRoutes() {
   );
 }
 
-/**
- * Global keyboard sequences (Vim-style chords). Lives inside `<BrowserRouter>`
- * so `useNavigate` works. Reads no state — pure side-effect wiring.
- */
-function GlobalShortcuts({
-  onOpenShortcuts,
-}: {
-  onOpenShortcuts: () => void;
-}) {
+function GlobalShortcuts({ onOpenShortcuts }: { onOpenShortcuts: () => void }) {
   const navigate = useNavigate();
 
   useKeySequence({
@@ -189,9 +175,6 @@ function GlobalShortcuts({
     'g h': () => onOpenShortcuts(),
   });
 
-  // `/` focuses the command palette — common pattern across Slack, GitHub,
-  // Linear. We dispatch the existing CustomEvent so the palette (which owns
-  // the open state) responds.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -210,28 +193,25 @@ function GlobalShortcuts({
 
 function AppContent() {
   const { user, isLoading } = useAuth();
-  const { t } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: CustomEvent) => setSidebarExpanded(e.detail);
+    window.addEventListener('sidebar-expanded' as any, handler as any);
+    return () => window.removeEventListener('sidebar-expanded' as any, handler as any);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tgt = e.target as HTMLElement | null;
-      const inEditable =
-        !!tgt &&
-        (['INPUT', 'TEXTAREA', 'SELECT'].includes(tgt.tagName) || tgt.isContentEditable);
-      if (e.key === '?' && !inEditable) {
-        setShowShortcuts(prev => !prev);
-      }
-      if (e.key === 'Escape') {
-        setShowShortcuts(false);
-      }
+      const inEditable = !!tgt && (['INPUT', 'TEXTAREA', 'SELECT'].includes(tgt.tagName) || tgt.isContentEditable);
+      if (e.key === '?' && !inEditable) setShowShortcuts(prev => !prev);
+      if (e.key === 'Escape') setShowShortcuts(false);
     };
-
-    // The CommandPalette dispatches this when the user activates the
-    // "Keyboard Shortcuts" command, so all entry points stay in sync.
     const handleOpenShortcuts = () => setShowShortcuts(true);
-
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('open-shortcuts', handleOpenShortcuts);
     return () => {
@@ -243,10 +223,8 @@ function AppContent() {
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -256,7 +234,10 @@ function AppContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-14 h-14 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Initializing secure session...</span>
+        </div>
       </div>
     );
   }
@@ -264,6 +245,8 @@ function AppContent() {
   if (!user) {
     return <LandingAuthView />;
   }
+
+  const sidebarWidth = sidebarExpanded ? (isRtl ? 'lg:mr-64' : 'lg:ml-64') : (isRtl ? 'lg:mr-16' : 'lg:ml-16');
 
   return (
     <BrowserRouter>
@@ -273,44 +256,46 @@ function AppContent() {
       <GlobalAiAssistant />
       <ShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <ScrollToTop />
-      <div className="flex min-h-screen bg-slate-50 font-sans antialiased selection:bg-indigo-100/50 transition-colors duration-500">
-      <Sidebar />
+      <div className="flex min-h-screen bg-slate-50 font-sans antialiased selection:bg-indigo-100/50 transition-colors duration-500" dir={isRtl ? 'rtl' : 'ltr'}>
+        <Sidebar />
 
-      <main className="lg:ml-72 flex-1 flex flex-col h-screen overflow-hidden rtl:lg:ml-0 rtl:lg:mr-72">
-        <TopBar />
-        
-        <AnimatePresence>
-          {isOffline && (
-            <motion.div 
-              initial={{ opacity: 0, x: -50, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -50, scale: 0.9 }}
-              className="fixed bottom-8 left-8 z-[60] flex items-center gap-4 bg-slate-900/90 text-white px-5 py-3 rounded-[2rem] shadow-2xl border border-white/10 backdrop-blur-xl pointer-events-none"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-amber-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
-                  <WifiOff size={18} className="animate-pulse" />
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">{t.offlineMode}</p>
-                  <div className="flex items-center gap-1.5 opacity-60">
-                    <ActivityIcon size={10} className="text-amber-400" />
-                    <span className="text-[8px] font-bold uppercase tracking-[0.15em]">{t.localQueue}</span>
+        <main className={`flex-1 flex flex-col h-screen overflow-hidden ${sidebarWidth}`}>
+          <TopBar />
+
+          {/* Offline indicator */}
+          <AnimatePresence>
+            {isOffline && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-amber-50 border-b border-amber-100"
+              >
+                <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-2 flex items-center gap-3">
+                  <div className="w-7 h-7 bg-amber-500 rounded-lg flex items-center justify-center">
+                    <WifiOff size={14} className="text-white" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-bold text-amber-800">{t.offlineMode || 'Offline Mode'}</span>
+                    <span className="text-[9px] text-amber-600">{t.localQueue || 'Changes will sync when connection resumes'}</span>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                    <span className="text-[9px] font-bold text-amber-700 uppercase tracking-wider">Offline</span>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        <div className="flex-1 overflow-y-auto bg-slate-50 custom-scrollbar">
-          <div className="max-w-[1600px] mx-auto px-4 md:px-10 pt-10">
-            <Breadcrumbs />
+          <div className="flex-1 overflow-y-auto bg-slate-50 custom-scrollbar">
+            <div className="max-w-[1600px] mx-auto px-4 md:px-8 pt-8 pb-12">
+              <Breadcrumbs />
+              <AnimatedRoutes />
+            </div>
           </div>
-          <AnimatedRoutes />
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
     </BrowserRouter>
   );
 }

@@ -36,7 +36,7 @@ export function CitizenHealth() {
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [biometricType, setBiometricType] = useState<'fingerprint' | 'face' | null>(null);
 
-  const healthScore = 82; // Composite Score
+  const healthScore = null;
 
   useEffect(() => {
     async function getExplanation() {
@@ -58,80 +58,35 @@ export function CitizenHealth() {
     getExplanation();
   }, [explainingResult]);
 
-  const glucoseData = [
-    { time: '08:00', value: 92 },
-    { time: '10:00', value: 95 },
-    { time: '12:00', value: 110 },
-    { time: '14:00', value: 105 },
-    { time: '16:00', value: 98 },
-    { time: '18:00', value: 92 },
-  ];
+  const glucoseData: { time: string; value: number }[] = [];
+  const hrData: { time: string; value: number }[] = [];
 
-  const hrData = [
-    { time: '08:00', value: 65 },
-    { time: '10:00', value: 72 },
-    { time: '12:00', value: 85 },
-    { time: '14:00', value: 78 },
-    { time: '16:00', value: 70 },
-    { time: '18:00', value: 68 },
-  ];
+  const criticalAlerts: {
+    id: string;
+    title: string;
+    description: string;
+    type: string;
+    actions?: { label: string; primary: boolean }[];
+  }[] = [];
 
-  const criticalAlerts = [
-    { 
-      id: 'a1', 
-      title: 'Action Required: Fasting Blood Sugar', 
-      description: 'Your last result (126 mg/dL) is in the pre-diabetic range.', 
-      type: 'critical',
-      actions: [
-        { label: t.bookNow, primary: true },
-        { label: t.retest, primary: false }
-      ]
-    }
-  ];
+  const nextActions: {
+    title: string;
+    provider: string;
+    date: string;
+    type: string;
+    status: string;
+  }[] = [];
 
-  const nextActions = [
-    { title: 'Red Blood Cell Count', provider: 'National Lab', date: 'In 3 Days', type: 'test', status: 'Pending Prep' },
-    { title: 'Metformin 500mg', provider: 'Pharmacy', date: 'Every 12h', type: 'medication', status: 'Take Now' },
-    { title: 'Follow-up with Dr. Sarah', provider: 'General Clinic', date: 'Next Tuesday', type: 'appointment', status: 'Confirmed' },
-  ];
+  const scoreBreakdown: {
+    label: string;
+    status: string;
+    score: number;
+    icon: string;
+  }[] = [];
 
-  const scoreBreakdown = [
-    { label: t.metabolicRank, status: 'optimal', score: 91, icon: 'Zap' },
-    { label: t.cellularStability, status: 'warning', score: 68, icon: 'Activity' },
-    { label: t.cognitiveFidelity, status: 'optimal', score: 94, icon: 'BrainCircuit' },
-    { label: t.inflammatoryIndex, status: 'optimal', score: 85, icon: 'Shield' },
-  ];
+  const recentResults: LabTestResult[] = [];
 
-  const recentResults: LabTestResult[] = [
-    {
-      id: 'r1',
-      testName: 'Hemoglobin A1c',
-      value: '5.4',
-      unit: '%',
-      range: '4.0 - 5.6',
-      flag: 'N',
-      status: 'completed',
-      labId: 'l1',
-      labName: 'Central Diagnostic',
-      trend: [{ date: 'Jan', value: 5.6 }, { date: 'Feb', value: 5.5 }, { date: 'Mar', value: 5.4 }]
-    },
-    {
-      id: 'r2',
-      testName: 'Vitamin D (25-OH)',
-      value: '22',
-      unit: 'ng/mL',
-      range: '30 - 100',
-      flag: 'L',
-      status: 'completed',
-      labId: 'l1',
-      labName: 'Central Diagnostic'
-    }
-  ];
-
-  const history: MedicalHistoryItem[] = [
-    { id: 'h1', patientId: 'p1', date: '2024-03-10', type: 'diagnosis', title: 'Seasonal Allergy', description: 'Mild rhinitis observed. Prescribed antihistamines.', provider: 'Dr. Sarah Smith' },
-    { id: 'h2', patientId: 'p1', date: '2023-11-22', type: 'imaging', title: 'Routine Chest X-Ray', description: 'Clear lung fields. No abnormalities.', provider: 'Radiology Dept' }
-  ];
+  const history: MedicalHistoryItem[] = [];
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 min-h-screen bg-slate-50/30">
@@ -226,9 +181,9 @@ export function CitizenHealth() {
                     </div>
                     <h3 className="font-bold text-lg leading-tight uppercase tracking-widest">AI Insights</h3>
                  </div>
-                 <p className="text-sm font-medium text-indigo-100 leading-relaxed italic">
-                    "Your metabolic markers show a 12% positive trend since last panel."
-                 </p>
+                  <p className="text-sm font-medium text-indigo-100 leading-relaxed italic">
+                     Connect your health data to receive personalized AI insights.
+                  </p>
                  <div className="flex gap-2">
                     <div className="px-3 py-1 bg-white/10 rounded-lg text-[9px] font-black uppercase">Wellness: Optimal</div>
                     <div className="px-3 py-1 bg-white/10 rounded-lg text-[9px] font-black uppercase">Next: CBC March</div>
@@ -326,7 +281,7 @@ export function CitizenHealth() {
                    </defs>
                  </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-black text-slate-900 leading-none">{healthScore}</span>
+                   <span className="text-2xl font-black text-slate-900 leading-none">{healthScore ?? '--'}</span>
                   <span className="text-[8px] font-bold text-slate-400 uppercase">Score</span>
                 </div>
 

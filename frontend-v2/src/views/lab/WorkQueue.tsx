@@ -44,55 +44,7 @@ export function WorkQueue() {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [isResultEntryOpen, setIsResultEntryOpen] = useState<LabTask | null>(null);
 
-  const [tasks, setTasks] = useState<LabTask[]>([
-    { 
-      id: 'T1', 
-      sampleId: 'SMP-8832', 
-      patientId: 'PAT-0044',
-      patientName: 'Ahmed Mohammed Ali',
-      testName: 'Cardiac Markers (Troponin I)', 
-      priority: 'stat', 
-      status: 'unassigned', 
-      slaMinutes: 30, 
-      timeRemaining: 5, 
-      section: 'Biochemistry', 
-      dueAt: new Date(Date.now() + 5 * 60000),
-      notes: 'Patient showing symptoms of acute myocardial infarction. Expedite results.',
-      attachments: ['ECG_Report.pdf', 'Clinical_History.docx']
-    },
-    { 
-      id: 'T2', 
-      sampleId: 'SMP-1029', 
-      patientId: 'PAT-8812',
-      patientName: 'Sarah Jenkins',
-      testName: 'CBC + Differential', 
-      priority: 'urgent', 
-      status: 'claimed', 
-      slaMinutes: 60, 
-      timeRemaining: 25, 
-      owner: 'Technician Ali', 
-      section: 'Hematology', 
-      dueAt: new Date(Date.now() + 25 * 60000),
-      notes: 'Post-operative monitoring. Check for leukocyte count elevation.',
-      attachments: ['Lab_Order_Request.pdf']
-    },
-    { 
-      id: 'T3', 
-      sampleId: 'SMP-9921', 
-      patientId: 'PAT-3321',
-      patientName: 'Michael Chen',
-      testName: 'HbA1c', 
-      priority: 'routine', 
-      status: 'in-progress', 
-      slaMinutes: 120, 
-      timeRemaining: 95, 
-      owner: 'Technician Leyla', 
-      section: 'Biochemistry', 
-      dueAt: new Date(Date.now() + 95 * 60000),
-      notes: 'Routine diabetic follow-up. Reviewing historical glucose trend.',
-      attachments: []
-    },
-  ]);
+  const [tasks, setTasks] = useState<LabTask[]>([]);
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -337,23 +289,7 @@ export function WorkQueue() {
                   <div className="w-1 h-1 rounded-full bg-white/20" />
                   <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{profile?.name || 'Operator'} Authorized</span>
                   
-                  {/* State Control Simulation */}
-                  <div className="flex bg-white/10 p-1 rounded-xl border border-white/5 shrink-0 gap-1 ml-2 scale-90 translate-y-[-1px]">
-                    <button 
-                      onClick={() => setIsOffline(!isOffline)}
-                      className={cn("p-1.5 rounded-lg transition-all", isOffline ? "bg-emerald-500 text-white shadow-lg" : "text-white/40 hover:bg-white/10")}
-                      title="Simulate Network Drop"
-                    >
-                      {isOffline ? <Wifi size={12} /> : <WifiOff size={12} />}
-                    </button>
-                    <button 
-                      onClick={() => setCriticalAlert({ message: 'Major analyzer calibration error detected. Manual routing required for critical samples.', severity: 'critical' })}
-                      className="p-1.5 text-white/40 hover:bg-white/10 hover:text-white rounded-lg transition-all"
-                      title="Simulate Critical Alert"
-                    >
-                      <AlertTriangle size={12} />
-                    </button>
-                  </div>
+
                </div>
             </div>
          </div>
@@ -487,7 +423,15 @@ export function WorkQueue() {
 
             <div className="space-y-4">
                <AnimatePresence mode="popLayout">
-                  {tasks
+                  {tasks.length === 0 ? (
+                    <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
+                      <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-4">
+                        <ClipboardList size={32} />
+                      </div>
+                      <p className="text-slate-500 font-bold text-lg">No tasks in queue</p>
+                      <p className="text-slate-400 text-sm mt-2">Incoming lab orders will appear here as they are received.</p>
+                    </div>
+                  ) : tasks
                     .filter(t => filterSection === 'All' || t.section === filterSection)
                     .sort((a, b) => {
                        if (sortBy === 'priority') {

@@ -18,41 +18,7 @@ export function SmartResultsView() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
 
-  const mockResults: LabTestResult[] = [
-    {
-      id: 'r1',
-      testName: 'Hemoglobin A1c (HbA1c)',
-      value: '5.8',
-      unit: '%',
-      range: '4.0 - 5.6',
-      flag: 'H',
-      status: 'completed',
-      labName: 'Central Diagnostic Center',
-      labId: 'LAB-092'
-    },
-    {
-      id: 'r2',
-      testName: 'Vitamin D',
-      value: '22',
-      unit: 'ng/mL',
-      range: '30 - 100',
-      flag: 'L',
-      status: 'completed',
-      labName: 'Central Diagnostic Center',
-      labId: 'LAB-092'
-    },
-    {
-      id: 'r3',
-      testName: 'LDL Cholesterol',
-      value: '95',
-      unit: 'mg/dL',
-      range: '0 - 100',
-      flag: 'N',
-      status: 'completed',
-      labName: 'Central Diagnostic Center',
-      labId: 'LAB-092'
-    }
-  ];
+  const mockResults: LabTestResult[] = [];
 
   const handleExplain = async (result: LabTestResult) => {
     setSelectedResult(result);
@@ -93,7 +59,15 @@ export function SmartResultsView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Results List */}
         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockResults.map((result) => {
+          {mockResults.length === 0 ? (
+            <div className="lg:col-span-3 text-center py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-4">
+                <FlaskConical size={32} />
+              </div>
+              <p className="text-slate-500 font-bold text-lg">No lab results yet</p>
+              <p className="text-slate-400 text-sm mt-2">Results from connected laboratories will appear here.</p>
+            </div>
+          ) : mockResults.map((result) => {
             const interp = getInterpretation(result.flag || 'N');
             return (
               <motion.div 

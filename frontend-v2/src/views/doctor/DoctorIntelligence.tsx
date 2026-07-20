@@ -20,9 +20,7 @@ export function DoctorIntelligence() {
   const { t } = useLanguage();
   const [activeView, setActiveView] = useState<'chat' | 'analysis' | 'explainable' | 'triage'>('chat');
   const [isListening, setIsListening] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string; data?: any }[]>([
-    { role: 'ai', text: "GULA Medical Brain (v4.0) initialized. I have indexed the current patient's clinical history, recent lab results, and local disease trends. How can I assist with your clinical reasoning today?" }
-  ]);
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string; data?: any }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -41,8 +39,7 @@ export function DoctorIntelligence() {
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsTyping(true);
 
-    const context = "Current Patient Profile: Male, 52y. History of Hypertension. Current Symptoms: Fatigue, persistent cough (3 weeks), night sweats. Lab: CRP 42 (High), WBC 11.2 (Slightly high). Chest X-Ray: Infiltrate in RUL.";
-    const response = await getClinicalInsight(userMessage, context);
+    const response = await getClinicalInsight(userMessage, '');
     
     setMessages(prev => [...prev, { role: 'ai', text: response }]);
     setIsTyping(false);

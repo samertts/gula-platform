@@ -16,12 +16,7 @@ interface PatientRow {
   date: string;
 }
 
-const SEED: PatientRow[] = [
-  { name: 'Ahmed Mansour', id: 'P-9021', nhid: 'GULA-882-99-XC', status: 'Active', age: '42', blood: 'A+', date: '2024-04-19' },
-  { name: 'Sara Khalid',   id: 'P-8842', nhid: 'GULA-441-22-BY', status: 'Stable', age: '29', blood: 'O-', date: '2024-04-18' },
-  { name: 'Karwan Ali',    id: 'P-7721', nhid: 'GULA-331-55-ZA', status: 'Critical', age: '55', blood: 'B+', date: '2024-04-17' },
-  { name: 'Leyla Demir',   id: 'P-6612', nhid: 'GULA-221-88-WE', status: 'Recovered', age: '34', blood: 'AB+', date: '2024-04-15' },
-];
+const SEED: PatientRow[] = [];
 
 export function RecordsView() {
   const { t } = useLanguage();
@@ -33,13 +28,7 @@ export function RecordsView() {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    // Seeded data — replaces a future fetch. Keeping the timer tiny so the
-    // skeleton flashes briefly on first paint, never long enough to feel slow.
-    const handle = window.setTimeout(() => {
-      setPatients(SEED);
-      setLoading(false);
-    }, 250);
-    return () => window.clearTimeout(handle);
+    setLoading(false);
   }, []);
 
   const filtered = useMemo(() => {

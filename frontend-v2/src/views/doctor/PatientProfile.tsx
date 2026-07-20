@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { 
-  ArrowLeft, Activity as ActivityIcon, FlaskConical, Pill, 
+  ArrowLeft, FlaskConical, Pill, 
   Calendar, CheckCircle2, AlertCircle, ChevronRight,
   TrendingUp, Download, Share2, ClipboardList,
   Stethoscope, Send, Plus, Zap, FileText, Search,
@@ -28,19 +28,19 @@ export function PatientProfile() {
   const [historyFilter, setHistoryFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock patient data
-  const patient = {
-    name: "Ahmed Mansour",
-    id: "P-9021",
-    nationalHealthId: "GULA-882-99-XC",
-    age: 42,
-    gender: "Male",
-    blood: "A+",
-    weight: "78kg",
-    height: "176cm",
-    lastVisit: "2024-04-12",
-    clinicalSummary: "Patient presenting with recurrent abdominal pain and fatigue. History of mild hypertension."
-  };
+  // Patient data — loaded from Firestore
+  const patient: {
+    name: string;
+    id: string;
+    nationalHealthId: string;
+    age: number;
+    gender: string;
+    blood: string;
+    weight: string;
+    height: string;
+    lastVisit: string;
+    clinicalSummary: string;
+  } | null = null;
 
   // Check for low bandwidth preference
   useEffect(() => {
@@ -52,35 +52,15 @@ export function PatientProfile() {
     }
   }, []);
 
-  const criticalAlerts = [
-    { id: 'a1', text: "Last HbA1c (7.2%) indicates poorly controlled glycemic index.", type: 'warning' },
-    { id: 'a2', text: "Scheduled for Re-test: Lipids Panel in 48h.", type: 'info' }
-  ];
+  const criticalAlerts: { id: string; text: string; type: string }[] = [];
 
-  const timeline = [
-    { date: '2024-04-12', type: 'visit', title: 'Consultation: Abdominal Pain', provider: 'Dr. Sarah (General)', status: 'completed' },
-    { date: '2024-04-12', type: 'order', title: 'Comprehensive Metabolic Panel', provider: 'National Lab', status: 'ordered' },
-    { date: '2024-04-14', type: 'result', title: 'CMP Results Available', provider: 'National Lab', status: 'available', flag: 'H' },
-    { date: '2024-04-15', type: 'prescription', title: 'Metformin 500mg', provider: 'General Clinic', status: 'active' },
-  ];
+  const timeline: { date: string; type: string; title: string; provider: string; status: string; flag?: string }[] = [];
 
-  const medicalHistory = [
-    { id: 'h1', date: '2023-11-20', type: 'diagnosis', title: 'Type 2 Diabetes Mellitus', provider: 'Endocrinology Center', description: 'Confirmed with A1c 7.1. Started lifestyle management education.' },
-    { id: 'h2', date: '2023-08-15', type: 'lab', title: 'Lipid Profile', provider: 'National Lab', description: 'Elevated LDL (160) and Triglycerides. BMI calculated at 26.5.' },
-    { id: 'h3', date: '2023-05-10', type: 'imaging', title: 'Abdominal Ultrasound', provider: 'Duhok Medical Imaging', description: 'Negative for gallstones. Normal liver parenchymal echogenicity.' },
-    { id: 'h4', date: '2024-01-05', type: 'prescription', title: 'Lisinopril 10mg', provider: 'City General Clinic', description: 'Daily morning dose for blood pressure regulation (Stage 1 Hypertension).' },
-    { id: 'h5', date: '2022-09-12', type: 'diagnosis', title: 'Stage 1 Hypertension', provider: 'City General Clinic', description: 'Persistent BP readings above 140/90. Recommended sodium restriction.' },
-  ];
+  const medicalHistory: { id: string; date: string; type: string; title: string; provider: string; description: string }[] = [];
 
-  const filteredHistory = historyFilter === 'all' 
-    ? medicalHistory 
-    : medicalHistory.filter(item => item.type === historyFilter);
+  const filteredHistory = medicalHistory;
 
-  const results: LabTestResult[] = [
-    { id: 'r1', testName: 'Glucose (Fasting)', value: '126', unit: 'mg/dL', range: '70 - 99', flag: 'H', status: 'completed', labName: 'National Lab', labId: 'L-001' },
-    { id: 'r2', testName: 'Creatinine', value: '0.9', unit: 'mg/dL', range: '0.7 - 1.3', flag: 'N', status: 'completed', labName: 'National Lab', labId: 'L-001' },
-    { id: 'r3', testName: 'AST (SGOT)', value: '45', unit: 'U/L', range: '10 - 40', flag: 'H', status: 'completed', labName: 'National Lab', labId: 'L-001' },
-  ];
+  const results: LabTestResult[] = [];
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -101,29 +81,7 @@ export function PatientProfile() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 min-h-screen bg-slate-50/20 pb-20">
-      {/* Allergy Radar & Safety Banner */}
-      <div className="bg-rose-600 p-3 flex items-center justify-between px-8 rounded-2xl shadow-lg shadow-rose-200/50 relative overflow-hidden group">
-         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-         <div className="flex items-center gap-4 relative z-10">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-white animate-pulse">
-               <AlertCircle size={18} />
-            </div>
-            <div className="flex items-baseline gap-2">
-               <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Allergy Alert:</span>
-               <span className="text-sm font-black text-white uppercase tracking-tight">Penicillin, Shellfish, Latex</span>
-            </div>
-         </div>
-         <div className="flex items-center gap-6 relative z-10">
-            <div className="flex items-center gap-2">
-               <div className="w-2 h-2 rounded-full bg-emerald-400" />
-               <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Weight-adjusted Dosing Active</span>
-            </div>
-            <div className="w-px h-4 bg-white/20" />
-            <button className="text-[10px] font-black uppercase tracking-widest text-white hover:underline decoration-white/30 underline-offset-4">
-               View Full Risk Profile
-            </button>
-         </div>
-      </div>
+
 
       {/* Top Decision Hub Strip */}
       <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-slate-200">
@@ -140,15 +98,15 @@ export function PatientProfile() {
                ) : (
                  <>
                    <div className="flex items-center gap-3">
-                      <h1 className="text-2xl font-bold">{patient.name}</h1>
-                      <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-widest">{patient.id}</span>
-                      <span className="px-3 py-1 bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        ID: {patient.nationalHealthId}
-                      </span>
-                   </div>
-                   <div className="flex gap-4 mt-1 opacity-60 text-xs font-medium">
-                      <span>{patient.age}y • {patient.gender}</span>
-                      <span>{patient.blood} Group</span>
+                       <h1 className="text-2xl font-bold">{patient?.name || 'Loading...'}</h1>
+                       <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-widest">{patient?.id || ''}</span>
+                       <span className="px-3 py-1 bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 rounded-full text-[10px] font-black uppercase tracking-widest">
+                         ID: {patient?.nationalHealthId || ''}
+                       </span>
+                    </div>
+                    <div className="flex gap-4 mt-1 opacity-60 text-xs font-medium">
+                       <span>{patient?.age || '--'}y • {patient?.gender || '--'}</span>
+                       <span>{patient?.blood || '--'} Group</span>
                    </div>
                  </>
                )}
@@ -173,10 +131,7 @@ export function PatientProfile() {
             >
                <Calendar size={18} /> {t.scheduleAppointment}
             </button>
-            <div className="bg-indigo-600 px-6 py-4 rounded-2xl text-center shadow-xl shadow-indigo-900/20">
-               <span className="block text-[8px] font-bold uppercase tracking-widest opacity-60">Last Glucose</span>
-               <span className="text-xl font-black">126 H</span>
-            </div>
+
             <button className="flex items-center gap-3 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-emerald-900/20 hover:scale-[1.02] active:scale-95 transition-all">
                <Zap size={18} /> Quick Order [O]
             </button>
@@ -222,19 +177,15 @@ export function PatientProfile() {
             <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-8">
                <div>
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Clinical Overview</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed italic">"{patient.clinicalSummary}"</p>
+                   <p className="text-sm text-slate-600 leading-relaxed italic">"{patient?.clinicalSummary || 'No clinical summary available.'}"</p>
                </div>
 
-               <div className="space-y-4 pt-6 border-t border-slate-50">
-                  <div className="flex justify-between items-center">
-                     <span className="text-xs text-slate-400 font-medium tracking-tight">BMI</span>
-                     <span className="text-sm font-bold text-slate-800">24.2</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                     <span className="text-xs text-slate-400 font-medium tracking-tight">Vitals Latency</span>
-                     <span className="text-xs font-black text-emerald-600 uppercase">Synced 4m ago</span>
-                  </div>
-               </div>
+                <div className="space-y-4 pt-6 border-t border-slate-50">
+                   <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-400 font-medium tracking-tight">Vitals Status</span>
+                      <span className="text-xs font-black text-emerald-600 uppercase">Awaiting Data</span>
+                   </div>
+                </div>
 
                <button className="w-full py-4 border-2 border-indigo-600 text-indigo-600 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 transition-all">
                   Request LoA-3 Identity
@@ -534,24 +485,13 @@ export function PatientProfile() {
                           <Layers className="text-amber-600" />
                           Diagnostic Imaging (Radiology)
                        </h3>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {[
-                            { name: 'Abdominal CT Scan', date: '2024-04-10', status: 'Finalized', result: 'Mild splenomegaly noted.' },
-                            { name: 'Chest X-Ray', date: '2024-03-15', status: 'Finalized', result: 'Clear lung fields.' }
-                          ].map((scan, i) => (
-                             <div key={i} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:border-amber-200 transition-all cursor-pointer">
-                                <div className="flex justify-between items-start mb-4">
-                                   <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
-                                      <Layers size={24} />
-                                   </div>
-                                   <span className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{scan.status}</span>
-                                </div>
-                                <h4 className="font-black text-slate-900 mb-1">{scan.name}</h4>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase mb-4">{scan.date}</p>
-                                <p className="text-xs text-slate-600 leading-relaxed bg-white p-4 rounded-xl border border-slate-200/50 italic">"{scan.result}"</p>
-                             </div>
-                          ))}
-                       </div>
+                        <div className="text-center py-12 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                          <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-4">
+                            <Layers size={24} />
+                          </div>
+                          <p className="text-slate-500 font-bold">No radiology records available</p>
+                          <p className="text-slate-400 text-sm mt-1">Imaging reports will appear once uploaded.</p>
+                        </div>
                     </div>
                  </motion.div>
                )}
@@ -581,21 +521,13 @@ export function PatientProfile() {
                                 <th className="px-8 py-4">Status</th>
                              </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
-                             {[
-                               { name: 'Metformin', dose: '500mg', freq: 'BID (with meals)', status: 'Active' },
-                               { name: 'Lisinopril', dose: '10mg', freq: 'QD (morning)', status: 'Active' }
-                             ].map((med, i) => (
-                                <tr key={i} className="hover:bg-slate-50 transition-colors">
-                                   <td className="px-8 py-6 font-bold text-slate-900">{med.name}</td>
-                                   <td className="px-8 py-6 text-sm text-slate-600">{med.dose}</td>
-                                   <td className="px-8 py-6 text-xs text-slate-400 font-medium">{med.freq}</td>
-                                   <td className="px-8 py-6 text-left">
-                                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase rounded">Active</span>
-                                   </td>
-                                </tr>
-                             ))}
-                          </tbody>
+                           <tbody className="divide-y divide-slate-100">
+                              <tr>
+                                <td colSpan={4} className="px-8 py-12 text-center text-slate-400 font-bold">
+                                  No active prescriptions. Prescribe using Clinical Audit Trail above.
+                                </td>
+                              </tr>
+                           </tbody>
                        </table>
                     </div>
                  </motion.div>
@@ -615,18 +547,11 @@ export function PatientProfile() {
                           <HistoryIcon className="text-blue-600" />
                           Previous Progress Notes
                        </h3>
-                       <div className="space-y-6">
-                          <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 italic">
-                             <div className="flex items-center gap-2 mb-4">
-                                <Stethoscope size={16} className="text-slate-400" />
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest underline decoration-indigo-200">2024-04-12 • Initial Intake Note</span>
-                             </div>
-                             <p className="text-sm text-slate-700 leading-relaxed">
-                                Patient presents with episodic epigastric pain, non-radiating. Correlated with dietary intake. 
-                                Rule out peptic ulcer disease vs gallbladder pathology. Initiated Metformin for metabolic stabilization.
-                             </p>
-                          </div>
-                       </div>
+                        <div className="text-center py-12 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                           <Stethoscope size={24} className="text-slate-300 mx-auto mb-3" />
+                           <p className="text-slate-500 font-bold">No progress notes yet</p>
+                           <p className="text-slate-400 text-sm mt-1">Clinical notes will appear once documented.</p>
+                        </div>
                     </div>
                  </motion.div>
                )}
@@ -639,7 +564,7 @@ export function PatientProfile() {
                   exit={{ opacity: 0, x: -20 }}
                 >
                   <AITriageAssistant 
-                    patientId={patient.id} 
+                    patientId={patient?.id || ''} 
                     patientData={JSON.stringify(patient) + " " + JSON.stringify(medicalHistory)} 
                   />
                 </motion.div>
@@ -658,66 +583,11 @@ export function PatientProfile() {
                           <BrainCircuit className="text-indigo-400" />
                           GULA AI Diagnostic Assistant
                        </h3>
-                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
-                          <div className="space-y-6 text-right">
-                             <div className="bg-white/5 border border-white/10 rounded-3xl p-6 hover:bg-white/10 transition-all group">
-                                <div className="flex items-center justify-between mb-6 flex-row-reverse">
-                                   <h4 className="text-xs font-black uppercase tracking-widest text-indigo-400">Biological Risk Map</h4>
-                                   <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 group-hover:scale-110 transition-transform">
-                                      <Zap size={16} />
-                                   </div>
-                                </div>
-                                <div className="space-y-5">
-                                   {[
-                                      { label: "Cardiovascular Event", value: 8, color: "bg-emerald-400", alert: false },
-                                      { label: "Metabolic Complexity", value: 64, color: "bg-red-400", alert: true },
-                                      { label: "Renal Filtration Decay", value: 12, color: "bg-emerald-400", alert: false },
-                                      { label: "Chronic Inflammation", value: 45, color: "bg-amber-400", alert: false }
-                                   ].map(risk => (
-                                      <div key={risk.label} className="space-y-2">
-                                         <div className="flex justify-between items-center flex-row-reverse text-xs font-bold text-slate-300">
-                                            <span>{risk.label}</span>
-                                            <span className={cn(risk.alert ? "text-red-400 animate-pulse" : "text-indigo-100")}>{risk.value}%</span>
-                                         </div>
-                                         <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                            <motion.div 
-                                              initial={{ width: 0 }}
-                                              animate={{ width: `${risk.value}%` }}
-                                              className={cn("h-full", risk.color)} 
-                                            />
-                                         </div>
-                                      </div>
-                                   ))}
-                                </div>
-                             </div>
-                          </div>
-
-                          <div className="space-y-6">
-                             <div className="bg-white/5 border border-white/10 rounded-3xl p-6 text-right">
-                                <h4 className="text-xs font-black uppercase tracking-widest text-indigo-400 mb-4">Neural Suggestion Engine</h4>
-                                <div className="space-y-4">
-                                   {[
-                                     { type: 'diagnostic', text: 'Upper GI Endoscopy (EGD) due to localized pain pattern.' },
-                                     { type: 'imaging', text: 'Liver Ultrasound to assess echogenicity.' },
-                                     { type: 'lab', text: 'H. Pylori Stool Antigen test.' }
-                                   ].map((step, i) => (
-                                     <div key={i} className="flex gap-4 p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-all justify-end group">
-                                        <div className="flex-1">
-                                           <div className="flex items-center gap-2 justify-end mb-1">
-                                              <span className="text-[8px] font-black uppercase text-indigo-400 opacity-60 tracking-widest">{step.type}</span>
-                                           </div>
-                                           <p className="text-xs text-indigo-50 leading-relaxed">{step.text}</p>
-                                        </div>
-                                        <div className="w-8 h-8 bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center font-black group-hover:bg-indigo-600 group-hover:text-white transition-all">{i+1}</div>
-                                     </div>
-                                   ))}
-                                </div>
-                             </div>
-                             <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-900/40 transition-all flex items-center justify-center gap-3">
-                                <ActivityIcon size={16} /> Run Full Neural Scan
-                             </button>
-                          </div>
-                       </div>
+                                            <div className="text-center py-16 relative z-10">
+                              <BrainCircuit size={48} className="text-indigo-500/30 mx-auto mb-4" />
+                              <p className="text-indigo-200 font-bold text-lg">Awaiting patient data</p>
+                              <p className="text-indigo-400 text-sm mt-2">Biological risk analysis and diagnostic suggestions will appear once patient history is loaded.</p>
+                           </div>
                     </div>
                  </motion.div>
                )}

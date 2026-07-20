@@ -6,18 +6,19 @@
   --font-sans: "Inter", "Noto Naskh Arabic", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Sleek Interface Palette */
+  /* Design System Palette */
   --color-primary: #4f46e5;
   --color-primary-container: #6366f1;
   --color-on-primary: #ffffff;
+  --color-primary-light: #eef2ff;
   
   --color-secondary: #64748b;
   --color-on-secondary: #ffffff;
   
   --color-background: #f8fafc;
-  --color-surface: #f8fafc;
+  --color-surface: #ffffff;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f1f5f9;
+  --color-surface-container-low: #f8fafc;
   --color-surface-container: #f1f5f9;
   --color-surface-container-high: #e2e8f0;
   --color-surface-container-highest: #cbd5e1;
@@ -32,52 +33,112 @@
   --color-error-container: #fef2f2;
   --color-on-error-container: #991b1b;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --color-success: #10b981;
+  --color-success-container: #ecfdf5;
+  --color-on-success-container: #065f46;
+
+  --color-warning: #f59e0b;
+  --color-warning-container: #fffbeb;
+  --color-on-warning-container: #92400e;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 30px 50px -12px rgba(0, 0, 0, 0.15);
+  
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --radius-full: 9999px;
 }
 
 @layer base {
   body {
-    @apply bg-background text-on-surface font-sans;
+    @apply bg-background text-on-surface font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    @apply border-outline;
+  }
+
+  ::selection {
+    @apply bg-indigo-100/70;
+  }
+
+  /* RTL-aware scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-300;
   }
 }
 
-.editorial-stack {
-  line-height: 1.25;
-}
+@layer components {
+  .glass-panel {
+    backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
 
-.glass-panel {
-  backdrop-filter: blur(16px);
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-}
+  .glass-dark {
+    backdrop-filter: blur(16px);
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 
-.glass-dark {
-  backdrop-filter: blur(16px);
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
+  .card-sleek {
+    @apply bg-white rounded-[2rem] shadow-sm border border-slate-100/80 p-8 transition-all duration-300;
+  }
 
-.card-sleek {
-  @apply bg-white rounded-[2rem] shadow-sm border border-slate-100 p-8 transition-all duration-500 ease-out;
-}
+  .card-precise {
+    @apply bg-white rounded-3xl shadow-lg shadow-slate-200/40 border border-slate-100/80 p-6 transition-all;
+  }
 
-.card-precise {
-  @apply bg-white rounded-3xl shadow-lg shadow-slate-200/40 border border-slate-100/80 p-6 transition-all;
-}
+  .card-hover {
+    @apply cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300;
+  }
 
-.btn-premium {
-  @apply bg-slate-900 text-white rounded-2xl px-6 py-3 font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-black hover:-translate-y-0.5 active:translate-y-0 transition-all;
-}
+  .btn-premium {
+    @apply bg-slate-900 text-white rounded-2xl px-6 py-3 font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-black hover:-translate-y-0.5 active:translate-y-0 transition-all;
+  }
 
-.icon-container {
-  @apply w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300;
-}
+  .icon-container {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300;
+  }
 
-.text-xs-caps {
-  @apply text-[10px] font-black uppercase tracking-[0.2em] leading-none;
+  .text-xs-caps {
+    @apply text-[10px] font-black uppercase tracking-[0.2em] leading-none;
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:ring-offset-2;
+  }
+
+  /* RTL-aware direction utilities */
+  .rtl-aware {
+    @apply flex;
+  }
+
+  [dir="rtl"] .rtl-aware {
+    @apply flex-row-reverse;
+  }
 }
 
 @layer utilities {
@@ -88,8 +149,56 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .animate-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .slide-in-right {
+    animation: slideInRight 0.2s ease-out;
+  }
+
+  .slide-in-left {
+    animation: slideInLeft 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideInRight {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes slideInLeft {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
 }
 
+/* Smooth RTL transitions */
 html {
   scroll-behavior: smooth;
+}
+
+/* RTL-specific overrides */
+[dir="rtl"] .space-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .card-sleek, .card-precise {
+    @apply border-2 border-slate-300;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

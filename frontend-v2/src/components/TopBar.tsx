@@ -1,294 +1,411 @@
-import { Search, Globe, Bell, LogOut, Activity, Cpu, Zap, User, Network, Wifi, WifiOff, X, ShieldAlert, FlaskConical, Stethoscope } from 'lucide-react';
+import { Search, Bell, User, Globe, LogOut, Zap, Plus, Clock, Activity, Wifi, WifiOff, ChevronDown, Sun, Moon, Settings, LayoutDashboard, History, Star, X, Command, Sparkles, Shield, Building2, CheckCheck, ListTodo, ArrowLeftRight, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { NotificationCenter } from './NotificationCenter';
 import { Language } from '../translations';
 import { cn } from '../lib/utils';
-import { auth } from '../firebase-auth';
-import { useState, useEffect, memo } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { motion } from 'motion/react';
-import { NeuralSparkline } from './NeuralSparkline';
-import { SystemDiagnosticsDrawer } from './SystemDiagnosticsDrawer';
-import { toast } from 'sonner';
+import { useState, useEffect, memo, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Badge, Avatar, Kbd, Tooltip, Button } from './ui';
+
+interface QuickAction {
+  id: string;
+  label: string;
+  icon: any;
+  action: () => void;
+  shortcut?: string;
+  description?: string;
+}
+
+const LANGUAGES: Language[] = ['EN', 'AR', 'KU', 'TR', 'SY'];
+const LANG_NAMES: Record<Language, string> = {
+  EN: 'English', AR: 'العربية', KU: 'Kurdî', TR: 'Türkçe', SY: 'ܣܘܪܝܬ'
+};
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { id: 'new-patient', label: 'Register Patient', icon: User, description: 'New patient record', action: () => {} },
+  { id: 'new-order', label: 'New Order', icon: Plus, description: 'Create lab order', action: () => {} },
+  { id: 'new-appointment', label: 'Appointment', icon: Clock, description: 'Schedule visit', action: () => {} },
+  { id: 'new-result', label: 'Enter Result', icon: Activity, description: 'Record test results', action: () => {} },
+];
 
 export const TopBar = memo(function TopBar() {
   const { t, setLanguage, language, dir } = useLanguage();
-  const { unreadCount } = useNotifications();
-  const { user, profile, logout } = useAuth();
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [throughput, setThroughput] = useState(42.8);
-  const [isLowBandwidth, setIsLowBandwidth] = useState(false);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [clinicalMode, setClinicalMode] = useState<'clinic' | 'emergency' | 'research'>('clinic');
+  const { unreadCount, notifications } = useNotifications();
+  const { profile, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const isRtl = dir === 'rtl';
 
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [showLang, setShowLang] = useState(false);
+  const [showTasks, setShowTasks] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
+
+  const profileRef = useRef<HTMLDivElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
+  const quickCreateRef = useRef<HTMLDivElement>(null);
+  const tasksRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setThroughput(prev => Math.max(30, Math.min(60, prev + (Math.random() * 2 - 1))));
-    }, 4000);
-
-    try {
-      const savedLowBandwidth = localStorage.getItem('gula_low_bandwidth') === 'true';
-      setIsLowBandwidth(savedLowBandwidth);
-
-      const savedMode = localStorage.getItem('clinical_mode') as any;
-      if (savedMode) setClinicalMode(savedMode);
-    } catch (e) {
-      console.error('Failed to read localStorage');
-    }
-
-    return () => clearInterval(timer);
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
   }, []);
 
-  const toggleMode = (mode: 'clinic' | 'emergency' | 'research') => {
-    setClinicalMode(mode);
-    try { localStorage.setItem('clinical_mode', mode); } catch {}
-    toast.info(`Clinical Mode Switched to ${mode.toUpperCase()}`);
-  };
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setShowProfile(false);
+      if (langRef.current && !langRef.current.contains(e.target as Node)) setShowLang(false);
+      if (quickCreateRef.current && !quickCreateRef.current.contains(e.target as Node)) setShowQuickCreate(false);
+      if (tasksRef.current && !tasksRef.current.contains(e.target as Node)) setShowTasks(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-  const toggleLowBandwidth = () => {
-    const newValue = !isLowBandwidth;
-    setIsLowBandwidth(newValue);
-    try { localStorage.setItem('gula_low_bandwidth', String(newValue)); } catch {}
-  };
+  QUICK_ACTIONS[0].action = () => { navigate('/citizen/register'); setShowQuickCreate(false); };
+  QUICK_ACTIONS[1].action = () => { navigate('/lab/queue'); setShowQuickCreate(false); };
+  QUICK_ACTIONS[2].action = () => { navigate('/appointments'); setShowQuickCreate(false); };
+  QUICK_ACTIONS[3].action = () => { navigate('/lab/queue'); setShowQuickCreate(false); };
 
-  const handleSignOut = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-  };
+  const getPageTitle = useCallback(() => {
+    const path = location.pathname;
+    if (path === '/') return t.home || 'Home';
+    if (path.startsWith('/patients')) return t.patients || 'Patients';
+    if (path.startsWith('/appointments')) return t.appointments || 'Appointments';
+    if (path.startsWith('/intelligence')) return t.medicalIntelligence || 'AI Intelligence';
+    if (path.startsWith('/lab/dashboard')) return (t as any).labDashboard || 'Lab Dashboard';
+    if (path.startsWith('/lab/queue')) return t.workQueue || 'Work Queue';
+    if (path.startsWith('/lab/samples')) return t.sampleTracking || 'Samples';
+    if (path.startsWith('/lab/devices')) return t.deviceManagement || 'Devices';
+    if (path.startsWith('/lab/inventory')) return t.inventory || 'Inventory';
+    if (path.startsWith('/lab/qc')) return t.qualityControl || 'Quality Control';
+    if (path.startsWith('/lab/imaging')) return t.imagingLab || 'Imaging Lab';
+    if (path.startsWith('/citizen/dashboard')) return t.dashboard || 'Dashboard';
+    if (path.startsWith('/citizen/profile')) return t.myHealth || 'My Health';
+    if (path.startsWith('/citizen/results')) return t.labResults || 'Lab Results';
+    if (path.startsWith('/citizen/medications')) return (t as any).medications || 'Medications';
+    if (path.startsWith('/citizen/assistant')) return t.aiAssistant || 'AI Assistant';
+    if (path.startsWith('/citizen/family')) return t.familyManagement || 'Family';
+    if (path.startsWith('/citizen/history')) return t.medicalHistory || 'History';
+    if (path.startsWith('/citizen/consent')) return t.consentManagement || 'Consent';
+    if (path.startsWith('/citizen/verification')) return (t as any).identityVerification || 'Verification';
+    if (path.startsWith('/citizen/register')) return t.registerPatient || 'Register';
+    if (path.startsWith('/ministry/dashboard')) return t.populationHealth || 'Population Health';
+    if (path.startsWith('/ministry/epidemiology')) return (t as any).epidemiology || 'Epidemiology';
+    if (path.startsWith('/ministry/analytics')) return t.analytics || 'Analytics';
+    if (path.startsWith('/ministry/audit')) return t.dataSovereignty || 'Data Sovereignty';
+    if (path.startsWith('/admin/infrastructure')) return t.infrastructure || 'Infrastructure';
+    if (path.startsWith('/admin/integrations')) return t.integrations || 'Integrations';
+    if (path.startsWith('/admin/audit')) return t.auditLogs || 'Audit Logs';
+    if (path.startsWith('/admin/architecture')) return t.architecture || 'Architecture';
+    if (path.startsWith('/settings')) return t.settings || 'Settings';
+    return '';
+  }, [location.pathname, t]);
 
-  const langs: Language[] = ['EN', 'AR', 'KU', 'TR', 'SY'];
+  const roleBadge = (() => {
+    if (!profile?.role) return '';
+    const r = profile.role;
+    if (r === 'master_admin') return 'SYS_MASTER';
+    if (r === 'ministry_admin') return 'MIN_ADMIN';
+    if (r === 'ministry_analyst') return 'MIN_ANALYST';
+    if (r === 'ministry_inspector') return 'INSPECTOR';
+    if (r === 'physician') return 'PHYSICIAN';
+    if (r === 'technician') return 'TECH';
+    if (r === 'lab_admin') return 'LAB_ADMIN';
+    if (r === 'pathologist') return 'PATH';
+    if (r === 'researcher') return 'RESEARCH';
+    if (r === 'regulator') return 'REGULATOR';
+    if (r === 'auditor') return 'AUDITOR';
+    if (r === 'integration_service') return 'INTEGRATION';
+    if (r === 'admin') return 'ADMIN';
+    if (r === 'citizen') return 'CITIZEN';
+    return (r as string).toUpperCase();
+  })();
+
+  const unreadCritical = notifications.filter(n => !n.read && n.priority === 'stat').length;
+  const tasksCount = 3;
 
   return (
-    <div className="sticky top-0 z-40">
-      <SystemDiagnosticsDrawer 
-        isOpen={showDiagnostics} 
-        onClose={() => setShowDiagnostics(false)} 
-      />
-      <div className="bg-slate-950 text-white py-1.5 px-6 flex items-center justify-between gap-4 overflow-hidden relative border-b border-white/5">
-         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.1),transparent_70%)]" />
-         <motion.div 
-           animate={{ x: ['-100%', '100%'] }}
-           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-           className="absolute top-0 bottom-0 w-1/3 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent opacity-30"
-         />
-         
-         <div className="flex items-center gap-3 relative z-10 px-2 lg:px-4">
-            <div className="flex items-center gap-1.5">
-               <div className={cn("w-1 h-3 rounded-full transition-colors duration-500", isLowBandwidth ? "bg-amber-500" : "bg-indigo-500")} />
-               <div className={cn("w-1 h-2 rounded-full transition-colors duration-500 opacity-50", isLowBandwidth ? "bg-amber-400" : "bg-indigo-400")} />
-               <div className={cn("w-1 h-1 rounded-full transition-colors duration-500 opacity-30", isLowBandwidth ? "bg-amber-300" : "bg-indigo-300")} />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/70 whitespace-nowrap hidden sm:inline">
-               {isLowBandwidth ? "Optimization Mode: ACTIVE" : "Grid Core: OPERATIONAL"}
-            </span>
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/70 whitespace-nowrap sm:hidden">
-               {isLowBandwidth ? "OPT_MODE" : "GRID_SYNC"}
-            </span>
-
-            <button 
-              onClick={() => setShowDiagnostics(true)}
-              className="ml-auto hidden lg:flex items-center gap-2 group hover:text-indigo-400 transition-colors"
-            >
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-white/40 group-hover:text-indigo-400">System Pulsar: NOMINAL</span>
-            </button>
-         </div>
-         
-         <div className="hidden xl:flex items-center gap-8 relative z-10">
-            <div className="flex items-center gap-4">
-               <div className="flex flex-col items-end">
-                  <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">Signal</span>
-                  <NeuralSparkline />
-               </div>
-               <div className="w-px h-6 bg-white/10" />
-               <div className="flex flex-col items-end">
-                  <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest leading-none">Throughput</span>
-                  <span className="text-[10px] font-mono font-bold text-white/80">{throughput.toFixed(1)} GB/s</span>
-               </div>
-            </div>
-         </div>
- 
-         <div className="flex items-center gap-3 relative z-10">
-            <button 
-              onClick={toggleLowBandwidth}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border",
-                isLowBandwidth 
-                  ? "bg-amber-500/10 border-amber-500/20 text-amber-500" 
-                  : "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10"
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
+      <div className="flex items-center justify-between px-4 md:px-6 h-14 max-w-screen-2xl mx-auto gap-2">
+        {/* Left: Page context + breadcrumb */}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold text-slate-900 truncate font-headline">{getPageTitle()}</h1>
+              <Badge variant="primary" className="hidden sm:inline-flex">{roleBadge}</Badge>
+              {isOffline && (
+                <Badge variant="warning" dot pulsing>
+                  <WifiOff size={10} />
+                  <span className="ml-1">OFFLINE</span>
+                </Badge>
               )}
-            >
-              {isLowBandwidth ? <WifiOff size={12} /> : <Wifi size={12} />}
-              <span className="hidden md:inline">{isLowBandwidth ? "Lite Mode" : "Turbo Link"}</span>
-            </button>
- 
-            <div className="h-4 w-px bg-white/10 hidden sm:block" />
- 
-            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded-md border border-white/10 hidden sm:flex">
-               <Activity size={10} className="text-emerald-400" />
-               <span className="text-[8px] font-black text-emerald-400 animate-pulse">ENCRYPTED</span>
-            </div>
-         </div>
-      </div>
-      <header className="w-full bg-white/90 backdrop-blur-xl border-b border-slate-100 h-16 flex items-center shadow-sm">
-      <div className="flex justify-between items-center px-4 md:px-8 w-full max-w-[1600px] mx-auto gap-4">
-         <div className="flex items-center gap-4 md:gap-8 flex-1">
-          <div className="flex items-center gap-2 lg:hidden">
-             <button 
-               onClick={() => setShowMobileSearch(!showMobileSearch)}
-               className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
-             >
-               {showMobileSearch ? <X size={20} /> : <Search size={20} />}
-             </button>
-          </div>
- 
-          <div className={cn(
-            "relative w-full max-w-xl group transition-all duration-300",
-            showMobileSearch ? "flex absolute left-0 right-0 px-4 z-50 bg-white h-full items-center" : "hidden md:flex"
-          )}>
-            <div className={cn(
-               "absolute top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-all z-10",
-               isRtl ? "right-9 md:right-4" : "left-9 md:left-4"
-            )}>
-               <Search size={18} />
-            </div>
-            <input 
-              type="text" 
-              placeholder={t.searchPlaceholder}
-              onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-              readOnly
-              className={cn(
-                "w-full py-2.5 bg-slate-50/50 border-slate-200 border rounded-2xl text-sm font-medium focus:ring-4 focus:ring-indigo-100 focus:bg-white transition-all placeholder:text-slate-400 cursor-pointer shadow-sm group-hover:border-slate-300",
-                isRtl ? "pr-16 md:pr-11" : "pl-16 md:pl-11"
+              {unreadCritical > 0 && (
+                <Badge variant="danger" dot pulsing>
+                  <AlertTriangle size={10} />
+                  <span className="ml-1">{unreadCritical} CRITICAL</span>
+                </Badge>
               )}
-            />
-            <div className={cn(
-               "absolute top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-1 rounded-lg border border-slate-200 bg-white opacity-40 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:flex shadow-sm",
-               isRtl ? "left-4" : "right-4"
-            )}>
-               <span className="text-[10px] font-black text-slate-500">⌘</span>
-               <span className="text-[10px] font-black text-slate-500">K</span>
             </div>
           </div>
         </div>
- 
-        <div className="flex items-center gap-2 sm:gap-6">
-          {/* Clinical Mode Switcher */}
-          <div className="hidden xl:flex items-center p-1 bg-slate-900 shadow-xl shadow-slate-200 border border-slate-200 rounded-2xl">
-             <button 
-               onClick={() => toggleMode('clinic')}
-               className={cn(
-                 "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black transition-all",
-                 clinicalMode === 'clinic' ? "bg-white text-indigo-600 shadow-sm" : "text-white/40 hover:text-white/60"
-               )}
-             >
-                <Stethoscope size={14} />
-                <span className="font-headline tracking-tighter">CLINIC</span>
-             </button>
-             <button 
-               onClick={() => toggleMode('emergency')}
-               className={cn(
-                 "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black transition-all",
-                 clinicalMode === 'emergency' ? "bg-rose-600 text-white shadow-lg shadow-rose-200" : "text-white/40 hover:text-rose-400"
-               )}
-             >
-                <ShieldAlert size={14} />
-                <span className="font-headline tracking-tighter">STAT_EMR</span>
-             </button>
-             <button 
-               onClick={() => toggleMode('research')}
-               className={cn(
-                 "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black transition-all",
-                 clinicalMode === 'research' ? "bg-amber-500 text-white shadow-lg shadow-amber-200" : "text-white/40 hover:text-amber-400"
-               )}
-             >
-                <FlaskConical size={14} />
-                <span className="font-headline tracking-tighter">RESEARCH</span>
-             </button>
+
+        {/* Center: Universal Search */}
+        <div className="hidden md:flex flex-1 max-w-md justify-center">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+            className="flex items-center gap-2 w-full max-w-sm px-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all group"
+          >
+            <Search size={15} className="shrink-0" />
+            <span className="truncate">{t.searchEverything || 'Search patients, orders, help...'}</span>
+            <span className="ml-auto hidden sm:flex items-center gap-1">
+              <Kbd><Command size={8} />K</Kbd>
+            </span>
+          </button>
+        </div>
+
+        {/* Right: Command Center Actions */}
+        <div className="flex items-center gap-1">
+          {/* Quick Create */}
+          <div className="relative" ref={quickCreateRef}>
+            <Tooltip content={t.quickCreate || 'Quick Create'}>
+              <button
+                onClick={() => setShowQuickCreate(!showQuickCreate)}
+                className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+              >
+                <Plus size={18} />
+              </button>
+            </Tooltip>
+            <AnimatePresence>
+              {showQuickCreate && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  className={cn('absolute top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50', isRtl ? 'left-0' : 'right-0')}
+                >
+                  <div className="px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 mb-1">
+                    {t.quickCreate || 'Quick Create'}
+                  </div>
+                  {QUICK_ACTIONS.map(qa => (
+                    <button
+                      key={qa.id}
+                      onClick={() => { qa.action(); setShowQuickCreate(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                    >
+                      <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center shrink-0">
+                        <qa.icon size={16} className="text-slate-500" />
+                      </div>
+                      <div className="flex flex-col items-start">
+                        <span className="text-sm font-bold">{t[qa.id.replace('new-', '')] || qa.label}</span>
+                        <span className="text-[9px] text-slate-400">{qa.description}</span>
+                      </div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          <div className="flex items-center p-1 bg-slate-100/50 border border-slate-200 rounded-2xl">
-            {langs.map((l) => (
+          {/* Language */}
+          <div className="relative" ref={langRef}>
+            <Tooltip content={t.language || 'Language'}>
               <button
-                key={l}
-                onClick={() => setLanguage(l)}
-                className={cn(
-                  "px-2 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-[11px] font-black transition-all relative overflow-hidden",
-                  language === l 
-                    ? "bg-white text-indigo-600 shadow-sm ring-1 ring-black/5" 
-                    : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
-                )}
+                onClick={() => setShowLang(!showLang)}
+                className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
               >
-                <span className="relative z-10">{l}</span>
+                <Globe size={18} />
               </button>
-            ))}
+            </Tooltip>
+            <AnimatePresence>
+              {showLang && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  className={cn('absolute top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 min-w-[140px]', isRtl ? 'left-0' : 'right-0')}
+                >
+                  {LANGUAGES.map(l => (
+                    <button
+                      key={l}
+                      onClick={() => { setLanguage(l); setShowLang(false); }}
+                      className={cn('w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all', language === l ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50')}
+                    >
+                      <span className={cn('w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black', language === l ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500')}>
+                        {l}
+                      </span>
+                      <span className="flex-1">{LANG_NAMES[l]}</span>
+                      {language === l && <CheckAllIcon />}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
- 
-          <div className="h-6 w-px bg-slate-200 hidden md:block" />
- 
-          <div className="hidden lg:flex items-center gap-4 group cursor-pointer p-1.5 hover:bg-slate-50 rounded-2xl transition-all">
-             <div className={cn("flex flex-col", isRtl ? "items-start text-left" : "items-end text-right")}>
-                <p className="text-sm font-black text-slate-900 leading-none mb-0.5 group-hover:text-indigo-600 transition-colors">
-                  {profile?.displayName || user?.displayName || user?.email?.split('@')[0] || t.clinicalLead}
-                </p>
-                <div className="flex items-center gap-1.5">
-                   <div className="relative">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping opacity-75" />
-                   </div>
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] leading-none group-hover:text-indigo-500 transition-colors">
-                     {profile?.role === 'master_admin' ? 'System Master' : profile?.role || t.activeSession}
-                   </p>
-                </div>
-             </div>
-             <div className="relative">
-                <div className="w-11 h-11 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100 group-hover:scale-105 transition-transform overflow-hidden relative">
-                   <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent" />
-                   <User size={22} className="relative z-10" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-lg shadow-sm" />
-             </div>
+
+          {/* Tasks / Workflow */}
+          <div className="relative" ref={tasksRef}>
+            <Tooltip content="Tasks">
+              <button
+                onClick={() => setShowTasks(!showTasks)}
+                className="relative p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+              >
+                <ListTodo size={18} />
+                {tasksCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[9px] font-black leading-none bg-amber-100 text-amber-700">{tasksCount > 9 ? '9+' : tasksCount}</span>
+                )}
+              </button>
+            </Tooltip>
+            <AnimatePresence>
+              {showTasks && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  className={cn('absolute top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50', isRtl ? 'left-0' : 'right-0')}
+                >
+                  <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 mb-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tasks</span>
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[9px] font-black leading-none bg-amber-100 text-amber-700">{tasksCount}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {[
+                      { label: 'Validate lab results', priority: 'high', time: '2 min ago' },
+                      { label: 'Review QC anomalies', priority: 'urgent', time: '5 min ago' },
+                      { label: 'Approve pending orders', priority: 'normal', time: '1 hour ago' },
+                    ].map((task, i) => (
+                      <button key={i} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-slate-50 transition-all text-left">
+                        <div className={cn(
+                          'w-2 h-2 rounded-full shrink-0',
+                          task.priority === 'urgent' ? 'bg-red-500' : task.priority === 'high' ? 'bg-amber-500' : 'bg-slate-300'
+                        )} />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium text-slate-700 block truncate">{task.label}</span>
+                          <span className="text-[9px] text-slate-400">{task.time}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <button className="w-full mt-1 py-2 text-center text-[10px] font-black text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all tracking-widest uppercase">
+                    View All Tasks
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
- 
-          <div className="flex items-center gap-1.5">
-            <div className="relative">
-               <button 
-                 onClick={() => setShowNotifications(!showNotifications)}
-                 className="p-3 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-2xl transition-all relative border border-transparent hover:border-slate-100"
-               >
-                 <Bell size={20} />
-                 {unreadCount > 0 && (
-                   <span className={cn(
-                      "absolute top-2.5 w-4.5 h-4.5 bg-red-500 border-2 border-white rounded-lg text-[8px] font-black text-white flex items-center justify-center shadow-sm",
-                      isRtl ? "left-2.5" : "right-2.5"
-                   )}>
-                     {unreadCount > 9 ? '9+' : unreadCount}
-                   </span>
-                 )}
-               </button>
-               <NotificationCenter 
-                 isOpen={showNotifications} 
-                 onClose={() => setShowNotifications(false)} 
-               />
-            </div>
- 
-            <button 
-              onClick={handleSignOut}
-              className="p-3 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-2xl transition-all"
-              title={t.signOut}
+
+          {/* Emergency Alerts */}
+          <Tooltip content={t.emergencyAlerts || 'Emergency Alerts'}>
+            <button
+              onClick={() => setShowEmergency(!showEmergency)}
+              className={cn('p-2 rounded-xl transition-all', unreadCritical > 0 ? 'bg-red-50 text-red-600 animate-pulse' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50')}
             >
-              <LogOut size={20} />
+              <AlertTriangle size={18} />
             </button>
+          </Tooltip>
+
+          {/* Notifications */}
+          <div className="relative">
+            <Tooltip content={t.notifications || 'Notifications'}>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[9px] font-black leading-none bg-red-100 text-red-700">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                )}
+              </button>
+            </Tooltip>
+            <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
+          </div>
+
+          {/* Sync status */}
+          <Tooltip content={isOffline ? 'Offline - changes queued' : 'All changes synced'}>
+            <div className={cn('hidden sm:flex items-center justify-center w-9 h-9 rounded-xl transition-all', isOffline ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600')}>
+              {isOffline ? <WifiOff size={16} /> : <Wifi size={16} />}
+            </div>
+          </Tooltip>
+
+          <div className="h-6 w-px bg-slate-200 mx-0.5" />
+
+          {/* Profile */}
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded-xl transition-all"
+            >
+              <Avatar name={profile?.name || 'User'} size="sm" status={isOffline ? 'offline' : 'online'} />
+              <div className="hidden lg:flex flex-col items-start">
+                <span className="text-sm font-bold text-slate-900 leading-none">{profile?.name || 'User'}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase">{roleBadge}</span>
+              </div>
+              <ChevronDown size={14} className="hidden lg:block text-slate-400" />
+            </button>
+            <AnimatePresence>
+              {showProfile && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  className={cn('absolute top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50', isRtl ? 'left-0' : 'right-0')}
+                >
+                  <div className="px-3 py-3 flex items-center gap-3 border-b border-slate-100 mb-1">
+                    <Avatar name={profile?.name || 'User'} size="lg" />
+                    <div className="flex flex-col">
+                      <p className="text-sm font-bold text-slate-900">{profile?.name || 'User'}</p>
+                      <p className="text-[10px] text-slate-400">{profile?.email || ''}</p>
+                      <Badge variant="primary" className="mt-1 self-start">{roleBadge}</Badge>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { navigate('/settings'); setShowProfile(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                  >
+                    <Settings size={16} />
+                    <span>{t.settings || 'Settings'}</span>
+                  </button>
+                  <button
+                    onClick={() => { window.dispatchEvent(new CustomEvent('open-command-palette')); setShowProfile(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                  >
+                    <Command size={16} />
+                    <span>{t.commandPalette || 'Command Palette'}</span>
+                    <Kbd className="ml-auto">⌘K</Kbd>
+                  </button>
+                  <div className="border-t border-slate-100 mt-1 pt-1">
+                    <button
+                      onClick={() => { logout(); setShowProfile(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
+                    >
+                      <LogOut size={16} />
+                      <span>{t.signOut || 'Sign Out'}</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
     </header>
-    </div>
   );
 });
+
+function CheckAllIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
