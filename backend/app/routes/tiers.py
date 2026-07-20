@@ -583,28 +583,6 @@ def _update_demand_score(lab_id: int, db: Session) -> None:
 
 # ─── Seed default subscriptions ──────────────────────────────────────────────
 
-
-def seed_default_subscriptions(db: Session) -> None:
-    """
-    Ensure every active lab has a LabSubscription row.
-    Called during startup seeding — safe to run multiple times.
-    """
-    labs_without_sub = (
-        db.query(Lab)
-        .outerjoin(LabSubscription, Lab.id == LabSubscription.lab_id)
-        .filter(LabSubscription.id is None, Lab.is_active)
-        .all()
-    )
-    for lab in labs_without_sub:
-        sub = LabSubscription(
-            lab_id=lab.id,
-            tier="starter",
-            deployment_mode="single",
-            security_level="standard",
-            **get_tier_limits("starter"),
-        )
-        db.add(sub)
-
-    if labs_without_sub:
-        db.commit()
-        logger.info("[TIERS] Seeded default subscriptions for %d labs", len(labs_without_sub))
+# Re-exported from core/seeds for backward compatibility.
+# Startup import path: core/startup_guard → core/seeds (not routes).
+from app.core.seeds import seed_default_subscriptions  # noqa: F401, E501

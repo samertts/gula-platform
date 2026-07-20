@@ -11,11 +11,11 @@ if (!apiKey) {
 }
 
 export async function getClinicalInsight(prompt: string, context: string, imageData?: string) {
+  if (!ai) return "AI features are disabled — no API key configured.";
   try {
     const contents: any[] = [];
     
     if (imageData) {
-      // Remove data:image/xxx;base64, prefix if present
       const base64Data = imageData.split(',')[1] || imageData;
       contents.push({
         parts: [

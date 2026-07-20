@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.ehr.models import (
@@ -42,10 +41,8 @@ def get_national_patient_or_404(
         .first()
     )
     if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient not found in your laboratory",
-        )
+        from app.domain.exceptions import NotFoundError
+        raise NotFoundError("Patient not found in your laboratory")
     return patient
 
 

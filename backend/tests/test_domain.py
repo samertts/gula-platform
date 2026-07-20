@@ -25,7 +25,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from app._compat import UTC
-from fastapi import HTTPException
+from app.domain.exceptions import OrderStateError
 
 # =============================================================================
 # 1. ORDER STATE MACHINE
@@ -89,7 +89,7 @@ class TestOrderStateMachine:
 
     # ── enforce_transition raises on illegal move ──────────────────────────────
     def test_enforce_raises_409_on_illegal(self):
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(OrderStateError) as exc:
             self._enforce("validated", "cancelled")
         assert exc.value.status_code == 409
 
@@ -97,9 +97,9 @@ class TestOrderStateMachine:
         self._enforce("pending", "completed")  # must not raise
 
     def test_enforce_409_message_mentions_state(self):
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(OrderStateError) as exc:
             self._enforce("cancelled", "validated")
-        assert "cancelled" in str(exc.value.detail)
+        assert "cancelled" in str(exc.value.message)
 
     # ── assert_not_locked ──────────────────────────────────────────────────────
     def test_unlocked_order_passes(self):
@@ -107,7 +107,7 @@ class TestOrderStateMachine:
 
     def test_locked_order_raises_423(self):
         from datetime import datetime, timezone
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(OrderStateError) as exc:
             self._not_locked(locked_at=datetime.now(UTC))
         assert exc.value.status_code == 423
 
@@ -116,7 +116,7 @@ class TestOrderStateMachine:
         self._not_cancelled("pending")  # must not raise
 
     def test_cancelled_order_raises_409(self):
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(OrderStateError) as exc:
             self._not_cancelled("cancelled")
         assert exc.value.status_code == 409
 

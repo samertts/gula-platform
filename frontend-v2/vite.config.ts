@@ -12,7 +12,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        includeAssets: ['favicon.svg'],
         workbox: {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
         },
@@ -21,6 +21,10 @@ export default defineConfig(({mode}) => {
           short_name: 'GULA',
           description: 'Medical Laboratory & Healthcare Information Management System',
           theme_color: '#4f46e5',
+          background_color: '#ffffff',
+          display: 'standalone',
+          scope: '/',
+          start_url: '/',
           icons: [
             {
               src: 'pwa-192x192.png',
@@ -49,11 +53,11 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (id.includes('node_modules/react') || id.includes('node_modules/scheduler') || id.includes('node_modules/react-dom')) {
-              return 'vendor-react';
-            }
             if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) {
               return 'vendor-firebase';
+            }
+            if (id.includes('node_modules/react') || id.includes('node_modules/scheduler') || id.includes('node_modules/react-dom')) {
+              return 'vendor-react';
             }
             if (id.includes('node_modules/lucide-react') || id.includes('node_modules/recharts') || id.includes('node_modules/motion')) {
               return 'vendor-ui';
@@ -61,15 +65,12 @@ export default defineConfig(({mode}) => {
             if (id.includes('node_modules/date-fns') || id.includes('node_modules/posthog-js') || id.includes('node_modules/@sentry')) {
               return 'vendor-utils';
             }
-            if (id.includes('node_modules')) {
-              return 'vendor-other';
-            }
           },
         },
       },
     },
     server: {
-      hmr: process.env.DISABLE_HMR !== 'true',
+      hmr: env.VITE_DISABLE_HMR !== 'true',
     },
   };
 });

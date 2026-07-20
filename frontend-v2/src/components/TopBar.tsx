@@ -29,26 +29,29 @@ export const TopBar = memo(function TopBar() {
       setThroughput(prev => Math.max(30, Math.min(60, prev + (Math.random() * 2 - 1))));
     }, 4000);
 
-    const savedLowBandwidth = localStorage.getItem('gula_low_bandwidth') === 'true';
-    setIsLowBandwidth(savedLowBandwidth);
+    try {
+      const savedLowBandwidth = localStorage.getItem('gula_low_bandwidth') === 'true';
+      setIsLowBandwidth(savedLowBandwidth);
 
-    const savedMode = localStorage.getItem('clinical_mode') as any;
-    if (savedMode) setClinicalMode(savedMode);
+      const savedMode = localStorage.getItem('clinical_mode') as any;
+      if (savedMode) setClinicalMode(savedMode);
+    } catch (e) {
+      console.error('Failed to read localStorage');
+    }
 
     return () => clearInterval(timer);
   }, []);
 
   const toggleMode = (mode: 'clinic' | 'emergency' | 'research') => {
     setClinicalMode(mode);
-    localStorage.setItem('clinical_mode', mode);
+    try { localStorage.setItem('clinical_mode', mode); } catch {}
     toast.info(`Clinical Mode Switched to ${mode.toUpperCase()}`);
   };
 
   const toggleLowBandwidth = () => {
     const newValue = !isLowBandwidth;
     setIsLowBandwidth(newValue);
-    localStorage.setItem('gula_low_bandwidth', String(newValue));
-    // Trigger global refresh or event if needed
+    try { localStorage.setItem('gula_low_bandwidth', String(newValue)); } catch {}
   };
 
   const handleSignOut = async () => {

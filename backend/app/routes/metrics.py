@@ -230,7 +230,7 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     ]
 
     try:
-        from ..main import ConcurrencyLimitMiddleware
+        from ..middleware import ConcurrencyLimitMiddleware
 
         lines.append(f"gula_active_requests {ConcurrencyLimitMiddleware._active}")
     except Exception:

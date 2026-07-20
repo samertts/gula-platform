@@ -12,14 +12,32 @@ Enforcement is done at the service layer (routes/results.py) so that
 no endpoint can bypass the rules regardless of how it is called.
 """
 
-from fastapi import HTTPException
+from __future__ import annotations
+
+from enum import Enum
+
+from app.domain.exceptions import OrderStateError
+
+
+class OrderStatus(str, Enum):
+    """Canonical status values for a LabOrder.
+
+    Values match DB column strings for backward compatibility.
+    """
+
+    PENDING = "pending"
+    COMPLETED = "completed"
+    VALIDATED = "validated"
+    CANCELLED = "cancelled"
+
 
 # Canonical transition map.  Keys are current states; values are reachable targets.
+# Accepts both OrderStatus enum members and raw strings for flexibility.
 _TRANSITIONS: dict[str, list[str]] = {
-    "pending": ["completed", "cancelled"],
-    "completed": ["validated", "cancelled"],
-    "validated": [],
-    "cancelled": [],
+    OrderStatus.PENDING.value: [OrderStatus.COMPLETED.value, OrderStatus.CANCELLED.value],
+    OrderStatus.COMPLETED.value: [OrderStatus.VALIDATED.value, OrderStatus.CANCELLED.value],
+    OrderStatus.VALIDATED.value: [],
+    OrderStatus.CANCELLED.value: [],
 }
 
 
@@ -29,7 +47,7 @@ def can_transition(current: str, target: str) -> bool:
 
 
 def enforce_transition(current: str, target: str) -> None:
-    """Raise HTTP 409 if the transition is not allowed.
+    """Raise OrderStateError if the transition is not allowed.
 
     Using 409 Conflict (not 400 Bad Request) because the input is structurally
     valid — the issue is a state conflict, which is exactly what 409 models.
@@ -40,31 +58,31 @@ def enforce_transition(current: str, target: str) -> None:
             f"Cannot move order from '{current}' to '{target}'. "
             f"Allowed transitions: {allowed or 'none (terminal state)'}."
         )
-        raise HTTPException(status_code=409, detail=detail)
+        raise OrderStateError(message=detail, status_code=409)
 
 
 def assert_not_locked(order) -> None:
-    """Raise HTTP 423 Locked if the order has been validated and locked.
+    """Raise OrderStateError(423) if the order has been validated and locked.
 
     Call this before any mutation that touches an order's results or samples
     (create result, delete result, update sample status, etc.).
     HTTP 423 is the semantically correct status for a locked resource.
     """
     if order.locked_at is not None:
-        raise HTTPException(
-            status_code=423,
-            detail=(
+        raise OrderStateError(
+            message=(
                 f"Order #{order.id} is locked (validated at "
                 f"{order.locked_at.isoformat()}). "
                 "Validated orders are immutable."
             ),
+            status_code=423,
         )
 
 
 def assert_not_cancelled(order) -> None:
-    """Raise HTTP 409 if the order is already cancelled."""
+    """Raise OrderStateError(409) if the order is already cancelled."""
     if order.status == "cancelled":
-        raise HTTPException(
+        raise OrderStateError(
+            message=f"Order #{order.id} is cancelled and cannot be modified.",
             status_code=409,
-            detail=f"Order #{order.id} is cancelled and cannot be modified.",
         )

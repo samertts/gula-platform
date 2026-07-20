@@ -136,15 +136,8 @@ export const LandingAuthView: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Simulate Biometric Scanning
       await new Promise(resolve => setTimeout(resolve, 2500));
-      
-      // In a real app, we would use window.PublicKeyCredential (WebAuthn)
-      // For this high-tech demo, we simulate a successful match
-      await signInWithEmailAndPassword(auth, 'samertts2@gmail.com', 'admin123');
-    } catch (err: any) {
-      setError(t.biometricFailed);
-      // Don't auto-redirect to login yet, let user try again or switch
+      setError('Biometric login requires WebAuthn credentials. Use email/password login instead.');
     } finally {
       setIsLoading(false);
     }
