@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuditLogEntry } from '../types/domain';
-import { cn } from '../lib/utils';
+import { cn, formatDate, formatTime } from '../lib/utils';
 
 interface AuditLogViewerProps {
   logs: AuditLogEntry[];
@@ -21,7 +21,7 @@ interface AuditLogViewerProps {
 }
 
 export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const getSeverityStyles = (severity: AuditLogEntry['metadata']['severity']) => {
     switch (severity) {
@@ -89,8 +89,8 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading 
               >
                 <td className="px-8 py-5">
                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-900">{new Date(log.timestamp).toLocaleDateString()}</span>
-                      <span className="text-[9px] font-bold text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                       <span className="text-[10px] font-black text-slate-900">{formatDate(log.timestamp, language)}</span>
+                       <span className="text-[9px] font-bold text-slate-400">{formatTime(log.timestamp, language)}</span>
                    </div>
                 </td>
                 <td className="px-8 py-5">

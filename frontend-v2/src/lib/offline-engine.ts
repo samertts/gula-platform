@@ -98,17 +98,17 @@ async function getDB(): Promise<IDBPDatabase<GulaOfflineDB>> {
         db.createObjectStore('metadata', { keyPath: 'key' });
       }
       if (oldVersion < 2) {
-        const queue = db.transaction('sync_queue').objectStore('sync_queue');
+        const queue: any = db.transaction('sync_queue').objectStore('sync_queue');
         queue.createIndex('by-timestamp', 'timestamp');
         queue.createIndex('by-retry', 'retryCount');
-        const log = db.transaction('sync_log').objectStore('sync_log');
+        const log: any = db.transaction('sync_log').objectStore('sync_log');
         log.createIndex('by-timestamp', 'timestamp');
       }
       if (oldVersion < 3) {
-        const classes = ['patients', 'orders', 'samples', 'results'];
+        const classes: string[] = ['patients', 'orders', 'samples', 'results'];
         for (const cls of classes) {
-          if (!db.objectStoreNames.contains(cls)) {
-            const store = db.createObjectStore(cls, { keyPath: 'id' });
+          if (!db.objectStoreNames.contains(cls as any)) {
+            const store: any = db.createObjectStore(cls as any, { keyPath: 'id' });
             store.createIndex('by-synced', 'syncedAt');
             store.createIndex('by-collection', 'collection');
           }
@@ -348,10 +348,12 @@ export class OfflineEngine {
   async getStorageEstimate(): Promise<{ used: number; quota: number; percentage: number }> {
     if ('storage' in navigator && 'estimate' in navigator.storage) {
       const est = await navigator.storage.estimate();
+      const used = (est as unknown as { used?: number }).used ?? est.usage ?? 0;
+      const quota = est.quota ?? 0;
       return {
-        used: est.used ?? 0,
-        quota: est.quota ?? 0,
-        percentage: est.quota ? ((est.used ?? 0) / est.quota) * 100 : 0,
+        used,
+        quota,
+        percentage: quota ? (used / quota) * 100 : 0,
       };
     }
     return { used: 0, quota: 0, percentage: 0 };

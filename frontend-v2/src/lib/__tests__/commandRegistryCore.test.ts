@@ -23,7 +23,7 @@ import {
   type SearchableCommand,
 } from '../commandRegistryCore.ts';
 import type { Translation } from '../../translations.ts';
-import type { UserProfile } from '../../types/domain.ts';
+import type { UserProfile, UserWing } from '../../types/domain.ts';
 
 /* Minimal stand-in for the real Translation type — we only read a few keys. */
 const t = {
@@ -36,14 +36,14 @@ const t = {
 } as unknown as Translation;
 
 const cmd = (
-  partial: Partial<SearchableCommand> & { id: string; label: string; category: string },
+  partial: { id: string; label: string; category: string; keywords?: readonly string[]; shortcut?: readonly string[]; wings?: readonly string[] },
 ): SearchableCommand => ({
   label: () => partial.label,
   category: partial.category,
   id: partial.id,
   keywords: partial.keywords,
   shortcut: partial.shortcut,
-  wings: partial.wings,
+  wings: partial.wings as unknown as readonly UserWing[],
 });
 
 const COMMANDS: readonly SearchableCommand[] = [

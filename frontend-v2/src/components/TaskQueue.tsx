@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Task } from '../types/domain';
-import { cn } from '../lib/utils';
+import { cn, formatTime, formatDate } from '../lib/utils';
 import { useState, useRef, useEffect } from 'react';
 
 interface TaskQueueProps {
@@ -35,7 +35,7 @@ interface TaskQueueProps {
 }
 
 export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateStatus, onBulkAction }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showBulkDropdown, setShowBulkDropdown] = useState(false);
@@ -261,7 +261,7 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                         <span className="w-1 h-1 bg-slate-200 rounded-full" />
                         <span className="text-[10px] text-slate-400 font-medium tracking-tight">
                           <Clock size={10} className="inline mr-1 mb-0.5" />
-                          SLA: {new Date(task.slaDeadline).toLocaleTimeString()}
+                          SLA: {formatTime(task.slaDeadline, language)}
                         </span>
                       </div>
                     </div>
@@ -395,7 +395,7 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                                       </div>
                                       <div>
                                          <p className="text-[10px] font-bold text-slate-800">{event.label}</p>
-                                         <p className="text-[9px] text-slate-400">{new Date(event.time).toLocaleString()}</p>
+                                         <p className="text-[9px] text-slate-400">{formatDate(event.time, language)}</p>
                                       </div>
                                    </div>
                                  ))}

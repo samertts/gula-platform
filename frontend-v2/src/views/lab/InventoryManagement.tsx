@@ -7,7 +7,7 @@ import {
   PackageCheck, Archive
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn } from '../../lib/utils';
+import { cn, formatDate } from '../../lib/utils';
 import { auth, db } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -25,7 +25,7 @@ interface InventoryItem {
 }
 
 export function InventoryManagement() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'all' | 'low' | 'expired'>('all');
   const [isSimulating, setIsSimulating] = useState(false);
 
@@ -239,7 +239,7 @@ export function InventoryManagement() {
                        <span className={cn(
                          "text-xs font-black",
                          item.status === 'expired' ? "text-red-500" : "text-slate-900"
-                       )}>{new Date(item.expiryDate).toLocaleDateString()}</span>
+                                               )}>{formatDate(item.expiryDate, language)}</span>
                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">System Validated</span>
                     </div>
                   </td>

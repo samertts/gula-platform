@@ -6,10 +6,10 @@ import {
   Server, Cpu, Database, Wifi
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn } from '../../lib/utils';
+import { cn, formatTime } from '../../lib/utils';
 
 export function DeviceManagement() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const devices = [
     { id: 'AN-01', name: 'Cobas e801 Immunoassay', status: 'online', load: 82, model: 'Roche' },
@@ -147,7 +147,7 @@ export function DeviceManagement() {
                    'Device [AN-02] Result Upload Started'
                  ].map((log, i) => (
                    <div key={i} className="text-[10px] font-mono text-slate-400 flex gap-3">
-                      <span className="text-indigo-500/50">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>
+                      <span className="text-indigo-500/50">[{formatTime(new Date(), language)}]</span>
                       {log}
                    </div>
                  ))}

@@ -125,7 +125,7 @@ export class MockApiHandlers {
 
   private handleAuth(body: any): ApiResponse {
     const role = body?.role || 'doctor';
-    const users = this.store.get<any[]>('users');
+    const users = this.store.get<any>('users');
     const user = users.find((u: any) => u.role === role) || {
       id: 'demo-user-1',
       email: `${role}@demo.gula-platform.org`,
@@ -148,7 +148,7 @@ export class MockApiHandlers {
 
   private handlePatients(method: string, path: string, request: any): ApiResponse {
     if (method === 'GET' && path === '/api/patients') {
-      const patients = this.store.get<any[]>('patients');
+      const patients = this.store.get<any>('patients');
       const page = parseInt(request.params?.page || '1');
       const limit = parseInt(request.params?.limit || '20');
       const start = (page - 1) * limit;
@@ -181,7 +181,7 @@ export class MockApiHandlers {
 
   private handleOrders(method: string, path: string, request: any): ApiResponse {
     if (method === 'GET' && path === '/api/orders') {
-      const orders = this.store.get<any[]>('orders');
+      const orders = this.store.get<any>('orders');
       return { status: 200, body: { data: orders, total: orders.length } };
     }
     if (method === 'POST' && path === '/api/orders') {
@@ -189,11 +189,11 @@ export class MockApiHandlers {
       this.store.add('orders', newOrder);
       return { status: 201, body: newOrder };
     }
-    return { status: 200, body: { data: this.store.get<any[]>('orders'), total: this.store.get<any[]>('orders').length } };
+    return { status: 200, body: { data: this.store.get<any>('orders'), total: this.store.get<any>('orders').length } };
   }
 
   private handleCollection(method: string, path: string, collection: string, request: any): ApiResponse {
-    const data = this.store.get<any[]>(collection);
+    const data = this.store.get<any>(collection);
 
     if (method === 'GET') {
       const id = path.split('/').pop();
@@ -229,9 +229,9 @@ export class MockApiHandlers {
   }
 
   private handleAnalytics(method: string, path: string): ApiResponse {
-    const patients = this.store.get<any[]>('patients');
-    const results = this.store.get<any[]>('labResults');
-    const orders = this.store.get<any[]>('orders');
+    const patients = this.store.get<any>('patients');
+    const results = this.store.get<any>('labResults');
+    const orders = this.store.get<any>('orders');
 
     if (path.includes('dashboard') || path.endsWith('/analytics')) {
       return {
@@ -248,7 +248,7 @@ export class MockApiHandlers {
           averageProcessingTime: Math.round(45 + Math.random() * 60),
           testsByType: this.generateTestDistribution(results),
           monthlyTrend: this.generateMonthlyTrend(12),
-          labPerformance: this.store.get<any[]>('labs').slice(0, 5).map(lab => ({
+          labPerformance: this.store.get<any>('labs').slice(0, 5).map(lab => ({
             labId: lab.id,
             labName: lab.name,
             testsProcessed: Math.floor(Math.random() * 500) + 100,
@@ -283,9 +283,9 @@ export class MockApiHandlers {
   }
 
   private handleDashboard(): ApiResponse {
-    const patients = this.store.get<any[]>('patients');
-    const results = this.store.get<any[]>('labResults');
-    const orders = this.store.get<any[]>('orders');
+    const patients = this.store.get<any>('patients');
+    const results = this.store.get<any>('labResults');
+    const orders = this.store.get<any>('orders');
 
     return {
       status: 200,
@@ -294,7 +294,7 @@ export class MockApiHandlers {
           patients: patients.length,
           results: results.length,
           orders: orders.length,
-          activeLabs: this.store.get<any[]>('labs').filter(l => l.status === 'active').length,
+          activeLabs: this.store.get<any>('labs').filter(l => l.status === 'active').length,
           pendingReviews: orders.filter(o => o.status === 'completed').length,
           criticalResults: results.filter(r => r.isAbnormal).length,
         },
@@ -381,8 +381,8 @@ export class MockApiHandlers {
         body: {
           resourceType: 'Bundle',
           type: 'searchset',
-          total: this.store.get<any[]>('patients').length,
-          entry: this.store.get<any[]>('patients').slice(0, 10).map((p: any) => ({
+          total: this.store.get<any>('patients').length,
+          entry: this.store.get<any>('patients').slice(0, 10).map((p: any) => ({
             resource: {
               resourceType: 'Patient',
               id: p.id,
@@ -401,8 +401,8 @@ export class MockApiHandlers {
         body: {
           resourceType: 'Bundle',
           type: 'searchset',
-          total: this.store.get<any[]>('labResults').length,
-          entry: this.store.get<any[]>('labResults').slice(0, 10).map((r: any) => ({
+          total: this.store.get<any>('labResults').length,
+          entry: this.store.get<any>('labResults').slice(0, 10).map((r: any) => ({
             resource: {
               resourceType: 'Observation',
               id: r.id,

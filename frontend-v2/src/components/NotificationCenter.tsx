@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { cn } from '../lib/utils';
+import { cn, formatTime } from '../lib/utils';
 import { GulaEvent } from '../types/domain';
 
 interface NotificationCenterProps {
@@ -24,7 +24,7 @@ interface NotificationCenterProps {
 
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const { dir } = useLanguage();
+  const { dir, language } = useLanguage();
   const isRtl = dir === 'rtl';
 
   const getIcon = (type: string, priority: string) => {
@@ -106,7 +106,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
                         <div className="flex items-center justify-between mb-0.5">
                           <p className="font-bold text-sm text-slate-900 truncate pr-4">{n.title}</p>
                           <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                            {n.createdAt?.seconds ? new Date(n.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                            {n.createdAt?.seconds ? formatTime(new Date(n.createdAt.seconds * 1000), language) : 'Now'}
                           </span>
                         </div>
                         <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">

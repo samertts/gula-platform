@@ -7,7 +7,7 @@ import {
   Activity as ActivityIcon, FileText, Loader2
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { cn } from '../../lib/utils';
+import { cn, formatDate } from '../../lib/utils';
 import { PermissionType, ConsentDuration, ConsentRecord } from '../../types/domain';
 import { auth, db, handleFirestoreError } from '../../firebase';
 import { 
@@ -24,7 +24,7 @@ import {
 } from 'firebase/firestore';
 
 export const ConsentManagementView: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -249,7 +249,7 @@ export const ConsentManagementView: React.FC = () => {
                           {c.scope === 'full' ? t.smartDiagnosis : t.details}
                        </span>
                        <span className="text-xs text-slate-400">
-                         {c.status === 'active' ? `Expires ${c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : 'Never'}` : `Revoked`}
+                          {c.status === 'active' ? `Expires ${c.expiresAt ? formatDate(c.expiresAt, language) : 'Never'}` : `Revoked`}
                        </span>
                      </div>
                      
@@ -303,7 +303,7 @@ export const ConsentManagementView: React.FC = () => {
                       {log.type === 'consent_granted' ? 'Access Authorization Granted' : 'Access Authorization Revoked'}
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      {log.payload?.providerName || 'Healthcare Provider'} • {log.createdAt ? new Date(log.createdAt.seconds * 1000).toLocaleString() : 'Just now'}
+                       {log.payload?.providerName || 'Healthcare Provider'} • {log.createdAt ? formatDate(new Date(log.createdAt.seconds * 1000), language) : 'Just now'}
                     </p>
                     {log.type === 'consent_granted' && log.payload?.permissions && (
                       <div className="flex gap-1.5 flex-wrap mt-2">
