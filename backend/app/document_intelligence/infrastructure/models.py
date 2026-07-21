@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -20,12 +19,10 @@ from sqlalchemy.orm import declarative_base, relationship
 
 from ..domain.entities import (
     ClassificationResult,
-    CollaborationSession,
     DigitalPreservationRecord,
     DocumentAnnotation,
     DocumentEvent,
     DocumentLifecycleRecord,
-    DocumentPage,
     DocumentReview,
     GovernmentDocument,
     GovernanceEvent,

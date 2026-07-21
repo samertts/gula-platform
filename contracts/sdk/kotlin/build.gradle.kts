@@ -1,7 +1,7 @@
 plugins {
-    kotlin("jvm") version "1.9.22"
-    kotlin("plugin.serialization") version "1.9.22"
-    id("io.gitlab.arturbosch.detekt") version "1.23.5"
+    kotlin("jvm") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.20"
+    id("io.gitlab.arturbosch.detekt") version "1.23.7"
     `maven-publish`
 }
 
@@ -12,10 +12,10 @@ repositories {
     mavenCentral()
 }
 
-val ktorVersion = "2.3.7"
-val kotlinxSerializationVersion = "1.6.2"
-val kotlinxCoroutinesVersion = "1.7.3"
-val logbackVersion = "1.4.14"
+val ktorVersion = "3.1.2"
+val kotlinxSerializationVersion = "1.8.0"
+val kotlinxCoroutinesVersion = "1.10.0"
+val logbackVersion = "1.5.18"
 
 dependencies {
     // Ktor Client
@@ -36,7 +36,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 
     // Testing
-    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.22")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.1.20")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
 }

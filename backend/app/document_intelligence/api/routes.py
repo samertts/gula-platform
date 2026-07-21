@@ -1,30 +1,25 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
 from ..application.service import DocumentIntelligenceOrchestrator
 from ..domain.entities import (
-    CollaborationSession, DigitalPreservationRecord, DocumentAnnotation,
-    DocumentReview, GovernmentDocument, GovernanceEvent, GovernancePolicy,
+    DocumentAnnotation,
+    GovernmentDocument, GovernancePolicy,
     SemanticQuery,
 )
 from ..domain.enums import (
     CollaborationRole, ConfidentialityLevel, DigitalPreservationStandard,
     DocumentCategory, EventChannel, GovernanceDomain, GovernancePolicyAction,
-    GovernanceRuleSeverity, KnowledgeGraphRelation, OcrEngine, OcrLanguage,
+    GovernanceRuleSeverity, OcrLanguage,
     ProcessingPriority, RetentionPolicy, ReviewDecision,
 )
 from ..domain.repository import DocumentRepository
 from ..exceptions import (
-    DocumentIntelligenceError,
     DocumentNotFoundError,
-    IngestionError,
-    ProviderNotAvailableError,
 )
 
 logger = logging.getLogger("gula.document_intelligence.routes")
@@ -294,7 +289,7 @@ async def auto_remediate(
 
 @router.get("/status", summary="Platform health status")
 async def platform_status():
-    from app.document_intelligence import get_provider_manager, get_orchestrator
+    from app.document_intelligence import get_provider_manager
     manager = get_provider_manager()
     provider_status = {}
     for engine, provider in manager.get_all().items():
@@ -342,7 +337,6 @@ async def register_government_document(
     procurement_number: str = Form(None),
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
-    from ..domain.entities import GovernmentDocument
     gov = GovernmentDocument(
         document_id=document_id,
         reference_number=reference_number,

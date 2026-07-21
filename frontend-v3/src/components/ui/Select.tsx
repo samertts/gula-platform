@@ -1,40 +1,35 @@
-import { forwardRef, type SelectHTMLAttributes } from 'react';
-import { cn } from '@/lib/utils';
+import { forwardRef, type SelectHTMLAttributes } from "react";
+import { cn } from "@/lib/utils";
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
   error?: string;
   options: { value: string; label: string }[];
   placeholder?: string;
 }
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, id, options, placeholder, ...props }, ref) => (
-    <div className="space-y-1.5">
-      {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-on-surface">
-          {label}
-        </label>
-      )}
+const Select = forwardRef<HTMLSelectElement, SelectProps>(
+  ({ className, error, options, placeholder, ...props }, ref) => (
+    <div className="w-full">
       <select
         ref={ref}
-        id={id}
         className={cn(
-          'flex h-10 w-full rounded-lg border bg-surface px-3 py-2 text-sm',
-          'focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          error ? 'border-error focus:ring-error/40' : 'border-outline',
-          className
+          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          error && "border-destructive focus-visible:ring-destructive",
+          className,
         )}
         {...props}
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
         ))}
       </select>
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
-  )
+  ),
 );
-Select.displayName = 'Select';
+Select.displayName = "Select";
+
+export { Select, type SelectProps };

@@ -7,11 +7,11 @@ with routing authority.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey,
-    Index, Integer, JSON, Numeric, String, Text,
+    Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey,
+    Index, Integer, JSON, Numeric, String,
 )
 from sqlalchemy.orm import relationship
 

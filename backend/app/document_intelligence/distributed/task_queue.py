@@ -5,7 +5,7 @@ import time
 import logging
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 

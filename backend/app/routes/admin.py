@@ -15,7 +15,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..database import SessionLocal, get_db
+from ..database import get_db
 from ..models.audit_log import AuditLog
 from ..models.lab import Lab
 from ..models.lab_order import LabOrder

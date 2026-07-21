@@ -6,7 +6,6 @@ from uuid import UUID
 
 from .entities import (
     ClassificationResult,
-    CollaborationSession,
     DigitalPreservationRecord,
     DocumentAnnotation,
     DocumentEvent,

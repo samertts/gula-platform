@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.insurance.domain.enums import AppealStatus, ClaimStatus, ClaimType, PaymentStatus
 from app.insurance.domain.models import (
-    Appeal, Authorization, Coverage, InsuranceClaim, InsuranceClaimItem,
+    Appeal, Coverage, InsuranceClaim, InsuranceClaimItem,
     InsurancePayment, InsuranceProvider,
 )
 from app.models.lab_user import LabUser

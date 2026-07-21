@@ -1,26 +1,32 @@
-import { RouterProvider } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { router } from '@/routes';
-import { Toaster } from 'sonner';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "react-router-dom";
+import { router } from "@/routes";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { LocaleProvider } from "@/contexts/LocaleContext";
+import { ToastContainer } from "@/components/shared/ToastContainer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 30_000,
       refetchOnWindowFocus: false,
+      staleTime: 30_000,
     },
   },
 });
 
-export default function App() {
+export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RouterProvider router={router} />
-        <Toaster position="bottom-left" richColors />
-      </AuthProvider>
+      <ThemeProvider>
+        <LocaleProvider>
+          <AuthProvider>
+            <RouterProvider router={router} />
+            <ToastContainer />
+          </AuthProvider>
+        </LocaleProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

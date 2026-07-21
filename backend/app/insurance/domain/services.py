@@ -7,7 +7,7 @@ and benefit-utilization monitoring.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey,

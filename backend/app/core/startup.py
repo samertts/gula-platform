@@ -13,7 +13,7 @@ import time
 from datetime import datetime
 
 from app._compat import UTC
-from app.config import APP_NAME, APP_VERSION, PLATFORM_NAME_AR, RUNTIME_MODE, background_tasks_enabled
+from app.config import RUNTIME_MODE, background_tasks_enabled
 
 logger = logging.getLogger("gula")
 

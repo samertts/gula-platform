@@ -12,7 +12,7 @@ services:
   # ===========================================================================
 
   postgres-primary:
-    image: postgres:14.11-alpine
+    image: postgres:17-alpine
     container_name: gula-postgres-primary
     restart: always
     environment:
@@ -48,7 +48,7 @@ services:
       retries: 5
 
   postgres-replica:
-    image: postgres:14.11-alpine
+    image: postgres:17-alpine
     container_name: gula-postgres-replica
     restart: always
     environment:
@@ -81,7 +81,7 @@ services:
       - gula-net
 
   pgbouncer:
-    image: edoburu/pgbouncer:1.22.1
+    image: edoburu/pgbouncer:1.23.1
     container_name: gula-pgbouncer
     restart: always
     environment:
@@ -184,7 +184,7 @@ services:
       - gula-net
 
   clickhouse:
-    image: clickhouse/clickhouse-server:23.8
+    image: clickhouse/clickhouse-server:24.12
     container_name: gula-clickhouse
     restart: always
     ports:
@@ -210,7 +210,7 @@ services:
   # ===========================================================================
 
   rabbitmq:
-    image: rabbitmq:3.12-management
+    image: rabbitmq:4.1-management-alpine
     container_name: gula-rabbitmq
     restart: always
     hostname: gula-rabbitmq
@@ -235,7 +235,7 @@ services:
       retries: 5
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
+    image: confluentinc/cp-zookeeper:7.9.0
     container_name: gula-zookeeper
     restart: always
     environment:
@@ -255,7 +255,7 @@ services:
 
   # Kafka Broker 1 (single-node dev; use 3 brokers in production for replication.factor=3)
   kafka:
-    image: confluentinc/cp-kafka:7.5.0
+    image: confluentinc/cp-kafka:7.9.0
     container_name: gula-kafka
     restart: always
     depends_on:
@@ -298,7 +298,7 @@ services:
   # ===========================================================================
 
   ollama:
-    image: ollama/ollama:0.1.29
+    image: ollama/ollama:0.6.5
     container_name: gula-ollama
     restart: always
     ports:
@@ -342,7 +342,7 @@ services:
   # Production: use distributed mode with 4+ nodes for erasure coding
   # Command: minio server http://minio-{1...4}/data{1...4} --console-address ":9002"
   minio:
-    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
+    image: minio/minio:RELEASE.2026-07-12T22-51-28Z
     container_name: gula-minio
     restart: always
     command: server /data --console-address ":9002"
@@ -366,7 +366,7 @@ services:
 
   # Node Exporter — host metrics for Prometheus
   node-exporter:
-    image: prom/node-exporter:v1.7.0
+    image: prom/node-exporter:v1.9.0
     container_name: gula-node-exporter
     restart: always
     command:
@@ -388,7 +388,7 @@ services:
   # ===========================================================================
 
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0
+    image: quay.io/keycloak/keycloak:26.2.0
     container_name: gula-keycloak
     restart: always
     command: start-dev
@@ -410,7 +410,7 @@ services:
       - gula-net
 
   vault:
-    image: hashicorp/vault:1.15
+    image: hashicorp/vault:1.19.0
     container_name: gula-vault
     restart: always
     cap_add:
@@ -443,7 +443,7 @@ services:
   # ===========================================================================
 
   prometheus:
-    image: prom/prometheus:v2.48.1
+    image: prom/prometheus:v2.56.0
     container_name: gula-prometheus
     restart: always
     command:
@@ -460,7 +460,7 @@ services:
       - gula-net
 
   grafana:
-    image: grafana/grafana:10.2.3
+    image: grafana/grafana:11.6.0
     container_name: gula-grafana
     restart: always
     environment:
@@ -479,7 +479,7 @@ services:
       - gula-net
 
   loki:
-    image: grafana/loki:2.9.0
+    image: grafana/loki:3.4.2
     container_name: gula-loki
     restart: always
     command: -config.file=/etc/loki/local-config.yaml
@@ -492,7 +492,7 @@ services:
       - gula-net
 
   promtail:
-    image: grafana/promtail:2.9.0
+    image: grafana/promtail:3.4.2
     container_name: gula-promtail
     restart: always
     command: -config.file=/etc/promtail/config.yml
@@ -504,7 +504,7 @@ services:
       - gula-net
 
   jaeger:
-    image: jaegertracing/all-in-one:1.51
+    image: jaegertracing/all-in-one:1.66.0
     container_name: gula-jaeger
     restart: always
     environment:
@@ -522,7 +522,7 @@ services:
   # ===========================================================================
 
   api-gateway:
-    image: nginx:1.27-alpine
+    image: nginx:1.28-alpine
     container_name: gula-api-gateway
     restart: always
     ports:
@@ -735,7 +735,7 @@ services:
       - gula-net
 
   frontend:
-    image: nginx:1.27-alpine
+    image: nginx:1.28-alpine
     container_name: gula-frontend
     restart: always
     expose:
@@ -751,7 +751,7 @@ services:
   # ===========================================================================
 
   backup-cron:
-    image: postgres:14.11-alpine
+    image: postgres:17-alpine
     container_name: gula-backup-cron
     restart: always
     environment:
