@@ -38,10 +38,10 @@ def _run_command(command: list[str]) -> tuple[bool, str]:
         logger.error(f"Command not found: {command[0]}")
         return False, "Command not found"
     except subprocess.TimeoutExpired:
-        logger.error(f"Command timed out: {" ".join(command)}")
+        logger.error('Command timed out: %s', ' '.join(command))
         return False, "Command timed out"
     except subprocess.CalledProcessError as e:
-        logger.warning(f"Command failed: {" ".join(command)}\nError: {e.stderr.strip()}")
+        logger.warning('Command failed: %s\nError: %s', ' '.join(command), e.stderr.strip())
         return False, e.stderr.strip()
 
 def get_backend_metrics():
@@ -58,18 +58,27 @@ def get_system_resources() -> dict:
     """Fetches system-wide CPU, Memory, and Disk usage."""
     resources = {"cpu_percent": None, "memory_percent": None, "disk_percent": None}
 
-    # Get CPU usage (using top for simplicity, can be improved with psutil)
-    success, output = _run_command(["top", "-bn1", "|", "grep", "Cpu(s)", "|", "sed", "s/.*, *([0-9.]*)%* id.*/\1/g", "|", "awk", "{print 100 - $1}""])
+    # Get CPU usage (using top)
+    success, output = _run_command([
+        "sh", "-c",
+        "top -bn1 | grep 'Cpu(s)' | sed 's/.*, *\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1}'",
+    ])
     if success and output.strip().replace('.', '', 1).isdigit():
         resources["cpu_percent"] = float(output.strip())
 
     # Get Memory usage (using free -m)
-    success, output = _run_command(["free", "-m", "|", "awk", "/Mem:/ {print $3/$2 * 100}""])
+    success, output = _run_command([
+        "sh", "-c",
+        "free -m | awk '/Mem:/ {print $3/$2 * 100}'",
+    ])
     if success and output.strip().replace('.', '', 1).isdigit():
         resources["memory_percent"] = float(output.strip())
 
     # Get Disk usage (using df -h for root partition)
-    success, output = _run_command(["df", "-h", "/", "|", "awk", "/\// {print $5}", "|", "sed", "s/%//""])
+    success, output = _run_command([
+        "sh", "-c",
+        "df -h / | awk '/\\// {print $5}' | sed 's/%//'",
+    ])
     if success and output.strip().isdigit():
         resources["disk_percent"] = int(output.strip())
 
@@ -111,29 +120,29 @@ def generate_daily_report():
             report["system_status"] = "UP"
         else:
             report["system_status"] = "DEGRADED"
-            send_alert(f"System is DEGRADED: DB={metrics["db"]["ok"]}, Redis={metrics["redis"]["ok"]}", "CRITICAL")
+            send_alert('System is DEGRADED: DB=%s, Redis=%s' % (metrics['db']['ok'], metrics['redis']['ok']), "CRITICAL")
             trigger_autofix("Backend services degraded (DB/Redis issues)")
 
         # Detect slow operations (threshold 200ms for ping)
         if metrics["db"]["ping_ms"] > 200:
             report["slow_operations"].append("Database ping is slow")
-            send_alert(f"Slow Database: {metrics["db"]["ping_ms"]}ms", "WARNING")
+            send_alert('Slow Database: %sms' % metrics['db']['ping_ms'], "WARNING")
         if metrics["redis"]["ping_ms"] > 200:
             report["slow_operations"].append("Redis ping is slow")
-            send_alert(f"Slow Redis: {metrics["redis"]["ping_ms"]}ms", "WARNING")
+            send_alert('Slow Redis: %sms' % metrics['redis']['ping_ms'], "WARNING")
 
     # Fetch System Resources
     system_resources = get_system_resources()
     report["system_resources"] = system_resources
 
     if system_resources["cpu_percent"] is not None and system_resources["cpu_percent"] > CPU_THRESHOLD:
-        send_alert(f"High CPU Usage: {system_resources["cpu_percent"]:.2f}%", "CRITICAL")
+        send_alert('High CPU Usage: %.2f%%' % system_resources['cpu_percent'], "CRITICAL")
         trigger_autofix("High CPU usage detected")
     if system_resources["memory_percent"] is not None and system_resources["memory_percent"] > MEMORY_THRESHOLD:
-        send_alert(f"High Memory Usage: {system_resources["memory_percent"]:.2f}%", "CRITICAL")
+        send_alert('High Memory Usage: %.2f%%' % system_resources['memory_percent'], "CRITICAL")
         trigger_autofix("High Memory usage detected")
     if system_resources["disk_percent"] is not None and system_resources["disk_percent"] > DISK_THRESHOLD:
-        send_alert(f"High Disk Usage: {system_resources["disk_percent"]}%")
+        send_alert('High Disk Usage: %s%%' % system_resources['disk_percent'])
         trigger_autofix("High Disk usage detected")
 
     # Save report

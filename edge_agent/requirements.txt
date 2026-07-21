@@ -1,4 +1,4 @@
-httpx>=0.27.0
-cryptography>=42.0.0
-tomli>=2.0.0; python_version < "3.11"
-psutil>=5.9.0
+httpx>=0.28.1
+cryptography>=49.0.0
+tomli>=2.2.1; python_version < "3.11"
+psutil>=7.0.0

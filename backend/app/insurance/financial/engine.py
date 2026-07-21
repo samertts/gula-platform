@@ -13,14 +13,13 @@ import hashlib
 import io
 import json
 import logging
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -28,7 +27,7 @@ from app.insurance.domain.enums import (
     ClaimStatus, PaymentStatus, SettlementStatus,
 )
 from app.insurance.domain.models import (
-    BenefitPackage, Coverage, FeeScheduleItem, InsuranceClaim,
+    Coverage, FeeScheduleItem, InsuranceClaim,
     InsuranceClaimItem, InsurancePayment, InsuranceProvider,
     InsurancePolicy, Settlement,
 )

@@ -6,14 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "gula-platform"
 version = "2.5.0"
 description = "GULA National Healthcare Platform — Unified Engineering Factory"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "Proprietary" }
 
 [project.scripts]
 gula = "cli.main:main"
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py314"
 line-length = 100
 fix = true
 show-fixes = true
@@ -39,7 +39,7 @@ indent-style = "space"
 line-ending = "lf"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.14"
 strict = true
 plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
 warn_unused_configs = true

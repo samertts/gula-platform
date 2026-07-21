@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import Optional
 
@@ -7,11 +7,11 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.insurance.domain.enums import NetworkTier, ServiceCategory
+from app.insurance.domain.enums import NetworkTier
 from app.insurance.domain.models import InsuranceProvider
 from app.insurance.domain.network import (
     GeographicCoverage, NetworkProvider, NetworkService,
-    ProviderAccreditation, ProviderAvailability,
+    ProviderAvailability,
 )
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user

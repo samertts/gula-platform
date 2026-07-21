@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from ..domain.entities import (
     CollaborationSession,
@@ -23,21 +22,13 @@ from ..domain.entities import (
     SemanticSearchResult,
 )
 from ..domain.enums import (
-    ArchiveStatus,
     CollaborationRole,
-    ConfidentialityLevel,
     DigitalPreservationStandard,
-    DocumentCategory,
     DocumentStatus,
     EventChannel,
     GovernanceDomain,
     GovernancePolicyAction,
     GovernanceRuleSeverity,
-    IntegrityCheckMethod,
-    KnowledgeGraphRelation,
-    OcrEngine,
-    OcrLanguage,
-    ProcessingPriority,
     RetentionPolicy,
     ReviewDecision,
 )

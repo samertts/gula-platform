@@ -10,7 +10,6 @@ from ..domain.entities import (
     CollaborationSession,
     DigitalPreservationRecord,
     DocumentAnnotation,
-    DocumentEvent,
     DocumentIntelligenceResult,
     DocumentLifecycleRecord,
     DocumentPage,
@@ -21,7 +20,6 @@ from ..domain.entities import (
     GovernmentDocument,
     GovernanceEvent,
     GovernancePolicy,
-    KnowledgeGraphEdge,
     OcrResult,
     PipelineHealth,
     ProcessingPipelineResult,
@@ -31,15 +29,12 @@ from ..domain.entities import (
 )
 from ..domain.enums import (
     CollaborationRole,
-    ConfidentialityLevel,
     DigitalPreservationStandard,
     DocumentCategory,
     DocumentStatus,
     EventChannel,
     GovernanceDomain,
-    GovernancePolicyAction,
     GovernanceRuleSeverity,
-    KnowledgeGraphRelation,
     OcrEngine,
     OcrLanguage,
     ProcessingPhase,
@@ -52,13 +47,11 @@ from ..domain.events import (
     DocumentClassified,
     DocumentIngested,
     DocumentOcrCompleted,
-    DocumentOcrFailed,
     DocumentProcessed,
     DocumentProcessingFailed,
 )
 from ..exceptions import (
     ClassificationError,
-    DocumentNotFoundError,
     EntityExtractionError,
     FhirMappingError,
     IndexingError,
@@ -69,7 +62,6 @@ from ..exceptions import (
 )
 from .interfaces import (
     AccessControlService,
-    AiIntegrationService,
     AuditService,
     CollaborationService,
     DocumentClassifier,
@@ -102,7 +94,6 @@ from .interfaces import (
     SearchIndexer,
     SearchService,
     SemanticSearchService,
-    VersioningService,
     WebhookService,
 )
 from ..domain.repository import (

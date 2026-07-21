@@ -37,7 +37,7 @@ services:
       - gula-net
 
   tempo:
-    image: grafana/tempo:2.6.1
+    image: grafana/tempo:2.7.1
     container_name: tempo
     command: [ "-config.file=/etc/tempo.yml" ]
     volumes:
@@ -56,7 +56,7 @@ services:
       - gula-net
 
   tempo-query-frontend:
-    image: grafana/tempo:2.6.1
+    image: grafana/tempo:2.7.1
     container_name: tempo-query-frontend
     command: [ "-config.file=/etc/tempo.yml", "-query-frontend.enabled=true", "-querier.enabled=false", "-ingester.enabled=false", "-distributor.enabled=false" ]
     volumes:

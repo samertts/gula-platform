@@ -6,7 +6,7 @@
 
 services:
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.118.0
+    image: otel/opentelemetry-collector-contrib:0.124.1
     container_name: otel-collector
     restart: unless-stopped
     command:

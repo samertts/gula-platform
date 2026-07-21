@@ -16,12 +16,10 @@ from datetime import datetime
 
 from app._compat import UTC
 
-from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from .config import APP_NAME, APP_VERSION, IS_PRODUCTION, PLATFORM_NAME_AR
 from .core.logging_config import configure_logging
-from .core.startup import _bg_tasks
 from .database import check_db_connection, get_pool_status
 
 configure_logging(is_production=IS_PRODUCTION, log_level="INFO")
@@ -324,7 +322,6 @@ def list_test_types():
     Returns all available test types and their reference ranges.
     Cached in-memory for 5 minutes to reduce database load.
     """
-    import time
 
     cache = _test_types_cache
     if cache["data"] is not None and (time.time() - cache["at"]) < 300:

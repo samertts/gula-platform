@@ -18,7 +18,7 @@
     "versionName": "2.5.0",
     "buildNumber": 20500,
     "minimumOSVersion": "16.0",
-    "swiftVersion": "5.9"
+    "swiftVersion": "6.0"
   },
   "desktop": {
     "windows": {

@@ -200,7 +200,7 @@ services:
 
   # ── Nginx Load Balancer (MinIO S3 API + Console) ───────────────────────────
   minio-lb:
-    image: nginx:1.27-alpine
+    image: nginx:1.28-alpine
     container_name: gula-minio-lb
     restart: always
     mem_limit: 128m

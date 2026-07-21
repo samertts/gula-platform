@@ -8,7 +8,7 @@ from typing import Any
 
 from ..application.interfaces import OcrProvider
 from ..domain.entities import DocumentPage
-from ..domain.enums import OcrEngine, OcrEngineStatus, OcrLanguage
+from ..domain.enums import OcrEngineStatus, OcrLanguage
 
 logger = logging.getLogger("gula.document_intelligence.providers")
 

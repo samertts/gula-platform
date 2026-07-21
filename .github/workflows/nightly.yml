@@ -16,7 +16,7 @@ permissions:
   issues: write
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '24'
   PYTHON_VERSION: '3.12'
   FLUTTER_VERSION: '3.27.0'
 
@@ -43,7 +43,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test_password
@@ -56,7 +56,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       redis:
-        image: redis:7.2-alpine
+        image: redis:7-alpine
         ports:
           - 6379:6379
         options: >-
@@ -113,7 +113,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test_password
@@ -121,7 +121,7 @@ jobs:
         ports:
           - 5432:5432
       redis:
-        image: redis:7.2-alpine
+        image: redis:7-alpine
         ports:
           - 6379:6379
 
@@ -167,7 +167,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test_password
@@ -175,7 +175,7 @@ jobs:
         ports:
           - 5432:5432
       redis:
-        image: redis:7.2-alpine
+        image: redis:7-alpine
         ports:
           - 6379:6379
 

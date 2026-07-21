@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, create_engine, desc, func, or_, text
+from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..domain.entities import (
     ClassificationResult,
-    CollaborationSession,
     DigitalPreservationRecord,
     DocumentAnnotation,
     DocumentEvent,
@@ -36,7 +34,6 @@ from ..domain.enums import (
     EventChannel,
     GovernanceDomain,
     GovernanceRuleSeverity,
-    KnowledgeGraphRelation,
     ProcessingPriority,
     RetentionPolicy,
 )

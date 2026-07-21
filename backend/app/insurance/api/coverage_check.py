@@ -14,7 +14,6 @@ from app.insurance.services.coverage_engine import (
 )
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
-from app.services.audit_service import log_action
 
 router = APIRouter(prefix="/coverage", tags=["insurance-coverage-check"])
 

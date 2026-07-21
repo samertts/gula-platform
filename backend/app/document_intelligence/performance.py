@@ -3,10 +3,8 @@ from __future__ import annotations
 import asyncio
 import functools
 import hashlib
-import json
 import logging
 import time
-import weakref
 from collections import OrderedDict
 from typing import Any, Callable
 

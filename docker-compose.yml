@@ -12,7 +12,7 @@ services:
   # ---------------------------------------------------------------------------
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: gula-postgres
     restart: always
     # Resource limits prevent a runaway PG process from starving other services
@@ -235,7 +235,7 @@ services:
   # ---------------------------------------------------------------------------
 
   frontend:
-    image: nginx:1.27-alpine
+    image: nginx:1.28-alpine
     restart: always
     security_opt:
       - no-new-privileges:true
@@ -260,7 +260,7 @@ services:
   # ---------------------------------------------------------------------------
 
   api-gateway:
-    image: nginx:1.27-alpine
+    image: nginx:1.28-alpine
     container_name: gula-api-gateway
     restart: always
     security_opt:
@@ -301,7 +301,7 @@ services:
   # ---------------------------------------------------------------------------
 
   alertmanager:
-    image: prom/alertmanager:v0.28.1
+    image: prom/alertmanager:v0.28.2
     container_name: gula-alertmanager
     restart: always
     profiles: ["monitoring"]
@@ -326,7 +326,7 @@ services:
       start_period: 15s
 
   prometheus:
-    image: prom/prometheus:v2.55.1
+    image: prom/prometheus:v2.56.0
     container_name: gula-prometheus
     restart: always
     profiles: ["monitoring"]
@@ -359,7 +359,7 @@ services:
       start_period: 15s
 
   grafana:
-    image: grafana/grafana:11.5.2
+    image: grafana/grafana:11.6.0
     container_name: gula-grafana
     restart: always
     profiles: ["monitoring"]

@@ -8,7 +8,10 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",

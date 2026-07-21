@@ -158,11 +158,11 @@ backend:
   initContainers:
     waitForPostgres:
       enabled: true
-      image: busybox:1.36
+      image: busybox:1.37
       command: ["sh", "-c", "until nc -z postgres-primary 5432; do echo 'Waiting for postgres...'; sleep 2; done"]
     waitForRedis:
       enabled: true
-      image: busybox:1.36
+      image: busybox:1.37
       command: ["sh", "-c", "until nc -z redis 6379; do echo 'Waiting for redis...'; sleep 2; done"]
   env:
     - name: ENV
@@ -286,7 +286,7 @@ postgres:
   name: postgres
   image:
     repository: postgres
-    tag: 16-alpine
+    tag: 17-alpine
     pullPolicy: IfNotPresent
   patroni:
     enabled: true
@@ -440,7 +440,7 @@ rabbitmq:
     erlangCookie: ""
   image:
     repository: rabbitmq
-    tag: 3.12-management-alpine
+    tag: 4.1-management-alpine
     pullPolicy: IfNotPresent
   config:
     vmMemoryHighWatermark: 0.4
@@ -504,7 +504,7 @@ minio:
   name: minio
   image:
     repository: minio/minio
-    tag: RELEASE.2024-01-01T00-00-00Z
+    tag: RELEASE.2026-07-12T22-51-28Z
     pullPolicy: IfNotPresent
   mode: distributed
   replicaCount: 4
@@ -544,7 +544,7 @@ gateway:
   replicaCount: 2
   image:
     repository: nginx
-    tag: 1.25-alpine
+    tag: 1.28-alpine
     pullPolicy: IfNotPresent
   strategy:
     type: RollingUpdate
@@ -847,10 +847,10 @@ microservices:
         periodSeconds: 10
     initContainers:
       - name: wait-for-postgres
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
       - name: wait-for-rabbitmq
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
     env:
       - name: DATABASE_URL
@@ -907,10 +907,10 @@ microservices:
         periodSeconds: 10
     initContainers:
       - name: wait-for-postgres
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
       - name: wait-for-rabbitmq
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
     env:
       - name: DATABASE_URL
@@ -967,10 +967,10 @@ microservices:
         periodSeconds: 10
     initContainers:
       - name: wait-for-postgres
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
       - name: wait-for-rabbitmq
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
     env:
       - name: DATABASE_URL
@@ -1099,10 +1099,10 @@ microservices:
         periodSeconds: 10
     initContainers:
       - name: wait-for-postgres
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
       - name: wait-for-rabbitmq
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
     env:
       - name: DATABASE_URL
@@ -1159,7 +1159,7 @@ microservices:
         periodSeconds: 10
     initContainers:
       - name: wait-for-rabbitmq
-        image: busybox:1.36
+        image: busybox:1.37
         command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
     env:
       - name: RABBITMQ_URL

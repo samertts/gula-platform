@@ -7,7 +7,7 @@ All mutations are audit-logged via the audit service.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey,
@@ -18,9 +18,9 @@ from sqlalchemy.orm import declarative_base, relationship
 from app._compat import UTC
 from app.insurance.domain.enums import (
     AppealStatus, AuthorizationStatus, ClaimStatus, ClaimType,
-    CoverageDetermination, CoverageStatus, FraudSeverity, FraudStatus,
+    CoverageStatus, FraudSeverity, FraudStatus,
     InsuranceType, PaymentStatus, PolicyStatus, ProviderContractStatus,
-    ReferralStatus, ServiceCategory, SettlementStatus,
+    ServiceCategory, SettlementStatus,
 )
 
 InsBase = declarative_base()

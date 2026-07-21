@@ -21,7 +21,7 @@ services:
 
   # ── RabbitMQ Node 1 ─────────────────────────────────────────────────────────
   rabbitmq-1:
-    image: rabbitmq:3.13-management-alpine
+    image: rabbitmq:4.1-management-alpine
     container_name: gula-rabbitmq-1
     hostname: rabbitmq-1
     restart: always
@@ -54,7 +54,7 @@ services:
 
   # ── RabbitMQ Node 2 ─────────────────────────────────────────────────────────
   rabbitmq-2:
-    image: rabbitmq:3.13-management-alpine
+    image: rabbitmq:4.1-management-alpine
     container_name: gula-rabbitmq-2
     hostname: rabbitmq-2
     restart: always
@@ -89,7 +89,7 @@ services:
 
   # ── RabbitMQ Node 3 ─────────────────────────────────────────────────────────
   rabbitmq-3:
-    image: rabbitmq:3.13-management-alpine
+    image: rabbitmq:4.1-management-alpine
     container_name: gula-rabbitmq-3
     hostname: rabbitmq-3
     restart: always
@@ -124,7 +124,7 @@ services:
 
   # ── HAProxy Load Balancer ──────────────────────────────────────────────────
   rabbitmq-lb:
-    image: haproxy:2.8-alpine
+    image: haproxy:3.1-alpine
     container_name: gula-rabbitmq-lb
     restart: always
     mem_limit: 128m
