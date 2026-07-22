@@ -13,9 +13,9 @@ that consolidates three previously separate GitHub repositories:
 | `samertts/LabLink-Core` | `services/device_bridge/` | Lab instrument integration (ASTM/HL7) |
 | `samertts/Front-end-` | `frontend-v2/` | Rich React + Firebase UI |
 
-Production stack is a FastAPI monolith (`backend/app/`) backed by PostgreSQL 16 + Redis 7;
+Production stack is a FastAPI monolith (`backend/app/`) backed by PostgreSQL 17 + Redis 7;
 a parallel microservices tree (`services/`) exists for future decomposition but is not the
-primary deployment target. **App version: 2.1.0** (`config.py`).
+primary deployment target. **App version: 2.5.0** (`config.py`).
 
 ## Core Principles (NON-NEGOTIABLE)
 
@@ -87,20 +87,21 @@ PostgreSQL 16 (+ Redis 7).
 
 The backend never exposes a public port itself. All traffic enters through the gateway.
 
-### Middleware Stack (order matters — see `backend/app/main.py`)
+### Middleware Stack (order matters — see `backend/app/factory.py`)
 
-Requests flow through these layers in order; each has a specific role:
+Requests flow through these layers in registration order (last registered runs first):
 
 1. `MaxBodySizeMiddleware` — 413 above `MAX_REQUEST_BODY_MB` (default 10)
 2. `RequestIDMiddleware` — assigns `X-Request-ID` + binds to log ctx + DB correlation vars
-3. `DocsAuthMiddleware` — guards `/docs`, `/redoc`, `/openapi.json` in production (admin JWT)
+3. `DocsAuthMiddleware` — guards `/docs`, `/redoc`, `/openapi.json` in production (admin JWT; production-only)
 4. `CORSMiddleware`
 5. `RequestTimingMiddleware` — per-request access log, `X-Response-Time` header
 6. `SecurityHeadersMiddleware` — CSP, HSTS, X-Frame-Options, etc.
 7. `GZipMiddleware`
-8. `ReadinessMiddleware` — 503 on all non-whitelisted paths until `system_ready` is True
-9. `DegradedModeMiddleware` (from `core/self_healing.py`) — rejects writes when DB circuit is open
-10. `ConcurrencyLimitMiddleware` — per-worker in-flight cap (`MAX_CONCURRENT_REQUESTS`, default 50).
+8. `DegradedModeMiddleware` (from `core/self_healing.py`) — rejects writes when DB circuit is open
+9. `ReadinessMiddleware` — 503 on all non-whitelisted paths until `system_ready` is True
+10. `KernelMiddleware` — attaches kernel context to every request
+11. `ConcurrencyLimitMiddleware` — per-worker in-flight cap (`MAX_CONCURRENT_REQUESTS`, default 50).
     Clinical writes (`/results`, `/orders`, `/samples`, `/critical-alerts`) are **exempt** —
     patient-safety operations must never be shed.
 
@@ -193,19 +194,21 @@ backend/app/
 ├── config.py                # Env var loading, hard-fail on weak/missing secrets
 ├── database.py              # SQLAlchemy engine + pool + request-correlation contextvars
 ├── worker.py                # Background worker entry point
-├── routes/                  # 36 route modules
+├── routes/                  # 55 route modules (500+ endpoints)
 │   ├── patient_card.py      # QR-backed digital patient cards
 │   ├── stats.py             # Statistics & trends API
 │   ├── edge.py              # Edge platform endpoints
 │   ├── ai.py                # Clinical intelligence
 │   ├── compliance.py        # Regulatory compliance
 │   └── ...                  # auth, labs, orders, results, samples, etc.
-├── models/                  # 17 SQLAlchemy ORM models
-├── services/                # Business logic layer
-│   └── mpi/                 # Master Patient Index
+├── models/                  # 28 model files (~160+ ORM models)
+├── services/                # Business logic layer (36 modules)
+│   ├── mpi/                 # Master Patient Index
+│   ├── governance/          # Identity governance
+│   └── reference/           # Reference data
 ├── domain/
 │   └── order_state.py       # Lab-order state machine
-├── core/                    # Core infrastructure (15 modules)
+├── core/                    # Core infrastructure (19 modules)
 │   ├── feature_flags.py     # Per-tenant feature matrix
 │   ├── sndhs_flags.py       # SNDHS-lite deployment flags
 │   ├── startup_guard.py     # system_ready flag + startup validation
@@ -213,16 +216,34 @@ backend/app/
 │   ├── auto_repair.py       # Auto-repair engine
 │   ├── policy_engine.py     # Policy enforcement
 │   └── logging_config.py    # Structured JSON logging
-├── security/                # Auth, encryption, rate limiting, RBAC
+├── security/                # Auth, encryption, rate limiting, RBAC (15 modules)
 ├── ai/                      # Clinical AI integration (monolith-side)
 ├── edge/                    # Edge platform support
-├── financial/               # Financial Engine (Phase A — schema only, routes in Phase B+)
+├── financial/               # Financial Engine (schema + routes + services)
 ├── audit/                   # Audit logging
 ├── notifications/           # Notification service
 ├── firewall/                # Rate limiting & firewall
-├── gateways/                # API gateways
+├── gateways/                # External service adapters (Cloudflare, Google AI, insurance, national ID, etc.)
 ├── legal/                   # Legal/compliance models
-└── tasks/                   # Background tasks (Outbox pattern)
+├── tasks/                   # Background tasks (Outbox pattern)
+├── integration/             # Integration platform (ESB, CDC, HL7/FHIR, connectors)
+├── kernel/                  # Kernel runtime (plugin, event bus, background, config, features)
+├── national/                # National health platform (rules engine, workflow, scheduling, etc.)
+├── nhdw/                    # National Health Data Warehouse
+├── nursing/                 # Nursing platform
+├── pharmacy/                # Pharmacy platform
+├── radiology/               # Radiology platform
+├── lims/                    # LIMS workflows
+├── hospital/                # Hospital management
+├── ems/                     # Emergency Medical Services
+├── blood_bank/              # Blood bank & transfusion
+├── critical_care/           # Critical care platform
+├── biomedical/              # Biomedical engineering
+├── public_health/           # Public health & disease surveillance
+├── command_center/          # National health command center
+├── governance/              # Governance models & policies
+├── trust/                   # Trust platform
+└── 15+ additional sub-packages (care_continuum, ehr, clinical, document_intelligence, etc.)
 ```
 
 ## Feature Flags
@@ -365,26 +386,35 @@ Runs on every push. Jobs in dependency order:
 1. **`syntax-gate`** (< 30s, blocks everything) — `py_compile` every file in `app/`
    and `migrations/`, then import-walk with `unittest.mock` stubs to catch
    NameError/AttributeError/SystemExit at module level. Then `flake8 --select=E9,F821`.
-2. **`migration-check`** — `alembic upgrade head` on a fresh postgres:16-alpine,
+2. **`data-preservation-gate`** — runs Data Preservation Constitution quality gate
+   (exit code: 0=pass, 1=warning, 2=block merge).
+3. **`migration-check`** — `alembic upgrade head` on a fresh postgres:17-alpine,
    verifies required tables (`labs`, `lab_users`, `patients`, `lab_orders`,
    `lab_results`, `outbox_events`, `audit_logs`), then `downgrade -1 && upgrade head`.
-3. **`smoke-test`** — boot uvicorn and curl `/health`, `/health/ready`, `/health/deep`, `/test-types`.
-4. **`backend-test`** — `pytest tests/` against postgres:14.11 + redis:7.2.
-5. **`security-scan`** — `safety` (CVE scan), `bandit -ll -ii`, `hadolint`, `gitleaks`,
-   `/tmp` write check.
-6. **`build-and-push`** — matrix of 8 images (backend + 7 microservices) to GHCR,
+4. **`lint`** — `ruff check` on backend + eslint on frontend.
+5. **`test`** — `pytest tests/` against postgres:17-alpine + redis:7-alpine.
+6. **`security-scan`** — `safety` (CVE scan), `bandit -ll -ii`.
+7. **`build-and-push`** — matrix of 8 images (backend + 7 microservices) to GHCR,
    Trivy scan. `latest` tag only on `main`.
 
 Additional workflows:
 - **`blue-green-deploy.yml`** — Zero-downtime blue/green deployment
+- **`canary-deploy.yml`** — Canary deployment with configurable percentage
 - **`deploy.yml`** — Standard deployment pipeline
+- **`auto-rollback.yml`** — Automatic rollback on health check failure
+- **`frontend-e2e.yml`** — Playwright E2E tests (28 tests, 7 suites)
+- **`frontend-pwa.yml`** — PWA compliance tests
+- **`nightly.yml`** — Nightly full test suite
+- **`preview-deploy.yml`** — Preview deployments for PRs
+- **`release.yml`** — Release workflow
+- **`quality-gate.yml`** — Quality gate enforcement
 
 Locally, `make ci` replicates syntax-gate + lint + docker build — the fastest
 feedback loop before pushing.
 
 ## Testing
 
-**28 test modules** in `backend/tests/`. Key ones:
+**85+ test files** (2,148+ tests) in `backend/tests/`. Key ones:
 
 | File | What it covers |
 |------|----------------|
@@ -398,6 +428,14 @@ feedback loop before pushing.
 | `test_feature_flags.py` | Per-tenant feature matrix |
 | `test_edge_platform.py` | Edge site synchronization |
 | `test_stability_assertions.py` | Data integrity checks |
+| `test_abac.py` | Attribute-Based Access Control |
+| `test_ai_platform.py` | AI platform orchestration |
+| `test_clinical_safety.py` | Clinical safety invariants |
+| `test_tenant_isolation_matrix.py` | Multi-tenant isolation |
+| `test_chaos_survival.py` | Chaos engineering resilience |
+| `test_migration_resilience.py` | Migration round-trip integrity |
+| `test_kernel/` (38 files) | Kernel runtime tests |
+| `test_kernel_hardening/` (7 files) | Kernel hardening + chaos |
 
 ## Key Files
 
@@ -411,14 +449,20 @@ feedback loop before pushing.
 | `backend/app/core/startup_guard.py` | `system_ready` flag + startup validation |
 | `backend/app/core/feature_flags.py` | Per-tenant feature matrix |
 | `backend/app/core/sndhs_flags.py` | SNDHS-lite deployment-wide toggles |
-| `backend/app/security/rbac.py` | 9 roles × 13 permissions |
+| `backend/app/security/rbac.py` | 10 roles × 16 permissions |
 | `backend/app/security/auth.py` | JWT encode/decode, `get_current_user` |
 | `backend/app/domain/order_state.py` | Lab-order state machine |
 | `backend/app/services/outbox_service.py` | Guaranteed event delivery (outbox pattern) |
+| `backend/app/services/audit_service.py` | SHA-256 hash-chain audit logging |
 | `backend/app/routes/patient_card.py` | Digital QR-backed patient cards |
 | `backend/app/routes/stats.py` | Statistics & trends API |
+| `backend/app/routes/authorization.py` | RBAC/ABAC authorization routes |
 | `backend/app/financial/` | Financial Engine skeleton (Phase A — schema only) |
+| `backend/app/integration/` | Integration platform (ESB, CDC, HL7/FHIR) |
+| `backend/app/kernel/` | Kernel runtime (plugin system, event bus) |
 | `backend/migrations/versions/` | Alembic migrations — immutable once merged |
+| `cloudflare/` | Cloudflare DNS, WAF, Worker, R2 config |
+| `terraform/` | Terraform IaC (12 modules, 5 environments) |
 | `scripts/self_audit_agent.py` | Claude-powered self-audit |
 | `scripts/sndhs_phase1_backfill.py` | SNDHS Phase 1 data backfill |
 | `scripts/diagnose-droplet.sh` | Read-only DigitalOcean diagnostics |
