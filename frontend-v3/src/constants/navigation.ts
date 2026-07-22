@@ -56,7 +56,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['master_admin', 'admin', 'lab_admin', 'doctor'],
     children: [
       { labelKey: 'clinicalNotes', icon: FileText, path: '/clinical/notes' },
-      { labelKey: 'ehr', icon: HeartPulse, path: '/clinical/ehr' },
+      { labelKey: 'ehr', icon: HeartPulse, path: '/ehr' },
       { labelKey: 'fhir', icon: ScrollText, path: '/fhir' },
     ],
   },
