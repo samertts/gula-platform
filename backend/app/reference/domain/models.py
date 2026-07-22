@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from enum import StrEnum
+
+from app._compat import StrEnum
 
 
 class Gender(StrEnum):

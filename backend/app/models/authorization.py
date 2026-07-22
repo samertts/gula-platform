@@ -1,14 +1,13 @@
-import enum
 from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 
-from app._compat import UTC
+from app._compat import UTC, StrEnum
 
 from ..database import Base
 
 
-class UserTypeEnum(enum.StrEnum):
+class UserTypeEnum(StrEnum):
     citizen = "citizen"
     patient = "patient"
     guardian = "guardian"

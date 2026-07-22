@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Self-Healing System — GULA Platform
 =====================================
@@ -5,11 +7,11 @@ Keeps the backend alive and functional under partial infrastructure failures.
 
 Components:
   1. CircuitBreaker      — tracks consecutive failures per service, opens/closes
-                           circuit to prevent cascade failures
+                            circuit to prevent cascade failures
   2. SystemHealth        — shared health state, thread-safe
   3. DegradedModeMiddleware — routes degraded requests per degradation level
   4. RecoveryWorker      — background coroutine that probes failed services
-                           and resets circuit breakers when they recover
+                            and resets circuit breakers when they recover
 
 Circuit Breaker States:
   CLOSED  → normal operation (requests pass through)
