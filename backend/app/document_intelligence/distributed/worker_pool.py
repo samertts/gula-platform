@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +49,14 @@ class WorkerPool:
                 )
                 self._active_count += 1
                 try:
-                    result = await handler(*args, **kwargs)
+                    await handler(*args, **kwargs)
                     logger.debug("Worker completed task")
                 except Exception as e:
                     logger.exception("Worker task failed: %s", e)
                 finally:
                     self._active_count -= 1
                     self._task_queue.task_done()
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 if len(self._workers) > self._min:
                     break
             except asyncio.CancelledError:

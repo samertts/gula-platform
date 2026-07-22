@@ -43,16 +43,16 @@ def upgrade() -> None:
             sa.Column("patient_name", sa.String()),
             sa.Column("patient_phone", sa.String()),
             sa.Column("patient_condition", sa.Text()),
-            sa.Column("is_conscious", sa.Boolean(), default=true),
-            sa.Column("is_breathing", sa.Boolean(), default=true),
-            sa.Column("has_pulse", sa.Boolean(), default=true),
-            sa.Column("has_allergies", sa.Boolean(), default=false),
-            sa.Column("has_bleeding", sa.Boolean(), default=false),
-            sa.Column("has_chest_pain", sa.Boolean(), default=false),
-            sa.Column("has_difficulty_breathing", sa.Boolean(), default=false),
-            sa.Column("is_pregnant", sa.Boolean(), default=false),
-            sa.Column("is_diabetic", sa.Boolean(), default=false),
-            sa.Column("has_seizure", sa.Boolean(), default=false),
+            sa.Column("is_conscious", sa.Boolean(), default=True),
+            sa.Column("is_breathing", sa.Boolean(), default=True),
+            sa.Column("has_pulse", sa.Boolean(), default=True),
+            sa.Column("has_allergies", sa.Boolean(), default=False),
+            sa.Column("has_bleeding", sa.Boolean(), default=False),
+            sa.Column("has_chest_pain", sa.Boolean(), default=False),
+            sa.Column("has_difficulty_breathing", sa.Boolean(), default=False),
+            sa.Column("is_pregnant", sa.Boolean(), default=False),
+            sa.Column("is_diabetic", sa.Boolean(), default=False),
+            sa.Column("has_seizure", sa.Boolean(), default=False),
             sa.Column("dispatcher_notes", sa.Text()),
             sa.Column("dispatch_time", sa.DateTime(timezone=True)),
             sa.Column("scene_arrival_time", sa.DateTime(timezone=True)),
@@ -72,7 +72,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -94,7 +94,7 @@ def upgrade() -> None:
             sa.Column("station_id", sa.String()),
             sa.Column("station_name", sa.String()),
             sa.Column("facility_id", sa.String()),
-            sa.Column("is_gps_enabled", sa.Boolean(), default=true),
+            sa.Column("is_gps_enabled", sa.Boolean(), default=True),
             sa.Column("fuel_level", sa.Float(), default=100.0),
             sa.Column("mileage_km", sa.Float(), default=0.0),
             sa.Column("last_maintenance_date", sa.DateTime(timezone=True)),
@@ -107,7 +107,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -121,19 +121,19 @@ def upgrade() -> None:
             sa.Column("user_id", sa.String()),
             sa.Column("full_name", sa.String(), nullable=False),
             sa.Column("role", sa.String(), default="emt"),
-            sa.Column("is_available", sa.Boolean(), default=true),
+            sa.Column("is_available", sa.Boolean(), default=True),
             sa.Column("station_id", sa.String()),
             sa.Column("facility_id", sa.String()),
             sa.Column("certifications", sa.JSON()),
             sa.Column("phone", sa.String()),
-            sa.Column("is_active", sa.Boolean(), default=true),
+            sa.Column("is_active", sa.Boolean(), default=True),
             sa.Column("lab_id", sa.Integer(), nullable=False),
             sa.Column("id", sa.String(), primary_key=True),
             sa.Column("fhir_id", sa.String()),
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -155,7 +155,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -185,7 +185,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -208,8 +208,8 @@ def upgrade() -> None:
             sa.Column("heart_rate", sa.Integer()),
             sa.Column("systolic_bp", sa.Integer()),
             sa.Column("mental_status", sa.String()),
-            sa.Column("ambulatory", sa.Boolean(), default=true),
-            sa.Column("external_bleeding", sa.Boolean(), default=false),
+            sa.Column("ambulatory", sa.Boolean(), default=True),
+            sa.Column("external_bleeding", sa.Boolean(), default=False),
             sa.Column("burns_percentage", sa.Float()),
             sa.Column("trauma_score", sa.Integer()),
             sa.Column("glasgow_coma_scale", sa.Integer()),
@@ -223,7 +223,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -294,7 +294,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -321,7 +321,7 @@ def upgrade() -> None:
             sa.Column("displaced_count", sa.Integer(), default=0),
             sa.Column("affected_population", sa.Integer(), default=0),
             sa.Column("incident_command_id", sa.String()),
-            sa.Column("declared_state_of_emergency", sa.Boolean(), default=false),
+            sa.Column("declared_state_of_emergency", sa.Boolean(), default=False),
             sa.Column("declared_at", sa.DateTime(timezone=True)),
             sa.Column("closed_at", sa.DateTime(timezone=True)),
             sa.Column("created_by", sa.String()),
@@ -332,7 +332,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -360,7 +360,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -392,7 +392,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -420,7 +420,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -442,7 +442,7 @@ def upgrade() -> None:
             sa.Column("emergency_room_status", sa.String(), default="normal"),
             sa.Column("trauma_bays_available", sa.Integer(), default=0),
             sa.Column("operating_rooms_available", sa.Integer(), default=0),
-            sa.Column("diversion_status", sa.Boolean(), default=false),
+            sa.Column("diversion_status", sa.Boolean(), default=False),
             sa.Column("diversion_reason", sa.Text()),
             sa.Column("last_updated", sa.DateTime(timezone=True)),
             sa.Column("lab_id", sa.Integer(), nullable=False),
@@ -451,7 +451,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )

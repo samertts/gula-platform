@@ -14,9 +14,9 @@ import time
 from contextlib import suppress
 from datetime import datetime
 
-from app._compat import UTC
-
 from fastapi.responses import JSONResponse
+
+from app._compat import UTC
 
 from .config import APP_NAME, APP_VERSION, IS_PRODUCTION, PLATFORM_NAME_AR
 from .core.logging_config import configure_logging
@@ -26,7 +26,6 @@ configure_logging(is_production=IS_PRODUCTION, log_level="INFO")
 logger = logging.getLogger("gula")
 
 from .factory import create_app  # noqa: E402
-
 
 # Create the application using the factory
 app = create_app()

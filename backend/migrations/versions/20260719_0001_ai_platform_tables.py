@@ -44,7 +44,12 @@ def _enable_pgvector() -> None:
     result = conn.execute(sa.text("SELECT extname FROM pg_extension WHERE extname = 'vector'")).fetchone()
     if result is None:
         try:
-            conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
+            from sqlalchemy import create_engine as _ce
+            url = str(op.get_bind().engine.url)
+            _tmp = _ce(url).connect()
+            _tmp.execution_options(isolation_level="AUTOCOMMIT")
+            _tmp.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
+            _tmp.close()
         except Exception:
             pass
 

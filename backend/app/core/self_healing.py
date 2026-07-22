@@ -28,7 +28,6 @@ import logging
 import threading
 import time
 from enum import Enum
-from typing import Optional
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -165,10 +164,10 @@ class DegradationLevel(Enum):
 class SystemHealth:
     """Singleton that holds circuit breakers and degradation level."""
 
-    _instance: Optional["SystemHealth"] = None
+    _instance: SystemHealth | None = None
     _lock = threading.Lock()
 
-    def __new__(cls) -> "SystemHealth":
+    def __new__(cls) -> SystemHealth:
         with cls._lock:
             if cls._instance is None:
                 inst = super().__new__(cls)

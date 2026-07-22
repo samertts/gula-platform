@@ -10,14 +10,27 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey,
-    Index, Integer, JSON, Numeric, String,
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC
 from app.insurance.domain.enums import (
-    AccreditationStatus, CoverageLevel, NetworkTier,
+    AccreditationStatus,
+    CoverageLevel,
+    NetworkTier,
 )
 from app.insurance.domain.models import InsBase
 
@@ -54,7 +67,7 @@ class NetworkProvider(InsBase):
     service_area = Column(String(255), nullable=True)
     geographic_coverage = Column(JSON, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -95,7 +108,7 @@ class NetworkService(InsBase):
     effective_from = Column(Date, nullable=True)
     effective_until = Column(Date, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -136,7 +149,7 @@ class ProviderAvailability(InsBase):
     effective_from = Column(Date, nullable=True)
     effective_until = Column(Date, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -178,7 +191,7 @@ class ProviderAccreditation(InsBase):
     verified_by = Column(String(255), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -219,7 +232,7 @@ class GeographicCoverage(InsBase):
     effective_from = Column(Date, nullable=True)
     effective_until = Column(Date, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)

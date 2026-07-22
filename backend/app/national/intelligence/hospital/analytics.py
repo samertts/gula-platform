@@ -148,7 +148,6 @@ class QueuePredictor:
         self._queue_history: dict[str, list[dict[str, Any]]] = {}
 
     def record_queue(self, department_id: str, queue_length: int, wait_minutes: float) -> None:
-        f"{department_id}:{datetime.now().strftime('%A')}:{datetime.now().hour}"
         if department_id not in self._queue_history:
             self._queue_history[department_id] = []
         self._queue_history[department_id].append({

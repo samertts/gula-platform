@@ -10,17 +10,40 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey,
-    Index, Integer, JSON, Numeric, String, Text, UniqueConstraint,
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
 from app._compat import UTC
 from app.insurance.domain.enums import (
-    AppealStatus, AuthorizationStatus, ClaimStatus, ClaimType,
-    CoverageStatus, FraudSeverity, FraudStatus,
-    InsuranceType, PaymentStatus, PolicyStatus, ProviderContractStatus,
-    ServiceCategory, SettlementStatus,
+    AppealStatus,
+    AuthorizationStatus,
+    ClaimStatus,
+    ClaimType,
+    CoverageStatus,
+    FraudSeverity,
+    FraudStatus,
+    InsuranceType,
+    PaymentStatus,
+    PolicyStatus,
+    ProviderContractStatus,
+    ServiceCategory,
+    SettlementStatus,
 )
 
 InsBase = declarative_base()
@@ -66,7 +89,7 @@ class InsuranceProvider(InsBase):
     contact_phone = Column(String(50), nullable=True)
 
     coverage_notes = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -116,7 +139,7 @@ class InsurancePolicy(InsBase):
 
     terms_text = Column(Text, nullable=True)
     exclusions_text = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     signed_at = Column(DateTime(timezone=True), nullable=True)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
@@ -173,7 +196,7 @@ class Coverage(InsBase):
     referral_required = Column(Boolean, default=False)
     pre_existing_wait_period = Column(Boolean, default=False)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
     notes = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
@@ -230,7 +253,7 @@ class BenefitPackage(InsBase):
 
     clinical_rules = Column(JSON, nullable=True)
     exclusions = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -280,7 +303,7 @@ class FeeScheduleItem(InsBase):
     effective_from = Column(Date, nullable=True)
     effective_until = Column(Date, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -337,7 +360,7 @@ class Authorization(InsBase):
     reviewed_by = Column(String(255), nullable=True)
 
     attachments = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -402,7 +425,7 @@ class InsuranceClaim(InsBase):
 
     idempotency_key = Column(String(255), nullable=True, unique=True)
     external_ref = Column(String(255), nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -454,7 +477,7 @@ class InsuranceClaimItem(InsBase):
     adjustment_code = Column(String(50), nullable=True)
     adjustment_reason = Column(String(255), nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     claim = relationship("InsuranceClaim", back_populates="items")
 
@@ -488,7 +511,7 @@ class InsurancePayment(InsBase):
     adjustment_reason = Column(String(500), nullable=True)
 
     notes = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     processed_at = Column(DateTime(timezone=True), nullable=True)
@@ -535,7 +558,7 @@ class Settlement(InsBase):
     reconciled_at = Column(DateTime(timezone=True), nullable=True)
     paid_at = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -582,7 +605,7 @@ class Appeal(InsBase):
     filed_date = Column(Date, nullable=False)
     resolved_date = Column(Date, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -625,7 +648,7 @@ class FraudAlert(InsBase):
     detection_rule = Column(String(255), nullable=True)
 
     evidence = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     assigned_to = Column(String(255), nullable=True)
     investigation_notes = Column(Text, nullable=True)
@@ -679,7 +702,7 @@ class ProviderContract(InsBase):
 
     terms_text = Column(Text, nullable=True)
     special_terms = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     signed_at = Column(DateTime(timezone=True), nullable=True)
     terminated_at = Column(DateTime(timezone=True), nullable=True)

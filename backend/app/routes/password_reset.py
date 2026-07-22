@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -41,16 +42,15 @@ async def forgot_password(
     if not user:
         return {"message": "If the email exists, a reset link has been sent"}
     import secrets
+
     from shared.auth.passwords import hash_password
     token = secrets.token_urlsafe(32)
     user.reset_token = hash_password(token)
     user.reset_token_expires = datetime.now(UTC) + timedelta(hours=1)
     db.commit()
     if user:
-        try:
+        with contextlib.suppress(Exception):
             log_action(db, action="password_reset_requested", resource_type="password_reset", user_id=user.id)
-        except Exception:
-            pass
     return {"message": "If the email exists, a reset link has been sent"}
 
 
@@ -72,10 +72,8 @@ async def reset_password(
     user.reset_token = None
     user.reset_token_expires = None
     db.commit()
-    try:
+    with contextlib.suppress(Exception):
         log_action(db, action="password_reset_completed", resource_type="password_reset", user_id=user.id)
-    except Exception:
-        pass
     return {"message": "Password reset successful"}
 
 

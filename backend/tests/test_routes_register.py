@@ -86,7 +86,6 @@ def db(db_engine):
 
 @pytest.fixture()
 def client(db):
-    import app.core.startup_guard as _guard
     from app.main import app
 
     def _override():
@@ -96,12 +95,10 @@ def client(db):
             pass
 
     app.dependency_overrides[get_db] = _override
-    _guard.system_ready = True
     try:
         with TestClient(app, raise_server_exceptions=False) as c:
             yield c
     finally:
-        _guard.system_ready = False
         app.dependency_overrides.clear()
 
 

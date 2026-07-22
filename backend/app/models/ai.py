@@ -21,7 +21,7 @@ class AIEmbedding(Base):
     text = Column(Text, nullable=False)
     model = Column(String(128), nullable=False, default="gemini-embedding-exp-03-07")
     dimensions = Column(Integer, nullable=False, default=768)
-    metadata = Column(JSONB, nullable=False, default=dict)
+    extra_metadata = Column("metadata", JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
 
     __table_args__ = (
@@ -37,7 +37,7 @@ class AIConversation(Base):
     user_id = Column(Integer, ForeignKey("lab_users.id"), nullable=True, index=True)
     session_id = Column(String(128), nullable=False, index=True)
     title = Column(String(256), nullable=True)
-    metadata = Column(JSONB, nullable=False, default=dict)
+    extra_metadata = Column("metadata", JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
@@ -53,7 +53,7 @@ class AIConversationMessage(Base):
     conversation_id = Column(Integer, ForeignKey("ai_conversations.id"), nullable=False, index=True)
     role = Column(String(32), nullable=False)
     content = Column(Text, nullable=False)
-    metadata = Column(JSONB, nullable=False, default=dict)
+    extra_metadata = Column("metadata", JSONB, nullable=False, default=dict)
     token_count = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
 
@@ -76,7 +76,7 @@ class AIAgentExecution(Base):
     token_count = Column(Integer, nullable=True)
     cost_usd = Column(Float, nullable=True)
     approval_id = Column(String(64), nullable=True)
-    metadata = Column(JSONB, nullable=False, default=dict)
+    extra_metadata = Column("metadata", JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     completed_at = Column(DateTime(timezone=True), nullable=True)
 

@@ -671,14 +671,30 @@ async def run_startup_guard() -> None:
     """Atomic startup validation chain.
 
     system_ready is set to True ONLY if every single step succeeds.
-    Any exception keeps system_ready = False and re-raises — the process
-    will crash and the Docker healthcheck will never turn green.
+    Any exception keeps system_ready = False — the Docker healthcheck
+    will never turn green and the api-gateway receives no traffic.
 
-    There is no partial success: either everything passes or nothing does.
+    In test mode (RUNTIME_MODE=test), system_ready is set to True
+    immediately without validation — the test harness manages DB/Redis
+    state independently.
+
+    A safety timeout (STARTUP_TIMEOUT_SECONDS, default 120) ensures the
+    guard can't block the lifespan indefinitely. After the timeout, the
+    system starts in a partial-readiness state — health probes respond,
+    but route handlers may fail if core dependencies are unavailable.
     """
-    global system_ready
+    global system_ready, _readiness_reason
 
-    # Guard against double-initialisation (e.g. hot-reload in dev)
+    from ..config import RUNTIME_MODE, STARTUP_TIMEOUT_SECONDS
+
+    # ── Test mode: skip validation entirely ─────────────────────────────────
+    if RUNTIME_MODE == "test":
+        system_ready = True
+        _readiness_reason = "test_mode"
+        logger.info("[STARTUP GUARD] Test mode — system marked ready immediately")
+        return
+
+    # ── Guard against double-initialisation (e.g. hot-reload in dev) ────────
     if system_ready:
         logger.warning("[STARTUP GUARD] Already initialised — skipping")
         return
@@ -686,30 +702,23 @@ async def run_startup_guard() -> None:
     t0 = time.perf_counter()
     logger.info("[STARTUP GUARD] === Starting production startup validation ===")
 
-    critical_ok = False
-    try:
+    # Wrap core validation in a timeout so startup can't block indefinitely.
+    # After the timeout, the system starts in partial-readiness mode.
+    STARTUP_TIMEOUT = max(STARTUP_TIMEOUT_SECONDS, 30)
+
+    async def _run_core_validation() -> None:
+        """Core validation: config → DB → Redis → migrations → seeds → kernel."""
         validate_config()  # Step 1 — synchronous
 
         db_connected = await wait_for_db(max_retries=15, initial_delay=10)  # Step 2
         if not db_connected:
-            # If DB is not connected after retries, the system will start in an unready state.
-            # The global exception handler will return 503 for all requests.
             logger.critical(
                 "[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state."
             )
-            # Do not exit early. Allow the process to continue, but system_ready will remain False.
-            # The global exception handler will then return 503 for all requests.
             return
         await check_redis()  # Step 3 — Redis reachable
         await check_migrations()  # Step 4 — migration state
 
-        # If all critical steps (config, DB, migrations) pass, then the system is ready.
-        # The seed_critical_data step is now more resilient and won't prevent system_ready from being True.
-
-        # Step 4 — seed critical data. This step is now made more resilient.
-        # If seeding fails, we log the error but allow the system to become ready.
-        # This prevents a full crash if, for example, a new test type fails to seed
-        # but the core application can still function.
         try:
             await seed_critical_data()
         except Exception as e:
@@ -718,8 +727,6 @@ async def run_startup_guard() -> None:
                 e,
             )
 
-        # Step 5 — Kernel bootstrap. The Kernel is the permanent runtime
-        # foundation. If it fails, the system starts without kernel services.
         try:
             from ..kernel.integration import boot_kernel, start_kernel
 
@@ -732,8 +739,23 @@ async def run_startup_guard() -> None:
                 e,
             )
 
-        critical_ok = True
-
+    try:
+        await asyncio.wait_for(_run_core_validation(), timeout=STARTUP_TIMEOUT)
+    except TimeoutError:
+        elapsed = (time.perf_counter() - t0) * 1000
+        logger.warning(
+            "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
+            "system starts in PARTIAL READY state. Some dependencies may be unavailable.",
+            STARTUP_TIMEOUT,
+            elapsed,
+        )
+        system_ready = True
+        _readiness_reason = "partial_startup_timeout"
+        logger.info(
+            "[STARTUP GUARD] === System PARTIALLY READY (%.0fms, timeout) — accepting traffic ===",
+            elapsed,
+        )
+        return
     except Exception:
         elapsed = (time.perf_counter() - t0) * 1000
         logger.exception(
@@ -741,20 +763,12 @@ async def run_startup_guard() -> None:
             "system_ready remains False. Container stays alive for health probes.",
             elapsed,
         )
-        # If any critical step (config, DB, migrations) fails, we still crash.
-        # This ensures core integrity. The readiness probe will keep returning 503.
-        # If any critical step (config, DB, migrations) fails, we do NOT crash the process.
-        # Instead, we keep system_ready = False. The readiness probe will keep returning 503.
-        # This allows the container to stay alive and potentially recover if the external dependency (DB) comes back.
-        # The global exception handler in main.py will handle requests by returning 503.
-        return  # Do not re-raise, allow the process to continue in an unready state
-
-    if not critical_ok:
         return
 
     # Atomic success: only reached if all critical steps above passed
     elapsed = (time.perf_counter() - t0) * 1000
     system_ready = True
+    _readiness_reason = "ok"
     logger.info(
         "[STARTUP GUARD] === System READY (%.0fms) — accepting traffic ===",
         elapsed,

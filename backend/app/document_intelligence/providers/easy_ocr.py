@@ -83,7 +83,7 @@ class EasyOcrProvider(OcrProviderBase):
                 result = self._reader.readtext(tmp_path)
                 text_parts = []
                 confidences = []
-                for bbox, text, confidence in result:
+                for _bbox, text, confidence in result:
                     text_parts.append(str(text))
                     confidences.append(float(confidence))
 

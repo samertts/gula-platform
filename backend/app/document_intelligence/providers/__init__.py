@@ -5,9 +5,9 @@ from .paddle_ocr import PaddleOcrProvider
 from .tesseract import TesseractProvider
 
 __all__ = [
+    "EasyOcrProvider",
     "OcrProviderBase",
     "OcrProviderManager",
-    "TesseractProvider",
     "PaddleOcrProvider",
-    "EasyOcrProvider",
+    "TesseractProvider",
 ]

@@ -89,6 +89,37 @@ def upgrade() -> None:
         op.create_index("ix_pharmacy_drug_catalog_atc_code", "pharmacy_drug_catalog", ["atc_code"])
         op.create_index("ix_pharmacy_drug_catalog_generic_name", "pharmacy_drug_catalog", ["generic_name"])
 
+    # ── Drug Suppliers ────────────────────────────────────────────────────────
+    if not _table_exists("pharmacy_drug_suppliers"):
+        op.create_table(
+            "pharmacy_drug_suppliers",
+            sa.Column("id", sa.Integer(), nullable=False),
+            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("supplier_code", sa.String(50), nullable=False),
+            sa.Column("supplier_name", sa.String(200), nullable=False),
+            sa.Column("supplier_name_ar", sa.String(200), nullable=True),
+            sa.Column("contact_person", sa.String(200), nullable=True),
+            sa.Column("phone", sa.String(20), nullable=True),
+            sa.Column("email", sa.String(100), nullable=True),
+            sa.Column("address", sa.String(500), nullable=True),
+            sa.Column("license_number", sa.String(100), nullable=True),
+            sa.Column("contract_start", sa.Date(), nullable=True),
+            sa.Column("contract_end", sa.Date(), nullable=True),
+            sa.Column("payment_terms", sa.String(200), nullable=True),
+            sa.Column("is_active", sa.Boolean(), default=True),
+            sa.Column("sync_id", sa.String(26), unique=True),
+            sa.Column("created_by", sa.Integer(), nullable=True),
+            sa.Column("updated_by", sa.Integer(), nullable=True),
+            sa.Column("version", sa.Integer(), default=1, nullable=False),
+            sa.Column("is_deleted", sa.Boolean(), default=False, nullable=False),
+            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("lab_id", "supplier_code", name="uq_pharmacy_supplier_code"),
+        )
+        op.create_index("ix_pharmacy_drug_suppliers_lab_id", "pharmacy_drug_suppliers", ["lab_id"])
+
     # ── Drug Batches ──────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_drug_batches"):
         op.create_table(
@@ -128,37 +159,6 @@ def upgrade() -> None:
         op.create_index("ix_pharmacy_drug_batches_drug_id", "pharmacy_drug_batches", ["drug_id"])
         op.create_index("ix_pharmacy_drug_batches_expiry", "pharmacy_drug_batches", ["expiry_date"])
         op.create_index("ix_pharmacy_batch_expiry_active", "pharmacy_drug_batches", ["expiry_date", "status"])
-
-    # ── Drug Suppliers ────────────────────────────────────────────────────────
-    if not _table_exists("pharmacy_drug_suppliers"):
-        op.create_table(
-            "pharmacy_drug_suppliers",
-            sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("supplier_code", sa.String(50), nullable=False),
-            sa.Column("supplier_name", sa.String(200), nullable=False),
-            sa.Column("supplier_name_ar", sa.String(200), nullable=True),
-            sa.Column("contact_person", sa.String(200), nullable=True),
-            sa.Column("phone", sa.String(20), nullable=True),
-            sa.Column("email", sa.String(100), nullable=True),
-            sa.Column("address", sa.String(500), nullable=True),
-            sa.Column("license_number", sa.String(100), nullable=True),
-            sa.Column("contract_start", sa.Date(), nullable=True),
-            sa.Column("contract_end", sa.Date(), nullable=True),
-            sa.Column("payment_terms", sa.String(200), nullable=True),
-            sa.Column("is_active", sa.Boolean(), default=True),
-            sa.Column("sync_id", sa.String(26), unique=True),
-            sa.Column("created_by", sa.Integer(), nullable=True),
-            sa.Column("updated_by", sa.Integer(), nullable=True),
-            sa.Column("version", sa.Integer(), default=1, nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), default=False, nullable=False),
-            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.PrimaryKeyConstraint("id"),
-            sa.UniqueConstraint("lab_id", "supplier_code", name="uq_pharmacy_supplier_code"),
-        )
-        op.create_index("ix_pharmacy_drug_suppliers_lab_id", "pharmacy_drug_suppliers", ["lab_id"])
 
     # ── Prescriptions ─────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_prescriptions"):

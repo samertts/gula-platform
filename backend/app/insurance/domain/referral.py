@@ -10,14 +10,28 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, Enum as SAEnum, ForeignKey, Index,
-    Integer, JSON, String, Text,
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC
 from app.insurance.domain.enums import (
-    ReferralPriority, ReferralStatus, ReferralType, ValidationMethod,
+    ReferralPriority,
+    ReferralStatus,
+    ReferralType,
+    ValidationMethod,
 )
 from app.insurance.domain.models import InsBase
 
@@ -76,7 +90,7 @@ class InsuranceReferral(InsBase):
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
     cancellation_reason = Column(Text, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -115,7 +129,7 @@ class ReferralHistory(InsBase):
     changed_by = Column(Integer, nullable=True, index=True)
     change_reason = Column(Text, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
@@ -155,7 +169,7 @@ class ReferralValidation(InsBase):
     is_valid = Column(Boolean, default=False)
 
     failure_reason = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 

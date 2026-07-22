@@ -328,14 +328,13 @@ async def evaluate_result(
     current_user=Depends(get_current_user),
 ):
     _require_doctor(current_user)
-    result = await cds.generate_clinical_guidance(
+    return await cds.generate_clinical_guidance(
         test_name=body.test_name,
         value=body.value,
         unit=body.unit,
         normal_low=body.normal_low,
         normal_high=body.normal_high,
     )
-    return result
 
 
 @router.post("/cds/evaluate-order", summary="Evaluate an entire order's results")
@@ -344,12 +343,11 @@ async def evaluate_order(
     current_user=Depends(get_current_user),
 ):
     _require_doctor(current_user)
-    result = await cds.evaluate_order(
+    return await cds.evaluate_order(
         results=body.results,
         patient_age=body.patient_age,
         patient_gender=body.patient_gender,
     )
-    return result
 
 
 # ─── Governance Routes ────────────────────────────────────────────────────

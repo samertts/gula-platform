@@ -1,6 +1,5 @@
 from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
@@ -9,8 +8,12 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.insurance.domain.enums import AppealStatus, ClaimStatus, ClaimType, PaymentStatus
 from app.insurance.domain.models import (
-    Appeal, Coverage, InsuranceClaim, InsuranceClaimItem,
-    InsurancePayment, InsuranceProvider,
+    Appeal,
+    Coverage,
+    InsuranceClaim,
+    InsuranceClaimItem,
+    InsurancePayment,
+    InsuranceProvider,
 )
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
@@ -21,42 +24,42 @@ router = APIRouter(prefix="/claims", tags=["insurance-claims"])
 
 class ClaimItemSchema(BaseModel):
     service_code: str
-    service_name: Optional[str] = None
-    service_category: Optional[str] = None
-    loinc_code: Optional[str] = None
-    cpt_code: Optional[str] = None
+    service_name: str | None = None
+    service_category: str | None = None
+    loinc_code: str | None = None
+    cpt_code: str | None = None
     quantity: int = Field(default=1, ge=1)
     unit_price: Decimal = Field(..., gt=0)
     billed_amount: Decimal = Field(..., gt=0)
-    diagnosis_code: Optional[str] = None
-    modifier: Optional[str] = None
-    place_of_service: Optional[str] = None
+    diagnosis_code: str | None = None
+    modifier: str | None = None
+    place_of_service: str | None = None
 
 
 class ClaimCreate(BaseModel):
     coverage_id: int
     patient_id: int
     provider_id: int
-    order_id: Optional[int] = None
-    authorization_id: Optional[int] = None
-    referral_id: Optional[int] = None
+    order_id: int | None = None
+    authorization_id: int | None = None
+    referral_id: int | None = None
     claim_type: ClaimType = ClaimType.LABORATORY
-    service_start_date: Optional[date] = None
-    service_end_date: Optional[date] = None
-    diagnosis_code_primary: Optional[str] = None
-    diagnosis_code_secondary: Optional[list[str]] = None
-    icd10_code: Optional[str] = None
-    idempotency_key: Optional[str] = None
+    service_start_date: date | None = None
+    service_end_date: date | None = None
+    diagnosis_code_primary: str | None = None
+    diagnosis_code_secondary: list[str] | None = None
+    icd10_code: str | None = None
+    idempotency_key: str | None = None
     items: list[ClaimItemSchema] = Field(..., min_length=1)
 
 
 class ClaimUpdate(BaseModel):
-    service_start_date: Optional[date] = None
-    service_end_date: Optional[date] = None
-    diagnosis_code_primary: Optional[str] = None
-    diagnosis_code_secondary: Optional[list[str]] = None
-    icd10_code: Optional[str] = None
-    items: Optional[list[ClaimItemSchema]] = None
+    service_start_date: date | None = None
+    service_end_date: date | None = None
+    diagnosis_code_primary: str | None = None
+    diagnosis_code_secondary: list[str] | None = None
+    icd10_code: str | None = None
+    items: list[ClaimItemSchema] | None = None
 
 
 class ClaimItemResponse(BaseModel):
@@ -65,20 +68,20 @@ class ClaimItemResponse(BaseModel):
     id: int
     claim_id: int
     service_code: str
-    service_name: Optional[str] = None
-    service_category: Optional[str] = None
-    loinc_code: Optional[str] = None
-    cpt_code: Optional[str] = None
+    service_name: str | None = None
+    service_category: str | None = None
+    loinc_code: str | None = None
+    cpt_code: str | None = None
     quantity: int
     unit_price: Decimal
     billed_amount: Decimal
-    allowed_amount: Optional[Decimal] = None
-    paid_amount: Optional[Decimal] = None
-    copay_amount: Optional[Decimal] = None
-    deductible_amount: Optional[Decimal] = None
-    patient_responsibility: Optional[Decimal] = None
-    diagnosis_code: Optional[str] = None
-    adjudication_status: Optional[str] = None
+    allowed_amount: Decimal | None = None
+    paid_amount: Decimal | None = None
+    copay_amount: Decimal | None = None
+    deductible_amount: Decimal | None = None
+    patient_responsibility: Decimal | None = None
+    diagnosis_code: str | None = None
+    adjudication_status: str | None = None
 
 
 class ClaimResponse(BaseModel):
@@ -89,40 +92,40 @@ class ClaimResponse(BaseModel):
     coverage_id: int
     patient_id: int
     provider_id: int
-    order_id: Optional[int] = None
-    authorization_id: Optional[int] = None
-    referral_id: Optional[int] = None
+    order_id: int | None = None
+    authorization_id: int | None = None
+    referral_id: int | None = None
     claim_number: str
     claim_type: ClaimType
     status: ClaimStatus
-    service_start_date: Optional[date] = None
-    service_end_date: Optional[date] = None
-    submitted_date: Optional[date] = None
-    adjudicated_date: Optional[date] = None
-    paid_date: Optional[date] = None
+    service_start_date: date | None = None
+    service_end_date: date | None = None
+    submitted_date: date | None = None
+    adjudicated_date: date | None = None
+    paid_date: date | None = None
     total_billed: Decimal
-    total_allowed: Optional[Decimal] = None
-    total_paid: Optional[Decimal] = None
-    total_deductible: Optional[Decimal] = None
-    total_copay: Optional[Decimal] = None
-    total_patient_responsibility: Optional[Decimal] = None
+    total_allowed: Decimal | None = None
+    total_paid: Decimal | None = None
+    total_deductible: Decimal | None = None
+    total_copay: Decimal | None = None
+    total_patient_responsibility: Decimal | None = None
     currency: str
-    diagnosis_code_primary: Optional[str] = None
-    icd10_code: Optional[str] = None
-    adjudication_code: Optional[str] = None
-    adjudication_notes: Optional[str] = None
-    rejection_reason: Optional[str] = None
-    external_ref: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    diagnosis_code_primary: str | None = None
+    icd10_code: str | None = None
+    adjudication_code: str | None = None
+    adjudication_notes: str | None = None
+    rejection_reason: str | None = None
+    external_ref: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
     items: list[ClaimItemResponse] = []
 
 
 class AppealCreate(BaseModel):
     reason: str
-    details: Optional[str] = None
-    requested_amount: Optional[Decimal] = None
-    supporting_documents: Optional[list[dict]] = None
+    details: str | None = None
+    requested_amount: Decimal | None = None
+    supporting_documents: list[dict] | None = None
 
 
 class AppealResponse(BaseModel):
@@ -135,18 +138,18 @@ class AppealResponse(BaseModel):
     appeal_number: str
     status: AppealStatus
     reason: str
-    details: Optional[str] = None
-    requested_amount: Optional[Decimal] = None
-    reviewed_by: Optional[str] = None
-    review_notes: Optional[str] = None
-    decision: Optional[str] = None
-    decision_amount: Optional[Decimal] = None
-    decision_date: Optional[date] = None
+    details: str | None = None
+    requested_amount: Decimal | None = None
+    reviewed_by: str | None = None
+    review_notes: str | None = None
+    decision: str | None = None
+    decision_amount: Decimal | None = None
+    decision_date: date | None = None
     escalation_level: int
     filed_date: date
-    resolved_date: Optional[date] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    resolved_date: date | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class PaymentResponse(BaseModel):
@@ -160,13 +163,13 @@ class PaymentResponse(BaseModel):
     status: PaymentStatus
     amount: Decimal
     currency: str
-    payment_method: Optional[str] = None
-    payment_date: Optional[date] = None
-    reference_number: Optional[str] = None
-    adjustment_amount: Optional[Decimal] = None
-    adjustment_reason: Optional[str] = None
-    notes: Optional[str] = None
-    created_at: Optional[str] = None
+    payment_method: str | None = None
+    payment_date: date | None = None
+    reference_number: str | None = None
+    adjustment_amount: Decimal | None = None
+    adjustment_reason: str | None = None
+    notes: str | None = None
+    created_at: str | None = None
 
 
 def _claim_to_response(claim: InsuranceClaim) -> ClaimResponse:
@@ -242,12 +245,12 @@ def _generate_appeal_number(db: Session, lab_id: int) -> str:
 
 @router.get("", response_model=list[ClaimResponse])
 def list_claims(
-    status: Optional[ClaimStatus] = Query(None),
-    patient_id: Optional[int] = Query(None),
-    provider_id: Optional[int] = Query(None),
-    coverage_id: Optional[int] = Query(None),
-    date_from: Optional[date] = Query(None),
-    date_to: Optional[date] = Query(None),
+    status: ClaimStatus | None = Query(None),
+    patient_id: int | None = Query(None),
+    provider_id: int | None = Query(None),
+    coverage_id: int | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -471,9 +474,9 @@ def validate_claim(
 @router.post("/{claim_id}/adjudicate", response_model=ClaimResponse)
 def adjudicate_claim(
     claim_id: int,
-    allowed_amount: Optional[Decimal] = Query(None),
-    adjudication_code: Optional[str] = Query(None),
-    adjudication_notes: Optional[str] = Query(None),
+    allowed_amount: Decimal | None = Query(None),
+    adjudication_code: str | None = Query(None),
+    adjudication_notes: str | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -518,7 +521,7 @@ def adjudicate_claim(
 @router.post("/{claim_id}/approve", response_model=ClaimResponse)
 def approve_claim(
     claim_id: int,
-    paid_amount: Optional[Decimal] = Query(None),
+    paid_amount: Decimal | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

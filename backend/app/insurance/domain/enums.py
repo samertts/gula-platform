@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class InsuranceType(str, Enum):
+class InsuranceType(StrEnum):
     PUBLIC = "public"
     PRIVATE = "private"
     SOCIAL = "social"
@@ -14,7 +14,7 @@ class InsuranceType(str, Enum):
     OTHER = "other"
 
 
-class CoverageStatus(str, Enum):
+class CoverageStatus(StrEnum):
     ACTIVE = "active"
     SUSPENDED = "suspended"
     EXPIRED = "expired"
@@ -23,7 +23,7 @@ class CoverageStatus(str, Enum):
     TERMINATED = "terminated"
 
 
-class PolicyStatus(str, Enum):
+class PolicyStatus(StrEnum):
     DRAFT = "draft"
     ACTIVE = "active"
     SUSPENDED = "suspended"
@@ -31,7 +31,7 @@ class PolicyStatus(str, Enum):
     EXPIRED = "expired"
 
 
-class CoverageDetermination(str, Enum):
+class CoverageDetermination(StrEnum):
     COVERED = "covered"
     NOT_COVERED = "not_covered"
     PARTIAL = "partial"
@@ -40,7 +40,7 @@ class CoverageDetermination(str, Enum):
     ERROR = "error"
 
 
-class ClaimStatus(str, Enum):
+class ClaimStatus(StrEnum):
     DRAFT = "draft"
     VALIDATED = "validated"
     SUBMITTED = "submitted"
@@ -55,7 +55,7 @@ class ClaimStatus(str, Enum):
     UNDER_REVIEW = "under_review"
 
 
-class ClaimType(str, Enum):
+class ClaimType(StrEnum):
     INSTITUTIONAL = "institutional"
     PROFESSIONAL = "professional"
     PHARMACY = "pharmacy"
@@ -65,7 +65,7 @@ class ClaimType(str, Enum):
     VISION = "vision"
 
 
-class AuthorizationStatus(str, Enum):
+class AuthorizationStatus(StrEnum):
     REQUESTED = "requested"
     APPROVED = "approved"
     DENIED = "denied"
@@ -74,7 +74,7 @@ class AuthorizationStatus(str, Enum):
     EXPIRED = "expired"
 
 
-class ReferralStatus(str, Enum):
+class ReferralStatus(StrEnum):
     DRAFT = "draft"
     SENT = "sent"
     RECEIVED = "received"
@@ -85,7 +85,7 @@ class ReferralStatus(str, Enum):
     EXPIRED = "expired"
 
 
-class PaymentStatus(str, Enum):
+class PaymentStatus(StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -94,7 +94,7 @@ class PaymentStatus(str, Enum):
     ON_HOLD = "on_hold"
 
 
-class SettlementStatus(str, Enum):
+class SettlementStatus(StrEnum):
     PENDING = "pending"
     RECONCILED = "reconciled"
     DISPUTED = "disputed"
@@ -102,14 +102,14 @@ class SettlementStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class FraudSeverity(str, Enum):
+class FraudSeverity(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
 
-class FraudStatus(str, Enum):
+class FraudStatus(StrEnum):
     DETECTED = "detected"
     INVESTIGATING = "investigating"
     CONFIRMED = "confirmed"
@@ -118,7 +118,7 @@ class FraudStatus(str, Enum):
     RESOLVED = "resolved"
 
 
-class AppealStatus(str, Enum):
+class AppealStatus(StrEnum):
     FILED = "filed"
     UNDER_REVIEW = "under_review"
     APPROVED = "approved"
@@ -127,7 +127,7 @@ class AppealStatus(str, Enum):
     ESCALATED = "escalated"
 
 
-class ProviderContractStatus(str, Enum):
+class ProviderContractStatus(StrEnum):
     DRAFT = "draft"
     ACTIVE = "active"
     SUSPENDED = "suspended"
@@ -135,7 +135,7 @@ class ProviderContractStatus(str, Enum):
     EXPIRED = "expired"
 
 
-class ServiceCategory(str, Enum):
+class ServiceCategory(StrEnum):
     CONSULTATION = "consultation"
     DIAGNOSTIC = "diagnostic"
     LABORATORY = "laboratory"
@@ -152,7 +152,7 @@ class ServiceCategory(str, Enum):
     OTHER = "other"
 
 
-class CardStatus(str, Enum):
+class CardStatus(StrEnum):
     ACTIVE = "active"
     SUSPENDED = "suspended"
     EXPIRED = "expired"
@@ -160,7 +160,7 @@ class CardStatus(str, Enum):
     LOST = "lost"
 
 
-class MemberStatus(str, Enum):
+class MemberStatus(StrEnum):
     ACTIVE = "active"
     SUSPENDED = "suspended"
     EXPIRED = "expired"
@@ -168,7 +168,7 @@ class MemberStatus(str, Enum):
     PENDING = "pending"
 
 
-class RelationType(str, Enum):
+class RelationType(StrEnum):
     SPOUSE = "spouse"
     CHILD = "child"
     PARENT = "parent"
@@ -176,32 +176,32 @@ class RelationType(str, Enum):
     OTHER = "other"
 
 
-class ReferralType(str, Enum):
+class ReferralType(StrEnum):
     DOCTOR = "doctor"
     LABORATORY = "laboratory"
     RADIOLOGY = "radiology"
     SPECIALIST = "specialist"
 
 
-class ReferralPriority(str, Enum):
+class ReferralPriority(StrEnum):
     ROUTINE = "routine"
     URGENT = "urgent"
     EMERGENCY = "emergency"
 
 
-class NetworkTier(str, Enum):
+class NetworkTier(StrEnum):
     TIER1 = "tier1"
     TIER2 = "tier2"
     TIER3 = "tier3"
 
 
-class CoverageLevel(str, Enum):
+class CoverageLevel(StrEnum):
     FULL = "full"
     PARTIAL = "partial"
     NONE = "none"
 
 
-class AccreditationStatus(str, Enum):
+class AccreditationStatus(StrEnum):
     ACTIVE = "active"
     EXPIRED = "expired"
     SUSPENDED = "suspended"
@@ -209,7 +209,7 @@ class AccreditationStatus(str, Enum):
     PENDING = "pending"
 
 
-class ValidationMethod(str, Enum):
+class ValidationMethod(StrEnum):
     QR_SCAN = "qr_scan"
     MANUAL = "manual"
     API = "api"

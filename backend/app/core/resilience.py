@@ -162,7 +162,7 @@ def retry_async(
 # ── Safe call (never raises) ──────────────────────────────────────────────────
 
 
-def safe_call(fn: Callable[..., T], *args, default: T | None = None, **kwargs) -> T | None:
+def safe_call[T](fn: Callable[..., T], *args, default: T | None = None, **kwargs) -> T | None:
     """Call fn(*args, **kwargs) and return default on ANY exception.
 
     Use for non-critical enrichment paths where a failure should degrade
@@ -190,7 +190,7 @@ async def safe_call_async(fn: Callable[..., Any], *args, default: Any = None, **
 # ── Timeout wrapper ───────────────────────────────────────────────────────────
 
 
-def call_with_timeout(fn: Callable[..., T], *args, timeout: float = 5.0, **kwargs) -> T:
+def call_with_timeout[T](fn: Callable[..., T], *args, timeout: float = 5.0, **kwargs) -> T:
     """Call fn with a wall-clock timeout using threading.
 
     Raises TimeoutError if fn does not complete within `timeout` seconds.

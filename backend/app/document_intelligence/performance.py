@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
 import hashlib
 import logging
 import time
 from collections import OrderedDict
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +82,7 @@ class AsyncMemoizer:
     def invalidate(self, func: Callable | None = None):
         if func:
             prefix = func.__name__
-            for key in self._cache.keys():
+            for key in self._cache:
                 if key.startswith(hashlib.md5(prefix.encode()).hexdigest()):
                     self._cache.delete(key)
         else:
@@ -162,10 +164,8 @@ class BatchAggregator:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         await self._flush()
 
     async def _flush_loop(self):
@@ -209,8 +209,7 @@ class ProcessingTimeTracker:
     async def track(self, operation: str, func: Callable, *args: Any, **kwargs: Any) -> Any:
         start = time.time()
         try:
-            result = await func(*args, **kwargs)
-            return result
+            return await func(*args, **kwargs)
         finally:
             elapsed = (time.time() - start) * 1000
             if operation not in self._timings:

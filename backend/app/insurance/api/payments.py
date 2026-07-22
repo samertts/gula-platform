@@ -1,17 +1,18 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from uuid import uuid4
-
 from app.insurance.domain.enums import ClaimStatus, PaymentStatus, SettlementStatus
 from app.insurance.domain.models import (
-    InsuranceClaim, InsurancePayment, InsuranceProvider, Settlement,
+    InsuranceClaim,
+    InsurancePayment,
+    InsuranceProvider,
+    Settlement,
 )
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
@@ -25,12 +26,12 @@ class PaymentCreate(BaseModel):
     payer_id: int
     amount: Decimal
     currency: str = "IQD"
-    payment_method: Optional[str] = None
-    payment_date: Optional[date] = None
-    reference_number: Optional[str] = None
-    adjustment_amount: Optional[Decimal] = Decimal("0")
-    adjustment_reason: Optional[str] = None
-    notes: Optional[str] = None
+    payment_method: str | None = None
+    payment_date: date | None = None
+    reference_number: str | None = None
+    adjustment_amount: Decimal | None = Decimal("0")
+    adjustment_reason: str | None = None
+    notes: str | None = None
 
 
 class PaymentResponse(BaseModel):
@@ -44,21 +45,21 @@ class PaymentResponse(BaseModel):
     status: PaymentStatus
     amount: Decimal
     currency: str
-    payment_method: Optional[str] = None
-    payment_date: Optional[date] = None
-    reference_number: Optional[str] = None
-    adjustment_amount: Optional[Decimal] = None
-    adjustment_reason: Optional[str] = None
-    notes: Optional[str] = None
-    created_at: Optional[str] = None
-    processed_at: Optional[str] = None
+    payment_method: str | None = None
+    payment_date: date | None = None
+    reference_number: str | None = None
+    adjustment_amount: Decimal | None = None
+    adjustment_reason: str | None = None
+    notes: str | None = None
+    created_at: str | None = None
+    processed_at: str | None = None
 
 
 class SettlementCreate(BaseModel):
     provider_id: int
     period_start: date
     period_end: date
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class SettlementResponse(BaseModel):
@@ -73,18 +74,18 @@ class SettlementResponse(BaseModel):
     settlement_number: str
     total_claims: int
     total_billed: Decimal
-    total_allowed: Optional[Decimal] = None
-    total_paid: Optional[Decimal] = None
-    total_adjustments: Optional[Decimal] = None
-    total_deductible: Optional[Decimal] = None
-    total_copay: Optional[Decimal] = None
-    net_amount: Optional[Decimal] = None
+    total_allowed: Decimal | None = None
+    total_paid: Decimal | None = None
+    total_adjustments: Decimal | None = None
+    total_deductible: Decimal | None = None
+    total_copay: Decimal | None = None
+    net_amount: Decimal | None = None
     currency: str
-    notes: Optional[str] = None
-    reconciled_at: Optional[str] = None
-    paid_at: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    notes: str | None = None
+    reconciled_at: str | None = None
+    paid_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class BudgetCreate(BaseModel):
@@ -92,7 +93,7 @@ class BudgetCreate(BaseModel):
     fiscal_year: int
     total_budget: Decimal
     currency: str = "IQD"
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class BudgetResponse(BaseModel):
@@ -109,11 +110,11 @@ def _generate_settlement_number() -> str:
 
 @router.get("", response_model=list[PaymentResponse])
 def list_payments(
-    claim_id: Optional[int] = Query(None),
-    payer_id: Optional[int] = Query(None),
-    status: Optional[PaymentStatus] = Query(None),
-    date_from: Optional[date] = Query(None),
-    date_to: Optional[date] = Query(None),
+    claim_id: int | None = Query(None),
+    payer_id: int | None = Query(None),
+    status: PaymentStatus | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -230,8 +231,8 @@ def reverse_payment(
 @router.post("/{payment_id}/reconcile", response_model=PaymentResponse)
 def reconcile_payment(
     payment_id: int,
-    reference_number: Optional[str] = Query(None),
-    notes: Optional[str] = Query(None),
+    reference_number: str | None = Query(None),
+    notes: str | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -267,10 +268,10 @@ def reconcile_payment(
 
 @router.get("/settlements", response_model=list[SettlementResponse])
 def list_settlements(
-    provider_id: Optional[int] = Query(None),
-    status: Optional[SettlementStatus] = Query(None),
-    date_from: Optional[date] = Query(None),
-    date_to: Optional[date] = Query(None),
+    provider_id: int | None = Query(None),
+    status: SettlementStatus | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -429,7 +430,7 @@ def reconcile_settlement(
 @router.post("/settlements/{settlement_id}/close", response_model=SettlementResponse)
 def close_settlement(
     settlement_id: int,
-    paid_at: Optional[date] = Query(None),
+    paid_at: date | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -517,8 +518,8 @@ def settlement_report(
 
 @router.get("/budgets", response_model=list[dict])
 def list_budgets(
-    provider_id: Optional[int] = Query(None),
-    fiscal_year: Optional[int] = Query(None),
+    provider_id: int | None = Query(None),
+    fiscal_year: int | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -526,13 +527,11 @@ def list_budgets(
 ):
     from app.models.audit_log import AuditLog
 
-    budget_entries = db.query(AuditLog).filter(
+    db.query(AuditLog).filter(
         AuditLog.action == "insurance.budget",
         AuditLog.details.ilike(f"%provider_id={provider_id}%") if provider_id else True,
     ).order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all() if False else []
 
-    provider_label = f"&provider_id={provider_id}" if provider_id else ""
-    budgets = []
     stored = db.execute(
         f"SELECT id, provider_id, fiscal_year, total_budget, currency, spent, notes, created_at "
         f"FROM ins_budgets WHERE lab_id = :lab_id"
@@ -657,7 +656,7 @@ def get_budget(
 def track_budget_spend(
     budget_id: int,
     amount: Decimal = Query(..., gt=0),
-    description: Optional[str] = Query(None),
+    description: str | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -702,7 +701,7 @@ def track_budget_spend(
 def profit_loss_report(
     date_from: date = Query(...),
     date_to: date = Query(...),
-    provider_id: Optional[int] = Query(None),
+    provider_id: int | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

@@ -48,7 +48,7 @@ class GitHubActionsGenerator(BaseGenerator):
                 needs[jn] = [job_names[i - 1]]
 
         needs_block = ""
-        for jn, deps in needs.items():
+        for _jn, deps in needs.items():
             needs_block += f"\n      needs: {deps}"
 
         jobs_block = ""
@@ -225,7 +225,7 @@ class ComposeGenerator(BaseGenerator):
             services_block += "\n".join(svc_lines) + "\n"
 
         volume_names = []
-        for name, svc in services.items():
+        for _name, svc in services.items():
             for v in svc.get("volumes", []):
                 vol_name = v.split(":")[0]
                 if vol_name and vol_name == vol_name.lower() and "\\" not in vol_name:

@@ -96,12 +96,18 @@ async def list_tasks(
 ):
     svc = _get_service()
     filters = {}
-    if status: filters["status"] = status
-    if priority: filters["priority"] = priority
-    if category: filters["category"] = category
-    if assignee: filters["assignee"] = assignee
-    if queue_id: filters["queue_id"] = queue_id
-    if search: filters["search"] = search
+    if status:
+        filters["status"] = status
+    if priority:
+        filters["priority"] = priority
+    if category:
+        filters["category"] = category
+    if assignee:
+        filters["assignee"] = assignee
+    if queue_id:
+        filters["queue_id"] = queue_id
+    if search:
+        filters["search"] = search
     tasks = await svc.list_tasks(skip=skip, limit=limit, filters=filters)
     return {"items": tasks, "total": len(tasks), "skip": skip, "limit": limit}
 

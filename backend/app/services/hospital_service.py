@@ -1,14 +1,13 @@
 """Hospital service — business logic for the National HIS Platform."""
 
 from datetime import datetime
-
-from app.domain.exceptions import ConflictError, NotFoundError
 from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.domain.exceptions import ConflictError, NotFoundError
 
 from ..hospital.models import (
     Bed,
@@ -25,8 +24,8 @@ from ..hospital.models import (
     Room,
     Unit,
 )
-from ..models.organization import Appointment
 from ..models.patient import Patient
+from ..national.domain.appointment import Appointment
 from ..services.audit_service import log_action
 
 

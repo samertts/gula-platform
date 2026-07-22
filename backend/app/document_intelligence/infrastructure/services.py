@@ -12,9 +12,9 @@ from ..domain.entities import (
     DocumentEvent,
     DocumentLifecycleRecord,
     DocumentReview,
-    GovernmentDocument,
     GovernanceEvent,
     GovernancePolicy,
+    GovernmentDocument,
     KnowledgeGraphEdge,
     PipelineHealth,
     ScannedDocument,
@@ -85,7 +85,7 @@ class InfrastructureVersioningService:
         doc = await self._doc_repo.get(document_id)
         if doc is None:
             raise DocumentIntelligenceError(f"Document {document_id} not found")
-        checksum = str(hash(data))
+        str(hash(data))
         await self._storage.save(data, doc.storage_path, encrypt=True)
         return doc
 
@@ -108,7 +108,7 @@ class InfrastructureDocumentLifecycleManager:
         if not doc:
             raise DocumentIntelligenceError("Document not found")
         start = datetime.utcnow()
-        end = start + timedelta(days=365 * 7)
+        start + timedelta(days=365 * 7)
         await self._retention.save(document_id, RetentionPolicy.standard_7y)
         await self._lifecycle.save(DocumentLifecycleRecord(
             document_id=document_id,
@@ -521,7 +521,7 @@ class InfrastructureAccessControlService:
             return False
         hierarchy = {"viewer": 0, "commenter": 1, "reviewer": 2, "approver": 3, "editor": 4, "owner": 5}
         required = hierarchy.get(permission, 0)
-        actual = hierarchy.get(role.value if hasattr(role, 'value') else str(role), -1)
+        actual = hierarchy.get(role.value if hasattr(role, "value") else str(role), -1)
         return actual >= required
 
     async def grant_access(self, document_id: UUID, user_id: str, role: CollaborationRole) -> None:

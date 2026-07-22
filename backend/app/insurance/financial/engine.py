@@ -24,12 +24,19 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.insurance.domain.enums import (
-    ClaimStatus, PaymentStatus, SettlementStatus,
+    ClaimStatus,
+    PaymentStatus,
+    SettlementStatus,
 )
 from app.insurance.domain.models import (
-    Coverage, FeeScheduleItem, InsuranceClaim,
-    InsuranceClaimItem, InsurancePayment, InsuranceProvider,
-    InsurancePolicy, Settlement,
+    Coverage,
+    FeeScheduleItem,
+    InsuranceClaim,
+    InsuranceClaimItem,
+    InsurancePayment,
+    InsurancePolicy,
+    InsuranceProvider,
+    Settlement,
 )
 
 logger = logging.getLogger("gula.insurance.financial")
@@ -237,7 +244,7 @@ class ClaimAdjudicator:
     def calculate_allowed_amounts(self, item: InsuranceClaimItem) -> dict[str, Any]:
         fee = self._db.query(FeeScheduleItem).filter(
             FeeScheduleItem.service_code == item.service_code,
-            FeeScheduleItem.is_active == True,
+            FeeScheduleItem.is_active,
         ).first()
 
         if fee and fee.allowed_amount:
@@ -274,7 +281,7 @@ class ClaimAdjudicator:
         if copay_pct <= 0:
             fee_item = self._db.query(FeeScheduleItem).filter(
                 FeeScheduleItem.service_code == item.service_code,
-                FeeScheduleItem.is_active == True,
+                FeeScheduleItem.is_active,
             ).first()
             if fee_item and fee_item.copay_amount:
                 copay = min(fee_item.copay_amount, amount_after_deductible)
@@ -290,7 +297,7 @@ class ClaimAdjudicator:
     def apply_coinsurance(self, item: InsuranceClaimItem, coverage: Coverage, amount_after_copay: Decimal) -> dict[str, Any]:
         fee_item = self._db.query(FeeScheduleItem).filter(
             FeeScheduleItem.service_code == item.service_code,
-            FeeScheduleItem.is_active == True,
+            FeeScheduleItem.is_active,
         ).first()
 
         coinsurance_pct = fee_item.coinsurance_percentage if fee_item and fee_item.coinsurance_percentage else 0.0
@@ -516,7 +523,7 @@ class PaymentProcessor:
                 ])
             return output.getvalue()
 
-        elif format == "json":
+        if format == "json":
             return json.dumps([
                 {
                     "payment_id": p.id,
@@ -560,7 +567,7 @@ class SettlementEngine:
     def create_settlement(
         self, provider_id: int, start: date, end: date,
     ) -> Settlement:
-        now = datetime.now(UTC)
+        datetime.now(UTC)
         settlement_number = f"STL-{provider_id}-{start.strftime('%Y%m%d')}-{end.strftime('%Y%m%d')}"
 
         settlement = Settlement(
@@ -751,7 +758,7 @@ class SettlementEngine:
             age = (today - ref).days
             amount = (c.total_allowed or c.total_billed or Decimal("0"))
 
-            for bucket_name, bucket in buckets.items():
+            for _bucket_name, bucket in buckets.items():
                 if bucket["min"] <= age and (bucket["max"] is None or age <= bucket["max"]):
                     bucket["count"] += 1
                     bucket["amount"] += amount
@@ -885,7 +892,7 @@ class BudgetManager:
         self._db = db_session
 
     def create_budget(self, fund_id: str, period: str, amount: Decimal) -> dict[str, Any]:
-        budget = {
+        return {
             "budget_id": f"BUD-{fund_id}-{period}-{uuid4().hex[:6].upper()}",
             "fund_id": fund_id,
             "period": period,
@@ -896,7 +903,6 @@ class BudgetManager:
             "created_at": datetime.now(UTC).isoformat(),
             "status": "active",
         }
-        return budget
 
     def track_spend(self, budget_id: str, claim: InsuranceClaim) -> dict[str, Any]:
         allowed = claim.total_allowed or Decimal("0")
@@ -1004,7 +1010,7 @@ class MonthlyClosingEngine:
             .count()
         )
 
-        closing = {
+        return {
             "closing_id": closing_id,
             "year": year,
             "month": month,
@@ -1024,7 +1030,6 @@ class MonthlyClosingEngine:
             "status": "completed",
             "closed_at": datetime.now(UTC).isoformat(),
         }
-        return closing
 
     def generate_trial_balance(self, period: dict[str, date]) -> dict[str, Any]:
         start = period["start"]

@@ -181,3 +181,99 @@ class TestSystemReadiness:
         # Redis failure post-startup → degraded, not totally down
         assert ready is True
         assert reason == "degraded_redis"
+
+
+# ── Test-mode bypass ──────────────────────────────────────────────────────────
+
+class TestTestModeBypass:
+    """Verify that run_startup_guard() sets system_ready=True in test mode."""
+
+    def setup_method(self):
+        from app.core import startup_guard
+        startup_guard.system_ready = False
+        startup_guard._readiness_reason = "startup_in_progress"
+
+    def teardown_method(self):
+        from app.core import startup_guard
+        startup_guard.system_ready = False
+        startup_guard._readiness_reason = "startup_in_progress"
+        # Restore RUNTIME_MODE if it was changed
+        os.environ.pop("RUNTIME_MODE", None)
+
+    def test_test_mode_sets_ready_immediately(self):
+        """run_startup_guard() should set system_ready=True immediately in test mode."""
+        import asyncio
+
+        from app.core import startup_guard
+
+        os.environ["RUNTIME_MODE"] = "test"
+
+        asyncio.run(startup_guard.run_startup_guard())
+
+        assert startup_guard.system_ready is True
+        assert startup_guard._readiness_reason == "test_mode"
+
+    def test_test_mode_skips_all_validation(self):
+        """In test mode, no external services should be contacted."""
+        import asyncio
+
+        from app.core import startup_guard
+
+        os.environ["RUNTIME_MODE"] = "test"
+
+        with patch("app.core.startup_guard.validate_config") as mock_val:
+            mock_val.side_effect = RuntimeError("should not be called")
+            asyncio.run(startup_guard.run_startup_guard())
+
+        # validate_config should NOT be called in test mode
+        mock_val.assert_not_called()
+        assert startup_guard.system_ready is True
+
+
+# ── Startup timeout fallback ──────────────────────────────────────────────────
+
+class TestStartupTimeout:
+    """Verify that run_startup_guard() times out and sets partial readiness."""
+
+    def setup_method(self):
+        from app.core import startup_guard
+        startup_guard.system_ready = False
+        startup_guard._readiness_reason = "startup_in_progress"
+
+    def teardown_method(self):
+        from app.core import startup_guard
+        startup_guard.system_ready = False
+        startup_guard._readiness_reason = "startup_in_progress"
+        os.environ.pop("STARTUP_TIMEOUT_SECONDS", None)
+
+    def test_timeout_sets_partial_ready(self):
+        """When startup validation times out, system_ready becomes True with reason."""
+        import asyncio
+
+        import app.config as cfg
+        from app.core import startup_guard
+
+        # Force non-test mode and short timeout.
+        # Both are read by run_startup_guard() from config module at call time.
+        saved_mode = cfg.RUNTIME_MODE
+        saved_timeout = cfg.STARTUP_TIMEOUT_SECONDS
+        cfg.RUNTIME_MODE = "api"
+        cfg.STARTUP_TIMEOUT_SECONDS = 2
+
+        # Mock wait_for_db to hang (never return) so the 2-second timeout fires.
+        async def _never_return(*args, **kwargs):
+            await asyncio.Event().wait()  # hangs forever
+
+        async def _run():
+            with patch.object(startup_guard, "wait_for_db", _never_return):
+                await startup_guard.run_startup_guard()
+
+        try:
+            asyncio.run(_run())
+            assert startup_guard.system_ready is True, "system_ready should be True after timeout"
+            assert startup_guard._readiness_reason == "partial_startup_timeout", (
+                f"expected 'partial_startup_timeout', got '{startup_guard._readiness_reason}'"
+            )
+        finally:
+            cfg.RUNTIME_MODE = saved_mode
+            cfg.STARTUP_TIMEOUT_SECONDS = saved_timeout

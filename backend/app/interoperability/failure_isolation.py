@@ -111,7 +111,7 @@ class RetryPolicy:
     jitter: bool = True
 
 
-async def retry_with_backoff(
+async def retry_with_backoff[T](
     op: Callable[[], Awaitable[T]],
     policy: RetryPolicy,
     *,

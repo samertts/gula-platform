@@ -1,6 +1,5 @@
 from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -9,7 +8,10 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.insurance.domain.enums import CoverageStatus
 from app.insurance.domain.models import (
-    BenefitPackage, BenefitUtilization, Coverage, DeductibleTracking,
+    BenefitPackage,
+    BenefitUtilization,
+    Coverage,
+    DeductibleTracking,
     InsurancePolicy,
 )
 from app.insurance.services.coverage_engine import CoverageValidator
@@ -23,35 +25,35 @@ router = APIRouter(prefix="/coverages", tags=["insurance-coverages"])
 class CoverageCreate(BaseModel):
     policy_id: int
     patient_id: int
-    dependent_id: Optional[int] = None
-    subscriber_relation: Optional[str] = None
+    dependent_id: int | None = None
+    subscriber_relation: str | None = None
     start_date: date
-    end_date: Optional[date] = None
-    copay_percentage: Optional[float] = None
-    deductible_amount: Optional[Decimal] = None
-    deductible_total: Optional[Decimal] = None
-    max_out_of_pocket: Optional[Decimal] = None
-    benefit_total: Optional[Decimal] = None
+    end_date: date | None = None
+    copay_percentage: float | None = None
+    deductible_amount: Decimal | None = None
+    deductible_total: Decimal | None = None
+    max_out_of_pocket: Decimal | None = None
+    benefit_total: Decimal | None = None
     network_status: str = "in_network"
     authorization_required: bool = False
     referral_required: bool = False
     pre_existing_wait_period: bool = False
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class CoverageUpdate(BaseModel):
-    end_date: Optional[date] = None
-    copay_percentage: Optional[float] = None
-    deductible_remaining: Optional[Decimal] = None
-    deductible_total: Optional[Decimal] = None
-    max_out_of_pocket_remaining: Optional[Decimal] = None
-    max_out_of_pocket_total: Optional[Decimal] = None
-    benefit_remaining: Optional[Decimal] = None
-    benefit_total: Optional[Decimal] = None
-    network_status: Optional[str] = None
-    authorization_required: Optional[bool] = None
-    referral_required: Optional[bool] = None
-    notes: Optional[str] = None
+    end_date: date | None = None
+    copay_percentage: float | None = None
+    deductible_remaining: Decimal | None = None
+    deductible_total: Decimal | None = None
+    max_out_of_pocket_remaining: Decimal | None = None
+    max_out_of_pocket_total: Decimal | None = None
+    benefit_remaining: Decimal | None = None
+    benefit_total: Decimal | None = None
+    network_status: str | None = None
+    authorization_required: bool | None = None
+    referral_required: bool | None = None
+    notes: str | None = None
 
 
 class CoverageResponse(BaseModel):
@@ -61,34 +63,34 @@ class CoverageResponse(BaseModel):
     lab_id: int
     policy_id: int
     patient_id: int
-    dependent_id: Optional[int] = None
+    dependent_id: int | None = None
     status: CoverageStatus
-    subscriber_relation: Optional[str] = None
+    subscriber_relation: str | None = None
     start_date: date
-    end_date: Optional[date] = None
-    verification_date: Optional[date] = None
-    copay_percentage: Optional[float] = None
-    deductible_remaining: Optional[Decimal] = None
-    deductible_total: Optional[Decimal] = None
-    max_out_of_pocket_remaining: Optional[Decimal] = None
-    max_out_of_pocket_total: Optional[Decimal] = None
-    benefit_remaining: Optional[Decimal] = None
-    benefit_total: Optional[Decimal] = None
-    network_status: Optional[str] = None
+    end_date: date | None = None
+    verification_date: date | None = None
+    copay_percentage: float | None = None
+    deductible_remaining: Decimal | None = None
+    deductible_total: Decimal | None = None
+    max_out_of_pocket_remaining: Decimal | None = None
+    max_out_of_pocket_total: Decimal | None = None
+    benefit_remaining: Decimal | None = None
+    benefit_total: Decimal | None = None
+    network_status: str | None = None
     authorization_required: bool
     referral_required: bool
-    notes: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    notes: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 @router.get("", response_model=list[CoverageResponse])
 def list_coverages(
-    patient_id: Optional[int] = Query(None),
-    policy_id: Optional[int] = Query(None),
-    status: Optional[CoverageStatus] = Query(None),
-    date_from: Optional[date] = Query(None),
-    date_to: Optional[date] = Query(None),
+    patient_id: int | None = Query(None),
+    policy_id: int | None = Query(None),
+    status: CoverageStatus | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -234,7 +236,7 @@ def terminate_coverage(
 @router.post("/{coverage_id}/verify", response_model=dict)
 def verify_coverage(
     coverage_id: int,
-    service_date: Optional[date] = None,
+    service_date: date | None = None,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -268,13 +270,13 @@ def list_coverage_benefits(
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 
-    policy = db.query(InsurancePolicy).filter(
+    db.query(InsurancePolicy).filter(
         InsurancePolicy.id == coverage.policy_id,
     ).first()
 
     benefits = db.query(BenefitPackage).filter(
         BenefitPackage.policy_id == coverage.policy_id,
-        BenefitPackage.is_active == True,
+        BenefitPackage.is_active,
     ).all()
 
     utilization = db.query(BenefitUtilization).filter(
@@ -283,7 +285,7 @@ def list_coverage_benefits(
 
     util_by_service = {u.service_code: u for u in utilization if u.service_code}
 
-    result = {
+    return {
         "coverage_id": coverage_id,
         "patient_id": coverage.patient_id,
         "policy_id": coverage.policy_id,
@@ -309,13 +311,12 @@ def list_coverage_benefits(
             for b in benefits
         ],
     }
-    return result
 
 
 @router.get("/{coverage_id}/utilization", response_model=dict)
 def coverage_utilization_report(
     coverage_id: int,
-    year: Optional[int] = Query(None),
+    year: int | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

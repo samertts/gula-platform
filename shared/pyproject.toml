@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "gula-shared"
 version = "2.5.0"
 description = "GULA Shared Engineering Library — canonical modules across all repositories"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = { text = "Proprietary" }
 
 dependencies = [

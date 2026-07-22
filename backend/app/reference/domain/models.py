@@ -3,15 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 
 
-class Gender(str, Enum):
+class Gender(StrEnum):
     MALE = "ذكر"
     FEMALE = "أنثى"
 
 
-class OrderStatus(str, Enum):
+class OrderStatus(StrEnum):
     PENDING = "قيد_الانتظار"
     RECEIVED = "تم_الاستلام"
     IN_PROGRESS = "قيد_التنفيذ"
@@ -19,7 +19,7 @@ class OrderStatus(str, Enum):
     CANCELLED = "ملغي"
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     ROUTINE = "روتيني"
     URGENT = "عاجل"
     STAT = "فوري"

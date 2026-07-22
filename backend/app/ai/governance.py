@@ -201,8 +201,7 @@ class Evaluator:
                 score -= 0.2
         if len(response) > 5 and " " not in response.strip():
             score -= 0.2
-        score = round(max(0.0, score), 2)
-        return score
+        return round(max(0.0, score), 2)
 
     def _compute_metrics(self, response: str) -> dict[str, Any]:
         words = response.split()
