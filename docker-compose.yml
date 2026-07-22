@@ -301,7 +301,7 @@ services:
   # ---------------------------------------------------------------------------
 
   alertmanager:
-    image: prom/alertmanager:v0.28.2
+    image: prom/alertmanager:v0.33.1
     container_name: gula-alertmanager
     restart: always
     profiles: ["monitoring"]
@@ -326,7 +326,7 @@ services:
       start_period: 15s
 
   prometheus:
-    image: prom/prometheus:v2.56.0
+    image: prom/prometheus:v2.56.1
     container_name: gula-prometheus
     restart: always
     profiles: ["monitoring"]
@@ -359,7 +359,7 @@ services:
       start_period: 15s
 
   grafana:
-    image: grafana/grafana:11.6.0
+    image: grafana/grafana:11.7.1
     container_name: gula-grafana
     restart: always
     profiles: ["monitoring"]

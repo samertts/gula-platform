@@ -117,7 +117,8 @@ down:
 
 restart:
 	docker compose down
-	docker compose up -d --build
+	docker compose build --pull
+	docker compose up -d
 	@$(MAKE) --no-print-directory health-deep
 
 ps:
