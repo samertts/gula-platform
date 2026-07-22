@@ -4,7 +4,7 @@ import {
   Shield, Settings, Building2, Stethoscope, Activity,
   FileText, UserCog, Database, Wifi, Truck,
   ShieldAlert, Ban, Fingerprint, HeartPulse,
-  FileSpreadsheet,
+  FileSpreadsheet, ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -57,6 +57,7 @@ export const NAV_ITEMS: NavItem[] = [
     children: [
       { labelKey: 'clinicalNotes', icon: FileText, path: '/clinical/notes' },
       { labelKey: 'ehr', icon: HeartPulse, path: '/clinical/ehr' },
+      { labelKey: 'fhir', icon: ScrollText, path: '/fhir' },
     ],
   },
   {

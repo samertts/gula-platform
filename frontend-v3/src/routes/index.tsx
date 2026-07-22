@@ -21,6 +21,7 @@ import { SettingsPage } from "@/pages/settings/SettingsPage";
 import { ProfilePage } from "@/pages/profile/ProfilePage";
 import { SecurityPage } from "@/pages/security/SecurityPage";
 import { AdminLabsPage, AdminUsersPage, AdminAuditPage } from "@/pages/admin/AdminPages";
+import { FhirPage } from "@/pages/fhir/FhirPage";
 import { type ReactNode } from "react";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: "admin/labs", element: <AdminLabsPage /> },
       { path: "admin/users", element: <AdminUsersPage /> },
       { path: "admin/audit", element: <AdminAuditPage /> },
+      { path: "fhir", element: <FhirPage /> },
       { path: "admin", element: <Navigate to="/admin/labs" replace /> },
     ],
   },
