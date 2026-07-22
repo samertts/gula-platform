@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 """Master Patient Index — national-layer identity service.
 
 Three tables:
   - Citizen      — canonical identity, one row per real human being (48M scale)
   - IdentityClaim — bridge row from (lab_id, patient_id) → citizen_id
+
   - MergeAudit   — append-only, hash-chained ledger of identity decisions
 
 Boundary rules (see architecture/FOUNDATION.md §4):

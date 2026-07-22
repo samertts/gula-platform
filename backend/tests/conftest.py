@@ -28,6 +28,13 @@ os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 os.environ.setdefault("REDIS_URL", "")
 
 import contextlib
+import pathlib
+import sys
+
+# Ensure the repo root is on sys.path so that `shared` package is importable.
+_repo_root = pathlib.Path(__file__).resolve().parent.parent.parent
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 import pytest
 from app.database import Base, get_db
