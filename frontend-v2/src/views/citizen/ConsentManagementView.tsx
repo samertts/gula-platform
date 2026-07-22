@@ -8,19 +8,11 @@ import {
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn, formatDate } from '../../lib/utils';
 import { PermissionType, ConsentDuration, ConsentRecord } from '../../types/domain';
-import { auth, db, handleFirestoreError } from '../../firebase';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  doc, 
-  serverTimestamp,
-  } from 'firebase/firestore';
+import { useAuth } from '../../contexts/AuthContext';
+import { apiGet, apiPost, apiPut } from '../../api/client';
 export const ConsentManagementView: React.FC = () => {
   const { t, language } = useLanguage();
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,51 +36,35 @@ export const ConsentManagementView: React.FC = () => {
     p.name.toLowerCase().includes(targetSearch.toLowerCase())
   );
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
-    const q = query(
-      collection(db, 'consents'),
-      where('citizenId', '==', user.uid)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ConsentRecord[];
-      setConsents(data);
-      setIsLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, 'list', 'consents');
-    });
-    // Fetch audit logs (events)
-    const qEvents = query(
-      collection(db, 'events'),
-      where('senderId', '==', user.uid)
-    );
-    const unsubscribeEvents = onSnapshot(qEvents, (snapshot) => {
-      const data = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-        .filter((e: any) => e.type === 'consent_granted' || e.type === 'consent_revoked')
-        .sort((a: any, b: any) => {
-          const tA = a.createdAt?.seconds || 0;
-          const tB = b.createdAt?.seconds || 0;
-          return tB - tA;
-        });
-      setAuditLogs(data);
-    }, (error) => {
-      handleFirestoreError(error, 'list', 'events');
-    });
-    return () => {
-      unsubscribe();
-      unsubscribeEvents();
+    if (!authUser) return;
+
+    const fetchConsents = async () => {
+      try {
+        const data = await apiGet<{ data: ConsentRecord[] }>('/consents', { citizen_id: authUser.id });
+        setConsents(data?.data || []);
+      } catch (err) {
+        console.error('Failed to fetch consents:', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, []);
+    fetchConsents();
+
+    const fetchAuditLogs = async () => {
+      try {
+        const data = await apiGet<{ data: any[] }>('/events', { sender_id: authUser.id });
+        setAuditLogs(
+          (data?.data || [])
+            .filter((e: any) => e.type === 'consent_granted' || e.type === 'consent_revoked')
+        );
+      } catch (err) {
+        console.error('Failed to fetch events:', err);
+      }
+    };
+    fetchAuditLogs();
+  }, [authUser]);
   const handleGrantConsent = async () => {
-    const user = auth.currentUser;
-    if (!user || selectedPermissions.length === 0) return;
+    if (!authUser || selectedPermissions.length === 0) return;
     setIsSubmitting(true);
     try {
       const expiryDate = new Date();
@@ -97,7 +73,7 @@ export const ConsentManagementView: React.FC = () => {
       else if (selectedDuration === '1_month') expiryDate.setMonth(expiryDate.getMonth() + 1);
       
       const consentData = {
-        citizenId: user.uid,
+        citizenId: authUser.id,
         providerId: selectedProvider?.id || 'GLOBAL-SYSTEM',
         providerName: selectedProvider?.name || 'GULA System Services',
         scope: selectedPermissions.length > 2 ? 'full' : 'limited',
@@ -106,55 +82,23 @@ export const ConsentManagementView: React.FC = () => {
         duration: selectedDuration,
         expiresAt: selectedDuration === 'permanent' ? null : expiryDate.toISOString(),
         purposeOfUse: purposeOfUse,
-        createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, 'consents'), consentData);
-      // Emit event
-      await addDoc(collection(db, 'events'), {
-        type: 'consent_granted',
-        recipientId: selectedProvider?.id || 'system',
-        senderId: user.uid,
-        wing: 'citizen',
-        read: false,
-        payload: {
-          permissions: selectedPermissions,
-          providerName: selectedProvider?.name || 'GULA System Services',
-          purposeOfUse: purposeOfUse
-        },
-        createdAt: serverTimestamp()
-      });
+      await apiPost('/consents', consentData);
       setShowGrantModal(false);
       setSelectedPermissions([]);
       setSelectedProvider(null);
       setTargetSearch('');
     } catch (error) {
-      handleFirestoreError(error, 'create', 'consents');
+      console.error('Failed to grant consent:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
   const handleRevokeConsent = async (consent: ConsentRecord) => {
     try {
-      const consentRef = doc(db, 'consents', consent.id);
-      await updateDoc(consentRef, {
-        status: 'revoked',
-        updatedAt: serverTimestamp()
-      });
-      // Emit event
-      await addDoc(collection(db, 'events'), {
-        type: 'consent_revoked',
-        recipientId: consent.providerId,
-        senderId: auth.currentUser?.uid,
-        wing: 'citizen',
-        read: false,
-        payload: { 
-          consentId: consent.id,
-          providerName: consent.providerName
-        },
-        createdAt: serverTimestamp()
-      });
+      await apiPut(`/consents/${consent.id}/revoke`, {});
     } catch (error) {
-      handleFirestoreError(error, 'update', `consents/${consent.id}`);
+      console.error('Failed to revoke consent:', error);
     }
   };
   const permissionList: { id: PermissionType; label: string; icon: any }[] = [

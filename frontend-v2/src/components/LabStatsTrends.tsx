@@ -18,7 +18,7 @@ import {
 import {motion} from 'motion/react';
 import { cn, formatNumber, formatTime } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
-import { auth } from '../firebase-auth';
+import { getAccessToken } from '../api/client';
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DailySeries {
   date: string;
@@ -54,7 +54,7 @@ interface StatsSummary {
 function useApiToken(): string | null {
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
-    auth.currentUser?.getIdToken().then(setToken).catch(() => {});
+    setToken(getAccessToken());
   }, []);
   return token;
 }

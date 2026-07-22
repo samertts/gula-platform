@@ -11,8 +11,8 @@ import { TaskQueue } from '../../components/TaskQueue';
 import { PredictiveAnalytics } from '../../components/PredictiveAnalytics';
 import { WorkflowEngine } from '../../services/WorkflowEngine';
 import { Task } from '../../types/domain';
-import { auth } from '../../firebase';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { LabDeviceMonitor } from '../../components/LabDeviceMonitor';
 import LabStatsTrends from '../../components/LabStatsTrends';
 const StatCard = ({ title, value, subtext, icon: Icon, trend, color, bg }: any) => (
@@ -59,6 +59,7 @@ import { Scan, ArrowRight, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
 export function LabDashboard() {
   const { t } = useLanguage();
+  const { user: authUser } = useAuth();
   const [tasks, setTasks] = React.useState<Task[]>([]);
   const [isRegistering, setIsRegistering] = React.useState(false);
   const [newSampleId, setNewSampleId] = React.useState('');
@@ -85,20 +86,18 @@ export function LabDashboard() {
     return () => unsubscribe();
   }, []);
   const handleAssign = async (taskId: string) => {
-    const user = auth.currentUser;
-    if (user) {
-      await WorkflowEngine.updateTaskStatus(taskId, 'in_progress', user.uid);
+    if (authUser) {
+      await WorkflowEngine.updateTaskStatus(taskId, 'in_progress', authUser.id);
     }
   };
   const handleUpdateStatus = async (taskId: string, status: Task['status']) => {
     await WorkflowEngine.updateTaskStatus(taskId, status);
   };
   const handleBulkAction = async (action: 'assign' | 'complete' | 'hold' | 'process', taskIds: string[]) => {
-    const user = auth.currentUser;
     let updates: Partial<Task> = {};
     switch (action) {
       case 'assign': 
-        updates = { assignedTo: user?.uid, status: 'assigned' };
+        updates = { assignedTo: authUser?.id, status: 'assigned' };
         break;
       case 'complete':
         updates = { status: 'completed' };

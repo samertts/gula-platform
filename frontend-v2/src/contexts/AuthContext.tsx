@@ -1,117 +1,104 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import {doc, onSnapshot} from 'firebase/firestore';
-import { auth, db } from '../firebase';
-import { UserProfile } from '../types/domain';
-import { SyncService } from '../services/SyncService';
-interface AuthContextType {
-  user: User | null;
-  profile: UserProfile | null;
-  isLoading: boolean;
-  bypassAuth: (profile: UserProfile) => void;
-  logout: () => void;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { authApi, setTokens, clearTokens, getAccessToken } from '../api';
+import type { UserInfo } from '../api/types';
+
+interface UserProfileLike {
+  uid: string;
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  labId?: string;
+  wing?: string;
+  verified?: boolean;
+  createdAt?: string;
 }
+
+interface AuthContextType {
+  user: UserInfo | null;
+  profile: UserProfileLike | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  isAuthenticated: boolean;
+}
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   isLoading: true,
-  bypassAuth: () => {},
-  logout: () => {},
-  updateProfile: async () => {},
+  login: async () => {},
+  logout: async () => {},
+  isAuthenticated: false,
 });
+
 export const useAuth = () => useContext(AuthContext);
+
+const USER_KEY = 'gula_user_info';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(() => {
+    const saved = localStorage.getItem(USER_KEY);
+    return saved ? JSON.parse(saved) : null;
+  });
   const [isLoading, setIsLoading] = useState(true);
-  // Persistence Key
-  const PERSIST_KEY = 'gula_user_profile';
-  const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!profile || !user) return;
-    
-    const newProfile = { ...profile, ...updates };
-    setProfile(newProfile);
-    localStorage.setItem(PERSIST_KEY, JSON.stringify(newProfile));
-    if (navigator.onLine) {
-      // Direct update
-      try {
-        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
-        await updateDoc(doc(db, 'users', user.uid), {
-          ...updates,
-          updatedAt: serverTimestamp()
-        });
-      } catch (err) {
-        console.error("Failed to update profile online, queuing...", err);
-        SyncService.enqueue('UPDATE_PROFILE', { uid: user.uid, ...updates });
-      }
-    } else {
-      SyncService.enqueue('UPDATE_PROFILE', { uid: user.uid, ...updates });
+
+  const login = useCallback(async (email: string, password: string) => {
+    const response = await authApi.login(email, password);
+    setTokens(response.token, response.refresh_token);
+    setUser(response.user);
+    localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Proceed with local cleanup even if server logout fails
     }
-  };
-  const bypassAuth = (mockProfile: UserProfile) => {
-    setProfile(mockProfile);
-    setUser({ uid: mockProfile.uid, email: mockProfile.email } as User);
-    setIsLoading(false);
-    localStorage.setItem(PERSIST_KEY, JSON.stringify(mockProfile));
-  };
-  const logout = () => {
-    auth.signOut();
+    clearTokens();
     setUser(null);
-    setProfile(null);
-    localStorage.removeItem(PERSIST_KEY);
+    localStorage.removeItem(USER_KEY);
     localStorage.removeItem('gula_demo_user');
-  };
+  }, []);
+
   useEffect(() => {
-    // Initial sync check
-    if (navigator.onLine) {
-      SyncService.processQueue();
+    const token = getAccessToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
     }
-    // Load persisted profile early for immediate UX
-    const saved = localStorage.getItem(PERSIST_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setProfile(parsed);
-      // We still wait for onAuthStateChanged to confirm actual login state
-    }
-    let unsubProfile: (() => void) | null = null;
-    const unsubscribe = onAuthStateChanged(auth, async (currUser) => {
-      setUser(currUser);
-      
-      if (unsubProfile) {
-        unsubProfile();
-        unsubProfile = null;
-      }
-      if (currUser) {
-        // We have a user, check sync queue
-        SyncService.processQueue();
-        unsubProfile = onSnapshot(doc(db, 'users', currUser.uid), (docSnap) => {
-          if (docSnap.exists()) {
-            const data = { uid: docSnap.id, ...docSnap.data() } as UserProfile;
-            setProfile(data);
-            localStorage.setItem(PERSIST_KEY, JSON.stringify(data));
-          }
-          setIsLoading(false);
-        }, (error) => {
-          console.error("Error listening to profile:", error);
-          setIsLoading(false);
-        });
-      } else {
-        // If not bypassing and no firebase user, clear everything
-        if (!localStorage.getItem('gula_demo_user')) {
-          setProfile(null);
-          localStorage.removeItem(PERSIST_KEY);
+    // Verify token is still valid on mount by fetching current user
+    const verify = async () => {
+      try {
+    // Try a lightweight check - if 401 occurs, try refresh
+        const storedUser = localStorage.getItem(USER_KEY);
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
         }
+      } catch {
+        // Token invalid, clear state
+        clearTokens();
+        setUser(null);
+        localStorage.removeItem(USER_KEY);
+      } finally {
         setIsLoading(false);
       }
-    });
-    return () => {
-      unsubscribe();
-      if (unsubProfile) unsubProfile();
     };
+    verify();
   }, []);
+
+  const profile = user ? {
+    uid: user.id,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    labId: user.lab_id || undefined,
+  } : null;
+
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading, bypassAuth, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, profile, isLoading, login, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

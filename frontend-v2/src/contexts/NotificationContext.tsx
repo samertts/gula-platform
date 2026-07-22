@@ -1,21 +1,21 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  orderBy, 
-  limit,
-  updateDoc,
-  doc,
-  writeBatch
-} from 'firebase/firestore';
-import { auth, db } from '../firebase';
-import { GulaEvent } from '../types/domain';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from './AuthContext';
+import { apiGet, apiPost, apiPut } from '../api/client';
 import { toast } from 'sonner';
 
+interface GulaNotification {
+  id: string;
+  type: string;
+  title?: string;
+  message?: string;
+  recipientId: string;
+  read: boolean;
+  priority?: string;
+  createdAt: string;
+}
+
 interface NotificationContextType {
-  notifications: GulaEvent[];
+  notifications: GulaNotification[];
   unreadCount: number;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
@@ -24,83 +24,69 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [notifications, setNotifications] = useState<GulaEvent[]>([]);
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<GulaNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const previousIdsRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
-    const user = auth.currentUser;
+  const fetchNotifications = useCallback(async () => {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
 
-    // Listen to notifications for the current user or broadcasted to everyone
-    const q = query(
-      collection(db, 'events'),
-      where('recipientId', 'in', [user.uid, 'all']),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    );
-
-    let isInitialLoad = true;
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newNotifications: GulaEvent[] = [];
-      let newUnreadCount = 0;
-
-      snapshot.docs.forEach(doc => {
-        const data = doc.data() as Omit<GulaEvent, 'id'>;
-        const notification = { id: doc.id, ...data };
-        newNotifications.push(notification);
-        if (!notification.read) {
-          newUnreadCount++;
-        }
+    try {
+      const result = await apiGet<{ data: GulaNotification[] }>('/notifications', {
+        recipient_id: user.id,
+        limit: 50,
       });
+      const items = result?.data || [];
+      const unread = items.filter(n => !n.read).length;
 
-      // Show toast for new unread notifications
-      if (!isInitialLoad) {
-        snapshot.docChanges().forEach(change => {
-          if (change.type === 'added') {
-            const data = change.doc.data() as GulaEvent;
-            if (!data.read) {
-               toast[data.priority === 'stat' ? 'error' : 'info'](data.title || 'New Notification', {
-                 description: data.message,
-               });
-            }
-          }
-        });
+      const currentIds = new Set(items.map(n => n.id));
+      for (const notification of items) {
+        if (!previousIdsRef.current.has(notification.id) && !notification.read) {
+          toast[notification.priority === 'stat' ? 'error' : 'info'](
+            notification.title || 'New Notification',
+            { description: notification.message },
+          );
+        }
       }
+      previousIdsRef.current = currentIds;
 
-      setNotifications(newNotifications);
-      setUnreadCount(newUnreadCount);
-      isInitialLoad = false;
-    }, (error) => {
-      console.error("Error listening to notifications:", error);
-    });
+      setNotifications(items);
+      setUnreadCount(unread);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  }, [user]);
 
-    return () => unsubscribe();
-  }, []);
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   const markAsRead = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'events', id), { read: true });
+      await apiPut(`/notifications/${id}/read`, {});
+      setNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, read: true } : n)),
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      console.error('Error marking notification as read:', error);
     }
   };
 
   const markAllAsRead = async () => {
-    const unread = notifications.filter(n => !n.read);
-    if (unread.length === 0) return;
-
     try {
-      const batch = writeBatch(db);
-      unread.forEach(n => {
-        batch.update(doc(db, 'events', n.id), { read: true });
-      });
-      await batch.commit();
+      await apiPost('/notifications/read-all', {});
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
     } catch (error) {
-      console.error("Error marking all as read:", error);
+      console.error('Error marking all as read:', error);
     }
   };
 
@@ -113,7 +99,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useNotifications must be used within a NotificationProvider');
   }
   return context;

@@ -1,15 +1,21 @@
-import { 
-  collection, 
-  addDoc, 
-  serverTimestamp, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  getDocs 
-} from 'firebase/firestore';
-import { db, auth, handleFirestoreError } from '../firebase';
-import { AuditLogEntry } from '../types/domain';
+import { apiGet, apiPost } from '../api/client';
+import type { PaginatedResponse } from '../api/types';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  userId: string;
+  userEmail: string;
+  action: string;
+  resource: string;
+  resourceId: string;
+  changes?: { before: any; after: any };
+  metadata: {
+    ip: string;
+    userAgent: string;
+    severity: 'info' | 'warning' | 'critical';
+  };
+}
 
 export const AuditService = {
   async log(params: {
@@ -17,49 +23,34 @@ export const AuditService = {
     resource: string;
     resourceId: string;
     changes?: { before: any; after: any };
-    severity?: AuditLogEntry['metadata']['severity'];
+    severity?: 'info' | 'warning' | 'critical';
   }) {
-    const user = auth.currentUser;
-    if (!user) return;
-
     try {
-      await addDoc(collection(db, 'audit_logs'), {
-        timestamp: serverTimestamp(),
-        userId: user.uid,
-        userEmail: user.email,
+      await apiPost('/audit/logs', {
         action: params.action,
-        resource: params.resource,
-        resourceId: params.resourceId,
+        resource_type: params.resource,
+        resource_id: params.resourceId,
         changes: params.changes || null,
-        metadata: {
-          ip: 'client-side-logged',
-          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
-          severity: params.severity || 'info'
-        }
+        severity: params.severity || 'info',
       });
     } catch (error) {
-      console.error("Audit Logging Failed:", error);
-      // We don't throw here to avoid blocking the main operation
+      console.error('Audit Logging Failed:', error);
     }
   },
 
-  async getLogs(resourceId?: string) {
+  async getLogs(params?: {
+    resourceId?: string;
+    action?: string;
+    user_id?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<AuditLogEntry[]> {
     try {
-      let q = query(
-        collection(db, 'audit_logs'), 
-        orderBy('timestamp', 'desc'), 
-        limit(100)
-      );
-      
-      if (resourceId) {
-        q = query(q, where('resourceId', '==', resourceId));
-      }
-
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const response = await apiGet<PaginatedResponse<AuditLogEntry>>('/audit/logs', params as Record<string, any>);
+      return response.data;
     } catch (error) {
-      handleFirestoreError(error, 'list', 'audit_logs');
+      console.error('Failed to fetch audit logs:', error);
       return [];
     }
-  }
+  },
 };

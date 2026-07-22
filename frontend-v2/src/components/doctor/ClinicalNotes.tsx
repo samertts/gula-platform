@@ -8,8 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatTime } from '../../lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { apiPost } from '../../api/client';
 import { useParams } from 'react-router-dom';
 export function ClinicalNotes() {
   const [note, setNote] = useState({
@@ -31,11 +30,11 @@ export function ClinicalNotes() {
     }
     setIsSaving(true);
     try {
-      const ref = doc(db, 'clinical_notes', `${patientId}_${Date.now()}`);
-      await setDoc(ref, {
-        patientId,
-        ...note,
-        createdAt: serverTimestamp(),
+      await apiPost('/ehr/clinical-notes', {
+        patient_id: patientId,
+        content: JSON.stringify(note),
+        note_type: 'clinical',
+        title: 'Clinical Note',
       });
       setLastSaved(new Date());
       toast.success('Clinical note saved');

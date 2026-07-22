@@ -8,8 +8,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, formatDate } from '../../lib/utils';
-import {db} from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { apiPost } from '../../api/client';
 import { toast } from 'sonner';
 interface InventoryItem {
   id: string;
@@ -29,15 +28,13 @@ export function InventoryManagement() {
   const simulateAlert = async () => {
     setIsSimulating(true);
     try {
-      await addDoc(collection(db, 'events'), {
+      await apiPost('/events', {
         type: 'expiring_reagent',
-        recipientId: 'all',
+        recipient_id: 'all',
         title: 'Reagent Expiry Warning',
         message: 'Glucose Reagent Pack (MAT-101) is set to expire in 48 hours. Batch #G-092.',
         priority: 'urgent',
         wing: 'lab',
-        read: false,
-        createdAt: serverTimestamp()
       });
     } catch (e) {
       toast.error('Simulation failed');

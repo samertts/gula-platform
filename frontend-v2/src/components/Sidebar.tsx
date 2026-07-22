@@ -17,8 +17,6 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { cn } from '../lib/utils';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebase-auth';
 import { UserWing, UserRole } from '../types/domain';
 import { useNavigationStore } from '../stores/navigationStore';
 import {Avatar, Tooltip, Kbd} from './ui';
@@ -242,7 +240,7 @@ function QuickSearch({ expanded, searchQuery, setSearchQuery, results, onNavigat
 }
 export const Sidebar = memo(function Sidebar() {
   const { t, dir } = useLanguage();
-  const { profile } = useAuth();
+  const { profile, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const { state, dispatch, isPinned, getAdaptiveOrder } = useNavigationStore();
   const navigate = useNavigate();
@@ -291,9 +289,9 @@ export const Sidebar = memo(function Sidebar() {
     setIsMobileOpen(false);
   }, [navigate]);
   const handleLogout = useCallback(async () => {
-    await signOut(auth);
+    await logout();
     navigate('/');
-  }, [navigate]);
+  }, [navigate, logout]);
   const toggleGroup = useCallback((id: string) => {
     dispatch({ type: 'TOGGLE_GROUP', payload: id });
   }, [dispatch]);

@@ -2,10 +2,10 @@ import { Microscope, FileText, Download, CheckCircle2, AlertCircle, FileSearch, 
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn, formatDate } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { db, auth, handleFirestoreError } from '../firebase';
-import { collection, query, onSnapshot, orderBy, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { AISummary } from '../components/AISummary';
+import { apiGet } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LabReport {
   id?: string;
@@ -18,35 +18,25 @@ interface LabReport {
 
 export function LabResultsView() {
   const { t, language } = useLanguage();
+  const { user: authUser } = useAuth();
   const [reports, setReports] = useState<LabReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!authUser) return;
 
-    const q = query(
-      collection(db, 'lab_results'), 
-      where('ownerId', '==', auth.currentUser.uid),
-      orderBy('date', 'desc')
-    );
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return { 
-          id: doc.id, 
-          ...data,
-          testName: data.testName || data.title || "Unknown Test"
-        } as LabReport;
-      });
-      setReports(docs);
-      setIsLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, 'list', 'lab_results');
-    });
-
-    return () => unsubscribe();
-  }, []);
+    const fetchResults = async () => {
+      try {
+        const data = await apiGet<LabReport[]>('/results', { patient_id: authUser.id });
+        setReports(data || []);
+      } catch (err) {
+        console.error('Failed to fetch results:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchResults();
+  }, [authUser]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto w-full">
@@ -93,7 +83,7 @@ export function LabResultsView() {
                       <span className="text-[10px] text-slate-400 font-mono tracking-tighter truncate max-w-[100px]">{report.id}</span>
                       <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
                       <span className="text-[10px] text-slate-400 font-medium uppercase">
-                        {report.date?.toDate ? formatDate(report.date.toDate(), language) : 'Pending'}
+                        {report.date ? formatDate(new Date(report.date), language) : 'Pending'}
                       </span>
                     </div>
                   </div>

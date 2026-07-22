@@ -9,25 +9,15 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-import { auth, db } from '../firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  updateProfile,
-  signInWithPopup,
-  GoogleAuthProvider,
-  sendPasswordResetEmail
-} from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { UserRole, UserWing } from '../types/domain';
 import { PasswordStrength } from '../components/auth/PasswordStrength';
 import { OTPInput } from '../components/auth/OTPInput';
 import { useAuth } from '../contexts/AuthContext';
-import { UserProfile } from '../types/domain';
+import { authApi } from '../api';
 type AuthStep = 'initial' | 'login' | 'signup_role' | 'signup_form' | 'identity_verification' | 'medical_migration' | 'verify_otp' | 'success' | 'forgot_password' | 'otp_login' | 'biometric_auth';
 export const LandingAuthView: React.FC = () => {
   const { t, language, setLanguage, isRtl } = useLanguage();
-  const { bypassAuth } = useAuth();
+  const { login: backendLogin } = useAuth();
   const isMounted = useRef(true);
   const [step, setStep] = useState<AuthStep>('initial');
   const [role, setRole] = useState<UserRole>('citizen');
@@ -40,7 +30,6 @@ export const LandingAuthView: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [nationalId, setNationalId] = useState('');
   const [license, setLicense] = useState('');
-  const [specialization] = useState('');
   const [otp, setOtp] = useState('');
   const [identityPhoto, setIdentityPhoto] = useState<string | null>(null);
   const [, setMedicalRecords] = useState<File[]>([]);
@@ -67,20 +56,7 @@ export const LandingAuthView: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      
-      const isMasterAdmin = result.user.email === 'samertts2@gmail.com';
-      
-      await setDoc(doc(db, 'users', result.user.uid), {
-        uid: result.user.uid,
-        email: result.user.email,
-        role: isMasterAdmin ? 'master_admin' : 'citizen',
-        wing: isMasterAdmin ? 'admin' : 'citizen',
-        verified: true,
-        updatedAt: serverTimestamp(),
-        displayName: result.user.displayName || result.user.email?.split('@')[0],
-      }, { merge: true });
+      setError('Google sign-in is not available. Please use email/password or contact your lab administrator.');
     } catch (err: any) {
       if (isMounted.current) setError(err.message);
     } finally {
@@ -92,9 +68,9 @@ export const LandingAuthView: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await backendLogin(email, password);
     } catch (err: any) {
-      if (isMounted.current) setError(err.message);
+      if (isMounted.current) setError(err.message || 'Invalid credentials');
     } finally {
       if (isMounted.current) setIsLoading(false);
     }
@@ -105,10 +81,10 @@ export const LandingAuthView: React.FC = () => {
     setError(null);
     setMessage(null);
     try {
-      await sendPasswordResetEmail(auth, email);
-      if (isMounted.current) setMessage(t.resetLinkSent);
+      await authApi.forgotPassword(email);
+      if (isMounted.current) setMessage(t.resetLinkSent || 'Password reset link sent to your email');
     } catch (err: any) {
-      if (isMounted.current) setError(err.message);
+      if (isMounted.current) setError(err.message || 'Failed to send reset link');
     } finally {
       if (isMounted.current) setIsLoading(false);
     }
@@ -135,25 +111,17 @@ export const LandingAuthView: React.FC = () => {
     if (otp.length !== 6) return;
     setIsLoading(true);
     try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
+      await authApi.register({
         email,
+        password,
         name: fullName,
         phone,
-        nationalId,
-        licenseNumber: license,
-        specialization,
+        national_id: nationalId,
         role,
-        wing,
-        verified: role === 'citizen' ? false : true, // Verification needed for pros
-        createdAt: serverTimestamp(),
       });
-      await updateProfile(user, { displayName: fullName });
       if (isMounted.current) setStep('success');
     } catch (err: any) {
-      if (isMounted.current) setError(err.message);
+      if (isMounted.current) setError(err.message || 'Registration failed');
     } finally {
       if (isMounted.current) setIsLoading(false);
     }
@@ -339,24 +307,7 @@ export const LandingAuthView: React.FC = () => {
                     <Globe className="w-4 h-4 text-indigo-600" />
                     Google
                   </button>
-                  <button
-                    onClick={() => {
-                       bypassAuth({
-                         uid: 'demo-master-admin',
-                         email: 'samertts2@gmail.com',
-                         name: 'Master Administrator',
-                         displayName: 'Master Administrator',
-                         role: 'master_admin',
-                         wing: 'admin',
-                         verified: true,
-                         createdAt: new Date().toISOString()
-                       } as UserProfile);
-                    }}
-                    className="py-4 px-6 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest text-indigo-700 hover:bg-indigo-100 transition-all shadow-sm"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    Quick Access (Dev)
-                  </button>
+                  <div className="h-12"></div>
                 </div>
               </motion.div>
             )}
