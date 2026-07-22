@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {motion} from 'motion/react';
 import { 
-  History, Search, Filter, ArrowUpRight, 
-  Shield, User, Clock, AlertTriangle,
-  Download, ExternalLink, Activity,
+  Shield,
   Lock,
   Globe,
-  Database
+  Database,
+  Download
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { cn } from '../../lib/utils';
 import { AuditService } from '../../services/AuditService';
 import { AuditLogViewer } from '../../components/AuditLogViewer';

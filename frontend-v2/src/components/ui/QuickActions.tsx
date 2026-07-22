@@ -23,7 +23,7 @@ const ACTIONS: QuickAction[] = [
 export function QuickActions() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
-  const { t, isRtl } = useLanguage();
+  const { t, } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handler = (e: MouseEvent) => {

@@ -1,12 +1,9 @@
 import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  ShieldAlert, ShieldCheck, Fingerprint, Lock, 
-  Smartphone, Monitor, Globe, Clock, 
-  Eye, Download, Key, AlertTriangle,
-  History as HistoryIcon, Info, ChevronRight, Activity as ActivityIcon,
-  MapPin
-} from 'lucide-react';
+  ShieldCheck, Fingerprint, Lock, 
+  Smartphone, Monitor, Globe, Eye, Download, Key, AlertTriangle,
+  History as HistoryIcon } from 'lucide-react';
 import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
 export function SecurityAuditView() {

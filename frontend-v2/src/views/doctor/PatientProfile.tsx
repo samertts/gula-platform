@@ -17,7 +17,7 @@ import { AITriageAssistant } from '../../components/doctor/AITriageAssistant';
 import { PrescriptionBuilder } from '../../components/doctor/PrescriptionBuilder';
 import { ClinicalNotes } from '../../components/doctor/ClinicalNotes';
 export function PatientProfile() {
-  const { id } = useParams();
+  const { id: _id } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'timeline' | 'lab' | 'radiology' | 'prescriptions' | 'notes' | 'ai' | 'history' | 'synthesis' | 'triage'>('synthesis');

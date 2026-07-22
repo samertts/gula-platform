@@ -1,14 +1,13 @@
-import React from 'react';
 import { 
   Sparkles, BrainCircuit, Activity, 
   TrendingUp, AlertTriangle, Scale,
   Microscope, Stethoscope, FileText
 } from 'lucide-react';
-import { motion } from 'motion/react';
+// import { motion } from 'motion/react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
 export function ClinicalSummaryBento() {
-  const { t } = useLanguage();
+  const { } = useLanguage();
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full">
       {/* Primary Narrative */}

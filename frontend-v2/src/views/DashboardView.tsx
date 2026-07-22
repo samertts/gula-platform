@@ -3,7 +3,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { UserProfile, Task } from '../types/domain';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import { LabDashboard } from './lab/LabDashboard';
 import { ResearcherDashboard } from './research/ResearcherDashboard';
 import { CitizenHealth } from './citizen/CitizenHealth';
@@ -14,16 +14,8 @@ import { DashboardInsight } from '../components/DashboardInsight';
 import { SmartAlertSystem, Alert } from '../components/SmartAlertSystem';
 import { HealthTrendChart } from '../components/HealthTrendChart';
 import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Activity as ActivityIcon,
   TrendingUp,
-  AlertTriangle,
-  Microscope,
-  Users,
-  ChevronRight,
   Globe,
-  Heart,
   Plus,
   Download,
   Server,
@@ -31,47 +23,15 @@ import {
   Sparkles,
   ArrowUpRight,
   Shield,
-  MessageSquare,
-  HelpCircle,
   Eye,
   Settings,
-  BrainCircuit,
   TriangleAlert
 } from 'lucide-react';
 import {motion} from 'motion/react';
 import { InfrastructureView } from './admin/InfrastructureView';
 import { cn } from '../lib/utils';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { PageTransition } from '../components/PageTransition';
-import { ClickToCopy } from '../components/ClickToCopy';
-const StatCard = ({ label, value, progress, color = "bg-indigo-600", icon: Icon }: { label: string, value: string, progress: number, color?: string, icon?: any }) => (
-  <div className="flex flex-col group p-6 rounded-[2.5rem] bg-white/40 backdrop-blur-md border border-white/60 shadow-sm hover:shadow-xl hover:bg-white hover:-translate-y-1 transition-all cursor-help relative overflow-hidden">
-    <div className="flex items-center justify-between mb-4">
-      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-indigo-600 transition-colors">{label}</span>
-      {Icon && <Icon size={16} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />}
-    </div>
-    <div className="flex items-baseline gap-2">
-      <div className="text-3xl lg:text-4xl font-headline font-black text-slate-900 tracking-tighter">{value}</div>
-      {progress > 80 && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-[10px] font-black text-emerald-500 flex items-center gap-0.5 bg-emerald-50 px-2 py-0.5 rounded-full"
-        >
-          <TrendingUp size={10} /> +12%
-        </motion.div>
-      )}
-    </div>
-    <div className="w-full bg-slate-100/50 mt-6 h-1.5 rounded-full overflow-hidden">
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: `${progress}%` }}
-        transition={{ duration: 1.5, ease: "circOut" }}
-        className={`h-full ${color} shadow-[0_0_15px_rgba(79,70,229,0.3)]`}
-      ></motion.div>
-    </div>
-  </div>
-);
+// import { ClickToCopy } from '../components/ClickToCopy';
 const container = {
   hidden: { opacity: 0 },
   show: {
@@ -84,41 +44,6 @@ const container = {
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
-};
-const ActivityItem = ({ icon: Icon, title, subtitle, status, statusColor, patientId }: { icon: any, title: string, subtitle: string, status: string, statusColor: string, patientId?: string }) => {
-  const navigate = useNavigate();
-  return (
-    <div 
-      onClick={() => patientId && navigate(`/patients/${patientId}`)}
-      className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-4 rounded-2xl transition-all border border-transparent hover:border-slate-100 active:scale-95"
-    >
-      <div className="flex items-center gap-4 lg:gap-6">
-        <div className="w-10 h-10 lg:w-14 lg:h-14 bg-white border border-slate-50 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-          <Icon size={20} className="text-indigo-600" />
-        </div>
-        <div>
-          <p className="text-sm font-bold text-slate-900">{title}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-[10px] lg:text-xs text-slate-400 font-medium">{subtitle}</p>
-            {patientId && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <ClickToCopy 
-                   text={patientId} 
-                   className="text-[9px] font-black text-indigo-600/60 uppercase tracking-tighter bg-indigo-50 px-1.5 py-0.5 rounded hover:bg-indigo-100 transition-colors" 
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-4">
-        <div className={`px-2.5 lg:px-4 py-1.5 ${statusColor} text-[8px] lg:text-[10px] font-black rounded-full uppercase tracking-tighter`}>
-          {status}
-        </div>
-        <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-      </div>
-    </div>
-  );
 };
 export function DashboardView() {
   const { t, language } = useLanguage();

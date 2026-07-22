@@ -58,7 +58,7 @@ export function AppointmentsView() {
                           if (active && payload && payload.length) {
                              return (
                                 <div className="bg-slate-900 px-3 py-2 rounded-xl text-[10px] font-black text-white shadow-xl">
-                                   {payload[0].name}: {payload[0].value}%
+                                   {payload[0]?.name}: {payload[0]?.value}%
                                 </div>
                              );
                           }

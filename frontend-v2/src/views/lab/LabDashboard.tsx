@@ -1,8 +1,8 @@
 import React from 'react';
 import { 
-  FlaskConical, Activity as ActivityIcon, AlertCircle, 
+  FlaskConical, Activity as AlertCircle, 
   Clock, CheckCircle2,
-  BarChart3, Microscope, Beaker, Search, Bell, Plus,
+  Search, Bell, Plus,
   Cpu, Zap, Boxes
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';

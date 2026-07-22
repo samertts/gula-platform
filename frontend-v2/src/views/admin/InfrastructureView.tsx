@@ -1,19 +1,17 @@
-import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Zap, Server, Cpu, Database, 
-  Activity, ShieldCheck, Globe, Wifi,
-  HardDrive, Monitor, RefreshCw, AlertCircle
+  Activity, Globe, Wifi,
+  RefreshCw, AlertCircle
 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
 import { cn } from '../../lib/utils';
 const nodeData: { time: string; load: number; latency: number }[] = [];
 export function InfrastructureView() {
-  const { t } = useLanguage();
+  const { } = useLanguage();
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

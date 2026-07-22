@@ -2,8 +2,7 @@ import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Bot, X, MessageSquare, Sparkles, 
-  ChevronRight, HelpCircle, Lightbulb,
-  Search, BookOpen, LifeBuoy, Mic, MicOff
+  ChevronRight, HelpCircle, Search, BookOpen, LifeBuoy, Mic, MicOff
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
@@ -122,7 +121,7 @@ export function HelpAssistant() {
                )}
                {activeTab === 'docs' && (
                  <div className="space-y-3">
-                   {['User Manual', 'API Integration', 'Data Policies', 'Security Whitepaper'].map((doc, i) => (
+                   {['User Manual', 'API Integration', 'Data Policies', 'Security Whitepaper'].map((doc) => (
                      <div key={doc} className="p-3 border border-slate-100 rounded-xl flex items-center justify-between hover:bg-white transition-colors group cursor-pointer">
                         <div className="flex items-center gap-3">
                            <BookOpen size={14} className="text-slate-400" />

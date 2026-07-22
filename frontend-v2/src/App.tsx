@@ -8,7 +8,6 @@ function lazyNamed<T extends Record<string, React.ComponentType<any>>, N extends
 const DashboardView = lazyNamed(() => import('./views/DashboardView'), 'DashboardView');
 const RecordsView = lazyNamed(() => import('./views/RecordsView'), 'RecordsView');
 const AppointmentsView = lazyNamed(() => import('./views/AppointmentsView'), 'AppointmentsView');
-const LabResultsView = lazyNamed(() => import('./views/LabResultsView'), 'LabResultsView');
 const SettingsView = lazyNamed(() => import('./views/SettingsView'), 'SettingsView');
 const LandingAuthView = lazyNamed(() => import('./views/LandingAuthView'), 'LandingAuthView');
 const LabDashboard = lazyNamed(() => import('./views/lab/LabDashboard'), 'LabDashboard');
@@ -49,12 +48,11 @@ import { GlobalAiAssistant } from './components/GlobalAiAssistant';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { RouteErrorBoundary } from './components/ui/ErrorBoundary';
 import { useKeySequence } from './lib/useShortcut';
-import {WifiOff, Activity as ActivityIcon} from 'lucide-react';
+import {WifiOff} from 'lucide-react';
 import { useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NavigationProvider } from './stores/navigationStore';
 import { WorkspaceProvider } from './stores/workspaceStore';
-import { Badge, Button } from './components/ui';
 export default function App() {
   return (
     <AuthProvider>

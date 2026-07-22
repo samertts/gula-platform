@@ -37,12 +37,6 @@ const ROUTE_LABELS: Record<string, string> = {
   research: 'Research',
   security: 'Security',
 };
-const ROUTE_ICONS: Record<string, string> = {
-  lab: '🔬',
-  citizen: '👤',
-  ministry: '🏛️',
-  admin: '🛡️',
-};
 export const Breadcrumbs = memo(function Breadcrumbs() {
   const location = useLocation();
   const { t, isRtl } = useLanguage();

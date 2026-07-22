@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import {Activity, Zap, Database, ArrowUpRight, Cpu, AlertTriangle, Users} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';

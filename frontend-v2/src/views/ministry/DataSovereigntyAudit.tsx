@@ -2,10 +2,9 @@ import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, ShieldAlert, Fingerprint, 
-  Search, Filter, Database, Server,
-  Lock, Key, Eye, User, Globe, Activity,
-  MoreVertical, Clock, CheckCircle2, AlertTriangle,
-  History, Download, Zap, MapPin
+  Search, Filter, Database, Lock, Activity,
+  MoreVertical, CheckCircle2, AlertTriangle,
+  Zap, MapPin
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';

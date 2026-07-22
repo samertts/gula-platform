@@ -4,7 +4,7 @@ import {Bot, X, Sparkles, Zap, ShieldCheck, MessageSquare} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
 export function GlobalAiAssistant() {
-  const { t, isRtl } = useLanguage();
+  const { isRtl } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);

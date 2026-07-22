@@ -11,8 +11,8 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  TrendingUp, TrendingDown, AlertCircle, Activity,
-  BarChart3, PieChart, Calendar, Clock, RefreshCw,
+  AlertCircle, Activity,
+  BarChart3, PieChart, RefreshCw,
   FlaskConical, Users,
 } from 'lucide-react';
 import {motion} from 'motion/react';

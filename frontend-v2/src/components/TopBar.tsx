@@ -41,7 +41,7 @@ export const TopBar = memo(function TopBar() {
   const [showTasks, setShowTasks] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showEmergency, setShowEmergency] = useState(false);
-  const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
+  // const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const quickCreateRef = useRef<HTMLDivElement>(null);
@@ -192,7 +192,7 @@ export const TopBar = memo(function TopBar() {
                         <qa.icon size={16} className="text-slate-500" />
                       </div>
                       <div className="flex flex-col items-start">
-                        <span className="text-sm font-bold">{(t as Record<string, string>)[qa.id.replace('new-', '')] || qa.label}</span>
+                        <span className="text-sm font-bold">{(t as unknown as Record<string, string>)[qa.id.replace('new-', '')] || qa.label}</span>
                         <span className="text-[9px] text-slate-400">{qa.description}</span>
                       </div>
                     </button>

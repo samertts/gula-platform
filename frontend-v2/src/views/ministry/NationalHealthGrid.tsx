@@ -1,20 +1,16 @@
 import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Globe, Shield, Building2, Users, Activity, 
-  AlertCircle, ArrowUpRight, Zap, Filter, 
-  MapPin, Database, Layers, Search, Download
-} from 'lucide-react';
+  Globe, Shield, Building2, AlertCircle, ArrowUpRight, Zap, MapPin, } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
 import { 
   ResponsiveContainer, AreaChart, Area, 
-  XAxis, YAxis, CartesianGrid, Tooltip, 
+  CartesianGrid, Tooltip, 
   BarChart, Bar, Cell 
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 const data: { name: string; value: number; load: number; active: number }[] = [];
-const hospitalData: Record<string, any[]> = {};
 export function NationalHealthGrid() {
   const { t } = useLanguage();
   const navigate = useNavigate();

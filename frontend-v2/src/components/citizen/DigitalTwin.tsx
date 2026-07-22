@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import {BrainCircuit} from 'lucide-react';
 import { cn } from '../../lib/utils';

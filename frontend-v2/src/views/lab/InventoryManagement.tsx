@@ -2,7 +2,7 @@ import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Box, Search, AlertTriangle, Plus, 
-  ArrowUpRight, ShoppingCart, BarChart2,
+  ShoppingCart, BarChart2,
   Trash2, Edit2, Filter, History as HistoryIcon,
   PackageCheck, Archive
 } from 'lucide-react';

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Copy, Edit3, Trash2, ExternalLink, History, Star, Pin, Share2, Download } from 'lucide-react';
+// import { Copy, Edit3, Trash2, ExternalLink, History, Star, Pin, Share2, Download } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 interface ContextAction {

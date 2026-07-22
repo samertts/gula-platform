@@ -1,8 +1,7 @@
 import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  Users, Clock, AlertCircle, CheckCircle2, 
-  ChevronRight, BrainCircuit, UserCheck, 
+  Users, Clock, BrainCircuit, UserCheck, 
   Activity, MapPin, PhoneForwarded
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -22,7 +21,7 @@ interface QueuedPatient {
   status: 'waiting' | 'in_consultation' | 'completed';
 }
 export function DoctorPriorityQueue() {
-  const { t } = useLanguage();
+  const { } = useLanguage();
   const [activeTab, setActiveTab] = useState<'all' | 'critical' | 'assigned' | 'completed'>('all');
   
   const queue: QueuedPatient[] = [

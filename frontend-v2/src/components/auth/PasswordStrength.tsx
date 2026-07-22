@@ -1,4 +1,3 @@
-import React from 'react';
 import { cn } from '../../lib/utils';
 import { ShieldCheck, ShieldAlert, Shield } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';

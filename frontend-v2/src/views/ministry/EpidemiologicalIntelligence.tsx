@@ -1,11 +1,5 @@
 import {useState} from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Activity, ShieldAlert, Zap, Filter, 
-  MapPin, Database, Layers, Search, 
-  TrendingUp, AlertTriangle, Fingerprint,
-  FileSpreadsheet, Share2, ShieldCheck
-} from 'lucide-react';
+import { ShieldAlert, Zap, TrendingUp, Fingerprint, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
 import { PredictiveOutbreak } from '../../components/PredictiveOutbreak';

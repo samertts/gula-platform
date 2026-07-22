@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import {Shield, LayoutGrid, RotateCw, Activity, Cpu} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';

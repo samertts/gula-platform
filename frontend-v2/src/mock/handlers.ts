@@ -29,7 +29,6 @@ export class MockApiHandlers {
     }
   }
   private async route(method: string, path: string, request: any): Promise<ApiResponse> {
-    const parts = path.split('/').filter(Boolean);
     if (path === '/api/health') {
       return { status: 200, body: { status: 'healthy', mock: true, timestamp: new Date().toISOString() } };
     }
@@ -188,7 +187,7 @@ export class MockApiHandlers {
     }
     return { status: 200, body: { data, total: data.length } };
   }
-  private handleAnalytics(method: string, path: string): ApiResponse {
+  private handleAnalytics(_method: string, path: string): ApiResponse {
     const patients = this.store.get<any>('patients');
     const results = this.store.get<any>('labResults');
     const orders = this.store.get<any>('orders');
@@ -266,9 +265,9 @@ export class MockApiHandlers {
       },
     };
   }
-  private handleAi(method: string, path: string, request: any): ApiResponse {
+  private handleAi(_method: string, path: string, _request: any): ApiResponse {
     if (path.includes('chat') || path.includes('assistant')) {
-      const query = request.body?.query || request.body?.message || '';
+      const query = _request.body?.query || _request.body?.message || '';
       const isArabic = /[\u0600-\u06FF]/.test(query);
       return {
         status: 200,
@@ -309,7 +308,7 @@ export class MockApiHandlers {
     }
     return { status: 200, body: { response: 'AI service is running in demo mode.', demoMode: true } };
   }
-  private handleOcr(request: any): ApiResponse {
+  private handleOcr(_request: any): ApiResponse {
     return {
       status: 200,
       body: {
@@ -322,7 +321,7 @@ export class MockApiHandlers {
       },
     };
   }
-  private handleFhir(method: string, path: string, request: any): ApiResponse {
+  private handleFhir(_method: string, path: string, _request: any): ApiResponse {
     if (path.includes('Patient')) {
       return {
         status: 200,

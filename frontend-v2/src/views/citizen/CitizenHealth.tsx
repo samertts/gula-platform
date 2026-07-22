@@ -1,17 +1,17 @@
 import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  ShieldCheck, Heart, FileText, QrCode, 
-  Activity as ActivityIcon, History as HistoryIcon, FlaskConical,
-  BrainCircuit, TrendingUp, AlertCircle, ChevronRight,
+  ShieldCheck, Heart, QrCode, 
+  Activity as ActivityIcon, FlaskConical,
+  BrainCircuit, AlertCircle, ChevronRight,
   Stethoscope, Beaker, Pill, Calendar, ArrowUpRight,
-  Download, Share2, Bell, CheckCircle2,
-  Clock, MapPin, Zap, Info, Filter,
-  Fingerprint, ScanFace, ShieldEllipsis, X, Smartphone,
+  Download, Share2, Bell,
+  MapPin, Zap, Info, Filter,
+  Fingerprint, ScanFace, ShieldEllipsis, X,
   Sparkles, Loader2, Users
 } from 'lucide-react';
 import { NationalIDCard } from '../../components/citizen/NationalIDCard';
-import { DigitalTwin } from '../../components/citizen/DigitalTwin';
+// import { DigitalTwin } from '../../components/citizen/DigitalTwin';
 import { DigitalTwinSimulation } from '../../components/DigitalTwinSimulation';
 import { QuantumHealthGrid } from '../../components/QuantumHealthGrid';
 import { FamilySwitcher } from '../../components/citizen/FamilySwitcher';

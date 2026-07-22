@@ -1,8 +1,6 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import { User, Activity, Zap, Shield, Play, RotateCcw, Brain, Heart, Thermometer } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { cn } from '../lib/utils';
 export function DigitalTwinSimulation() {
   const { t } = useLanguage();
   return (

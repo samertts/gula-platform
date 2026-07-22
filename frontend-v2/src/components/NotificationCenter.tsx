@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Bell, CheckCheck, Trash2, AlertTriangle, Clock, Info, Database, FlaskConical,
-  X, ChevronRight, Filter, Tag, Circle, MoreHorizontal,
-} from 'lucide-react';
+  Bell, CheckCheck, AlertTriangle, Clock, Info, Database, FlaskConical,
+  X, } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn, formatTime } from '../lib/utils';
-import { GulaEvent } from '../types/domain';
+import { } from '../types/domain';
 import {Badge} from './ui';
 interface NotificationCenterProps {
   isOpen: boolean;

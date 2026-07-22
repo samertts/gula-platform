@@ -117,48 +117,6 @@ function computeChecksum(data: unknown): string {
   }
   return Math.abs(hash).toString(36);
 }
-function compress(data: string): string {
-  try {
-    if (typeof btoa === 'undefined') return data;
-    const enc = new TextEncoder();
-    const buf = enc.encode(data);
-    const compressed = [];
-    let i = 0;
-    while (i < buf.length) {
-      let count = 1;
-      while (i + count < buf.length && buf[i + count] === buf[i] && count < 255) {
-        count++;
-      }
-      compressed.push(count, buf[i]!);
-      i += count;
-    }
-    return btoa(String.fromCharCode(...compressed));
-  } catch {
-    return data;
-  }
-}
-function decompress(data: string): string {
-  try {
-    if (typeof atob === 'undefined') return data;
-    const binary = atob(data);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const result: number[] = [];
-    for (let i = 0; i < bytes.length; i += 2) {
-      const count = bytes[i]!;
-      const value = bytes[i + 1]!;
-      for (let j = 0; j < count; j++) result.push(value);
-    }
-    return new TextDecoder().decode(new Uint8Array(result));
-  } catch {
-    return data;
-  }
-}
-async function isCompressed(data: unknown): Promise<boolean> {
-  if (typeof data !== 'string') return false;
-  const size = new Blob([data]).size;
-  return size > 10240;
-}
 export class OfflineEngine {
   private static instance: OfflineEngine;
   private pendingSync = false;
