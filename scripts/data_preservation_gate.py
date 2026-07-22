@@ -24,7 +24,7 @@ import pathlib
 import re
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -419,7 +419,7 @@ def format_results(
         return json.dumps({
             "gate": "DATA_PRESERVATION_GATE",
             "overall": overall,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "checks": results,
         }, indent=2)
 
