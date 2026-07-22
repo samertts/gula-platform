@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
 import os
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +63,8 @@ class BackupScheduler:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         logger.info("Backup scheduler stopped")
 
     async def _scheduler_loop(self):
@@ -121,7 +121,6 @@ class BackupService:
         if not manifest:
             raise ValueError(f"Backup manifest not found: {manifest_id}")
 
-        filename = f"backup_{manifest.id}_*.json"
         import glob
         matches = glob.glob(os.path.join(self._backup_dir, f"backup_{manifest.id}_*.json"))
         if not matches:

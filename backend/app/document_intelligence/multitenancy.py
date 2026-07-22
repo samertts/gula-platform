@@ -75,8 +75,7 @@ class TenantIsolationMiddleware:
         if tenant_id and self._manager.tenant_exists(tenant_id):
             TenantContext.set(tenant_id)
         try:
-            response = await call_next(request)
-            return response
+            return await call_next(request)
         finally:
             TenantContext.clear()
 

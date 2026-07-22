@@ -42,7 +42,8 @@ from sqlalchemy.pool import StaticPool
 # Several production models use PostgreSQL's JSONB type. SQLite does not support
 # it, so we register a type compiler that renders JSONB as JSON (which SQLite
 # stores as TEXT). This must be set up before any models are imported.
-from sqlalchemy.types import JSON as _SQLiteJSON, TypeDecorator
+from sqlalchemy.types import JSON as _SQLiteJSON
+from sqlalchemy.types import TypeDecorator
 
 
 class _JSONB_as_JSON(TypeDecorator):
@@ -51,8 +52,8 @@ class _JSONB_as_JSON(TypeDecorator):
     cache_ok = True
 
 
-from sqlalchemy.ext.compiler import compiles
 from sqlalchemy import BigInteger
+from sqlalchemy.ext.compiler import compiles
 
 
 @compiles(JSONB, "sqlite")
@@ -70,7 +71,7 @@ def _compile_bigint_sqlite(element, compiler, **kw):
 # resolution works even in tests that never request a DB fixture.  In
 # particular CitizenLink.citizen = relationship("Citizen") requires class
 # "Citizen" be registered on Base *before* any mapper configuration fires.
-from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
+from app.services.mpi.models import Citizen, IdentityClaim
 
 # ── Session-scoped engine & DDL (once per test run) ───────────────────────────
 # Creating hundreds of tables on every test function is too slow (~80s per test).
@@ -90,17 +91,16 @@ def _session_engine():
     # resolve cross-metadata FK references (nursing→lab_users, EHR→national,
     # etc.).  Without this, ForeignKey("lab_users.id") in a NationalBase
     # table fails because lab_users lives in Base.metadata.
-    import app.main  # noqa: F401 — triggers all model imports
-
-    from app.ehr.base import EHRBase
-    from app.financial.models import FinBase
-    from app.national.base import NationalBase
+    import app.main
     from app.care_continuum.base import CareContinuumBase
     from app.citizen_platform.base import CitizenPlatformBase
     from app.clinical.base import ClinicalBase
+    from app.ehr.base import EHRBase
+    from app.financial.models import FinBase
     from app.governance.base import GovernanceBase
     from app.health_data.base import HealthDataBase
     from app.hospital.base import HospitalBase
+    from app.national.base import NationalBase
     from app.national_data.base import DataPlatformBase
     from app.nhdw.base import NHDWBase
     from app.nursing.base import NursingBase
@@ -200,12 +200,9 @@ def client(db, db_engine, monkeypatch):
     monkeypatch.setattr(_database, "engine", db_engine, raising=True)
 
     app.dependency_overrides[get_db] = _override_get_db
-    # The backend-test CI job doesn't run `alembic upgrade head`, so
-    # run_startup_guard() would fail (no alembic_version table) keeping
-    # system_ready=False. ReadinessMiddleware then returns 503 for every request.
-    # run_startup_guard() has `if system_ready: return` at the top, so setting
-    # it True here causes startup validation to be skipped entirely in tests.
-    _guard.system_ready = True
+    # run_startup_guard() detects RUNTIME_MODE=test and sets system_ready=True
+    # immediately, so ReadinessMiddleware allows all requests through the
+    # TestClient lifespan. No manual system_ready manipulation needed.
     import asyncio
     init_kernel()
     asyncio.run(boot_kernel())

@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import sessionmaker
 
+from ..domain.enums import OcrEngine
 from ..domain.repository import (
     ClassificationResultRepository,
     DocumentRepository,
@@ -31,7 +32,6 @@ from ..providers import (
     PaddleOcrProvider,
     TesseractProvider,
 )
-from ..domain.enums import OcrEngine
 from .interfaces import (
     AuditService,
     DocumentClassifier,
@@ -231,8 +231,7 @@ class DefaultImagePreprocessor(ImagePreprocessor):
         result = await self.deskew(image_data)
         result = await self.denoise(result)
         result = await self.remove_borders(result)
-        result = await self.resize(result)
-        return result
+        return await self.resize(result)
 
 
 class DefaultDocumentParser(DocumentParser):
@@ -471,6 +470,7 @@ class DefaultEntityExtractor(EntityExtractor):
         self, text: str, category: Any | None = None
     ) -> tuple[list, list, list]:
         import re
+
         from ..domain.entities import ExtractedEntity, ExtractedField, ExtractedTable
         from ..domain.enums import EntityType
 
@@ -509,7 +509,7 @@ class DefaultEntityExtractor(EntityExtractor):
             (r"(Creatinine|Cr)\s*:?\s*(\d+\.?\d*)", "Creatinine", "mg/dL"),
             (r"(Cholesterol|Total Cholesterol)\s*:?\s*(\d+\.?\d*)", "Cholesterol", "mg/dL"),
         ]
-        for pattern, name, unit in lab_test_patterns:
+        for pattern, name, _unit in lab_test_patterns:
             for match in re.finditer(pattern, text, re.IGNORECASE):
                 fields.append(
                     ExtractedField(
@@ -758,7 +758,7 @@ class DefaultSearchIndexer(SearchIndexer):
     async def search(self, query: str, filters: dict | None = None) -> list[dict]:
         query_lower = query.lower()
         results = []
-        for doc_id, entry in self._index.items():
+        for _doc_id, entry in self._index.items():
             if query_lower in entry["text"].lower() or query_lower in entry["filename"].lower():
                 if filters:
                     if "category" in filters and entry.get("category") != filters["category"]:
@@ -953,6 +953,7 @@ def build_orchestrator(
 
     from ..infrastructure.repository import (
         SqlAccessControlRepository,
+        SqlAnnotationRepository,
         SqlDocumentEventRepository,
         SqlGovernanceEventRepository,
         SqlGovernancePolicyRepository,
@@ -963,23 +964,22 @@ def build_orchestrator(
         SqlPreservationRepository,
         SqlRetentionRepository,
         SqlReviewRepository,
-        SqlAnnotationRepository,
         SqlVersionRepository,
         SqlWebhookRepository,
     )
     from ..infrastructure.services import (
         InfrastructureAccessControlService,
         InfrastructureCollaborationService,
+        InfrastructureDocumentLifecycleManager,
         InfrastructureDocumentLifecycleService,
         InfrastructureEventBusService,
-        InfrastructureGovernmentRecordsService,
         InfrastructureGovernanceService,
+        InfrastructureGovernmentRecordsService,
         InfrastructureKnowledgeGraphService,
         InfrastructureNationalArchiveService,
         InfrastructureObservabilityService,
         InfrastructureSemanticSearchService,
         InfrastructureWebhookService,
-        InfrastructureDocumentLifecycleManager,
     )
 
     doc_repo: DocumentRepository = SqlDocumentRepository(session_factory)
@@ -1004,7 +1004,7 @@ def build_orchestrator(
     health_repo = SqlPipelineHealthRepository(session_factory)
     access_repo = SqlAccessControlRepository(session_factory)
     retention_repo = SqlRetentionRepository(session_factory)
-    version_repo = SqlVersionRepository(session_factory)
+    SqlVersionRepository(session_factory)
 
     encryptor = DefaultEncryptionService()
     audit = DefaultAuditService()

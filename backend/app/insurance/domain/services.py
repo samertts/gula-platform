@@ -10,8 +10,22 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey,
-    Index, Integer, JSON, Numeric, String, Text, UniqueConstraint,
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import relationship
 
@@ -54,7 +68,7 @@ class MedicalService(InsBase):
     requires_pre_auth = Column(Boolean, default=False)
     requires_referral = Column(Boolean, default=False)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -100,7 +114,7 @@ class BenefitPackageItem(InsBase):
     effective_from = Column(Date, nullable=True)
     effective_until = Column(Date, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -141,7 +155,7 @@ class DeductibleTracking(InsBase):
     deductible_type = Column(String(50), default="individual")
     is_met = Column(Boolean, default=False)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -187,7 +201,7 @@ class BenefitUtilization(InsBase):
     utilization_percentage = Column(Float, default=0.0)
     is_exhausted = Column(Boolean, default=False)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)

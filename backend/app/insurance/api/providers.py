@@ -1,5 +1,4 @@
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -18,42 +17,42 @@ router = APIRouter(prefix="/providers", tags=["insurance-providers"])
 class ProviderCreate(BaseModel):
     insurance_type: InsuranceType
     name: str
-    name_ar: Optional[str] = None
+    name_ar: str | None = None
     code: str
-    license_number: Optional[str] = None
-    tax_id: Optional[str] = None
+    license_number: str | None = None
+    tax_id: str | None = None
     is_government: bool = False
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    website: Optional[str] = None
-    address_line: Optional[str] = None
-    city: Optional[str] = None
-    governorate: Optional[str] = None
+    phone: str | None = None
+    email: str | None = None
+    website: str | None = None
+    address_line: str | None = None
+    city: str | None = None
+    governorate: str | None = None
     country: str = "IQ"
-    contact_person: Optional[str] = None
-    contact_phone: Optional[str] = None
-    coverage_notes: Optional[str] = None
+    contact_person: str | None = None
+    contact_phone: str | None = None
+    coverage_notes: str | None = None
 
 
 class ProviderUpdate(BaseModel):
-    insurance_type: Optional[InsuranceType] = None
-    name: Optional[str] = None
-    name_ar: Optional[str] = None
-    code: Optional[str] = None
-    license_number: Optional[str] = None
-    tax_id: Optional[str] = None
-    is_government: Optional[bool] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    website: Optional[str] = None
-    address_line: Optional[str] = None
-    city: Optional[str] = None
-    governorate: Optional[str] = None
-    country: Optional[str] = None
-    contact_person: Optional[str] = None
-    contact_phone: Optional[str] = None
-    coverage_notes: Optional[str] = None
-    is_active: Optional[bool] = None
+    insurance_type: InsuranceType | None = None
+    name: str | None = None
+    name_ar: str | None = None
+    code: str | None = None
+    license_number: str | None = None
+    tax_id: str | None = None
+    is_government: bool | None = None
+    phone: str | None = None
+    email: str | None = None
+    website: str | None = None
+    address_line: str | None = None
+    city: str | None = None
+    governorate: str | None = None
+    country: str | None = None
+    contact_person: str | None = None
+    contact_phone: str | None = None
+    coverage_notes: str | None = None
+    is_active: bool | None = None
 
 
 class ProviderResponse(BaseModel):
@@ -63,41 +62,41 @@ class ProviderResponse(BaseModel):
     lab_id: int
     insurance_type: InsuranceType
     name: str
-    name_ar: Optional[str] = None
+    name_ar: str | None = None
     code: str
-    license_number: Optional[str] = None
-    tax_id: Optional[str] = None
+    license_number: str | None = None
+    tax_id: str | None = None
     is_government: bool
     is_active: bool
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    website: Optional[str] = None
-    address_line: Optional[str] = None
-    city: Optional[str] = None
-    governorate: Optional[str] = None
-    country: Optional[str] = None
-    contact_person: Optional[str] = None
-    contact_phone: Optional[str] = None
-    coverage_notes: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    phone: str | None = None
+    email: str | None = None
+    website: str | None = None
+    address_line: str | None = None
+    city: str | None = None
+    governorate: str | None = None
+    country: str | None = None
+    contact_person: str | None = None
+    contact_phone: str | None = None
+    coverage_notes: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class ProviderContractCreate(BaseModel):
     facility_id: int
-    facility_type: Optional[str] = None
+    facility_type: str | None = None
     contract_number: str
     start_date: date
-    end_date: Optional[date] = None
+    end_date: date | None = None
     termination_notice_days: int = 90
-    contract_type: Optional[str] = None
+    contract_type: str | None = None
     network_type: str = "preferred"
     is_exclusive: bool = False
-    fee_schedule_id: Optional[str] = None
-    discount_percentage: Optional[float] = None
-    stop_loss_threshold: Optional[float] = None
-    risk_sharing: Optional[str] = None
-    terms_text: Optional[str] = None
+    fee_schedule_id: str | None = None
+    discount_percentage: float | None = None
+    stop_loss_threshold: float | None = None
+    risk_sharing: str | None = None
+    terms_text: str | None = None
 
 
 class ProviderContractResponse(BaseModel):
@@ -107,30 +106,30 @@ class ProviderContractResponse(BaseModel):
     lab_id: int
     insurance_provider_id: int
     facility_id: int
-    facility_type: Optional[str] = None
+    facility_type: str | None = None
     contract_number: str
     status: ProviderContractStatus
     start_date: date
-    end_date: Optional[date] = None
+    end_date: date | None = None
     termination_notice_days: int
-    contract_type: Optional[str] = None
-    network_type: Optional[str] = None
+    contract_type: str | None = None
+    network_type: str | None = None
     is_exclusive: bool
-    discount_percentage: Optional[float] = None
-    stop_loss_threshold: Optional[float] = None
-    risk_sharing: Optional[str] = None
-    terms_text: Optional[str] = None
-    signed_at: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    discount_percentage: float | None = None
+    stop_loss_threshold: float | None = None
+    risk_sharing: str | None = None
+    terms_text: str | None = None
+    signed_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 @router.get("", response_model=list[ProviderResponse])
 def list_providers(
-    search: Optional[str] = Query(None),
-    insurance_type: Optional[InsuranceType] = Query(None),
-    is_active: Optional[bool] = Query(None),
-    is_government: Optional[bool] = Query(None),
+    search: str | None = Query(None),
+    insurance_type: InsuranceType | None = Query(None),
+    is_active: bool | None = Query(None),
+    is_government: bool | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -268,7 +267,7 @@ def deactivate_provider(
 @router.get("/{provider_id}/contracts", response_model=list[ProviderContractResponse])
 def list_provider_contracts(
     provider_id: int,
-    status: Optional[ProviderContractStatus] = Query(None),
+    status: ProviderContractStatus | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

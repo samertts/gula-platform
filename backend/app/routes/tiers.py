@@ -585,4 +585,4 @@ def _update_demand_score(lab_id: int, db: Session) -> None:
 
 # Re-exported from core/seeds for backward compatibility.
 # Startup import path: core/startup_guard → core/seeds (not routes).
-from app.core.seeds import seed_default_subscriptions  # noqa: F401, E501
+from app.core.seeds import seed_default_subscriptions  # noqa: F401

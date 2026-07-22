@@ -953,8 +953,8 @@ def get_audit_logs(
 
 # Re-exported from core/seeds for backward compatibility.
 # Startup import path: core/startup_guard → core/seeds (not routes).
-from app.core.seeds import ensure_master_admin, hash_nid as _hash_nid  # noqa: F401
-
+from app.core.seeds import ensure_master_admin  # noqa: F401
+from app.core.seeds import hash_nid as _hash_nid
 
 # =============================================================================
 # CONTROL LAYER — Kill Switch (master_admin only)

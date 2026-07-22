@@ -122,7 +122,7 @@ def _create_edge(
 class _ASTScanner:
     """Internal AST-based code scanner for discovery and indexing."""
 
-    def __init__(self, engine: "KnowledgeGraphEngine"):
+    def __init__(self, engine: KnowledgeGraphEngine):
         self.engine = engine
         self.db = SessionLocal()
 

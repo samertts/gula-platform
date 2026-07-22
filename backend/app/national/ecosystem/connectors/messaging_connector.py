@@ -22,6 +22,7 @@ class MessagingConnector(BaseConnector):
         self._max_dead_letter = 1000
         self._running = False
         self._listen_task: asyncio.Task | None = None
+        self._active_futures: set[asyncio.Future] = set()
 
     async def connect(self) -> bool:
         try:
@@ -161,7 +162,9 @@ class MessagingConnector(BaseConnector):
                 topic = msg.topic
                 if topic in self._subscribed_topics:
                     for callback in self._subscribed_topics[topic]:
-                        asyncio.ensure_future(self._safe_callback(callback, message))
+                        _future = asyncio.ensure_future(self._safe_callback(callback, message))
+                        self._active_futures.add(_future)
+                        _future.add_done_callback(self._active_futures.discard)
 
             client_id = options.get("client_id", f"gula-mqtt-sub-{int(time.time())}")
             client = mqtt.Client(client_id=client_id)

@@ -178,8 +178,7 @@ class RAGPipeline:
         if total > 0:
             score = 1.0 - (overlap / total)
 
-        score = round(max(0.0, min(1.0, score)), 4)
-        return score
+        return round(max(0.0, min(1.0, score)), 4)
 
 
 rag = RAGPipeline()

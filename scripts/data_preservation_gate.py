@@ -19,14 +19,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import ast
 import json
-import os
 import pathlib
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -421,7 +419,7 @@ def format_results(
         return json.dumps({
             "gate": "DATA_PRESERVATION_GATE",
             "overall": overall,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "checks": results,
         }, indent=2)
 

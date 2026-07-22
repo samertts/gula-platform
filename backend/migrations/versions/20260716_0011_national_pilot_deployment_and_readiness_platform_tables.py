@@ -46,7 +46,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True))
         )
         op.create_index("ix_pilot_programs_lab_id", "pilot_programs", ["lab_id"])
@@ -63,7 +63,7 @@ def upgrade() -> None:
             sa.Column("readiness_score", sa.Float(), default=0.0),
             sa.Column("enrolled_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("completed_at", sa.DateTime(timezone=True)),
-            sa.Column("go_no_go_approved", sa.Boolean(), default=false),
+            sa.Column("go_no_go_approved", sa.Boolean(), default=False),
             sa.Column("issues", sa.JSON()),
             sa.Column("lab_id", sa.Integer(), nullable=False),
             sa.Column("id", sa.String(), primary_key=True),
@@ -71,7 +71,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -95,7 +95,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -120,7 +120,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
             sa.Column("version", sa.Integer(), nullable=False, default=1)
         )
@@ -139,7 +139,7 @@ def upgrade() -> None:
             sa.Column("status", sa.String(), default="pending"),
             sa.Column("deployed_at", sa.DateTime(timezone=True)),
             sa.Column("deployed_by", sa.String()),
-            sa.Column("health_check_passed", sa.Boolean(), default=false),
+            sa.Column("health_check_passed", sa.Boolean(), default=False),
             sa.Column("rollback_at", sa.DateTime(timezone=True)),
             sa.Column("rollback_reason", sa.Text()),
             sa.Column("notes", sa.Text()),
@@ -149,7 +149,7 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String()),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=false),
+            sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True))
         )
         op.create_index("ix_pilot_deployment_records_lab_id", "pilot_deployment_records", ["lab_id"])

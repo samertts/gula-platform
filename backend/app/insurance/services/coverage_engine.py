@@ -13,10 +13,14 @@ from decimal import Decimal
 from typing import Any
 
 from app.insurance.domain.enums import (
-    CoverageDetermination, ServiceCategory,
+    CoverageDetermination,
+    ServiceCategory,
 )
 from app.insurance.domain.models import (
-    BenefitPackage, Coverage, FeeScheduleItem, InsurancePolicy,
+    BenefitPackage,
+    Coverage,
+    FeeScheduleItem,
+    InsurancePolicy,
 )
 
 
@@ -141,14 +145,14 @@ class CoverageEngine:
         allowed = fee.allowed_amount or billed
         quantity = max(request.quantity, 1)
 
-        total_billed = billed * quantity
+        billed * quantity
         total_allowed = allowed * quantity
 
         copay_pct = benefit.copay_percentage or coverage.copay_percentage or policy.copay_percentage or 0.0
         deduct_applies = benefit.deductible_applies if benefit.deductible_applies is not None else True
 
         deductible_remaining_val = coverage.deductible_remaining or Decimal("0")
-        deductible_total_val = coverage.deductible_total or Decimal("0")
+        coverage.deductible_total or Decimal("0")
         oop_remaining_val = coverage.max_out_of_pocket_remaining or Decimal("0")
         oop_total_val = coverage.max_out_of_pocket_total or Decimal("0")
         benefit_remaining_val = coverage.benefit_remaining or Decimal("0")
@@ -246,15 +250,14 @@ class CoverageEngine:
         service_code: str,
         service_category: ServiceCategory | None,
     ) -> BenefitPackage | None:
-        benefit = (
+        return (
             self._db.query(BenefitPackage)
             .filter(
                 BenefitPackage.policy_id == policy_id,
-                BenefitPackage.is_active == True,
+                BenefitPackage.is_active,
             )
             .first()
         )
-        return benefit
 
     def _find_fee_schedule_item(
         self,
@@ -266,7 +269,7 @@ class CoverageEngine:
             .filter(
                 FeeScheduleItem.provider_id == provider_id,
                 FeeScheduleItem.service_code == service_code,
-                FeeScheduleItem.is_active == True,
+                FeeScheduleItem.is_active,
             )
             .first()
         )

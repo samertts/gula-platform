@@ -4,13 +4,13 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import (
+    JSON,
     Column,
     DateTime,
     Enum,
     Float,
     ForeignKey,
     Integer,
-    JSON,
     String,
     Text,
 )
@@ -24,12 +24,12 @@ from ..domain.entities import (
     DocumentEvent,
     DocumentLifecycleRecord,
     DocumentReview,
-    GovernmentDocument,
-    GovernanceEvent,
-    GovernancePolicy,
     ExtractedEntity,
     ExtractedField,
     ExtractedTable,
+    GovernanceEvent,
+    GovernancePolicy,
+    GovernmentDocument,
     KnowledgeGraphEdge,
     OcrResult,
     PipelineHealth,
@@ -56,8 +56,8 @@ from ..domain.enums import (
     OcrLanguage,
     ProcessingPhase,
     ProcessingPriority,
-    ReviewDecision,
     RetentionPolicy,
+    ReviewDecision,
     StorageBackend,
 )
 

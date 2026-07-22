@@ -155,7 +155,7 @@ class OfflineEvaluator(DimensionEvaluator):
         return False
 
     def _check_service_worker(self, target: Path) -> bool:
-        for f in target.rglob("service-worker.*"):
+        for _f in target.rglob("service-worker.*"):
             return True
         for pattern in ["*.js", "*.ts"]:
             for f in target.rglob(pattern):

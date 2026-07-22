@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,7 @@ class OptimisticLockError(Exception):
     pass
 
 
-class GovernanceRepository(Generic[T]):
+class GovernanceRepository[T]:
     def __init__(self, db: Session, model_cls: type[T], audit_resource: str = ""):
         self._db = db
         self._model = model_cls

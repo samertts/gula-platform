@@ -17,9 +17,9 @@ from ..domain.entities import (
     ExtractedEntity,
     ExtractedField,
     ExtractedTable,
-    GovernmentDocument,
     GovernanceEvent,
     GovernancePolicy,
+    GovernmentDocument,
     OcrResult,
     PipelineHealth,
     ProcessingPipelineResult,
@@ -50,6 +50,16 @@ from ..domain.events import (
     DocumentProcessed,
     DocumentProcessingFailed,
 )
+from ..domain.repository import (
+    ClassificationResultRepository,
+    DocumentRepository,
+    EntityRepository,
+    FieldRepository,
+    OcrResultRepository,
+    PipelineResultRepository,
+    StorageRepository,
+    TableRepository,
+)
 from ..exceptions import (
     ClassificationError,
     EntityExtractionError,
@@ -76,8 +86,8 @@ from .interfaces import (
     EventBusService,
     FhirMapper,
     FhirMappingService,
-    GovernmentRecordsService,
     GovernanceService,
+    GovernmentRecordsService,
     ImagePreprocessor,
     KnowledgeExtractor,
     KnowledgeGraphService,
@@ -96,16 +106,7 @@ from .interfaces import (
     SemanticSearchService,
     WebhookService,
 )
-from ..domain.repository import (
-    ClassificationResultRepository,
-    DocumentRepository,
-    EntityRepository,
-    FieldRepository,
-    OcrResultRepository,
-    PipelineResultRepository,
-    StorageRepository,
-    TableRepository,
-)
+
 logger = logging.getLogger("gula.document_intelligence")
 
 
@@ -138,7 +139,7 @@ class DefaultIngestionService(DocumentIngestionService):
 
         checksum = await self._encryptor.hash_document(data)
 
-        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
         page_count = 0
         try:
@@ -788,7 +789,7 @@ class DocumentIntelligenceOrchestrator:
             result.knowledge_graph = kg_result
             result.embeddings = kg_result.get("embeddings", [])
 
-            search_id = await self._search.index_document(
+            await self._search.index_document(
                 doc, ocr_result.full_text, entities
             )
             pipeline.phases_completed.append(ProcessingPhase.search_indexing)

@@ -187,7 +187,7 @@ def list_departments(
 ):
     depts = db.query(lims_models.Department).filter(
         lims_models.Department.lab_id == _lab_id(current_user),
-        lims_models.Department.is_deleted == False,
+        not lims_models.Department.is_deleted,
     ).order_by(lims_models.Department.sort_order).all()
     return {"departments": _list_to_dict(depts)}
 
@@ -221,7 +221,7 @@ def list_sections(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    q = db.query(lims_models.Section).filter(lims_models.Section.is_deleted == False)
+    q = db.query(lims_models.Section).filter(not lims_models.Section.is_deleted)
     if department_id:
         q = q.filter(lims_models.Section.department_id == department_id)
     return {"sections": _list_to_dict(q.all())}
@@ -233,7 +233,7 @@ def list_workstations(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    q = db.query(lims_models.Workstation).filter(lims_models.Workstation.is_deleted == False)
+    q = db.query(lims_models.Workstation).filter(not lims_models.Workstation.is_deleted)
     if section_id:
         q = q.filter(lims_models.Workstation.section_id == section_id)
     return {"workstations": _list_to_dict(q.all())}
@@ -252,7 +252,7 @@ def list_instruments(
 ):
     q = db.query(lims_models.Instrument).filter(
         lims_models.Instrument.lab_id == _lab_id(current_user),
-        lims_models.Instrument.is_deleted == False,
+        not lims_models.Instrument.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Instrument.status == status)
@@ -418,7 +418,7 @@ def list_manufacturers(
     db: Session = Depends(get_db),
 ):
     mfrs = db.query(lims_models.Manufacturer).filter(
-        lims_models.Manufacturer.is_deleted == False,
+        not lims_models.Manufacturer.is_deleted,
     ).order_by(lims_models.Manufacturer.name).all()
     return {"manufacturers": _list_to_dict(mfrs)}
 
@@ -448,7 +448,7 @@ def list_instrument_models(
     db: Session = Depends(get_db),
 ):
     q = db.query(lims_models.InstrumentModel).filter(
-        lims_models.InstrumentModel.is_deleted == False,
+        not lims_models.InstrumentModel.is_deleted,
     )
     if manufacturer_id:
         q = q.filter(lims_models.InstrumentModel.manufacturer_id == manufacturer_id)
@@ -501,7 +501,7 @@ def list_specimens(
 ):
     q = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.lab_id == _lab_id(current_user),
-        lims_models.Specimen.is_deleted == False,
+        not lims_models.Specimen.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Specimen.status == status)
@@ -616,7 +616,7 @@ def list_lims_orders(
 ):
     q = db.query(lims_models.Order).filter(
         lims_models.Order.lab_id == _lab_id(current_user),
-        lims_models.Order.is_deleted == False,
+        not lims_models.Order.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Order.order_status == status)
@@ -695,7 +695,7 @@ def list_panels(
 ):
     q = db.query(lims_models.Panel).filter(
         lims_models.Panel.lab_id == _lab_id(current_user),
-        lims_models.Panel.is_deleted == False,
+        not lims_models.Panel.is_deleted,
     )
     if category:
         q = q.filter(lims_models.Panel.category == category)
@@ -793,7 +793,7 @@ def list_results(
 ):
     q = db.query(lims_models.Result).filter(
         lims_models.Result.lab_id == _lab_id(current_user),
-        lims_models.Result.is_deleted == False,
+        not lims_models.Result.is_deleted,
     )
     if specimen_id:
         q = q.filter(lims_models.Result.specimen_id == specimen_id)
@@ -955,7 +955,7 @@ def list_qc_programs(
 ):
     programs = db.query(lims_models.QCProgram).filter(
         lims_models.QCProgram.lab_id == _lab_id(current_user),
-        lims_models.QCProgram.is_deleted == False,
+        not lims_models.QCProgram.is_deleted,
     ).all()
     return {"programs": _list_to_dict(programs)}
 
@@ -1068,7 +1068,7 @@ def list_reagents(
 ):
     q = db.query(lims_models.Reagent).filter(
         lims_models.Reagent.lab_id == _lab_id(current_user),
-        lims_models.Reagent.is_deleted == False,
+        not lims_models.Reagent.is_deleted,
     )
     if low_stock:
         q = q.filter(lims_models.Reagent.current_quantity <= lims_models.Reagent.minimum_quantity)
@@ -1131,7 +1131,7 @@ def list_consumables(
 ):
     q = db.query(lims_models.Consumable).filter(
         lims_models.Consumable.lab_id == _lab_id(current_user),
-        lims_models.Consumable.is_deleted == False,
+        not lims_models.Consumable.is_deleted,
     )
     if low_stock:
         q = q.filter(lims_models.Consumable.current_quantity <= lims_models.Consumable.minimum_quantity)
@@ -1148,7 +1148,7 @@ def list_lots(
     from datetime import timedelta
     q = db.query(lims_models.Lot).filter(
         lims_models.Lot.lab_id == _lab_id(current_user),
-        lims_models.Lot.is_deleted == False,
+        not lims_models.Lot.is_deleted,
     )
     if item_type:
         q = q.filter(lims_models.Lot.item_type == item_type)
@@ -1166,7 +1166,7 @@ def list_suppliers(
 ):
     suppliers = db.query(lims_models.Supplier).filter(
         lims_models.Supplier.lab_id == _lab_id(current_user),
-        lims_models.Supplier.is_deleted == False,
+        not lims_models.Supplier.is_deleted,
     ).all()
     return {"suppliers": _list_to_dict(suppliers)}
 
@@ -1178,7 +1178,7 @@ def list_storage(
 ):
     storage = db.query(lims_models.Storage).filter(
         lims_models.Storage.lab_id == _lab_id(current_user),
-        lims_models.Storage.is_deleted == False,
+        not lims_models.Storage.is_deleted,
     ).all()
     return {"storage": _list_to_dict(storage)}
 
@@ -1214,7 +1214,7 @@ def list_reference_ranges(
     db: Session = Depends(get_db),
 ):
     q = db.query(lims_models.ReferenceRangeDef).filter(
-        lims_models.ReferenceRangeDef.is_deleted == False,
+        not lims_models.ReferenceRangeDef.is_deleted,
     )
     if test_code:
         q = q.filter(lims_models.ReferenceRangeDef.test_code == test_code)
@@ -1259,7 +1259,7 @@ def list_auto_validation_rules(
 ):
     q = db.query(lims_models.AutoValidationRule).filter(
         lims_models.AutoValidationRule.lab_id == _lab_id(current_user),
-        lims_models.AutoValidationRule.is_deleted == False,
+        not lims_models.AutoValidationRule.is_deleted,
     )
     if test_code:
         q = q.filter(lims_models.AutoValidationRule.test_code == test_code)
@@ -1295,7 +1295,7 @@ def list_delta_check_rules(
 ):
     rules = db.query(lims_models.DeltaCheckRule).filter(
         lims_models.DeltaCheckRule.lab_id == _lab_id(current_user),
-        lims_models.DeltaCheckRule.is_deleted == False,
+        not lims_models.DeltaCheckRule.is_deleted,
     ).all()
     return {"rules": _list_to_dict(rules)}
 
@@ -1330,7 +1330,7 @@ def list_reports(
 ):
     q = db.query(lims_models.LabReport).filter(
         lims_models.LabReport.lab_id == _lab_id(current_user),
-        lims_models.LabReport.is_deleted == False,
+        not lims_models.LabReport.is_deleted,
     )
     if status:
         q = q.filter(lims_models.LabReport.status == status)
@@ -1554,8 +1554,7 @@ def process_critical_alert(
 ):
     """Process a critical result alert."""
     from .workflows import process_critical_result
-    result = process_critical_result(db, result_id, _lab_id(current_user), current_user.id)
-    return result
+    return process_critical_result(db, result_id, _lab_id(current_user), current_user.id)
 
 
 # ===========================================================================
@@ -1625,7 +1624,7 @@ def lims_dashboard(
 
     specimens_total = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.lab_id == lab_id,
-        lims_models.Specimen.is_deleted == False,
+        not lims_models.Specimen.is_deleted,
     ).count()
 
     specimens_by_status = {}
@@ -1642,7 +1641,7 @@ def lims_dashboard(
 
     results_critical = db.query(lims_models.Result).filter(
         lims_models.Result.lab_id == lab_id,
-        lims_models.Result.is_critical == True,
+        lims_models.Result.is_critical,
     ).count()
 
     instruments_online = db.query(lims_models.Instrument).filter(
@@ -1652,7 +1651,7 @@ def lims_dashboard(
 
     instruments_total = db.query(lims_models.Instrument).filter(
         lims_models.Instrument.lab_id == lab_id,
-        lims_models.Instrument.is_deleted == False,
+        not lims_models.Instrument.is_deleted,
     ).count()
 
     qc_warnings = db.query(lims_models.IQC).filter(

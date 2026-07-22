@@ -90,6 +90,47 @@ def upgrade() -> None:
         op.create_index("ix_radiology_orders_lab_status", "radiology_orders", ["lab_id", "status"])
         op.create_index("ix_radiology_orders_ordered_at", "radiology_orders", ["ordered_at"])
 
+    # ── Modality Devices ──────────────────────────────────────────────────────
+    if not _table_exists("radiology_modality_devices"):
+        op.create_table(
+            "radiology_modality_devices",
+            sa.Column("id", sa.Integer(), nullable=False),
+            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("device_code", sa.String(50), nullable=False),
+            sa.Column("device_name", sa.String(200), nullable=False),
+            sa.Column("modality_type", sa.String(50), nullable=False),
+            sa.Column("manufacturer", sa.String(200), nullable=True),
+            sa.Column("model", sa.String(200), nullable=True),
+            sa.Column("serial_number", sa.String(200), nullable=True),
+            sa.Column("ae_title", sa.String(64), nullable=True),
+            sa.Column("ip_address", sa.String(45), nullable=True),
+            sa.Column("port", sa.Integer(), nullable=True),
+            sa.Column("location", sa.String(200), nullable=True),
+            sa.Column("status", sa.String(20), nullable=False, server_default="online"),
+            sa.Column("software_version", sa.String(50), nullable=True),
+            sa.Column("installation_date", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("last_calibration_date", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("next_calibration_date", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("supports_mpps", sa.Boolean(), default=True),
+            sa.Column("supports_worklist", sa.Boolean(), default=True),
+            sa.Column("is_online", sa.Boolean(), default=True),
+            sa.Column("sync_id", sa.String(26), unique=True),
+            sa.Column("fhir_id", sa.String(64), nullable=True),
+            sa.Column("fhir_resource_type", sa.String(32), nullable=True),
+            sa.Column("created_by", sa.Integer(), nullable=True),
+            sa.Column("updated_by", sa.Integer(), nullable=True),
+            sa.Column("version", sa.Integer(), default=1, nullable=False),
+            sa.Column("is_deleted", sa.Boolean(), default=False, nullable=False),
+            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("lab_id", "device_code", name="uq_radiology_device_code"),
+        )
+        op.create_index("ix_radiology_modality_devices_lab_id", "radiology_modality_devices", ["lab_id"])
+        op.create_index("ix_radiology_modality_devices_modality", "radiology_modality_devices", ["modality_type"])
+        op.create_index("ix_radiology_modality_devices_ae_title", "radiology_modality_devices", ["ae_title"])
+
     # ── Radiology Appointments ────────────────────────────────────────────────
     if not _table_exists("radiology_appointments"):
         op.create_table(
@@ -340,6 +381,76 @@ def upgrade() -> None:
         op.create_index("ix_radiology_measurements_exam_id", "radiology_image_measurements", ["exam_id"])
         op.create_index("ix_radiology_measurements_type", "radiology_image_measurements", ["measurement_type"])
 
+    # ── Report Templates ──────────────────────────────────────────────────────
+    if not _table_exists("radiology_report_templates"):
+        op.create_table(
+            "radiology_report_templates",
+            sa.Column("id", sa.Integer(), nullable=False),
+            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=True),
+            sa.Column("template_code", sa.String(50), nullable=False),
+            sa.Column("template_name", sa.String(300), nullable=False),
+            sa.Column("template_name_ar", sa.String(300), nullable=True),
+            sa.Column("modality", sa.String(50), nullable=True),
+            sa.Column("body_part", sa.String(100), nullable=True),
+            sa.Column("content_structure", JSONB(), nullable=True),
+            sa.Column("default_text", sa.Text(), nullable=True),
+            sa.Column("is_active", sa.Boolean(), default=True),
+            sa.Column("is_shared", sa.Boolean(), default=False),
+            sa.Column("sync_id", sa.String(26), unique=True),
+            sa.Column("fhir_id", sa.String(64), nullable=True),
+            sa.Column("fhir_resource_type", sa.String(32), nullable=True),
+            sa.Column("created_by", sa.Integer(), nullable=True),
+            sa.Column("updated_by", sa.Integer(), nullable=True),
+            sa.Column("version", sa.Integer(), default=1, nullable=False),
+            sa.Column("is_deleted", sa.Boolean(), default=False, nullable=False),
+            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("lab_id", "template_code", name="uq_radiology_template_code"),
+        )
+        op.create_index("ix_radiology_templates_modality", "radiology_report_templates", ["modality"])
+
+    # ── Critical Findings ─────────────────────────────────────────────────────
+    if not _table_exists("radiology_critical_findings"):
+        op.create_table(
+            "radiology_critical_findings",
+            sa.Column("id", sa.Integer(), nullable=False),
+            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("order_id", sa.Integer(), sa.ForeignKey("radiology_orders.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("exam_id", sa.Integer(), sa.ForeignKey("radiology_exams.id", ondelete="SET NULL"), nullable=True),
+            sa.Column("report_id", sa.Integer(), nullable=True),
+            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("finding_type", sa.String(100), nullable=False),
+            sa.Column("finding_description", sa.Text(), nullable=False),
+            sa.Column("severity", sa.String(20), nullable=False),
+            sa.Column("status", sa.String(20), nullable=False, server_default="open"),
+            sa.Column("identified_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column("identified_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("notified_to", sa.String(200), nullable=True),
+            sa.Column("notified_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("acknowledged_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column("acknowledged_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("action_taken", sa.Text(), nullable=True),
+            sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("notes", sa.Text(), nullable=True),
+            sa.Column("sync_id", sa.String(26), unique=True),
+            sa.Column("fhir_id", sa.String(64), nullable=True),
+            sa.Column("fhir_resource_type", sa.String(32), nullable=True),
+            sa.Column("created_by", sa.Integer(), nullable=True),
+            sa.Column("updated_by", sa.Integer(), nullable=True),
+            sa.Column("version", sa.Integer(), default=1, nullable=False),
+            sa.Column("is_deleted", sa.Boolean(), default=False, nullable=False),
+            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        op.create_index("ix_radiology_critical_lab_id", "radiology_critical_findings", ["lab_id"])
+        op.create_index("ix_radiology_critical_patient_id", "radiology_critical_findings", ["patient_id"])
+        op.create_index("ix_radiology_critical_status", "radiology_critical_findings", ["lab_id", "status", "severity"])
+        op.create_index("ix_radiology_critical_identified_at", "radiology_critical_findings", ["identified_at"])
+
     # ── Reports ───────────────────────────────────────────────────────────────
     if not _table_exists("radiology_reports"):
         op.create_table(
@@ -393,116 +504,16 @@ def upgrade() -> None:
         op.create_index("ix_radiology_reports_accession_number", "radiology_reports", ["accession_number"])
         op.create_index("ix_radiology_reports_lab_status", "radiology_reports", ["lab_id", "report_status"])
 
-    # ── Critical Findings ─────────────────────────────────────────────────────
-    if not _table_exists("radiology_critical_findings"):
-        op.create_table(
+    # ── Critical Findings FK (deferred—circular dependency) ───────────────────
+    if _table_exists("radiology_critical_findings") and _table_exists("radiology_reports"):
+        op.create_foreign_key(
+            "fk_radiology_critical_findings_report_id",
             "radiology_critical_findings",
-            sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("order_id", sa.Integer(), sa.ForeignKey("radiology_orders.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("exam_id", sa.Integer(), sa.ForeignKey("radiology_exams.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("report_id", sa.Integer(), sa.ForeignKey("radiology_reports.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("finding_type", sa.String(100), nullable=False),
-            sa.Column("finding_description", sa.Text(), nullable=False),
-            sa.Column("severity", sa.String(20), nullable=False),
-            sa.Column("status", sa.String(20), nullable=False, server_default="open"),
-            sa.Column("identified_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("identified_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("notified_to", sa.String(200), nullable=True),
-            sa.Column("notified_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("acknowledged_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("acknowledged_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("action_taken", sa.Text(), nullable=True),
-            sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("notes", sa.Text(), nullable=True),
-            sa.Column("sync_id", sa.String(26), unique=True),
-            sa.Column("fhir_id", sa.String(64), nullable=True),
-            sa.Column("fhir_resource_type", sa.String(32), nullable=True),
-            sa.Column("created_by", sa.Integer(), nullable=True),
-            sa.Column("updated_by", sa.Integer(), nullable=True),
-            sa.Column("version", sa.Integer(), default=1, nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), default=False, nullable=False),
-            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.PrimaryKeyConstraint("id"),
+            "radiology_reports",
+            ["report_id"],
+            ["id"],
+            ondelete="SET NULL",
         )
-        op.create_index("ix_radiology_critical_lab_id", "radiology_critical_findings", ["lab_id"])
-        op.create_index("ix_radiology_critical_patient_id", "radiology_critical_findings", ["patient_id"])
-        op.create_index("ix_radiology_critical_status", "radiology_critical_findings", ["lab_id", "status", "severity"])
-        op.create_index("ix_radiology_critical_identified_at", "radiology_critical_findings", ["identified_at"])
-
-    # ── Report Templates ──────────────────────────────────────────────────────
-    if not _table_exists("radiology_report_templates"):
-        op.create_table(
-            "radiology_report_templates",
-            sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=True),
-            sa.Column("template_code", sa.String(50), nullable=False),
-            sa.Column("template_name", sa.String(300), nullable=False),
-            sa.Column("template_name_ar", sa.String(300), nullable=True),
-            sa.Column("modality", sa.String(50), nullable=True),
-            sa.Column("body_part", sa.String(100), nullable=True),
-            sa.Column("content_structure", JSONB(), nullable=True),
-            sa.Column("default_text", sa.Text(), nullable=True),
-            sa.Column("is_active", sa.Boolean(), default=True),
-            sa.Column("is_shared", sa.Boolean(), default=False),
-            sa.Column("sync_id", sa.String(26), unique=True),
-            sa.Column("fhir_id", sa.String(64), nullable=True),
-            sa.Column("fhir_resource_type", sa.String(32), nullable=True),
-            sa.Column("created_by", sa.Integer(), nullable=True),
-            sa.Column("updated_by", sa.Integer(), nullable=True),
-            sa.Column("version", sa.Integer(), default=1, nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), default=False, nullable=False),
-            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.PrimaryKeyConstraint("id"),
-            sa.UniqueConstraint("lab_id", "template_code", name="uq_radiology_template_code"),
-        )
-        op.create_index("ix_radiology_templates_modality", "radiology_report_templates", ["modality"])
-
-    # ── Modality Devices ──────────────────────────────────────────────────────
-    if not _table_exists("radiology_modality_devices"):
-        op.create_table(
-            "radiology_modality_devices",
-            sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("device_code", sa.String(50), nullable=False),
-            sa.Column("device_name", sa.String(200), nullable=False),
-            sa.Column("modality_type", sa.String(50), nullable=False),
-            sa.Column("manufacturer", sa.String(200), nullable=True),
-            sa.Column("model", sa.String(200), nullable=True),
-            sa.Column("serial_number", sa.String(200), nullable=True),
-            sa.Column("ae_title", sa.String(64), nullable=True),
-            sa.Column("ip_address", sa.String(45), nullable=True),
-            sa.Column("port", sa.Integer(), nullable=True),
-            sa.Column("location", sa.String(200), nullable=True),
-            sa.Column("status", sa.String(20), nullable=False, server_default="online"),
-            sa.Column("software_version", sa.String(50), nullable=True),
-            sa.Column("installation_date", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("last_calibration_date", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("next_calibration_date", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("supports_mpps", sa.Boolean(), default=True),
-            sa.Column("supports_worklist", sa.Boolean(), default=True),
-            sa.Column("is_online", sa.Boolean(), default=True),
-            sa.Column("sync_id", sa.String(26), unique=True),
-            sa.Column("fhir_id", sa.String(64), nullable=True),
-            sa.Column("fhir_resource_type", sa.String(32), nullable=True),
-            sa.Column("created_by", sa.Integer(), nullable=True),
-            sa.Column("updated_by", sa.Integer(), nullable=True),
-            sa.Column("version", sa.Integer(), default=1, nullable=False),
-            sa.Column("is_deleted", sa.Boolean(), default=False, nullable=False),
-            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.PrimaryKeyConstraint("id"),
-            sa.UniqueConstraint("lab_id", "device_code", name="uq_radiology_device_code"),
-        )
-        op.create_index("ix_radiology_modality_devices_lab_id", "radiology_modality_devices", ["lab_id"])
-        op.create_index("ix_radiology_modality_devices_modality", "radiology_modality_devices", ["modality_type"])
-        op.create_index("ix_radiology_modality_devices_ae_title", "radiology_modality_devices", ["ae_title"])
 
     # ── Worklist Entries ──────────────────────────────────────────────────────
     if not _table_exists("radiology_worklist_entries"):

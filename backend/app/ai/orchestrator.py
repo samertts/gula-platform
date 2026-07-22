@@ -81,8 +81,7 @@ class AIOrchestrator:
             if kw in q:
                 score["agent"] += 1
 
-        best = max(score, key=score.get)
-        return best
+        return max(score, key=score.get)
 
     async def _execute_by_intent(
         self,

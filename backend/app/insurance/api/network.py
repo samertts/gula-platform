@@ -1,6 +1,5 @@
 from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -10,7 +9,9 @@ from app.database import get_db
 from app.insurance.domain.enums import NetworkTier
 from app.insurance.domain.models import InsuranceProvider
 from app.insurance.domain.network import (
-    GeographicCoverage, NetworkProvider, NetworkService,
+    GeographicCoverage,
+    NetworkProvider,
+    NetworkService,
     ProviderAvailability,
 )
 from app.models.lab_user import LabUser
@@ -23,24 +24,24 @@ router = APIRouter(prefix="/network", tags=["insurance-network"])
 class NetworkProviderCreate(BaseModel):
     provider_id: int
     facility_id: int
-    contract_id: Optional[int] = None
-    facility_type: Optional[str] = None
+    contract_id: int | None = None
+    facility_type: str | None = None
     network_tier: NetworkTier = NetworkTier.TIER2
     is_preferred: bool = False
     is_exclusive: bool = False
     is_accepting_new_patients: bool = True
     join_date: date
-    termination_date: Optional[date] = None
-    service_area: Optional[str] = None
+    termination_date: date | None = None
+    service_area: str | None = None
 
 
 class NetworkProviderUpdate(BaseModel):
-    network_tier: Optional[NetworkTier] = None
-    is_preferred: Optional[bool] = None
-    is_exclusive: Optional[bool] = None
-    is_accepting_new_patients: Optional[bool] = None
-    termination_date: Optional[date] = None
-    service_area: Optional[str] = None
+    network_tier: NetworkTier | None = None
+    is_preferred: bool | None = None
+    is_exclusive: bool | None = None
+    is_accepting_new_patients: bool | None = None
+    termination_date: date | None = None
+    service_area: str | None = None
 
 
 class NetworkProviderResponse(BaseModel):
@@ -50,29 +51,29 @@ class NetworkProviderResponse(BaseModel):
     lab_id: int
     provider_id: int
     facility_id: int
-    contract_id: Optional[int] = None
-    facility_type: Optional[str] = None
+    contract_id: int | None = None
+    facility_type: str | None = None
     network_tier: NetworkTier
     is_preferred: bool
     is_exclusive: bool
     is_accepting_new_patients: bool
     join_date: date
-    termination_date: Optional[date] = None
-    service_area: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    termination_date: date | None = None
+    service_area: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class NetworkServiceCreate(BaseModel):
     service_code: str
-    service_name: Optional[str] = None
-    negotiated_rate: Optional[Decimal] = None
-    contracted_rate: Optional[Decimal] = None
-    in_network_price: Optional[Decimal] = None
-    out_of_network_price: Optional[Decimal] = None
+    service_name: str | None = None
+    negotiated_rate: Decimal | None = None
+    contracted_rate: Decimal | None = None
+    in_network_price: Decimal | None = None
+    out_of_network_price: Decimal | None = None
     currency: str = "IQD"
-    effective_from: Optional[date] = None
-    effective_until: Optional[date] = None
+    effective_from: date | None = None
+    effective_until: date | None = None
 
 
 class NetworkServiceResponse(BaseModel):
@@ -82,16 +83,16 @@ class NetworkServiceResponse(BaseModel):
     lab_id: int
     network_provider_id: int
     service_code: str
-    service_name: Optional[str] = None
-    negotiated_rate: Optional[Decimal] = None
-    contracted_rate: Optional[Decimal] = None
-    in_network_price: Optional[Decimal] = None
-    out_of_network_price: Optional[Decimal] = None
+    service_name: str | None = None
+    negotiated_rate: Decimal | None = None
+    contracted_rate: Decimal | None = None
+    in_network_price: Decimal | None = None
+    out_of_network_price: Decimal | None = None
     currency: str
     is_active: bool
-    effective_from: Optional[date] = None
-    effective_until: Optional[date] = None
-    created_at: Optional[str] = None
+    effective_from: date | None = None
+    effective_until: date | None = None
+    created_at: str | None = None
 
 
 class AvailabilityCreate(BaseModel):
@@ -102,8 +103,8 @@ class AvailabilityCreate(BaseModel):
     slot_type: str = "general"
     max_patients: int = 10
     current_patients: int = 0
-    effective_from: Optional[date] = None
-    effective_until: Optional[date] = None
+    effective_from: date | None = None
+    effective_until: date | None = None
 
 
 class AvailabilityResponse(BaseModel):
@@ -116,19 +117,19 @@ class AvailabilityResponse(BaseModel):
     time_from: str
     time_to: str
     is_available: bool
-    slot_type: Optional[str] = None
+    slot_type: str | None = None
     max_patients: int
     current_patients: int
-    effective_from: Optional[date] = None
-    effective_until: Optional[date] = None
+    effective_from: date | None = None
+    effective_until: date | None = None
 
 
 @router.get("/providers", response_model=list[NetworkProviderResponse])
 def list_network_providers(
-    network_tier: Optional[NetworkTier] = Query(None),
-    is_preferred: Optional[bool] = Query(None),
-    is_accepting_new_patients: Optional[bool] = Query(None),
-    facility_type: Optional[str] = Query(None),
+    network_tier: NetworkTier | None = Query(None),
+    is_preferred: bool | None = Query(None),
+    is_accepting_new_patients: bool | None = Query(None),
+    facility_type: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -252,7 +253,7 @@ def remove_from_network(
 @router.get("/providers/{network_provider_id}/services", response_model=list[NetworkServiceResponse])
 def list_network_services(
     network_provider_id: int,
-    is_active: Optional[bool] = Query(None),
+    is_active: bool | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -311,7 +312,7 @@ def add_network_service(
 @router.get("/providers/{network_provider_id}/availability", response_model=list[AvailabilityResponse])
 def get_availability(
     network_provider_id: int,
-    day_of_week: Optional[int] = Query(None),
+    day_of_week: int | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -361,11 +362,11 @@ def set_availability(
 
 @router.get("/search", response_model=list[NetworkProviderResponse])
 def search_network(
-    location: Optional[str] = Query(None),
-    specialty: Optional[str] = Query(None),
-    service_code: Optional[str] = Query(None),
-    network_tier: Optional[NetworkTier] = Query(None),
-    is_accepting_new_patients: Optional[bool] = Query(None),
+    location: str | None = Query(None),
+    specialty: str | None = Query(None),
+    service_code: str | None = Query(None),
+    network_tier: NetworkTier | None = Query(None),
+    is_accepting_new_patients: bool | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -386,7 +387,7 @@ def search_network(
     if service_code:
         q = q.join(NetworkService).filter(
             NetworkService.service_code == service_code,
-            NetworkService.is_active == True,
+            NetworkService.is_active,
         )
 
     if specialty and hasattr(NetworkProvider, "facility_type"):
@@ -397,15 +398,15 @@ def search_network(
 
 @router.get("/coverage", response_model=list[dict])
 def geographic_coverage_check(
-    governorate: Optional[str] = Query(None),
-    service_type: Optional[str] = Query(None),
-    coverage_level: Optional[str] = Query(None),
+    governorate: str | None = Query(None),
+    service_type: str | None = Query(None),
+    coverage_level: str | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     q = db.query(GeographicCoverage).filter(
         GeographicCoverage.lab_id == current_user.lab_id,
-        GeographicCoverage.is_active == True,
+        GeographicCoverage.is_active,
     )
 
     if governorate:

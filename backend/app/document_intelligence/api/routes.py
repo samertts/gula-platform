@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 from uuid import UUID
 
@@ -8,14 +9,23 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from ..application.service import DocumentIntelligenceOrchestrator
 from ..domain.entities import (
     DocumentAnnotation,
-    GovernmentDocument, GovernancePolicy,
+    GovernancePolicy,
+    GovernmentDocument,
     SemanticQuery,
 )
 from ..domain.enums import (
-    CollaborationRole, ConfidentialityLevel, DigitalPreservationStandard,
-    DocumentCategory, EventChannel, GovernanceDomain, GovernancePolicyAction,
-    GovernanceRuleSeverity, OcrLanguage,
-    ProcessingPriority, RetentionPolicy, ReviewDecision,
+    CollaborationRole,
+    ConfidentialityLevel,
+    DigitalPreservationStandard,
+    DocumentCategory,
+    EventChannel,
+    GovernanceDomain,
+    GovernancePolicyAction,
+    GovernanceRuleSeverity,
+    OcrLanguage,
+    ProcessingPriority,
+    RetentionPolicy,
+    ReviewDecision,
 )
 from ..domain.repository import DocumentRepository
 from ..exceptions import (
@@ -54,10 +64,8 @@ async def ingest_document(
     meta = {}
     if metadata:
         import json
-        try:
+        with contextlib.suppress(json.JSONDecodeError):
             meta = json.loads(metadata)
-        except json.JSONDecodeError:
-            pass
     if patient_id:
         meta["patient_id"] = patient_id
     if lab_id:
@@ -162,7 +170,7 @@ async def delete_document(
         await repo.delete(document_id)
         return {"message": "Document deleted", "document_id": str(document_id)}
     except DocumentNotFoundError:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="Document not found") from None
 
 
 @router.get("/documents", summary="List documents with filters")
@@ -254,8 +262,7 @@ async def list_ocr_providers():
 async def benchmark_ocr_providers():
     from app.document_intelligence import get_provider_manager
     manager = get_provider_manager()
-    results = await manager.benchmark_all()
-    return results
+    return await manager.benchmark_all()
 
 
 @router.post("/classify", summary="Classify document text")
@@ -275,16 +282,14 @@ async def classify_text(
 async def get_statistics(
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
-    stats = await orchestrator.get_statistics()
-    return stats
+    return await orchestrator.get_statistics()
 
 
 @router.post("/remediate", summary="Run automatic remediation")
 async def auto_remediate(
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
-    result = await orchestrator.auto_remediate()
-    return result
+    return await orchestrator.auto_remediate()
 
 
 @router.get("/status", summary="Platform health status")

@@ -1,11 +1,14 @@
 from __future__ import annotations
+
 import asyncio
-import uuid
-import time
+import contextlib
 import logging
-from enum import Enum
+import time
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +55,7 @@ class TaskQueue:
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._handlers: dict[str, Callable] = {}
         self._worker_task: asyncio.Task | None = None
+        self._active_tasks: set[asyncio.Task] = set()
 
     def register_handler(self, task_name: str, handler: Callable):
         self._handlers[task_name] = handler
@@ -73,10 +77,8 @@ class TaskQueue:
     async def stop(self):
         if self._worker_task:
             self._worker_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._worker_task
-            except asyncio.CancelledError:
-                pass
             self._worker_task = None
             logger.info("Task queue worker stopped")
 
@@ -86,8 +88,10 @@ class TaskQueue:
                 _, _, task = await asyncio.wait_for(
                     self._queue.get(), timeout=1.0
                 )
-                asyncio.create_task(self._execute_task(task))
-            except asyncio.TimeoutError:
+                _task = asyncio.create_task(self._execute_task(task))
+                self._active_tasks.add(_task)
+                _task.add_done_callback(self._active_tasks.discard)
+            except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break
@@ -125,7 +129,7 @@ class TaskQueue:
                     task.id,
                     task.completed_at - task.started_at,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 task.status = TaskStatus.failed
                 task.error = f"Task timed out after {task.timeout}s"
                 self._running.pop(task.id, None)

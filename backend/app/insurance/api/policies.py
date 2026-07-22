@@ -1,6 +1,5 @@
 from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -19,38 +18,38 @@ router = APIRouter(prefix="/policies", tags=["insurance-policies"])
 class PolicyCreate(BaseModel):
     provider_id: int
     policy_number: str
-    group_number: Optional[str] = None
+    group_number: str | None = None
     policy_holder_id: int
-    subscriber_id: Optional[str] = None
-    subscriber_name: Optional[str] = None
-    subscriber_relation: Optional[str] = None
+    subscriber_id: str | None = None
+    subscriber_name: str | None = None
+    subscriber_relation: str | None = None
     start_date: date
-    end_date: Optional[date] = None
+    end_date: date | None = None
     grace_period_days: int = 30
-    premium_amount: Optional[Decimal] = None
+    premium_amount: Decimal | None = None
     premium_currency: str = "IQD"
     premium_frequency: str = "monthly"
-    copay_percentage: Optional[float] = None
-    deductible_amount: Optional[Decimal] = None
-    max_out_of_pocket: Optional[Decimal] = None
-    max_lifetime_benefit: Optional[Decimal] = None
-    terms_text: Optional[str] = None
-    exclusions_text: Optional[str] = None
+    copay_percentage: float | None = None
+    deductible_amount: Decimal | None = None
+    max_out_of_pocket: Decimal | None = None
+    max_lifetime_benefit: Decimal | None = None
+    terms_text: str | None = None
+    exclusions_text: str | None = None
 
 
 class PolicyUpdate(BaseModel):
-    group_number: Optional[str] = None
-    end_date: Optional[date] = None
-    grace_period_days: Optional[int] = None
-    premium_amount: Optional[Decimal] = None
-    premium_currency: Optional[str] = None
-    premium_frequency: Optional[str] = None
-    copay_percentage: Optional[float] = None
-    deductible_amount: Optional[Decimal] = None
-    max_out_of_pocket: Optional[Decimal] = None
-    max_lifetime_benefit: Optional[Decimal] = None
-    terms_text: Optional[str] = None
-    exclusions_text: Optional[str] = None
+    group_number: str | None = None
+    end_date: date | None = None
+    grace_period_days: int | None = None
+    premium_amount: Decimal | None = None
+    premium_currency: str | None = None
+    premium_frequency: str | None = None
+    copay_percentage: float | None = None
+    deductible_amount: Decimal | None = None
+    max_out_of_pocket: Decimal | None = None
+    max_lifetime_benefit: Decimal | None = None
+    terms_text: str | None = None
+    exclusions_text: str | None = None
 
 
 class PolicyResponse(BaseModel):
@@ -60,50 +59,50 @@ class PolicyResponse(BaseModel):
     lab_id: int
     provider_id: int
     policy_number: str
-    group_number: Optional[str] = None
+    group_number: str | None = None
     status: PolicyStatus
     policy_holder_id: int
-    subscriber_id: Optional[str] = None
-    subscriber_name: Optional[str] = None
-    subscriber_relation: Optional[str] = None
+    subscriber_id: str | None = None
+    subscriber_name: str | None = None
+    subscriber_relation: str | None = None
     start_date: date
-    end_date: Optional[date] = None
+    end_date: date | None = None
     grace_period_days: int
-    premium_amount: Optional[Decimal] = None
-    premium_currency: Optional[str] = None
-    premium_frequency: Optional[str] = None
-    copay_percentage: Optional[float] = None
-    deductible_amount: Optional[Decimal] = None
-    max_out_of_pocket: Optional[Decimal] = None
-    max_lifetime_benefit: Optional[Decimal] = None
-    terms_text: Optional[str] = None
-    exclusions_text: Optional[str] = None
-    signed_at: Optional[str] = None
-    cancelled_at: Optional[str] = None
-    cancellation_reason: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    premium_amount: Decimal | None = None
+    premium_currency: str | None = None
+    premium_frequency: str | None = None
+    copay_percentage: float | None = None
+    deductible_amount: Decimal | None = None
+    max_out_of_pocket: Decimal | None = None
+    max_lifetime_benefit: Decimal | None = None
+    terms_text: str | None = None
+    exclusions_text: str | None = None
+    signed_at: str | None = None
+    cancelled_at: str | None = None
+    cancellation_reason: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class BenefitPackageCreate(BaseModel):
     provider_id: int
-    policy_id: Optional[int] = None
+    policy_id: int | None = None
     name: str
-    name_ar: Optional[str] = None
+    name_ar: str | None = None
     code: str
-    description: Optional[str] = None
-    service_category: Optional[ServiceCategory] = None
+    description: str | None = None
+    service_category: ServiceCategory | None = None
     is_mandatory: bool = False
     coverage_percentage: float = 100.0
     copay_percentage: float = 0.0
     deductible_applies: bool = True
-    max_benefit_per_claim: Optional[Decimal] = None
-    max_benefit_per_year: Optional[Decimal] = None
-    max_benefit_lifetime: Optional[Decimal] = None
-    max_visits_per_year: Optional[int] = None
-    age_min: Optional[int] = None
-    age_max: Optional[int] = None
-    gender_restriction: Optional[str] = None
+    max_benefit_per_claim: Decimal | None = None
+    max_benefit_per_year: Decimal | None = None
+    max_benefit_lifetime: Decimal | None = None
+    max_visits_per_year: int | None = None
+    age_min: int | None = None
+    age_max: int | None = None
+    gender_restriction: str | None = None
     requires_pre_auth: bool = False
     requires_referral: bool = False
 
@@ -114,36 +113,36 @@ class BenefitPackageResponse(BaseModel):
     id: int
     lab_id: int
     provider_id: int
-    policy_id: Optional[int] = None
+    policy_id: int | None = None
     name: str
-    name_ar: Optional[str] = None
+    name_ar: str | None = None
     code: str
-    description: Optional[str] = None
-    service_category: Optional[ServiceCategory] = None
+    description: str | None = None
+    service_category: ServiceCategory | None = None
     is_mandatory: bool
     is_active: bool
-    coverage_percentage: Optional[float] = None
-    copay_percentage: Optional[float] = None
+    coverage_percentage: float | None = None
+    copay_percentage: float | None = None
     deductible_applies: bool
-    max_benefit_per_claim: Optional[Decimal] = None
-    max_benefit_per_year: Optional[Decimal] = None
-    max_benefit_lifetime: Optional[Decimal] = None
-    max_visits_per_year: Optional[int] = None
-    age_min: Optional[int] = None
-    age_max: Optional[int] = None
-    gender_restriction: Optional[str] = None
+    max_benefit_per_claim: Decimal | None = None
+    max_benefit_per_year: Decimal | None = None
+    max_benefit_lifetime: Decimal | None = None
+    max_visits_per_year: int | None = None
+    age_min: int | None = None
+    age_max: int | None = None
+    gender_restriction: str | None = None
     requires_pre_auth: bool
     requires_referral: bool
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 @router.get("", response_model=list[PolicyResponse])
 def list_policies(
-    provider_id: Optional[int] = Query(None),
-    status: Optional[PolicyStatus] = Query(None),
-    policy_holder_id: Optional[int] = Query(None),
-    search: Optional[str] = Query(None),
+    provider_id: int | None = Query(None),
+    status: PolicyStatus | None = Query(None),
+    policy_holder_id: int | None = Query(None),
+    search: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -310,7 +309,7 @@ def add_policy_coverage(
     policy_id: int,
     patient_id: int = Query(...),
     start_date: date = Query(...),
-    end_date: Optional[date] = Query(None),
+    end_date: date | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

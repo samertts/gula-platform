@@ -20,16 +20,14 @@ SAML_NS = {
 def parse_saml_response(raw_base64: str) -> ET.Element | None:
     try:
         decoded = base64.b64decode(raw_base64)
-        root = ET.fromstring(decoded)
-        return root
+        return ET.fromstring(decoded)
     except (ValueError, ET.ParseError) as exc:
         logger.error("SAML response parse failed: %s", exc)
         return None
 
 
 def extract_assertion(saml_response: ET.Element) -> ET.Element | None:
-    assertion = saml_response.find(".//saml:Assertion", SAML_NS)
-    return assertion
+    return saml_response.find(".//saml:Assertion", SAML_NS)
 
 
 def validate_assertion(

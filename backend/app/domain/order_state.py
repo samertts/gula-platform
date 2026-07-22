@@ -14,12 +14,12 @@ no endpoint can bypass the rules regardless of how it is called.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from app.domain.exceptions import OrderStateError
 
 
-class OrderStatus(str, Enum):
+class OrderStatus(StrEnum):
     """Canonical status values for a LabOrder.
 
     Values match DB column strings for backward compatibility.

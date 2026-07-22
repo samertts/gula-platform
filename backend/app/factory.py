@@ -34,15 +34,11 @@ def _is_migration_mode() -> bool:
 
 
 def _should_init_db() -> bool:
-    if _is_openapi_mode():
-        return False
-    return True
+    return not _is_openapi_mode()
 
 
 def _should_init_redis() -> bool:
-    if _is_openapi_mode() or _is_migration_mode():
-        return False
-    return True
+    return not (_is_openapi_mode() or _is_migration_mode())
 
 
 def _should_init_background_tasks() -> bool:
@@ -53,9 +49,7 @@ def _should_init_background_tasks() -> bool:
 
 
 def _should_init_ai() -> bool:
-    if _is_openapi_mode():
-        return False
-    return True
+    return not _is_openapi_mode()
 
 
 def _should_init_financial() -> bool:
@@ -66,9 +60,7 @@ def _should_init_financial() -> bool:
 
 
 def _should_init_monitoring() -> bool:
-    if _is_openapi_mode() or _is_migration_mode():
-        return False
-    return True
+    return not (_is_openapi_mode() or _is_migration_mode())
 
 
 def _should_init_sentry() -> bool:
@@ -109,114 +101,283 @@ def import_all_models() -> None:
 
     Called once at startup. Must be idempotent.
     """
+    from .document_intelligence.infrastructure.models import (  # noqa: F401
+        AccessControlModel,
+        ClassificationResultModel,
+        DigitalPreservationRecordModel,
+        DocumentAnnotationModel,
+        DocumentEventModel,
+        DocumentLifecycleModel,
+        DocumentRetentionModel,
+        DocumentReviewModel,
+        DocumentVersionModel,
+        ExtractedEntityModel,
+        ExtractedFieldModel,
+        ExtractedTableModel,
+        GovernanceEventModel,
+        GovernancePolicyModel,
+        GovernmentDocumentModel,
+        KnowledgeGraphEdgeModel,
+        OcrResultModel,
+        PipelineHealthModel,
+        PipelineResultModel,
+        ScannedDocumentModel,
+        WebhookRegistrationModel,
+    )
     from .hospital.models import (  # noqa: F401
-        Bed, BedAssignment, Building, Campus, Clinic, CostCenter,
-        Floor, HospitalDepartment, HospitalMaster, MedicalEquipment,
-        OperationTheater, Room, Unit,
+        Bed,
+        BedAssignment,
+        Building,
+        Campus,
+        Clinic,
+        CostCenter,
+        Floor,
+        HospitalDepartment,
+        HospitalMaster,
+        MedicalEquipment,
+        OperationTheater,
+        Room,
+        Unit,
     )
     from .lims.models import (  # noqa: F401
-        EQA, IQC, AutoValidationRule, Calibration, ChainOfCustody,
-        Consumable, DeltaCheckRule, ElectronicSignature, EquipmentLog,
-        Instrument, InstrumentModel, LabReport, Lot, Maintenance,
-        Manufacturer, Order, Panel, PanelTest, QCProgram, Reagent,
-        ReferenceRangeDef, ReportAttachment, Result, ResultRelease,
-        ResultValidation, Section, Specimen, SpecimenCatalog, Storage,
-        Supplier, TemperatureLog, Transportation, Workstation,
+        EQA,
+        IQC,
+        AutoValidationRule,
+        Calibration,
+        ChainOfCustody,
+        Consumable,
+        DeltaCheckRule,
+        ElectronicSignature,
+        EquipmentLog,
+        Instrument,
+        InstrumentModel,
+        LabReport,
+        Lot,
+        Maintenance,
+        Manufacturer,
+        Order,
+        Panel,
+        PanelTest,
+        QCProgram,
+        Reagent,
+        ReferenceRangeDef,
+        ReportAttachment,
+        Result,
+        ResultRelease,
+        ResultValidation,
+        Section,
+        Specimen,
+        SpecimenCatalog,
+        Storage,
+        Supplier,
+        TemperatureLog,
+        Transportation,
+        Workstation,
     )
     from .models import (  # noqa: F401
-        AuditLog, Lab, LabOrder, LabResult, LabUser, Patient,
-        QualityControl, Sample, TestType, User,
+        AuditLog,
+        AuthorizationAudit,
+        BreakGlassSession,
+        Delegation,
+        FieldSecurity,
+        Lab,
+        LabOrder,
+        LabResult,
+        LabUser,
+        Patient,
+        Permission,
+        Policy,
+        QualityControl,
+        Role,
+        RoleAssignment,
+        RoleGroup,
+        RoleGroupMember,
+        RolePermission,
+        Sample,
+        Tenant,
+        TestType,
+        User,
+    )
+    from .models.ai_interaction import (  # noqa: F401
+        AIFeedback,
+        AIInteraction,
+        AIRetrievalRef,
+        AIUnresolvedQuestion,
+        MedicalTerminologyNormalized,
+    )
+    from .models.edge import (  # noqa: F401
+        EdgeDevice,
+        EdgeEvent,
+        EdgeModel,
+        EdgeModelAssignment,
+        EdgePolicy,
+        EdgeTask,
+        EdgeTelemetry,
     )
     from .models.outbox import OutboxEvent  # noqa: F401
+    from .models.subscription import (  # noqa: F401
+        FeatureFlag,
+        LabSubscription,
+        UpgradeDemandScore,
+        UpgradeRequest,
+    )
+    from .national.ecosystem.partners.models import (  # noqa: F401
+        Partner,
+        PartnerAgreement,
+        PartnerAuditLog,
+        PartnerCertificate,
+        PartnerCredential,
+        PartnerRateLimit,
+    )
+    from .national_data.models import (  # noqa: F401
+        CanonicalDocument,
+        CanonicalEncounter,
+        CanonicalMedication,
+        CanonicalObservation,
+        CanonicalPatient,
+        CanonicalProcedure,
+    )
+    from .national_data.models.ai_data import (  # noqa: F401
+        DeidentificationJob,
+        FeatureStore,
+        FeatureValue,
+        KnowledgeGraphEdge,
+        KnowledgeGraphNode,
+        SyntheticDataJob,
+        TrainingDataset,
+        VectorEmbedding,
+    )
+    from .national_data.models.event_store import (  # noqa: F401
+        EventRetentionPolicy,
+        EventSnapshot,
+        StoredEvent,
+    )
+    from .national_data.models.governance import (  # noqa: F401
+        ConsentDirective,
+        DataCatalogEntry,
+        DataClassification,
+        DataLineageEntry,
+        DataQualityCheck,
+        DataQualityRule,
+        DataSteward,
+        MetadataEntry,
+        RetentionPolicy,
+    )
+    from .national_data.models.mdm import (  # noqa: F401
+        DeviceRegistry,
+        DuplicateRecord,
+        GoldenRecord,
+        LocationRegistry,
+        MergeAction,
+        ProviderRegistry,
+        SourceSystem,
+        TerminologyRegistry,
+    )
+    from .national_data.models.warehouse import (  # noqa: F401
+        DimDate,
+        DimDiagnosis,
+        DimFacility,
+        DimPatient,
+        DimProvider,
+        FactDiagnosis,
+        FactLabResult,
+        FactPatientVisit,
+    )
     from .nhdw.models import (  # noqa: F401
-        Admission, CarePlan, ClinicalTask, DashboardConfiguration,
-        Discharge, HospitalAlert, HospitalMessage, QueueEntry,
-        ResourceSchedule, ShiftReport, TelemedicineSession, Transfer,
-        WaitingListEntry, WardRound,
+        Admission,
+        CarePlan,
+        ClinicalTask,
+        DashboardConfiguration,
+        Discharge,
+        HospitalAlert,
+        HospitalMessage,
+        QueueEntry,
+        ResourceSchedule,
+        ShiftReport,
+        TelemedicineSession,
+        Transfer,
+        WaitingListEntry,
+        WardRound,
     )
     from .nursing.models import (  # noqa: F401
-        ClinicalChecklist, Delegation, EscalationRecord, FallRiskAssessment,
-        FluidBalance, NursingCarePlan, NursingNote, NursingShift,
-        NursingTask, NutritionAssessment, PainAssessment, PatientAssignment,
-        PressureInjuryAssessment, ShiftHandover,
+        ClinicalChecklist,
+        Delegation as NursingDelegation,
+        EscalationRecord,
+        FallRiskAssessment,
+        FluidBalance,
+        NursingCarePlan,
+        NursingNote,
+        NursingShift,
+        NursingTask,
+        NutritionAssessment,
+        PainAssessment,
+        PatientAssignment,
+        PressureInjuryAssessment,
+        ShiftHandover,
     )
     from .pharmacy.models import (  # noqa: F401
-        AllergyRule, ClinicalGuideline, ContraindicationRule, DispenseQueue,
-        DispenseRecord, DoseGuideline, DrugBatch, DrugCatalog,
-        DrugInteractionRule, DrugMonitoring, DrugReturn, DrugSupplier,
-        InventoryForecast, InventoryTransfer, InventoryTransferItem,
-        Prescription, PrescriptionItem, Recall, StockLevel, StockMovement,
-        Store, Warehouse, WasteRecord,
+        AllergyRule,
+        ClinicalGuideline,
+        ContraindicationRule,
+        DispenseQueue,
+        DispenseRecord,
+        DoseGuideline,
+        DrugBatch,
+        DrugCatalog,
+        DrugInteractionRule,
+        DrugMonitoring,
+        DrugReturn,
+        DrugSupplier,
+        InventoryForecast,
+        InventoryTransfer,
+        InventoryTransferItem,
+        Prescription,
+        PrescriptionItem,
+        Recall,
+        StockLevel,
+        StockMovement,
+        Store,
+        Warehouse,
+        WasteRecord,
     )
     from .radiology.ai import AIAnalysisJob  # noqa: F401
     from .radiology.models import (  # noqa: F401
-        MPPS, CriticalFinding, DICOMStorage, DICOMStudy, ImageAnnotation,
-        ImageMeasurement, ImageShare, ModalityDevice, Protocol,
-        RadiologyAppointment, RadiologyExam, RadiologyImage, RadiologyOrder,
-        RadiologyReport, RadiologySeries, ReportTemplate, WorklistEntry,
-    )
-    from .models.subscription import (  # noqa: F401
-        FeatureFlag, LabSubscription, UpgradeDemandScore, UpgradeRequest,
-    )
-    from .models.edge import (  # noqa: F401
-        EdgeDevice, EdgeEvent, EdgeModel, EdgeModelAssignment,
-        EdgePolicy, EdgeTask, EdgeTelemetry,
-    )
-    from .national_data.models import (  # noqa: F401
-        CanonicalDocument, CanonicalEncounter, CanonicalMedication,
-        CanonicalObservation, CanonicalPatient, CanonicalProcedure,
-    )
-    from .national_data.models.ai_data import (  # noqa: F401
-        DeidentificationJob, FeatureStore, FeatureValue,
-        KnowledgeGraphEdge, KnowledgeGraphNode, SyntheticDataJob,
-        TrainingDataset, VectorEmbedding,
-    )
-    from .national_data.models.event_store import (  # noqa: F401
-        EventRetentionPolicy, EventSnapshot, StoredEvent,
-    )
-    from .national_data.models.governance import (  # noqa: F401
-        ConsentDirective, DataCatalogEntry, DataClassification,
-        DataLineageEntry, DataQualityCheck, DataQualityRule,
-        DataSteward, MetadataEntry, RetentionPolicy,
-    )
-    from .national_data.models.mdm import (  # noqa: F401
-        DeviceRegistry, DuplicateRecord, GoldenRecord, LocationRegistry,
-        MergeAction, ProviderRegistry, SourceSystem, TerminologyRegistry,
-    )
-    from .national_data.models.warehouse import (  # noqa: F401
-        DimDate, DimDiagnosis, DimFacility, DimPatient, DimProvider,
-        FactDiagnosis, FactLabResult, FactPatientVisit,
-    )
-    from .models.ai_interaction import (  # noqa: F401
-        AIFeedback, AIInteraction, AIRetrievalRef,
-        AIUnresolvedQuestion, MedicalTerminologyNormalized,
-    )
-    from .national.ecosystem.partners.models import (  # noqa: F401
-        Partner, PartnerAgreement, PartnerAuditLog, PartnerCertificate,
-        PartnerCredential, PartnerRateLimit,
-    )
-    from .document_intelligence.infrastructure.models import (  # noqa: F401
-        ScannedDocumentModel, OcrResultModel, ExtractedEntityModel,
-        ExtractedFieldModel, ExtractedTableModel, ClassificationResultModel,
-        PipelineResultModel, DocumentVersionModel, GovernmentDocumentModel,
-        DocumentReviewModel, DocumentAnnotationModel, DigitalPreservationRecordModel,
-        GovernancePolicyModel, GovernanceEventModel, DocumentEventModel,
-        DocumentLifecycleModel, WebhookRegistrationModel, KnowledgeGraphEdgeModel,
-        PipelineHealthModel, AccessControlModel, DocumentRetentionModel,
+        MPPS,
+        CriticalFinding,
+        DICOMStorage,
+        DICOMStudy,
+        ImageAnnotation,
+        ImageMeasurement,
+        ImageShare,
+        ModalityDevice,
+        Protocol,
+        RadiologyAppointment,
+        RadiologyExam,
+        RadiologyImage,
+        RadiologyOrder,
+        RadiologyReport,
+        RadiologySeries,
+        ReportTemplate,
+        WorklistEntry,
     )
 
 
 def _build_middleware_stack(app: FastAPI) -> None:
     """Register all middleware in the correct order."""
-    from .config import MAX_REQUEST_BODY_MB
-
-    from app.middleware import (  # noqa: E402
-        ConcurrencyLimitMiddleware, KernelMiddleware, MaxBodySizeMiddleware,
-        ReadinessMiddleware, RequestIDMiddleware, RequestTimingMiddleware,
-        SecurityHeadersMiddleware,
-    )
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.middleware.gzip import GZipMiddleware
+
+    from app.middleware import (
+        ConcurrencyLimitMiddleware,
+        KernelMiddleware,
+        MaxBodySizeMiddleware,
+        ReadinessMiddleware,
+        RequestIDMiddleware,
+        RequestTimingMiddleware,
+        SecurityHeadersMiddleware,
+    )
+
+    from .config import MAX_REQUEST_BODY_MB
 
     app.add_middleware(MaxBodySizeMiddleware, max_size_mb=MAX_REQUEST_BODY_MB)
     app.add_middleware(RequestIDMiddleware)
@@ -270,14 +431,35 @@ def _register_routes(app: FastAPI) -> None:
     In openapi mode, we still register routes (they define the OpenAPI schema)
     but skip any route module that requires DB/AI/external service imports.
     """
-    from .routes import (  # noqa: E402
-        admin, batch, compliance, critical_alerts, dashboard,
-        device_results, ehr, ehr_fhir, id_scan, identity, insurance,
-        labs, login, metrics, mobile, national_identity, notifications,
-        patients, qr, quality_control, register, results, samples,
-        security, setup, test_results,
+    from .routes import (
+        admin,
+        admin_log_level,
+        batch,
+        compliance,
+        critical_alerts,
+        dashboard,
+        device_results,
+        ehr,
+        ehr_fhir,
+        id_scan,
+        identity,
+        insurance,
+        labs,
+        login,
+        metrics,
+        mobile,
+        national_identity,
+        notifications,
+        patients,
+        qr,
+        quality_control,
+        register,
+        results,
+        samples,
+        security,
+        setup,
+        test_results,
     )
-    from .routes import admin_log_level
     from .routes import ai as ai_routes
     from .routes import citizen_portal as citizen_portal_routes
     from .routes import optimizer as optimizer_routes
@@ -511,6 +693,9 @@ def _register_routes(app: FastAPI) -> None:
     from .trust.routes import router as trust_router
     app.include_router(trust_router)
 
+    from .routes.authorization import router as authorization_router
+    app.include_router(authorization_router)
+
     logger.info("All platform routes registered")
 
 
@@ -561,7 +746,7 @@ def _build_lifespan():
     return _lifespan
 
 
-def _domain_exception_handler(request: Request, exc: "DomainError") -> JSONResponse:
+def _domain_exception_handler(request: Request, exc: DomainError) -> JSONResponse:
     """Translate domain errors to the appropriate HTTP response."""
     request_id = getattr(request.state, "request_id", "unknown")
     return JSONResponse(

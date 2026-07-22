@@ -176,6 +176,13 @@ MAX_REQUEST_BODY_MB = int(os.getenv("MAX_REQUEST_BODY_MB", "10"))
 RATE_LIMIT_AUTH = int(os.getenv("RATE_LIMIT_AUTH", "10"))
 RATE_LIMIT_PUBLIC = int(os.getenv("RATE_LIMIT_PUBLIC", "30"))
 
+# ─── Startup Guard Timeout ───────────────────────────────────────────────────
+# Maximum seconds the startup guard waits for all validation steps before
+# switching to partial-readiness mode. In partial mode, the /health/ready probe
+# passes but some dependencies (e.g. kernel) may still be initializing.
+# Default: 120 seconds (covers DB backoff + Redis + migrations + kernel boot).
+STARTUP_TIMEOUT_SECONDS = int(os.getenv("STARTUP_TIMEOUT_SECONDS", "120"))
+
 # ─── Redis (optional — MVP deployments run without Redis; in-memory fallback ──
 # is used automatically by redis_client.py when REDIS_URL is absent.
 # For full cross-process session invalidation and rate limiting, set REDIS_URL.

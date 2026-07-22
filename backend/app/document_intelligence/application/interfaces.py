@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from datetime import datetime
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 from uuid import UUID
 
 from ..domain.entities import (
@@ -15,12 +16,12 @@ from ..domain.entities import (
     DocumentLifecycleRecord,
     DocumentPage,
     DocumentReview,
-    GovernmentDocument,
-    GovernanceEvent,
-    GovernancePolicy,
     ExtractedEntity,
     ExtractedField,
     ExtractedTable,
+    GovernanceEvent,
+    GovernancePolicy,
+    GovernmentDocument,
     KnowledgeGraphEdge,
     OcrResult,
     PipelineHealth,
@@ -39,8 +40,8 @@ from ..domain.enums import (
     OcrEngine,
     OcrEngineStatus,
     OcrLanguage,
-    ReviewDecision,
     RetentionPolicy,
+    ReviewDecision,
 )
 
 

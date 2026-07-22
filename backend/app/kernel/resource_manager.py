@@ -121,7 +121,7 @@ class ResourcePool:
             self._in_use = max(0, self._in_use - 1)
 
     @contextmanager
-    def use(self) -> Generator[Any | None, None, None]:
+    def use(self) -> Generator[Any | None]:
         resource = self.acquire()
         try:
             yield resource

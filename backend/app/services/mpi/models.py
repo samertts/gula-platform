@@ -93,7 +93,7 @@ class Citizen(Base):
     merged_into = relationship("Citizen", remote_side=[id], foreign_keys=[merged_into_id])
     claims = relationship("IdentityClaim", back_populates="citizen", lazy="dynamic")
 
-    def canonical(self) -> "Citizen":
+    def canonical(self) -> Citizen:
         """Follow merged_into chain to the surviving citizen.
 
         Bounded at 10 hops — in practice merges never chain that deep, but we

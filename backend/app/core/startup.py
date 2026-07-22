@@ -133,7 +133,7 @@ async def _health_alert_loop():
             if should_alert:
                 import httpx as _hx
 
-                emoji = u"\U0001f534" if grade == "RED" else (u"\U0001f7e1" if grade == "YELLOW" else u"\u2705")
+                emoji = "\U0001f534" if grade == "RED" else ("\U0001f7e1" if grade == "YELLOW" else "\u2705")
                 red_dur = ""
                 if grade == "RED" and _red_since > 0:
                     red_dur = f" ({int(now_mono - _red_since)}s in RED)"
@@ -182,7 +182,7 @@ async def _adaptive_concurrency_loop():
     - 3 consecutive fast readings (<150ms): restore original _max.
     """
     from app.database import check_db_connection as _db_check
-    from app.middleware import ConcurrencyLimitMiddleware, _MAX_CONCURRENT
+    from app.middleware import _MAX_CONCURRENT, ConcurrencyLimitMiddleware
 
     _orig = _MAX_CONCURRENT
     _slow_streak = 0

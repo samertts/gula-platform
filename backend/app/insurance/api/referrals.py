@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -7,10 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.insurance.domain.enums import (
-    ReferralPriority, ReferralStatus, ReferralType, ValidationMethod,
+    ReferralPriority,
+    ReferralStatus,
+    ReferralType,
+    ValidationMethod,
 )
 from app.insurance.domain.referral import (
-    InsuranceReferral, ReferralHistory, ReferralValidation,
+    InsuranceReferral,
+    ReferralHistory,
+    ReferralValidation,
 )
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
@@ -20,41 +24,41 @@ router = APIRouter(prefix="/referrals", tags=["insurance-referrals"])
 
 
 class ReferralCreate(BaseModel):
-    coverage_id: Optional[int] = None
+    coverage_id: int | None = None
     patient_id: int
-    authorization_id: Optional[int] = None
-    from_practitioner_id: Optional[int] = None
-    to_practitioner_id: Optional[int] = None
-    from_facility_id: Optional[int] = None
-    to_facility_id: Optional[int] = None
+    authorization_id: int | None = None
+    from_practitioner_id: int | None = None
+    to_practitioner_id: int | None = None
+    from_facility_id: int | None = None
+    to_facility_id: int | None = None
     referral_type: ReferralType
     priority: ReferralPriority = ReferralPriority.ROUTINE
-    clinical_reason: Optional[str] = None
-    diagnosis_code: Optional[str] = None
-    diagnosis_description: Optional[str] = None
-    icd10_code: Optional[str] = None
-    service_code: Optional[str] = None
-    service_description: Optional[str] = None
+    clinical_reason: str | None = None
+    diagnosis_code: str | None = None
+    diagnosis_description: str | None = None
+    icd10_code: str | None = None
+    service_code: str | None = None
+    service_description: str | None = None
     quantity: int = 1
-    notes: Optional[str] = None
-    clinical_notes: Optional[str] = None
-    expiration_date: Optional[date] = None
+    notes: str | None = None
+    clinical_notes: str | None = None
+    expiration_date: date | None = None
 
 
 class ReferralUpdate(BaseModel):
-    to_practitioner_id: Optional[int] = None
-    to_facility_id: Optional[int] = None
-    priority: Optional[ReferralPriority] = None
-    clinical_reason: Optional[str] = None
-    diagnosis_code: Optional[str] = None
-    diagnosis_description: Optional[str] = None
-    icd10_code: Optional[str] = None
-    service_code: Optional[str] = None
-    service_description: Optional[str] = None
-    quantity: Optional[int] = None
-    notes: Optional[str] = None
-    clinical_notes: Optional[str] = None
-    expiration_date: Optional[date] = None
+    to_practitioner_id: int | None = None
+    to_facility_id: int | None = None
+    priority: ReferralPriority | None = None
+    clinical_reason: str | None = None
+    diagnosis_code: str | None = None
+    diagnosis_description: str | None = None
+    icd10_code: str | None = None
+    service_code: str | None = None
+    service_description: str | None = None
+    quantity: int | None = None
+    notes: str | None = None
+    clinical_notes: str | None = None
+    expiration_date: date | None = None
 
 
 class ReferralResponse(BaseModel):
@@ -62,37 +66,37 @@ class ReferralResponse(BaseModel):
 
     id: int
     lab_id: int
-    coverage_id: Optional[int] = None
+    coverage_id: int | None = None
     patient_id: int
-    authorization_id: Optional[int] = None
-    from_practitioner_id: Optional[int] = None
-    to_practitioner_id: Optional[int] = None
-    from_facility_id: Optional[int] = None
-    to_facility_id: Optional[int] = None
+    authorization_id: int | None = None
+    from_practitioner_id: int | None = None
+    to_practitioner_id: int | None = None
+    from_facility_id: int | None = None
+    to_facility_id: int | None = None
     referral_number: str
     referral_type: ReferralType
     status: ReferralStatus
     priority: ReferralPriority
-    clinical_reason: Optional[str] = None
-    diagnosis_code: Optional[str] = None
-    diagnosis_description: Optional[str] = None
-    icd10_code: Optional[str] = None
-    service_code: Optional[str] = None
-    service_description: Optional[str] = None
-    quantity: Optional[int] = None
-    notes: Optional[str] = None
-    clinical_notes: Optional[str] = None
-    expiration_date: Optional[date] = None
-    qr_code: Optional[str] = None
-    digital_signature: Optional[str] = None
-    signed_by: Optional[int] = None
-    signed_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    completed_notes: Optional[str] = None
-    cancelled_at: Optional[str] = None
-    cancellation_reason: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    clinical_reason: str | None = None
+    diagnosis_code: str | None = None
+    diagnosis_description: str | None = None
+    icd10_code: str | None = None
+    service_code: str | None = None
+    service_description: str | None = None
+    quantity: int | None = None
+    notes: str | None = None
+    clinical_notes: str | None = None
+    expiration_date: date | None = None
+    qr_code: str | None = None
+    digital_signature: str | None = None
+    signed_by: int | None = None
+    signed_at: str | None = None
+    completed_at: str | None = None
+    completed_notes: str | None = None
+    cancelled_at: str | None = None
+    cancellation_reason: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class ReferralHistoryResponse(BaseModel):
@@ -100,11 +104,11 @@ class ReferralHistoryResponse(BaseModel):
 
     id: int
     referral_id: int
-    from_status: Optional[str] = None
+    from_status: str | None = None
     to_status: str
-    changed_by: Optional[int] = None
-    change_reason: Optional[str] = None
-    created_at: Optional[str] = None
+    changed_by: int | None = None
+    change_reason: str | None = None
+    created_at: str | None = None
 
 
 def _generate_referral_number(db: Session, lab_id: int) -> str:
@@ -119,9 +123,9 @@ def _record_history(
     referral_id: int,
     lab_id: int,
     to_status: ReferralStatus,
-    from_status: Optional[ReferralStatus] = None,
-    changed_by: Optional[int] = None,
-    change_reason: Optional[str] = None,
+    from_status: ReferralStatus | None = None,
+    changed_by: int | None = None,
+    change_reason: str | None = None,
 ):
     history = ReferralHistory(
         lab_id=lab_id,
@@ -136,11 +140,11 @@ def _record_history(
 
 @router.get("", response_model=list[ReferralResponse])
 def list_referrals(
-    status: Optional[ReferralStatus] = Query(None),
-    patient_id: Optional[int] = Query(None),
-    referral_type: Optional[ReferralType] = Query(None),
-    from_practitioner_id: Optional[int] = Query(None),
-    to_practitioner_id: Optional[int] = Query(None),
+    status: ReferralStatus | None = Query(None),
+    patient_id: int | None = Query(None),
+    referral_type: ReferralType | None = Query(None),
+    from_practitioner_id: int | None = Query(None),
+    to_practitioner_id: int | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: LabUser = Depends(get_current_user),
@@ -364,7 +368,7 @@ def decline_referral(
 @router.post("/{referral_id}/complete", response_model=ReferralResponse)
 def complete_referral(
     referral_id: int,
-    completed_notes: Optional[str] = Query(None),
+    completed_notes: str | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -445,7 +449,7 @@ def cancel_referral(
 def validate_referral(
     referral_id: int,
     validation_method: ValidationMethod = ValidationMethod.QR_SCAN,
-    identity_document: Optional[str] = Query(None),
+    identity_document: str | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

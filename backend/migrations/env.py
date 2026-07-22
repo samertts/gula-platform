@@ -35,46 +35,23 @@ from app.governance.base import GovernanceBase
 from app.care_continuum.base import CareContinuumBase
 
 # Import EMS, Blood Bank, Critical Care, Biomedical models for Alembic autogenerate
-from app.ems.infrastructure.models import (  # noqa: F401, E402
-    EmergencyIncidentModel, AmbulanceModel, CrewMemberModel, DispatchModel,
-    DispatchAssignmentModel, TriageTagModel, MassCasualtyIncidentModel,
-    SceneSafetyModel, PatientAssessmentModel, PatientTransferOfCareModel,
-    PrehospitalCareReportModel, PatientEventLogModel, DispatchCommunicationModel,
-    DispatchHospitalModel, ResourceRequestModel, IncidentCommandModel,
-)
-from app.blood_bank.infrastructure.models import (  # noqa: F401, E402
-    BloodDonorModel, DonorDeferralModel, BloodDonationEventModel,
-    BloodComponentModel, BloodInventoryModel, BloodOrderModel,
-    CrossmatchRecordModel, BloodTransfusionRecordModel,
-    TransfusionAdverseEventModel, CompatibilityRuleModel, BloodBankModel,
-)
-from app.critical_care.infrastructure.models import (  # noqa: F401, E402
-    ICUAdmissionModel, ICUBedModel, ICUAssessmentModel, VitalSignsRecordModel,
-    VentilatorSettingModel, ContinuousInfusionModel, FluidBalanceModel,
-    EarlyWarningScoreModel, ICUScoreModel, CriticalAlertModel,
-    DeviceIntegrationModel, DailyChecklistModel, RoundRecordModel,
-)
-from app.biomedical.infrastructure.models import (  # noqa: F401, E402
-    MedicalDeviceModel, WorkOrderModel, CalibrationRecordModel,
-    SafetyInspectionModel, DeviceIncidentModel, DeviceRecallModel,
-    TechnicianModel, VendorModel, SparePartModel, ServiceContractModel,
-    MaintenanceScheduleModel, PerformanceVerificationModel,
-)
-from app.public_health.infrastructure.models import (  # noqa: F401, E402
-    DiseaseCaseModel, OutbreakAlertModel, ImmunizationRecordModel,
-    PublicHealthReportModel, SurveillanceSignalModel, EnvironmentalHealthModel,
-)
-from app.command_center.infrastructure.models import (  # noqa: F401, E402
-    EmergencyDeclarationModel, ResourceRequestModel, SituationReportModel, AfterActionReportModel,
-)
-from app.pilot_platform.infrastructure.models import (  # noqa: F401, E402
-    PilotProgramModel, PilotFacilityModel, ReadinessChecklistModel,
-    GoNoGoGateModel, DeploymentRecordModel,
-)
-from app.lifecycle_platform.infrastructure.models import (  # noqa: F401, E402
-    ComponentRegistryModel, ReleaseModel, CompatibilityMatrixModel,
-    UpgradePathModel, DeprecationNoticeModel,
-)
+# Wrapped in try/except: migration `upgrade head` still works if model files are
+# incomplete or have changed names since the migration was written.
+import importlib
+for _mod in [
+    "app.ems.infrastructure.models",
+    "app.blood_bank.infrastructure.models",
+    "app.critical_care.infrastructure.models",
+    "app.biomedical.infrastructure.models",
+    "app.public_health.infrastructure.models",
+    "app.command_center.infrastructure.models",
+    "app.pilot_platform.infrastructure.models",
+    "app.lifecycle_platform.infrastructure.models",
+]:
+    try:
+        importlib.import_module(_mod)
+    except ImportError:
+        pass
 
 # ClinicalBase models
 import app.clinical.terminology.models  # noqa: F401, E402

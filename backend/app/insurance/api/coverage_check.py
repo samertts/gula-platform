@@ -1,6 +1,5 @@
 from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -10,7 +9,10 @@ from app.database import get_db
 from app.insurance.domain.enums import CoverageStatus, ServiceCategory
 from app.insurance.domain.models import Coverage, InsurancePolicy
 from app.insurance.services.coverage_engine import (
-    CoverageEngine, CoverageRequest, CoverageResult, CoverageValidator,
+    CoverageEngine,
+    CoverageRequest,
+    CoverageResult,
+    CoverageValidator,
 )
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
@@ -22,14 +24,14 @@ class CoverageCheckRequest(BaseModel):
     patient_id: int
     coverage_id: int
     service_code: str
-    service_category: Optional[ServiceCategory] = None
+    service_category: ServiceCategory | None = None
     quantity: int = 1
-    billed_amount: Optional[Decimal] = None
-    diagnosis_code: Optional[str] = None
-    referring_provider_id: Optional[int] = None
-    ordering_provider_id: Optional[int] = None
-    facility_id: Optional[int] = None
-    service_date: Optional[date] = None
+    billed_amount: Decimal | None = None
+    diagnosis_code: str | None = None
+    referring_provider_id: int | None = None
+    ordering_provider_id: int | None = None
+    facility_id: int | None = None
+    service_date: date | None = None
 
 
 class CoverageCheckResponse(BaseModel):
@@ -37,7 +39,7 @@ class CoverageCheckResponse(BaseModel):
     policy_id: int
     patient_id: int
     service_code: str
-    service_category: Optional[str] = None
+    service_category: str | None = None
     determination: str
     is_covered: bool
     coverage_percentage: float = 0.0
@@ -56,23 +58,23 @@ class CoverageCheckResponse(BaseModel):
     requires_pre_auth: bool = False
     requires_referral: bool = False
     network_status: str = "in_network"
-    denial_reason: Optional[str] = None
+    denial_reason: str | None = None
     messages: list[str] = []
 
 
 class EligibilityRequest(BaseModel):
     patient_id: int
     coverage_id: int
-    service_date: Optional[date] = None
-    service_code: Optional[str] = None
+    service_date: date | None = None
+    service_code: str | None = None
 
 
 class EligibilityResponse(BaseModel):
     eligible: bool
     coverage_id: int
     patient_id: int
-    status: Optional[str] = None
-    network_status: Optional[str] = None
+    status: str | None = None
+    network_status: str | None = None
     benefit_remaining: float = 0.0
     deductible_remaining: float = 0.0
     requires_pre_auth: bool = False
@@ -84,10 +86,10 @@ class EstimateRequest(BaseModel):
     patient_id: int
     coverage_id: int
     service_code: str
-    service_category: Optional[ServiceCategory] = None
+    service_category: ServiceCategory | None = None
     quantity: int = 1
-    billed_amount: Optional[Decimal] = None
-    diagnosis_code: Optional[str] = None
+    billed_amount: Decimal | None = None
+    diagnosis_code: str | None = None
 
 
 class EstimateResponse(BaseModel):
@@ -190,8 +192,8 @@ def check_eligibility(
 @router.post("/verify", response_model=dict)
 def verify_coverage(
     patient_id: int = Query(...),
-    policy_number: Optional[str] = Query(None),
-    provider_code: Optional[str] = Query(None),
+    policy_number: str | None = Query(None),
+    provider_code: str | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -298,7 +300,7 @@ def patient_benefits_summary(
 
         benefits = db.query(BenefitPackage).filter(
             BenefitPackage.policy_id == coverage.policy_id,
-            BenefitPackage.is_active == True,
+            BenefitPackage.is_active,
         ).all()
 
         result_coverages.append({

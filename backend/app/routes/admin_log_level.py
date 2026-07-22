@@ -5,8 +5,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.security.dependencies import get_current_user
 from app.models.lab_user import LabUser
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/admin/log-level", tags=["admin"])
 

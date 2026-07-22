@@ -9,14 +9,28 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, Enum as SAEnum, Float, ForeignKey,
-    Index, Integer, JSON, String, Text,
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC
 from app.insurance.domain.enums import (
-    CardStatus, MemberStatus, RelationType,
+    CardStatus,
+    MemberStatus,
+    RelationType,
 )
 from app.insurance.domain.models import InsBase
 
@@ -47,7 +61,7 @@ class InsuranceMember(InsBase):
     biometric_verified = Column(Boolean, default=False)
     biometric_data = Column(JSON, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
     notes = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
@@ -95,7 +109,7 @@ class InsuranceCard(InsBase):
     reported_stolen_at = Column(DateTime(timezone=True), nullable=True)
     reported_lost_at = Column(DateTime(timezone=True), nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -138,7 +152,7 @@ class ElectronicCard(InsBase):
     last_access_ip = Column(String(50), nullable=True)
 
     is_active = Column(Boolean, default=True)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -179,7 +193,7 @@ class Dependent(InsBase):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -226,7 +240,7 @@ class CoveragePeriod(InsBase):
     period_type = Column(String(50), default="annual")
     is_active = Column(Boolean, default=True)
 
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column("metadata", JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
