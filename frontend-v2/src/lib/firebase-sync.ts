@@ -2,10 +2,8 @@ import {
   collection,
   doc,
   onSnapshot,
-  getDoc,
   getDocs,
   setDoc,
-  updateDoc,
   deleteDoc,
   query,
   where,
@@ -13,9 +11,7 @@ import {
   limit,
   Timestamp,
   serverTimestamp,
-  DocumentData,
   QuerySnapshot,
-  DocumentChange,
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';

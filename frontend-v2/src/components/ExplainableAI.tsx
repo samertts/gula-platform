@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import {Brain, AlertTriangle, Shield, Zap} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';

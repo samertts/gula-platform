@@ -3,12 +3,8 @@ import Cropper, { Area, Point } from 'react-easy-crop';
 import { 
   RotateCw, 
   RotateCcw, 
-  Crop as CropIcon, 
-  Image as ImageIcon, 
-  Eye, 
   Check, 
   X,
-  Maximize,
   Minus,
   Plus,
   RefreshCw,
@@ -44,7 +40,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
-  const createImageUrl = async (imageSrc: string, crop: Area, rotation: number, filter: string, brightness: number, contrast: number): Promise<string> => {
+  const createImageUrl = async (imageSrc: string, crop: Area, rotation: number, _filter: string, brightness: number, contrast: number): Promise<string> => {
     const image = new Image();
     image.src = imageSrc;
     image.crossOrigin = 'anonymous';

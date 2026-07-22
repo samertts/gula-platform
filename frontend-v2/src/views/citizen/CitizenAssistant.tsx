@@ -1,17 +1,13 @@
 import {useState, useRef, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  BrainCircuit, Send, User, Bot, Sparkles, 
-  Mic, Paperclip, ChevronRight, MessageSquare,
-  Thermometer, Beaker, Pill, History, Info,
-  AlertCircle, ShieldCheck, Zap
+  BrainCircuit, Send, User, Mic, Paperclip, Thermometer, Beaker, Pill, History, AlertCircle, ShieldCheck, Zap
 } from 'lucide-react';
 import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
 import Markdown from 'react-markdown';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 export function CitizenAssistant() {
-  const { t } = useLanguage();
+  const { } = useLanguage();
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string }[]>([
     { role: 'ai', content: "Hello Samer. I am your GULA Health Intelligence assistant. I have secure access to your clinical records, medication adherence data, and latest lab panels. How can I help you understand your health today?" }
   ]);

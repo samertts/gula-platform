@@ -2,7 +2,6 @@ import {useState} from 'react';
 import { Pill, Plus, AlertCircle, Clock, CheckCircle2, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { cn } from '../../lib/utils';
 interface Medication {
   id: string;
   name: string;
@@ -14,7 +13,7 @@ interface Medication {
 }
 export function MedicineCabinet() {
   const { t } = useLanguage();
-  const [meds, setMeds] = useState<Medication[]>([
+  const [meds] = useState<Medication[]>([
     { id: '1', name: 'Metformin', dosage: '500mg', frequency: 'Twice daily', reminder: '08:00, 20:00', lastTaken: 'Today, 08:15', warning: 'Take with food' },
     { id: '2', name: 'Vitamin D3', dosage: '2000 IU', frequency: 'Once daily', reminder: '09:00', lastTaken: 'Today, 09:05' },
     { id: '3', name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', reminder: '08:00', warning: 'Avoid high potassium' }

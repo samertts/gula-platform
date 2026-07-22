@@ -1,9 +1,8 @@
 import {useState, useRef, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  Sparkles, Send, Bot, User, 
-  Stethoscope, Microscope, Beaker,
-  AlertCircle, Activity as ActivityIcon, BrainCircuit,
+  Send, Bot, User, 
+  Microscope, AlertCircle, Activity as BrainCircuit,
   MessageSquare, History as HistoryIcon, FileText, Zap,
   Settings
 } from 'lucide-react';

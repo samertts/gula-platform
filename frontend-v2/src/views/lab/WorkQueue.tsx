@@ -148,7 +148,7 @@ export function WorkQueue() {
     localStorage.setItem('active_lab_work', JSON.stringify({ taskId: task.id, startTime: Date.now() }));
     toast.info('Starting intensive sample evaluation...');
   };
-  const handleResultsSave = (results: any) => {
+  const handleResultsSave = (_results: any) => {
     if (isResultEntryOpen) {
       updateTaskStatus(isResultEntryOpen.id, 'review');
       setIsResultEntryOpen(null);

@@ -2,17 +2,12 @@ import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Activity, 
-  BarChart3, 
-  ShieldCheck, 
-  Users, 
   ArrowUpRight, 
   Target, 
-  Globe,
   Map as MapIcon,
   Search,
   Bell,
   Building2,
-  AlertCircle,
   ClipboardList
 } from 'lucide-react';
 import {motion} from 'motion/react';
@@ -21,29 +16,7 @@ import { MinistryCommandCenter } from '../../components/MinistryCommandCenter';
 import { TaskQueue } from '../../components/TaskQueue';
 import { WorkflowEngine } from '../../services/WorkflowEngine';
 import { Task } from '../../types/domain';
-const MetricCard = ({ title, value, subtext, trend, trendUp, icon: Icon, color }: any) => (
-  // ... existing StatCard code basically, keeping it as is for consistency
-  <motion.div 
-    whileHover={{ y: -5 }}
-    className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group"
-  >
-    <div className={`absolute top-0 right-0 w-24 h-24 ${color} opacity-[0.03] -mr-8 -mt-8 rounded-full blur-2xl group-hover:opacity-[0.06] transition-opacity`} />
-    <div className="flex justify-between items-start mb-4">
-      <div className="p-3 bg-slate-50 rounded-2xl group-hover:bg-white group-hover:shadow-md transition-all">
-        <Icon size={20} className="text-indigo-600" />
-      </div>
-      <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold ${trendUp ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-        {trendUp ? <ArrowUpRight size={10} /> : <Activity size={10} />}
-        {trend}
-      </div>
-    </div>
-    <div>
-      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</h3>
-      <div className="text-3xl font-black text-slate-900 tracking-tighter">{value}</div>
-      <p className="text-[10px] font-medium text-slate-400 mt-2 uppercase tracking-tight">{subtext}</p>
-    </div>
-  </motion.div>
-);
+// MetricCard removed
 export function MinistryDashboard() {
   const { t, dir } = useLanguage();
   const [tasks, setTasks] = useState<Task[]>([]);

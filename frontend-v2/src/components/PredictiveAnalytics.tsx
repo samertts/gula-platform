@@ -1,12 +1,9 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Activity, Users, FlaskConical, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { cn } from '../lib/utils';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell
-} from 'recharts';
+  } from 'recharts';
 const data = [
   { name: 'Mon', volume: 450, expected: 480 },
   { name: 'Tue', volume: 520, expected: 510 },

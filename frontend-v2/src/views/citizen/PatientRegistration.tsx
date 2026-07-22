@@ -17,7 +17,7 @@ import {
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
 export function PatientRegistration() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   

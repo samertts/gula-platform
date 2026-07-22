@@ -29,7 +29,7 @@ interface SampleRecord {
 export function SampleTracking() {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSample, setActiveSample] = useState<SampleRecord | null>({
+  const [activeSample] = useState<SampleRecord | null>({
     id: 'SMP-8832-QL',
     patientName: 'Ahmed Mohammed Ali',
     patientId: 'PAT-0044-K',
@@ -156,7 +156,7 @@ export function SampleTracking() {
                   {/* Vertical Line */}
                   <div className="absolute left-6 top-4 bottom-4 w-1 bg-slate-100 rounded-full" />
                   <div className="space-y-12">
-                     {activeSample?.steps.map((step, idx) => (
+                     {activeSample?.steps.map((step, _idx) => (
                         <div key={step.id} className="relative flex gap-10">
                            <div className={cn(
                               "relative z-10 w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xl transition-all duration-500",

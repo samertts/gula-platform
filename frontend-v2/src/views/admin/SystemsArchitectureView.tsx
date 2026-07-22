@@ -1,13 +1,10 @@
 import {useState, useEffect} from 'react';
 import { 
   Users, 
-  Shield, 
   Server, 
   Database, 
   Search,
   MoreVertical,
-  Edit,
-  Trash2,
   CheckCircle,
   AlertTriangle,
   Globe,
@@ -17,7 +14,6 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { db } from '../../firebase';
 import { collection, query, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { UserProfile, Tenant } from '../../types/domain';
-import { motion } from 'motion/react';
 import { toast } from 'sonner';
 export function SystemsArchitectureView() {
   const { t } = useLanguage();

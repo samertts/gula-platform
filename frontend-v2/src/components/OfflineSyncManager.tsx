@@ -58,7 +58,7 @@ export const OfflineSyncManager: React.FC = () => {
   const handleSync = useCallback(async () => {
     if (isSyncing || !isOnline) return;
     setIsSyncing(true);
-    const result = await engine.processQueue(async (item) => {
+    const result = await engine.processQueue(async () => {
       const fbSync = FirebaseSyncEngine.getInstance();
       try {
         await fbSync.pushToAPI();

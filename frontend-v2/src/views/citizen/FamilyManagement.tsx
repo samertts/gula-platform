@@ -1,9 +1,7 @@
-import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  Users, UserPlus, ShieldCheck, Heart, 
-  ChevronRight, ArrowUpRight, Activity, 
-  Baby, UserRound, MoreVertical, History
+  UserPlus, ShieldCheck, ChevronRight, Activity, 
+  History
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';

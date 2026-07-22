@@ -1,15 +1,12 @@
 import {useState} from 'react';
 import { 
-  ShieldCheck, AlertTriangle, TrendingDown, 
-  TrendingUp, Activity as ActivityIcon, Settings,
-  History, Download, RefreshCw, Filter, 
-  CheckCircle2, Info, Beaker, Cpu
+  ShieldCheck, Activity as History, Download, Cpu
 } from 'lucide-react';
 import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  LineChart, Line, XAxis, YAxis, 
+  XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, 
   ReferenceLine, AreaChart, Area 
 } from 'recharts';

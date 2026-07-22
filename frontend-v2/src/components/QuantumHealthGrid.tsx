@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import {Shield, Fingerprint, Lock, Globe, Zap, Network, Database} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';

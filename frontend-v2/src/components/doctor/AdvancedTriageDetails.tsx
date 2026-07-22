@@ -1,5 +1,4 @@
-import React from 'react';
-import { motion } from 'motion/react';
+// import { motion } from 'motion/react';
 import {BrainCircuit, Activity, Zap, ShieldCheck} from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';

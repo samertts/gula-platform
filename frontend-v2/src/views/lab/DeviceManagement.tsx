@@ -1,4 +1,3 @@
-import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Microscope, Settings, Power, 
@@ -8,7 +7,7 @@ import {
 import { motion } from 'motion/react';
 import { cn, formatTime } from '../../lib/utils';
 export function DeviceManagement() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const devices = [
     { id: 'AN-01', name: 'Cobas e801 Immunoassay', status: 'online', load: 82, model: 'Roche' },
     { id: 'AN-02', name: 'Atellica Solution IM', status: 'online', load: 45, model: 'Siemens' },

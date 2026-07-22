@@ -1,9 +1,8 @@
-import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   TrendingUp, Users, Activity, ShieldCheck, Zap,
-  Map as MapIcon, BrainCircuit, Search, Download,
-  Filter, Calendar
+  Map as BrainCircuit, Search, Download,
+  Calendar
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';

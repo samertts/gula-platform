@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Shield, Mail, Lock, UserPlus, LogIn, Heart, 
+  Shield, Mail, Lock, UserPlus, LogIn,
   AlertCircle, Globe, User, Stethoscope, 
   Beaker, ChevronRight, ChevronLeft, Upload,
   Fingerprint, Smartphone, CheckCircle2, ScanFace,
-  RefreshCcw, ShieldCheck, Key, Activity as ActivityIcon, WifiOff, Search
+  RefreshCcw, ShieldCheck, Key, Activity as ActivityIcon, WifiOff
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
@@ -40,10 +40,10 @@ export const LandingAuthView: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [nationalId, setNationalId] = useState('');
   const [license, setLicense] = useState('');
-  const [specialization, setSpecialization] = useState('');
+  const [specialization] = useState('');
   const [otp, setOtp] = useState('');
   const [identityPhoto, setIdentityPhoto] = useState<string | null>(null);
-  const [medicalRecords, setMedicalRecords] = useState<File[]>([]);
+  const [, setMedicalRecords] = useState<File[]>([]);
   const [identMethod, setIdentMethod] = useState<'camera' | 'upload'>('upload');
   
   const [isLoading, setIsLoading] = useState(false);
@@ -231,7 +231,7 @@ export const LandingAuthView: React.FC = () => {
             </div>
             
             <div className="flex gap-2">
-               {[1,2,3,4,3,2,1].map((h, i) => (
+               {[1,2,3,4,3,2,1].map((_h, i) => (
                   <motion.div 
                      key={i}
                      animate={{ height: [8, 16, 8] }}

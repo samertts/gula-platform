@@ -2,13 +2,12 @@ import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Zap, AlertCircle, Calendar, Pill, BrainCircuit, 
-  ArrowUpRight, Heart, TrendingUp, ShieldCheck, 
-  Stethoscope, Box, Clock, ChevronRight, Activity,
-  Download, Share2, Info, Bell, Users
+  ArrowUpRight, Heart, ShieldCheck, 
+  Box, Clock, ChevronRight, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
-import { MedicineCabinet } from '../../components/citizen/MedicineCabinet';
+// import { MedicineCabinet } from '../../components/citizen/MedicineCabinet';
 import { HealthTrendChart } from '../../components/HealthTrendChart';
 import { FamilySwitcher } from '../../components/citizen/FamilySwitcher';
 import { Link } from 'react-router-dom';

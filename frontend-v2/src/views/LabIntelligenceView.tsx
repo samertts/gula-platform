@@ -47,7 +47,7 @@ export function LabIntelligenceView() {
     const context = "Current Patient Profile: Male, 45y. HbA1c: 7.2 (Elevated), LDL: 160 (High). BP: 145/92.";
     const response = await getClinicalInsight(userMessage, context, imgData || undefined);
     
-    setMessages(prev => [...prev, { role: 'ai', text: response }]);
+    setMessages(prev => [...prev, { role: 'ai', text: response ?? '' }]);
     setIsTyping(false);
   };
 

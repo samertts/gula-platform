@@ -7,7 +7,6 @@ import {
   ExternalLink, 
   Search,
   Filter,
-  CheckCircle2,
   AlertTriangle,
   Info
 } from 'lucide-react';
@@ -19,7 +18,7 @@ interface AuditLogViewerProps {
   isLoading?: boolean;
 }
 export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const getSeverityStyles = (severity: AuditLogEntry['metadata']['severity']) => {
     switch (severity) {
       case 'critical': return 'bg-red-50 text-red-600 border-red-100';

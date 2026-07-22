@@ -20,7 +20,7 @@ interface Medication {
 }
 export function MedicationCenter() {
   const { t } = useLanguage();
-  const [meds, setMeds] = useState<Medication[]>([
+  const [meds] = useState<Medication[]>([
     { id: '1', name: 'Metformin', dosage: '500mg', frequency: 'Twice daily', reminder: '08:00, 20:00', lastTaken: 'Today, 08:15', warning: 'Take with food', type: 'prescription', adherence: 98 },
     { id: '2', name: 'Vitamin D3', dosage: '2000 IU', frequency: 'Once daily', reminder: '09:00', lastTaken: 'Today, 09:05', type: 'supplement', adherence: 100 },
     { id: '3', name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', reminder: '08:00', warning: 'Avoid high potassium', type: 'prescription', adherence: 85 }

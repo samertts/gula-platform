@@ -19,7 +19,7 @@ const INITIAL_NODES: Node[] = [
 ];
 export function NeuralConnectivityHub() {
   const [nodes, setNodes] = useState<Node[]>(INITIAL_NODES);
-  const [activePulse, setActivePulse] = useState(0);
+  const [_activePulse, setActivePulse] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
       setNodes(prev => prev.map(node => ({

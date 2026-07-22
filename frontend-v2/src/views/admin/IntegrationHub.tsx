@@ -4,15 +4,12 @@ import {
   Code2, 
   Terminal, 
   Key, 
-  Database, 
   Globe, 
-  Download,
   Copy,
   CheckCircle2,
   Lock,
   ArrowRight
 } from 'lucide-react';
-import { motion } from 'motion/react';
 const CodeBlock = ({ code }: { code: string }) => {
   const [copied, setCopied] = React.useState(false);
   const copy = () => {
@@ -34,7 +31,7 @@ const CodeBlock = ({ code }: { code: string }) => {
   );
 };
 export function IntegrationHub() {
-  const { t } = useLanguage();
+  const { } = useLanguage();
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">

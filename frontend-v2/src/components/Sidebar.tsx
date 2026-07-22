@@ -4,12 +4,12 @@ import {
   Calendar, FileText, Activity, Pill, BrainCircuit, Building2,
   Shield, Settings, Search, Heart, ClipboardList, TestTube,
   Box, ShieldCheck, Image, Globe, BarChart3, Server, Code2,
-  History, Clock, Star, Pin, GripVertical, X, Menu,
-  ChevronLeft, ChevronRight, Zap, BellRing, User,
-  LogOut, ChevronDown, ChevronUp, Plus, Grip,
-  Sparkles, Target, Hash, Bookmark, ArrowLeftRight,
-  Wifi, WifiOff, Bot, Home, HelpCircle, Command,
-  Notebook, ListTodo, Hash as Hashtag,
+  History, Clock, Star, Pin, X, Menu,
+  ChevronLeft, User,
+  LogOut, ChevronDown, ChevronUp,
+  Sparkles, Hash,
+  Bot, Home, Command,
+  Notebook, ListTodo,
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -250,7 +250,7 @@ export const Sidebar = memo(function Sidebar() {
   const isRtl = dir === 'rtl';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
-  const [dragPath, setDragPath] = useState<string | null>(null);
+  const [_dragPath, setDragPath] = useState<string | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const role = (profile?.role || 'citizen') as UserRole;
   const navGroups = useMemo(() => buildNavGroups(t, role), [t, role]);
@@ -303,7 +303,7 @@ export const Sidebar = memo(function Sidebar() {
       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
       : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
   );
-  const renderNavItem = (item: NavItem, index: number) => {
+  const renderNavItem = (item: NavItem, _index: number) => {
     const IconComp = item.icon;
     const isItemPinned = isPinned(item.to);
     return (

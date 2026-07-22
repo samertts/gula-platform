@@ -14,13 +14,12 @@ interface PatientRow {
   blood: string;
   date: string;
 }
-const SEED: PatientRow[] = [];
 export function RecordsView() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   // Loading state — preserves layout via TableSkeleton, no jitter on hydrate.
   const [loading, setLoading] = useState(true);
-  const [patients, setPatients] = useState<PatientRow[]>([]);
+  const [patients] = useState<PatientRow[]>([]);
   const [query, setQuery] = useState('');
   useEffect(() => {
     setLoading(false);

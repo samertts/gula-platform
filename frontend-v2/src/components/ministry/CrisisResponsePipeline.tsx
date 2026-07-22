@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import { ShieldAlert, Zap, Radio, Globe, ShieldCheck, Activity } from 'lucide-react';
 import { cn } from '../../lib/utils';

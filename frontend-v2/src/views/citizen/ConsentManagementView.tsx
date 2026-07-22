@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Shield, Eye, EyeOff, Lock, UserCheck, 
-  History as HistoryIcon, Settings2, AlertTriangle, CheckCircle2,
-  Stethoscope, Beaker, Plus, X, Clock, Calendar,
-  Activity as ActivityIcon, FileText, Loader2
+  Shield, Lock, UserCheck, 
+  History as AlertTriangle, CheckCircle2,
+  Stethoscope, Beaker, Plus, X, Activity as ActivityIcon, FileText, Loader2
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn, formatDate } from '../../lib/utils';
@@ -19,9 +18,7 @@ import {
   updateDoc, 
   doc, 
   serverTimestamp,
-  deleteDoc,
-  Timestamp
-} from 'firebase/firestore';
+  } from 'firebase/firestore';
 export const ConsentManagementView: React.FC = () => {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
@@ -200,7 +197,7 @@ export const ConsentManagementView: React.FC = () => {
                 <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
              </div>
            ) : activeTab === 'active' ? (
-             consents.filter(c => c.status === 'active').map((c, i) => (
+             consents.filter(c => c.status === 'active').map((c) => (
                <motion.div
                  key={c.id}
                  initial={{ opacity: 0, scale: 0.98 }}
@@ -261,7 +258,7 @@ export const ConsentManagementView: React.FC = () => {
                </motion.div>
              ))
            ) : (
-             auditLogs.map((log, i) => (
+             auditLogs.map((log) => (
                <motion.div
                  key={log.id}
                  initial={{ opacity: 0, x: -10 }}

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
-  History as HistoryIcon, Calendar, Filter, FileText, 
+  History as HistoryIcon, FileText, 
   ChevronRight, Stethoscope, Beaker, Activity as ActivityIcon,
-  Search, Download, Share2, ShieldCheck, ArrowUpRight, User, Shield
+  Download, Share2, ShieldCheck, ArrowUpRight, User, Shield
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';

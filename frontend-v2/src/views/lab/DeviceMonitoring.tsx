@@ -1,10 +1,9 @@
 import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  Activity as ActivityIcon, Zap, AlertCircle, Settings, 
-  RotateCw, CheckCircle2, XCircle, 
-  Terminal, BarChart3, Database,
-  Cpu, Thermometer, ShieldAlert
+  Activity as ActivityIcon, Zap, Settings, 
+  RotateCw, XCircle, 
+  Terminal, BarChart3, Cpu, Thermometer, ShieldAlert
 } from 'lucide-react';
 import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
@@ -20,8 +19,8 @@ interface DeviceStatus {
   errors: string[];
 }
 export function DeviceMonitoring() {
-  const { t } = useLanguage();
-  const [devices, setDevices] = useState<DeviceStatus[]>([]);
+  const { } = useLanguage();
+  const [devices] = useState<DeviceStatus[]>([]);
   return (
     <div className="p-10 max-w-7xl mx-auto space-y-12 min-h-screen">
       {/* Immersive Device Core Header */}

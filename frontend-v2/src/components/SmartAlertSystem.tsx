@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, Zap, ArrowRight, ShieldAlert, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -17,7 +16,7 @@ interface SmartAlertSystemProps {
   onDismiss: (id: string) => void;
 }
 export function SmartAlertSystem({ alerts, onDismiss }: SmartAlertSystemProps) {
-  const { isRtl } = useLanguage();
+  const { } = useLanguage();
   return (
     <div className="space-y-4 mb-10">
       <div className="flex items-center justify-between mb-2">

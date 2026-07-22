@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Server, Activity, Database, Cpu, Globe, Zap, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';

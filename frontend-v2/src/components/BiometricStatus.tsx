@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import {Fingerprint, Activity, Brain} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';

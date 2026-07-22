@@ -13,7 +13,7 @@ export function AITriageAssistant({ patientId, patientData }: AITriageAssistantP
   const [symptoms, setSymptoms] = useState('');
   const [insight, setInsight] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { t } = useLanguage();
+  const { } = useLanguage();
   const handleTriage = async () => {
     if (!symptoms.trim()) return;
     

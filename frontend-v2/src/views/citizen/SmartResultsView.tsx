@@ -2,15 +2,14 @@ import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   FlaskConical, AlertCircle, CheckCircle2, TrendingUp, 
-  ArrowRight, Download, Share2, Info, BrainCircuit,
-  MessageSquare, Calendar, ChevronRight, Stethoscope
+  Download, Info, BrainCircuit,
+  MessageSquare, Stethoscope
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { LabTestResult } from '../../types/domain';
 import { analyzeLabTrends } from '../../services/aiService';
 import Markdown from 'react-markdown';
-import { toast } from 'sonner';
 export function SmartResultsView() {
   const { t } = useLanguage();
   const [selectedResult, setSelectedResult] = useState<LabTestResult | null>(null);

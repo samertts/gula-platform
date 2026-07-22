@@ -1,4 +1,3 @@
-import React from 'react';
 import {BrainCircuit, Sparkles, ArrowUpRight} from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';

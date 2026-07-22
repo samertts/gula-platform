@@ -9,11 +9,9 @@ import {
   FileImage,
   Sparkles,
   Search,
-  Plus
-} from 'lucide-react';
+  } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ImageEditor } from '../components/ImageEditor';
-import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 interface HistoryItem {
   id: string;
