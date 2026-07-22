@@ -73,6 +73,32 @@ jobs:
           pip install flake8
           flake8 backend/app/ --select=E9,F --count
 
+  data-preservation-gate:
+    name: Data Preservation Gate
+    runs-on: ubuntu-latest
+    needs: [syntax-gate]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Run Data Preservation Quality Gate
+        run: |
+          python scripts/data_preservation_gate.py --ci
+          # Exit code 2 = FAIL (merge blocked), 1 = WARNING, 0 = PASS
+          status=$?
+          if [ $status -eq 2 ]; then
+            echo "❌ DATA_PRESERVATION_GATE: FAILED — Merge blocked"
+            echo "   One or more Data Preservation Constitution rules violated."
+            echo "   See output above for details."
+            exit 1
+          elif [ $status -eq 1 ]; then
+            echo "⚠️  DATA_PRESERVATION_GATE: WARNING — Review before merging"
+          else
+            echo "✅ DATA_PRESERVATION_GATE: PASSED"
+          fi
+
   migration-check:
     name: Migration Check
     runs-on: ubuntu-latest
