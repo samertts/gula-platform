@@ -14,6 +14,7 @@ const LabsPage = lazy(() => import("@/pages/labs/LabsPage").then(m => ({ default
 const CriticalAlertsPage = lazy(() => import("@/pages/alerts/CriticalAlertsPage").then(m => ({ default: m.CriticalAlertsPage })));
 const NotificationsPage = lazy(() => import("@/pages/notifications/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
 const AIPage = lazy(() => import("@/pages/ai/AIPage").then(m => ({ default: m.AIPage })));
+const AiPlatformPage = lazy(() => import("@/pages/ai-platform/AiPlatformPage").then(m => ({ default: m.AiPlatformPage })));
 const StatsPage = lazy(() => import("@/pages/stats/StatsPage").then(m => ({ default: m.StatsPage })));
 const QCPage = lazy(() => import("@/pages/qc/QCPage").then(m => ({ default: m.QCPage })));
 const PatientCardPage = lazy(() => import("@/pages/patient-card/PatientCardPage").then(m => ({ default: m.PatientCardPage })));
@@ -28,6 +29,10 @@ const AdminUsersPage = lazy(() => import("@/pages/admin/AdminPages").then(m => (
 const AdminAuditPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminAuditPage })));
 const FhirPage = lazy(() => import("@/pages/fhir/FhirPage").then(m => ({ default: m.FhirPage })));
 const EhrPage = lazy(() => import("@/pages/ehr/EhrPage").then(m => ({ default: m.EhrPage })));
+const HospitalPage = lazy(() => import("@/pages/hospital/HospitalPage").then(m => ({ default: m.HospitalPage })));
+const EdgePage = lazy(() => import("@/pages/edge/EdgePage").then(m => ({ default: m.EdgePage })));
+const FinancialPage = lazy(() => import("@/pages/financial/FinancialPage").then(m => ({ default: m.FinancialPage })));
+const NationalDataPage = lazy(() => import("@/pages/national-data/NationalDataPage").then(m => ({ default: m.NationalDataPage })));
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem("access_token");
@@ -66,6 +71,7 @@ export const router = createBrowserRouter([
       { path: "alerts", element: <LazyPage><CriticalAlertsPage /></LazyPage> },
       { path: "notifications", element: <LazyPage><NotificationsPage /></LazyPage> },
       { path: "ai", element: <LazyPage><AIPage /></LazyPage> },
+      { path: "ai-platform", element: <LazyPage><AiPlatformPage /></LazyPage> },
       { path: "stats", element: <LazyPage><StatsPage /></LazyPage> },
       { path: "qc", element: <LazyPage><QCPage /></LazyPage> },
       { path: "patient-card", element: <LazyPage><PatientCardPage /></LazyPage> },
@@ -80,6 +86,10 @@ export const router = createBrowserRouter([
       { path: "admin/audit", element: <LazyPage><AdminAuditPage /></LazyPage> },
       { path: "fhir", element: <LazyPage><FhirPage /></LazyPage> },
       { path: "ehr", element: <LazyPage><EhrPage /></LazyPage> },
+      { path: "hospital", element: <LazyPage><HospitalPage /></LazyPage> },
+      { path: "edge", element: <LazyPage><EdgePage /></LazyPage> },
+      { path: "financial", element: <LazyPage><FinancialPage /></LazyPage> },
+      { path: "national-data", element: <LazyPage><NationalDataPage /></LazyPage> },
       { path: "admin", element: <Navigate to="/admin/labs" replace /> },
     ],
   },

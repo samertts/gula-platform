@@ -23,6 +23,11 @@ const ar = {
     identity: "الهوية الصحية",
     tiers: "الباقات",
     security: "الأمان",
+    hospital: "إدارة المستشفيات",
+    edgePlatform: "منصة الحافة",
+    financial: "النظام المالي",
+    nationalData: "البيانات الوطنية",
+    aiPlatform: "منصة الذكاء الاصطناعي",
     logout: "تسجيل الخروج",
   },
   auth: {

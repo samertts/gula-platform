@@ -23,6 +23,11 @@ const en = {
     identity: "Health Identity",
     tiers: "Subscriptions",
     security: "Security",
+    hospital: "Hospital Management",
+    edgePlatform: "Edge Platform",
+    financial: "Financial",
+    nationalData: "National Data",
+    aiPlatform: "AI Platform",
     logout: "Logout",
   },
   auth: {
