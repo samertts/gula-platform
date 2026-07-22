@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
+import { patientsApi } from '../api';
 interface PatientRow {
   name: string;
   id: string;
@@ -17,12 +18,31 @@ interface PatientRow {
 export function RecordsView() {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  // Loading state — preserves layout via TableSkeleton, no jitter on hydrate.
   const [loading, setLoading] = useState(true);
-  const [patients] = useState<PatientRow[]>([]);
+  const [patients, setPatients] = useState<PatientRow[]>([]);
   const [query, setQuery] = useState('');
   useEffect(() => {
-    setLoading(false);
+    const fetchPatients = async () => {
+      try {
+        const result = await patientsApi.listPatients({ limit: 100 });
+        const mapped: PatientRow[] = (result.data || []).map((p: any) => ({
+          name: p.full_name || p.name || 'Unknown',
+          id: p.id || '',
+          nhid: p.national_id || p.phone || '',
+          status: 'Active',
+          age: p.age ? String(p.age) : '--',
+          blood: p.blood_type || '--',
+          date: p.created_at ? new Date(p.created_at).toLocaleDateString() : '--',
+        }));
+        setPatients(mapped);
+      } catch (err) {
+        console.error('Failed to load patients:', err);
+        setPatients([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPatients();
   }, []);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -46,6 +66,7 @@ export function RecordsView() {
       </div>
       <button
         type="button"
+        onClick={() => navigate('/citizen/register')}
         className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
       >
         <Plus size={18} />
@@ -81,7 +102,6 @@ export function RecordsView() {
           </button>
         </div>
         {loading ? (
-          // Identical column count to the real table → zero CLS on hydrate.
           <div className="p-6">
             <TableSkeleton rows={6} columns={6} showHeader={false} />
           </div>
@@ -96,7 +116,7 @@ export function RecordsView() {
               }
               description={
                 query
-                  ? `Nothing in the registry matches “${query}”. Try a partial name, patient ID, or national ID.`
+                  ? `Nothing in the registry matches "${query}". Try a partial name, patient ID, or national ID.`
                   : 'Start by registering your first patient. Their record syncs to the National Health Grid automatically.'
               }
               actions={

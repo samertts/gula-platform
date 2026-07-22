@@ -1,9 +1,7 @@
 import { useLanguage } from '../contexts/LanguageContext';
-import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 import { UserProfile, Task } from '../types/domain';
 import { useEffect, useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
 import { LabDashboard } from './lab/LabDashboard';
 import { ResearcherDashboard } from './research/ResearcherDashboard';
 import { CitizenHealth } from './citizen/CitizenHealth';
@@ -47,6 +45,7 @@ const item = {
 };
 export function DashboardView() {
   const { t, language } = useLanguage();
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTasks, setActiveTasks] = useState<Task[]>([]);
@@ -54,23 +53,25 @@ export function DashboardView() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const isRtl = language === 'AR' || language === 'KU' || language === 'SY';
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        if (snap.exists()) {
-          const data = snap.data() as UserProfile;
-          setProfile(data);
-        }
-      }
+    if (!authLoading && authUser) {
+      setProfile({
+        id: authUser.id,
+        uid: authUser.id,
+        email: authUser.email,
+        name: authUser.name,
+        role: authUser.role,
+        labId: authUser.lab_id || undefined,
+      } as unknown as UserProfile);
       setLoading(false);
-    });
-    return unsub;
-  }, []);
+    } else if (!authLoading) {
+      setLoading(false);
+    }
+  }, [authUser, authLoading]);
   const handleBulkAction = (action: 'assign' | 'complete' | 'hold' | 'process', taskIds: string[]) => {
     setActiveTasks(prev => prev.map(t => {
       if (taskIds.includes(t.id)) {
         switch (action) {
-          case 'assign': return { ...t, assignedTo: auth.currentUser?.uid || 'anonymous', status: 'assigned' as const, updatedAt: new Date().toISOString() };
+          case 'assign': return { ...t, assignedTo: authUser?.id || 'anonymous', status: 'assigned' as const, updatedAt: new Date().toISOString() };
           case 'complete': return { ...t, status: 'completed' as const, updatedAt: new Date().toISOString() };
           case 'hold': return { ...t, status: 'on_hold' as const, updatedAt: new Date().toISOString() };
           case 'process': return { ...t, status: 'in_progress' as const, updatedAt: new Date().toISOString() };
@@ -84,7 +85,7 @@ export function DashboardView() {
     setActiveTasks(prev => prev.map(t => t.id === taskId ? { ...t, status, updatedAt: new Date().toISOString() } : t));
   };
   const handleTaskAssign = (taskId: string) => {
-    setActiveTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignedTo: auth.currentUser?.uid || 'anonymous', status: 'assigned', updatedAt: new Date().toISOString() } : t));
+    setActiveTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignedTo: authUser?.id || 'anonymous', status: 'assigned', updatedAt: new Date().toISOString() } : t));
   };
   if (loading) return <DashboardSkeleton />;
   // Multi-Wing Logic

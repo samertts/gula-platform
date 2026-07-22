@@ -8,8 +8,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
+import { apiPost } from '../../api/client';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TestParameter {
   id: string;
@@ -33,6 +33,7 @@ interface ResultEntryUIProps {
 
 export function ResultEntryUI({ taskId, sampleId, patientName, testName, onSave, onCancel }: ResultEntryUIProps) {
   const { t } = useLanguage();
+  const { user: authUser } = useAuth();
   const [params, setParams] = useState<TestParameter[]>([
     { id: '1', name: 'Leukocytes (WBC)', code: 'WBC', value: '', unit: '10^3/µL', referenceRange: '4.5 - 11.0', status: 'none' },
     { id: '2', name: 'Erythrocytes (RBC)', code: 'RBC', value: '', unit: '10^6/µL', referenceRange: '4.5 - 5.9', status: 'none' },
@@ -101,15 +102,13 @@ export function ResultEntryUI({ taskId, sampleId, patientName, testName, onSave,
 
     setIsSaving(true);
     try {
-      const ref = doc(db, 'lab_results', `${sampleId}_${Date.now()}`);
-      await setDoc(ref, {
-        taskId,
-        sampleId,
-        patientName,
-        testName,
+      await apiPost('/results', {
+        task_id: taskId,
+        sample_id: sampleId,
+        patient_name: patientName,
+        test_name: testName,
         parameters: params,
-        enteredBy: auth.currentUser?.uid || 'unknown',
-        createdAt: serverTimestamp(),
+        entered_by: authUser?.id || 'unknown',
       });
       setIsSaving(false);
       onSave(params);

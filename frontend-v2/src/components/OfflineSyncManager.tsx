@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { OfflineEngine, SyncStatus, SyncResult, SyncQueueItem } from '../lib/offline-engine';
-import { FirebaseSyncEngine } from '../lib/firebase-sync';
+import { SyncService } from '../services/SyncService';
 import {Wifi, WifiOff, RefreshCw, AlertTriangle, X, ChevronDown, ChevronUp, Clock, Database} from 'lucide-react';
 interface ConflictItem {
   id: string;
@@ -59,9 +59,8 @@ export const OfflineSyncManager: React.FC = () => {
     if (isSyncing || !isOnline) return;
     setIsSyncing(true);
     const result = await engine.processQueue(async () => {
-      const fbSync = FirebaseSyncEngine.getInstance();
       try {
-        await fbSync.pushToAPI();
+        await SyncService.processQueue();
         return true;
       } catch {
         return false;

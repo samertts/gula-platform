@@ -1,121 +1,72 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  doc, 
-  serverTimestamp, 
-  query, 
-  where, 
-  onSnapshot,
-  writeBatch
-} from 'firebase/firestore';
-import { db, handleFirestoreError } from '../firebase';
+import { apiGet, apiPost, apiPut } from '../api/client';
 import { Task } from '../types/domain';
 import { AuditService } from './AuditService';
-import { SyncService } from './SyncService';
 
 export const WorkflowEngine = {
   async createTask(params: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) {
-    if (!navigator.onLine) {
-      SyncService.enqueue('LOG_ACTIVITY', { action: 'CREATE_TASK_OFFLINE', payload: params });
-      return 'queued';
-    }
-
     try {
-      const docRef = await addDoc(collection(db, 'tasks'), {
-        ...params,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
+      const result = await apiPost<{ id: string }>('/tasks', params);
       await AuditService.log({
         action: 'TASK_CREATED',
         resource: 'task',
-        resourceId: docRef.id,
-        severity: 'info'
+        resourceId: result.id,
+        severity: 'info',
       });
-
-      return docRef.id;
+      return result.id;
     } catch (error) {
-      handleFirestoreError(error, 'create', 'tasks');
+      console.error('Failed to create task:', error);
+      throw error;
     }
   },
 
   async updateTaskStatus(taskId: string, status: Task['status'], userId?: string) {
-    if (!navigator.onLine) {
-      SyncService.enqueue('UPDATE_TASK', { taskId, updates: { status, assignedTo: userId } });
-      return;
-    }
-
     try {
-      const taskRef = doc(db, 'tasks', taskId);
-      const updates: any = { 
-        status, 
-        updatedAt: serverTimestamp() 
-      };
-      
-      if (userId) updates.assignedTo = userId;
-
-      await updateDoc(taskRef, updates);
-
+      await apiPut(`/tasks/${taskId}/status`, { status, assigned_to: userId });
       await AuditService.log({
         action: 'TASK_STATUS_UPDATED',
         resource: 'task',
         resourceId: taskId,
         changes: { before: null, after: { status } },
-        severity: 'info'
+        severity: 'info',
       });
     } catch (error) {
-      handleFirestoreError(error, 'update', `tasks/${taskId}`);
+      console.error('Failed to update task:', error);
     }
   },
 
   async bulkUpdateTasks(taskIds: string[], updates: Partial<Task>) {
-    if (!navigator.onLine) {
-      SyncService.enqueue('BULK_UPDATE_TASKS', { taskIds, updates });
-      return;
-    }
-
     try {
-      const batch = writeBatch(db);
-      const timestamp = serverTimestamp();
-
-      taskIds.forEach(id => {
-        const ref = doc(db, 'tasks', id);
-        batch.update(ref, { 
-          ...updates, 
-          updatedAt: timestamp 
-        });
-      });
-
-      await batch.commit();
-
-      await AuditService.log({
-        action: 'BULK_TASK_UPDATE',
-        resource: 'task',
-        resourceId: 'batch',
-        changes: { before: { count: taskIds.length }, after: updates },
-        severity: 'info'
-      });
+      await apiPost('/tasks/bulk', { task_ids: taskIds, updates });
     } catch (error) {
-      handleFirestoreError(error, 'write', 'tasks/batch');
+      console.error('Failed to bulk update tasks:', error);
     }
   },
 
   subscribeToEntityTasks(entityId: string, callback: (tasks: Task[]) => void) {
-    const q = query(
-      collection(db, 'tasks'), 
-      where('entityId', '==', entityId)
-    );
+    const poll = async () => {
+      try {
+        const result = await apiGet<{ data: Task[] }>('/tasks', { entity_id: entityId });
+        callback(result.data || []);
+      } catch {
+        callback([]);
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 30000);
+    return () => clearInterval(interval);
+  },
 
-    return onSnapshot(q, (snapshot) => {
-      const tasks = snapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      } as Task));
-      callback(tasks);
-    }, (error) => {
-      console.error("Error subscribing to entity tasks:", error);
-    });
-  }
+  subscribeToLabTasks(labId: string, callback: (tasks: Task[]) => void) {
+    const poll = async () => {
+      try {
+        const result = await apiGet<{ data: Task[] }>('/tasks', { lab_id: labId });
+        callback(result.data || []);
+      } catch {
+        callback([]);
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 30000);
+    return () => clearInterval(interval);
+  },
 };

@@ -11,10 +11,9 @@ import {
   Network
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { db } from '../../firebase';
-import { collection, query, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { UserProfile, Tenant } from '../../types/domain';
 import { toast } from 'sonner';
+import { apiGet, apiPatch } from '../../api/client';
 export function SystemsArchitectureView() {
   const { t } = useLanguage();
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -24,11 +23,10 @@ export function SystemsArchitectureView() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
-        const tenantSnap = await getDocs(collection(db, 'tenants'));
-        
-        setUsers(userSnap.docs.map(d => ({ uid: d.id, ...d.data() } as unknown as UserProfile)));
-        setTenants(tenantSnap.docs.map(d => ({ id: d.id, ...d.data() } as unknown as Tenant)));
+        const usersData = await apiGet<{ data: UserProfile[] }>('/admin/users', { limit: 200 });
+        setUsers(usersData?.data?.map((u: any) => ({ uid: u.id, ...u })) || []);
+        const tenantsData = await apiGet<{ data: Tenant[] }>('/admin/tenants');
+        setTenants(tenantsData?.data || []);
       } catch (error) {
         console.error('Error fetching system data:', error);
         toast.error('Failed to load system architecture data');
@@ -40,7 +38,7 @@ export function SystemsArchitectureView() {
   }, []);
   const handleRoleChange = async (uid: string, newRole: string) => {
     try {
-      await updateDoc(doc(db, 'users', uid), { role: newRole });
+      await apiPatch(`/admin/users/${uid}/role`, { role: newRole });
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: newRole as any } : u));
       toast.success(`Role updated to ${newRole}`);
     } catch (error) {

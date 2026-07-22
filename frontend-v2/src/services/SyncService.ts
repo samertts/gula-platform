@@ -1,5 +1,4 @@
-import { db } from '../firebase';
-import { doc, setDoc, updateDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { apiPost } from '../api/client';
 
 export type SyncAction = {
   id: string;
@@ -26,20 +25,17 @@ export const SyncService = {
       id: Math.random().toString(36).substring(7),
       type,
       payload,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
     this.saveQueue(queue);
-    // Action enqueued (offline)
   },
 
   async processQueue(): Promise<void> {
     if (!navigator.onLine) return;
-    
+
     const queue = this.getQueue();
     if (queue.length === 0) return;
 
-    // Online. Processing pending actions...
-    
     const remaining: SyncAction[] = [];
     const sortedQueue = [...queue].sort((a, b) => a.timestamp - b.timestamp);
 
@@ -47,49 +43,24 @@ export const SyncService = {
       try {
         switch (action.type) {
           case 'UPDATE_PROFILE':
-            await updateDoc(doc(db, 'users', action.payload.uid), {
-              ...action.payload,
-              updatedAt: serverTimestamp()
-            });
+            await apiPost('/sync/profile', action.payload);
             break;
           case 'LOG_ACTIVITY':
-            // Assuming an activity_logs collection
-            const logRef = doc(db, 'activity_logs', action.id);
-            await setDoc(logRef, {
-              ...action.payload,
-              timestamp: serverTimestamp()
-            });
+            await apiPost('/sync/activity', action.payload);
             break;
           case 'UPDATE_TASK':
-            await updateDoc(doc(db, 'tasks', action.payload.taskId), {
-              ...action.payload.updates,
-              updatedAt: serverTimestamp()
-            });
+            await apiPost(`/sync/tasks/${action.payload.taskId}`, action.payload.updates);
             break;
           case 'BULK_UPDATE_TASKS':
-            const batch = writeBatch(db);
-            action.payload.taskIds.forEach((id: string) => {
-              batch.update(doc(db, 'tasks', id), {
-                ...action.payload.updates,
-                updatedAt: serverTimestamp()
-              });
-            });
-            await batch.commit();
+            await apiPost('/sync/tasks/bulk', action.payload);
             break;
         }
       } catch (error) {
-        console.error(`[SyncService] Failed to process action ${action.id}:`, error);
+        console.error('Sync failed for action:', action.type, error);
         remaining.push(action);
       }
     }
 
     this.saveQueue(remaining);
-    if (remaining.length === 0) {
-      // Sync complete
-    }
-  }
+  },
 };
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => SyncService.processQueue());
-}
