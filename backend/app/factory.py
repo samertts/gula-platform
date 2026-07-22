@@ -301,7 +301,6 @@ def import_all_models() -> None:
     )
     from .nursing.models import (  # noqa: F401
         ClinicalChecklist,
-        Delegation as NursingDelegation,
         EscalationRecord,
         FallRiskAssessment,
         FluidBalance,

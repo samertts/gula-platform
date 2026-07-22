@@ -64,5 +64,5 @@ class BaseConnector(ABC):
         await self.connect()
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         await self.disconnect()

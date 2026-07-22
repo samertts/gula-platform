@@ -200,7 +200,7 @@ class ProcessingTimeTracker:
         self._start = time.time()
         return self
 
-    def __exit__(self, *args: Any):
+    def __exit__(self, *args: object):
         elapsed = (time.time() - self._start) * 1000
         if self._operation not in self._timings:
             self._timings[self._operation] = []
