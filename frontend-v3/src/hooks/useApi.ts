@@ -11,7 +11,11 @@ import {
   financialApi, kernelRuntimeApi,
 } from "@/api/endpoints";
 import type { LoginRequest } from "@/types/api";
-import type { Patient, LabOrder, Sample, Lab, CriticalAlert, QualityControl } from "@/types";
+import type {
+  Patient, LabOrder, Sample, Lab, CriticalAlert, QualityControl, LabResult,
+  DashboardData, StatsSummary, TrendData,
+  SubscriptionTier, SubscriptionInfo, User, AuditLog, AIProviderStatus,
+} from "@/types";
 
 // ── Helpers ──
 function qk(...parts: unknown[]) {
@@ -32,7 +36,7 @@ export function useChangePassword(opts?: UseMutationOptions<unknown, Error, { cu
 
 // ── Dashboard ──
 export const dashboardKeys = { all: ["dashboard"] as const };
-export function useDashboard(opts?: UseQueryOptions) {
+export function useDashboard(opts?: UseQueryOptions<DashboardData>) {
   return useQuery({ queryKey: qk("dashboard"), queryFn: () => dashboardApi.dashboard(), ...opts });
 }
 
@@ -72,7 +76,7 @@ export function useCancelOrder(opts?: UseMutationOptions<unknown, Error, number>
 
 // ── Results ──
 export const resultKeys = { all: ["results"] as const };
-export function useResults(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useResults(params?: Record<string, unknown>, opts?: UseQueryOptions<LabResult[]>) {
   return useQuery({ queryKey: qk("results", JSON.stringify(params)), queryFn: () => resultsApi.list(params), ...opts });
 }
 export function useCreateResult(opts?: UseMutationOptions<unknown, Error, Record<string, unknown>>) {
@@ -103,13 +107,13 @@ export function useLabEmployees(opts?: UseQueryOptions<{ employees: unknown[] }>
 }
 
 // ── Admin ──
-export function useAdminLabs(params?: { skip?: number; limit?: number }, opts?: UseQueryOptions) {
+export function useAdminLabs(params?: { skip?: number; limit?: number }, opts?: UseQueryOptions<{ total: number; labs: Lab[] }>) {
   return useQuery({ queryKey: qk("admin", "labs", JSON.stringify(params)), queryFn: () => adminApi.labs(params), ...opts });
 }
-export function useAdminUsers(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useAdminUsers(params?: Record<string, unknown>, opts?: UseQueryOptions<{ total: number; users: User[] }>) {
   return useQuery({ queryKey: qk("admin", "users", JSON.stringify(params)), queryFn: () => adminApi.users(params as { role?: string; lab_id?: number; skip?: number; limit?: number }), ...opts });
 }
-export function useAdminAuditLogs(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useAdminAuditLogs(params?: Record<string, unknown>, opts?: UseQueryOptions<{ total: number; logs: AuditLog[] }>) {
   return useQuery({ queryKey: qk("admin", "audit-logs", JSON.stringify(params)), queryFn: () => adminApi.auditLogs(params as { action?: string; user_id?: number; skip?: number; limit?: number }), ...opts });
 }
 
@@ -124,272 +128,272 @@ export function useQcResults(params?: Record<string, unknown>, opts?: UseQueryOp
 }
 
 // ── Stats ──
-export function useStatsSummary(opts?: UseQueryOptions) {
+export function useStatsSummary(opts?: UseQueryOptions<StatsSummary>) {
   return useQuery({ queryKey: qk("stats", "summary"), queryFn: () => statsApi.summary(), ...opts });
 }
-export function useDailyTrends(params?: { days?: number }, opts?: UseQueryOptions) {
+export function useDailyTrends(params?: { days?: number }, opts?: UseQueryOptions<TrendData>) {
   return useQuery({ queryKey: qk("stats", "trends", "daily", JSON.stringify(params)), queryFn: () => statsApi.dailyTrends(params), ...opts });
 }
 
 // ── Tiers ──
-export function useTiers(opts?: UseQueryOptions) {
+export function useTiers(opts?: UseQueryOptions<{ tiers: SubscriptionTier[] }>) {
   return useQuery({ queryKey: qk("tiers"), queryFn: () => tiersApi.list(), ...opts });
 }
-export function useMyTier(opts?: UseQueryOptions) {
+export function useMyTier(opts?: UseQueryOptions<SubscriptionInfo>) {
   return useQuery({ queryKey: qk("tiers", "my"), queryFn: () => tiersApi.my(), ...opts });
 }
 
 // ── AI ──
-export function useAiPendingApprovals(opts?: UseQueryOptions) {
+export function useAiPendingApprovals(opts?: UseQueryOptions<{ pending: number }>) {
   return useQuery({ queryKey: qk("ai", "pending"), queryFn: () => aiApi.pending(), ...opts });
 }
-export function useAiProviders(opts?: UseQueryOptions) {
+export function useAiProviders(opts?: UseQueryOptions<AIProviderStatus>) {
   return useQuery({ queryKey: qk("ai", "providers"), queryFn: () => aiApi.providers(), ...opts });
 }
 
 // ── AI Platform v2 ──
-export function useAiPlatformMetrics(opts?: UseQueryOptions) {
+export function useAiPlatformMetrics(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ai-platform", "metrics"), queryFn: () => aiPlatformApi.metrics(), ...opts });
 }
-export function useAiGovernanceModels(opts?: UseQueryOptions) {
+export function useAiGovernanceModels(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ai-platform", "governance", "models"), queryFn: () => aiPlatformApi.governanceModels(), ...opts });
 }
-export function useAiGovernancePrompts(opts?: UseQueryOptions) {
+export function useAiGovernancePrompts(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ai-platform", "governance", "prompts"), queryFn: () => aiPlatformApi.governancePrompts(), ...opts });
 }
-export function useAiAgentTools(opts?: UseQueryOptions) {
+export function useAiAgentTools(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ai-platform", "agents", "tools"), queryFn: () => aiPlatformApi.agentTools(), ...opts });
 }
-export function useAiKnowledgeGraphInfo(opts?: UseQueryOptions) {
+export function useAiKnowledgeGraphInfo(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ai-platform", "knowledge-graph", "info"), queryFn: () => aiPlatformApi.knowledgeGraphInfo(), ...opts });
 }
 
 // ── Compliance ──
-export function useComplianceStatus(opts?: UseQueryOptions) {
+export function useComplianceStatus(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("compliance", "status"), queryFn: () => complianceApi.systemStatus(), ...opts });
 }
-export function useSecurityReport(opts?: UseQueryOptions) {
+export function useSecurityReport(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("compliance", "security-report"), queryFn: () => complianceApi.securityReport(), ...opts });
 }
-export function useFhirPatient(patientId: number, opts?: UseQueryOptions) {
+export function useFhirPatient(patientId: number, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("fhir", "patient", patientId), queryFn: () => complianceApi.fhirPatient(patientId), enabled: !!patientId, ...opts });
 }
 
 // ── Hospital ──
-export function useHospitals(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useHospitals(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("hospital", JSON.stringify(params)), queryFn: () => hospitalApi.list(params), ...opts });
 }
-export function useHospitalDepartments(hospitalId: number, opts?: UseQueryOptions) {
+export function useHospitalDepartments(hospitalId: number, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("hospital", hospitalId, "departments"), queryFn: () => hospitalApi.listDepartments(hospitalId), enabled: !!hospitalId, ...opts });
 }
-export function useHospitalOccupancy(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useHospitalOccupancy(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("hospital", "occupancy", JSON.stringify(params)), queryFn: () => hospitalApi.occupancy(params), ...opts });
 }
-export function useHospitalAppointments(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useHospitalAppointments(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("hospital", "appointments", JSON.stringify(params)), queryFn: () => hospitalApi.listAppointments(params), ...opts });
 }
-export function useHospitalEquipment(hospitalId: number, opts?: UseQueryOptions) {
+export function useHospitalEquipment(hospitalId: number, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("hospital", hospitalId, "equipment"), queryFn: () => hospitalApi.listEquipment(hospitalId), enabled: !!hospitalId, ...opts });
 }
 
 // ── Edge ──
-export function useEdgeDevices(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useEdgeDevices(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("edge", "devices", JSON.stringify(params)), queryFn: () => edgeApi.listDevices(params), ...opts });
 }
-export function useEdgeTasks(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useEdgeTasks(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("edge", "tasks", JSON.stringify(params)), queryFn: () => edgeApi.listTasks(params), ...opts });
 }
-export function useEdgeFleetSummary(opts?: UseQueryOptions) {
+export function useEdgeFleetSummary(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("edge", "fleet", "summary"), queryFn: () => edgeApi.fleetSummary(), ...opts });
 }
 
 // ── Financial ──
-export function useFinancialInvoices(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useFinancialInvoices(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("financial", "invoices", JSON.stringify(params)), queryFn: () => financialApi.listInvoices(params), ...opts });
 }
-export function useFinancialPayments(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useFinancialPayments(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("financial", "payments", JSON.stringify(params)), queryFn: () => financialApi.listPayments(params), ...opts });
 }
-export function useFinancialTransactions(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useFinancialTransactions(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("financial", "transactions", JSON.stringify(params)), queryFn: () => financialApi.listTransactions(params), ...opts });
 }
-export function useFinancialBillingStatus(opts?: UseQueryOptions) {
+export function useFinancialBillingStatus(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("financial", "billing", "status"), queryFn: () => financialApi.billingStatus(), ...opts });
 }
 
 // ── National Data ──
-export function useGoldenRecords(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useGoldenRecords(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("national-data", "golden-records", JSON.stringify(params)), queryFn: () => nationalDataApi.listGoldenRecords(params), ...opts });
 }
-export function useDataCatalog(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useDataCatalog(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("national-data", "data-catalog", JSON.stringify(params)), queryFn: () => nationalDataApi.listDataCatalog(params), ...opts });
 }
-export function useDeidentificationJobs(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useDeidentificationJobs(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("national-data", "deidentification-jobs", JSON.stringify(params)), queryFn: () => nationalDataApi.listDeidentificationJobs(params), ...opts });
 }
 
 // ── Health ──
-export function useHealthCheck(opts?: UseQueryOptions) {
+export function useHealthCheck(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("health"), queryFn: () => healthApi.health(), ...opts });
 }
-export function useDeepHealth(opts?: UseQueryOptions) {
+export function useDeepHealth(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("health", "deep"), queryFn: () => healthApi.deep(), ...opts });
 }
 
 // ── MFA ──
-export function useMfaStatus(opts?: UseQueryOptions) {
+export function useMfaStatus(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("mfa", "status"), queryFn: () => mfaApi.status(), ...opts });
 }
-export function useMfaDevices(opts?: UseQueryOptions) {
+export function useMfaDevices(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("mfa", "devices"), queryFn: () => mfaApi.devices(), ...opts });
 }
 
 // ── Security ──
-export function useSecurityStatus(opts?: UseQueryOptions) {
+export function useSecurityStatus(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("security", "status"), queryFn: () => securityApi.status(), ...opts });
 }
 
 // ── EHR ──
-export function usePatientEhr(patientId: number, opts?: UseQueryOptions) {
+export function usePatientEhr(patientId: number, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ehr", "patient", patientId), queryFn: () => ehrApi.getPatientEhr(patientId), enabled: !!patientId, ...opts });
 }
-export function usePatientSummary(patientId: number, opts?: UseQueryOptions) {
+export function usePatientSummary(patientId: number, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ehr", "patient", patientId, "summary"), queryFn: () => ehrApi.getPatientSummary(patientId), enabled: !!patientId, ...opts });
 }
-export function useClinicalNotes(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useClinicalNotes(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ehr", "clinical-notes", JSON.stringify(params)), queryFn: () => ehrApi.listClinicalNotes(params), ...opts });
 }
-export function useAllergies(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useAllergies(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ehr", "allergies", JSON.stringify(params)), queryFn: () => ehrApi.listAllergies(params), ...opts });
 }
-export function useMedications(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useMedications(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ehr", "medication-statements", JSON.stringify(params)), queryFn: () => ehrApi.listMedicationStatements(params), ...opts });
 }
-export function useCarePlans(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useCarePlans(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ehr", "care-plans", JSON.stringify(params)), queryFn: () => ehrApi.listCarePlans(params), ...opts });
 }
-export function useConditions(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useConditions(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ehr", "conditions", JSON.stringify(params)), queryFn: () => ehrApi.listConditions(params), ...opts });
 }
-export function useImmunizations(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useImmunizations(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("ehr", "immunizations", JSON.stringify(params)), queryFn: () => ehrApi.listImmunizations(params), ...opts });
 }
 
 // ── Care Continuum ──
-export function useReferrals(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useReferrals(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("care-continuum", "referrals", JSON.stringify(params)), queryFn: () => careContinuumApi.listReferrals(params), ...opts });
 }
-export function useCareJourneys(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useCareJourneys(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("care-continuum", "care-journeys", JSON.stringify(params)), queryFn: () => careContinuumApi.listCareJourneys(params), ...opts });
 }
-export function usePatientTasks(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function usePatientTasks(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("care-continuum", "patient-tasks", JSON.stringify(params)), queryFn: () => careContinuumApi.listPatientTasks(params), ...opts });
 }
-export function useHealthPrograms(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useHealthPrograms(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("care-continuum", "health-programs", JSON.stringify(params)), queryFn: () => careContinuumApi.listHealthPrograms(params), ...opts });
 }
 
 // ── Clinical ──
-export function useClinicalGuidelines(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useClinicalGuidelines(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "guidelines", JSON.stringify(params)), queryFn: () => clinicalFullApi.listGuidelines(params), ...opts });
 }
-export function useClinicalProtocols(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useClinicalProtocols(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "protocols", JSON.stringify(params)), queryFn: () => clinicalFullApi.listProtocols(params), ...opts });
 }
-export function useClinicalPathways(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useClinicalPathways(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "pathways", JSON.stringify(params)), queryFn: () => clinicalFullApi.listPathways(params), ...opts });
 }
-export function useClinicalAlerts(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useClinicalAlerts(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "cds", "alerts", JSON.stringify(params)), queryFn: () => clinicalFullApi.listAlerts(params), ...opts });
 }
-export function useQualityIndicators(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useQualityIndicators(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "quality", "indicators", JSON.stringify(params)), queryFn: () => clinicalFullApi.listQualityIndicators(), ...opts });
 }
-export function useResearchRegistries(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useResearchRegistries(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "research", "registries", JSON.stringify(params)), queryFn: () => clinicalFullApi.listRegistries(params), ...opts });
 }
 
 // ── Clinical Documentation ──
-export function useDocumentationList(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useDocumentationList(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "documentation", JSON.stringify(params)), queryFn: () => clinicalDocumentationApi.list(params), ...opts });
 }
-export function useDocumentationTemplates(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useDocumentationTemplates(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "documentation", "templates", JSON.stringify(params)), queryFn: () => clinicalDocumentationApi.listTemplates(params), ...opts });
 }
 
 // ── Clinical Orders ──
-export function useClinicalOrderList(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useClinicalOrderList(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "orders", JSON.stringify(params)), queryFn: () => clinicalOrdersApi.list(params), ...opts });
 }
-export function useClinicalOrderTemplates(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useClinicalOrderTemplates(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "orders", "templates", JSON.stringify(params)), queryFn: () => clinicalOrdersApi.listTemplates(params), ...opts });
 }
-export function useRecurringOrders(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useRecurringOrders(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "orders", "recurring", JSON.stringify(params)), queryFn: () => clinicalOrdersApi.listRecurring(params), ...opts });
 }
 
 // ── Clinical Quality ──
-export function useQualityKpis(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useQualityKpis(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "quality", "kpis", JSON.stringify(params)), queryFn: () => clinicalQualityApi.kpis(params), ...opts });
 }
-export function useQualityComplianceDashboard(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useQualityComplianceDashboard(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "quality", "compliance", JSON.stringify(params)), queryFn: () => clinicalQualityApi.complianceDashboard(params), ...opts });
 }
-export function useQualityBenchmarks(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useQualityBenchmarks(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("clinical", "quality", "benchmarks", JSON.stringify(params)), queryFn: () => clinicalQualityApi.benchmarks(params), ...opts });
 }
 
 // ── National Streaming ──
-export function useCdcFeed(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useCdcFeed(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("national-data", "streaming", "cdc", JSON.stringify(params)), queryFn: () => nationalStreamingApi.getCdcFeed(params), ...opts });
 }
 
 // ── Optimizer ──
-export function useOptimizerMetrics(opts?: UseQueryOptions) {
+export function useOptimizerMetrics(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("optimizer", "metrics"), queryFn: () => optimizerApi.metrics(), ...opts });
 }
-export function useOptimizerAnalysis(opts?: UseQueryOptions) {
+export function useOptimizerAnalysis(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("optimizer", "analyze"), queryFn: () => optimizerApi.analyze(), ...opts });
 }
 
 // ── Kernel Runtime ──
-export function useKernelHealth(opts?: UseQueryOptions) {
+export function useKernelHealth(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("kernel", "health"), queryFn: () => kernelRuntimeApi.health(), ...opts });
 }
-export function useKernelMetrics(opts?: UseQueryOptions) {
+export function useKernelMetrics(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("kernel", "metrics"), queryFn: () => kernelRuntimeApi.metrics(), ...opts });
 }
-export function useKernelResources(opts?: UseQueryOptions) {
+export function useKernelResources(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("kernel", "resources"), queryFn: () => kernelRuntimeApi.resources(), ...opts });
 }
-export function useKernelSlowQueries(opts?: UseQueryOptions) {
+export function useKernelSlowQueries(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("kernel", "slow-queries"), queryFn: () => kernelRuntimeApi.slowQueries(), ...opts });
 }
-export function useKernelAiModels(opts?: UseQueryOptions) {
+export function useKernelAiModels(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("kernel", "ai", "models"), queryFn: () => kernelRuntimeApi.aiModels(), ...opts });
 }
 
 // ── Integrations ──
-export function useIntegrationStatus(opts?: UseQueryOptions) {
+export function useIntegrationStatus(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("integrations", "status"), queryFn: () => integrationsApi.status(), ...opts });
 }
 
 // ── Consent ──
-export function useConsentCheck(params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useConsentCheck(params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("consent", "check", JSON.stringify(params)), queryFn: () => consentApi.check(params), ...opts });
 }
 
 // ── Claims ──
-export function useClaim(claimId: string, opts?: UseQueryOptions) {
+export function useClaim(claimId: string, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("claims", claimId), queryFn: () => claimsApi.get(claimId), enabled: !!claimId, ...opts });
 }
 
 // ── Service Accounts ──
-export function useServiceAccounts(opts?: UseQueryOptions) {
+export function useServiceAccounts(opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("service-accounts"), queryFn: () => serviceAccountsApi.list(), ...opts });
 }
 
 // ── Events / Real-time ──
-export function useEventStream(endpoint: string, params?: Record<string, unknown>, opts?: UseQueryOptions) {
+export function useEventStream(endpoint: string, params?: Record<string, unknown>, opts?: UseQueryOptions<Record<string, unknown>>) {
   return useQuery({ queryKey: qk("events", endpoint, JSON.stringify(params)), queryFn: () => kernelRuntimeApi.validationReport(), ...opts });
 }
