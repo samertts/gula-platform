@@ -53,8 +53,8 @@ export class SyntheticDataStore {
   update(collection: string, id: string, updates: Record<string, any>): any | undefined {
     const index = (this.data[collection] || []).findIndex((item: any) => item.id === id);
     if (index !== -1) {
-      this.data[collection][index] = { ...this.data[collection][index], ...updates };
-      return this.data[collection][index];
+      this.data[collection]![index] = { ...this.data[collection]![index], ...updates };
+      return this.data[collection]![index];
     }
     return undefined;
   }
@@ -62,7 +62,7 @@ export class SyntheticDataStore {
   delete(collection: string, id: string): boolean {
     const index = (this.data[collection] || []).findIndex((item: any) => item.id === id);
     if (index !== -1) {
-      this.data[collection].splice(index, 1);
+      this.data[collection]!.splice(index, 1);
       return true;
     }
     return false;

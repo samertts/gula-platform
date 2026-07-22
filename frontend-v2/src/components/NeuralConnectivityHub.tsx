@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Radio, Globe, Zap, Cpu, Server, Activity } from 'lucide-react';
+import {useState, useEffect} from 'react';
+import {motion} from 'motion/react';
+import {Radio, Globe, Cpu, Server, Activity} from 'lucide-react';
 import { cn } from '../lib/utils';
-
 interface Node {
   id: string;
   name: string;
@@ -11,7 +10,6 @@ interface Node {
   load: number;
   packets: number;
 }
-
 const INITIAL_NODES: Node[] = [
   { id: 'N-BA', name: 'Basrah Core', type: 'analyzer', status: 'active', load: 82, packets: 1420 },
   { id: 'N-BG', name: 'Baghdad Central', type: 'cloud', status: 'active', load: 95, packets: 5600 },
@@ -19,11 +17,9 @@ const INITIAL_NODES: Node[] = [
   { id: 'N-ER', name: 'Erbil Bio-Grid', type: 'analyzer', status: 'active', load: 68, packets: 2100 },
   { id: 'N-ST', name: 'Strategic Reserve', type: 'storage', status: 'idle', load: 12, packets: 0 },
 ];
-
 export function NeuralConnectivityHub() {
   const [nodes, setNodes] = useState<Node[]>(INITIAL_NODES);
   const [activePulse, setActivePulse] = useState(0);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setNodes(prev => prev.map(node => ({
@@ -36,7 +32,6 @@ export function NeuralConnectivityHub() {
     }, 2000);
     return () => clearInterval(interval);
   }, []);
-
   return (
     <div className="bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden shadow-2xl">
       <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150">
@@ -68,7 +63,6 @@ export function NeuralConnectivityHub() {
              </div>
           </div>
         </div>
-
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
            {nodes.map((node) => (
              <motion.div 
@@ -95,12 +89,10 @@ export function NeuralConnectivityHub() {
                       <span className="text-[8px] font-black uppercase tracking-widest opacity-60">{node.status}</span>
                    </div>
                 </div>
-
                 <div className="space-y-1 mb-6">
                    <h4 className="text-xs font-black uppercase tracking-tight">{node.name}</h4>
                    <p className="text-[8px] font-black opacity-50 uppercase tracking-widest">{node.id}</p>
                 </div>
-
                 <div className="space-y-3">
                    <div className="flex justify-between text-[9px] font-black uppercase opacity-60">
                       <span>Node Load</span>
@@ -117,7 +109,6 @@ export function NeuralConnectivityHub() {
                       />
                    </div>
                 </div>
-
                 {node.status === 'active' && (
                   <div className="absolute bottom-4 right-6 flex flex-col items-end">
                      <span className="text-[8px] font-black uppercase opacity-40">Telemetry Stream</span>
@@ -128,7 +119,6 @@ export function NeuralConnectivityHub() {
            ))}
         </div>
       </div>
-
       {/* Visual pulse line at the bottom */}
       <div className="absolute bottom-0 left-0 w-full h-1 bg-white/5 overflow-hidden">
          <motion.div 

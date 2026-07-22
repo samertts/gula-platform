@@ -1,19 +1,16 @@
-import { Calendar as CalendarIcon, Clock, User, Phone, MoreVertical, Plus, Shield, BarChart3, PieChart } from 'lucide-react';
+import {Calendar as CalendarIcon, Clock, User, Phone, Plus, Shield, BarChart3} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
-
 const chartData = [
   { name: 'Cardio', value: 42, color: '#4f46e5' },
   { name: 'Pedia', value: 38, color: '#0ea5e9' },
   { name: 'Neuro', value: 25, color: '#8b5cf6' },
   { name: 'General', value: 54, color: '#10b981' },
 ];
-
 export function AppointmentsView() {
   const { t } = useLanguage();
-
   const appointments: {
     patient: string;
     id: string;
@@ -22,7 +19,6 @@ export function AppointmentsView() {
     specialty: string;
     status: string;
   }[] = [];
-
   return (
     <div className="space-y-10 animate-in fade-in duration-700 max-w-7xl mx-auto w-full p-4 md:p-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 w-full">
@@ -41,7 +37,6 @@ export function AppointmentsView() {
           </button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Load Insight Card */}
         <div className="lg:col-span-1 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col gap-8">
@@ -78,7 +73,6 @@ export function AppointmentsView() {
                  </BarChart>
               </ResponsiveContainer>
            </div>
-
            <div className="space-y-4">
               <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-1">AI Suggestion</p>
@@ -86,7 +80,6 @@ export function AppointmentsView() {
               </div>
            </div>
         </div>
-
         {/* Appointment Grid */}
         <div className="lg:col-span-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -101,7 +94,6 @@ export function AppointmentsView() {
                 <div className="absolute top-0 right-0 p-8 opacity-[0.02] group-hover:scale-125 transition-transform">
                    <User size={120} />
                 </div>
-
                 <div className="flex justify-between items-start mb-8 relative z-10">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
@@ -121,7 +113,6 @@ export function AppointmentsView() {
                     {apt.status}
                   </span>
                 </div>
-
                 <div className="grid grid-cols-2 gap-6 relative z-10">
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 text-slate-400 group-hover:text-slate-900 transition-colors">
@@ -143,7 +134,6 @@ export function AppointmentsView() {
                     </div>
                   </div>
                 </div>
-
                 <div className="mt-8 pt-8 border-t border-slate-50 flex gap-4 relative z-10">
                   <button className="flex-1 py-4 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200">
                     {t.details}

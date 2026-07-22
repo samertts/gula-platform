@@ -1,19 +1,16 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Network, Activity, Zap, Shield, Database, LayoutGrid, ArrowUpRight, Cpu, AlertTriangle, Users } from 'lucide-react';
+import {Activity, Zap, Database, ArrowUpRight, Cpu, AlertTriangle, Users} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-
 export function MinistryCommandCenter() {
   const { t } = useLanguage();
-
   const metrics = [
     { label: t.slaTracking, value: '99.94%', status: 'Nominal', icon: Activity, color: 'text-emerald-500' },
     { label: t.workQueueOpt, value: 'AI Active', status: 'Optimizing', icon: Zap, color: 'text-indigo-500' },
     { label: t.populationForecasting, value: 'Stable', status: 'Next 30d', icon: Users, color: 'text-amber-500' },
     { label: t.apiMarketplace, value: '142 Apps', status: 'Connected', icon: Database, color: 'text-rose-500' },
   ];
-
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -36,7 +33,6 @@ export function MinistryCommandCenter() {
           </motion.div>
         ))}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
          <div className="lg:col-span-8 bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-125">
@@ -53,7 +49,6 @@ export function MinistryCommandCenter() {
                      <span className="text-[10px] font-black tracking-widest uppercase">Ecosystem: Balanced</span>
                   </div>
                </div>
-
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
                   {[
                     { label: 'Hospital Resource AI', val: 'Allocated', sub: '92% Efficiency' },
@@ -67,7 +62,6 @@ export function MinistryCommandCenter() {
                     </div>
                   ))}
                </div>
-
                <div className="flex items-center justify-between p-8 bg-indigo-600 rounded-3xl shadow-xl shadow-indigo-900/50">
                   <div className="flex items-center gap-6">
                      <div className="p-4 bg-white/10 rounded-2xl">
@@ -84,7 +78,6 @@ export function MinistryCommandCenter() {
                </div>
             </div>
          </div>
-
          <div className="lg:col-span-4 bg-white border border-slate-100 rounded-[3rem] p-10 flex flex-col justify-between">
             <div>
                <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 mb-2">{t.apiMarketplace}</h3>
@@ -108,7 +101,6 @@ export function MinistryCommandCenter() {
                  </div>
                ))}
             </div>
-
             <button className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group">
                Access Marketplace Portal <ArrowUpRight size={14} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
             </button>

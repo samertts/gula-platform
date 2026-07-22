@@ -1,19 +1,16 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Fingerprint, ShieldCheck, Activity, Brain } from 'lucide-react';
+import {Fingerprint, Activity, Brain} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-
 export function BiometricStatus() {
   const { t } = useLanguage();
-
   const metrics = [
     { label: 'Voice Signature', status: 'Verified', value: 99.4, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     { label: 'Ocular Pattern', status: 'Active', value: 98.2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'Thermal Logic', status: 'In-Sync', value: 100, color: 'text-rose-600', bg: 'bg-rose-50' },
     { label: 'Behavioral DNA', status: 'Calibrating', value: 85.0, color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
-
   return (
     <div className="bg-white border border-slate-100 rounded-[3rem] p-8 shadow-sm">
       <div className="flex items-center justify-between mb-8">
@@ -25,7 +22,6 @@ export function BiometricStatus() {
           <Fingerprint size={24} />
         </div>
       </div>
-
       <div className="grid grid-cols-2 gap-4">
         {metrics.map((m, i) => (
           <motion.div 
@@ -47,7 +43,6 @@ export function BiometricStatus() {
           </motion.div>
         ))}
       </div>
-
       <div className="mt-8 p-6 bg-slate-900 rounded-[2.5rem] relative overflow-hidden group">
          <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
          <div className="relative z-10 flex items-center gap-4">

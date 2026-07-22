@@ -1,36 +1,32 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BrainCircuit, Send, Loader2, AlertCircle, CheckCircle2, ChevronRight, Stethoscope } from 'lucide-react';
+import {BrainCircuit, Send, Loader2, AlertCircle, Stethoscope} from 'lucide-react';
 import { generateSmartDiagnosis } from '../../services/aiService';
 import Markdown from 'react-markdown';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/LanguageContext';
-
 interface AITriageAssistantProps {
   patientId: string;
   patientData: string;
 }
-
 export function AITriageAssistant({ patientId, patientData }: AITriageAssistantProps) {
   const [symptoms, setSymptoms] = useState('');
   const [insight, setInsight] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
-
   const handleTriage = async () => {
     if (!symptoms.trim()) return;
     
     setIsLoading(true);
     try {
       const result = await generateSmartDiagnosis(patientData, symptoms);
-      setInsight(result);
+      setInsight(result ?? null);
     } catch (error) {
       console.error("Triage Error:", error);
     } finally {
       setIsLoading(false);
     }
   };
-
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden group">
       <div className="p-8 border-b border-slate-50 relative overflow-hidden">
@@ -48,7 +44,6 @@ export function AITriageAssistant({ patientId, patientData }: AITriageAssistantP
           </div>
         </div>
       </div>
-
       <div className="p-8 space-y-6">
         <div className="space-y-4">
           <label className="text-xs font-black uppercase tracking-widest text-slate-400">Reported Symptoms & Observations</label>
@@ -71,7 +66,6 @@ export function AITriageAssistant({ patientId, patientData }: AITriageAssistantP
             </button>
           </div>
         </div>
-
         <AnimatePresence mode="wait">
           {insight ? (
             <motion.div
@@ -91,11 +85,9 @@ export function AITriageAssistant({ patientId, patientData }: AITriageAssistantP
                    </div>
                    <span className="text-[10px] font-bold text-slate-400">Generated for Patient ID: {patientId}</span>
                 </div>
-
                 <div className="prose prose-slate prose-sm max-w-none prose-headings:font-black prose-headings:uppercase prose-headings:tracking-widest prose-headings:text-[10px] prose-headings:text-indigo-600 markdown-body">
                   <Markdown>{insight}</Markdown>
                 </div>
-
                 <div className="mt-8 pt-8 border-t border-indigo-100/50 flex flex-wrap gap-4">
                    <button className="px-5 py-2.5 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
                       Apply to Record
@@ -105,7 +97,6 @@ export function AITriageAssistant({ patientId, patientData }: AITriageAssistantP
                    </button>
                 </div>
               </div>
-
               <div className="mt-4 p-4 bg-amber-50 rounded-2xl flex items-center gap-3 border border-amber-100">
                  <AlertCircle size={16} className="text-amber-600 shrink-0" />
                  <p className="text-[9px] font-bold text-amber-800 leading-tight">

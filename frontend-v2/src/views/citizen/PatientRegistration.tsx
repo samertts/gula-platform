@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
-
 export function PatientRegistration() {
   const { t, language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,9 +34,7 @@ export function PatientRegistration() {
     zip: '',
     country: 'Iraq'
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
-
   const validateField = (name: string, value: string) => {
     let error = '';
     if (name === 'fullName' && !value) error = 'Full name is required';
@@ -53,12 +50,10 @@ export function PatientRegistration() {
     setErrors(prev => ({ ...prev, [name]: error }));
     return !error;
   };
-
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     validateField(field, value);
   };
-
   const validate = () => {
     const fieldsToValidate = ['fullName', 'dob', 'phone', 'nationalId', 'street', 'city', 'state', 'zip'];
     let isValid = true;
@@ -67,21 +62,16 @@ export function PatientRegistration() {
         isValid = false;
       }
     });
-
     // Special check for email since it's optional but needs format check if present
     if (formData.email && !validateField('email', formData.email)) {
       isValid = false;
     }
-
     return isValid;
   };
-
   const isRtl = language === 'AR' || language === 'KU' || language === 'SY';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     setIsSubmitting(true);
     // Simulated Registration with Network Awareness
     try {
@@ -94,7 +84,6 @@ export function PatientRegistration() {
       setIsSubmitting(false);
     }
   };
-
   if (isSuccess) {
     return (
       <div className="p-8 max-w-2xl mx-auto flex items-center justify-center min-h-[60vh]">
@@ -124,7 +113,6 @@ export function PatientRegistration() {
       </div>
     );
   }
-
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="flex items-center gap-6 mb-12">
@@ -138,7 +126,6 @@ export function PatientRegistration() {
           <p className="text-slate-500 font-medium">Join the unified national clinical network</p>
         </div>
       </div>
-
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Personal Info */}
@@ -162,7 +149,6 @@ export function PatientRegistration() {
               />
               {errors.fullName && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.fullName}</p>}
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Date of Birth</label>
@@ -192,7 +178,6 @@ export function PatientRegistration() {
                 </select>
               </div>
             </div>
-
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-slate-400 ml-1">National ID (12 Digits)</label>
               <div className="relative">
@@ -211,14 +196,12 @@ export function PatientRegistration() {
               {errors.nationalId && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.nationalId}</p>}
             </div>
           </section>
-
           {/* Contact Info */}
           <section className="space-y-6 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3 mb-2">
               <Smartphone size={18} className="text-indigo-600" />
               <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">Communication</h3>
             </div>
-
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Phone Number</label>
               <div className="relative">
@@ -236,7 +219,6 @@ export function PatientRegistration() {
               </div>
               {errors.phone && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.phone}</p>}
             </div>
-
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email Address (Optional)</label>
               <div className="relative">
@@ -254,7 +236,6 @@ export function PatientRegistration() {
               </div>
               {errors.email && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.email}</p>}
             </div>
-
             <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-3xl mt-4">
               <div className="flex gap-3">
                 <ShieldCheck size={20} className="text-indigo-600 shrink-0" />
@@ -264,14 +245,12 @@ export function PatientRegistration() {
               </div>
             </div>
           </section>
-
           {/* Address Info */}
           <section className="space-y-6 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm md:col-span-2">
             <div className="flex items-center gap-3 mb-2">
               <MapPin size={18} className="text-indigo-600" />
               <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">Physical Address</h3>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2 space-y-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Street Address</label>
@@ -287,7 +266,6 @@ export function PatientRegistration() {
                 />
                 {errors.street && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.street}</p>}
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">City</label>
                 <input 
@@ -302,7 +280,6 @@ export function PatientRegistration() {
                 />
                 {errors.city && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.city}</p>}
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Governorate / State</label>
                 <input 
@@ -317,7 +294,6 @@ export function PatientRegistration() {
                 />
                 {errors.state && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.state}</p>}
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Zip / Postal Code</label>
                 <input 
@@ -332,7 +308,6 @@ export function PatientRegistration() {
                 />
                 {errors.zip && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.zip}</p>}
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Country</label>
                 <select 
@@ -347,7 +322,6 @@ export function PatientRegistration() {
             </div>
           </section>
         </div>
-
         <div className="flex justify-between items-center bg-slate-900 p-6 rounded-[2rem] text-white overflow-hidden relative">
           <div className="flex items-center gap-4 relative z-10">
             <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur">

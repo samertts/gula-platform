@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import { 
   Users, 
   Shield, 
@@ -19,14 +19,12 @@ import { collection, query, getDocs, orderBy, doc, updateDoc } from 'firebase/fi
 import { UserProfile, Tenant } from '../../types/domain';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
-
 export function SystemsArchitectureView() {
   const { t } = useLanguage();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -44,7 +42,6 @@ export function SystemsArchitectureView() {
     };
     fetchData();
   }, []);
-
   const handleRoleChange = async (uid: string, newRole: string) => {
     try {
       await updateDoc(doc(db, 'users', uid), { role: newRole });
@@ -54,13 +51,11 @@ export function SystemsArchitectureView() {
       toast.error('Failed to update role');
     }
   };
-
   const filteredUsers = users.filter(user => 
     user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -68,14 +63,12 @@ export function SystemsArchitectureView() {
       </div>
     );
   }
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">{t.systemDashboard}</h1>
         <p className="text-slate-500 font-medium">{t.globalStatus}</p>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
           { label: 'Active Nodes', value: users.length, icon: Users, color: 'indigo' },
@@ -94,7 +87,6 @@ export function SystemsArchitectureView() {
           </div>
         ))}
       </div>
-
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -117,7 +109,6 @@ export function SystemsArchitectureView() {
             />
           </div>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

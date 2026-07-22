@@ -29,7 +29,7 @@ export const SyncService = {
       timestamp: Date.now()
     });
     this.saveQueue(queue);
-    console.log(`[SyncService] Action enqueued (offline): ${type}`);
+    // Action enqueued (offline)
   },
 
   async processQueue(): Promise<void> {
@@ -38,7 +38,7 @@ export const SyncService = {
     const queue = this.getQueue();
     if (queue.length === 0) return;
 
-    console.log(`[SyncService] Online. Processing ${queue.length} pending actions...`);
+    // Online. Processing pending actions...
     
     const remaining: SyncAction[] = [];
     const sortedQueue = [...queue].sort((a, b) => a.timestamp - b.timestamp);
@@ -85,7 +85,7 @@ export const SyncService = {
 
     this.saveQueue(remaining);
     if (remaining.length === 0) {
-      console.log('[SyncService] Sync complete.');
+      // Sync complete
     }
   }
 };

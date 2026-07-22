@@ -6,21 +6,23 @@ interface LogEntry {
   timestamp: string;
   level: LogLevel;
   traceId: string;
-  correlationId?: string;
-  userId?: string;
-  endpoint?: string;
-  method?: string;
-  statusCode?: number;
-  responseTime?: number;
+  correlationId?: string | undefined;
+  userId?: string | undefined;
+  endpoint?: string | undefined;
+  method?: string | undefined;
+  statusCode?: number | undefined;
+  responseTime?: number | undefined;
   message: string;
-  data?: Record<string, any>;
-  error?: {
-    message: string;
-    stack?: string;
-    code?: string;
-  };
+  data?: Record<string, any> | undefined;
+  error?: ErrorInfo | undefined;
   environment: string;
   version: string;
+}
+
+interface ErrorInfo {
+  message: string;
+  stack?: string | undefined;
+  code?: string | undefined;
 }
 
 class StructuredLogger {
@@ -78,14 +80,14 @@ class StructuredLogger {
       message,
       environment: this.environment,
       version: this.version,
-      ...data,
+      data,
     };
 
     if (error) {
       entry.error = {
         message: error.message,
-        stack: error.stack,
-        code: (error as any).code,
+        stack: error.stack ?? undefined,
+        code: (error as any).code as string | undefined,
       };
     }
 

@@ -4,7 +4,7 @@ import { Card, CardContent, Badge, DataTable } from "@/components/ui";
 import { PageHeader, LoadingSpinner, ErrorDisplay, EmptyState } from "@/components/shared/PageComponents";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { QualityControl } from "@/types";
-import { ShieldCheck, FlaskConical } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
   passed: "success",

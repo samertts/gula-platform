@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Bot, X, MessageSquare, Sparkles, 
@@ -7,19 +7,16 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-
 export function HelpAssistant() {
   const { t, isRtl } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'docs' | 'tips'>('tips');
   const [isVocalActive, setIsVocalActive] = useState(false);
-
   const tips = [
     { id: 1, title: 'Quick Navigation', desc: 'Use Cmd/Ctrl + K to open the command palette anywhere.', icon: Search },
     { id: 2, title: 'Offline Access', desc: 'The system automatically saves your work during connectivity drops.', icon: BookOpen },
     { id: 3, title: 'Identity Levels', desc: 'Higher Assurance Levels (LOA) unlock more medical capabilities.', icon: Sparkles },
   ];
-
   return (
     <div className={cn("fixed bottom-8 z-50", isRtl ? "left-8" : "right-8")}>
       <AnimatePresence>
@@ -65,7 +62,6 @@ export function HelpAssistant() {
                   </button>
                 </div>
               </div>
-
               <div className="flex bg-white/10 p-1 rounded-xl">
                  {(['tips', 'chat', 'docs'] as const).map(tab => (
                    <button
@@ -87,7 +83,6 @@ export function HelpAssistant() {
                  ))}
               </div>
             </div>
-
             {/* Content Source */}
             <div className="max-h-[400px] overflow-y-auto p-6 bg-slate-50/50">
                {activeTab === 'tips' && (
@@ -116,7 +111,6 @@ export function HelpAssistant() {
                    </button>
                  </div>
                )}
-
                {activeTab === 'chat' && (
                  <div className="text-center py-12 space-y-4">
                    <MessageSquare size={40} className="mx-auto text-slate-200" />
@@ -126,7 +120,6 @@ export function HelpAssistant() {
                    </div>
                  </div>
                )}
-
                {activeTab === 'docs' && (
                  <div className="space-y-3">
                    {['User Manual', 'API Integration', 'Data Policies', 'Security Whitepaper'].map((doc, i) => (
@@ -141,7 +134,6 @@ export function HelpAssistant() {
                  </div>
                )}
             </div>
-
             {/* Footer */}
             <div className="p-4 border-t border-slate-100 bg-white">
                <div className="flex items-center justify-between">
@@ -155,7 +147,6 @@ export function HelpAssistant() {
           </motion.div>
         )}
       </AnimatePresence>
-
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(

@@ -21,8 +21,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase-auth';
 import { UserWing, UserRole } from '../types/domain';
 import { useNavigationStore } from '../stores/navigationStore';
-import { Badge, Avatar, Tooltip, Kbd } from './ui';
-
+import {Avatar, Tooltip, Kbd} from './ui';
 interface NavItem {
   to: string;
   icon: any;
@@ -33,7 +32,6 @@ interface NavItem {
   badge?: number;
   wing?: UserWing;
 }
-
 interface NavGroup {
   id: string;
   icon: any;
@@ -42,7 +40,6 @@ interface NavGroup {
   roles?: UserRole[];
   wing?: UserWing;
 }
-
 const ROLE_WING_MAP: Record<UserRole, UserWing[]> = {
   master_admin: ['admin', 'ministry', 'doctor', 'lab', 'citizen', 'researcher', 'regulator', 'system'],
   admin: ['admin', 'ministry', 'doctor', 'lab', 'citizen', 'researcher', 'regulator'],
@@ -59,7 +56,6 @@ const ROLE_WING_MAP: Record<UserRole, UserWing[]> = {
   integration_service: ['admin', 'system'],
   citizen: ['citizen'],
 };
-
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard, Users, Stethoscope, Microscope, FlaskConical,
   Calendar, FileText, Activity, Pill, BrainCircuit, Building2,
@@ -68,15 +64,12 @@ const ICON_MAP: Record<string, any> = {
   History, Clock, Star, Pin, User, Home, Hash,
   Sparkles, Bot, Notebook, ListTodo,
 };
-
 function resolveIcon(name: string): any {
   return ICON_MAP[name] || LayoutDashboard;
 }
-
 function buildNavGroups(t: any, role: UserRole): NavGroup[] {
   const wings = ROLE_WING_MAP[role] || ['citizen'];
   const has = (...w: UserWing[]) => w.some(w2 => wings.includes(w2));
-
   const groups: NavGroup[] = [
     {
       id: 'home',
@@ -183,13 +176,11 @@ function buildNavGroups(t: any, role: UserRole): NavGroup[] {
       ],
     },
   ];
-
   return groups.filter(g => {
     if (!g.roles || g.roles.length === 0) return true;
     return g.roles.includes(role);
   });
 }
-
 function QuickSearch({ expanded, searchQuery, setSearchQuery, results, onNavigate, onClear, t }: {
   expanded: boolean;
   searchQuery: string;
@@ -249,7 +240,6 @@ function QuickSearch({ expanded, searchQuery, setSearchQuery, results, onNavigat
     </div>
   );
 }
-
 export const Sidebar = memo(function Sidebar() {
   const { t, dir } = useLanguage();
   const { profile } = useAuth();
@@ -258,46 +248,35 @@ export const Sidebar = memo(function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isRtl = dir === 'rtl';
-
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [dragPath, setDragPath] = useState<string | null>(null);
-
   const sidebarRef = useRef<HTMLElement>(null);
-
   const role = (profile?.role || 'citizen') as UserRole;
   const navGroups = useMemo(() => buildNavGroups(t, role), [t, role]);
-
   const isCollapsed = state.isCollapsed;
   const expanded = isCollapsed ? isHovering : true;
   const searchQuery = state.searchQuery;
-
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('sidebar-expanded', { detail: expanded }));
   }, [expanded]);
-
   useEffect(() => {
-    if (navGroups.length > 0 && !state.expandedGroups[navGroups[0].id]) {
-      dispatch({ type: 'TOGGLE_GROUP', payload: navGroups[0].id });
+    if (navGroups.length > 0 && !state.expandedGroups[navGroups[0]!.id]) {
+      dispatch({ type: 'TOGGLE_GROUP', payload: navGroups[0]!.id });
     }
   }, [navGroups]);
-
   useEffect(() => {
     dispatch({ type: 'TRACK_VISIT', payload: location.pathname });
   }, [location.pathname]);
-
   const allItems = useMemo(() => navGroups.flatMap(g => g.items), [navGroups]);
-
   const pinnedItems = useMemo(
     () => allItems.filter(i => state.pinned.includes(i.to)),
     [allItems, state.pinned]
   );
-
   const recentItems = useMemo(
     () => state.recent.map(p => allItems.find(i => i.to === p)).filter(Boolean) as NavItem[],
     [state.recent, allItems]
   );
-
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
@@ -307,28 +286,23 @@ export const Sidebar = memo(function Sidebar() {
       (i.keywords && i.keywords.some(k => k.toLowerCase().includes(q)))
     ).slice(0, 8);
   }, [searchQuery, allItems]);
-
   const handleNavClick = useCallback((to: string) => {
     navigate(to);
     setIsMobileOpen(false);
   }, [navigate]);
-
   const handleLogout = useCallback(async () => {
     await signOut(auth);
     navigate('/');
   }, [navigate]);
-
   const toggleGroup = useCallback((id: string) => {
     dispatch({ type: 'TOGGLE_GROUP', payload: id });
   }, [dispatch]);
-
   const navLinkClass = ({ isActive }: { isActive: boolean }) => cn(
     'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative',
     isActive
       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
       : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
   );
-
   const renderNavItem = (item: NavItem, index: number) => {
     const IconComp = item.icon;
     const isItemPinned = isPinned(item.to);
@@ -383,7 +357,6 @@ export const Sidebar = memo(function Sidebar() {
       </NavLink>
     );
   };
-
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo + collapse toggle */}
@@ -415,7 +388,6 @@ export const Sidebar = memo(function Sidebar() {
           </button>
         )}
       </div>
-
       {/* Intelligent Search */}
       <QuickSearch
         expanded={expanded}
@@ -426,7 +398,6 @@ export const Sidebar = memo(function Sidebar() {
         onClear={() => dispatch({ type: 'SET_SEARCH', payload: '' })}
         t={t}
       />
-
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1 custom-scrollbar">
         {/* Pinned items section */}
@@ -442,7 +413,6 @@ export const Sidebar = memo(function Sidebar() {
             <div className="border-t border-slate-100 my-3" />
           </div>
         )}
-
         {/* Recent items */}
         {expanded && recentItems.length > 0 && pinnedItems.length === 0 && (
           <div className="mb-3">
@@ -456,7 +426,6 @@ export const Sidebar = memo(function Sidebar() {
             <div className="border-t border-slate-100 my-3" />
           </div>
         )}
-
         {/* Nav groups with adaptive ordering */}
         {navGroups.map((group) => {
           const ordered = expanded ? getAdaptiveOrder(group.items) : group.items;
@@ -513,7 +482,6 @@ export const Sidebar = memo(function Sidebar() {
           );
         })}
       </nav>
-
       {/* Quick actions footer */}
       {expanded && (
         <div className="px-3 pb-2 space-y-1">
@@ -527,7 +495,6 @@ export const Sidebar = memo(function Sidebar() {
           </button>
         </div>
       )}
-
       {/* User profile footer */}
       <div className={cn('border-t border-slate-100 p-3', expanded ? 'block' : 'flex justify-center')}>
         <div className={cn('flex items-center gap-3', !expanded && 'flex-col')}>
@@ -555,7 +522,6 @@ export const Sidebar = memo(function Sidebar() {
       </div>
     </div>
   );
-
   return (
     <>
       {/* Mobile hamburger */}
@@ -565,7 +531,6 @@ export const Sidebar = memo(function Sidebar() {
       >
         <Menu size={20} className="text-slate-600" />
       </button>
-
       {/* Mobile overlay */}
       <AnimatePresence>
         {isMobileOpen && (
@@ -578,7 +543,6 @@ export const Sidebar = memo(function Sidebar() {
           />
         )}
       </AnimatePresence>
-
       {/* Sidebar */}
       <aside
         ref={sidebarRef}
@@ -594,7 +558,6 @@ export const Sidebar = memo(function Sidebar() {
       >
         {sidebarContent}
       </aside>
-
       {/* Collapsed hover trigger zone */}
       {isCollapsed && !isHovering && (
         <div

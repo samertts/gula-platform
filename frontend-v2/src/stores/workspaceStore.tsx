@@ -1,12 +1,10 @@
-import { createContext, useContext, useReducer, useCallback, ReactNode } from 'react';
-
+import {createContext, useContext, useReducer, ReactNode} from 'react';
 interface Tab {
   id: string;
   path: string;
   label: string;
   icon?: string;
 }
-
 interface SplitPane {
   id: string;
   direction: 'horizontal' | 'vertical';
@@ -14,7 +12,6 @@ interface SplitPane {
   secondary: string | null;
   ratio: number;
 }
-
 interface Widget {
   id: string;
   type: string;
@@ -22,13 +19,11 @@ interface Widget {
   size: { w: number; h: number };
   config?: Record<string, unknown>;
 }
-
 interface DashboardPreset {
   id: string;
   name: string;
   widgets: Widget[];
 }
-
 interface WorkspaceState {
   activeTab: string;
   tabs: Tab[];
@@ -39,7 +34,6 @@ interface WorkspaceState {
   detachedPanels: string[];
   pinnedInspectors: string[];
 }
-
 type WorkspaceAction =
   | { type: 'OPEN_TAB'; payload: Tab }
   | { type: 'CLOSE_TAB'; payload: string }
@@ -59,7 +53,6 @@ type WorkspaceAction =
   | { type: 'ATTACH_PANEL'; payload: string }
   | { type: 'PIN_INSPECTOR'; payload: string }
   | { type: 'UNPIN_INSPECTOR'; payload: string };
-
 function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
     case 'OPEN_TAB': {
@@ -147,7 +140,6 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
       return state;
   }
 }
-
 const initialState: WorkspaceState = {
   activeTab: '',
   tabs: [],
@@ -158,14 +150,11 @@ const initialState: WorkspaceState = {
   detachedPanels: [],
   pinnedInspectors: [],
 };
-
 interface WorkspaceContextType {
   state: WorkspaceState;
   dispatch: React.Dispatch<WorkspaceAction>;
 }
-
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
-
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(workspaceReducer, initialState);
   return (
@@ -174,7 +163,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     </WorkspaceContext.Provider>
   );
 }
-
 export function useWorkspaceStore() {
   const ctx = useContext(WorkspaceContext);
   if (!ctx) throw new Error('useWorkspaceStore must be used within WorkspaceProvider');

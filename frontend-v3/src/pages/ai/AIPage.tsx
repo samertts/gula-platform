@@ -55,6 +55,12 @@ export function AIPage() {
   );
 }
 
+interface AIPendingApproval {
+  id: number;
+  test_name: string;
+  patient_name: string;
+}
+
 function AIPendingApprovals() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["ai-approvals"],
@@ -64,7 +70,7 @@ function AIPendingApprovals() {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorDisplay onRetry={refetch} />;
 
-  const items = (data as any)?.items || (data as any)?.approvals || [];
+  const items: AIPendingApproval[] = (data as { items?: AIPendingApproval[]; approvals?: AIPendingApproval[] })?.items || (data as { items?: AIPendingApproval[]; approvals?: AIPendingApproval[] })?.approvals || [];
 
   if (items.length === 0) {
     return (
@@ -80,7 +86,7 @@ function AIPendingApprovals() {
     <Card>
       <CardHeader><CardTitle>الموافقات المعلقة</CardTitle></CardHeader>
       <CardContent>
-        {items.map((item: any) => (
+        {items.map((item) => (
           <div key={item.id} className="flex items-center justify-between border-b py-3 last:border-0">
             <div>
               <p className="font-medium">{item.test_name}</p>

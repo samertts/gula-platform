@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import {useState, useEffect, useCallback} from 'react';
 import { 
   FileText, Save, History, Sparkles, 
   Mic, User, Activity, AlertCircle, CheckCircle2,
@@ -11,7 +11,6 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useParams } from 'react-router-dom';
-
 export function ClinicalNotes() {
   const [note, setNote] = useState({
     subjective: '',
@@ -25,7 +24,6 @@ export function ClinicalNotes() {
   const { language } = useLanguage();
   const [isListening, setIsListening] = useState(false);
   const { patientId } = useParams<{ patientId: string }>();
-
   const handleSave = useCallback(async () => {
     if (!patientId) {
       toast.error('No patient selected');
@@ -47,7 +45,6 @@ export function ClinicalNotes() {
       setIsSaving(false);
     }
   }, [note, patientId]);
-
   // Auto-save every 10 seconds
   useEffect(() => {
     const interval = setInterval(() => {
@@ -57,36 +54,31 @@ export function ClinicalNotes() {
     }, 10000);
     return () => clearInterval(interval);
   }, [note]);
-
   // Save on component unmount
   useEffect(() => {
     return () => {
       // In a real app, we would perform a synchronous save or use navigator.sendBeacon
       // For this simulation, we'll just log it
-      console.log('Component unmounting, saving clinical notes...');
+      // Component unmounting — save would happen here in production
     };
   }, [note]);
-
   const updateNote = (newNote: typeof note) => {
     setHistory(prev => [...prev, note].slice(-20)); // Keep last 20 changes
     setNote(newNote);
   };
-
   const undo = () => {
     if (history.length > 0) {
       const prevNote = history[history.length - 1];
       setHistory(prev => prev.slice(0, -1));
-      setNote(prevNote);
+      setNote(prevNote!);
       toast.success('Undone last change');
     } else {
       toast.error('Nothing to undo');
     }
   };
-
   const handleAIComplete = () => {
     toast.success('AI Suggestion: Connect to GULA AI service to generate assessment suggestions based on clinical findings.');
   };
-
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[700px]">
       <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
@@ -117,7 +109,6 @@ export function ClinicalNotes() {
            </div>
         </div>
       </div>
-
       <div className="flex-1 p-10 space-y-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
            {/* Subjective */}
@@ -137,7 +128,6 @@ export function ClinicalNotes() {
                 className="w-full h-40 bg-slate-50 border-none rounded-[2rem] p-6 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-blue-50 transition-all resize-none"
               />
            </div>
-
            {/* Objective */}
            <div className="space-y-4">
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
@@ -150,7 +140,6 @@ export function ClinicalNotes() {
                 className="w-full h-40 bg-slate-50 border-none rounded-[2rem] p-6 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-rose-50 transition-all resize-none"
               />
            </div>
-
            {/* Assessment */}
            <div className="space-y-4">
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
@@ -163,7 +152,6 @@ export function ClinicalNotes() {
                 className="w-full h-40 bg-slate-50 border-none rounded-[2rem] p-6 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-amber-50 transition-all resize-none"
               />
            </div>
-
            {/* Plan */}
            <div className="space-y-4">
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
@@ -178,7 +166,6 @@ export function ClinicalNotes() {
            </div>
         </div>
       </div>
-
       <div className="p-8 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <div className="flex items-center gap-4">
            <button 
@@ -200,7 +187,6 @@ export function ClinicalNotes() {
            </button>
         </div>
       </div>
-
       <AnimatePresence>
         {isListening && (
           <motion.div 

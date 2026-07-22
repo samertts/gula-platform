@@ -1,24 +1,20 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Activity, Thermometer, ShieldCheck, Zap, X, ChevronRight } from 'lucide-react';
+import {Heart, Activity, Thermometer, ShieldCheck, Zap, X} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-
 export function OrganAnalysis() {
   const { t } = useLanguage();
   const [activeSegment, setActiveSegment] = useState<'aorta' | 'ventricle' | 'atrium' | null>(null);
-
   const segments = {
     aorta: { title: 'Aortic Arch', status: 'Stable', pressure: '120 mmHg', desc: 'Normal elasticity and flow dynamics detected via Doppler-AI synthesis.' },
     ventricle: { title: 'Left Ventricle', status: 'Elevated Load', pressure: '145 mmHg', desc: 'Mild hypertrophic patterns observed. Correlation with hypertension history.' },
     atrium: { title: 'Right Atrium', status: 'Optimal', pressure: '5 mmHg', desc: 'Sinus rhythm synchronization at 99.4%.' },
   };
-
   return (
     <div className="bg-slate-900 rounded-[32px] p-8 text-white relative overflow-hidden h-full min-h-[500px] flex flex-col">
       <div className="absolute top-0 right-0 p-12 opacity-[0.05]">
          <Heart size={300} strokeWidth={1} />
       </div>
-
       <div className="relative z-10 flex flex-col h-full">
         <div className="flex justify-between items-start mb-8">
            <div>
@@ -34,7 +30,6 @@ export function OrganAnalysis() {
               </div>
            </div>
         </div>
-
         <div className="flex-1 flex items-center justify-center relative">
            {/* Conceptual 3D Heart Visualizer */}
            <div className="relative">
@@ -48,7 +43,6 @@ export function OrganAnalysis() {
               >
                  <Heart size={200} fill="currentColor" strokeWidth={0.5} />
               </motion.div>
-
               {/* Interaction Hotspots */}
               <button 
                 onClick={() => setActiveSegment('aorta')}
@@ -59,7 +53,6 @@ export function OrganAnalysis() {
                  </div>
                  <div className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Aorta</div>
               </button>
-
               <button 
                 onClick={() => setActiveSegment('ventricle')}
                 className="absolute bottom-12 right-12 z-20 group"
@@ -69,12 +62,10 @@ export function OrganAnalysis() {
                  </div>
                  <div className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Ventricle</div>
               </button>
-
               <div className="absolute inset-0 border-[40px] border-white/[0.02] rounded-full scale-150 animate-[spin_20s_linear_infinity]" />
               <div className="absolute inset-0 border border-white/5 rounded-full scale-125 border-dashed animate-[spin_15s_linear_infinite_reverse]" />
            </div>
         </div>
-
         <div className="space-y-6">
            <AnimatePresence mode="wait">
               {activeSegment ? (

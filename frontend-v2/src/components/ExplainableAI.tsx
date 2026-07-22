@@ -1,12 +1,10 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Brain, CheckCircle, AlertTriangle, Shield, Info, Network, Zap } from 'lucide-react';
+import {Brain, AlertTriangle, Shield, Zap} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-
 export function ExplainableAI() {
   const { t } = useLanguage();
-
   return (
     <div className="h-full bg-slate-50 flex flex-col p-8 overflow-y-auto">
       <div className="max-w-4xl mx-auto w-full space-y-8">
@@ -19,7 +17,6 @@ export function ExplainableAI() {
               <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-loose">Demystifying Medical Reasoning Engine Logic</p>
            </div>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
            <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
               <div className="flex items-center gap-3 text-indigo-600">
@@ -40,7 +37,6 @@ export function ExplainableAI() {
                  ))}
               </div>
            </div>
-
            <div className="bg-slate-900 p-8 rounded-[3rem] text-white space-y-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-10">
                  <Zap size={100} />
@@ -73,7 +69,6 @@ export function ExplainableAI() {
               </div>
            </div>
         </div>
-
         <div className="p-8 bg-white border border-slate-100 rounded-[3rem] shadow-sm">
            <div className="flex items-center gap-4 mb-8">
               <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   ShieldAlert, ShieldCheck, Fingerprint, Lock, 
@@ -7,24 +7,20 @@ import {
   History as HistoryIcon, Info, ChevronRight, Activity as ActivityIcon,
   MapPin
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
-
 export function SecurityAuditView() {
   const { t } = useLanguage();
   const [mfaEnabled, setMfaEnabled] = useState(true);
-
   const activeSessions = [
     { id: 's1', device: 'MacBook Pro 16"', location: 'Riyadh, SA', ip: '192.168.1.45', status: 'current', icon: Monitor },
     { id: 's2', device: 'iPhone 15 Pro', location: 'Jeddah, SA', ip: '92.45.12.3', status: 'active', icon: Smartphone },
   ];
-
   const auditLogs = [
     { id: 'l1', action: 'Medical Data Accessed', actor: 'Dr. Sarah Smith', context: 'Center B - Oncology', timestamp: '2024-04-20 14:22:10', risk: 'low' },
     { id: 'l2', action: 'Identity Verification (LoA3)', actor: 'Samer (You)', context: 'Self-Service Portal', timestamp: '2024-04-18 09:12:00', risk: 'low' },
     { id: 'l3', action: 'Sensitive Data Export', actor: 'Admin Admin', context: 'Security Override', timestamp: '2024-04-15 22:45:00', risk: 'medium' },
   ];
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 min-h-screen bg-slate-50/30">
       <div className="flex items-center justify-between">
@@ -39,7 +35,6 @@ export function SecurityAuditView() {
            </div>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <div className="lg:col-span-8 space-y-8">
             {/* MFA & Hardening Hub */}
@@ -79,7 +74,6 @@ export function SecurityAuditView() {
                         </button>
                      </div>
                   </div>
-
                   <div className="space-y-6 flex flex-col justify-center">
                      <div className="space-y-4">
                         {[
@@ -99,7 +93,6 @@ export function SecurityAuditView() {
                   </div>
                </div>
             </div>
-
             {/* Audit Trail - Action Engine component */}
             <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
                <div className="p-8 border-b border-slate-100 flex items-center justify-between">
@@ -140,7 +133,6 @@ export function SecurityAuditView() {
                </div>
             </div>
          </div>
-
          <div className="lg:col-span-4 space-y-8">
             {/* Active Sessions */}
             <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-slate-200">
@@ -169,7 +161,6 @@ export function SecurityAuditView() {
                   Terminate All Other Sessions
                </button>
             </div>
-
             {/* Privacy Score Card */}
             <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-100 relative overflow-hidden group">
                <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 opacity-10 group-hover:scale-110 transition-transform">

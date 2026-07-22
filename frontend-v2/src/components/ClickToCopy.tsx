@@ -1,16 +1,13 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-
 interface ClickToCopyProps {
   text: string;
   className?: string;
 }
-
 export function ClickToCopy({ text, className }: ClickToCopyProps) {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -20,7 +17,6 @@ export function ClickToCopy({ text, className }: ClickToCopyProps) {
       console.error('Failed to copy!', err);
     }
   };
-
   return (
     <button
       onClick={handleCopy}

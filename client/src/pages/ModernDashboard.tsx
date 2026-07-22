@@ -1,12 +1,13 @@
+import type { ComponentType } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from "recharts";
 import { 
-  Users, Beaker, FileText, TrendingUp, Clock, AlertCircle,
+  Users, Beaker, FileText, AlertCircle,
   CheckCircle, Activity, Download, Plus
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -28,7 +29,15 @@ const sampleStatusData = [
   { name: "Failed", value: 10, fill: "#ef4444" },
 ];
 
-const StatCard = ({ icon: Icon, title, value, change, color }: any) => (
+interface StatCardProps {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  value: string;
+  change: number;
+  color: string;
+}
+
+const StatCard = ({ icon: Icon, title, value, change, color }: StatCardProps) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}

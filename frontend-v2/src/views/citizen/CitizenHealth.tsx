@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   ShieldCheck, Heart, FileText, QrCode, 
@@ -19,12 +19,11 @@ import { MedicineCabinet } from '../../components/citizen/MedicineCabinet';
 import { SymptomChecker } from '../../components/citizen/SymptomChecker';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
-import { HealthInsight, LabTestResult, MedicalHistoryItem } from '../../types/domain';
+import {LabTestResult, MedicalHistoryItem} from '../../types/domain';
 import { HealthTrendChart } from '../../components/HealthTrendChart';
 import { analyzeLabTrends } from '../../services/aiService';
 import Markdown from 'react-markdown';
 import { toast } from 'sonner';
-
 export function CitizenHealth() {
   const { t } = useLanguage();
   const [activeSegment, setActiveSegment] = useState<'overview' | 'results' | 'timeline' | 'family' | 'security' | 'triage'>('overview');
@@ -35,9 +34,7 @@ export function CitizenHealth() {
   const [isBiometricActive, setIsBiometricActive] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [biometricType, setBiometricType] = useState<'fingerprint' | 'face' | null>(null);
-
   const healthScore = null;
-
   useEffect(() => {
     async function getExplanation() {
       if (!explainingResult) {
@@ -57,10 +54,8 @@ export function CitizenHealth() {
     }
     getExplanation();
   }, [explainingResult]);
-
   const glucoseData: { time: string; value: number }[] = [];
   const hrData: { time: string; value: number }[] = [];
-
   const criticalAlerts: {
     id: string;
     title: string;
@@ -68,7 +63,6 @@ export function CitizenHealth() {
     type: string;
     actions?: { label: string; primary: boolean }[];
   }[] = [];
-
   const nextActions: {
     title: string;
     provider: string;
@@ -76,18 +70,14 @@ export function CitizenHealth() {
     type: string;
     status: string;
   }[] = [];
-
   const scoreBreakdown: {
     label: string;
     status: string;
     score: number;
     icon: string;
   }[] = [];
-
   const recentResults: LabTestResult[] = [];
-
   const history: MedicalHistoryItem[] = [];
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 min-h-screen bg-slate-50/30">
       {/* Top Layer: Priority Notification Bar (Action Engine) */}
@@ -132,7 +122,6 @@ export function CitizenHealth() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Header & Health Score Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -168,7 +157,6 @@ export function CitizenHealth() {
                   </button>
                </div>
             </div>
-
            {/* Health Summary Widget */}
            <div className="bg-indigo-600 text-white p-8 rounded-[2.5rem] relative overflow-hidden group">
               <div className="absolute bottom-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
@@ -190,7 +178,6 @@ export function CitizenHealth() {
                  </div>
               </div>
            </div>
-
            {/* Quick Actions Widget */}
            <div className="bg-white border border-slate-200 p-8 rounded-[2.5rem] relative group">
               <div className="flex flex-col h-full justify-between gap-6">
@@ -222,7 +209,6 @@ export function CitizenHealth() {
               </div>
            </div>
         </div>
-
         <div className="lg:col-span-8 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] border border-slate-200/60 shadow-sm relative overflow-hidden group">
            <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none transition-transform group-hover:scale-110">
               <Heart size={160} fill="currentColor" className="text-red-500" />
@@ -272,7 +258,6 @@ export function CitizenHealth() {
                      strokeDasharray={226}
                      strokeLinecap="round" 
                    />
-
                    <defs>
                       <linearGradient id="health-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                          <stop offset="0%" stopColor="#4f46e5" />
@@ -284,7 +269,6 @@ export function CitizenHealth() {
                    <span className="text-2xl font-black text-slate-900 leading-none">{healthScore ?? '--'}</span>
                   <span className="text-[8px] font-bold text-slate-400 uppercase">Score</span>
                 </div>
-
                 {/* Score Breakdown Tooltip */}
                 <AnimatePresence>
                   {showScoreBreakdown && (
@@ -351,7 +335,6 @@ export function CitizenHealth() {
                 </div>
               </div>
            </div>
-
            <div className="relative z-10 flex gap-3">
               <FamilySwitcher />
               <button className="flex items-center gap-2 px-6 py-4 bg-slate-900 text-white border-b-4 border-slate-950 rounded-2xl font-bold text-sm shadow-xl shadow-slate-200 hover:scale-[1.02] transition-all active:translate-y-1 active:border-b-0">
@@ -362,7 +345,6 @@ export function CitizenHealth() {
               </button>
            </div>
         </div>
-
         <div className="lg:col-span-4 self-stretch flex flex-col">
            <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-100 flex-1 relative overflow-hidden group border-b-4 border-indigo-800">
               <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 opacity-10 group-hover:scale-110 transition-transform">
@@ -399,7 +381,6 @@ export function CitizenHealth() {
            </div>
         </div>
       </div>
-
       {/* Decision Layers Navigation */}
       <div className="flex bg-white/60 backdrop-blur-lg p-1.5 rounded-3xl w-fit border border-slate-200/60 shadow-sm mx-auto sticky top-24 z-30">
         {(['overview', 'triage', 'results', 'timeline', 'family', 'security'] as const).map((seg) => (
@@ -418,7 +399,6 @@ export function CitizenHealth() {
           </button>
         ))}
       </div>
-
       <AnimatePresence mode="wait">
         {activeSegment === 'overview' && (
           <motion.div 
@@ -447,7 +427,6 @@ export function CitizenHealth() {
                          <button className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all"><Zap size={14} /> Sync Device</button>
                       </div>
                    </div>
-
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="p-6 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-indigo-50/30 transition-all group overflow-hidden">
                          <div className="flex justify-between items-start mb-4">
@@ -462,7 +441,6 @@ export function CitizenHealth() {
                          </div>
                          <HealthTrendChart data={glucoseData} color="#10b981" type="area" />
                       </div>
-
                       <div className="p-6 bg-slate-50 rounded-3xl border border-transparent hover:border-indigo-100 hover:bg-indigo-50/30 transition-all group overflow-hidden text-right">
                          <div className="flex justify-between items-start mb-4 flex-row-reverse text-right">
                             <div className="text-right">
@@ -478,7 +456,6 @@ export function CitizenHealth() {
                       </div>
                    </div>
                 </div>
-
                 {/* AI-Driven Historical Analysis Summary */}
                 <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden group">
                    <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
@@ -517,7 +494,6 @@ export function CitizenHealth() {
                    </div>
                 </div>
              </div>
-
              {/* Sidebar Info Hub */}
              <div className="lg:col-span-4 space-y-6">
                 {/* Health Timeline Preview */}
@@ -545,7 +521,6 @@ export function CitizenHealth() {
                       ))}
                    </div>
                 </div>
-
                 {/* Consent Status Quick Access */}
                 <div className="bg-emerald-50 border border-emerald-100 rounded-[2.5rem] p-8">
                    <div className="flex items-center gap-3 mb-6">
@@ -572,7 +547,6 @@ export function CitizenHealth() {
              </div>
           </motion.div>
         )}
-
         {activeSegment === 'triage' && (
           <motion.div
             key="triage"
@@ -582,7 +556,6 @@ export function CitizenHealth() {
             <SymptomChecker />
           </motion.div>
         )}
-
         {activeSegment === 'family' && (
           <motion.div
             key="family"
@@ -604,7 +577,6 @@ export function CitizenHealth() {
             </div>
           </motion.div>
         )}
-
         {activeSegment === 'security' && (
           <motion.div 
             key="security"
@@ -634,7 +606,6 @@ export function CitizenHealth() {
                           />
                        </div>
                     </div>
-
                     <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-100">
                          <Fingerprint size={32} />
                       </div>
@@ -643,7 +614,6 @@ export function CitizenHealth() {
                          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Enrollment Status</p>
                       </div>
                    </div>
-
                    <div className="space-y-4">
                       <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                          <div className="flex items-center gap-3">
@@ -663,7 +633,6 @@ export function CitizenHealth() {
                             {isBiometricActive ? "Verified" : "Enroll"}
                          </button>
                       </div>
-
                       <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                          <div className="flex items-center gap-3">
                             <ScanFace size={20} className="text-slate-300" />
@@ -680,7 +649,6 @@ export function CitizenHealth() {
                          </button>
                       </div>
                    </div>
-
                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                       <div className="flex gap-3">
                          <ShieldEllipsis size={18} className="text-indigo-600 shrink-0" />
@@ -690,7 +658,6 @@ export function CitizenHealth() {
                       </div>
                    </div>
                 </div>
-
                 {/* Audit Log Card */}
                 <div className="bg-slate-900 text-white p-10 rounded-[3rem] space-y-8 relative overflow-hidden group">
                    <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -705,7 +672,6 @@ export function CitizenHealth() {
                          <p className="text-xs text-emerald-400/60 font-bold uppercase tracking-widest">Sovereign Data Guardian</p>
                       </div>
                    </div>
-
                    <div className="space-y-4">
                       {[
                         { time: '2m ago', action: 'Auth: Fingerprint Success', device: 'iPhone 15' },
@@ -721,12 +687,10 @@ export function CitizenHealth() {
                         </div>
                       ))}
                    </div>
-
                    <button className="w-full py-4 bg-white/5 text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-white/10 transition-all border border-white/10">
                       View Full Audit Chain
                    </button>
                 </div>
-
                 {/* Cyber Security Tips */}
                 <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 text-white p-10 rounded-[3rem] flex flex-col justify-between shadow-2xl shadow-indigo-200">
                    <div className="space-y-6">
@@ -748,7 +712,6 @@ export function CitizenHealth() {
              </div>
           </motion.div>
         )}
-
         {activeSegment === 'results' && (
           <motion.div 
             key="results"
@@ -773,7 +736,6 @@ export function CitizenHealth() {
                   <Download size={22} /> Export Secure Health Bundle
                </button>
             </div>
-
             <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
                <div className="p-8 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -847,7 +809,6 @@ export function CitizenHealth() {
             </div>
           </motion.div>
         )}
-
       <AnimatePresence>
         {explainingResult && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -886,7 +847,6 @@ export function CitizenHealth() {
                    </button>
                 </div>
               </div>
-
               <div className="p-12 overflow-y-auto max-h-[60vh]">
                 {isExplaining ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-8">
@@ -909,11 +869,9 @@ export function CitizenHealth() {
                     <div className="markdown-body prose prose-slate max-w-none prose-p:leading-8 prose-p:text-slate-600 prose-strong:text-indigo-600 font-medium">
                       <Markdown>{aiExplanation || ''}</Markdown>
                     </div>
-
                     <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 italic text-xs text-slate-400 leading-relaxed">
                       <strong>Medical Disclaimer:</strong> This interpretation is generated by GULA AI for educational purposes only. It is not a diagnosis. Please review all results with your healthcare provider.
                     </div>
-
                     <div className="flex items-center gap-4 pt-10 border-t border-slate-100">
                        <button 
                          onClick={() => setExplainingResult(null)}
@@ -929,7 +887,6 @@ export function CitizenHealth() {
           </div>
         )}
       </AnimatePresence>
-
         {activeSegment === 'timeline' && (
           <motion.div 
             key="timeline"
@@ -941,7 +898,6 @@ export function CitizenHealth() {
                 <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Clinical Health Journey</h2>
                 <p className="text-slate-500">A comprehensive immutable log of your medical milestones.</p>
              </div>
-
              <div className="relative space-y-12">
                {/* Vertical Line */}
                <div className="absolute left-1/2 top-4 bottom-4 w-1 bg-slate-100 -translate-x-1/2" />
@@ -976,14 +932,12 @@ export function CitizenHealth() {
                          </div>
                       </div>
                    </div>
-
                    {/* Center Dot */}
                    <div className="relative z-10">
                       <div className="w-12 h-12 bg-white border-8 border-indigo-600 rounded-full shadow-2xl flex items-center justify-center">
                          <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-ping" />
                       </div>
                    </div>
-
                    {/* Spacer for Reverse Row */}
                    <div className="flex-1" />
                  </motion.div>
@@ -991,10 +945,8 @@ export function CitizenHealth() {
              </div>
           </motion.div>
         )}
-
         {/* ... similar enhanced family view if needed ... */}
       </AnimatePresence>
-
       {/* Biometric Auth Modal/Simulation */}
       <AnimatePresence>
         {showBiometricModal && (
@@ -1029,7 +981,6 @@ export function CitizenHealth() {
                        Please scan your {biometricType === 'fingerprint' ? 'finger' : 'face'} using your device's biometric sensor.
                     </p>
                   </div>
-
                   <div className="flex flex-col gap-4">
                      <button 
                        onClick={() => {

@@ -16,13 +16,13 @@
     "@cornerstonejs/adapters": "^2.0.0",
     "@gula/ui-platform": "workspace:*",
     "dicom-parser": "^1.8.0",
-    "dicomweb-client": "^0.10.0",
+    "dicomweb-client": "^0.11.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.1",
     "react-big-calendar": "^1.14.0",
     "date-fns": "^4.4.0",
-    "date-fns-jalali": "^3.0.0",
+    "date-fns-jalali": "^4.4.0-0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

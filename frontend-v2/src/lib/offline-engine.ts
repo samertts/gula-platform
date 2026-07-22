@@ -1,8 +1,6 @@
 import { openDB, IDBPDatabase, DBSchema } from 'idb';
-
 const DB_NAME = 'gula-offline';
 const DB_VERSION = 3;
-
 interface SyncQueueItem {
   id: string;
   operation: 'create' | 'update' | 'delete';
@@ -14,7 +12,6 @@ interface SyncQueueItem {
   maxRetries: number;
   lastError?: string;
 }
-
 interface CachedDocument {
   id: string;
   collection: string;
@@ -23,7 +20,6 @@ interface CachedDocument {
   checksum: string;
   version: number;
 }
-
 interface SyncLog {
   id: string;
   type: 'push' | 'pull' | 'conflict' | 'error';
@@ -32,7 +28,6 @@ interface SyncLog {
   timestamp: number;
   details: string;
 }
-
 interface GulaOfflineDB extends DBSchema {
   patients: {
     key: string;
@@ -69,9 +64,7 @@ interface GulaOfflineDB extends DBSchema {
     value: { key: string; value: string };
   };
 }
-
 let dbInstance: IDBPDatabase<GulaOfflineDB> | null = null;
-
 async function getDB(): Promise<IDBPDatabase<GulaOfflineDB>> {
   if (dbInstance) return dbInstance;
   dbInstance = await openDB<GulaOfflineDB>(DB_NAME, DB_VERSION, {
@@ -80,19 +73,15 @@ async function getDB(): Promise<IDBPDatabase<GulaOfflineDB>> {
         const patients = db.createObjectStore('patients', { keyPath: 'id' });
         patients.createIndex('by-synced', 'syncedAt');
         patients.createIndex('by-collection', 'collection');
-
         const orders = db.createObjectStore('orders', { keyPath: 'id' });
         orders.createIndex('by-synced', 'syncedAt');
         orders.createIndex('by-collection', 'collection');
-
         const samples = db.createObjectStore('samples', { keyPath: 'id' });
         samples.createIndex('by-synced', 'syncedAt');
         samples.createIndex('by-collection', 'collection');
-
         const results = db.createObjectStore('results', { keyPath: 'id' });
         results.createIndex('by-synced', 'syncedAt');
         results.createIndex('by-collection', 'collection');
-
         db.createObjectStore('sync_queue', { keyPath: 'id' });
         db.createObjectStore('sync_log', { keyPath: 'id' });
         db.createObjectStore('metadata', { keyPath: 'key' });
@@ -118,7 +107,6 @@ async function getDB(): Promise<IDBPDatabase<GulaOfflineDB>> {
   });
   return dbInstance;
 }
-
 function computeChecksum(data: unknown): string {
   const str = JSON.stringify(data);
   let hash = 0;
@@ -129,7 +117,6 @@ function computeChecksum(data: unknown): string {
   }
   return Math.abs(hash).toString(36);
 }
-
 function compress(data: string): string {
   try {
     if (typeof btoa === 'undefined') return data;
@@ -142,7 +129,7 @@ function compress(data: string): string {
       while (i + count < buf.length && buf[i + count] === buf[i] && count < 255) {
         count++;
       }
-      compressed.push(count, buf[i]);
+      compressed.push(count, buf[i]!);
       i += count;
     }
     return btoa(String.fromCharCode(...compressed));
@@ -150,7 +137,6 @@ function compress(data: string): string {
     return data;
   }
 }
-
 function decompress(data: string): string {
   try {
     if (typeof atob === 'undefined') return data;
@@ -159,8 +145,8 @@ function decompress(data: string): string {
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     const result: number[] = [];
     for (let i = 0; i < bytes.length; i += 2) {
-      const count = bytes[i];
-      const value = bytes[i + 1];
+      const count = bytes[i]!;
+      const value = bytes[i + 1]!;
       for (let j = 0; j < count; j++) result.push(value);
     }
     return new TextDecoder().decode(new Uint8Array(result));
@@ -168,34 +154,28 @@ function decompress(data: string): string {
     return data;
   }
 }
-
 async function isCompressed(data: unknown): Promise<boolean> {
   if (typeof data !== 'string') return false;
   const size = new Blob([data]).size;
   return size > 10240;
 }
-
 export class OfflineEngine {
   private static instance: OfflineEngine;
   private pendingSync = false;
   private syncCallbacks: Array<(status: SyncStatus) => void> = [];
-
   static getInstance(): OfflineEngine {
     if (!this.instance) this.instance = new OfflineEngine();
     return this.instance;
   }
-
   onSyncStatusChange(cb: (status: SyncStatus) => void): () => void {
     this.syncCallbacks.push(cb);
     return () => {
       this.syncCallbacks = this.syncCallbacks.filter(c => c !== cb);
     };
   }
-
   private notify(status: SyncStatus): void {
     for (const cb of this.syncCallbacks) cb(status);
   }
-
   async cacheDocument(
     collection: 'patients' | 'orders' | 'samples' | 'results',
     id: string,
@@ -213,22 +193,18 @@ export class OfflineEngine {
       version: (existing?.version ?? 0) + 1,
     });
   }
-
   async getDocument(collection: 'patients' | 'orders' | 'samples' | 'results', id: string): Promise<CachedDocument | undefined> {
     const db = await getDB();
     return db.get(collection, id);
   }
-
   async getAllDocuments(collection: 'patients' | 'orders' | 'samples' | 'results'): Promise<CachedDocument[]> {
     const db = await getDB();
     return db.getAll(collection);
   }
-
   async deleteDocument(collection: 'patients' | 'orders' | 'samples' | 'results', id: string): Promise<void> {
     const db = await getDB();
     await db.delete(collection, id);
   }
-
   async enqueue(operation: SyncQueueItem['operation'], collection: string, documentId: string, payload: unknown): Promise<string> {
     const db = await getDB();
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -246,28 +222,23 @@ export class OfflineEngine {
     await this.log('push', collection, documentId, `Queued ${operation}`);
     return id;
   }
-
   async getPendingOperations(): Promise<SyncQueueItem[]> {
     const db = await getDB();
     const all = await db.getAll('sync_queue');
     return all.sort((a, b) => a.timestamp - b.timestamp);
   }
-
   async getPendingCount(): Promise<number> {
     const db = await getDB();
     return (await db.getAllKeys('sync_queue')).length;
   }
-
   async processQueue(syncFn: (item: SyncQueueItem) => Promise<boolean>): Promise<SyncResult> {
     if (this.pendingSync) return { success: 0, failed: 0, skipped: 0, conflicts: 0 };
     this.pendingSync = true;
     this.notify({ status: 'syncing', pending: await this.getPendingCount(), lastSync: Date.now() });
-
     const result: SyncResult = { success: 0, failed: 0, skipped: 0, conflicts: 0 };
     const db = await getDB();
     const queue = await db.getAll('sync_queue');
     const sorted = queue.sort((a, b) => a.timestamp - b.timestamp);
-
     for (const item of sorted) {
       const backoff = Math.pow(2, item.retryCount) * 1000;
       if (item.retryCount > 0 && Date.now() - item.timestamp < backoff) {
@@ -300,12 +271,10 @@ export class OfflineEngine {
         }
       }
     }
-
     this.pendingSync = false;
     this.notify({ status: 'idle', pending: await this.getPendingCount(), lastSync: Date.now() });
     return result;
   }
-
   private async log(type: SyncLog['type'], collection: string, documentId: string, details: string): Promise<void> {
     const db = await getDB();
     await db.add('sync_log', {
@@ -317,18 +286,15 @@ export class OfflineEngine {
       details,
     });
   }
-
   async getSyncLogs(limit = 50): Promise<SyncLog[]> {
     const db = await getDB();
     const logs = await db.getAll('sync_log');
     return logs.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
   }
-
   async clearSyncLogs(): Promise<void> {
     const db = await getDB();
     await db.clear('sync_log');
   }
-
   async purgeOldData(maxAgeMs = 30 * 24 * 60 * 60 * 1000): Promise<number> {
     const db = await getDB();
     const cutoff = Date.now() - maxAgeMs;
@@ -344,7 +310,6 @@ export class OfflineEngine {
     }
     return purged;
   }
-
   async getStorageEstimate(): Promise<{ used: number; quota: number; percentage: number }> {
     if ('storage' in navigator && 'estimate' in navigator.storage) {
       const est = await navigator.storage.estimate();
@@ -359,18 +324,15 @@ export class OfflineEngine {
     return { used: 0, quota: 0, percentage: 0 };
   }
 }
-
 export interface SyncStatus {
   status: 'idle' | 'syncing' | 'error' | 'offline';
   pending: number;
   lastSync: number;
 }
-
 export interface SyncResult {
   success: number;
   failed: number;
   skipped: number;
   conflicts: number;
 }
-
 export type { SyncQueueItem, CachedDocument, SyncLog };

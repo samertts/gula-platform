@@ -1,14 +1,12 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Activity, Zap, Shield, Heart, BrainCircuit } from 'lucide-react';
+import {BrainCircuit} from 'lucide-react';
 import { cn } from '../../lib/utils';
-
 interface DigitalTwinProps {
   score: number;
   indicators: { label: string; value: number; color: string; icon: any }[];
   className?: string;
 }
-
 export function DigitalTwin({ score, indicators, className }: DigitalTwinProps) {
   return (
     <div className={cn("relative p-8 bg-slate-900 rounded-[3rem] overflow-hidden group", className)}>
@@ -28,7 +26,6 @@ export function DigitalTwin({ score, indicators, className }: DigitalTwinProps) 
            />
          ))}
       </div>
-
       <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
          {/* Main Sphere */}
          <div className="relative">
@@ -47,7 +44,6 @@ export function DigitalTwin({ score, indicators, className }: DigitalTwinProps) 
                      <span className="text-6xl font-black text-white tracking-tighter">{score}</span>
                      <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Neural Sync</span>
                   </motion.div>
-
                   {/* Pulsing Core */}
                   <motion.div 
                     animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
@@ -56,7 +52,6 @@ export function DigitalTwin({ score, indicators, className }: DigitalTwinProps) 
                   />
                </div>
             </motion.div>
-
             {/* Orbiting Elements */}
             {indicators.map((ind, i) => (
               <motion.div
@@ -82,7 +77,6 @@ export function DigitalTwin({ score, indicators, className }: DigitalTwinProps) 
               </motion.div>
             ))}
          </div>
-
          {/* Stats Panel */}
          <div className="flex-1 space-y-6 w-full">
             <div className="flex items-center justify-between">
@@ -92,7 +86,6 @@ export function DigitalTwin({ score, indicators, className }: DigitalTwinProps) 
                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Active Link</span>
                </div>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                {indicators.map((ind) => (
                  <div key={ind.label} className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group/stat">
@@ -110,7 +103,6 @@ export function DigitalTwin({ score, indicators, className }: DigitalTwinProps) 
                  </div>
                ))}
             </div>
-
             <div className="p-4 bg-indigo-600/20 border border-indigo-500/30 rounded-2xl">
                <div className="flex items-center gap-3 mb-2">
                   <BrainCircuit size={16} className="text-indigo-400" />

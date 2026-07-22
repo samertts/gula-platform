@@ -28,12 +28,12 @@ async function testConnection() {
 
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log("Firebase connection established.");
+    // Firebase connection established
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.error("Please check your Firebase configuration: Client is offline. Ensure your Firestore database is provisioned and your network allows communication.");
     } else {
-      console.log("Firebase initialized (Connection verified).");
+      // Firebase initialized (Connection verified)
     }
   }
 }

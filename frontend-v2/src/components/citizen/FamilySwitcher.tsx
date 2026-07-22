@@ -1,16 +1,14 @@
-import React, { useState } from 'react';
-import { Users, UserPlus, Heart, ChevronDown, Check } from 'lucide-react';
+import {useState} from 'react';
+import {Users, UserPlus, ChevronDown, Check} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
-
 interface FamilyMember {
   id: string;
   name: string;
   relationship: string;
   avatar: string;
 }
-
 export function FamilySwitcher() {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -22,7 +20,6 @@ export function FamilySwitcher() {
     { id: 'm2', name: 'Mariam Samer', relationship: 'Daughter', avatar: 'M' },
     { id: 'm3', name: 'Fatima Ali', relationship: 'Spouse', avatar: 'F' }
   ];
-
   return (
     <div className="relative">
       <button 
@@ -47,7 +44,6 @@ export function FamilySwitcher() {
         </div>
         <ChevronDown size={16} className={cn("text-slate-400 transition-transform", isOpen && "rotate-180")} />
       </button>
-
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -88,7 +84,6 @@ export function FamilySwitcher() {
                  </button>
                ))}
              </div>
-
              <button className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg active:scale-95">
                 <UserPlus size={16} /> {t.addDependent}
              </button>

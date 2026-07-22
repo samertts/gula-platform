@@ -2,8 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { OfflineEngine, SyncStatus, SyncResult, SyncQueueItem } from '../lib/offline-engine';
 import { FirebaseSyncEngine } from '../lib/firebase-sync';
-import { Wifi, WifiOff, RefreshCw, AlertTriangle, CheckCircle, X, ChevronDown, ChevronUp, Clock, ArrowUpDown, Database } from 'lucide-react';
-
+import {Wifi, WifiOff, RefreshCw, AlertTriangle, X, ChevronDown, ChevronUp, Clock, Database} from 'lucide-react';
 interface ConflictItem {
   id: string;
   collection: string;
@@ -12,7 +11,6 @@ interface ConflictItem {
   server: unknown;
   timestamp: number;
 }
-
 export const OfflineSyncManager: React.FC = () => {
   const engine = OfflineEngine.getInstance();
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ status: 'idle', pending: 0, lastSync: 0 });
@@ -23,7 +21,6 @@ export const OfflineSyncManager: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const [storageEstimate, setStorageEstimate] = useState<{ used: number; quota: number; percentage: number }>({ used: 0, quota: 0, percentage: 0 });
-
   useEffect(() => {
     const unsub = engine.onSyncStatusChange(setSyncStatus);
     const handleOnline = () => setIsOnline(true);
@@ -38,7 +35,6 @@ export const OfflineSyncManager: React.FC = () => {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
   const refreshPendingOps = useCallback(async () => {
     const ops = await engine.getPendingOperations();
     setPendingOps(ops);
@@ -55,12 +51,10 @@ export const OfflineSyncManager: React.FC = () => {
       timestamp: op.timestamp,
     })));
   }, []);
-
   const refreshStorage = useCallback(async () => {
     const est = await engine.getStorageEstimate();
     setStorageEstimate(est);
   }, []);
-
   const handleSync = useCallback(async () => {
     if (isSyncing || !isOnline) return;
     setIsSyncing(true);
@@ -78,7 +72,6 @@ export const OfflineSyncManager: React.FC = () => {
     await refreshStorage();
     setIsSyncing(false);
   }, [isSyncing, isOnline]);
-
   const handleResolveConflict = useCallback(async (conflictId: string, strategy: 'local' | 'server') => {
     const item = pendingOps.find(op => op.id === conflictId);
     if (!item) return;
@@ -92,15 +85,13 @@ export const OfflineSyncManager: React.FC = () => {
     setConflicts(prev => prev.filter(c => c.id !== conflictId));
     await refreshPendingOps();
   }, [pendingOps]);
-
   const handlePurge = useCallback(async () => {
     const purged = await engine.purgeOldData();
     await refreshStorage();
     if (purged > 0) {
-      console.log(`Purged ${purged} old records`);
+      // Purge complete
     }
   }, []);
-
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -108,12 +99,10 @@ export const OfflineSyncManager: React.FC = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
-
   const formatTime = (ts: number): string => {
     if (!ts) return 'Never';
     return new Date(ts).toLocaleTimeString();
   };
-
   const getStatusColor = () => {
     if (syncStatus.status === 'syncing') return 'text-blue-500';
     if (syncStatus.status === 'error') return 'text-red-500';
@@ -121,16 +110,13 @@ export const OfflineSyncManager: React.FC = () => {
     if (syncStatus.pending > 0) return 'text-amber-500';
     return 'text-green-500';
   };
-
   const getStatusIcon = () => {
     if (syncStatus.status === 'syncing') return <RefreshCw size={16} className="animate-spin" />;
     if (!isOnline) return <WifiOff size={16} />;
     if (syncStatus.pending > 0) return <Clock size={16} />;
     return <Wifi size={16} />;
   };
-
   if (!isOnline && syncStatus.pending === 0) return null;
-
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
       <AnimatePresence>
@@ -160,7 +146,6 @@ export const OfflineSyncManager: React.FC = () => {
                 </span>
               </div>
             </div>
-
             <div className="p-4 space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-500">Pending operations</span>
@@ -178,7 +163,6 @@ export const OfflineSyncManager: React.FC = () => {
                   {storageEstimate.percentage.toFixed(1)}%
                 </span>
               </div>
-
               {conflicts.length > 0 && (
                 <div className="bg-red-50 rounded-xl p-3 border border-red-100">
                   <div className="flex items-center gap-2 text-red-700 text-xs font-bold mb-2">
@@ -206,7 +190,6 @@ export const OfflineSyncManager: React.FC = () => {
                   ))}
                 </div>
               )}
-
               {lastResult && (
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-xs">
                   <div className="font-medium text-slate-700 mb-1.5">Last sync result</div>
@@ -219,7 +202,6 @@ export const OfflineSyncManager: React.FC = () => {
                 </div>
               )}
             </div>
-
             <div className="p-3 border-t border-slate-100 bg-slate-50 flex gap-2">
               <button
                 onClick={handleSync}
@@ -239,7 +221,6 @@ export const OfflineSyncManager: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-lg border transition-all duration-200 ${isOnline ? 'bg-white border-slate-200' : 'bg-amber-50 border-amber-200'}`}
@@ -253,5 +234,4 @@ export const OfflineSyncManager: React.FC = () => {
     </div>
   );
 };
-
 export default OfflineSyncManager;

@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import { ArrowUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-
 export function ScrollToTop() {
   const [isVisible, setIsVisible] = useState(false);
-
   useEffect(() => {
     // Find the scrollable container
     const scrollContainer = document.querySelector('.overflow-y-auto');
@@ -17,13 +15,11 @@ export function ScrollToTop() {
         setIsVisible(false);
       }
     };
-
     if (scrollContainer) {
       scrollContainer.addEventListener('scroll', toggleVisibility);
       return () => scrollContainer.removeEventListener('scroll', toggleVisibility);
     }
   }, []);
-
   const scrollToTop = () => {
     const scrollContainer = document.querySelector('.overflow-y-auto');
     if (scrollContainer) {
@@ -33,7 +29,6 @@ export function ScrollToTop() {
       });
     }
   };
-
   return (
     <AnimatePresence>
       {isVisible && (

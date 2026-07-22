@@ -38,13 +38,12 @@ import {
   BrainCircuit,
   TriangleAlert
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { InfrastructureView } from './admin/InfrastructureView';
 import { cn } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { PageTransition } from '../components/PageTransition';
 import { ClickToCopy } from '../components/ClickToCopy';
-
 const StatCard = ({ label, value, progress, color = "bg-indigo-600", icon: Icon }: { label: string, value: string, progress: number, color?: string, icon?: any }) => (
   <div className="flex flex-col group p-6 rounded-[2.5rem] bg-white/40 backdrop-blur-md border border-white/60 shadow-sm hover:shadow-xl hover:bg-white hover:-translate-y-1 transition-all cursor-help relative overflow-hidden">
     <div className="flex items-center justify-between mb-4">
@@ -73,7 +72,6 @@ const StatCard = ({ label, value, progress, color = "bg-indigo-600", icon: Icon 
     </div>
   </div>
 );
-
 const container = {
   hidden: { opacity: 0 },
   show: {
@@ -83,12 +81,10 @@ const container = {
     }
   }
 };
-
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
 };
-
 const ActivityItem = ({ icon: Icon, title, subtitle, status, statusColor, patientId }: { icon: any, title: string, subtitle: string, status: string, statusColor: string, patientId?: string }) => {
   const navigate = useNavigate();
   return (
@@ -124,7 +120,6 @@ const ActivityItem = ({ icon: Icon, title, subtitle, status, statusColor, patien
     </div>
   );
 };
-
 export function DashboardView() {
   const { t, language } = useLanguage();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -133,7 +128,6 @@ export function DashboardView() {
   const [isGuided, setIsGuided] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const isRtl = language === 'AR' || language === 'KU' || language === 'SY';
-
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async (user) => {
       if (user) {
@@ -147,7 +141,6 @@ export function DashboardView() {
     });
     return unsub;
   }, []);
-
   const handleBulkAction = (action: 'assign' | 'complete' | 'hold' | 'process', taskIds: string[]) => {
     setActiveTasks(prev => prev.map(t => {
       if (taskIds.includes(t.id)) {
@@ -162,17 +155,13 @@ export function DashboardView() {
       return t;
     }));
   };
-
   const handleTaskUpdate = (taskId: string, status: Task['status']) => {
     setActiveTasks(prev => prev.map(t => t.id === taskId ? { ...t, status, updatedAt: new Date().toISOString() } : t));
   };
-
   const handleTaskAssign = (taskId: string) => {
     setActiveTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignedTo: auth.currentUser?.uid || 'anonymous', status: 'assigned', updatedAt: new Date().toISOString() } : t));
   };
-
   if (loading) return <DashboardSkeleton />;
-
   // Multi-Wing Logic
   if (profile?.role === 'technician' || profile?.role === 'pathologist' || profile?.role === 'lab_admin') {
      return <LabDashboard />;
@@ -189,7 +178,6 @@ export function DashboardView() {
   if (profile?.role === 'citizen') {
      return <CitizenHealth />;
   }
-
   return (
     <PageTransition>
       <div className={cn("min-h-screen relative overflow-hidden bg-slate-50", isRtl ? "rtl" : "ltr")}>
@@ -199,7 +187,6 @@ export function DashboardView() {
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/5 blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
           <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] rounded-full bg-rose-500/5 blur-[100px] animate-pulse" style={{ animationDelay: '4s' }} />
         </div>
-
         <div className="relative z-10 space-y-10 p-4 md:p-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 max-w-7xl mx-auto w-full">
           <div className="editorial-stack space-y-1">
@@ -238,7 +225,6 @@ export function DashboardView() {
             </button>
           </div>
         </div>
-
         <motion.div 
           variants={container}
           initial="hidden"
@@ -252,7 +238,6 @@ export function DashboardView() {
               onDismiss={(id) => setAlerts(prev => prev.filter(a => a.id !== id))} 
             />
           </div>
-
           {/* Decision & Action Hub */}
           <div className="col-span-12 lg:col-span-8 flex flex-col gap-10">
             
@@ -274,7 +259,6 @@ export function DashboardView() {
                       <Eye size={16} />
                    </button>
                 </div>
-
                 <div className="flex-1 space-y-6">
                    <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Violations</span>
@@ -296,14 +280,12 @@ export function DashboardView() {
                       ))}
                    </div>
                 </div>
-
                 <div className="mt-8 pt-8 border-t border-slate-50">
                    <button className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] transition-transform">
                       Open Command Terminal
                    </button>
                 </div>
               </motion.div>
-
               {/* Data Flow Forecast */}
               <motion.div variants={item} className="col-span-1 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col group relative overflow-hidden">
                 <div className="flex items-center justify-between mb-2">
@@ -333,7 +315,6 @@ export function DashboardView() {
                     showForecast={true}
                   />
                 </div>
-
                 <div className="flex items-center gap-2 mt-4">
                    <button className="flex-1 py-3 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors">
                       Optimize Load
@@ -344,7 +325,6 @@ export function DashboardView() {
                 </div>
               </motion.div>
             </div>
-
               {/* AI Decision Summary */}
               <div className="flex flex-col gap-4">
                 <motion.div variants={item}>
@@ -371,7 +351,6 @@ export function DashboardView() {
                 </motion.div>
               </div>
             </div>
-
             <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 gap-8 h-64">
               <div className="bg-white p-8 rounded-[3rem] border border-slate-100 flex flex-col group">
                  <div className="flex items-center justify-between mb-4">
@@ -394,7 +373,6 @@ export function DashboardView() {
                  </div>
               </div>
             </motion.div>
-
             {/* Operational Execution Queue */}
             <motion.div variants={item} className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-700">
@@ -407,7 +385,6 @@ export function DashboardView() {
                  onBulkAction={handleBulkAction}
                />
             </motion.div>
-
           {/* Intelligence Sidebar */}
           <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
             
@@ -426,7 +403,6 @@ export function DashboardView() {
                 {t.viewAllIntelligence}
               </button>
             </motion.section>
-
             {/* Regional Health Reach */}
             <motion.div variants={item} className="bg-slate-900 p-10 rounded-[3.5rem] text-white relative overflow-hidden flex flex-col justify-between shadow-2xl group min-h-[400px] border border-white/5">
                <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-125 transition-transform duration-1000">

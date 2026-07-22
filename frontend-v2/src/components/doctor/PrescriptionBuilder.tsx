@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import {useState} from 'react';
 import { 
   Pill, AlertTriangle, CheckCircle2, 
   Trash2, Plus, Zap, Info, ShieldCheck,
@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
-
 interface PrescriptionItem {
   id: string;
   drug: string;
@@ -17,7 +16,6 @@ interface PrescriptionItem {
   interactionAlert?: string;
   doseWarning?: string;
 }
-
 export function PrescriptionBuilder() {
   const [items, setItems] = useState<PrescriptionItem[]>([]);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
@@ -29,7 +27,6 @@ export function PrescriptionBuilder() {
     { name: 'Warfarin', class: 'Anticoagulant', interactions: ['NSAIDs', 'Vitamin K'] },
     { name: 'Amoxicillin', class: 'Antibiotic', interactions: [] },
   ];
-
   const addDrug = (drugName: string) => {
     const newItem: PrescriptionItem = {
       id: Math.random().toString(36).substr(2, 9),
@@ -45,15 +42,12 @@ export function PrescriptionBuilder() {
     if (drugName === 'Warfarin' && currentDrugs.includes('Metformin')) {
       newItem.interactionAlert = 'Potential interaction with Metformin detected. Monitor closely.';
     }
-
     setItems([...items, newItem]);
     setActiveSearch('');
   };
-
   const removeDrug = (id: string) => {
     setItems(items.filter(i => i.id !== id));
   };
-
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
       <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
@@ -71,7 +65,6 @@ export function PrescriptionBuilder() {
            </div>
         </div>
       </div>
-
       <div className="flex-1 p-8 space-y-8">
         {/* Drug Search */}
         <div className="relative group">
@@ -116,7 +109,6 @@ export function PrescriptionBuilder() {
             )}
           </AnimatePresence>
         </div>
-
         {/* Selected Drugs */}
         <div className="space-y-4">
           <AnimatePresence mode="popLayout">
@@ -145,7 +137,6 @@ export function PrescriptionBuilder() {
                       </div>
                     </div>
                   </div>
-
                   <div className="flex flex-wrap gap-3">
                     {['Dosage', 'Frequency', 'Duration', 'Route'].map((label) => (
                       <div key={label} className="bg-white px-4 py-2 rounded-xl border border-slate-200">
@@ -165,7 +156,6 @@ export function PrescriptionBuilder() {
                     </button>
                   </div>
                 </div>
-
                 {item.interactionAlert && (
                   <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-4 text-amber-900">
                     <AlertTriangle size={20} className="text-amber-600 shrink-0" />
@@ -175,7 +165,6 @@ export function PrescriptionBuilder() {
               </motion.div>
             ))}
           </AnimatePresence>
-
           {items.length === 0 && (
             <div className="text-center py-20 bg-slate-50 border border-dashed border-slate-200 rounded-[2.5rem]">
                <Pill size={48} className="text-slate-200 mx-auto mb-4" />
@@ -184,7 +173,6 @@ export function PrescriptionBuilder() {
           )}
         </div>
       </div>
-
       <div className="p-8 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center gap-2">
@@ -203,7 +191,6 @@ export function PrescriptionBuilder() {
           Finalize & Sign [F] <CheckCircle2 size={18} />
         </button>
       </div>
-
       {/* Signature Modal */}
       <AnimatePresence>
         {isSignModalOpen && (
@@ -228,7 +215,6 @@ export function PrescriptionBuilder() {
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">Clinical Authentication</h3>
                 <p className="text-xs text-slate-400 font-bold mt-2 uppercase tracking-widest">Digital Signature Required for Prescription</p>
               </div>
-
               <div className="space-y-6">
                  <div className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem]">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Review Order Batch</p>
@@ -241,7 +227,6 @@ export function PrescriptionBuilder() {
                        ))}
                     </div>
                  </div>
-
                  <div className="space-y-2">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-2">Medical PIN</p>
                     <input 
@@ -250,7 +235,6 @@ export function PrescriptionBuilder() {
                       className="w-full bg-slate-100 border border-transparent rounded-[1.5rem] py-6 text-center text-4xl tracking-[1em] focus:bg-white focus:border-indigo-600 transition-all"
                     />
                  </div>
-
                  <button 
                    onClick={() => setIsSignModalOpen(false)}
                    className="w-full py-6 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-200 hover:bg-indigo-700 transition-all"

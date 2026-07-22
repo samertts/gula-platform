@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { 
   History, Search, Filter, ArrowUpRight, 
   Shield, User, Clock, AlertTriangle,
@@ -13,11 +13,9 @@ import { cn } from '../../lib/utils';
 import { AuditService } from '../../services/AuditService';
 import { AuditLogViewer } from '../../components/AuditLogViewer';
 import { AuditLogEntry } from '../../types/domain';
-
 export const AuditLog: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   useEffect(() => {
     const fetchLogs = async () => {
       setIsLoading(true);
@@ -27,14 +25,12 @@ export const AuditLog: React.FC = () => {
     };
     fetchLogs();
   }, []);
-
   const stats = [
     { label: 'Integrity Points', value: '1,024', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
     { label: 'Security Level', value: 'Level 4', icon: Shield, color: 'bg-emerald-50 text-emerald-600' },
     { label: 'Global Nodes', value: '882', icon: Globe, color: 'bg-blue-50 text-blue-600' },
     { label: 'Encryption', value: 'AES-256', icon: Lock, color: 'bg-amber-50 text-amber-600' }
   ];
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
@@ -53,7 +49,6 @@ export const AuditLog: React.FC = () => {
           </button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
           <motion.div 
@@ -73,9 +68,7 @@ export const AuditLog: React.FC = () => {
           </motion.div>
         ))}
       </div>
-
       <AuditLogViewer logs={logs} isLoading={isLoading} />
-
       <div className="flex items-center justify-between p-8 bg-slate-900 rounded-[40px] text-white overflow-hidden relative">
          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-30 pointer-events-none" />
          <div className="relative z-10">

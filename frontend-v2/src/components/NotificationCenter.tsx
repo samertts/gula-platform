@@ -8,21 +8,17 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn, formatTime } from '../lib/utils';
 import { GulaEvent } from '../types/domain';
-import { Badge, Button, Kbd } from './ui';
-
+import {Badge} from './ui';
 interface NotificationCenterProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
 type FilterMode = 'all' | 'unread' | 'critical' | 'alerts' | 'results';
-
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { t, dir, language } = useLanguage();
   const isRtl = dir === 'rtl';
   const [filter, setFilter] = useState<FilterMode>('all');
-
   const getIcon = (type: string, priority: string) => {
     if (priority === 'stat' || type === 'critical_alert') return <AlertTriangle className="text-red-500" size={16} />;
     if (type === 'expiring_reagent') return <Clock className="text-amber-500" size={16} />;
@@ -30,7 +26,6 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
     if (type === 'inventory_low') return <Database className="text-orange-500" size={16} />;
     return <Info className="text-indigo-500" size={16} />;
   };
-
   const filtered = notifications.filter(n => {
     if (filter === 'unread') return !n.read;
     if (filter === 'critical') return n.priority === 'stat' || n.type === 'critical_alert';
@@ -38,7 +33,6 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
     if (filter === 'results') return n.type === 'lab_result_ready';
     return true;
   });
-
   const filters: { key: FilterMode; label: string; count?: number }[] = [
     { key: 'all', label: 'All', count: notifications.length },
     { key: 'unread', label: 'Unread', count: unreadCount },
@@ -46,7 +40,6 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
     { key: 'alerts', label: 'Alerts' },
     { key: 'results', label: 'Results' },
   ];
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -75,7 +68,6 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
                   </button>
                 </div>
               </div>
-
               {/* Filter pills */}
               <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
                 {filters.map(f => (
@@ -93,7 +85,6 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
                 ))}
               </div>
             </div>
-
             {/* Notification list */}
             <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
               {filtered.length === 0 ? (
@@ -143,7 +134,6 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
                 </div>
               )}
             </div>
-
             {/* Footer */}
             <div className="p-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
               <button className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest transition-all">

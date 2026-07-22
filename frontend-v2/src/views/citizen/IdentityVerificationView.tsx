@@ -6,21 +6,17 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
-
 type VerificationStep = 'biometric' | 'document' | 'face' | 'review';
-
 export const IdentityVerificationView: React.FC = () => {
   const { t, language } = useLanguage();
   const [currentStep, setCurrentStep] = useState<VerificationStep>('biometric');
   const isRtl = language === 'AR' || language === 'KU' || language === 'SY';
-
   const steps: { id: VerificationStep; title: string; icon: any; loa: string }[] = [
     { id: 'biometric', title: 'Biometric Scan', icon: Fingerprint, loa: 'LoA 3' },
     { id: 'document', title: 'Document Upload', icon: FileText, loa: 'LoA 2' },
     { id: 'face', title: 'Liveness Check', icon: Camera, loa: 'LoA 3' },
     { id: 'review', title: 'Manual Review', icon: Clock, loa: 'Final' },
   ];
-
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
@@ -39,7 +35,6 @@ export const IdentityVerificationView: React.FC = () => {
           </div>
         </div>
       </div>
-
       {/* Progress Pipeline */}
       <div className="grid grid-cols-4 gap-4 mb-12">
         {steps.map((s, i) => {
@@ -69,7 +64,6 @@ export const IdentityVerificationView: React.FC = () => {
           );
         })}
       </div>
-
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px] flex flex-col">
         <div className="p-8 flex-1">
           <AnimatePresence mode="wait">
@@ -95,7 +89,6 @@ export const IdentityVerificationView: React.FC = () => {
                 </div>
               </motion.div>
             )}
-
             {currentStep === 'document' && (
               <motion.div
                 key="doc"
@@ -126,7 +119,6 @@ export const IdentityVerificationView: React.FC = () => {
                 </div>
               </motion.div>
             )}
-
             {currentStep === 'face' && (
               <motion.div
                 key="face"
@@ -146,7 +138,6 @@ export const IdentityVerificationView: React.FC = () => {
                 </div>
               </motion.div>
             )}
-
             {currentStep === 'review' && (
               <motion.div
                 key="review"
@@ -172,7 +163,6 @@ export const IdentityVerificationView: React.FC = () => {
             )}
           </AnimatePresence>
         </div>
-
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
           <button 
              onClick={() => {

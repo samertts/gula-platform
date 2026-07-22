@@ -7,16 +7,13 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
-
 export function FamilyManagement() {
   const { t } = useLanguage();
-
   const familyMembers = [
     { id: 'f1', name: 'Zaid (Son)', role: 'Dependent', status: 'Optimal', score: 92, lastCheck: '2 days ago', avatar: '👶' },
     { id: 'f2', name: 'Mariam (Wife)', role: 'Contributor', status: 'Warning', score: 68, lastCheck: 'Today', avatar: '👩' },
     { id: 'f3', name: 'Ahmed (Father)', role: 'Dependent', status: 'Stable', score: 75, lastCheck: '1 week ago', avatar: '👴' },
   ];
-
   return (
     <div className="space-y-8 max-w-6xl mx-auto p-4 md:p-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -29,7 +26,6 @@ export function FamilyManagement() {
           <UserPlus size={18} /> {t.addDependent}
         </button>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main List */}
         <div className="lg:col-span-8 space-y-6">
@@ -54,7 +50,6 @@ export function FamilyManagement() {
                    </div>
                 </div>
               </div>
-
               <div className="flex items-center gap-10">
                 <div className="text-center">
                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Health Score</p>
@@ -68,7 +63,6 @@ export function FamilyManagement() {
                 </div>
                 
                 <div className="h-12 w-px bg-slate-100 hidden md:block" />
-
                 <div className="flex items-center gap-3">
                    <button className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
                       <ShieldCheck size={20} />
@@ -81,7 +75,6 @@ export function FamilyManagement() {
             </motion.div>
           ))}
         </div>
-
         {/* Sidebar Info */}
         <div className="lg:col-span-4 space-y-6">
            <div className="bg-indigo-600 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden group border-b-8 border-indigo-800">
@@ -103,7 +96,6 @@ export function FamilyManagement() {
                  </div>
               </div>
            </div>
-
            <div className="bg-slate-50 border border-slate-200 rounded-[3rem] p-10 space-y-6">
               <div className="flex items-center gap-4 mb-4">
                  <div className="w-12 h-12 bg-white rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm">

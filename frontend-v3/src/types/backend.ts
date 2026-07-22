@@ -287,7 +287,7 @@ export interface EdgeTask {
   kind: string;
   priority: number;
   status: string;
-  payload?: any;
+  payload?: unknown;
   created_at: string;
 }
 
@@ -520,7 +520,7 @@ export interface ClinicalDocumentation {
   patient_id: number;
   encounter_id?: number;
   doc_type: string;
-  content: any;
+  content: Record<string, unknown>;
   author_name: string;
   created_at: string;
 }
@@ -566,5 +566,5 @@ export interface SecurityStatus {
 export interface FHIRResource {
   resourceType: string;
   id: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }

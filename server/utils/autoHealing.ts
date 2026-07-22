@@ -185,7 +185,7 @@ class AutoHealingSystem {
     actions: Array<{
       name: string;
       severity: string;
-      lastHealed?: Date;
+      lastHealed: Date | undefined;
     }>;
   } {
     return {

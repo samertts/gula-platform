@@ -1,18 +1,14 @@
 import { SyntheticDataStore } from './dataStore';
-
 type ApiResponse = {
   status: number;
   body: any;
   headers?: Record<string, string>;
 };
-
 export class MockApiHandlers {
   private store: SyntheticDataStore;
-
   constructor(store: SyntheticDataStore) {
     this.store = store;
   }
-
   async handle(request: {
     method: string;
     path: string;
@@ -21,10 +17,8 @@ export class MockApiHandlers {
     headers?: Record<string, string>;
   }): Promise<ApiResponse> {
     const { method, path } = request;
-
     const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
     await wait(100 + Math.random() * 200);
-
     try {
       return await this.route(method, path, request);
     } catch (error: any) {
@@ -34,14 +28,11 @@ export class MockApiHandlers {
       };
     }
   }
-
   private async route(method: string, path: string, request: any): Promise<ApiResponse> {
     const parts = path.split('/').filter(Boolean);
-
     if (path === '/api/health') {
       return { status: 200, body: { status: 'healthy', mock: true, timestamp: new Date().toISOString() } };
     }
-
     if (path === '/api/mock/status') {
       return {
         status: 200,
@@ -53,76 +44,58 @@ export class MockApiHandlers {
         },
       };
     }
-
     if (path === '/api/mock/reset') {
       this.store.reset();
       await this.store.initialize();
       return { status: 200, body: { message: 'Data store reset' } };
     }
-
     if (path === '/api/auth/login' || path === '/api/auth/demo-login') {
       return this.handleAuth(request.body);
     }
-
     if (path.startsWith('/api/patients')) {
       return this.handlePatients(method, path, request);
     }
-
     if (path.startsWith('/api/labs')) {
       return this.handleCollection(method, path, 'labs', request);
     }
-
     if (path.startsWith('/api/orders')) {
       return this.handleOrders(method, path, request);
     }
-
     if (path.startsWith('/api/results')) {
       return this.handleCollection(method, path, 'labResults', request);
     }
-
     if (path.startsWith('/api/samples')) {
       return this.handleCollection(method, path, 'samples', request);
     }
-
     if (path.startsWith('/api/documents')) {
       return this.handleCollection(method, path, 'documents', request);
     }
-
     if (path.startsWith('/api/users')) {
       return this.handleCollection(method, path, 'users', request);
     }
-
     if (path.startsWith('/api/notifications')) {
       return { status: 200, body: { data: [], total: 0 } };
     }
-
     if (path.startsWith('/api/analytics') || path.startsWith('/api/stats')) {
       return this.handleAnalytics(method, path);
     }
-
     if (path.startsWith('/api/ai')) {
       return this.handleAi(method, path, request);
     }
-
     if (path.startsWith('/api/ocr')) {
       return this.handleOcr(request);
     }
-
     if (path.startsWith('/api/fhir')) {
       return this.handleFhir(method, path, request);
     }
-
     if (path.startsWith('/api/dashboard')) {
       return this.handleDashboard();
     }
-
     if (path.startsWith('/api/feature-flags')) {
       return this.handleFeatureFlags(method, request);
     }
-
     return { status: 404, body: { error: `Mock endpoint not found: ${path}` } };
   }
-
   private handleAuth(body: any): ApiResponse {
     const role = body?.role || 'doctor';
     const users = this.store.get<any>('users');
@@ -134,7 +107,6 @@ export class MockApiHandlers {
       role,
       labId: 'demo-lab-1',
     };
-
     return {
       status: 200,
       body: {
@@ -145,7 +117,6 @@ export class MockApiHandlers {
       },
     };
   }
-
   private handlePatients(method: string, path: string, request: any): ApiResponse {
     if (method === 'GET' && path === '/api/patients') {
       const patients = this.store.get<any>('patients');
@@ -162,23 +133,19 @@ export class MockApiHandlers {
         },
       };
     }
-
     if (method === 'GET' && path.match(/^\/api\/patients\/[^/]+$/)) {
       const id = path.split('/').pop()!;
       const patient = this.store.getById('patients', id);
       if (patient) return { status: 200, body: patient };
       return { status: 404, body: { error: 'Patient not found' } };
     }
-
     if (method === 'POST' && path === '/api/patients') {
       const newPatient = { id: `PAT-${Date.now()}`, ...request.body, createdAt: new Date().toISOString() };
       this.store.add('patients', newPatient);
       return { status: 201, body: newPatient };
     }
-
     return { status: 404, body: { error: 'Not found' } };
   }
-
   private handleOrders(method: string, path: string, request: any): ApiResponse {
     if (method === 'GET' && path === '/api/orders') {
       const orders = this.store.get<any>('orders');
@@ -191,10 +158,8 @@ export class MockApiHandlers {
     }
     return { status: 200, body: { data: this.store.get<any>('orders'), total: this.store.get<any>('orders').length } };
   }
-
   private handleCollection(method: string, path: string, collection: string, request: any): ApiResponse {
     const data = this.store.get<any>(collection);
-
     if (method === 'GET') {
       const id = path.split('/').pop();
       if (id && path.match(new RegExp(`/api/${collection}/[^/]+$`))) {
@@ -204,35 +169,29 @@ export class MockApiHandlers {
       }
       return { status: 200, body: { data, total: data.length } };
     }
-
     if (method === 'POST') {
       const newItem = { id: `${collection.toUpperCase().slice(0, 3)}-${Date.now()}`, ...request.body };
       this.store.add(collection, newItem);
       return { status: 201, body: newItem };
     }
-
     if (method === 'PUT' || method === 'PATCH') {
       const id = path.split('/').pop();
       const updated = this.store.update(collection, id!, request.body);
       if (updated) return { status: 200, body: updated };
       return { status: 404, body: { error: 'Not found' } };
     }
-
     if (method === 'DELETE') {
       const id = path.split('/').pop();
       const deleted = this.store.delete(collection, id!);
       if (deleted) return { status: 200, body: { message: 'Deleted' } };
       return { status: 404, body: { error: 'Not found' } };
     }
-
     return { status: 200, body: { data, total: data.length } };
   }
-
   private handleAnalytics(method: string, path: string): ApiResponse {
     const patients = this.store.get<any>('patients');
     const results = this.store.get<any>('labResults');
     const orders = this.store.get<any>('orders');
-
     if (path.includes('dashboard') || path.endsWith('/analytics')) {
       return {
         status: 200,
@@ -258,10 +217,8 @@ export class MockApiHandlers {
         },
       };
     }
-
     return { status: 200, body: {} };
   }
-
   private generateTestDistribution(results: any[]): Record<string, number> {
     const dist: Record<string, number> = {};
     for (const r of results.slice(0, 200)) {
@@ -269,24 +226,21 @@ export class MockApiHandlers {
     }
     return dist;
   }
-
   private generateMonthlyTrend(months: number): { month: string; count: number }[] {
     const trend: { month: string; count: number }[] = [];
     const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     for (let i = 0; i < months; i++) {
       trend.push({
-        month: names[i % 12],
+        month: names[i % 12]!,
         count: Math.floor(Math.random() * 500) + 200,
       });
     }
     return trend;
   }
-
   private handleDashboard(): ApiResponse {
     const patients = this.store.get<any>('patients');
     const results = this.store.get<any>('labResults');
     const orders = this.store.get<any>('orders');
-
     return {
       status: 200,
       body: {
@@ -312,7 +266,6 @@ export class MockApiHandlers {
       },
     };
   }
-
   private handleAi(method: string, path: string, request: any): ApiResponse {
     if (path.includes('chat') || path.includes('assistant')) {
       const query = request.body?.query || request.body?.message || '';
@@ -329,7 +282,6 @@ export class MockApiHandlers {
         },
       };
     }
-
     if (path.includes('analyze')) {
       return {
         status: 200,
@@ -345,7 +297,6 @@ export class MockApiHandlers {
         },
       };
     }
-
     if (path.includes('summarize')) {
       return {
         status: 200,
@@ -356,10 +307,8 @@ export class MockApiHandlers {
         },
       };
     }
-
     return { status: 200, body: { response: 'AI service is running in demo mode.', demoMode: true } };
   }
-
   private handleOcr(request: any): ApiResponse {
     return {
       status: 200,
@@ -373,7 +322,6 @@ export class MockApiHandlers {
       },
     };
   }
-
   private handleFhir(method: string, path: string, request: any): ApiResponse {
     if (path.includes('Patient')) {
       return {
@@ -394,7 +342,6 @@ export class MockApiHandlers {
         },
       };
     }
-
     if (path.includes('Observation')) {
       return {
         status: 200,
@@ -415,10 +362,8 @@ export class MockApiHandlers {
         },
       };
     }
-
     return { status: 200, body: { resourceType: 'Bundle', entry: [] } };
   }
-
   private handleFeatureFlags(method: string, request: any): ApiResponse {
     if (method === 'GET') {
       return {

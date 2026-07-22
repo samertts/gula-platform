@@ -1,17 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bot, X, Sparkles, Zap, ShieldCheck, Activity, MessageSquare } from 'lucide-react';
+import {Bot, X, Sparkles, Zap, ShieldCheck, MessageSquare} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
-
 export function GlobalAiAssistant() {
   const { t, isRtl } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);
-
   const toggleOpen = () => setIsOpen(!isOpen);
-
   useEffect(() => {
     if (isOpen) {
       setIsThinking(true);
@@ -27,7 +24,6 @@ export function GlobalAiAssistant() {
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
-
   return (
     <div className={cn(
       "fixed bottom-8 z-[60]",
@@ -59,14 +55,12 @@ export function GlobalAiAssistant() {
                 <X size={18} />
               </button>
             </div>
-
             {/* Content */}
             <div className="p-8 space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles size={14} className="text-indigo-600" />
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Projections</span>
               </div>
-
               {isThinking ? (
                 <div className="space-y-4 py-4">
                   {[1, 2, 3].map(i => (
@@ -98,7 +92,6 @@ export function GlobalAiAssistant() {
                   ))}
                 </div>
               )}
-
               <div className="grid grid-cols-2 gap-3 mt-8">
                 <button className="p-4 bg-indigo-600 rounded-2xl text-white flex flex-col items-center gap-2 group hover:scale-[1.02] transition-all">
                   <Zap size={20} className="group-hover:fill-indigo-300" />
@@ -110,7 +103,6 @@ export function GlobalAiAssistant() {
                 </button>
               </div>
             </div>
-
             <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
               <div className="flex items-center justify-center gap-2 text-[9px] font-black text-emerald-600 uppercase tracking-widest">
                 <ShieldCheck size={12} /> Privacy Preserved Protocol v4
@@ -119,7 +111,6 @@ export function GlobalAiAssistant() {
           </motion.div>
         )}
       </AnimatePresence>
-
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}

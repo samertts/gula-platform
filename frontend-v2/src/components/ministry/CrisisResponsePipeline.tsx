@@ -2,21 +2,18 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ShieldAlert, Zap, Radio, Globe, ShieldCheck, Activity } from 'lucide-react';
 import { cn } from '../../lib/utils';
-
 const PIPELINE_STEPS = [
   { id: 'DET', label: 'Detection', icon: Radio, status: 'active', desc: 'Real-time symptom clustering via Karkh Nodes.' },
   { id: 'VAL', label: 'Validation', icon: Activity, status: 'pending', desc: 'Predictive modeling verifying vector trajectory.' },
   { id: 'QUA', label: 'Quarantine', icon: ShieldAlert, status: 'waiting', desc: 'Data-layer isolation for affected clinical sectors.' },
   { id: 'DEP', label: 'Response', icon: Zap, status: 'waiting', desc: 'Strategic reserve deployment & lab re-prioritization.' },
 ];
-
 export function CrisisResponsePipeline() {
   return (
     <div className="bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/5">
       <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150">
          <ShieldAlert size={300} />
       </div>
-
       <div className="relative z-10 space-y-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -32,7 +29,6 @@ export function CrisisResponsePipeline() {
             <ShieldCheck size={14} /> GULA Governance Consensus
           </div>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
            {PIPELINE_STEPS.map((step, i) => (
              <div key={step.id} className="relative group">
@@ -76,7 +72,6 @@ export function CrisisResponsePipeline() {
              </div>
            ))}
         </div>
-
         <div className="p-6 bg-white/5 rounded-[2.5rem] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
            <div className="flex items-center gap-4">
               <div className="flex -space-x-3">

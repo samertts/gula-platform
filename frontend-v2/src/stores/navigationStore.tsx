@@ -1,5 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
-
+import {createContext, useContext, useReducer, useCallback, ReactNode} from 'react';
 const STORAGE_KEYS = {
   favorites: 'gula_nav_favorites',
   recent: 'gula_nav_recent',
@@ -8,13 +7,11 @@ const STORAGE_KEYS = {
   collapsed: 'gula_sidebar_collapsed',
   bookmarks: 'gula_nav_bookmarks',
 };
-
 interface UsageEntry {
   path: string;
   count: number;
   lastUsed: number;
 }
-
 export interface NavItem {
   to: string;
   icon: string;
@@ -23,7 +20,6 @@ export interface NavItem {
   keywords?: string[];
   badge?: number;
 }
-
 export interface NavGroup {
   id: string;
   icon: string;
@@ -31,7 +27,6 @@ export interface NavGroup {
   items: NavItem[];
   roles?: string[];
 }
-
 interface NavigationState {
   favorites: string[];
   recent: string[];
@@ -43,7 +38,6 @@ interface NavigationState {
   expandedGroups: Record<string, boolean>;
   customOrder: Record<string, number>;
 }
-
 type NavigationAction =
   | { type: 'SET_FAVORITES'; payload: string[] }
   | { type: 'SET_RECENT'; payload: string[] }
@@ -58,11 +52,9 @@ type NavigationAction =
   | { type: 'SET_CUSTOM_ORDER'; payload: Record<string, number> }
   | { type: 'REORDER_ITEM'; payload: { path: string; newIndex: number } }
   | { type: 'LOAD_PERSISTED'; payload: Partial<NavigationState> };
-
 function loadJson(key: string) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
 }
-
 function getInitialState(): NavigationState {
   return {
     favorites: loadJson(STORAGE_KEYS.favorites) || [],
@@ -76,7 +68,6 @@ function getInitialState(): NavigationState {
     customOrder: {},
   };
 }
-
 function navigationReducer(state: NavigationState, action: NavigationAction): NavigationState {
   switch (action.type) {
     case 'TOGGLE_FAVORITE': {
@@ -131,7 +122,6 @@ function navigationReducer(state: NavigationState, action: NavigationAction): Na
       return state;
   }
 }
-
 interface NavigationContextType {
   state: NavigationState;
   dispatch: React.Dispatch<NavigationAction>;
@@ -140,16 +130,12 @@ interface NavigationContextType {
   isBookmarked: (path: string) => boolean;
   getAdaptiveOrder: (items: { to: string }[]) => { to: string }[];
 }
-
 const NavigationContext = createContext<NavigationContextType | null>(null);
-
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(navigationReducer, undefined, getInitialState);
-
   const isFavorite = useCallback((path: string) => state.favorites.includes(path), [state.favorites]);
   const isPinned = useCallback((path: string) => state.pinned.includes(path), [state.pinned]);
   const isBookmarked = useCallback((path: string) => state.bookmarks.includes(path), [state.bookmarks]);
-
   const getAdaptiveOrder = useCallback((items: { to: string }[]) => {
     return [...items].sort((a, b) => {
       const aScore = (state.pinned.includes(a.to) ? 1000000000 : 0)
@@ -163,14 +149,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       return bScore - aScore;
     });
   }, [state.pinned, state.favorites, state.usage, state.customOrder]);
-
   return (
     <NavigationContext.Provider value={{ state, dispatch, isFavorite, isPinned, isBookmarked, getAdaptiveOrder }}>
       {children}
     </NavigationContext.Provider>
   );
 }
-
 export function useNavigationStore() {
   const ctx = useContext(NavigationContext);
   if (!ctx) throw new Error('useNavigationStore must be used within NavigationProvider');

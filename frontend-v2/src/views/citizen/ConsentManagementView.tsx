@@ -22,7 +22,6 @@ import {
   deleteDoc,
   Timestamp
 } from 'firebase/firestore';
-
 export const ConsentManagementView: React.FC = () => {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
@@ -37,28 +36,23 @@ export const ConsentManagementView: React.FC = () => {
   const [purposeOfUse, setPurposeOfUse] = useState<'clinical' | 'research'>('clinical');
   const [targetSearch, setTargetSearch] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<{id: string, name: string} | null>(null);
-
   const mockProviders = [
     { id: 'PROV-001', name: 'Al-Kindi General Hospital', type: 'clinical' },
     { id: 'PROV-002', name: 'Babylon Research Institute', type: 'research' },
     { id: 'PROV-003', name: 'Basra Oncology Center', type: 'clinical' },
     { id: 'PROV-004', name: 'National Bio-Data Project', type: 'research' },
   ];
-
   const filteredTargets = mockProviders.filter(p => 
     p.type === purposeOfUse && 
     p.name.toLowerCase().includes(targetSearch.toLowerCase())
   );
-
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
-
     const q = query(
       collection(db, 'consents'),
       where('citizenId', '==', user.uid)
     );
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -69,13 +63,11 @@ export const ConsentManagementView: React.FC = () => {
     }, (error) => {
       handleFirestoreError(error, 'list', 'consents');
     });
-
     // Fetch audit logs (events)
     const qEvents = query(
       collection(db, 'events'),
       where('senderId', '==', user.uid)
     );
-
     const unsubscribeEvents = onSnapshot(qEvents, (snapshot) => {
       const data = snapshot.docs
         .map(doc => ({
@@ -92,17 +84,14 @@ export const ConsentManagementView: React.FC = () => {
     }, (error) => {
       handleFirestoreError(error, 'list', 'events');
     });
-
     return () => {
       unsubscribe();
       unsubscribeEvents();
     };
   }, []);
-
   const handleGrantConsent = async () => {
     const user = auth.currentUser;
     if (!user || selectedPermissions.length === 0) return;
-
     setIsSubmitting(true);
     try {
       const expiryDate = new Date();
@@ -122,9 +111,7 @@ export const ConsentManagementView: React.FC = () => {
         purposeOfUse: purposeOfUse,
         createdAt: serverTimestamp(),
       };
-
       await addDoc(collection(db, 'consents'), consentData);
-
       // Emit event
       await addDoc(collection(db, 'events'), {
         type: 'consent_granted',
@@ -139,7 +126,6 @@ export const ConsentManagementView: React.FC = () => {
         },
         createdAt: serverTimestamp()
       });
-
       setShowGrantModal(false);
       setSelectedPermissions([]);
       setSelectedProvider(null);
@@ -150,7 +136,6 @@ export const ConsentManagementView: React.FC = () => {
       setIsSubmitting(false);
     }
   };
-
   const handleRevokeConsent = async (consent: ConsentRecord) => {
     try {
       const consentRef = doc(db, 'consents', consent.id);
@@ -158,7 +143,6 @@ export const ConsentManagementView: React.FC = () => {
         status: 'revoked',
         updatedAt: serverTimestamp()
       });
-
       // Emit event
       await addDoc(collection(db, 'events'), {
         type: 'consent_revoked',
@@ -176,20 +160,17 @@ export const ConsentManagementView: React.FC = () => {
       handleFirestoreError(error, 'update', `consents/${consent.id}`);
     }
   };
-
   const permissionList: { id: PermissionType; label: string; icon: any }[] = [
     { id: 'read_vitals', label: t.vitalSigns, icon: ActivityIcon },
     { id: 'read_labs', label: t.labResults, icon: Beaker },
     { id: 'read_history', label: t.healthRecords, icon: FileText },
     { id: 'emergency', label: t.emergencyAccess, icon: AlertTriangle },
   ];
-
   const getProviderIcon = (providerId: string) => {
     if (providerId.includes('LAB')) return Beaker;
     if (providerId.includes('DOC')) return UserCheck;
     return Stethoscope;
   };
-
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
@@ -212,7 +193,6 @@ export const ConsentManagementView: React.FC = () => {
            </button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
            {isLoading ? (
@@ -325,7 +305,6 @@ export const ConsentManagementView: React.FC = () => {
                </motion.div>
              ))
            )}
-
            {!isLoading && activeTab === 'active' && consents.filter(c => c.status === 'active').length === 0 && (
               <div className="p-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
                 <Shield className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -333,7 +312,6 @@ export const ConsentManagementView: React.FC = () => {
               </div>
            )}
         </div>
-
         <div className="space-y-6">
            <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-100">
               <div className="absolute top-0 right-0 p-4 opacity-10"><Shield className="w-24 h-24" /></div>
@@ -349,7 +327,6 @@ export const ConsentManagementView: React.FC = () => {
                     <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
                  </div>
               </div>
-
               <div className="space-y-3">
                  <div className="flex items-center gap-2 text-xs text-indigo-300">
                    <CheckCircle2 className="w-4 h-4" /> GDPR / HIPAA Iraqi Regional Compliant
@@ -362,7 +339,6 @@ export const ConsentManagementView: React.FC = () => {
                  </div>
               </div>
            </div>
-
            <button 
              onClick={() => setShowGrantModal(true)}
              className="w-full flex items-center justify-center gap-3 py-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-slate-700 hover:border-indigo-600 transition-all group"
@@ -371,7 +347,6 @@ export const ConsentManagementView: React.FC = () => {
            </button>
         </div>
       </div>
-
       {/* Grant Access Modal */}
       <AnimatePresence>
         {showGrantModal && (
@@ -398,7 +373,6 @@ export const ConsentManagementView: React.FC = () => {
                     <X className="w-6 h-6 text-slate-400" />
                  </button>
               </div>
-
               <div className="p-8 overflow-y-auto space-y-8 flex-1 custom-scrollbar">
                 <div className="space-y-4">
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Purpose of Access</span>
@@ -420,7 +394,6 @@ export const ConsentManagementView: React.FC = () => {
                       ))}
                    </div>
                 </div>
-
                 <div className="space-y-4">
                    <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Entity</span>
@@ -477,7 +450,6 @@ export const ConsentManagementView: React.FC = () => {
                     </div>
                    )}
                 </div>
-
                 <div className="space-y-4">
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data Permissions</span>
                    <div className="grid grid-cols-2 gap-3">
@@ -502,7 +474,6 @@ export const ConsentManagementView: React.FC = () => {
                       ))}
                    </div>
                 </div>
-
                 <div className="space-y-4">
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.duration}</span>
                    <div className="flex bg-slate-100 p-1 rounded-2xl">
@@ -521,7 +492,6 @@ export const ConsentManagementView: React.FC = () => {
                    </div>
                 </div>
               </div>
-
               <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
                  <button 
                   onClick={() => setShowGrantModal(false)} 

@@ -72,7 +72,7 @@ export class DemoDataGenerator {
   }
 
   private randomElement<T>(arr: T[]): T {
-    return arr[Math.floor(Math.random() * arr.length)];
+    return arr[Math.floor(Math.random() * arr.length)]!;
   }
 
   private randomElements<T>(arr: T[], count: number): T[] {

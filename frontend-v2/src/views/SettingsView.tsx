@@ -30,15 +30,12 @@ import { Language } from '../translations';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
-
 type TabId = 'profile' | 'appearance' | 'language' | 'security' | 'ai' | 'compliance' | 'network' | 'system';
-
 interface Tab {
   id: TabId;
   label: string;
   icon: React.ElementType;
 }
-
 export function SettingsView() {
   const { t, setLanguage, language } = useLanguage();
   const { user, profile } = useAuth();
@@ -60,7 +57,6 @@ export function SettingsView() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   
   const isRtl = language === 'AR' || language === 'KU' || language === 'SY';
-
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -76,7 +72,6 @@ export function SettingsView() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [hasChanges]);
-
   // Simulate System Flux
   useEffect(() => {
     const interval = setInterval(() => {
@@ -85,7 +80,6 @@ export function SettingsView() {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
-
   const tabs: Tab[] = [
     { id: 'profile', label: t.providerProfile, icon: User },
     { id: 'language', label: t.langAndRegion, icon: Languages },
@@ -96,17 +90,14 @@ export function SettingsView() {
     { id: 'network', label: t.connectivity, icon: Globe },
     { id: 'system', label: t.infrastructure, icon: Cpu },
   ];
-
   const filteredTabs = searchQuery 
     ? tabs.filter(tab => tab.label.toLowerCase().includes(searchQuery.toLowerCase()))
     : tabs;
-
   useEffect(() => {
     setIsLoading(true);
     const timer = setTimeout(() => setIsLoading(false), 400);
     return () => clearTimeout(timer);
   }, [activeTab]);
-
   const handleSave = () => {
     setSaveStatus('saving');
     setTimeout(() => {
@@ -120,7 +111,6 @@ export function SettingsView() {
       setTimeout(() => setSaveStatus('idle'), 3000);
     }, 1500);
   };
-
   const langs: { id: Language; name: string; native: string }[] = [
     { id: 'EN', name: 'English', native: 'English' },
     { id: 'AR', name: 'Arabic', native: 'العربية' },
@@ -128,7 +118,6 @@ export function SettingsView() {
     { id: 'TR', name: 'Turkmen', native: 'Türkmen' },
     { id: 'SY', name: 'Syriac', native: 'ܠܫܢܐ ܣܘܪܝܝܐ' }
   ];
-
   const renderSkeleton = () => (
     <div className="space-y-6 animate-pulse">
       <div className="h-40 bg-slate-100 rounded-3xl w-full" />
@@ -139,10 +128,8 @@ export function SettingsView() {
       </div>
     </div>
   );
-
   const renderTabContent = () => {
     if (isLoading) return renderSkeleton();
-
     switch (activeTab) {
       case 'ai':
         return (
@@ -217,7 +204,6 @@ export function SettingsView() {
                  </div>
                </div>
             </div>
-
             <div className="space-y-4">
               <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{t.availableModels}</h4>
               {[
@@ -267,7 +253,6 @@ export function SettingsView() {
                 <button className="mt-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">{t.manageRules}</button>
               </div>
             </div>
-
             <div className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-bold text-slate-900">{t.consentProtocol}</h4>
@@ -324,7 +309,6 @@ export function SettingsView() {
                  ))}
                </div>
             </div>
-
             <div className="p-6 bg-slate-900 rounded-3xl text-white shadow-xl shadow-slate-900/20">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
@@ -371,7 +355,6 @@ export function SettingsView() {
                 </div>
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">{t.email}</label>
@@ -390,7 +373,6 @@ export function SettingsView() {
                 <div className="text-sm font-bold text-slate-700">{t.medicalIntelligence}</div>
               </div>
             </div>
-
             <div className="pt-6 border-t border-slate-100 space-y-6">
               <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{t.biometricVaulting}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -414,7 +396,6 @@ export function SettingsView() {
                 </div>
               </div>
             </div>
-
             <div className="pt-6 border-t border-slate-100 flex flex-wrap gap-3">
               <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-colors">{t.updateProfile}</button>
               <button className="px-6 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors">{t.downloadDigitalId}</button>
@@ -624,7 +605,6 @@ export function SettingsView() {
         return null;
     }
   };
-
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8" dir={isRtl ? 'rtl' : 'ltr'}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -658,7 +638,6 @@ export function SettingsView() {
           </button>
         </div>
       </div>
-
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="w-full lg:w-72 flex-shrink-0">
           <div className="bg-white rounded-3xl border border-slate-100 p-2 sm:p-3 space-y-1 shadow-xl shadow-slate-200/40 sticky top-8">
@@ -694,7 +673,6 @@ export function SettingsView() {
             )}
           </div>
         </div>
-
         <div className="flex-1 min-w-0">
           <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 min-h-[600px] flex flex-col">
             <div className="p-6 sm:p-8 border-b border-slate-50">

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import {useState, useRef, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Sparkles, Send, Bot, User, 
@@ -12,10 +12,8 @@ import { getClinicalInsight } from '../../services/geminiService';
 import { cn } from '../../lib/utils';
 import { OrganAnalysis } from '../../components/OrganAnalysis';
 import { ExplainableAI } from '../../components/ExplainableAI';
-
 import { DoctorPriorityQueue } from '../../components/doctor/DoctorPriorityQueue';
 import { AdvancedTriageDetails } from '../../components/doctor/AdvancedTriageDetails';
-
 export function DoctorIntelligence() {
   const { t } = useLanguage();
   const [activeView, setActiveView] = useState<'chat' | 'analysis' | 'explainable' | 'triage'>('chat');
@@ -24,13 +22,11 @@ export function DoctorIntelligence() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
   const handleSend = async () => {
     if (!input.trim()) return;
     
@@ -38,13 +34,11 @@ export function DoctorIntelligence() {
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsTyping(true);
-
     const response = await getClinicalInsight(userMessage, '');
     
     setMessages(prev => [...prev, { role: 'ai', text: response }]);
     setIsTyping(false);
   };
-
   return (
     <div className="p-8 max-w-7xl mx-auto h-[calc(100vh-120px)] flex gap-8">
       {/* Sidebar Tooling */}
@@ -67,7 +61,6 @@ export function DoctorIntelligence() {
                </div>
             </div>
          </div>
-
          <div className="bg-white rounded-[32px] p-6 border border-slate-200 shadow-sm">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Reasoning Modes</h3>
             <div className="space-y-2">
@@ -91,7 +84,6 @@ export function DoctorIntelligence() {
                ))}
             </div>
          </div>
-
          <div className="mt-auto p-6 bg-slate-900 border border-slate-800 rounded-[32px] text-white overflow-hidden relative group">
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex items-center gap-3 mb-2 text-indigo-400 relative z-10">
@@ -101,7 +93,6 @@ export function DoctorIntelligence() {
             <p className="text-[10px] text-slate-400 font-medium relative z-10 italic">Secured: GULA-Clinical-L4. Processing latent knowledge via regional RAG nodes. Ready for inference.</p>
          </div>
       </div>
-
       {/* Main Intelligence Interface */}
       <div className="flex-1 bg-white rounded-[40px] border border-slate-200 shadow-xl overflow-hidden flex flex-col relative">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white z-10 shrink-0">
@@ -125,7 +116,6 @@ export function DoctorIntelligence() {
               </div>
            </div>
         </div>
-
         <div className="flex-1 overflow-hidden relative">
           <AnimatePresence mode="wait">
             {activeView === 'chat' ? (
@@ -180,7 +170,6 @@ export function DoctorIntelligence() {
                     </div>
                   )}
                 </div>
-
                 <div className="p-8 border-t border-slate-100 bg-slate-50/50">
                   <AnimatePresence>
                     {isListening && (
@@ -204,7 +193,6 @@ export function DoctorIntelligence() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-
                   <div className="relative group">
                     <input 
                       type="text"

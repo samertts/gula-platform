@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Activity, 
@@ -15,13 +15,12 @@ import {
   AlertCircle,
   ClipboardList
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
 import { MinistryCommandCenter } from '../../components/MinistryCommandCenter';
 import { TaskQueue } from '../../components/TaskQueue';
 import { WorkflowEngine } from '../../services/WorkflowEngine';
 import { Task } from '../../types/domain';
-
 const MetricCard = ({ title, value, subtext, trend, trendUp, icon: Icon, color }: any) => (
   // ... existing StatCard code basically, keeping it as is for consistency
   <motion.div 
@@ -45,13 +44,11 @@ const MetricCard = ({ title, value, subtext, trend, trendUp, icon: Icon, color }
     </div>
   </motion.div>
 );
-
 export function MinistryDashboard() {
   const { t, dir } = useLanguage();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const isRtl = dir === 'rtl';
-
   useEffect(() => {
     // Ministry sees global tasks or specific system-wide tasks
     const unsubscribe = WorkflowEngine.subscribeToEntityTasks('system', (newTasks) => {
@@ -59,7 +56,6 @@ export function MinistryDashboard() {
     });
     return () => unsubscribe();
   }, []);
-
   const handleBulkAction = async (action: 'assign' | 'complete' | 'hold' | 'process', taskIds: string[]) => {
     let updates: Partial<Task> = {};
     switch (action) {
@@ -70,7 +66,6 @@ export function MinistryDashboard() {
     }
     await WorkflowEngine.bulkUpdateTasks(taskIds, updates);
   };
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       {/* Header Section */}
@@ -92,7 +87,6 @@ export function MinistryDashboard() {
              Real-time monitoring across active lab nodes and clinical centers.
           </p>
         </div>
-
         <div className="flex items-center gap-4 w-full lg:w-auto">
           <div className="relative flex-1 lg:w-64 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
@@ -108,9 +102,7 @@ export function MinistryDashboard() {
           </button>
         </div>
       </div>
-
       <MinistryCommandCenter />
-
       {/* Main Analysis Grid */}
       <div className="grid grid-cols-12 gap-8">
         {/* Geographical Surveillance */}
@@ -127,7 +119,6 @@ export function MinistryDashboard() {
                    </div>
                 </div>
               </div>
-
               <div className="aspect-[16/9] bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden flex items-center justify-center group p-8">
                  <div className="absolute inset-0 opacity-40 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] pointer-events-none" />
                  <svg 
@@ -168,7 +159,6 @@ export function MinistryDashboard() {
                       </g>
                     ))}
                  </svg>
-
                  {selectedNode && (
                    <motion.div 
                      initial={{ opacity: 0, scale: 0.9 }}
@@ -208,7 +198,6 @@ export function MinistryDashboard() {
                  </div>
               </div>
            </div>
-
            {/* Executive Task Oversight */}
            <div className="space-y-4">
               <div className="flex items-center gap-3 px-4">
@@ -223,7 +212,6 @@ export function MinistryDashboard() {
               />
            </div>
         </div>
-
         {/* Inventory & Supply Chain */}
         <div className="col-span-12 lg:col-span-4 space-y-8">
            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden">

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { Card, CardContent, CardTitle } from "@/components/ui";
 import { PageHeader } from "@/components/shared/PageComponents";
 import { Settings2, Bell, Shield, Palette, Globe } from "lucide-react";
 

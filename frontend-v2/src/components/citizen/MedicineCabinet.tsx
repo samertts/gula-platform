@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { Pill, Plus, AlertCircle, Clock, CheckCircle2, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
-
 interface Medication {
   id: string;
   name: string;
@@ -13,7 +12,6 @@ interface Medication {
   lastTaken?: string;
   warning?: string;
 }
-
 export function MedicineCabinet() {
   const { t } = useLanguage();
   const [meds, setMeds] = useState<Medication[]>([
@@ -21,7 +19,6 @@ export function MedicineCabinet() {
     { id: '2', name: 'Vitamin D3', dosage: '2000 IU', frequency: 'Once daily', reminder: '09:00', lastTaken: 'Today, 09:05' },
     { id: '3', name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', reminder: '08:00', warning: 'Avoid high potassium' }
   ]);
-
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
       <div className="flex items-center justify-between mb-8">
@@ -39,7 +36,6 @@ export function MedicineCabinet() {
           <span className="text-xs font-bold uppercase tracking-widest px-2">{t.addMedication}</span>
         </button>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
           {meds.map((med) => (
@@ -56,7 +52,6 @@ export function MedicineCabinet() {
                   <Trash2 size={16} />
                 </button>
               </div>
-
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm border border-slate-100">
                   <Pill size={24} />
@@ -66,7 +61,6 @@ export function MedicineCabinet() {
                   <p className="text-xs text-slate-400 font-medium">{med.dosage} • {med.frequency}</p>
                 </div>
               </div>
-
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-white/50 rounded-xl">
                   <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -74,7 +68,6 @@ export function MedicineCabinet() {
                   </div>
                   <span className="text-[10px] font-black text-indigo-600">{med.reminder}</span>
                 </div>
-
                 {med.lastTaken ? (
                   <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
@@ -87,7 +80,6 @@ export function MedicineCabinet() {
                     Mark as Taken
                   </button>
                 )}
-
                 {med.warning && (
                   <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100/50">
                     <AlertCircle size={12} className="text-amber-600 shrink-0" />

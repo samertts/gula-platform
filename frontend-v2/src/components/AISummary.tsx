@@ -1,20 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BrainCircuit, Loader2, Sparkles, X, ChevronRight, Send, MessageSquare } from 'lucide-react';
+import {BrainCircuit, Loader2, Sparkles, X, Send, MessageSquare} from 'lucide-react';
 import { analyzeLabTrends, askFollowUp } from '../services/aiService';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { cn } from '../lib/utils';
-
 interface Message {
   role: 'assistant' | 'user';
   content: string;
 }
-
 interface AISummaryProps {
   findings: string;
   testTitle: string;
 }
-
 export function AISummary({ findings, testTitle }: AISummaryProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -22,31 +19,27 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
   const [question, setQuestion] = useState('');
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
   const parseResponse = (text: string) => {
     const questionsMatch = text.match(/SUGGESTED_QUESTIONS:\n([\s\S]*)/i);
     if (questionsMatch) {
-      const questionsText = questionsMatch[1];
+      const questionsText = questionsMatch[1] ?? '';
       const questions = questionsText
         .split('\n')
         .map(q => q.replace(/^- /, '').trim())
         .filter(q => q && q.length > 0)
         .slice(0, 3);
       
-      const cleanContent = text.split('---')[0].trim();
+      const cleanContent = text.split('---')[0]!.trim();
       return { cleanContent, questions };
     }
     return { cleanContent: text, questions: [] };
   };
-
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
   useEffect(() => {
     if (isOpen) scrollToBottom();
   }, [messages, isOpen]);
-
   const handleSummarize = async () => {
     setIsOpen(true);
     if (messages.length > 0) return;
@@ -55,7 +48,7 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
     setSuggestedQuestions([]);
     try {
       const result = await analyzeLabTrends([{ title: testTitle, findings }]);
-      const { cleanContent, questions } = parseResponse(result);
+      const { cleanContent, questions } = parseResponse(result ?? '');
       setMessages([{ role: 'assistant', content: cleanContent }]);
       setSuggestedQuestions(questions);
     } catch (error) {
@@ -64,11 +57,9 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
       setIsLoading(false);
     }
   };
-
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim() || isLoading) return;
-
     const userMsg = question;
     setQuestion('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
@@ -78,7 +69,7 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
     try {
       const context = messages.map(m => `${m.role}: ${m.content}`).join('\n');
       const response = await askFollowUp(context, userMsg);
-      const { cleanContent, questions } = parseResponse(response);
+      const { cleanContent, questions } = parseResponse(response ?? '');
       setMessages(prev => [...prev, { role: 'assistant', content: cleanContent }]);
       setSuggestedQuestions(questions);
     } catch (error) {
@@ -87,7 +78,6 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
       setIsLoading(false);
     }
   };
-
   return (
     <>
       <button 
@@ -97,7 +87,6 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
         <BrainCircuit size={14} />
         GULA AI Advisor
       </button>
-
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
@@ -129,7 +118,6 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
                    </button>
                 </div>
               </div>
-
               <div className="p-0 flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30">
                 <div className="p-8 space-y-6">
                   {messages.length === 0 && isLoading && (
@@ -143,7 +131,6 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
                       </div>
                     </div>
                   )}
-
                   {messages.map((msg, i) => (
                     <motion.div 
                       key={i}
@@ -178,7 +165,6 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
                       <span className="text-xs font-black uppercase text-slate-400 tracking-widest self-center">AI is thinking...</span>
                     </div>
                   )}
-
                   {!isLoading && suggestedQuestions.length > 0 && (
                     <div className="space-y-3 px-2">
                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Suggested Follow-ups</p>
@@ -206,7 +192,6 @@ export function AISummary({ findings, testTitle }: AISummaryProps) {
                   <div ref={chatEndRef} />
                 </div>
               </div>
-
               <div className="p-6 bg-white border-t border-slate-100 shrink-0">
                 <form onSubmit={handleAsk} className="relative group">
                   <input 

@@ -1,10 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, BrainCircuit, Sparkles, Send, Stethoscope, AlertTriangle, ArrowRight, User, Bot } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {useState, useRef, useEffect} from 'react';
+import {BrainCircuit, Sparkles, Send, Stethoscope, AlertTriangle, User, Bot} from 'lucide-react';
+import {motion} from 'motion/react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getClinicalInsight } from '../../services/geminiService';
 import { cn } from '../../lib/utils';
-
 export function SymptomChecker() {
   const { t } = useLanguage();
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([
@@ -13,13 +12,11 @@ export function SymptomChecker() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (scrollRef.current) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
   const handleCheck = async (customInput?: string) => {
     const messageText = customInput || input;
     if (!messageText.trim()) return;
@@ -33,22 +30,19 @@ export function SymptomChecker() {
       "System: Medical Triage Support. Safety first. Always include disclaimer."
     );
     
-    setMessages(prev => [...prev, { role: 'ai', text: insight }]);
+    setMessages(prev => [...prev, { role: 'ai', text: insight ?? '' }]);
     setLoading(false);
   };
-
   return (
     <div className="bg-slate-900 rounded-[3rem] p-6 md:p-10 text-white relative overflow-hidden group min-h-[600px] flex flex-col">
       <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
         <Stethoscope size={200} />
       </div>
-
       <div className="relative z-10 flex-1 flex flex-col">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/20 border border-indigo-500/30 rounded-full mb-6 w-fit">
           <Sparkles size={14} className="text-indigo-400" />
           <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t.symptomChecker}</span>
         </div>
-
         <div 
           ref={scrollRef}
           className="flex-1 overflow-y-auto space-y-6 mb-8 pr-2 no-scrollbar max-h-[450px]"
@@ -88,7 +82,6 @@ export function SymptomChecker() {
             </div>
           )}
         </div>
-
         <div className="relative group/input mt-auto">
           <input
             type="text"
@@ -106,7 +99,6 @@ export function SymptomChecker() {
             <Send size={18} />
           </button>
         </div>
-
         <div className="mt-6 flex items-center gap-3 text-slate-500">
           <AlertTriangle size={14} className="text-amber-500" />
           <p className="text-[9px] font-bold uppercase tracking-widest italic opacity-60">

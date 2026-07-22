@@ -47,7 +47,7 @@ export class MockService {
       }
 
       const body = init?.body ? JSON.parse(init.body as string) : undefined;
-      const path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
+      const path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0] ?? '';
 
       const response = await this.handlers.handle({
         method,
@@ -74,8 +74,8 @@ export class MockService {
 
     const path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
 
-    if (path.startsWith('/api/mock/')) return true;
-    if (path.startsWith('/api/')) return true;
+    if (path!.startsWith('/api/mock/')) return true;
+    if (path!.startsWith('/api/')) return true;
 
     return false;
   }
