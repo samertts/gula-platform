@@ -145,7 +145,7 @@ export function useMyTier(opts?: UseQueryOptions<SubscriptionInfo>) {
 
 // ── AI ──
 export function useAiPendingApprovals(opts?: UseQueryOptions<{ pending: number }>) {
-  return useQuery({ queryKey: qk("ai", "pending"), queryFn: () => aiApi.pending(), ...opts });
+  return useQuery({ queryKey: qk("ai", "pending"), queryFn: () => aiApi.pending() as unknown as Promise<{ pending: number }>, ...opts });
 }
 export function useAiProviders(opts?: UseQueryOptions<AIProviderStatus>) {
   return useQuery({ queryKey: qk("ai", "providers"), queryFn: () => aiApi.providers(), ...opts });

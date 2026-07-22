@@ -78,7 +78,7 @@ export function FhirReportPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["fhir-report", searchId],
-    queryFn: () => complianceApi.fhirDiagnosticReport(Number(searchId)) as Promise<FhirDiagnosticReport>,
+    queryFn: () => complianceApi.fhirDiagnosticReport(Number(searchId)) as unknown as Promise<FhirDiagnosticReport>,
     enabled: !!searchId,
   });
 

@@ -102,7 +102,7 @@ function SendStatus({ orderId, channel }: { orderId: number; channel: Channel })
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-muted-foreground" />
-              <span dir="ltr">{mutation.data.patient_phone}</span>
+              <span dir="ltr">{mutation.data?.patient_phone as string}</span>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline">
@@ -110,7 +110,7 @@ function SendStatus({ orderId, channel }: { orderId: number; channel: Channel })
               </Badge>
             </div>
             <div className="p-3 bg-background rounded border text-sm whitespace-pre-wrap font-mono leading-relaxed">
-              {mutation.data.message_preview}
+              {mutation.data?.message_preview as string}
             </div>
           </div>
         )}
@@ -142,22 +142,22 @@ function ViewHistory({ orderId }: { orderId: number }) {
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">إجمالي المشاهدات:</span>
-                <span className="font-bold text-lg">{data.total_views}</span>
+                <span className="font-bold text-lg">{data.total_views as number}</span>
               </div>
             </div>
-            {data.total_views > 0 && (
+            {(data.total_views as number) > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">أول مشاهدة:</span>
-                  <span>{new Date(data.first_viewed!).toLocaleString("ar-IQ")}</span>
+                  <span>{new Date(data.first_viewed as string).toLocaleString("ar-IQ")}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">آخر مشاهدة:</span>
-                  <span>{new Date(data.last_viewed!).toLocaleString("ar-IQ")}</span>
+                  <span>{new Date(data.last_viewed as string).toLocaleString("ar-IQ")}</span>
                 </div>
               </div>
             )}
-            {data.total_views === 0 && (
+            {(data.total_views as number) === 0 && (
               <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
                 <Clock className="h-8 w-8" />
                 <span>لم يتم مشاهدة النتائج بعد</span>

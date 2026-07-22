@@ -31,7 +31,7 @@ function extractList<T>(data: unknown): T[] {
   if (!data) return [];
   if (Array.isArray(data)) return data;
   const obj = data as Record<string, unknown>;
-  return (obj.items as T[]) || (obj.records as T[]) || (obj.results as T[]) || [];
+  return (obj.items as unknown as T[]) || (obj.records as unknown as T[]) || (obj.results as unknown as T[]) || [];
 }
 
 interface GoldenRecord {
@@ -97,7 +97,7 @@ export function NationalDataPage() {
   const goldenRecords = extractList<GoldenRecord>(goldenRecordsQuery.data);
   const catalogEntries = extractList<CatalogEntry>(dataCatalogQuery.data);
   const deidJobs = extractList<DeidJob>(deidJobsQuery.data);
-  const qualityData = qualityQuery.data as QualitySummary | null;
+  const qualityData = qualityQuery.data as unknown as QualitySummary | null;
 
   const tabs = [
     { id: "golden-records", label: "السجلات الذهبية", icon: Database },

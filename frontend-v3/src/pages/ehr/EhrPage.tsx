@@ -43,7 +43,7 @@ function extractList<T>(data: unknown): T[] {
   if (!data) return [];
   if (Array.isArray(data)) return data;
   const obj = data as Record<string, unknown>;
-  return (obj.items as T[]) || (obj.orders as T[]) || (obj.results as T[]) || [];
+  return (obj.items as unknown as T[]) || (obj.orders as unknown as T[]) || (obj.results as unknown as T[]) || [];
 }
 
 export function EhrPage() {

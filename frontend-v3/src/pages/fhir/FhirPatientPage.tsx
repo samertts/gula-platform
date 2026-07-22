@@ -73,7 +73,7 @@ export function FhirPatientPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["fhir-patient", searchId],
-    queryFn: () => complianceApi.fhirPatient(Number(searchId)) as Promise<FhirPatientResource>,
+    queryFn: () => complianceApi.fhirPatient(Number(searchId)) as unknown as Promise<FhirPatientResource>,
     enabled: !!searchId,
   });
 
