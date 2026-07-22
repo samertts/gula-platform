@@ -234,22 +234,20 @@ class TestConcurrencyLimitClinicalExemption:
 
     def test_clinical_prefixes_documented_in_middleware(self):
         """The four clinical-write prefixes documented in CLAUDE.md must
-        appear somewhere in main.py — typically inside _CRITICAL_PATH_PREFIXES
-        or _is_critical_write. We do a whole-file scan so the test stays
-        green if the prefix list is refactored into a constant."""
+        appear in middleware.py — inside _CRITICAL_PATH_PREFIXES
+        or _is_critical_write."""
         import pathlib
-        main_path = pathlib.Path(__file__).parent.parent / "app" / "main.py"
-        src = main_path.read_text()
+        base = pathlib.Path(__file__).parent.parent / "app"
+        src = (base / "middleware.py").read_text()
 
         for prefix in ("/results", "/orders", "/samples", "/critical-alerts"):
             assert prefix in src, (
-                f"Clinical prefix {prefix!r} no longer appears in main.py — "
+                f"Clinical prefix {prefix!r} no longer appears in middleware.py — "
                 "regression: clinical writes may now be sheddable by "
                 "ConcurrencyLimitMiddleware."
             )
 
-        # Sanity: the exemption helper or middleware itself must reference
-        # 'critical' so the intent is documented in code.
+        # Sanity: the exemption helper must reference 'critical'
         assert "_is_critical_write" in src or "_CRITICAL_PATH_PREFIXES" in src or \
                "Critical clinical writes" in src, (
             "Concurrency middleware no longer documents the clinical-exemption — "

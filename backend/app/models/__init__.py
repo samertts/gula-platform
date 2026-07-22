@@ -1,5 +1,4 @@
 from ..database import Base
-from ..national.domain.appointment import Appointment
 from .ai_interaction import (
     AIFeedback,
     AIInteraction,

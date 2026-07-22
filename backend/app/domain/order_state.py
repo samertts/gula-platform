@@ -14,7 +14,7 @@ no endpoint can bypass the rules regardless of how it is called.
 
 from __future__ import annotations
 
-from enum import StrEnum
+from app._compat import StrEnum
 
 from app.domain.exceptions import OrderStateError
 
