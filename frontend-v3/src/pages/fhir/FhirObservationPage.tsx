@@ -74,7 +74,7 @@ export function FhirObservationPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["fhir-observation", searchId],
-    queryFn: () => complianceApi.fhirObservation(Number(searchId)) as Promise<FhirObservationResource>,
+    queryFn: () => complianceApi.fhirObservation(Number(searchId)) as unknown as Promise<FhirObservationResource>,
     enabled: !!searchId,
   });
 

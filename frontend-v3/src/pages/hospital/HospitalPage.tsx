@@ -328,8 +328,8 @@ function DepartmentsAndUnits() {
     enabled: !!hospitalId && showUnits,
   });
 
-  const departments: Department[] = (deptsData as Department[]) ?? [];
-  const units: Unit[] = (unitsData as Unit[]) ?? [];
+  const departments: Department[] = (deptsData as unknown as Department[]) ?? [];
+  const units: Unit[] = (unitsData as unknown as Unit[]) ?? [];
 
   const createDeptMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => hospitalApi.createDepartment(hospitalId!, data),
