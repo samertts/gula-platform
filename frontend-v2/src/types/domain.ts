@@ -1,5 +1,4 @@
 import { LucideIcon } from 'lucide-react';
-
 export type UserRole = 
   | 'physician' 
   | 'technician' 
@@ -15,19 +14,15 @@ export type UserRole =
   | 'ministry_inspector'
   | 'auditor'
   | 'integration_service';
-
 export type UserWing = 'doctor' | 'lab' | 'citizen' | 'admin' | 'researcher' | 'regulator' | 'ministry' | 'system';
-
 export type PermissionAction = 'read' | 'create' | 'update' | 'delete' | 'validate' | 'release' | 'audit' | 'manage';
 export type PermissionResource = 'patient' | 'lab_test' | 'lab_result' | 'consent' | 'user' | 'system_config' | 'inventory' | 'audit_log' | 'infrastructure' | 'architecture' | 'integration' | 'research';
 export type PermissionScope = 'own' | 'assigned' | 'entity' | 'global';
-
 export interface Permission {
   resource: PermissionResource;
   action: PermissionAction;
   scope: PermissionScope;
 }
-
 export interface AuditLogEntry {
   id: string;
   timestamp: string;
@@ -46,7 +41,6 @@ export interface AuditLogEntry {
     severity: 'info' | 'warning' | 'critical';
   };
 }
-
 export interface Task {
   id: string;
   title: string;
@@ -60,7 +54,6 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
 }
-
 export interface Tenant {
   id: string;
   name: string;
@@ -68,7 +61,6 @@ export interface Tenant {
   status: 'active' | 'suspended';
   apiKey?: string;
 }
-
 export interface Consent {
   id: string;
   patientId: string;
@@ -77,10 +69,8 @@ export interface Consent {
   expiresAt: string;
   createdAt: string;
 }
-
 export type OrderStatus = 'pending' | 'received' | 'processing' | 'completed' | 'released';
 export type Priority = 'routine' | 'urgent' | 'stat';
-
 export interface ModuleMetadata {
   id: string;
   labelKey: string;
@@ -89,11 +79,9 @@ export interface ModuleMetadata {
   wing: UserWing;
   roles: UserRole[];
 }
-
 export type VerificationLevel = 'Level_1' | 'Level_2' | 'Level_3'; // Basic, Documented, Verified/Biometric
 export type PermissionType = 'read_vitals' | 'read_labs' | 'read_history' | 'read_imaging' | 'write_order' | 'emergency';
 export type ConsentDuration = '1_day' | '1_week' | '1_month' | 'permanent';
-
 export interface AuditRecord {
   timestamp: any;
   actorId: string;
@@ -103,7 +91,6 @@ export interface AuditRecord {
   ipAddress?: string;
   reason?: string;
 }
-
 export interface PatientRecord {
   id: string;
   nationalId: string;
@@ -122,7 +109,6 @@ export interface PatientRecord {
   dob: string;
   auditTrail?: AuditRecord[];
 }
-
 export interface MedicalHistoryItem {
   id: string;
   patientId: string;
@@ -133,7 +119,6 @@ export interface MedicalHistoryItem {
   documents?: string[];
   title: string;
 }
-
 export interface LabSample {
   id: string;
   patientId: string;
@@ -145,7 +130,6 @@ export interface LabSample {
   technicianId?: string;
   deviceId?: string;
 }
-
 export interface ClinicalOrder {
   id: string;
   patientId: string;
@@ -155,7 +139,6 @@ export interface ClinicalOrder {
   createdAt: string;
   aiNotes?: string;
 }
-
 export interface HealthInsight {
   id: string;
   patientId: string;
@@ -165,7 +148,6 @@ export interface HealthInsight {
   actionRequired?: string;
   generatedAt: any;
 }
-
 export interface LabTestResult {
   id: string;
   testName: string;
@@ -180,7 +162,6 @@ export interface LabTestResult {
   verifiedAt?: any;
   trend?: { date: string; value: number }[];
 }
-
 export interface ConsentRecord {
   id: string;
   citizenId: string;
@@ -194,7 +175,6 @@ export interface ConsentRecord {
   status: 'active' | 'revoked' | 'expired';
   purposeOfUse: 'clinical' | 'research' | 'emergency';
 }
-
 export type EventType = 
   | 'critical_alert' 
   | 'expiring_reagent' 
@@ -203,7 +183,6 @@ export type EventType =
   | 'lab_result_ready'
   | 'inventory_low'
   | 'system_update';
-
 export interface GulaEvent {
   id: string;
   type: EventType;
@@ -217,7 +196,6 @@ export interface GulaEvent {
   payload?: any;
   createdAt: any;
 }
-
 export interface UserProfile {
   uid: string;
   role: UserRole;

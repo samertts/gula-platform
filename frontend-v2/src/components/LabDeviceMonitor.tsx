@@ -1,24 +1,20 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Settings, CheckCircle, Zap, Shield, Database, LayoutGrid, RotateCw, Activity, Cpu } from 'lucide-react';
+import {Shield, LayoutGrid, RotateCw, Activity, Cpu} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-
 export function LabDeviceMonitor() {
   const { t } = useLanguage();
-
   const devices = [
     { id: 'NODE-01', model: 'Spectro-X4', status: 'Optimal', calibration: '99.9%', drift: '0.001%' },
     { id: 'NODE-02', model: 'Hematology Gen-6', status: 'Auto-Calibrating', calibration: '92.4%', drift: '0.012%' },
     { id: 'NODE-03', model: 'Molecular Array', status: 'Optimal', calibration: '100%', drift: '0.000%' },
   ];
-
   return (
     <div className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-12 opacity-[0.02] text-slate-900 pointer-events-none">
          <LayoutGrid size={400} />
       </div>
-
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-12">
            <div>
@@ -30,7 +26,6 @@ export function LabDeviceMonitor() {
               Global Re-Sync
            </button>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
            {devices.map((device, i) => (
              <motion.div 
@@ -51,12 +46,10 @@ export function LabDeviceMonitor() {
                       {device.status}
                    </div>
                 </div>
-
                 <div>
                    <h4 className="text-lg font-black text-slate-900 tracking-tight">{device.model}</h4>
                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{device.id}</p>
                 </div>
-
                 <div className="space-y-4 pt-4 border-t border-slate-100">
                    <div className="flex justify-between items-center text-xs">
                       <span className="font-bold text-slate-400 uppercase tracking-widest">Calibration</span>
@@ -77,7 +70,6 @@ export function LabDeviceMonitor() {
              </motion.div>
            ))}
         </div>
-
         <div className="mt-12 p-8 bg-slate-900 rounded-[3rem] text-white flex flex-col lg:flex-row items-center justify-between gap-8">
            <div className="flex items-center gap-6">
               <div className="p-4 bg-white/10 rounded-2xl">

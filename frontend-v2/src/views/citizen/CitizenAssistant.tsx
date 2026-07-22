@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import {useState, useRef, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   BrainCircuit, Send, User, Bot, Sparkles, 
@@ -6,11 +6,10 @@ import {
   Thermometer, Beaker, Pill, History, Info,
   AlertCircle, ShieldCheck, Zap
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
 import Markdown from 'react-markdown';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
 export function CitizenAssistant() {
   const { t } = useLanguage();
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string }[]>([
@@ -19,13 +18,11 @@ export function CitizenAssistant() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
-
   const handleSend = async () => {
     if (!input.trim()) return;
     
@@ -33,7 +30,6 @@ export function CitizenAssistant() {
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setInput("");
     setIsTyping(true);
-
     // Simulate AI logic for now or connect to API
     setTimeout(() => {
       let response = "";
@@ -48,14 +44,12 @@ export function CitizenAssistant() {
       setIsTyping(false);
     }, 1500);
   };
-
   const suggestions = [
     { label: "Explain my last lab results", icon: Beaker },
     { label: "Am I following my treatment plan?", icon: Pill },
     { label: "I have a headache and fatigue", icon: Thermometer },
     { label: "Show my health trends", icon: History }
   ];
-
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] max-w-5xl mx-auto p-4 md:p-8 animate-in fade-in duration-500">
       <div className="flex-1 bg-white rounded-[3rem] border border-slate-200 shadow-sm flex flex-col overflow-hidden relative">
@@ -79,7 +73,6 @@ export function CitizenAssistant() {
              </div>
           </div>
         </div>
-
         {/* Message Area */}
         <div 
           ref={scrollRef}
@@ -124,7 +117,6 @@ export function CitizenAssistant() {
             </div>
           )}
         </div>
-
         {/* Suggestions Bar */}
         <div className="px-8 pb-4">
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
@@ -141,7 +133,6 @@ export function CitizenAssistant() {
             ))}
           </div>
         </div>
-
         {/* Input Bar */}
         <div className="p-8 bg-slate-50/50 border-t border-slate-100">
            <div className="flex gap-4 bg-white p-2 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-100/50 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
@@ -178,7 +169,6 @@ export function CitizenAssistant() {
            </div>
         </div>
       </div>
-
       <div className="mt-8 flex items-center justify-between p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100">
          <div className="flex items-center gap-4">
             <div className="p-3 bg-white rounded-xl">

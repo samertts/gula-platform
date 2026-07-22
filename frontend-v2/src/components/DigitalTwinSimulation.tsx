@@ -3,16 +3,13 @@ import { motion } from 'motion/react';
 import { User, Activity, Zap, Shield, Play, RotateCcw, Brain, Heart, Thermometer } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-
 export function DigitalTwinSimulation() {
   const { t } = useLanguage();
-
   return (
     <div className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-12 opacity-[0.02]">
          <User size={400} strokeWidth={1} />
       </div>
-
       <div className="relative z-10 flex flex-col h-full lg:min-h-[600px]">
         <div className="flex justify-between items-start mb-12">
            <div>
@@ -32,7 +29,6 @@ export function DigitalTwinSimulation() {
               </button>
            </div>
         </div>
-
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
            <div className="lg:col-span-5 space-y-8">
               <div>
@@ -58,7 +54,6 @@ export function DigitalTwinSimulation() {
                     ))}
                  </div>
               </div>
-
               <div className="p-6 bg-slate-900 rounded-[2.5rem] text-white">
                  <div className="flex items-center gap-3 mb-4 text-indigo-400">
                     <Brain size={20} />
@@ -72,7 +67,6 @@ export function DigitalTwinSimulation() {
                  </button>
               </div>
            </div>
-
            <div className="lg:col-span-7 flex flex-col items-center justify-center relative py-12">
               <div className="relative z-10 w-full max-w-[400px] aspect-square flex items-center justify-center">
                  <motion.div 
@@ -93,7 +87,6 @@ export function DigitalTwinSimulation() {
                     <div className="absolute top-1/2 right-1/4 w-3 h-3 bg-indigo-500 rounded-full ring-4 ring-indigo-500/20 animate-ping" />
                     <div className="absolute bottom-1/3 left-1/4 w-3 h-3 bg-indigo-500 rounded-full ring-4 ring-indigo-500/20 animate-ping" />
                  </div>
-
                  {/* Floating Metric Bubbles */}
                  <motion.div 
                     animate={{ y: [0, -20, 0] }}
@@ -106,7 +99,6 @@ export function DigitalTwinSimulation() {
                        <p className="text-xs font-black text-slate-900">Elevated</p>
                     </div>
                  </motion.div>
-
                  <motion.div 
                     animate={{ y: [0, 20, 0] }}
                     transition={{ duration: 5, repeat: Infinity }}

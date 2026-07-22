@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Globe, Shield, Building2, Users, Activity, 
@@ -12,20 +12,14 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, 
   BarChart, Bar, Cell 
 } from 'recharts';
-
 import { useNavigate } from 'react-router-dom';
-
 const data: { name: string; value: number; load: number; active: number }[] = [];
-
 const hospitalData: Record<string, any[]> = {};
-
 export function NationalHealthGrid() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [activeRegion, setActiveRegion] = useState<string | null>(null);
-
   const displayedHospitals: { name: string; cases: number; load: number; trend: string }[] = [];
-
   return (
     <div className="p-8 space-y-8 bg-slate-950 min-h-screen text-slate-100 selection:bg-indigo-500/30">
       {/* Header Panel */}
@@ -42,7 +36,6 @@ export function NationalHealthGrid() {
               </div>
            </div>
         </div>
-
         <div className="flex gap-4">
              <button 
                onClick={() => navigate('/ministry/epidemiology')}
@@ -58,7 +51,6 @@ export function NationalHealthGrid() {
              </button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Real-time Map/Grid Simulation */}
         <div className="xl:col-span-2 space-y-8">
@@ -76,7 +68,6 @@ export function NationalHealthGrid() {
                        <button className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Node Clusters</button>
                     </div>
                  </div>
-
                   {data.length === 0 ? (
                     <div className="col-span-full text-center py-16 bg-white/5 rounded-[2rem] border border-dashed border-white/10">
                       <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center text-slate-500 mx-auto mb-4">
@@ -135,7 +126,6 @@ export function NationalHealthGrid() {
                      ))}
                   </div>
                   )}
-
                   <AnimatePresence>
                    {activeRegion && (
                      <motion.div
@@ -161,7 +151,6 @@ export function NationalHealthGrid() {
                               Collapse Details
                            </button>
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {displayedHospitals.map((h, i) => (
                              <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col justify-between">
@@ -192,7 +181,6 @@ export function NationalHealthGrid() {
                  </AnimatePresence>
               </div>
            </div>
-
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="p-8 bg-white/5 border border-white/5 rounded-[3rem]">
                  <h3 className="text-sm font-black uppercase tracking-widest text-indigo-400 mb-6">{t.latency} (ms)</h3>
@@ -225,7 +213,6 @@ export function NationalHealthGrid() {
               </div>
            </div>
         </div>
-
         {/* Sidebar Alerts / Intelligence */}
         <div className="space-y-8">
             <div className="p-8 bg-indigo-600 rounded-[3rem] text-white shadow-2xl shadow-indigo-900/20 relative overflow-hidden group">
@@ -248,7 +235,6 @@ export function NationalHealthGrid() {
                   </div>
                </div>
             </div>
-
             <div className="p-8 bg-white/5 border border-white/5 rounded-[3rem] space-y-6">
                <h3 className="text-sm font-black uppercase tracking-widest text-indigo-400">{t.nodeStatus}</h3>
                <div className="text-center py-12">
@@ -258,7 +244,6 @@ export function NationalHealthGrid() {
                   Full System Audit
                </button>
             </div>
-
            <div className="p-8 bg-emerald-600/10 border border-emerald-500/20 rounded-[3rem] text-center">
               <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-emerald-500/20">
                  <Shield size={32} />

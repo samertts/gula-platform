@@ -111,28 +111,28 @@ describe('filterByWings', () => {
 
 describe('scoreCommand', () => {
   it('returns 1 for empty query (every command passes)', () => {
-    assert.equal(scoreCommand(COMMANDS[0], t, ''), 1);
-    assert.equal(scoreCommand(COMMANDS[0], t, '   '), 1);
+    assert.equal(scoreCommand(COMMANDS[0]!, t, ''), 1);
+    assert.equal(scoreCommand(COMMANDS[0]!, t, '   '), 1);
   });
 
   it('exact substring beats subsequence', () => {
-    const s1 = scoreCommand(COMMANDS[0], t, 'dash');
-    const s2 = scoreCommand(COMMANDS[0], t, 'gdh'); // subsequence of "go to dashboard"
+    const s1 = scoreCommand(COMMANDS[0]!, t, 'dash');
+    const s2 = scoreCommand(COMMANDS[0]!, t, 'gdh'); // subsequence of "go to dashboard"
     assert.ok(s1 > s2, 'substring score should beat subsequence');
   });
 
   it('keyword and shortcut tokens are searchable', () => {
-    assert.ok(scoreCommand(COMMANDS[0], t, 'home') > 0, 'keyword "home" should match');
-    assert.ok(scoreCommand(COMMANDS[0], t, 'gd') > 0, 'shortcut "GD" should match');
+    assert.ok(scoreCommand(COMMANDS[0]!, t, 'home') > 0, 'keyword "home" should match');
+    assert.ok(scoreCommand(COMMANDS[0]!, t, 'gd') > 0, 'shortcut "GD" should match');
   });
 
   it('case-insensitive match', () => {
-    assert.ok(scoreCommand(COMMANDS[0], t, 'DASHBOARD') > 0);
-    assert.ok(scoreCommand(COMMANDS[0], t, 'dashBOARD') > 0);
+    assert.ok(scoreCommand(COMMANDS[0]!, t, 'DASHBOARD') > 0);
+    assert.ok(scoreCommand(COMMANDS[0]!, t, 'dashBOARD') > 0);
   });
 
   it('returns 0 when no chars line up', () => {
-    assert.equal(scoreCommand(COMMANDS[0], t, 'xyz'), 0);
+    assert.equal(scoreCommand(COMMANDS[0]!, t, 'xyz'), 0);
   });
 });
 

@@ -1,9 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { BrainCircuit, Activity, Zap, TrendingUp, AlertTriangle, ShieldCheck } from 'lucide-react';
+import {BrainCircuit, Activity, Zap, ShieldCheck} from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-
 const RISK_DATA = [
   { subject: 'Cardiovascular', A: 85, full: 100 },
   { subject: 'Respiratory', A: 70, full: 100 },
@@ -11,14 +10,12 @@ const RISK_DATA = [
   { subject: 'Renal', A: 30, full: 100 },
   { subject: 'Metabolic', A: 90, full: 100 },
 ];
-
 export function AdvancedTriageDetails({ patientName }: { patientName: string }) {
   return (
     <div className="bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/5">
       <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150">
          <BrainCircuit size={300} />
       </div>
-
       <div className="relative z-10 space-y-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -35,7 +32,6 @@ export function AdvancedTriageDetails({ patientName }: { patientName: string }) 
              <span className="text-xs font-black uppercase tracking-widest tracking-tighter">Clinical Confidence: 99.1%</span>
           </div>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div className="space-y-8">
             <div className="space-y-4">
@@ -44,7 +40,6 @@ export function AdvancedTriageDetails({ patientName }: { patientName: string }) 
                 GULA's neural backbone has correlated recent lab data (CRP, WBC) with vital telemetry in real-time, identifying a high metabolic-cardio intersection risk.
               </p>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               {[
                 { label: 'Sepsis Risk', val: 'Low', color: 'text-emerald-400' },
@@ -58,7 +53,6 @@ export function AdvancedTriageDetails({ patientName }: { patientName: string }) 
                 </div>
               ))}
             </div>
-
             <div className="p-6 bg-indigo-600/20 border border-indigo-500/20 rounded-[2.5rem] flex items-center gap-4">
                <Activity size={32} className="text-indigo-400 shrink-0" />
                <div>
@@ -67,7 +61,6 @@ export function AdvancedTriageDetails({ patientName }: { patientName: string }) 
                </div>
             </div>
           </div>
-
           <div className="relative h-[400px] bg-white/5 rounded-[3rem] border border-white/5 p-8 flex flex-col items-center justify-center group overflow-hidden">
              <div className="absolute inset-0 opacity-[0.02] pointer-events-none group-hover:scale-110 transition-transform">
                <div style={{ backgroundImage: 'radial-gradient(white 1px, transparent 1px)', backgroundSize: '30px 30px' }} className="w-full h-full" />
@@ -91,7 +84,6 @@ export function AdvancedTriageDetails({ patientName }: { patientName: string }) 
                    </RadarChart>
                 </ResponsiveContainer>
              </div>
-
              <div className="absolute bottom-8 right-8 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-indigo-500" />
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Deep Neural Scoring</span>

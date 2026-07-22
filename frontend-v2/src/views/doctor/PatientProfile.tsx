@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -12,12 +12,10 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { LabTestResult } from '../../types/domain';
-
 import { ClinicalSummaryBento } from '../../components/doctor/ClinicalSummaryBento';
 import { AITriageAssistant } from '../../components/doctor/AITriageAssistant';
 import { PrescriptionBuilder } from '../../components/doctor/PrescriptionBuilder';
 import { ClinicalNotes } from '../../components/doctor/ClinicalNotes';
-
 export function PatientProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -27,7 +25,6 @@ export function PatientProfile() {
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
-
   // Patient data — loaded from Firestore
   const patient: {
     name: string;
@@ -41,7 +38,6 @@ export function PatientProfile() {
     lastVisit: string;
     clinicalSummary: string;
   } | null = null;
-
   // Check for low bandwidth preference
   useEffect(() => {
     const isLow = localStorage.getItem('gula_low_bandwidth') === 'true';
@@ -51,17 +47,11 @@ export function PatientProfile() {
       return () => clearTimeout(timer);
     }
   }, []);
-
   const criticalAlerts: { id: string; text: string; type: string }[] = [];
-
   const timeline: { date: string; type: string; title: string; provider: string; status: string; flag?: string }[] = [];
-
   const medicalHistory: { id: string; date: string; type: string; title: string; provider: string; description: string }[] = [];
-
   const filteredHistory = medicalHistory;
-
   const results: LabTestResult[] = [];
-
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -78,11 +68,8 @@ export function PatientProfile() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 min-h-screen bg-slate-50/20 pb-20">
-
-
       {/* Top Decision Hub Strip */}
       <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-slate-200">
          <div className="flex items-center gap-6">
@@ -112,7 +99,6 @@ export function PatientProfile() {
                )}
             </div>
          </div>
-
          <div className="flex-1 max-w-xl hidden md:block">
             <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
                {criticalAlerts.map(alert => (
@@ -123,7 +109,6 @@ export function PatientProfile() {
                ))}
             </div>
          </div>
-
          <div className="flex gap-3">
             <button 
               onClick={() => setShowAppointmentModal(true)}
@@ -131,13 +116,11 @@ export function PatientProfile() {
             >
                <Calendar size={18} /> {t.scheduleAppointment}
             </button>
-
             <button className="flex items-center gap-3 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-emerald-900/20 hover:scale-[1.02] active:scale-95 transition-all">
                <Zap size={18} /> Quick Order [O]
             </button>
          </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          {/* Left Column: Context Sidebar */}
          <div className="lg:col-span-3 space-y-6">
@@ -173,25 +156,21 @@ export function PatientProfile() {
                   ))}
                </div>
             </div>
-
             <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-8">
                <div>
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Clinical Overview</h3>
                    <p className="text-sm text-slate-600 leading-relaxed italic">"{patient?.clinicalSummary || 'No clinical summary available.'}"</p>
                </div>
-
                 <div className="space-y-4 pt-6 border-t border-slate-50">
                    <div className="flex justify-between items-center">
                       <span className="text-xs text-slate-400 font-medium tracking-tight">Vitals Status</span>
                       <span className="text-xs font-black text-emerald-600 uppercase">Awaiting Data</span>
                    </div>
                 </div>
-
                <button className="w-full py-4 border-2 border-indigo-600 text-indigo-600 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 transition-all">
                   Request LoA-3 Identity
                </button>
             </div>
-
             <div className="bg-slate-50 p-6 rounded-[2rem] space-y-4">
                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Medical Guardians</h3>
                <div className="space-y-3">
@@ -206,7 +185,6 @@ export function PatientProfile() {
                </div>
             </div>
          </div>
-
          {/* Right Column: Decision Hub Content */}
          <div className="lg:col-span-9">
             <AnimatePresence mode="wait">
@@ -282,7 +260,6 @@ export function PatientProfile() {
                     </div>
                  </motion.div>
                )}
-
                {activeTab === 'history' && (
                  <motion.div 
                    key="history"
@@ -373,7 +350,6 @@ export function PatientProfile() {
                                 </div>
                              </div>
                           ))}
-
                           {filteredHistory.length === 0 && (
                             <div className="text-center py-20 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
                                <Search size={48} className="text-slate-300 mx-auto mb-4" />
@@ -384,7 +360,6 @@ export function PatientProfile() {
                     </div>
                  </motion.div>
                )}
-
                {activeTab === 'lab' && (
                  <motion.div 
                    key="lab"
@@ -405,7 +380,6 @@ export function PatientProfile() {
                           </div>
                           <p className="mt-6 text-[10px] font-bold uppercase tracking-widest text-indigo-200">Comparing last 7 Blood Panels</p>
                        </div>
-
                        <div className="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
                           <h4 className="text-sm font-bold text-slate-900 mb-6 flex items-center justify-between">
                              <span className="text-[10px] font-bold text-red-600 px-2 py-1 bg-red-50 rounded">2 Critical</span>
@@ -419,7 +393,6 @@ export function PatientProfile() {
                           </div>
                        </div>
                     </div>
-
                     <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
                        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
                           <h3 className="font-bold text-slate-900">Lab Reports - Production Mode</h3>
@@ -471,7 +444,6 @@ export function PatientProfile() {
                     </div>
                  </motion.div>
                )}
-
                {activeTab === 'radiology' && (
                  <motion.div 
                    key="radiology"
@@ -495,7 +467,6 @@ export function PatientProfile() {
                     </div>
                  </motion.div>
                )}
-
                {activeTab === 'prescriptions' && (
                  <motion.div 
                    key="prescriptions"
@@ -532,7 +503,6 @@ export function PatientProfile() {
                     </div>
                  </motion.div>
                )}
-
                {activeTab === 'notes' && (
                  <motion.div 
                    key="notes"
@@ -555,7 +525,6 @@ export function PatientProfile() {
                     </div>
                  </motion.div>
                )}
-
                {activeTab === 'triage' && (
                 <motion.div
                   key="triage"
@@ -594,7 +563,6 @@ export function PatientProfile() {
             </AnimatePresence>
          </div>
       </div>
-
       {/* Modals Region */}
       <AnimatePresence>
         {showAppointmentModal && (
@@ -639,7 +607,6 @@ export function PatientProfile() {
                         ))}
                      </div>
                   </div>
-
                   <button 
                     onClick={() => setShowAppointmentModal(false)}
                     className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all"
@@ -651,7 +618,6 @@ export function PatientProfile() {
           </div>
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {showTrendModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -677,7 +643,6 @@ export function PatientProfile() {
                       <ChevronRight className="rotate-90 md:rotate-0" size={20} />
                   </button>
                </div>
-
                <div className="grid grid-cols-1 md:grid-cols-12 gap-10 text-right">
                   <div className="md:col-span-8 space-y-8">
                      <div className="h-64 bg-slate-50 rounded-3xl border border-slate-100 p-8 flex items-end gap-3 flex-row-reverse">

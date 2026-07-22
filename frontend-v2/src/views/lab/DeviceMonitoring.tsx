@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Activity as ActivityIcon, Zap, AlertCircle, Settings, 
@@ -6,9 +6,8 @@ import {
   Terminal, BarChart3, Database,
   Cpu, Thermometer, ShieldAlert
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
-
 interface DeviceStatus {
   id: string;
   name: string;
@@ -20,11 +19,9 @@ interface DeviceStatus {
   uptime: string;
   errors: string[];
 }
-
 export function DeviceMonitoring() {
   const { t } = useLanguage();
   const [devices, setDevices] = useState<DeviceStatus[]>([]);
-
   return (
     <div className="p-10 max-w-7xl mx-auto space-y-12 min-h-screen">
       {/* Immersive Device Core Header */}
@@ -51,7 +48,6 @@ export function DeviceMonitoring() {
             Real-time synchronization with the national analytical grid. Automated calibration cycles are being orchestrated via relational trace logic.
           </p>
         </div>
-
         <div className="relative z-10 flex flex-wrap gap-4">
            <button className="px-10 py-5 bg-white text-slate-900 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-white/5 group">
               <BarChart3 size={20} /> Throughput Analytics
@@ -61,7 +57,6 @@ export function DeviceMonitoring() {
            </button>
         </div>
       </div>
-
       {/* Connectivity Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {devices.length === 0 ? (
@@ -110,7 +105,6 @@ export function DeviceMonitoring() {
                   </div>
                </div>
             </div>
-
             {/* Metrics */}
             <div className="p-10 bg-slate-50/30 space-y-8 flex-1">
               <div className="grid grid-cols-2 gap-6">
@@ -133,7 +127,6 @@ export function DeviceMonitoring() {
                     </div>
                  </div>
               </div>
-
               <div className="space-y-3">
                 <div className="flex justify-between items-end">
                    <div className="flex flex-col">
@@ -157,7 +150,6 @@ export function DeviceMonitoring() {
                 </div>
               </div>
             </div>
-
             {/* Console HUD */}
             <div className="px-10 py-6 bg-slate-900">
                <div className="flex items-center gap-3 mb-4">
@@ -177,7 +169,6 @@ export function DeviceMonitoring() {
                  )}
                </div>
             </div>
-
             {/* Control Panel */}
             <div className="p-8 bg-white flex items-center justify-between border-t border-slate-50">
                <button className="p-4 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-2xl shadow-sm transition-all flex items-center gap-3 text-[10px] font-black uppercase tracking-widest">
@@ -198,7 +189,6 @@ export function DeviceMonitoring() {
     </div>
   );
 }
-
 function deviceStatusToWidth(status: string) {
   switch(status) {
     case 'online': return '92%';

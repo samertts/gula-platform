@@ -7,10 +7,8 @@ import {
 import { motion } from 'motion/react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
-
 export function ClinicalSummaryBento() {
   const { t } = useLanguage();
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full">
       {/* Primary Narrative */}
@@ -46,7 +44,6 @@ export function ClinicalSummaryBento() {
            </div>
         </div>
       </div>
-
       {/* Quick Metrics */}
       <div className="md:col-span-4 flex flex-col gap-6">
          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm group">
@@ -60,7 +57,6 @@ export function ClinicalSummaryBento() {
             <h4 className="text-2xl font-black text-slate-900 tracking-tight">+14.2% CRP</h4>
             <p className="text-[11px] text-slate-400 font-medium mt-2">Inflamation indices higher than region average (Erbal-04).</p>
          </div>
-
          <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex-1 relative overflow-hidden group">
             <div className="absolute bottom-0 right-0 p-8 opacity-10 group-hover:translate-x-4 transition-transform">
                <Scale size={80} />
@@ -77,7 +73,6 @@ export function ClinicalSummaryBento() {
             </button>
          </div>
       </div>
-
       {/* Evidence Panels */}
       <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-6">
          {[

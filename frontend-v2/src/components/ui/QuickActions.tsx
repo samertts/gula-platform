@@ -4,7 +4,6 @@ import { Plus, User, Calendar, FileText, FlaskConical, Pill, Activity, X } from 
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-
 interface QuickAction {
   id: string;
   icon: any;
@@ -13,7 +12,6 @@ interface QuickAction {
   path: string;
   shortcut?: string;
 }
-
 const ACTIONS: QuickAction[] = [
   { id: 'patient', icon: User, label: 'Register Patient', description: 'New patient record', path: '/citizen/register' },
   { id: 'appointment', icon: Calendar, label: 'Schedule Appointment', description: 'Book a visit', path: '/appointments' },
@@ -22,13 +20,11 @@ const ACTIONS: QuickAction[] = [
   { id: 'medication', icon: Pill, label: 'Prescribe', description: 'Add medication', path: '/citizen/medications' },
   { id: 'vital', icon: Activity, label: 'Record Vitals', description: 'Log patient vitals', path: '/patients' },
 ];
-
 export function QuickActions() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { t, isRtl } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
@@ -36,12 +32,10 @@ export function QuickActions() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
   const handleAction = useCallback((path: string) => {
     navigate(path);
     setIsOpen(false);
   }, [navigate]);
-
   return (
     <div ref={ref} className="fixed bottom-6 right-6 z-50">
       <AnimatePresence>
@@ -73,7 +67,6 @@ export function QuickActions() {
           </motion.div>
         )}
       </AnimatePresence>
-
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(

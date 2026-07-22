@@ -7,7 +7,6 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell
 } from 'recharts';
-
 const data = [
   { name: 'Mon', volume: 450, expected: 480 },
   { name: 'Tue', volume: 520, expected: 510 },
@@ -17,10 +16,8 @@ const data = [
   { name: 'Sat', volume: 320, expected: 350 },
   { name: 'Sun', volume: 210, expected: 240 },
 ];
-
 export function PredictiveAnalytics() {
   const { t } = useLanguage();
-
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -33,7 +30,6 @@ export function PredictiveAnalytics() {
           <span className="text-[10px] font-black uppercase tracking-widest">Accuracy: 98.4%</span>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden relative group">
            <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
@@ -89,7 +85,6 @@ export function PredictiveAnalytics() {
               </ResponsiveContainer>
            </div>
         </div>
-
         <div className="space-y-6">
            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white">
               <div className="flex items-center gap-3 mb-6">
@@ -118,7 +113,6 @@ export function PredictiveAnalytics() {
                  </div>
               </div>
            </div>
-
            <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[50px] -mr-16 -mt-16" />
               <div className="relative z-10">

@@ -5,7 +5,7 @@ import compression from 'compression';
 import { createServer } from 'http';
 import { z } from 'zod';
 import { structuredLogger } from './utils/structuredLogger';
-import { healthCheck } from './utils/healthCheck';
+import { healthChecker as healthCheck } from './utils/healthCheck';
 
 const app: Express = express();
 const port = process.env.PORT || 3000;
@@ -54,7 +54,7 @@ app.use((req: Request, res: Response, next) => {
 // ============================================================================
 
 // Liveness probe - is the app running?
-app.get('/health/live', async (req: Request, res: Response) => {
+app.get('/health/live', async (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'alive',
     timestamp: new Date().toISOString(),
@@ -63,11 +63,11 @@ app.get('/health/live', async (req: Request, res: Response) => {
 });
 
 // Readiness probe - is the app ready to serve traffic?
-app.get('/health/ready', async (req: Request, res: Response) => {
+app.get('/health/ready', async (_req: Request, res: Response) => {
   try {
     const health = await healthCheck.getFullStatus();
     
-    if (!health.database.healthy || !health.redis.healthy) {
+    if (health.checks.database.status !== 'ok' || health.checks.redis.status !== 'ok') {
       return res.status(503).json({
         status: 'not_ready',
         timestamp: new Date().toISOString(),
@@ -75,15 +75,15 @@ app.get('/health/ready', async (req: Request, res: Response) => {
       });
     }
     
-    res.status(200).json({
+    return res.status(200).json({
       status: 'ready',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       health,
     });
   } catch (error) {
-    structuredLogger.error('Health check failed', { error });
-    res.status(503).json({
+    structuredLogger.error('Health check failed', error instanceof Error ? error : undefined, { errorDetail: String(error) });
+    return res.status(503).json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -91,25 +91,27 @@ app.get('/health/ready', async (req: Request, res: Response) => {
 });
 
 // Detailed health endpoint
-app.get('/health', async (req: Request, res: Response) => {
+app.get('/health', async (_req: Request, res: Response) => {
   try {
     const health = await healthCheck.getFullStatus();
     
-    res.status(200).json({
-      status: health.database.healthy && health.redis.healthy ? 'healthy' : 'degraded',
+    const dbOk = health.checks.database.status === 'ok';
+    const redisOk = health.checks.redis.status === 'ok';
+    return res.status(200).json({
+      status: dbOk && redisOk ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: nodeEnv,
-      database: health.database,
-      redis: health.redis,
+      database: health.checks.database,
+      redis: health.checks.redis,
       memory: {
         heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
         heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
       },
     });
   } catch (error) {
-    structuredLogger.error('Health check failed', { error });
-    res.status(503).json({
+    structuredLogger.error('Health check failed', error instanceof Error ? error : undefined, { errorDetail: String(error) });
+    return res.status(503).json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -121,7 +123,7 @@ app.get('/health', async (req: Request, res: Response) => {
 // ============================================================================
 
 // Test endpoint - simple ping
-app.get('/api/test/ping', (req: Request, res: Response) => {
+app.get('/api/test/ping', (_req: Request, res: Response) => {
   res.json({
     message: 'pong',
     timestamp: new Date().toISOString(),
@@ -143,7 +145,7 @@ app.post('/api/test/echo', (req: Request, res: Response) => {
   } catch (error) {
     res.status(400).json({
       error: 'Invalid request',
-      details: error instanceof z.ZodError ? error.errors : [],
+      details: error instanceof z.ZodError ? error.issues : [],
     });
   }
 });
@@ -162,13 +164,8 @@ app.use((req: Request, res: Response) => {
 });
 
 // Global error handler
-app.use((err: any, req: Request, res: Response, next: any) => {
-  structuredLogger.error('Unhandled error', {
-    error: err.message,
-    stack: err.stack,
-    path: req.path,
-    method: req.method,
-  });
+app.use((err: any, req: Request, res: Response, _next: any) => {
+  structuredLogger.error('Unhandled error', err, { path: req.path, method: req.method });
   
   res.status(500).json({
     error: 'Internal Server Error',
@@ -240,16 +237,12 @@ process.on('SIGINT', gracefulShutdown);
 // ============================================================================
 
 process.on('unhandledRejection', (reason: any) => {
-  structuredLogger.error('Unhandled Rejection', {
-    reason: reason instanceof Error ? reason.message : String(reason),
-  });
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  structuredLogger.error('Unhandled Rejection', err, { reasonDetail: String(reason) });
 });
 
 process.on('uncaughtException', (error: Error) => {
-  structuredLogger.error('Uncaught Exception', {
-    error: error.message,
-    stack: error.stack,
-  });
+  structuredLogger.error('Uncaught Exception', error, { errorMessage: error.message, errorStack: error.stack });
   process.exit(1);
 });
 

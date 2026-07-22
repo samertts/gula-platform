@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Users, Clock, AlertCircle, CheckCircle2, 
@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
-
 interface QueuedPatient {
   id: string;
   name: string;
@@ -22,7 +21,6 @@ interface QueuedPatient {
   vitals: { hr: number; bp: string; temp: string };
   status: 'waiting' | 'in_consultation' | 'completed';
 }
-
 export function DoctorPriorityQueue() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'all' | 'critical' | 'assigned' | 'completed'>('all');
@@ -71,13 +69,11 @@ export function DoctorPriorityQueue() {
       status: 'waiting'
     }
   ];
-
   const filteredQueue = queue.filter(p => {
     if (activeTab === 'all') return true;
     if (activeTab === 'critical') return p.priority === 'critical';
     return true;
   });
-
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
       <div className="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
@@ -119,7 +115,6 @@ export function DoctorPriorityQueue() {
           ))}
         </div>
       </div>
-
       <div className="space-y-4">
         {filteredQueue.map((patient, idx) => (
           <motion.div
@@ -139,7 +134,6 @@ export function DoctorPriorityQueue() {
                  style={{ width: `${Math.max(0, 100 - (patient.slaRemaining / 120) * 100)}%` }}
                />
             </div>
-
             <div className="flex-1 flex items-center gap-6">
               <div className="relative">
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-900 border border-slate-100 shadow-sm font-black text-xl group-hover:scale-110 transition-transform">
@@ -169,7 +163,6 @@ export function DoctorPriorityQueue() {
                 </div>
               </div>
             </div>
-
             <div className="grid grid-cols-4 gap-8 px-8 border-l border-r border-slate-200">
                <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Vitals Radar</span>
@@ -204,7 +197,6 @@ export function DoctorPriorityQueue() {
                   </div>
                </div>
             </div>
-
             <div className="flex items-center gap-3 pl-4">
               <button 
                 onClick={(e) => { e.stopPropagation(); }}
@@ -219,7 +211,6 @@ export function DoctorPriorityQueue() {
           </motion.div>
         ))}
       </div>
-
       <div className="mt-8 flex items-center justify-center">
         <button className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-indigo-600 transition-colors">
           Show All Queued (24 Patients)

@@ -11,18 +11,15 @@ import {
   AlertTriangle,
   Info
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { AuditLogEntry } from '../types/domain';
 import { cn, formatDate, formatTime } from '../lib/utils';
-
 interface AuditLogViewerProps {
   logs: AuditLogEntry[];
   isLoading?: boolean;
 }
-
 export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading }) => {
   const { t, language } = useLanguage();
-
   const getSeverityStyles = (severity: AuditLogEntry['metadata']['severity']) => {
     switch (severity) {
       case 'critical': return 'bg-red-50 text-red-600 border-red-100';
@@ -30,7 +27,6 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading 
       default: return 'bg-blue-50 text-blue-600 border-blue-100';
     }
   };
-
   const getSeverityIcon = (severity: AuditLogEntry['metadata']['severity']) => {
     switch (severity) {
       case 'critical': return <Shield className="text-red-500" size={14} />;
@@ -38,7 +34,6 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading 
       default: return <Info className="text-blue-500" size={14} />;
     }
   };
-
   return (
     <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
       <div className="p-8 border-b border-slate-50 flex items-center justify-between">
@@ -51,7 +46,6 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading 
               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Legally binding execution trace</p>
            </div>
         </div>
-
         <div className="flex items-center gap-3">
            <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -66,7 +60,6 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading 
            </button>
         </div>
       </div>
-
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
@@ -133,7 +126,6 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs, isLoading 
             ))}
           </tbody>
         </table>
-
         {logs.length === 0 && !isLoading && (
           <div className="py-32 text-center">
              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">

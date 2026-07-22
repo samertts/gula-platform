@@ -15,20 +15,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ImageEditor } from '../components/ImageEditor';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
-
 interface HistoryItem {
   id: string;
   url: string;
   timestamp: Date;
   name: string;
 }
-
 export const ImagingLabView: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -40,7 +37,6 @@ export const ImagingLabView: React.FC = () => {
       reader.readAsDataURL(file);
     }
   };
-
   const handleSaveEditedImage = (newImageUrl: string) => {
     const newItem: HistoryItem = {
       id: Math.random().toString(36).substr(2, 9),
@@ -53,7 +49,6 @@ export const ImagingLabView: React.FC = () => {
     setIsEditing(false);
     toast.success("Image processed and saved to history");
   };
-
   const downloadImage = (url: string, filename: string) => {
     const link = document.createElement('a');
     link.href = url;
@@ -62,7 +57,6 @@ export const ImagingLabView: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -101,7 +95,6 @@ export const ImagingLabView: React.FC = () => {
           </button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Preview */}
         <div className="lg:col-span-2 space-y-6">
@@ -170,7 +163,6 @@ export const ImagingLabView: React.FC = () => {
               )}
             </div>
           </div>
-
           {/* Quick Analysis (Decoration) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-6 bg-slate-900 rounded-2xl text-white flex items-center gap-6">
@@ -193,7 +185,6 @@ export const ImagingLabView: React.FC = () => {
             </div>
           </div>
         </div>
-
         {/* History Sidebar */}
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full sticky top-8">
@@ -243,7 +234,6 @@ export const ImagingLabView: React.FC = () => {
                 </div>
               )}
             </div>
-
             <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
               <button 
                 onClick={() => setHistory([])}
@@ -256,7 +246,6 @@ export const ImagingLabView: React.FC = () => {
           </div>
         </div>
       </div>
-
       <AnimatePresence>
         {isEditing && selectedImage && (
           <ImageEditor 
@@ -269,5 +258,4 @@ export const ImagingLabView: React.FC = () => {
     </div>
   );
 };
-
 export default ImagingLabView;

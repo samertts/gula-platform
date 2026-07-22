@@ -5,7 +5,7 @@ import { PageHeader, LoadingSpinner, ErrorDisplay } from "@/components/shared/Pa
 import { Shield, Key, Lock, AlertTriangle } from "lucide-react";
 
 export function SecurityPage() {
-  const { data, isLoading, error, refetch } = useQuery({
+  const { isLoading, error, refetch } = useQuery({
     queryKey: ["security"],
     queryFn: () => securityApi.status(),
   });

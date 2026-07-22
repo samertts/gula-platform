@@ -1,4 +1,4 @@
-import { Search, Bell, User, Globe, LogOut, Zap, Plus, Clock, Activity, Wifi, WifiOff, ChevronDown, Sun, Moon, Settings, LayoutDashboard, History, Star, X, Command, Sparkles, Shield, Building2, CheckCheck, ListTodo, ArrowLeftRight, RefreshCw, AlertTriangle } from 'lucide-react';
+import {Search, Bell, User, Globe, LogOut, Plus, Clock, Activity, Wifi, WifiOff, ChevronDown, Settings, Command, ListTodo, AlertTriangle} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,8 +8,7 @@ import { cn } from '../lib/utils';
 import { useState, useEffect, memo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Badge, Avatar, Kbd, Tooltip, Button } from './ui';
-
+import {Badge, Avatar, Kbd, Tooltip} from './ui';
 interface QuickAction {
   id: string;
   label: string;
@@ -18,19 +17,16 @@ interface QuickAction {
   shortcut?: string;
   description?: string;
 }
-
 const LANGUAGES: Language[] = ['EN', 'AR', 'KU', 'TR', 'SY'];
 const LANG_NAMES: Record<Language, string> = {
   EN: 'English', AR: 'العربية', KU: 'Kurdî', TR: 'Türkçe', SY: 'ܣܘܪܝܬ'
 };
-
 const QUICK_ACTIONS: QuickAction[] = [
   { id: 'new-patient', label: 'Register Patient', icon: User, description: 'New patient record', action: () => {} },
   { id: 'new-order', label: 'New Order', icon: Plus, description: 'Create lab order', action: () => {} },
   { id: 'new-appointment', label: 'Appointment', icon: Clock, description: 'Schedule visit', action: () => {} },
   { id: 'new-result', label: 'Enter Result', icon: Activity, description: 'Record test results', action: () => {} },
 ];
-
 export const TopBar = memo(function TopBar() {
   const { t, setLanguage, language, dir } = useLanguage();
   const { unreadCount, notifications } = useNotifications();
@@ -38,7 +34,6 @@ export const TopBar = memo(function TopBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isRtl = dir === 'rtl';
-
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -47,12 +42,10 @@ export const TopBar = memo(function TopBar() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showEmergency, setShowEmergency] = useState(false);
   const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
-
   const profileRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const quickCreateRef = useRef<HTMLDivElement>(null);
   const tasksRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -60,7 +53,6 @@ export const TopBar = memo(function TopBar() {
     window.addEventListener('offline', handleOffline);
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
   }, []);
-
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setShowProfile(false);
@@ -71,12 +63,10 @@ export const TopBar = memo(function TopBar() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  QUICK_ACTIONS[0].action = () => { navigate('/citizen/register'); setShowQuickCreate(false); };
-  QUICK_ACTIONS[1].action = () => { navigate('/lab/queue'); setShowQuickCreate(false); };
-  QUICK_ACTIONS[2].action = () => { navigate('/appointments'); setShowQuickCreate(false); };
-  QUICK_ACTIONS[3].action = () => { navigate('/lab/queue'); setShowQuickCreate(false); };
-
+  QUICK_ACTIONS[0]!.action = () => { navigate('/citizen/register'); setShowQuickCreate(false); };
+  QUICK_ACTIONS[1]!.action = () => { navigate('/lab/queue'); setShowQuickCreate(false); };
+  QUICK_ACTIONS[2]!.action = () => { navigate('/appointments'); setShowQuickCreate(false); };
+  QUICK_ACTIONS[3]!.action = () => { navigate('/lab/queue'); setShowQuickCreate(false); };
   const getPageTitle = useCallback(() => {
     const path = location.pathname;
     if (path === '/') return t.home || 'Home';
@@ -111,7 +101,6 @@ export const TopBar = memo(function TopBar() {
     if (path.startsWith('/settings')) return t.settings || 'Settings';
     return '';
   }, [location.pathname, t]);
-
   const roleBadge = (() => {
     if (!profile?.role) return '';
     const r = profile.role;
@@ -131,10 +120,8 @@ export const TopBar = memo(function TopBar() {
     if (r === 'citizen') return 'CITIZEN';
     return (r as string).toUpperCase();
   })();
-
   const unreadCritical = notifications.filter(n => !n.read && n.priority === 'stat').length;
   const tasksCount = 3;
-
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
       <div className="flex items-center justify-between px-4 md:px-6 h-14 max-w-screen-2xl mx-auto gap-2">
@@ -159,7 +146,6 @@ export const TopBar = memo(function TopBar() {
             </div>
           </div>
         </div>
-
         {/* Center: Universal Search */}
         <div className="hidden md:flex flex-1 max-w-md justify-center">
           <button
@@ -173,7 +159,6 @@ export const TopBar = memo(function TopBar() {
             </span>
           </button>
         </div>
-
         {/* Right: Command Center Actions */}
         <div className="flex items-center gap-1">
           {/* Quick Create */}
@@ -207,7 +192,7 @@ export const TopBar = memo(function TopBar() {
                         <qa.icon size={16} className="text-slate-500" />
                       </div>
                       <div className="flex flex-col items-start">
-                        <span className="text-sm font-bold">{t[qa.id.replace('new-', '')] || qa.label}</span>
+                        <span className="text-sm font-bold">{(t as Record<string, string>)[qa.id.replace('new-', '')] || qa.label}</span>
                         <span className="text-[9px] text-slate-400">{qa.description}</span>
                       </div>
                     </button>
@@ -216,7 +201,6 @@ export const TopBar = memo(function TopBar() {
               )}
             </AnimatePresence>
           </div>
-
           {/* Language */}
           <div className="relative" ref={langRef}>
             <Tooltip content={t.language || 'Language'}>
@@ -252,7 +236,6 @@ export const TopBar = memo(function TopBar() {
               )}
             </AnimatePresence>
           </div>
-
           {/* Tasks / Workflow */}
           <div className="relative" ref={tasksRef}>
             <Tooltip content="Tasks">
@@ -303,7 +286,6 @@ export const TopBar = memo(function TopBar() {
               )}
             </AnimatePresence>
           </div>
-
           {/* Emergency Alerts */}
           <Tooltip content={t.emergencyAlerts || 'Emergency Alerts'}>
             <button
@@ -313,7 +295,6 @@ export const TopBar = memo(function TopBar() {
               <AlertTriangle size={18} />
             </button>
           </Tooltip>
-
           {/* Notifications */}
           <div className="relative">
             <Tooltip content={t.notifications || 'Notifications'}>
@@ -329,16 +310,13 @@ export const TopBar = memo(function TopBar() {
             </Tooltip>
             <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
           </div>
-
           {/* Sync status */}
           <Tooltip content={isOffline ? 'Offline - changes queued' : 'All changes synced'}>
             <div className={cn('hidden sm:flex items-center justify-center w-9 h-9 rounded-xl transition-all', isOffline ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600')}>
               {isOffline ? <WifiOff size={16} /> : <Wifi size={16} />}
             </div>
           </Tooltip>
-
           <div className="h-6 w-px bg-slate-200 mx-0.5" />
-
           {/* Profile */}
           <div className="relative" ref={profileRef}>
             <button
@@ -401,7 +379,6 @@ export const TopBar = memo(function TopBar() {
     </header>
   );
 });
-
 function CheckAllIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600">

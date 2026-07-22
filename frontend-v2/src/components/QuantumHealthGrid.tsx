@@ -1,19 +1,16 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Shield, Fingerprint, Lock, Globe, Zap, Network, Database, Cpu } from 'lucide-react';
+import {Shield, Fingerprint, Lock, Globe, Zap, Network, Database} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-
 export function QuantumHealthGrid() {
   const { t } = useLanguage();
-
   const nodes = [
     { icon: Fingerprint, label: t.continuousAuth, status: 'Active', color: 'text-indigo-400' },
     { icon: Lock, label: t.zeroTrust, status: 'Enforced', color: 'text-emerald-400' },
     { icon: Shield, label: t.selfSovereignIdentity, status: 'Verified', color: 'text-indigo-400' },
     { icon: Database, label: t.immutableAudit, status: 'Synced', color: 'text-rose-400' },
   ];
-
   return (
     <div className="bg-slate-900 rounded-[3rem] p-8 text-white relative overflow-hidden group border border-white/5">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 to-transparent pointer-events-none" />
@@ -26,7 +23,6 @@ export function QuantumHealthGrid() {
            ))}
         </div>
       </div>
-
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-12">
            <div>
@@ -40,7 +36,6 @@ export function QuantumHealthGrid() {
               <Network size={24} />
            </div>
         </div>
-
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
            {nodes.map((node, i) => (
              <motion.div 
@@ -56,7 +51,6 @@ export function QuantumHealthGrid() {
              </motion.div>
            ))}
         </div>
-
         <div className="p-8 bg-indigo-600/10 rounded-[2.5rem] border border-indigo-500/20 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-[50px] -mr-16 -mt-16" />
            <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">

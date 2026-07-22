@@ -11,12 +11,9 @@ import {
   Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
 import { cn } from '../../lib/utils';
-
 const nodeData: { time: string; load: number; latency: number }[] = [];
-
 export function InfrastructureView() {
   const { t } = useLanguage();
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -40,7 +37,6 @@ export function InfrastructureView() {
            </button>
         </div>
       </div>
-
       {/* Cluster Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {nodeData.length === 0 ? (
@@ -71,7 +67,6 @@ export function InfrastructureView() {
           ))
         )}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
            {/* Real-time Performance Card */}
@@ -133,7 +128,6 @@ export function InfrastructureView() {
                 </div>
               </div>
            </div>
-
            {/* Infrastructure Nodes */}
             <div className="bg-white border border-slate-100 rounded-[3rem] p-8 shadow-sm overflow-hidden">
                <h3 className="text-xl font-bold text-slate-900 tracking-tight mb-8">Cluster Node Registry.</h3>
@@ -146,7 +140,6 @@ export function InfrastructureView() {
                </div>
             </div>
         </div>
-
         <div className="space-y-8">
            {/* Security Event Log */}
            <div className="p-8 bg-white border border-slate-100 rounded-[3rem] shadow-sm">
@@ -161,7 +154,6 @@ export function InfrastructureView() {
                  System Console
               </button>
            </div>
-
            {/* Resource Usage Widget */}
            <div className="p-10 bg-indigo-600 rounded-[3rem] text-white shadow-xl shadow-indigo-100/50">
               <h3 className="text-xl font-bold tracking-tight mb-8">Cloud Resources.</h3>

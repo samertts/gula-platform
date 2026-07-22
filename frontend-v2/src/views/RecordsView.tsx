@@ -5,7 +5,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
-
 interface PatientRow {
   name: string;
   id: string;
@@ -15,22 +14,17 @@ interface PatientRow {
   blood: string;
   date: string;
 }
-
 const SEED: PatientRow[] = [];
-
 export function RecordsView() {
   const { t } = useLanguage();
   const navigate = useNavigate();
-
   // Loading state — preserves layout via TableSkeleton, no jitter on hydrate.
   const [loading, setLoading] = useState(true);
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [query, setQuery] = useState('');
-
   useEffect(() => {
     setLoading(false);
   }, []);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return patients;
@@ -41,7 +35,6 @@ export function RecordsView() {
         p.nhid.toLowerCase().includes(q),
     );
   }, [patients, query]);
-
   const headerBlock = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 max-w-7xl mx-auto w-full">
       <div className="editorial-stack">
@@ -61,11 +54,9 @@ export function RecordsView() {
       </button>
     </div>
   );
-
   return (
     <div className="p-8 space-y-8 animate-in slide-in-from-bottom-4 duration-500">
       {headerBlock}
-
       <div className="max-w-7xl mx-auto w-full bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
         <div className="p-6 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="relative w-full sm:w-80">
@@ -90,7 +81,6 @@ export function RecordsView() {
             <Filter size={20} />
           </button>
         </div>
-
         {loading ? (
           // Identical column count to the real table → zero CLS on hydrate.
           <div className="p-6">

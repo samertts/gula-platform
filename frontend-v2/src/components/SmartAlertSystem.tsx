@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, Zap, ArrowRight, ShieldAlert, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
-
 export interface Alert {
   id: string;
   type: 'critical' | 'warning' | 'info';
@@ -13,15 +12,12 @@ export interface Alert {
   onAction?: () => void;
   timestamp: string;
 }
-
 interface SmartAlertSystemProps {
   alerts: Alert[];
   onDismiss: (id: string) => void;
 }
-
 export function SmartAlertSystem({ alerts, onDismiss }: SmartAlertSystemProps) {
   const { isRtl } = useLanguage();
-
   return (
     <div className="space-y-4 mb-10">
       <div className="flex items-center justify-between mb-2">
@@ -33,7 +29,6 @@ export function SmartAlertSystem({ alerts, onDismiss }: SmartAlertSystemProps) {
          </div>
          <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{alerts.length} Active Protocols</span>
       </div>
-
       <AnimatePresence mode="popLayout">
         {alerts.map((alert) => (
           <motion.div
@@ -58,7 +53,6 @@ export function SmartAlertSystem({ alerts, onDismiss }: SmartAlertSystemProps) {
             )}>
               <Zap size={100} />
             </div>
-
             <div className="relative z-10 flex items-start justify-between gap-6">
               <div className="flex gap-4">
                 <div className={cn(
@@ -98,7 +92,6 @@ export function SmartAlertSystem({ alerts, onDismiss }: SmartAlertSystemProps) {
                   )}
                 </div>
               </div>
-
               <button 
                 onClick={() => onDismiss(alert.id)}
                 className="p-2 text-slate-300 hover:text-rose-500 transition-colors"

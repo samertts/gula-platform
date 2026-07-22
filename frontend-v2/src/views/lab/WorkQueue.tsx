@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import {useState, useEffect, useCallback} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -14,10 +14,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatTime } from '../../lib/utils';
 import { toast } from 'sonner';
 import { ResultEntryUI } from '../../components/lab/ResultEntryUI';
-
 type TaskStatus = 'unassigned' | 'claimed' | 'in-progress' | 'review' | 'completed';
 type TaskPriority = 'routine' | 'urgent'| 'stat';
-
 interface LabTask {
   id: string;
   sampleId: string;
@@ -34,7 +32,6 @@ interface LabTask {
   notes?: string;
   attachments?: string[];
 }
-
 export function WorkQueue() {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
@@ -43,9 +40,7 @@ export function WorkQueue() {
   const [sortBy, setSortBy] = useState<'priority' | 'due'>('priority');
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [isResultEntryOpen, setIsResultEntryOpen] = useState<LabTask | null>(null);
-
   const [tasks, setTasks] = useState<LabTask[]>([]);
-
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [confirmingTask, setConfirmingTask] = useState<{ id: string; action: TaskStatus } | null>(null);
@@ -54,7 +49,6 @@ export function WorkQueue() {
   const [syncQueue, setSyncQueue] = useState<{ taskId: string; action: TaskStatus; timestamp: number }[]>([]);
   const [activeWorkId, setActiveWorkId] = useState<string | null>(null);
   const [criticalAlert, setCriticalAlert] = useState<{ message: string; severity: 'high' | 'critical' } | null>(null);
-
   // Keyboard Shortcuts (UX Requirement)
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     if (isResultEntryOpen) return;
@@ -69,12 +63,10 @@ export function WorkQueue() {
       toast.info('Barcode Scanner Ready...', { icon: '🔍' });
     }
   }, [tasks, isResultEntryOpen]);
-
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
-
   useEffect(() => {
     const handleOnline = () => {
       setIsOffline(false);
@@ -84,7 +76,6 @@ export function WorkQueue() {
       setIsOffline(true);
       toast.error('Connection lost. Entering offline mode.');
     };
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
@@ -94,13 +85,11 @@ export function WorkQueue() {
       setActiveWorkId(taskId);
       toast('Resuming interrupted work session', { icon: '🔄' });
     }
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
   useEffect(() => {
     if (!isOffline && syncQueue.length > 0) {
       const processQueue = async () => {
@@ -114,7 +103,6 @@ export function WorkQueue() {
       processQueue();
     }
   }, [isOffline, syncQueue]);
-
   const handleClaim = (taskId: string) => {
     setIsProcessing(taskId);
     setTimeout(() => {
@@ -127,19 +115,15 @@ export function WorkQueue() {
       });
     }, 600);
   };
-
   const updateTaskStatus = (taskId: string, newStatus: TaskStatus) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-
     if (newStatus === 'completed') {
       setConfirmingTask({ id: taskId, action: newStatus });
       return;
     }
-
     executeStatusUpdate(taskId, newStatus);
   };
-
   const executeStatusUpdate = (taskId: string, newStatus: TaskStatus) => {
     if (isOffline) {
       setSyncQueue(prev => [...prev, { taskId, action: newStatus, timestamp: Date.now() }]);
@@ -147,7 +131,6 @@ export function WorkQueue() {
       setConfirmingTask(null);
       return;
     }
-
     setTasks(prev => prev.map(task => 
       task.id === taskId ? { ...task, status: newStatus } : task
     ));
@@ -159,28 +142,24 @@ export function WorkQueue() {
       setActiveWorkId(null);
     }
   };
-
   const startWork = (task: LabTask) => {
     setIsResultEntryOpen(task);
     setActiveWorkId(task.id);
     localStorage.setItem('active_lab_work', JSON.stringify({ taskId: task.id, startTime: Date.now() }));
     toast.info('Starting intensive sample evaluation...');
   };
-
   const handleResultsSave = (results: any) => {
     if (isResultEntryOpen) {
       updateTaskStatus(isResultEntryOpen.id, 'review');
       setIsResultEntryOpen(null);
     }
   };
-
   const toggleSelect = (taskId: string) => {
     const newSelected = new Set(selectedTasks);
     if (newSelected.has(taskId)) newSelected.delete(taskId);
     else newSelected.add(taskId);
     setSelectedTasks(newSelected);
   };
-
   const handleBulkClaim = () => {
     const taskIds = Array.from(selectedTasks);
     setTasks(prev => prev.map(task => 
@@ -191,9 +170,7 @@ export function WorkQueue() {
     setSelectedTasks(new Set());
     toast.success(`Claimed ${taskIds.length} tasks`);
   };
-
   const sections = ['All', 'Hematology', 'Biochemistry', 'Serology', 'Microbiology'];
-
   if (isResultEntryOpen) {
     return (
       <div className="p-8">
@@ -208,7 +185,6 @@ export function WorkQueue() {
       </div>
     );
   }
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 min-h-screen bg-slate-50/20">
       {/* Connection Status & Critical Alerts */}
@@ -241,7 +217,6 @@ export function WorkQueue() {
             </div>
           </motion.div>
         )}
-
         {criticalAlert && (
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
@@ -268,13 +243,11 @@ export function WorkQueue() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Production Control Header */}
       <div className="bg-slate-900 rounded-[3rem] p-10 text-white flex flex-col lg:flex-row items-center justify-between gap-8 shadow-2xl relative">
          <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150">
             <Microscope size={240} />
          </div>
-
          <div className="relative z-10 flex items-center gap-8">
             <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-500/20 rotate-3 group-hover:rotate-0 transition-transform">
               <ActivityIcon size={40} className="animate-pulse" />
@@ -289,11 +262,9 @@ export function WorkQueue() {
                   <div className="w-1 h-1 rounded-full bg-white/20" />
                   <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{profile?.name || 'Operator'} Authorized</span>
                   
-
                </div>
             </div>
          </div>
-
          <div className="relative z-10 flex bg-white/5 p-1.5 rounded-2xl border border-white/10">
             {(['technician', 'pathologist', 'manager'] as const).map(mode => (
               <button 
@@ -308,7 +279,6 @@ export function WorkQueue() {
               </button>
             ))}
          </div>
-
          <div className="relative z-10 flex gap-4">
             <div className="text-right">
                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Total Throughput</p>
@@ -321,7 +291,6 @@ export function WorkQueue() {
             </div>
          </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <div className="lg:col-span-3 space-y-6">
             <div className="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
@@ -341,7 +310,6 @@ export function WorkQueue() {
                   ))}
                </div>
             </div>
-
             <div className="bg-indigo-600 rounded-[2rem] p-8 text-white shadow-xl shadow-indigo-100">
                <h3 className="text-sm font-black mb-6 flex items-center gap-2">
                  <Zap size={18} className="text-amber-400 fill-amber-400" /> System Automation
@@ -361,7 +329,6 @@ export function WorkQueue() {
                </button>
             </div>
          </div>
-
          <div className="lg:col-span-9 space-y-6">
             <div className="flex items-center justify-between px-2 mt-4">
                <div className="flex items-center gap-4">
@@ -420,7 +387,6 @@ export function WorkQueue() {
                   </button>
                </div>
             </div>
-
             <div className="space-y-4">
                <AnimatePresence mode="popLayout">
                   {tasks.length === 0 ? (
@@ -487,7 +453,6 @@ export function WorkQueue() {
                                 <p className="text-[10px] text-indigo-600 font-black uppercase tracking-[0.2em]">{task.testName}</p>
                              </div>
                           </div>
-
                           <div className="md:col-span-4 flex flex-col gap-4 border-l border-r border-slate-100 px-8">
                                  <div className="space-y-1.5">
                                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
@@ -528,7 +493,6 @@ export function WorkQueue() {
                                 </div>
                              </div>
                           </div>
-
                           <div className="md:col-span-4 flex items-center justify-end gap-4 pl-8">
                              {task.status === 'unassigned' ? (
                                <button 
@@ -583,7 +547,6 @@ export function WorkQueue() {
                              </button>
                           </div>
                        </div>
-
                        {/* Expansion Panel */}
                        <AnimatePresence>
                          {expandedTaskId === task.id && (
@@ -620,7 +583,6 @@ export function WorkQueue() {
                                          "{task.notes || 'No clinical notes provided for this sample phase.'}"
                                       </p>
                                    </div>
-
                                    {task.attachments && task.attachments.length > 0 && (
                                      <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2">
                                         {task.attachments.map((file, idx) => (
@@ -642,7 +604,6 @@ export function WorkQueue() {
             </div>
          </div>
       </div>
-
       {/* Action Confirmation Modal */}
       <AnimatePresence>
         {confirmingTask && (
@@ -680,7 +641,6 @@ export function WorkQueue() {
                      <p className="text-slate-500 font-medium mb-8 text-sm">
                         You are about to mark sample <span className="font-bold text-slate-900">#{task.sampleId}</span> ({task.testName}) as <span className="font-bold text-indigo-600 uppercase">{confirmingTask.action}</span>. This action is irreversible in the current cycle.
                      </p>
-
                      {isHighRisk && (
                        <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-[2rem] flex items-center gap-4 text-left">
                           <AlertCircle className="text-red-600 shrink-0" size={24} />
@@ -690,7 +650,6 @@ export function WorkQueue() {
                           </div>
                        </div>
                      )}
-
                      <div className="flex gap-4">
                         <button 
                            onClick={() => setConfirmingTask(null)}

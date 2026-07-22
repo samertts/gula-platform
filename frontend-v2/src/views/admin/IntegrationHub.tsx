@@ -13,16 +13,13 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
-
 const CodeBlock = ({ code }: { code: string }) => {
   const [copied, setCopied] = React.useState(false);
-
   const copy = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
   return (
     <div className="bg-slate-900 rounded-2xl p-6 relative group overflow-hidden border border-white/5">
       <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -36,10 +33,8 @@ const CodeBlock = ({ code }: { code: string }) => {
     </div>
   );
 };
-
 export function IntegrationHub() {
   const { t } = useLanguage();
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
@@ -51,12 +46,10 @@ export function IntegrationHub() {
           <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Developer Integration Hub.</h1>
           <p className="text-slate-500 font-medium max-w-2xl">Connect external LIMS, RIS, and clinical systems through standardized FHIR/HL7 compatible APIs.</p>
         </div>
-
         <button className="px-6 py-3 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-100 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all">
            Generate API Credentials <Key size={16} />
         </button>
       </div>
-
       <div className="grid grid-cols-12 gap-8">
         {/* API Stats */}
         <div className="col-span-12 lg:col-span-4 bg-white rounded-[2.5rem] border border-slate-100 p-8 space-y-8">
@@ -66,7 +59,6 @@ export function IntegrationHub() {
                  <p className="text-slate-400 text-sm font-medium">No API endpoints connected. Configure integrations to see metrics.</p>
                </div>
            </div>
-
            <div className="bg-slate-900 rounded-[2rem] p-6 text-white overflow-hidden relative">
               <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/20 blur-[60px] -mr-8 -mt-8" />
               <div className="relative z-10">
@@ -79,7 +71,6 @@ export function IntegrationHub() {
               </div>
            </div>
         </div>
-
         {/* Documentation / Code */}
         <div className="col-span-12 lg:col-span-8 bg-white rounded-[2.5rem] border border-slate-100 p-8">
            <div className="flex items-center gap-4 mb-10">
@@ -91,7 +82,6 @@ export function IntegrationHub() {
                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">REST and GraphQL documentation</p>
               </div>
            </div>
-
            <div className="space-y-8">
               <div className="space-y-4">
                  <div className="flex items-center justify-between">
@@ -100,7 +90,6 @@ export function IntegrationHub() {
                  </div>
                  <CodeBlock code={`POST /api/v1/auth/token
 Content-Type: application/json
-
 {
   "client_id": "GULA_HL7_NODE_882",
   "client_secret": "********************",
@@ -108,7 +97,6 @@ Content-Type: application/json
   "scope": "system/*.read system/*.write"
 }`} />
               </div>
-
               <div className="space-y-4">
                  <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Query Patient Data (FHIR R4)</h4>
@@ -120,7 +108,6 @@ Content-Type: application/json
 Authorization: Bearer {{ACCESS_TOKEN}}
 Accept: application/fhir+json`} />
               </div>
-
               <div className="p-6 bg-slate-50 rounded-3xl border border-dashed border-slate-200 flex items-start gap-4">
                  <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
                     <Lock size={18} className="text-amber-500" />

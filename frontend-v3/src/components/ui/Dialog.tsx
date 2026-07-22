@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { Button } from "./Button";
+import {} from "./Button";
 import { X } from "lucide-react";
 
 interface DialogProps {

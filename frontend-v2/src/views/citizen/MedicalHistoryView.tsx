@@ -7,11 +7,9 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
-
 export const MedicalHistoryView: React.FC = () => {
   const { t } = useLanguage();
   const [filter, setFilter] = useState('all');
-
   const aiInsights = [
     { 
       type: 'warning', 
@@ -26,14 +24,12 @@ export const MedicalHistoryView: React.FC = () => {
       action: 'View Trend'
     }
   ];
-
   const historyItems = [
     { id: '1', date: '2024-03-15', provider: 'Dr. Sarah Smith', type: 'diagnosis', title: 'Hypertension Follow-up', desc: 'Blood pressure stabilized at 125/82. Continuing current medication.' },
     { id: '2', date: '2024-02-28', provider: 'Central Lab', type: 'lab', title: 'Complete Blood Count', desc: 'All parameters within normal range. Slight vitamin D deficiency noted.' },
     { id: '3', date: '2024-01-10', provider: 'Radiology Dept', type: 'imaging', title: 'Chest X-Ray', desc: 'No significant findings. Clear lung fields.' },
     { id: '4', date: '2023-12-05', provider: 'General Clinic', type: 'prescription', title: 'Amoxicillin 500mg', desc: 'Treatment for acute pharyngitis.' },
   ];
-
   const getTypeStyles = (type: string) => {
     switch(type) {
       case 'diagnosis': return 'bg-blue-100 text-blue-600';
@@ -43,7 +39,6 @@ export const MedicalHistoryView: React.FC = () => {
       default: return 'bg-slate-100 text-slate-600';
     }
   };
-
   const getTypeIcon = (type: string) => {
     switch(type) {
       case 'diagnosis': return Stethoscope;
@@ -53,7 +48,6 @@ export const MedicalHistoryView: React.FC = () => {
       default: return HistoryIcon;
     }
   };
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -76,7 +70,6 @@ export const MedicalHistoryView: React.FC = () => {
           </button>
         </div>
       </div>
-
       {/* AI Intelligence Block */}
       <div className="bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] -mr-32 -mt-32" />
@@ -124,7 +117,6 @@ export const MedicalHistoryView: React.FC = () => {
           </div>
         </div>
       </div>
-
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
          {[
@@ -139,7 +131,6 @@ export const MedicalHistoryView: React.FC = () => {
            </div>
          ))}
       </div>
-
       <div className="grid lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white border border-slate-100 rounded-[3rem] shadow-xl shadow-slate-200/50 overflow-hidden">
@@ -160,7 +151,6 @@ export const MedicalHistoryView: React.FC = () => {
                   ))}
                </div>
             </div>
-
             <div className="p-2">
                {historyItems.filter(h => filter === 'all' || h.type === filter).map((h, i) => {
                  const Icon = getTypeIcon(h.type);
@@ -197,7 +187,6 @@ export const MedicalHistoryView: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="space-y-6">
            <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">Structured Labs</h3>
            <div className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-xl shadow-slate-200/50 space-y-6">
@@ -232,7 +221,6 @@ export const MedicalHistoryView: React.FC = () => {
               ))}
               <button className="w-full py-4 bg-slate-50 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">View All 42 Results</button>
            </div>
-
            <div className="p-8 bg-slate-900 rounded-[2.5rem] border border-white/10 flex items-center gap-4 text-white">
               <div className="bg-indigo-600 p-3 rounded-xl shadow-lg ring-4 ring-indigo-500/20">
                  <Shield size={20} />

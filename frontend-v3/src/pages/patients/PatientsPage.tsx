@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { patientsApi } from "@/api/endpoints";
-import { Card, CardHeader, CardTitle, CardContent, Input, Badge, DataTable } from "@/components/ui";
+import { Card, CardContent, Input, Badge, DataTable } from "@/components/ui";
 import { Search } from "lucide-react";
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";

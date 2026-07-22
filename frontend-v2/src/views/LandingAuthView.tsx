@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Shield, Mail, Lock, UserPlus, LogIn, Heart, 
-  AlertCircle, Chrome, User, Stethoscope, 
+  AlertCircle, Globe, User, Stethoscope, 
   Beaker, ChevronRight, ChevronLeft, Upload,
   Fingerprint, Smartphone, CheckCircle2, ScanFace,
   RefreshCcw, ShieldCheck, Key, Activity as ActivityIcon, WifiOff, Search
@@ -22,12 +22,9 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { UserRole, UserWing } from '../types/domain';
 import { PasswordStrength } from '../components/auth/PasswordStrength';
 import { OTPInput } from '../components/auth/OTPInput';
-
 import { useAuth } from '../contexts/AuthContext';
 import { UserProfile } from '../types/domain';
-
 type AuthStep = 'initial' | 'login' | 'signup_role' | 'signup_form' | 'identity_verification' | 'medical_migration' | 'verify_otp' | 'success' | 'forgot_password' | 'otp_login' | 'biometric_auth';
-
 export const LandingAuthView: React.FC = () => {
   const { t, language, setLanguage, isRtl } = useLanguage();
   const { bypassAuth } = useAuth();
@@ -54,7 +51,6 @@ export const LandingAuthView: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [biometricType, setBiometricType] = useState<'fingerprint' | 'face'>('fingerprint');
-
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -66,9 +62,7 @@ export const LandingAuthView: React.FC = () => {
       isMounted.current = false;
     };
   }, []);
-
   const langs: any[] = ['EN', 'AR', 'KU', 'TR', 'SY'];
-
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError(null);
@@ -87,14 +81,12 @@ export const LandingAuthView: React.FC = () => {
         updatedAt: serverTimestamp(),
         displayName: result.user.displayName || result.user.email?.split('@')[0],
       }, { merge: true });
-
     } catch (err: any) {
       if (isMounted.current) setError(err.message);
     } finally {
       if (isMounted.current) setIsLoading(false);
     }
   };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -107,7 +99,6 @@ export const LandingAuthView: React.FC = () => {
       if (isMounted.current) setIsLoading(false);
     }
   };
-
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -122,7 +113,6 @@ export const LandingAuthView: React.FC = () => {
       if (isMounted.current) setIsLoading(false);
     }
   };
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (role === 'citizen') {
@@ -131,7 +121,6 @@ export const LandingAuthView: React.FC = () => {
       setStep('verify_otp');
     }
   };
-
   const handleBiometricLogin = async () => {
     setIsLoading(true);
     setError(null);
@@ -142,7 +131,6 @@ export const LandingAuthView: React.FC = () => {
       setIsLoading(false);
     }
   };
-
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) return;
     setIsLoading(true);
@@ -162,7 +150,6 @@ export const LandingAuthView: React.FC = () => {
         verified: role === 'citizen' ? false : true, // Verification needed for pros
         createdAt: serverTimestamp(),
       });
-
       await updateProfile(user, { displayName: fullName });
       if (isMounted.current) setStep('success');
     } catch (err: any) {
@@ -171,7 +158,6 @@ export const LandingAuthView: React.FC = () => {
       if (isMounted.current) setIsLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen relative overflow-hidden bg-slate-50 flex items-center justify-center p-4">
       {/* Dynamic Background Mesh */}
@@ -180,7 +166,6 @@ export const LandingAuthView: React.FC = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[150px] animate-pulse" style={{ animationDelay: '2s' }} />
         <div className="absolute top-[30%] right-[20%] w-[30%] h-[30%] rounded-full bg-rose-500/10 blur-[120px] animate-pulse" style={{ animationDelay: '4s' }} />
       </div>
-
       <div className="relative z-10 max-w-6xl w-full grid md:grid-cols-2 bg-white/70 backdrop-blur-3xl rounded-[40px] overflow-hidden shadow-[0_64px_128px_-32px_rgba(0,0,0,0.15)] border border-white min-h-[700px]">
         {/* Branding Sidebar */}
         <div className="bg-slate-900 p-12 text-white flex flex-col justify-between relative overflow-hidden">
@@ -220,7 +205,6 @@ export const LandingAuthView: React.FC = () => {
                      t.seamlessIdentity}
                   </p>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] backdrop-blur-md group hover:bg-white/10 transition-all">
                        <ShieldCheck className="w-8 h-8 text-emerald-400 mb-4" />
@@ -258,7 +242,6 @@ export const LandingAuthView: React.FC = () => {
             </div>
           </div>
         </div>
-
         {/* Content Area */}
         <div className={cn("p-8 md:p-14 flex flex-col justify-center bg-white relative", isRtl ? "text-right" : "text-left")}>
           {/* Language Switcher */}
@@ -278,7 +261,6 @@ export const LandingAuthView: React.FC = () => {
               </button>
             ))}
           </div>
-
           {isOffline && (
             <div className="absolute top-4 left-4 right-4 bg-amber-500 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest animate-in slide-in-from-top duration-300 z-50 shadow-lg mb-4">
               <WifiOff size={14} />
@@ -299,7 +281,6 @@ export const LandingAuthView: React.FC = () => {
                   <h3 className="text-4xl font-black text-slate-900 tracking-tight">{t.welcomeBack}</h3>
                   <p className="text-slate-500 font-medium tracking-tight">{t.nationalCommandCenter}</p>
                 </div>
-
                 <div className="grid grid-cols-1 gap-4">
                   <button
                     onClick={() => setStep('login')}
@@ -315,7 +296,6 @@ export const LandingAuthView: React.FC = () => {
                     </div>
                     <ChevronRight className={cn("text-slate-300", isRtl ? "mr-auto rotate-180" : "ml-auto")} />
                   </button>
-
                   <button
                     onClick={() => setStep('signup_role')}
                     disabled={isOffline}
@@ -330,7 +310,6 @@ export const LandingAuthView: React.FC = () => {
                     </div>
                     <ChevronRight className={cn("text-slate-300", isRtl ? "mr-auto rotate-180" : "ml-auto")} />
                   </button>
-
                   <button
                     onClick={() => setStep('biometric_auth')}
                     disabled={isOffline}
@@ -346,20 +325,18 @@ export const LandingAuthView: React.FC = () => {
                     <ChevronRight className={cn("text-slate-300", isRtl ? "mr-auto rotate-180" : "ml-auto")} />
                   </button>
                 </div>
-
                 <div className="relative flex items-center gap-4">
                    <div className="flex-1 h-px bg-slate-100" />
                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t.federatedAuth}</span>
                    <div className="flex-1 h-px bg-slate-100" />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                    <button
                     onClick={handleGoogleSignIn}
                     disabled={isLoading}
                     className="py-4 px-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest text-slate-700 hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Chrome className="w-4 h-4 text-indigo-600" />
+                    <Globe className="w-4 h-4 text-indigo-600" />
                     Google
                   </button>
                   <button
@@ -383,7 +360,6 @@ export const LandingAuthView: React.FC = () => {
                 </div>
               </motion.div>
             )}
-
             {(step === 'login' || step === 'otp_login') && (
               <motion.div
                 key="login"
@@ -414,7 +390,6 @@ export const LandingAuthView: React.FC = () => {
                 </div>
                 
                 {error && <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-bold border border-red-100 flex items-center gap-3"><AlertCircle size={18} /> {error}</div>}
-
                 {step === 'login' ? (
                   <form onSubmit={handleLogin} className="space-y-6">
                     <div className={isRtl ? "text-right" : "text-left"}>
@@ -495,7 +470,6 @@ export const LandingAuthView: React.FC = () => {
                 )}
               </motion.div>
             )}
-
             {step === 'forgot_password' && (
               <motion.div
                 key="forgot"
@@ -517,7 +491,6 @@ export const LandingAuthView: React.FC = () => {
                 
                 {message && <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl text-xs font-bold border border-emerald-100 flex items-center gap-3"><CheckCircle2 size={18} /> {message}</div>}
                 {error && <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-bold border border-red-100 flex items-center gap-3"><AlertCircle size={18} /> {error}</div>}
-
                 <form onSubmit={handleForgotPassword} className="space-y-6">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Account Email</label>
@@ -543,7 +516,6 @@ export const LandingAuthView: React.FC = () => {
                 </form>
               </motion.div>
             )}
-
             {step === 'signup_role' && (
               <motion.div
                 key="signup_role"
@@ -589,7 +561,6 @@ export const LandingAuthView: React.FC = () => {
                 </div>
               </motion.div>
             )}
-
             {step === 'identity_verification' && (
               <motion.div
                 key="identity_verification"
@@ -601,7 +572,6 @@ export const LandingAuthView: React.FC = () => {
                   <h3 className="text-3xl font-black text-slate-900 tracking-tight">{t.identVerification}</h3>
                   <p className="text-slate-500 font-medium tracking-tight">Secure identity validation for the Unified Health Record.</p>
                 </div>
-
                 <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-200">
                   <button 
                     onClick={() => setIdentMethod('camera')}
@@ -616,7 +586,6 @@ export const LandingAuthView: React.FC = () => {
                     {t.uploadIdentity}
                   </button>
                 </div>
-
                 <div className="aspect-video bg-slate-900 rounded-3xl overflow-hidden relative group">
                   {identMethod === 'camera' ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50">
@@ -640,7 +609,6 @@ export const LandingAuthView: React.FC = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="pt-4 flex gap-4">
                   <button 
                     onClick={() => setStep('signup_form')}
@@ -657,7 +625,6 @@ export const LandingAuthView: React.FC = () => {
                 </div>
               </motion.div>
             )}
-
             {step === 'medical_migration' && (
               <motion.div
                 key="medical_migration"
@@ -669,7 +636,6 @@ export const LandingAuthView: React.FC = () => {
                   <h3 className="text-3xl font-black text-slate-900 tracking-tight">{t.medicalHistory}</h3>
                   <p className="text-slate-500 font-medium tracking-tight">Sync previous lab results and checkups to your unified record.</p>
                 </div>
-
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                    <div className="p-6 bg-slate-50 border border-slate-200 border-dashed rounded-3xl text-center group cursor-pointer hover:border-indigo-600 transition-all">
                       <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4 group-hover:text-indigo-600 shadow-sm transition-colors">
@@ -684,7 +650,6 @@ export const LandingAuthView: React.FC = () => {
                          {t.selectFile}
                       </label>
                    </div>
-
                    <div className="p-6 bg-slate-50 border border-slate-200 border-dashed rounded-3xl text-center group cursor-pointer hover:border-indigo-600 transition-all">
                       <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4 group-hover:text-indigo-600 shadow-sm transition-colors">
                         <ActivityIcon size={24} />
@@ -696,7 +661,6 @@ export const LandingAuthView: React.FC = () => {
                       </button>
                    </div>
                 </div>
-
                 <div className="pt-4 flex gap-4">
                   <button 
                     onClick={() => setStep('identity_verification')}
@@ -731,7 +695,6 @@ export const LandingAuthView: React.FC = () => {
                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">{t.onboarding}</h3>
                    <p className="text-slate-500 font-medium tracking-tight">{t.provisioningAccount}</p>
                 </div>
-
                 <form onSubmit={handleSignup} className="space-y-5 max-h-[450px] overflow-y-auto pr-3 custom-scrollbar">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
@@ -743,12 +706,10 @@ export const LandingAuthView: React.FC = () => {
                        <input type="tel" value={phone} onChange={e=>setPhone(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100" required />
                      </div>
                   </div>
-
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{t.email}</label>
                     <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100" required />
                   </div>
-
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{t.password}</label>
                     <div className="relative">
@@ -765,7 +726,6 @@ export const LandingAuthView: React.FC = () => {
                       <input type="text" value={nationalId} onChange={e=>setNationalId(e.target.value)} placeholder="000-0000-000000-0" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100" required />
                     </div>
                   </div>
-
                   {role !== 'citizen' && (
                     <div className="bg-slate-900 rounded-3xl p-6 space-y-4">
                       <div>
@@ -780,12 +740,10 @@ export const LandingAuthView: React.FC = () => {
                       </button>
                     </div>
                   )}
-
                   <div className="flex items-center gap-3 py-2">
                      <input type="checkbox" id="terms" required className="w-5 h-5 rounded-lg border-slate-200 text-indigo-600" />
                      <label htmlFor="terms" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">{t.termsAgreement}</label>
                   </div>
-
                   <button
                     type="submit"
                     className="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all"
@@ -795,7 +753,6 @@ export const LandingAuthView: React.FC = () => {
                 </form>
               </motion.div>
             )}
-
             {step === 'verify_otp' && (
               <motion.div
                 key="verify_otp"
@@ -809,14 +766,12 @@ export const LandingAuthView: React.FC = () => {
                      <Smartphone className="w-12 h-12" />
                    </div>
                 </div>
-
                  <div className="space-y-2">
                     <h3 className="text-4xl font-black text-slate-900 tracking-tight">{t.biometricVerified}</h3>
                     <p className="text-slate-500 font-medium tracking-tight">Security code transmitted to <span className="font-bold text-indigo-600">{phone || 'device'}</span></p>
                  </div>
                 
                 <OTPInput value={otp} onChange={setOtp} length={6} disabled={isLoading} />
-
                 <div className="space-y-6">
                   <button 
                     onClick={handleVerifyOtp}
@@ -838,7 +793,6 @@ export const LandingAuthView: React.FC = () => {
                 </div>
               </motion.div>
             )}
-
             {step === 'biometric_auth' && (
               <motion.div
                 key="biometric"
@@ -870,7 +824,6 @@ export const LandingAuthView: React.FC = () => {
                     </button>
                   </div>
                 </div>
-
                 <div className="relative inline-block mt-4">
                    <AnimatePresence mode="wait">
                      <motion.div
@@ -909,7 +862,6 @@ export const LandingAuthView: React.FC = () => {
                      </motion.div>
                    </AnimatePresence>
                 </div>
-
                 <div className="space-y-2">
                    <h3 className="text-4xl font-black text-slate-900 tracking-tight">
                      {biometricType === 'fingerprint' ? t.biometricId : t.captureIdentity} {t.biometricVerification}
@@ -918,13 +870,11 @@ export const LandingAuthView: React.FC = () => {
                      {isLoading ? t.analyzingBiometrics : t.identityVerifiedHardware}
                    </p>
                 </div>
-
                 {error && (
                   <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-bold border border-red-100 flex items-center gap-3">
                     <AlertCircle size={18} /> {error}
                   </div>
                 )}
-
                 <div className="space-y-4">
                   <button 
                     onClick={handleBiometricLogin}
@@ -946,7 +896,6 @@ export const LandingAuthView: React.FC = () => {
                     FIDO2 / WebAuthn Compliant Secure Hub
                   </p>
                 </div>
-
                 {!isLoading && (
                   <button 
                     onClick={() => setStep('login')}
@@ -957,7 +906,6 @@ export const LandingAuthView: React.FC = () => {
                 )}
               </motion.div>
             )}
-
             {step === 'success' && (
               <motion.div
                 key="success"
@@ -973,7 +921,6 @@ export const LandingAuthView: React.FC = () => {
                     <h3 className="text-4xl font-black text-slate-900 tracking-tight">{t.successRate}</h3>
                     <p className="text-slate-500 font-medium tracking-tight">{t.accountProvisioned}</p>
                  </div>
-
                 <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-200 text-left space-y-4">
                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
                       <span className={cn(isRtl ? "text-right" : "text-left", "text-slate-400")}>{t.accountStatus}</span>
@@ -988,7 +935,6 @@ export const LandingAuthView: React.FC = () => {
                       <span className="text-[10px] font-black text-indigo-600 uppercase bg-indigo-50 px-2 py-1 rounded-lg">{wing}</span>
                    </div>
                 </div>
-
                  <button 
                    onClick={() => window.location.reload()}
                    className="w-full bg-indigo-600 text-white py-5 rounded-[2.5rem] font-black uppercase tracking-widest text-sm shadow-2xl shadow-indigo-200 hover:scale-[1.02] active:scale-95 transition-all"
@@ -998,7 +944,6 @@ export const LandingAuthView: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
-
           {/* Footer Branding */}
            <div className="mt-12 pt-8 border-t border-slate-50 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] font-black text-slate-300 uppercase tracking-widest">
              <div className="flex items-center gap-2">

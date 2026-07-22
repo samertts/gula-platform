@@ -26,21 +26,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Task } from '../types/domain';
 import { cn, formatTime, formatDate } from '../lib/utils';
 import { useState, useRef, useEffect } from 'react';
-
 interface TaskQueueProps {
   tasks: Task[];
   onAssign?: (taskId: string) => void;
   onUpdateStatus?: (taskId: string, status: Task['status']) => void;
   onBulkAction?: (action: 'assign' | 'complete' | 'hold' | 'process', taskIds: string[]) => void;
 }
-
 export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateStatus, onBulkAction }) => {
   const { t, language } = useLanguage();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showBulkDropdown, setShowBulkDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -50,7 +47,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
   const toggleSelect = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const newSelected = new Set(selectedIds);
@@ -61,11 +57,9 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
     }
     setSelectedIds(newSelected);
   };
-
   const toggleExpand = (id: string) => {
     setExpandedTaskId(expandedTaskId === id ? null : id);
   };
-
   const toggleSelectAll = () => {
     if (selectedIds.size === tasks.length) {
       setSelectedIds(new Set());
@@ -73,12 +67,10 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
       setSelectedIds(new Set(tasks.map(t => t.id)));
     }
   };
-
   const handleBulkAction = (action: 'assign' | 'complete' | 'hold' | 'process') => {
     onBulkAction?.(action, Array.from(selectedIds));
     setSelectedIds(new Set());
   };
-
   const getPriorityColor = (priority: Task['priority']) => {
     switch (priority) {
       case 'critical': return 'bg-red-50 text-red-600 border-red-100';
@@ -87,7 +79,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
       default: return 'bg-slate-50 text-slate-600 border-slate-100';
     }
   };
-
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'completed': return <CheckCircle2 className="text-green-500" size={18} />;
@@ -96,7 +87,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
       default: return <ClipboardList className="text-slate-400" size={18} />;
     }
   };
-
   return (
     <div className="space-y-4 relative">
       {/* Bulk Action Bar */}
@@ -131,7 +121,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                 </div>
               </div>
             </div>
-
             <div className="flex items-center gap-3 relative" ref={dropdownRef}>
               <button 
                 onClick={() => setShowBulkDropdown(!showBulkDropdown)}
@@ -140,7 +129,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                 <span>Batch Actions</span>
                 <ChevronDown size={14} className={cn("transition-transform", showBulkDropdown && "rotate-180")} />
               </button>
-
               <AnimatePresence>
                 {showBulkDropdown && (
                   <motion.div
@@ -177,7 +165,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
           </motion.div>
         )}
       </AnimatePresence>
-
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <button 
@@ -202,7 +189,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
           </button>
         </div>
       </div>
-
       <div className="grid gap-3">
         <AnimatePresence mode="popLayout">
           {tasks.map((task) => (
@@ -233,7 +219,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                     >
                       {selectedIds.has(task.id) ? <Check size={14} /> : <div className="w-2 h-2 bg-slate-100 rounded-sm" />}
                     </button>
-
                     <div className={cn(
                       "p-3 rounded-2xl shrink-0 transition-colors", 
                       task.status === 'on_hold' ? "bg-amber-100 text-amber-600 shadow-inner" : getPriorityColor(task.priority)
@@ -266,7 +251,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                       </div>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-3">
                     {!task.assignedTo ? (
                       <div className="flex gap-2">
@@ -338,7 +322,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                     </button>
                   </div>
                 </div>
-
                 <AnimatePresence>
                   {expandedTaskId === task.id && (
                     <motion.div
@@ -364,7 +347,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                                  </div>
                               </div>
                            </div>
-
                            <div>
                               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
                                 <FileText size={12} /> Clinical Context & Notes
@@ -378,7 +360,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                               </div>
                            </div>
                         </div>
-
                         <div className="space-y-6">
                            <div>
                               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
@@ -401,7 +382,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
                                  ))}
                               </div>
                            </div>
-
                            <div>
                               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
                                 <Link size={12} /> Digital Artifacts
@@ -423,7 +403,6 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({ tasks, onAssign, onUpdateS
             </motion.div>
           ))}
         </AnimatePresence>
-
         {tasks.length === 0 && (
           <div className="py-20 text-center space-y-4 bg-slate-50/50 rounded-[40px] border border-dashed border-slate-200">
              <ClipboardList className="mx-auto text-slate-300" size={48} />

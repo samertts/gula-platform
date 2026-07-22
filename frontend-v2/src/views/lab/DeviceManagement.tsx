@@ -7,17 +7,14 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, formatTime } from '../../lib/utils';
-
 export function DeviceManagement() {
   const { t, language } = useLanguage();
-
   const devices = [
     { id: 'AN-01', name: 'Cobas e801 Immunoassay', status: 'online', load: 82, model: 'Roche' },
     { id: 'AN-02', name: 'Atellica Solution IM', status: 'online', load: 45, model: 'Siemens' },
     { id: 'AN-03', name: 'Sysmex XN-3100', status: 'maintenance', load: 0, model: 'Sysmex' },
     { id: 'AN-04', name: 'AU5800 Analyzer', status: 'online', load: 12, model: 'Beckman Coulter' },
   ];
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -30,12 +27,10 @@ export function DeviceManagement() {
             <p className="text-slate-500 font-medium italic opacity-80">ASTM/HL7 Interface Management</p>
           </div>
         </div>
-
         <button className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold shadow-sm hover:bg-slate-50 transition-all">
           <Zap size={18} className="text-amber-500" /> System Diagnostics
         </button>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
          {[
            { label: 'Total Analyzers', value: '18', icon: Microscope, color: 'text-indigo-600' },
@@ -54,14 +49,12 @@ export function DeviceManagement() {
            </div>
          ))}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
            <div className="flex items-center justify-between px-2">
               <h3 className="text-2xl font-bold text-slate-900">Lab Instrumentation</h3>
               <button className="text-sm font-bold text-indigo-600">Reboot Stack</button>
            </div>
-
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {devices.map((device, i) => (
                 <motion.div 
@@ -83,10 +76,8 @@ export function DeviceManagement() {
                           {device.status}
                        </div>
                     </div>
-
                     <h4 className="text-lg font-bold text-slate-900 mb-1">{device.name}</h4>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{device.model} • {device.id}</p>
-
                     <div className="mt-8">
                        <div className="flex justify-between items-center mb-2">
                           <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Active Cycle Load</span>
@@ -100,7 +91,6 @@ export function DeviceManagement() {
                           />
                        </div>
                     </div>
-
                     <div className="mt-6 flex gap-2">
                        <button className="flex-1 py-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
                           <Power size={14} /> Power
@@ -114,7 +104,6 @@ export function DeviceManagement() {
               ))}
            </div>
         </div>
-
         <div className="space-y-6">
            <div className="bg-red-50 rounded-[40px] p-10 border border-red-100">
               <div className="flex items-center gap-3 mb-8 text-red-600">
@@ -133,7 +122,6 @@ export function DeviceManagement() {
                  </div>
               </div>
            </div>
-
            <div className="bg-slate-900 rounded-[40px] p-10 text-white shadow-xl">
               <div className="flex items-center gap-3 mb-6">
                  <ActivityIcon size={24} className="text-indigo-400" />

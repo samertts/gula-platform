@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { 
   Search, Scan, Beaker, CheckCircle2, 
   Truck, Microscope, ShieldCheck, Clock,
@@ -8,7 +8,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/LanguageContext';
-
 interface SampleStep {
   id: string;
   name: string;
@@ -18,7 +17,6 @@ interface SampleStep {
   location?: string;
   notes?: string;
 }
-
 interface SampleRecord {
   id: string;
   patientName: string;
@@ -28,7 +26,6 @@ interface SampleRecord {
   priority: 'routine' | 'urgent' | 'stat';
   steps: SampleStep[];
 }
-
 export function SampleTracking() {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,7 +45,6 @@ export function SampleTracking() {
       { id: '6', name: t.delivered || 'Delivered', status: 'pending', timestamp: 'ETA 09:15 AM' },
     ]
   });
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       {/* Header & Scanner Integration */}
@@ -56,7 +52,6 @@ export function SampleTracking() {
          <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150 rotate-12">
             <QrCode size={240} />
          </div>
-
          <div className="relative z-10 flex items-center gap-8">
             <div className="w-20 h-20 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-500/20 group-hover:scale-110 transition-transform">
                <Scan size={40} className="animate-pulse" />
@@ -69,7 +64,6 @@ export function SampleTracking() {
                </div>
             </div>
          </div>
-
          <div className="relative z-10 w-full lg:w-96">
             <div className="relative group">
                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors" size={24} />
@@ -86,7 +80,6 @@ export function SampleTracking() {
             </div>
          </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          {/* Sample Data & Metadata */}
          <div className="lg:col-span-4 space-y-6">
@@ -108,7 +101,6 @@ export function SampleTracking() {
                      <div className="px-6 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-8">
                         {activeSample.type}
                      </div>
-
                      <div className="w-full space-y-4 text-left border-t border-slate-100 pt-8">
                         <div className="p-6 bg-slate-50 rounded-3xl">
                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Patient Subject</span>
@@ -121,14 +113,12 @@ export function SampleTracking() {
                            <p className="text-sm font-bold text-slate-900">{activeSample.collectedAt}</p>
                         </div>
                      </div>
-
                      <button className="w-full mt-8 py-5 bg-white border-2 border-slate-900 text-slate-900 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center gap-3">
                         {t.printLabel || 'Generate Bio-ID Tag'} <QrCode size={16} />
                      </button>
                   </motion.div>
                )}
             </AnimatePresence>
-
             <div className="bg-indigo-600 rounded-[3rem] p-8 text-white shadow-2xl shadow-indigo-100 relative overflow-hidden">
                <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none scale-150 rotate-12">
                   <Zap size={120} />
@@ -146,7 +136,6 @@ export function SampleTracking() {
                </div>
             </div>
          </div>
-
          {/* Lifecycle Timeline */}
          <div className="lg:col-span-8 space-y-6">
             <div className="bg-white rounded-[3rem] border border-slate-200 p-12 shadow-sm relative">
@@ -160,15 +149,12 @@ export function SampleTracking() {
                      </button>
                   </div>
                </div>
-
                <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase mb-12 flex items-center gap-3">
                   <Clock className="text-indigo-600" /> Operational Lifecycle
                </h2>
-
                <div className="relative">
                   {/* Vertical Line */}
                   <div className="absolute left-6 top-4 bottom-4 w-1 bg-slate-100 rounded-full" />
-
                   <div className="space-y-12">
                      {activeSample?.steps.map((step, idx) => (
                         <div key={step.id} className="relative flex gap-10">
@@ -182,7 +168,6 @@ export function SampleTracking() {
                                step.status === 'current' ? <Zap size={24} className="animate-pulse" /> : 
                                <Clock size={24} />}
                            </div>
-
                            <div className="flex-1 pb-4 border-b border-slate-50">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                                  <div>
@@ -224,7 +209,6 @@ export function SampleTracking() {
                                     </motion.div>
                                  )}
                               </AnimatePresence>
-
                               {step.notes && (
                                  <div className="mt-4 p-4 bg-slate-50 rounded-2xl italic text-xs text-slate-500 border-l-2 border-indigo-600">
                                     "{step.notes}"
@@ -235,7 +219,6 @@ export function SampleTracking() {
                      ))}
                   </div>
                </div>
-
                <div className="mt-16 flex items-center gap-4 p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 shadow-xl shadow-emerald-50/50">
                   <div className="w-14 h-14 bg-emerald-600 rounded-[1.25rem] flex items-center justify-center text-white shadow-lg">
                      <CheckCircle2 size={32} />

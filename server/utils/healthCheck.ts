@@ -113,8 +113,6 @@ class HealthChecker {
   }
 
   async performHealthCheck(): Promise<HealthStatus> {
-    const startTime = Date.now();
-
     const [database, redis, memory, uptime] = await Promise.all([
       this.checkDatabase(),
       this.checkRedis(),
@@ -151,6 +149,10 @@ class HealthChecker {
       checks,
       details,
     };
+  }
+
+  async getFullStatus(): Promise<HealthStatus> {
+    return this.performHealthCheck();
   }
 
   isHealthy(): boolean {

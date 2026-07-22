@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, ShieldAlert, Fingerprint, 
@@ -10,7 +10,6 @@ import {
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
 import { BiometricStatus } from '../../components/BiometricStatus';
-
 interface AuditLog {
   id: string;
   user: string;
@@ -22,18 +21,15 @@ interface AuditLog {
   ip: string;
   location: string;
 }
-
 const auditLogs: AuditLog[] = [
   { id: 'LOG-8821', user: 'Dr. Samer M.', role: 'doctor', action: 'Identity Read', resourceId: 'GID-292-1029', timestamp: '2024-04-25 14:02:11', integrity: 'valid', ip: '192.168.4.12', location: 'Baghdad Central' },
   { id: 'LOG-8822', user: 'SysAdmin Alpha', role: 'admin', action: 'Grid Mod', resourceId: 'CLUSTER-B3', timestamp: '2024-04-25 13:58:00', integrity: 'warning', ip: '110.12.92.1', location: 'Erbil Sector 1' },
   { id: 'LOG-8823', user: 'Researcher Z.', role: 'researcher', action: 'Query Bulk', resourceId: 'EPID-X99', timestamp: '2024-04-25 13:12:45', integrity: 'valid', ip: '29.34.1.92', location: 'Basrah Hub' },
   { id: 'LOG-8824', user: 'Lab Node 04', role: 'lab', action: 'Result Push', resourceId: 'RES-00293', timestamp: '2024-04-24 10:22:11', integrity: 'critical', ip: 'Unknown', location: 'Autonomous' },
 ];
-
 export function DataSovereigntyAudit() {
   const { t } = useLanguage();
   const [filter, setFilter] = useState('All');
-
   return (
     <div className="p-8 space-y-8 bg-white min-h-screen">
       {/* Header Panel */}
@@ -47,7 +43,6 @@ export function DataSovereigntyAudit() {
               <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">GULA Regulatory Compliance • Protocol V4.2</p>
            </div>
         </div>
-
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
            {[
              { label: t.activeSessions, value: '142', icon: Activity, color: 'text-indigo-600' },
@@ -65,7 +60,6 @@ export function DataSovereigntyAudit() {
            ))}
         </div>
       </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Main Audit Feed */}
         <div className="xl:col-span-2 space-y-6">
@@ -79,7 +73,6 @@ export function DataSovereigntyAudit() {
                  <button className="p-2 border border-slate-100 rounded-xl hover:bg-slate-50"><Filter size={18} className="text-slate-400" /></button>
               </div>
            </div>
-
            <div className="space-y-4">
               <AnimatePresence mode="popLayout">
                 {auditLogs.map((log, i) => (
@@ -106,7 +99,6 @@ export function DataSovereigntyAudit() {
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{log.role} Access Profile</p>
                           </div>
                        </div>
-
                        <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-6 border-l border-r border-slate-50 px-8">
                           <div>
                              <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">{t.action}</p>
@@ -121,7 +113,6 @@ export function DataSovereigntyAudit() {
                              <p className="text-xs font-bold text-slate-400 font-mono">{log.timestamp.split(' ')[1]}</p>
                           </div>
                        </div>
-
                        <div className="md:w-48 text-right flex flex-col items-end gap-2">
                           <div className="flex items-center gap-2">
                              <MapPin size={10} className="text-slate-300" />
@@ -132,7 +123,6 @@ export function DataSovereigntyAudit() {
                              <span className="text-[9px] font-mono font-bold text-indigo-400">{log.ip}</span>
                           </div>
                        </div>
-
                        <button className="p-3 bg-slate-50 text-slate-300 rounded-xl hover:text-indigo-600 transition-colors">
                           <MoreVertical size={20} />
                        </button>
@@ -142,7 +132,6 @@ export function DataSovereigntyAudit() {
               </AnimatePresence>
            </div>
         </div>
-
         {/* Sidebar: Regulatory Controls */}
         <div className="space-y-8">
            <div className="p-8 bg-emerald-600 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
@@ -165,9 +154,7 @@ export function DataSovereigntyAudit() {
                  </button>
               </div>
            </div>
-
            <BiometricStatus />
-
            <div className="p-8 bg-rose-600/10 border border-rose-500/20 rounded-[3rem] text-center border-dashed">
               <div className="w-16 h-16 bg-rose-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-rose-500/30">
                  <ShieldAlert size={32} />

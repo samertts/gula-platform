@@ -3,14 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Server, Activity, Database, Cpu, Globe, Zap, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
-
 interface NodeStatus {
   id: string;
   name: string;
   status: 'online' | 'warning' | 'offline';
   load: number;
 }
-
 const NODES: NodeStatus[] = [
   { id: 'BG-01', name: 'Baghdad Backbone', status: 'online', load: 82 },
   { id: 'BA-04', name: 'Basrah Relational', status: 'online', load: 45 },
@@ -18,10 +16,8 @@ const NODES: NodeStatus[] = [
   { id: 'ER-02', name: 'Erbil Bio-Grid', status: 'online', load: 61 },
   { id: 'ST-09', name: 'Sovereign Storage', status: 'online', load: 12 },
 ];
-
 export function SystemDiagnosticsDrawer({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const { isRtl } = useLanguage();
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -60,7 +56,6 @@ export function SystemDiagnosticsDrawer({ isOpen, onClose }: { isOpen: boolean, 
                 <X size={24} className="text-slate-400" />
               </button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
               {/* Global Health Section */}
               <div className="space-y-4">
@@ -80,7 +75,6 @@ export function SystemDiagnosticsDrawer({ isOpen, onClose }: { isOpen: boolean, 
                   ))}
                 </div>
               </div>
-
               {/* Individual Node Status */}
               <div className="space-y-4">
                  <div className="flex items-center justify-between">
@@ -118,7 +112,6 @@ export function SystemDiagnosticsDrawer({ isOpen, onClose }: { isOpen: boolean, 
                     ))}
                  </div>
               </div>
-
               {/* Security Status */}
               <div className="p-6 bg-slate-900 rounded-[2.5rem] text-white overflow-hidden relative group">
                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
@@ -130,7 +123,6 @@ export function SystemDiagnosticsDrawer({ isOpen, onClose }: { isOpen: boolean, 
                  </div>
               </div>
             </div>
-
             <div className="p-8 border-t border-slate-100 bg-slate-50/30">
                <button className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all">
                   Initiate Deep Scan

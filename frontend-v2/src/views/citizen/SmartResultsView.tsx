@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   FlaskConical, AlertCircle, CheckCircle2, TrendingUp, 
@@ -11,15 +11,12 @@ import { LabTestResult } from '../../types/domain';
 import { analyzeLabTrends } from '../../services/aiService';
 import Markdown from 'react-markdown';
 import { toast } from 'sonner';
-
 export function SmartResultsView() {
   const { t } = useLanguage();
   const [selectedResult, setSelectedResult] = useState<LabTestResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
-
   const mockResults: LabTestResult[] = [];
-
   const handleExplain = async (result: LabTestResult) => {
     setSelectedResult(result);
     setIsAnalyzing(true);
@@ -32,7 +29,6 @@ export function SmartResultsView() {
       setIsAnalyzing(false);
     }
   };
-
   const getInterpretation = (flag: string) => {
     switch (flag) {
       case 'H': return { label: 'High', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100', icon: AlertCircle };
@@ -40,7 +36,6 @@ export function SmartResultsView() {
       default: return { label: 'Normal', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: CheckCircle2 };
     }
   };
-
   return (
     <div className="space-y-8 max-w-6xl mx-auto p-4 md:p-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -55,7 +50,6 @@ export function SmartResultsView() {
           </button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Results List */}
         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -98,7 +92,6 @@ export function SmartResultsView() {
                     </span>
                   </div>
                 </div>
-
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">{result.testName}</h3>
                   <div className="flex items-baseline gap-2">
@@ -116,7 +109,6 @@ export function SmartResultsView() {
                       <span className="text-emerald-600 font-bold">In Range</span>
                     </div>
                   </div>
-
                   <button 
                     onClick={() => handleExplain(result)}
                     className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 group-hover:bg-indigo-600 transition-colors"
@@ -128,7 +120,6 @@ export function SmartResultsView() {
             );
           })}
         </div>
-
         {/* AI Interpretation Panel */}
         <AnimatePresence>
           {selectedResult && (
@@ -140,7 +131,6 @@ export function SmartResultsView() {
               <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
                 <BrainCircuit size={200} />
               </div>
-
               <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-12">
                 <div className="md:col-span-7 space-y-8">
                   <div className="flex items-center gap-4">
@@ -152,7 +142,6 @@ export function SmartResultsView() {
                       <h3 className="text-2xl font-black tracking-tight italic">Analyzing: {selectedResult.testName}</h3>
                     </div>
                   </div>
-
                   <div className="prose prose-invert prose-sm max-w-none">
                     {isAnalyzing ? (
                       <div className="flex flex-col gap-4">
@@ -166,7 +155,6 @@ export function SmartResultsView() {
                       </div>
                     )}
                   </div>
-
                   <div className="flex flex-wrap gap-4 pt-4">
                     <button className="flex-1 min-w-[200px] py-4 bg-white text-slate-900 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-100 transition-all">
                       <Stethoscope size={18} /> {t.consultDoctor}
@@ -176,7 +164,6 @@ export function SmartResultsView() {
                     </button>
                   </div>
                 </div>
-
                 <div className="md:col-span-5 space-y-10 border-l border-white/5 pl-12 flex flex-col justify-center">
                   <div className="space-y-6">
                     <h5 className="text-[10px] font-black uppercase tracking-[.25em] text-white/40">Clinical Timeline Context</h5>
@@ -211,7 +198,6 @@ export function SmartResultsView() {
                       ))}
                     </div>
                   </div>
-
                   <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem]">
                     <div className="flex items-center gap-3 mb-3">
                        <Info size={16} className="text-indigo-400" />
@@ -227,7 +213,6 @@ export function SmartResultsView() {
           )}
         </AnimatePresence>
       </div>
-
       {/* Footer Support */}
       <div className="bg-slate-50 p-10 rounded-[3rem] border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-8 mt-12">
         <div className="flex items-center gap-6">

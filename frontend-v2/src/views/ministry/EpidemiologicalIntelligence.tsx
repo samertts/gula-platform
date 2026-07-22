@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Activity, ShieldAlert, Zap, Filter, 
@@ -15,7 +15,6 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ComposedChart, Bar, Line
 } from 'recharts';
-
 const outbreakData = [
   { subject: 'Influenza', A: 120, B: 110, fullMark: 150 },
   { subject: 'COVID-X', A: 98, B: 130, fullMark: 150 },
@@ -24,7 +23,6 @@ const outbreakData = [
   { subject: 'Cholera', A: 85, B: 90, fullMark: 150 },
   { subject: 'Typhoid', A: 65, B: 85, fullMark: 150 },
 ];
-
 const zoneSpecificData: Record<string, any[]> = {
   'Basrah Cluster': [
     { name: 'Week 1', cases: 140, predicted: 130, risk: 40 },
@@ -39,7 +37,6 @@ const zoneSpecificData: Record<string, any[]> = {
     { name: 'Week 4', cases: 380, predicted: 400, risk: 45 },
   ],
 };
-
 const timelineData = [
   { name: 'Week 1', cases: 400, predicted: 420, risk: 20 },
   { name: 'Week 2', cases: 300, predicted: 350, risk: 40 },
@@ -48,15 +45,11 @@ const timelineData = [
   { name: 'Week 5', cases: 500, predicted: 600, risk: 60 },
   { name: 'Week 6', cases: 400, predicted: 450, risk: 30 },
 ];
-
 import { CrisisResponsePipeline } from '../../components/ministry/CrisisResponsePipeline';
-
 export function EpidemiologicalIntelligence() {
   const { t } = useLanguage();
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
-
   const activeTimeline = selectedZone ? (zoneSpecificData[selectedZone] || timelineData) : timelineData;
-
   return (
     <div className="p-8 space-y-8 bg-slate-950 min-h-screen text-slate-100">
       {/* HUD Header */}
@@ -74,15 +67,12 @@ export function EpidemiologicalIntelligence() {
               </div>
            </div>
         </div>
-
         <div className="flex gap-4">
            <button className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Export G-88 Report</button>
            <button className="px-6 py-3 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-rose-900/20 hover:scale-[1.02] transition-all">Broadcast Alert</button>
         </div>
       </div>
-
       <CrisisResponsePipeline />
-
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Left: Disease Vector Analysis */}
         <div className="xl:col-span-8 space-y-8">
@@ -110,7 +100,6 @@ export function EpidemiologicalIntelligence() {
                        ))}
                     </div>
                  </div>
-
                  <div className="h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                        <ComposedChart data={activeTimeline}>
@@ -135,7 +124,6 @@ export function EpidemiologicalIntelligence() {
                  </div>
               </div>
            </div>
-
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="p-8 bg-white/5 border border-white/5 rounded-[3rem]">
                  <h3 className="text-xs font-black uppercase tracking-widest text-rose-400 mb-8 text-center">{t.pathogenProfiles}</h3>
@@ -151,7 +139,6 @@ export function EpidemiologicalIntelligence() {
                     </ResponsiveContainer>
                  </div>
               </div>
-
               <div className="p-8 bg-slate-900 rounded-[3rem] border border-white/5">
                  <h3 className="text-xs font-black uppercase tracking-widest text-rose-400 mb-8">{t.bioSovereignty}</h3>
                  <div className="space-y-4">
@@ -185,7 +172,6 @@ export function EpidemiologicalIntelligence() {
               </div>
            </div>
         </div>
-
         {/* Right: Regulatory Audit & Control */}
         <div className="xl:col-span-4 space-y-8">
            <div className="p-8 bg-indigo-600 rounded-[3rem] text-white overflow-hidden relative shadow-2xl">
@@ -214,9 +200,7 @@ export function EpidemiologicalIntelligence() {
                  </button>
               </div>
            </div>
-
            <PredictiveOutbreak />
-
            <div className="p-8 bg-emerald-600/10 border border-emerald-500/20 rounded-[3rem] text-center">
               <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-emerald-500/30 ring-8 ring-emerald-500/10">
                  <ShieldCheck size={32} />

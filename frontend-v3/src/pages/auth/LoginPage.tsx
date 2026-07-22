@@ -19,8 +19,9 @@ export function LoginPage() {
     try {
       await login({ email, password });
       navigate("/dashboard");
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || "فشل تسجيل الدخول");
+    } catch (err: unknown) {
+      const errorDetail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(errorDetail || "فشل تسجيل الدخول");
     } finally {
       setLoading(false);
     }

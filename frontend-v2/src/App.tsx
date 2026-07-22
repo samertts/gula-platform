@@ -2,11 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { lazy, useState } from 'react';
-
-function lazyNamed<T extends { [K in N]: React.ComponentType<unknown> }, N extends string>(load: () => Promise<T>, name: N) {
-  return lazy(() => load().then(m => ({ default: m[name] })));
+function lazyNamed<T extends Record<string, React.ComponentType<any>>, N extends string>(load: () => Promise<T>, name: N) {
+  return lazy(() => load().then(m => ({ default: m[name]! })));
 }
-
 const DashboardView = lazyNamed(() => import('./views/DashboardView'), 'DashboardView');
 const RecordsView = lazyNamed(() => import('./views/RecordsView'), 'RecordsView');
 const AppointmentsView = lazyNamed(() => import('./views/AppointmentsView'), 'AppointmentsView');
@@ -51,13 +49,12 @@ import { GlobalAiAssistant } from './components/GlobalAiAssistant';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { RouteErrorBoundary } from './components/ui/ErrorBoundary';
 import { useKeySequence } from './lib/useShortcut';
-import { WifiOff, Activity as ActivityIcon } from 'lucide-react';
+import {WifiOff, Activity as ActivityIcon} from 'lucide-react';
 import { useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NavigationProvider } from './stores/navigationStore';
 import { WorkspaceProvider } from './stores/workspaceStore';
 import { Badge, Button } from './components/ui';
-
 export default function App() {
   return (
     <AuthProvider>
@@ -74,13 +71,10 @@ export default function App() {
     </AuthProvider>
   );
 }
-
 import { Breadcrumbs } from './components/Breadcrumbs';
 import { ScrollToTop } from './components/ScrollToTop';
-
 function AnimatedRoutes() {
   const location = useLocation();
-
   return (
     <AnimatePresence mode="wait">
       <RouteErrorBoundary resetKey={location.pathname}>
@@ -99,7 +93,6 @@ function AnimatedRoutes() {
         <Route path="/patients/:id" element={<PatientProfile />} />
         <Route path="/appointments" element={<AppointmentsView />} />
         <Route path="/intelligence" element={<DoctorIntelligence />} />
-
         {/* Lab Wing */}
         <Route path="/lab/dashboard" element={<LabDashboard />} />
         <Route path="/lab/queue" element={<WorkQueue />} />
@@ -108,7 +101,6 @@ function AnimatedRoutes() {
         <Route path="/lab/samples" element={<SampleTracking />} />
         <Route path="/lab/qc" element={<QualityControl />} />
         <Route path="/lab/imaging" element={<ImagingLabView />} />
-
         {/* Citizen Wing */}
         <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
         <Route path="/citizen/profile" element={<CitizenHealth />} />
@@ -122,7 +114,6 @@ function AnimatedRoutes() {
         <Route path="/citizen/verification" element={<IdentityVerificationView />} />
         <Route path="/citizen/consent" element={<ConsentManagementView />} />
         <Route path="/citizen/register" element={<PatientRegistration />} />
-
         {/* Admin Wing */}
         <Route path="/admin/audit" element={
           <PermissionGuard resource="audit_log" action="read"><AuditLog /></PermissionGuard>
@@ -136,7 +127,6 @@ function AnimatedRoutes() {
         <Route path="/admin/integrations" element={
           <PermissionGuard resource="integration" action="read"><IntegrationHub /></PermissionGuard>
         } />
-
         {/* Ministry Wing */}
         <Route path="/ministry/dashboard" element={
           <PermissionGuard resource="patient" action="read" scope="global"><NationalHealthGrid /></PermissionGuard>
@@ -150,7 +140,6 @@ function AnimatedRoutes() {
         <Route path="/ministry/analytics" element={
           <PermissionGuard resource="research" action="read"><ResearcherDashboard /></PermissionGuard>
         } />
-
         {/* Shared */}
         <Route path="/settings" element={<SettingsView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -160,10 +149,8 @@ function AnimatedRoutes() {
     </AnimatePresence>
   );
 }
-
 function GlobalShortcuts({ onOpenShortcuts }: { onOpenShortcuts: () => void }) {
   const navigate = useNavigate();
-
   useKeySequence({
     'g d': () => navigate('/'),
     'g p': () => navigate('/patients'),
@@ -174,7 +161,6 @@ function GlobalShortcuts({ onOpenShortcuts }: { onOpenShortcuts: () => void }) {
     'g s': () => navigate('/settings'),
     'g h': () => onOpenShortcuts(),
   });
-
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -187,23 +173,19 @@ function GlobalShortcuts({ onOpenShortcuts }: { onOpenShortcuts: () => void }) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
-
   return null;
 }
-
 function AppContent() {
   const { user, isLoading } = useAuth();
   const { t, isRtl } = useLanguage();
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
-
   useEffect(() => {
     const handler = (e: CustomEvent) => setSidebarExpanded(e.detail);
     window.addEventListener('sidebar-expanded' as any, handler as any);
     return () => window.removeEventListener('sidebar-expanded' as any, handler as any);
   }, []);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tgt = e.target as HTMLElement | null;
@@ -219,7 +201,6 @@ function AppContent() {
       window.removeEventListener('open-shortcuts', handleOpenShortcuts);
     };
   }, []);
-
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -230,7 +211,6 @@ function AppContent() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -241,13 +221,10 @@ function AppContent() {
       </div>
     );
   }
-
   if (!user) {
     return <LandingAuthView />;
   }
-
   const sidebarWidth = sidebarExpanded ? (isRtl ? 'lg:mr-64' : 'lg:ml-64') : (isRtl ? 'lg:mr-16' : 'lg:ml-16');
-
   return (
     <BrowserRouter>
       <GlobalShortcuts onOpenShortcuts={() => setShowShortcuts(true)} />
@@ -258,10 +235,8 @@ function AppContent() {
       <ScrollToTop />
       <div className="flex min-h-screen bg-slate-50 font-sans antialiased selection:bg-indigo-100/50 transition-colors duration-500" dir={isRtl ? 'rtl' : 'ltr'}>
         <Sidebar />
-
         <main className={`flex-1 flex flex-col h-screen overflow-hidden ${sidebarWidth}`}>
           <TopBar />
-
           {/* Offline indicator */}
           <AnimatePresence>
             {isOffline && (
@@ -287,7 +262,6 @@ function AppContent() {
               </motion.div>
             )}
           </AnimatePresence>
-
           <div className="flex-1 overflow-y-auto bg-slate-50 custom-scrollbar">
             <div className="max-w-[1600px] mx-auto px-4 md:px-8 pt-8 pb-12">
               <Breadcrumbs />

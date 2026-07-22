@@ -251,7 +251,7 @@ export async function getBiometricPlatformType(): Promise<'touchid' | 'faceid' |
   const ua = navigator.userAgent;
   if (ua.includes('iPhone') || ua.includes('iPad')) {
     const match = ua.match(/iPhone\sOS\s([\d_]+)/);
-    const major = match ? parseInt(match[1].split('_')[0]) : 0;
+    const major = match ? parseInt(match[1]!.split('_')[0] ?? '0') : 0;
     return major >= 10 ? 'faceid' : 'touchid';
   }
   if (ua.includes('Mac OS') && ua.includes('Safari')) return 'touchid';

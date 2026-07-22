@@ -53,8 +53,8 @@ export function ResultEntryUI({ taskId, sampleId, patientName, testName, onSave,
       const numVal = parseFloat(value);
       if (!isNaN(numVal)) {
           const [min, max] = p.referenceRange.split(' - ').map(parseFloat);
-          if (numVal < min) status = 'low';
-          else if (numVal > max) status = 'high';
+          if (numVal < (min ?? 0)) status = 'low';
+          else if (numVal > (max ?? Infinity)) status = 'high';
           
           // Simulate a critical threshold
           if (p.code === 'WBC' && (numVal > 30 || numVal < 1)) status = 'critical';

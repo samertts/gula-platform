@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Pill, Plus, Clock, CheckCircle2, AlertCircle, 
@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
-
 interface Medication {
   id: string;
   name: string;
@@ -19,7 +18,6 @@ interface Medication {
   type: 'prescription' | 'supplement';
   adherence: number;
 }
-
 export function MedicationCenter() {
   const { t } = useLanguage();
   const [meds, setMeds] = useState<Medication[]>([
@@ -27,7 +25,6 @@ export function MedicationCenter() {
     { id: '2', name: 'Vitamin D3', dosage: '2000 IU', frequency: 'Once daily', reminder: '09:00', lastTaken: 'Today, 09:05', type: 'supplement', adherence: 100 },
     { id: '3', name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', reminder: '08:00', warning: 'Avoid high potassium', type: 'prescription', adherence: 85 }
   ]);
-
   return (
     <div className="space-y-10 max-w-7xl mx-auto p-4 md:p-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 text-indigo-900">
@@ -42,7 +39,6 @@ export function MedicationCenter() {
            </button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Adherence Overview */}
         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -50,7 +46,6 @@ export function MedicationCenter() {
            <StatCard label="Active Medications" value={String(meds.length)} trend="Stable" icon={Pill} color="text-emerald-600" />
            <StatCard label="Next Refill" value="12 Days" trend="Metformin" icon={Calendar} color="text-amber-600" />
         </div>
-
         {/* Medication Grid */}
         <div className="lg:col-span-8 flex flex-col gap-6">
            <div className="flex items-center justify-between px-4">
@@ -77,7 +72,6 @@ export function MedicationCenter() {
                      )}>
                         <Pill size={80} />
                      </div>
-
                      <div className="flex items-center gap-6 mb-8">
                         <div className={cn(
                           "w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg border",
@@ -90,7 +84,6 @@ export function MedicationCenter() {
                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{med.dosage} • {med.frequency}</p>
                         </div>
                      </div>
-
                      <div className="space-y-4 relative z-10">
                         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all">
                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">
@@ -98,7 +91,6 @@ export function MedicationCenter() {
                            </div>
                            <span className="text-[10px] font-black text-indigo-600">{med.reminder}</span>
                         </div>
-
                         {med.lastTaken ? (
                           <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl">
                              <div className="flex items-center gap-2 text-[10px] font-black uppercase text-emerald-600 tracking-widest">
@@ -111,7 +103,6 @@ export function MedicationCenter() {
                              Take Now
                           </button>
                         )}
-
                         {med.warning && (
                           <div className="p-4 bg-red-50 border border-red-100/50 rounded-2xl flex items-start gap-3">
                              <AlertCircle size={14} className="text-red-600 shrink-0 mt-0.5" />
@@ -140,7 +131,6 @@ export function MedicationCenter() {
                </AnimatePresence>
            </div>
         </div>
-
         {/* AI Insight Sidebar */}
         <div className="lg:col-span-4 space-y-8">
            <div className="bg-slate-900 text-white rounded-[3.5rem] p-10 relative overflow-hidden group shadow-2xl">
@@ -164,7 +154,6 @@ export function MedicationCenter() {
                  </button>
               </div>
            </div>
-
            <div className="bg-white border border-slate-200 rounded-[3.5rem] p-10 space-y-8">
               <h3 className="text-xl font-black tracking-tight leading-none italic">Refill Status</h3>
               <div className="space-y-6">
@@ -192,7 +181,6 @@ export function MedicationCenter() {
     </div>
   );
 }
-
 function StatCard({ label, value, trend, icon: Icon, color }: any) {
   return (
     <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden group">

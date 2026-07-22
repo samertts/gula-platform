@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Zap, AlertCircle, Calendar, Pill, BrainCircuit, 
@@ -12,13 +12,10 @@ import { MedicineCabinet } from '../../components/citizen/MedicineCabinet';
 import { HealthTrendChart } from '../../components/HealthTrendChart';
 import { FamilySwitcher } from '../../components/citizen/FamilySwitcher';
 import { Link } from 'react-router-dom';
-
 export function CitizenDashboard() {
   const { t } = useLanguage();
   const [showScoreBreakdown, setShowScoreBreakdown] = useState(false);
-
   const healthScore = null;
-
   const todayTasks: {
     id: string;
     title: string;
@@ -29,14 +26,12 @@ export function CitizenDashboard() {
     doctor?: string;
     status: string;
   }[] = [];
-
   const criticalAlerts: {
     id: string;
     title: string;
     description: string;
     severity: string;
   }[] = [];
-
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto p-4 md:p-8 animate-in fade-in duration-500 pb-20">
       {/* 🟢 TOP LAYER: PRIORITY ENGINE */}
@@ -73,7 +68,6 @@ export function CitizenDashboard() {
           </motion.div>
         ))}
       </AnimatePresence>
-
       {/* 🔵 HERO SECTION: THE HEALTH OS CORE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Central Core: Score + Profile */}
@@ -113,7 +107,6 @@ export function CitizenDashboard() {
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Health Score</span>
               </div>
             </div>
-
             <div>
               <p className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-2">{t.welcomeBack}, Samer</p>
               <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">{t.personalHealthVault}</h2>
@@ -127,7 +120,6 @@ export function CitizenDashboard() {
               </div>
             </div>
           </div>
-
           <div className="relative z-10 flex gap-4">
             <FamilySwitcher />
             <button className="flex flex-col items-center justify-center p-5 bg-slate-900 text-white rounded-[2rem] hover:bg-indigo-600 transition-all group w-32 shadow-xl shadow-slate-200">
@@ -136,7 +128,6 @@ export function CitizenDashboard() {
             </button>
           </div>
         </div>
-
         {/* AI Insight Box */}
         <div className="lg:col-span-4 bg-indigo-600 rounded-[3.5rem] p-10 text-white relative overflow-hidden group shadow-2xl shadow-indigo-100">
           <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none group-hover:rotate-12 transition-transform duration-700">
@@ -161,7 +152,6 @@ export function CitizenDashboard() {
           </div>
         </div>
       </div>
-
       {/* 🕒 MIDDLE LAYER: TODAY'S OPERATIONAL QUEUE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
         {/* Today's Tasks */}
@@ -175,7 +165,6 @@ export function CitizenDashboard() {
               View Calendar
             </Link>
           </div>
-
           <div className="space-y-4">
             {todayTasks.map((task, i) => (
               <motion.div 
@@ -227,7 +216,6 @@ export function CitizenDashboard() {
             ))}
           </div>
         </div>
-
         {/* Quick Access Menu */}
         <div className="lg:col-span-5 grid grid-cols-2 gap-6">
           <Link to="/citizen/assistant" className="col-span-2 group relative overflow-hidden bg-slate-900 rounded-[3rem] p-10 text-white hover:bg-slate-800 transition-all">
@@ -246,7 +234,6 @@ export function CitizenDashboard() {
                 <ChevronRight size={20} className="text-indigo-500 group-hover:translate-x-2 transition-transform" />
              </div>
           </Link>
-
           <Link to="/citizen/results" className="bg-white border border-slate-200 p-8 rounded-[3rem] hover:border-indigo-600 transition-all group shadow-sm">
              <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl w-fit mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all">
                 <Box size={24} />
@@ -254,7 +241,6 @@ export function CitizenDashboard() {
              <h4 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-2">{t.labResults}</h4>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.resultsInterpretation}</p>
           </Link>
-
           <Link to="/citizen/medications" className="bg-white border border-slate-200 p-8 rounded-[3rem] hover:border-indigo-600 transition-all group shadow-sm">
              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-all">
                 <Pill size={24} />
@@ -264,7 +250,6 @@ export function CitizenDashboard() {
           </Link>
         </div>
       </div>
-
       {/* 🔴 VITAL TRENDS OVERLAY */}
       <div className="bg-white rounded-[3.5rem] p-12 border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-12">
@@ -278,7 +263,6 @@ export function CitizenDashboard() {
               </button>
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
              <TrendCard label="Glucose (Daily)" value="92" unit="mg/dL" status="Optimal" color="#6366f1" />
              <TrendCard label="Heart Rate" value="68" unit="BPM" status="Resting" color="#ec4899" />
@@ -288,10 +272,8 @@ export function CitizenDashboard() {
     </div>
   );
 }
-
 function TrendCard({ label, value, unit, status, color }: { label: string, value: string, unit: string, status: string, color: string }) {
   const trendData: { time: string; value: number }[] = [];
-
   return (
     <div className="space-y-6 group">
        <div className="flex justify-between items-start">
@@ -312,7 +294,6 @@ function TrendCard({ label, value, unit, status, color }: { label: string, value
     </div>
   );
 }
-
 const TestTube = ({ size, className }: { size: number, className?: string }) => (
   <svg 
     width={size} 

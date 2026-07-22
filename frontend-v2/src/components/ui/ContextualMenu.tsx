@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Copy, Edit3, Trash2, ExternalLink, History, Star, Pin, Share2, Download } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-
 interface ContextAction {
   id: string;
   icon: any;
@@ -11,18 +10,15 @@ interface ContextAction {
   action: () => void;
   destructive?: boolean;
 }
-
 interface ContextualMenuProps {
   items: ContextAction[];
   children: React.ReactNode;
   className?: string;
 }
-
 export function ContextualMenu({ items, children, className }: ContextualMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handler = () => setIsOpen(false);
     document.addEventListener('mousedown', handler);
@@ -32,20 +28,17 @@ export function ContextualMenu({ items, children, className }: ContextualMenuPro
       document.removeEventListener('scroll', handler);
     };
   }, []);
-
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setPos({ x: e.clientX, y: e.clientY });
     setIsOpen(true);
   }, []);
-
   const handleLongPress = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
-    setPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    setPos({ x: e.touches[0]!.clientX, y: e.touches[0]!.clientY });
     setIsOpen(true);
   }, []);
-
   return (
     <div ref={ref} onContextMenu={handleContextMenu} onTouchStart={handleLongPress} className={cn('relative', className)}>
       {children}

@@ -16,15 +16,13 @@ import {
   Contrast,
   Aperture
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { cn } from '../lib/utils';
-
 export interface ImageEditorProps {
   image: string;
   onSave: (editedImage: string) => void;
   onCancel: () => void;
 }
-
 const FILTERS = [
   { id: 'none', name: 'Original', filter: 'none' },
   { id: 'grayscale', name: 'Grayscale', filter: 'grayscale(100%)' },
@@ -34,7 +32,6 @@ const FILTERS = [
   { id: 'cool', name: 'Cool', filter: 'hue-rotate(180deg) saturate(140%)' },
   { id: 'high-contrast', name: 'Dramatic', filter: 'contrast(150%) brightness(90%)' },
 ];
-
 export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCancel }) => {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -44,11 +41,9 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
   const [isProcessing, setIsProcessing] = useState(false);
-
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
-
   const createImageUrl = async (imageSrc: string, crop: Area, rotation: number, filter: string, brightness: number, contrast: number): Promise<string> => {
     const image = new Image();
     image.src = imageSrc;
@@ -57,31 +52,22 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
     await new Promise((resolve) => {
       image.onload = resolve;
     });
-
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-
     if (!ctx) return '';
-
     const rotRad = (rotation * Math.PI) / 180;
     const { width: bWidth, height: bHeight } = getBoundingRect(image.width, image.height, rotation);
-
     canvas.width = bWidth;
     canvas.height = bHeight;
-
     ctx.translate(bWidth / 2, bHeight / 2);
     ctx.rotate(rotRad);
     ctx.translate(-image.width / 2, -image.height / 2);
     ctx.drawImage(image, 0, 0);
-
     const croppedCanvas = document.createElement('canvas');
     const croppedCtx = croppedCanvas.getContext('2d');
-
     if (!croppedCtx) return '';
-
     croppedCanvas.width = crop.width;
     croppedCanvas.height = crop.height;
-
     // Apply filters to context if supported, otherwise manually (limited)
     // CSS filter representation to Canvas Filter
     let filterString = FILTERS.find(f => f.id === activeFilter)?.filter || 'none';
@@ -89,7 +75,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
     if (contrast !== 100) filterString += ` contrast(${contrast}%)`;
     
     croppedCtx.filter = filterString;
-
     croppedCtx.drawImage(
       canvas,
       crop.x,
@@ -101,7 +86,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
       crop.width,
       crop.height
     );
-
     return new Promise((resolve) => {
       croppedCanvas.toBlob((blob) => {
         if (!blob) return;
@@ -109,7 +93,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
       }, 'image/jpeg');
     });
   };
-
   const getBoundingRect = (width: number, height: number, rotation: number) => {
     const rotRad = (rotation * Math.PI) / 180;
     return {
@@ -117,7 +100,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
       height: Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
     };
   };
-
   const handleApply = async () => {
     if (!croppedAreaPixels) return;
     setIsProcessing(true);
@@ -130,7 +112,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
       setIsProcessing(false);
     }
   };
-
   const reset = () => {
     setCrop({ x: 0, y: 0 });
     setZoom(1);
@@ -139,7 +120,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
     setBrightness(100);
     setContrast(100);
   };
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -166,7 +146,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
               <RefreshCw size={20} className="text-slate-600" />
             </button>
           </div>
-
           <div className="flex-1 relative">
             <Cropper
               image={image}
@@ -185,7 +164,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
               }}
             />
           </div>
-
           <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-center gap-6">
             <div className="flex items-center gap-4">
               <button onClick={() => setZoom(Math.max(1, zoom - 0.1))} className="p-2 hover:bg-slate-100 rounded-lg"><Minus size={18} /></button>
@@ -218,7 +196,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
             </div>
           </div>
         </div>
-
         {/* Sidebar Controls */}
         <div className="w-full md:w-80 bg-slate-50 border-l border-slate-200 flex flex-col p-6 overflow-y-auto">
           <div className="mb-8">
@@ -249,7 +226,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
               ))}
             </div>
           </div>
-
           <div className="space-y-6 flex-1">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -267,7 +243,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
                 className="w-full h-1 bg-slate-200 rounded-full appearance-none cursor-pointer accent-indigo-600"
               />
             </div>
-
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
@@ -285,7 +260,6 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ image, onSave, onCance
               />
             </div>
           </div>
-
           <div className="mt-8 pt-6 border-t border-slate-200 flex flex-col gap-3">
             <button
               onClick={handleApply}

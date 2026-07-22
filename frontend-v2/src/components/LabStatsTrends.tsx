@@ -15,13 +15,11 @@ import {
   BarChart3, PieChart, Calendar, Clock, RefreshCw,
   FlaskConical, Users,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { cn, formatNumber, formatTime } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { auth } from '../firebase-auth';
-
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 interface DailySeries {
   date: string;
   orders: number;
@@ -29,7 +27,6 @@ interface DailySeries {
   critical_tests: number;
   abnormal_tests: number;
 }
-
 interface TestFreqItem {
   test_name: string;
   count: number;
@@ -38,11 +35,9 @@ interface TestFreqItem {
   abnormal_rate: number;
   avg_value: number | null;
 }
-
 interface FlagDistribution {
   [flag: string]: { count: number; percentage: number };
 }
-
 interface StatsSummary {
   totals: {
     patients: number;
@@ -55,9 +50,7 @@ interface StatsSummary {
   this_week: { orders: number };
   this_month: { orders: number };
 }
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function useApiToken(): string | null {
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
@@ -65,7 +58,6 @@ function useApiToken(): string | null {
   }, []);
   return token;
 }
-
 async function fetchStats<T>(endpoint: string, token: string | null): Promise<T | null> {
   if (!token) return null;
   try {
@@ -79,9 +71,7 @@ async function fetchStats<T>(endpoint: string, token: string | null): Promise<T 
     return null;
   }
 }
-
 // ─── Mini bar-chart (pure CSS / motion) ──────────────────────────────────────
-
 const MiniBarChart: React.FC<{ data: { label: string; value: number; color: string }[] }> = ({ data }) => {
   const max = Math.max(...data.map(d => d.value), 1);
   return (
@@ -99,9 +89,7 @@ const MiniBarChart: React.FC<{ data: { label: string; value: number; color: stri
     </div>
   );
 };
-
 // ─── Flag pill ────────────────────────────────────────────────────────────────
-
 const FLAG_COLORS: Record<string, string> = {
   normal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   H: 'bg-orange-50 text-orange-700 border-orange-200',
@@ -109,7 +97,6 @@ const FLAG_COLORS: Record<string, string> = {
   critical: 'bg-red-50 text-red-700 border-red-200',
   unknown: 'bg-slate-50 text-slate-500 border-slate-200',
 };
-
 const FLAG_LABELS: Record<string, string> = {
   normal: 'طبيعي',
   H: 'مرتفع',
@@ -117,9 +104,7 @@ const FLAG_LABELS: Record<string, string> = {
   critical: 'خطير',
   unknown: 'غير معروف',
 };
-
 // ─── Section card ─────────────────────────────────────────────────────────────
-
 const SectionCard: React.FC<{
   title: string;
   titleAr: string;
@@ -149,26 +134,20 @@ const SectionCard: React.FC<{
     </motion.div>
   );
 };
-
 // ─── Main component ───────────────────────────────────────────────────────────
-
 interface LabStatsTrendsProps {
   className?: string;
 }
-
 const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
   const { language } = useLanguage();
   const token = useApiToken();
-
   const [days, setDays] = useState(14);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
   const [summary, setSummary] = useState<StatsSummary | null>(null);
   const [daily, setDaily] = useState<DailySeries[]>([]);
   const [topTests, setTopTests] = useState<TestFreqItem[]>([]);
   const [flags, setFlags] = useState<FlagDistribution>({});
-
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
@@ -188,11 +167,8 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
       setLoading(false);
     }
   }, [token, days]);
-
   useEffect(() => { load(); }, [load]);
-
   const isAr = language === 'AR';
-
   // ── Summary counters ───────────────────────────────────────────────────────
   const summaryCards = summary
     ? [
@@ -226,7 +202,6 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
         },
       ]
     : [];
-
   // ── Daily chart data ───────────────────────────────────────────────────────
   const dailyChartData = daily.slice(-14).map(d => ({
     label: d.date,
@@ -238,7 +213,6 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
     value: d.critical_tests,
     color: 'bg-red-400',
   }));
-
   return (
     <div className={cn('space-y-6', className)}>
       {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -281,7 +255,6 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
           </button>
         </div>
       </div>
-
       {/* ── Summary cards ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card, i) => (
@@ -305,7 +278,6 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
           </motion.div>
         ))}
       </div>
-
       {/* ── Charts row ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Daily orders mini-chart */}
@@ -328,7 +300,6 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
             </div>
           )}
         </SectionCard>
-
         {/* Critical results mini-chart */}
         <SectionCard
           title="Critical Results / Day"
@@ -350,7 +321,6 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
           )}
         </SectionCard>
       </div>
-
       {/* ── Top tests + Flag distribution ───────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top tests */}
@@ -402,7 +372,6 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
             })}
           </div>
         </SectionCard>
-
         {/* Flag distribution */}
         <SectionCard
           title="Result Flag Distribution"
@@ -450,5 +419,4 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
     </div>
   );
 };
-
 export default LabStatsTrends;

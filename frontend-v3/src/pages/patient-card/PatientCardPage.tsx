@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, Input, Button, Dialog } from "@/components/ui";
+import { Card, CardContent, CardHeader, CardTitle, Input, Button } from "@/components/ui";
 import { PageHeader } from "@/components/shared/PageComponents";
 import { CreditCard, QrCode, Printer } from "lucide-react";
 

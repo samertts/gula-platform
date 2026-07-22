@@ -1,10 +1,10 @@
 import type { UserRole } from '@/types/backend';
 import {
   LayoutDashboard, Users, FlaskConical, TestTubes, ClipboardList,
-  Microscope, Shield, Settings, Building2, Stethoscope, Activity,
-  Bell, FileText, BarChart3, UserCog, Database, Wifi, Truck,
-  ShieldAlert, Ban, Fingerprint, HeartPulse, Syringe, Pill,
-  Ambulance,Radiation, Brain, Search, PlusCircle, FileSpreadsheet,
+  Shield, Settings, Building2, Stethoscope, Activity,
+  FileText, UserCog, Database, Wifi, Truck,
+  ShieldAlert, Ban, Fingerprint, HeartPulse,
+  FileSpreadsheet,
   type LucideIcon,
 } from 'lucide-react';
 

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { 
   ShieldCheck, AlertTriangle, TrendingDown, 
   TrendingUp, Activity as ActivityIcon, Settings,
   History, Download, RefreshCw, Filter, 
   CheckCircle2, Info, Beaker, Cpu
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
@@ -13,7 +13,6 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, 
   ReferenceLine, AreaChart, Area 
 } from 'recharts';
-
 interface QCLevel {
   level: 'L1' | 'L2' | 'L3';
   mean: number;
@@ -22,11 +21,9 @@ interface QCLevel {
   status: 'passed' | 'warning' | 'failed';
   history: { date: string; value: number }[];
 }
-
 export function QualityControl() {
   const { t } = useLanguage();
   const [selectedDevice, setSelectedDevice] = useState('Analyzer-Gamma-X1');
-
   const qcData: QCLevel[] = [
     { 
       level: 'L1', mean: 14.5, sd: 0.3, currentValue: 14.6, status: 'passed',
@@ -45,7 +42,6 @@ export function QualityControl() {
       ]
     }
   ];
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       {/* Precision Header */}
@@ -53,7 +49,6 @@ export function QualityControl() {
          <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150 rotate-12">
             <ShieldCheck size={240} />
          </div>
-
          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12">
             <div className="flex items-center gap-8">
                <div className="w-24 h-24 bg-emerald-600 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl shadow-emerald-500/20 group-hover:scale-110 transition-transform">
@@ -70,7 +65,6 @@ export function QualityControl() {
                   </div>
                </div>
             </div>
-
             <div className="flex gap-4">
                <div className="text-right">
                   <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Precision Index</p>
@@ -84,7 +78,6 @@ export function QualityControl() {
             </div>
          </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          {/* Control Settings & Device Selector */}
          <div className="lg:col-span-3 space-y-6">
@@ -105,7 +98,6 @@ export function QualityControl() {
                   ))}
                </div>
             </div>
-
             <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl">
                <div className="flex items-center gap-3 mb-6">
                   <Cpu className="text-indigo-400" size={20} />
@@ -119,7 +111,6 @@ export function QualityControl() {
                </button>
             </div>
          </div>
-
          {/* Levey-Jennings & Stats */}
          <div className="lg:col-span-9 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -146,7 +137,6 @@ export function QualityControl() {
                            {qc.status}
                         </div>
                      </div>
-
                      <div className="h-64 mt-4">
                         <ResponsiveContainer width="100%" height="100%">
                            <AreaChart data={qc.history}>
@@ -177,7 +167,6 @@ export function QualityControl() {
                            </AreaChart>
                         </ResponsiveContainer>
                      </div>
-
                      <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-slate-50">
                         <div className="p-4 bg-slate-50 rounded-2xl">
                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Current Dev</span>
@@ -191,7 +180,6 @@ export function QualityControl() {
                   </motion.div>
                ))}
             </div>
-
             <div className="bg-white rounded-[3rem] border border-slate-200 p-12 shadow-sm">
                <div className="flex items-center justify-between mb-12">
                   <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase flex items-center gap-3">
@@ -203,7 +191,6 @@ export function QualityControl() {
                      </button>
                   </div>
                </div>
-
                <div className="overflow-x-auto">
                   <table className="w-full text-left">
                      <thead>

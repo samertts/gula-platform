@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   FlaskConical, Activity as ActivityIcon, AlertCircle, 
   Clock, CheckCircle2,
@@ -15,7 +15,6 @@ import { auth } from '../../firebase';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { LabDeviceMonitor } from '../../components/LabDeviceMonitor';
 import LabStatsTrends from '../../components/LabStatsTrends';
-
 const StatCard = ({ title, value, subtext, icon: Icon, trend, color, bg }: any) => (
   <motion.div 
     whileHover={{ y: -5, scale: 1.01 }}
@@ -55,18 +54,15 @@ const StatCard = ({ title, value, subtext, icon: Icon, trend, color, bg }: any) 
     </div>
   </motion.div>
 );
-
 import { NeuralConnectivityHub } from '../../components/NeuralConnectivityHub';
 import { Scan, ArrowRight, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
-
 export function LabDashboard() {
   const { t } = useLanguage();
   const [tasks, setTasks] = React.useState<Task[]>([]);
   const [isRegistering, setIsRegistering] = React.useState(false);
   const [newSampleId, setNewSampleId] = React.useState('');
   const [isSyncing, setIsSyncing] = React.useState(false);
-
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSampleId) return;
@@ -82,29 +78,24 @@ export function LabDashboard() {
     }, 1200);
   };
   const [activeFilter, setActiveFilter] = React.useState<'active' | 'completed'>('active');
-
   React.useEffect(() => {
     const unsubscribe = WorkflowEngine.subscribeToEntityTasks('LAB-882', (newTasks) => {
       setTasks(newTasks);
     });
     return () => unsubscribe();
   }, []);
-
   const handleAssign = async (taskId: string) => {
     const user = auth.currentUser;
     if (user) {
       await WorkflowEngine.updateTaskStatus(taskId, 'in_progress', user.uid);
     }
   };
-
   const handleUpdateStatus = async (taskId: string, status: Task['status']) => {
     await WorkflowEngine.updateTaskStatus(taskId, status);
   };
-
   const handleBulkAction = async (action: 'assign' | 'complete' | 'hold' | 'process', taskIds: string[]) => {
     const user = auth.currentUser;
     let updates: Partial<Task> = {};
-
     switch (action) {
       case 'assign': 
         updates = { assignedTo: user?.uid, status: 'assigned' };
@@ -119,21 +110,17 @@ export function LabDashboard() {
         updates = { status: 'in_progress' };
         break;
     }
-
     await WorkflowEngine.bulkUpdateTasks(taskIds, updates);
   };
-
   const metrics = [
     { title: t.samplesInQueue, value: tasks.filter(t => t.status !== 'completed').length, icon: FlaskConical, color: 'text-indigo-600', bg: 'bg-indigo-600' },
     { title: t.avgTat, value: '--', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-600' },
     { title: t.validatedToday, value: tasks.filter(t => t.status === 'completed').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-600' },
     { title: t.qcAnomalies, value: '0', icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-50' },
   ];
-
   const displayedTasks = tasks.filter(t => 
     activeFilter === 'active' ? t.status !== 'completed' : t.status === 'completed'
   );
-
   return (
     <div className="relative min-h-screen bg-slate-50 overflow-hidden">
       {/* Animated Background Mesh */}
@@ -141,7 +128,6 @@ export function LabDashboard() {
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/5 blur-[120px] animate-pulse" />
         <div className="absolute bottom-[20%] left-[-10%] w-[35%] h-[35%] rounded-full bg-indigo-600/5 blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
-
       <div className="relative z-10 p-8 max-w-7xl mx-auto space-y-12">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
         <div className="space-y-1">
@@ -157,7 +143,6 @@ export function LabDashboard() {
               </div>
            </div>
         </div>
-
         <div className="flex items-center gap-3 w-full lg:w-auto">
           <div className="relative flex-1 lg:w-64 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={18} />
@@ -174,7 +159,6 @@ export function LabDashboard() {
           </button>
         </div>
       </div>
-
       <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl shadow-indigo-100 relative overflow-hidden group border border-white/5">
          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 blur-[120px] -mr-64 -mt-64 transition-transform group-hover:scale-110 pointer-events-none" />
          <div className="absolute bottom-0 left-0 w-64 h-64 bg-rose-500/5 blur-[80px] -ml-32 -mb-32 pointer-events-none" />
@@ -208,7 +192,6 @@ export function LabDashboard() {
                 <p className="text-indigo-400/60 text-sm mt-1">Inventory levels will appear once configured.</p>
              </div>
          </div>
-
          <div className="relative z-10 flex flex-wrap items-center gap-4">
             <button 
               onClick={() => setIsRegistering(true)}
@@ -222,7 +205,6 @@ export function LabDashboard() {
             </button>
          </div>
       </div>
-
       <AnimatePresence>
         {isRegistering && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -242,7 +224,6 @@ export function LabDashboard() {
                <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150">
                   <Scan size={240} />
                </div>
-
                <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
                   <div className="flex items-center gap-6">
                      <div className="w-14 h-14 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-500/20">
@@ -257,7 +238,6 @@ export function LabDashboard() {
                      <X size={24} />
                   </button>
                </div>
-
                <form onSubmit={handleRegister} className="p-10 space-y-8">
                   <div className="space-y-4">
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-4">Neural Sample Identifier</label>
@@ -273,7 +253,6 @@ export function LabDashboard() {
                         />
                      </div>
                   </div>
-
                   <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-[2.5rem] flex items-center gap-4">
                      <ShieldCheck size={32} className="text-indigo-600 shrink-0" />
                      <div>
@@ -281,7 +260,6 @@ export function LabDashboard() {
                         <p className="text-xs font-medium text-indigo-900/60 leading-tight">Registration will broadcast a validation request to all Karkh-Regional bio-nodes.</p>
                      </div>
                   </div>
-
                   <button 
                     disabled={!newSampleId || isSyncing}
                     className="w-full py-8 bg-slate-900 text-white rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-indigo-600 transition-all disabled:opacity-50 disabled:hover:bg-slate-900 group relative overflow-hidden"
@@ -299,19 +277,14 @@ export function LabDashboard() {
           </div>
         )}
       </AnimatePresence>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {metrics.map((m, i) => (
           <StatCard key={i} {...m} />
         ))}
       </div>
-
       <PredictiveAnalytics />
-
       <NeuralConnectivityHub />
-
       <LabDeviceMonitor />
-
       <div className="grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8 space-y-6">
            <div className="flex gap-2">
@@ -342,7 +315,6 @@ export function LabDashboard() {
              onBulkAction={handleBulkAction}
            />
         </div>
-
         <div className="col-span-12 lg:col-span-4 space-y-6">
             <div className="bg-slate-900 rounded-[40px] p-8 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-[80px] -mr-16 -mt-16" />
@@ -350,19 +322,16 @@ export function LabDashboard() {
                 <div className="flex items-center justify-between mb-8">
                    <h3 className="text-lg font-black uppercase tracking-tight">{t.chemicalReagents}</h3>
                 </div>
-
                 <div className="text-center py-12 bg-white/5 rounded-[2rem]">
                   <FlaskConical size={32} className="text-indigo-400/30 mx-auto mb-3" />
                   <p className="text-indigo-200 font-bold">No inventory data</p>
                   <p className="text-indigo-400/60 text-sm mt-1">Reagent levels will appear once stock is configured.</p>
                 </div>
-
                 <button className="w-full mt-10 py-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-white/5">
                   {t.orderSupplies} <Plus size={14} />
                 </button>
               </div>
             </div>
-
             <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-sm">
                <div className="flex items-center gap-3 mb-6">
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
@@ -379,10 +348,8 @@ export function LabDashboard() {
             </div>
         </div>
         </div>
-
         {/* ── Statistics & Trends ──────────────────────────────────────── */}
         <LabStatsTrends />
-
       </div>
     </div>
   );

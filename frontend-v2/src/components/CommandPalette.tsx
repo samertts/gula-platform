@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { motion } from 'motion/react';
-import { ChevronRight, Command as CommandIcon, Search, Sparkles, HelpCircle, Settings, Users, Microscope, LayoutDashboard } from 'lucide-react';
+import {ChevronRight, Command as CommandIcon, Search} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
@@ -12,34 +11,26 @@ import {
   searchCommands,
 } from '../lib/commandRegistry';
 import { Badge, Kbd } from './ui';
-
 export const CommandPalette = memo(function CommandPalette() {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const isRtl = language === 'AR' || language === 'KU' || language === 'SY';
-
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const [mode, setMode] = useState<'commands' | 'search'>('commands');
-
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
-
   const availableCommands = useMemo(() => commandsForProfile(profile), [profile]);
-
   const results = useMemo(() => searchCommands(availableCommands, t, query), [availableCommands, t, query]);
-
   useEffect(() => { setActiveIndex(0); }, [query, isOpen]);
-
   const open = () => {
     previouslyFocused.current = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
     setIsOpen(true);
     setMode(query ? 'search' : 'commands');
   };
-
   const close = () => {
     setIsOpen(false);
     setQuery('');
@@ -49,7 +40,6 @@ export const CommandPalette = memo(function CommandPalette() {
       previouslyFocused.current = null;
     });
   };
-
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -66,16 +56,13 @@ export const CommandPalette = memo(function CommandPalette() {
       window.removeEventListener('open-command-palette', onOpenEvent);
     };
   }, [isOpen, query]);
-
   useEffect(() => {
     if (isOpen) requestAnimationFrame(() => inputRef.current?.focus());
   }, [isOpen]);
-
   const runCommand = (cmd: CommandDefinition) => {
     cmd.run({ navigate, t, profile, openShortcuts: () => window.dispatchEvent(new CustomEvent('open-shortcuts')) });
     close();
   };
-
   const onInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') { e.preventDefault(); close(); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => results.length === 0 ? 0 : (i + 1) % results.length); return; }
@@ -88,22 +75,18 @@ export const CommandPalette = memo(function CommandPalette() {
       setMode(m => m === 'commands' ? 'search' : 'commands');
     }
   };
-
   useEffect(() => {
     if (!isOpen) return;
     const el = listRef.current?.querySelector<HTMLElement>(`[data-cmd-idx="${activeIndex}"]`);
     el?.scrollIntoView({ block: 'nearest' });
   }, [activeIndex, isOpen]);
-
   if (!isOpen) return null;
-
   const grouped: Array<{ category: string; entries: { cmd: CommandDefinition; idx: number }[] }> = [];
   results.forEach((cmd, idx) => {
     const last = grouped[grouped.length - 1];
     if (last && last.category === cmd.category) last.entries.push({ cmd, idx });
     else grouped.push({ category: cmd.category, entries: [{ cmd, idx }] });
   });
-
   return (
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center pt-[12vh] px-4"
@@ -137,7 +120,6 @@ export const CommandPalette = memo(function CommandPalette() {
             <Kbd size="md" className="bg-slate-900 text-white border-none shadow-md">ESC</Kbd>
           </div>
         </div>
-
         {/* Mode tabs */}
         <div className="px-5 pt-3 pb-1 flex gap-1">
           <button
@@ -164,7 +146,6 @@ export const CommandPalette = memo(function CommandPalette() {
             Tab to switch <Kbd>⌃Tab</Kbd>
           </span>
         </div>
-
         {/* Results */}
         <div id="command-palette-list" ref={listRef} role="listbox" aria-label="Commands"
           className="p-4 max-h-[55vh] overflow-y-auto custom-scrollbar bg-slate-50/30"
@@ -222,7 +203,6 @@ export const CommandPalette = memo(function CommandPalette() {
             ))
           )}
         </div>
-
         {/* Footer */}
         <div className="px-5 py-3 bg-slate-900 border-t border-slate-800 flex justify-between items-center text-[10px] font-bold text-slate-400">
           <div className="flex gap-4">

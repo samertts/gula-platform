@@ -2,7 +2,6 @@ import { api } from "./client";
 import type {
   LoginRequest,
   LoginResponse,
-  PaginatedResponse,
   Patient,
   LabOrder,
   LabResult,

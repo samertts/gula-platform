@@ -8,7 +8,6 @@ import {
 import { motion } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { cn } from '../../lib/utils';
-
 const data = [
   { name: 'Jan', glucose: 4000, infection: 2400, cholesterol: 2400 },
   { name: 'Feb', glucose: 3000, infection: 1398, cholesterol: 2210 },
@@ -17,11 +16,9 @@ const data = [
   { name: 'May', glucose: 1890, infection: 4800, cholesterol: 2181 },
   { name: 'Jun', glucose: 2390, infection: 3800, cholesterol: 2500 },
 ];
-
 export function ResearcherDashboard() {
   const { t, dir } = useLanguage();
   const isRtl = dir === 'rtl';
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -46,7 +43,6 @@ export function ResearcherDashboard() {
            </button>
         </div>
       </div>
-
       {/* Hero Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
@@ -76,7 +72,6 @@ export function ResearcherDashboard() {
           </motion.div>
         ))}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
            {/* Main Trend Line Chart */}
@@ -159,7 +154,6 @@ export function ResearcherDashboard() {
                 </ResponsiveContainer>
               </div>
             </div>
-
            {/* Distribution Bar Chart */}
            <div className="p-8 bg-slate-900 rounded-[3rem] text-white overflow-hidden relative group">
              <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
@@ -183,7 +177,6 @@ export function ResearcherDashboard() {
              </div>
            </div>
         </div>
-
         <div className="space-y-8">
            {/* AI Insight Card */}
            <div className="p-8 bg-indigo-600 rounded-[3rem] text-white shadow-xl shadow-indigo-100">
@@ -201,7 +194,6 @@ export function ResearcherDashboard() {
                 Initiate Analysis
               </button>
            </div>
-
            {/* Watchlist */}
            <div className="p-8 bg-white border border-slate-100 rounded-[3rem] shadow-sm">
              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-6">Surveillance Feed</h3>

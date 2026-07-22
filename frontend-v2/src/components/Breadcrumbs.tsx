@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home, ChevronLeft } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../lib/utils';
-
 const ROUTE_LABELS: Record<string, string> = {
   lab: 'Lab Operations',
   citizen: 'Citizen Portal',
@@ -38,23 +37,18 @@ const ROUTE_LABELS: Record<string, string> = {
   research: 'Research',
   security: 'Security',
 };
-
 const ROUTE_ICONS: Record<string, string> = {
   lab: '🔬',
   citizen: '👤',
   ministry: '🏛️',
   admin: '🛡️',
 };
-
 export const Breadcrumbs = memo(function Breadcrumbs() {
   const location = useLocation();
   const { t, isRtl } = useLanguage();
   const pathnames = location.pathname.split('/').filter((x) => x);
-
   if (location.pathname === '/') return null;
-
   const ChevronIcon = isRtl ? ChevronLeft : ChevronRight;
-
   return (
     <nav className="flex mb-6 items-center" aria-label="Breadcrumb">
       <ol className={cn('flex items-center gap-1.5', isRtl && 'flex-row-reverse')}>
@@ -68,7 +62,6 @@ export const Breadcrumbs = memo(function Breadcrumbs() {
           const last = index === pathnames.length - 1;
           const to = `/${pathnames.slice(0, index + 1).join('/')}`;
           const label = ROUTE_LABELS[value] || value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, ' ');
-
           return (
             <li key={to} className="flex items-center gap-1.5">
               <ChevronIcon size={12} className="text-slate-300" />

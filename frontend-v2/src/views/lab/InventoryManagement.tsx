@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import {useState} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Box, Search, AlertTriangle, Plus, 
@@ -8,10 +8,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, formatDate } from '../../lib/utils';
-import { auth, db } from '../../firebase';
+import {db} from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
-
 interface InventoryItem {
   id: string;
   name: string;
@@ -23,12 +22,10 @@ interface InventoryItem {
   status: 'optimal' | 'low' | 'expired';
   location: string;
 }
-
 export function InventoryManagement() {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'all' | 'low' | 'expired'>('all');
   const [isSimulating, setIsSimulating] = useState(false);
-
   const simulateAlert = async () => {
     setIsSimulating(true);
     try {
@@ -48,7 +45,6 @@ export function InventoryManagement() {
       setIsSimulating(false);
     }
   };
-
   const inventory: InventoryItem[] = [
     {
       id: 'MAT-101',
@@ -84,13 +80,11 @@ export function InventoryManagement() {
       location: 'Zero Freezer'
     }
   ];
-
   const filteredItems = inventory.filter(item => {
     if (activeTab === 'low') return item.status === 'low';
     if (activeTab === 'expired') return item.status === 'expired';
     return true;
   });
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-10 min-h-screen">
       {/* Immersive Header */}
@@ -127,7 +121,6 @@ export function InventoryManagement() {
            </button>
         </div>
       </div>
-
       {/* High-Impact Stat Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
@@ -152,7 +145,6 @@ export function InventoryManagement() {
           </motion.div>
         ))}
       </div>
-
       {/* Sophisticated Data Grid */}
       <div className="bg-white border border-slate-100 rounded-[3rem] overflow-hidden shadow-xl shadow-slate-200/40">
         <div className="p-8 border-b border-slate-50 flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-slate-50/30">
@@ -186,7 +178,6 @@ export function InventoryManagement() {
              </button>
           </div>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>

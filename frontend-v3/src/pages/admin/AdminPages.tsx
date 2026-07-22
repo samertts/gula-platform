@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { adminApi } from "@/api/endpoints";
-import { Card, CardContent, Badge, DataTable, Input, Button, Dialog } from "@/components/ui";
+import { Card, CardContent, Badge, DataTable, Input, Button } from "@/components/ui";
 import { PageHeader, LoadingSpinner, ErrorDisplay } from "@/components/shared/PageComponents";
-import { Search, Plus, Shield, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Lab } from "@/types";

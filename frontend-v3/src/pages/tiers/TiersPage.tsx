@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { tiersApi } from "@/api/endpoints";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button } from "@/components/ui";
-import { PageHeader, LoadingSpinner, ErrorDisplay } from "@/components/shared/PageComponents";
+import { PageHeader, LoadingSpinner } from "@/components/shared/PageComponents";
 import { Crown, CheckCircle2, Star } from "lucide-react";
 
 const tierColors: Record<string, string> = {
@@ -31,15 +31,15 @@ export function TiersPage() {
 
   if (tiersLoading || myLoading) return <LoadingSpinner />;
 
-  const tiers = (tiersData as any)?.tiers || [];
-  const currentTier = (myTier as any)?.tier || "free";
+  const tiers = tiersData?.tiers ?? [];
+  const currentTier = myTier?.tier ?? "free";
 
   return (
     <div className="space-y-6">
       <PageHeader title="الباقات" description="اختر الباقة المناسبة لمختبرك" />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {tiers.map((tier: any) => {
+        {tiers.map((tier) => {
           const Icon = tierIcons[tier.name] || Star;
           const isCurrent = tier.name === currentTier;
           return (
@@ -54,7 +54,7 @@ export function TiersPage() {
                   <Icon className="h-6 w-6 text-primary" />
                   <CardTitle>{tier.name}</CardTitle>
                 </div>
-                <p className="text-2xl font-bold">{tier.price || 0}</p>
+                <p className="text-2xl font-bold">{tier.monthly_price_usd || 0}</p>
               </CardHeader>
               <CardContent className="space-y-3">
                 <ul className="space-y-2 text-sm">
