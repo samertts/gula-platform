@@ -4,7 +4,8 @@ import {
   Shield, Settings, Building2, Stethoscope, Activity,
   FileText, UserCog, Database, Wifi, Truck,
   ShieldAlert, Ban, Fingerprint, HeartPulse,
-  FileSpreadsheet, ScrollText,
+  FileSpreadsheet, ScrollText, Building, Server,
+  DollarSign, BarChart3, Brain,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -70,6 +71,36 @@ export const NAV_ITEMS: NavItem[] = [
       { labelKey: 'mfa', icon: Fingerprint, path: '/security/mfa' },
       { labelKey: 'sessionManagement', icon: UserCog, path: '/security/sessions' },
     ],
+  },
+  {
+    labelKey: 'hospital',
+    icon: Building,
+    path: '/hospital',
+    roles: ['master_admin', 'admin', 'lab_admin'],
+  },
+  {
+    labelKey: 'edgePlatform',
+    icon: Server,
+    path: '/edge',
+    roles: ['master_admin', 'admin'],
+  },
+  {
+    labelKey: 'financial',
+    icon: DollarSign,
+    path: '/financial',
+    roles: ['master_admin', 'admin'],
+  },
+  {
+    labelKey: 'nationalData',
+    icon: BarChart3,
+    path: '/national-data',
+    roles: ['master_admin', 'ministry_admin', 'province_admin'],
+  },
+  {
+    labelKey: 'aiPlatform',
+    icon: Brain,
+    path: '/ai-platform',
+    roles: ['master_admin', 'admin', 'lab_admin', 'doctor'],
   },
 ];
 

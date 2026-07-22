@@ -99,9 +99,16 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
   ],
   tools: [
     { label: "nav.ai", path: "/ai", icon: "Brain", permissions: ["dashboard:read"] },
+    { label: "nav.aiPlatform", path: "/ai-platform", icon: "Brain", permissions: ["dashboard:read"] },
     { label: "nav.patientCard", path: "/patient-card", icon: "CreditCard", permissions: ["patients:read"] },
     { label: "nav.identity", path: "/identity", icon: "Fingerprint", permissions: ["patients:read"] },
     { label: "nav.tiers", path: "/tiers", icon: "Crown", permissions: ["dashboard:read"] },
+  ],
+  enterprise: [
+    { label: "nav.hospital", path: "/hospital", icon: "Building", permissions: ["lab:read"] },
+    { label: "nav.edgePlatform", path: "/edge", icon: "Server", permissions: ["system:admin"] },
+    { label: "nav.financial", path: "/financial", icon: "DollarSign", permissions: ["lab:manage"] },
+    { label: "nav.nationalData", path: "/national-data", icon: "BarChart3", permissions: ["patients:read"] },
   ],
   settings: [
     { label: "nav.profile", path: "/profile", icon: "UserCircle" },

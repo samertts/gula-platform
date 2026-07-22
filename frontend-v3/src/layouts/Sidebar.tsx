@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, ClipboardList, FlaskConical, TestTube,
   Building2, ShieldCheck, BellRing, Shield, BarChart3, FileCheck,
   Brain, CreditCard, Fingerprint, Crown, UserCircle, Settings, Lock, Bell,
+  Building, Server, DollarSign, Database,
   ChevronLeft, ChevronRight, LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard, Users, ClipboardList, FlaskConical, TestTube,
   Building2, ShieldCheck, BellRing, Shield, BarChart3, FileCheck,
   Brain, CreditCard, Fingerprint, Crown, UserCircle, Settings, Lock, Bell,
+  Building, Server, DollarSign, Database,
 };
 
 export function Sidebar() {
@@ -100,6 +102,14 @@ export function Sidebar() {
             أدوات
           </p>
           {renderItems(NAV_ITEMS.tools)}
+        </div>
+
+        {!collapsed && <hr className="my-3" />}
+        <div className="space-y-1">
+          <p className={cn("px-3 text-xs font-semibold text-muted-foreground", collapsed && "sr-only")}>
+            المؤسسي
+          </p>
+          {renderItems(NAV_ITEMS.enterprise)}
         </div>
 
         {!collapsed && <hr className="my-3" />}
