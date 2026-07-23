@@ -583,3 +583,27 @@ The generator creates:
 
 All data uses the `DEMO_` prefix and is fully isolated from production.
 Never run against a production database.
+
+## Enterprise Governance Certification
+
+`scripts/enterprise_governance_certification.py` performs a comprehensive audit
+of every subsystem against enterprise production standards. It generates an
+evidence-based certification report with blockers, risks, and recommendations.
+
+```bash
+python3 scripts/enterprise_governance_certification.py --output-dir ./governance_report
+```
+
+The certification audits:
+- Repository integrity, architecture compliance, code quality, security posture
+- Authentication (90%+ endpoint auth), RBAC model, tenant isolation
+- Audit trail (hash-chain immutable logs), API governance
+- Clinical workflows, AI platform governance, integration platform
+- Observability (health checks, logging, metrics, circuit breaker)
+- Disaster recovery (backup, PITR, failover, DR scripts)
+- Documentation coverage, frontend API connectivity
+
+Output: `NATIONAL_CERTIFICATION_REPORT.md` with PASS/WARN/FAIL per check,
+blockers list, statistics, and certification classification
+(DEVELOPMENT → ALPHA → BETA → RELEASE CANDIDATE → PRODUCTION READY →
+ENTERPRISE READY → NATIONAL READY).
