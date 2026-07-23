@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
+import { apiPost } from '../../api/client';
 export function PatientRegistration() {
   const { language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,12 +74,15 @@ export function PatientRegistration() {
     e.preventDefault();
     if (!validate()) return;
     setIsSubmitting(true);
-    // Simulated Registration with Network Awareness
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setIsSuccess(true);
-      toast.success(isRtl ? 'تم تسجيل البيانات بنجاح' : 'Registration completed successfully');
-    } catch (error) {
+      const res = await apiPost('/patients/register', formData);
+      if (res) {
+        setIsSuccess(true);
+        toast.success(isRtl ? 'تم تسجيل البيانات بنجاح' : 'Registration completed successfully');
+      } else {
+        toast.error('Registration failed');
+      }
+    } catch {
       toast.error('Registration failed');
     } finally {
       setIsSubmitting(false);

@@ -101,7 +101,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
                       onClick={() => markAsRead(n.id)}
                     >
                       <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm', !n.read ? 'bg-white' : 'bg-slate-50')}>
-                        {getIcon(n.type, n.priority)}
+                        {getIcon(n.type, n.priority || '')}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
