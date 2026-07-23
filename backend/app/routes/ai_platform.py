@@ -146,7 +146,7 @@ async def index_content(
 
 
 @router.get("/embedding-info", summary="Embedding model configuration")
-def get_embedding_info():
+def get_embedding_info(current_user=Depends(get_current_user)):
     return embedding_model_info()
 
 
@@ -176,7 +176,7 @@ async def rag_query(
 
 
 @router.get("/knowledge-graph/info", summary="Knowledge graph statistics")
-def kg_info():
+def kg_info(current_user=Depends(get_current_user)):
     knowledge_graph.initialize()
     return {
         "node_count": len(knowledge_graph.nodes),
@@ -187,7 +187,7 @@ def kg_info():
 
 
 @router.post("/knowledge-graph/search", summary="Search knowledge graph")
-def kg_search(body: KGSearchRequest):
+def kg_search(body: KGSearchRequest, current_user=Depends(get_current_user)):
     knowledge_graph.initialize()
     nodes = knowledge_graph.search_nodes(query=body.query, node_type=body.node_type, limit=body.limit)
     return {
@@ -200,7 +200,7 @@ def kg_search(body: KGSearchRequest):
 
 
 @router.get("/knowledge-graph/node/{node_id}", summary="Get knowledge graph node details")
-def kg_node(node_id: int):
+def kg_node(node_id: int, current_user=Depends(get_current_user)):
     knowledge_graph.initialize()
     node = knowledge_graph.get_node(node_id)
     if not node:
@@ -213,7 +213,7 @@ def kg_node(node_id: int):
 
 
 @router.get("/knowledge-graph/path", summary="Shortest path between two nodes")
-def kg_path(source: int = Query(...), target: int = Query(...)):
+def kg_path(source: int = Query(...), target: int = Query(...), current_user=Depends(get_current_user)):
     knowledge_graph.initialize()
     path = knowledge_graph.shortest_path(source, target)
     if path is None:
@@ -225,7 +225,7 @@ def kg_path(source: int = Query(...), target: int = Query(...)):
 
 
 @router.get("/agents/tools", summary="List available agent tools")
-def list_agent_tools():
+def list_agent_tools(current_user=Depends(get_current_user)):
     return {"tools": list_tools()}
 
 
@@ -279,7 +279,7 @@ async def orchestrate_query(
 
 
 @router.get("/orchestrate/tasks", summary="List orchestration tasks")
-def list_tasks(status: str | None = None, limit: int = 20):
+def list_tasks(status: str | None = None, limit: int = 20, current_user=Depends(get_current_user)):
     return {"tasks": orchestrator.list_tasks(status=status, limit=limit)}
 
 
@@ -354,17 +354,17 @@ async def evaluate_order(
 
 
 @router.get("/governance/models", summary="List AI models in registry")
-def list_models(model_type: str | None = None):
+def list_models(model_type: str | None = None, current_user=Depends(get_current_user)):
     return {"models": model_registry.list_models(model_type=model_type)}
 
 
 @router.get("/governance/prompts", summary="List managed prompts")
-def list_prompts():
+def list_prompts(current_user=Depends(get_current_user)):
     return {"prompts": prompt_manager.list_prompts()}
 
 
 @router.get("/governance/evaluations", summary="Evaluation statistics")
-def get_evaluation_stats():
+def get_evaluation_stats(current_user=Depends(get_current_user)):
     return evaluator.get_stats()
 
 
@@ -390,12 +390,12 @@ async def scan_security(
 
 
 @router.get("/metrics", summary="AI platform metrics")
-def get_ai_metrics():
+def get_ai_metrics(current_user=Depends(get_current_user)):
     return get_metrics()
 
 
 @router.get("/metrics/prometheus", summary="Prometheus-formatted metrics")
-def get_prometheus_metrics():
+def get_prometheus_metrics(current_user=Depends(get_current_user)):
     from fastapi.responses import PlainTextResponse
 
     from app.ai.observability import format_for_prometheus

@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   ShieldCheck, Fingerprint, Lock, 
@@ -6,18 +6,24 @@ import {
   History as HistoryIcon } from 'lucide-react';
 import {motion} from 'motion/react';
 import { cn } from '../../lib/utils';
+import { apiGet } from '../../api/client';
 export function SecurityAuditView() {
   const { t } = useLanguage();
   const [mfaEnabled, setMfaEnabled] = useState(true);
-  const activeSessions = [
-    { id: 's1', device: 'MacBook Pro 16"', location: 'Riyadh, SA', ip: '192.168.1.45', status: 'current', icon: Monitor },
-    { id: 's2', device: 'iPhone 15 Pro', location: 'Jeddah, SA', ip: '92.45.12.3', status: 'active', icon: Smartphone },
-  ];
-  const auditLogs = [
-    { id: 'l1', action: 'Medical Data Accessed', actor: 'Dr. Sarah Smith', context: 'Center B - Oncology', timestamp: '2024-04-20 14:22:10', risk: 'low' },
-    { id: 'l2', action: 'Identity Verification (LoA3)', actor: 'Samer (You)', context: 'Self-Service Portal', timestamp: '2024-04-18 09:12:00', risk: 'low' },
-    { id: 'l3', action: 'Sensitive Data Export', actor: 'Admin Admin', context: 'Security Override', timestamp: '2024-04-15 22:45:00', risk: 'medium' },
-  ];
+  const [activeSessions, setActiveSessions] = useState<{ id: string; device: string; location: string; ip: string; status: string; icon: any }[]>([]);
+  const [auditLogs, setAuditLogs] = useState<{ id: string; action: string; actor: string; context: string; timestamp: string; risk: string }[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const logsRes = await apiGet<{ data: any[] }>('/audit/logs');
+        if (logsRes?.data) setAuditLogs(logsRes.data.map((l: any) => ({ id: l.id, action: l.action, actor: l.user_name || l.actor, context: l.context || '', timestamp: l.created_at || l.timestamp, risk: l.severity || l.risk || 'low' })));
+      } catch {}
+      try {
+        const sessionsRes = await apiGet<{ data: any[] }>('/auth/sessions');
+        if (sessionsRes?.data) setActiveSessions(sessionsRes.data.map((s: any, i: number) => ({ id: s.id || `s${i}`, device: s.device_name || s.device || 'Unknown', location: s.location || 'Unknown', ip: s.ip || '', status: s.is_current ? 'current' : 'active', icon: Monitor })));
+      } catch {}
+    })();
+  }, []);
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 min-h-screen bg-slate-50/30">
       <div className="flex items-center justify-between">

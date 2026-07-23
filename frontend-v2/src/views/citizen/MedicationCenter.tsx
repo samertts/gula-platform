@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Pill, Plus, Clock, CheckCircle2, AlertCircle, 
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
+import { apiGet } from '../../api/client';
 interface Medication {
   id: string;
   name: string;
@@ -20,11 +21,15 @@ interface Medication {
 }
 export function MedicationCenter() {
   const { t } = useLanguage();
-  const [meds] = useState<Medication[]>([
-    { id: '1', name: 'Metformin', dosage: '500mg', frequency: 'Twice daily', reminder: '08:00, 20:00', lastTaken: 'Today, 08:15', warning: 'Take with food', type: 'prescription', adherence: 98 },
-    { id: '2', name: 'Vitamin D3', dosage: '2000 IU', frequency: 'Once daily', reminder: '09:00', lastTaken: 'Today, 09:05', type: 'supplement', adherence: 100 },
-    { id: '3', name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', reminder: '08:00', warning: 'Avoid high potassium', type: 'prescription', adherence: 85 }
-  ]);
+  const [meds, setMeds] = useState<Medication[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiGet<{ data: any[] }>('/medications');
+        if (res?.data) setMeds(res.data.map((m: any) => ({ id: m.id, name: m.name, dosage: m.dosage || '', frequency: m.frequency || '', reminder: m.reminder || '', lastTaken: m.last_taken || '', warning: m.warning || '', type: m.type || 'prescription', adherence: m.adherence ?? 0 })));
+      } catch {}
+    })();
+  }, []);
   return (
     <div className="space-y-10 max-w-7xl mx-auto p-4 md:p-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 text-indigo-900">
