@@ -607,3 +607,34 @@ Output: `NATIONAL_CERTIFICATION_REPORT.md` with PASS/WARN/FAIL per check,
 blockers list, statistics, and certification classification
 (DEVELOPMENT → ALPHA → BETA → RELEASE CANDIDATE → PRODUCTION READY →
 ENTERPRISE READY → NATIONAL READY).
+
+## Identity Enterprise Certification
+
+`scripts/identity_enterprise_certification.py` performs a comprehensive audit
+of the identity platform against enterprise standards. It verifies that the
+Identity Platform is the **single trusted identity provider** for the entire
+GULA ecosystem — no subsystem implements its own authentication or authorization.
+
+```bash
+python3 scripts/identity_enterprise_certification.py --output-dir ./identity_report
+```
+
+The certification checks 194 criteria across 15 categories:
+- Identity Models, Authentication (JWT, OAuth2, OIDC, MFA/WebAuthn, API keys)
+- Authorization (RBAC + ABAC, tenant isolation, delegation, break-glass)
+- Identity Governance (MPI: Fellegi-Sunter probabilistic matching, hash-chained audit)
+- Security Controls (secrets, passwords, rate limiting, session management)
+- Audit Trail (SHA-256 hash chain, authorization audit, merge audit)
+- Frontend integration (AuthContext, token management, 401 handling)
+
+Output: 8 files in `./identity_report/`:
+- `IDENTITY_ARCHITECTURE.md` — Full architecture with layer diagram and flow summary
+- `ROLE_CATALOG.md` — 9 roles with hierarchy, levels, management rules
+- `PERMISSION_CATALOG.md` — 16 extended + 13 legacy permissions by role
+- `TENANT_MODEL.md` — Multi-level hierarchy (Ministry → Governorate → Facility → Department)
+- `AUTH_FLOW.md` — Login, MFA, OAuth2, OIDC, token lifecycle diagrams
+- `SECURITY_MODEL.md` — Controls by layer (transport, password, token, MFA, secrets)
+- `AUDIT_MODEL.md` — 7 audit domains, hash-chain integrity, event catalog
+- `IDENTITY_CERTIFICATION.md` — Pass/fail report with certification classification
+
+## Self-Audit Workflow
