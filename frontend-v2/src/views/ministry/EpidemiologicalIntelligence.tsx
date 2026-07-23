@@ -14,48 +14,13 @@ import { apiGet } from '../../api/client';
 type TimelineRow = { name: string; cases: number; predicted: number; risk: number };
 type ZoneData = Record<string, TimelineRow[]>;
 type OutbreakItem = { subject: string; A: number; B: number; fullMark: number };
-const DEFAULT_TIMELINE: TimelineRow[] = [
-  { name: 'Week 1', cases: 400, predicted: 420, risk: 20 },
-  { name: 'Week 2', cases: 300, predicted: 350, risk: 40 },
-  { name: 'Week 3', cases: 600, predicted: 580, risk: 90 },
-  { name: 'Week 4', cases: 800, predicted: 850, risk: 100 },
-  { name: 'Week 5', cases: 500, predicted: 600, risk: 60 },
-  { name: 'Week 6', cases: 400, predicted: 450, risk: 30 },
-];
-const DEFAULT_OUTBREAK: OutbreakItem[] = [
-  { subject: 'Influenza', A: 120, B: 110, fullMark: 150 },
-  { subject: 'COVID-X', A: 98, B: 130, fullMark: 150 },
-  { subject: 'Malaria', A: 86, B: 130, fullMark: 150 },
-  { subject: 'Hepatitis', A: 99, B: 100, fullMark: 150 },
-  { subject: 'Cholera', A: 85, B: 90, fullMark: 150 },
-  { subject: 'Typhoid', A: 65, B: 85, fullMark: 150 },
-];
-const DEFAULT_ZONES: ZoneData = {
-  'Basrah Cluster': [
-    { name: 'Week 1', cases: 140, predicted: 130, risk: 40 },
-    { name: 'Week 2', cases: 210, predicted: 180, risk: 65 },
-    { name: 'Week 3', cases: 450, predicted: 300, risk: 95 },
-    { name: 'Week 4', cases: 880, predicted: 600, risk: 100 },
-  ],
-  'Nineveh Hub': [
-    { name: 'Week 1', cases: 80, predicted: 90, risk: 20 },
-    { name: 'Week 2', cases: 120, predicted: 110, risk: 30 },
-    { name: 'Week 3', cases: 250, predicted: 200, risk: 55 },
-    { name: 'Week 4', cases: 380, predicted: 400, risk: 45 },
-  ],
-};
 export function EpidemiologicalIntelligence() {
   const { t } = useLanguage();
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
-  const [zoneSpecificData, setZoneSpecificData] = useState<ZoneData>(DEFAULT_ZONES);
-  const [timelineData, setTimelineData] = useState<TimelineRow[]>(DEFAULT_TIMELINE);
-  const [outbreakData, setOutbreakData] = useState<OutbreakItem[]>(DEFAULT_OUTBREAK);
-  const [zoneNodes, setZoneNodes] = useState<{ region: string; risk: string; cases: number; color: string }[]>([
-    { region: 'Basrah Cluster', risk: 'High', cases: 1402, color: 'text-rose-400' },
-    { region: 'Nineveh Hub', risk: 'Moderate', cases: 450, color: 'text-amber-400' },
-    { region: 'Anbar Sector', risk: 'Low', cases: 88, color: 'text-emerald-400' },
-    { region: 'Erbil East', risk: 'Stable', cases: 12, color: 'text-indigo-400' },
-  ]);
+  const [zoneSpecificData, setZoneSpecificData] = useState<ZoneData>({});
+  const [timelineData, setTimelineData] = useState<TimelineRow[]>([]);
+  const [outbreakData, setOutbreakData] = useState<OutbreakItem[]>([]);
+  const [zoneNodes, setZoneNodes] = useState<{ region: string; risk: string; cases: number; color: string }[]>([]);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -69,10 +34,10 @@ export function EpidemiologicalIntelligence() {
           if (d?.disease_cases) {
             const diseases = Object.entries(d.disease_cases).slice(0, 6);
             if (diseases.length > 0) {
-              setOutbreakData(diseases.map(([name, count]: [string, any], idx: number) => ({
+              setOutbreakData(diseases.map(([name, count]: [string, any]) => ({
                 subject: name,
-                A: Number(typeof count === 'number' ? count : count?.count || count?.cases || 80),
-                B: DEFAULT_OUTBREAK[idx]?.B || 100,
+                A: Number(typeof count === 'number' ? count : count?.count || count?.cases || 0),
+                B: 100,
                 fullMark: 150,
               })));
             }

@@ -879,7 +879,7 @@ export const LandingAuthView: React.FC = () => {
                    </div>
                    <div className="flex justify-between items-center">
                       <span className={cn(isRtl ? "text-right" : "text-left", "text-[10px] font-black text-slate-400 uppercase tracking-widest")}>{t.biometricId}</span>
-                      <span className="text-xs font-mono font-bold text-slate-900">GID-{(Math.random()*1000000).toFixed(0)}-X</span>
+                       <span className="text-xs font-mono font-bold text-slate-900">GID-XXXXXX-X</span>
                    </div>
                    <div className="flex justify-between items-center">
                       <span className={cn(isRtl ? "text-right" : "text-left", "text-[10px] font-black text-slate-400 uppercase tracking-widest")}>{t.wingAccess}</span>

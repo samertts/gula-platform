@@ -1,4 +1,3 @@
-import {useState} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, ShieldAlert, Fingerprint, 
@@ -28,7 +27,6 @@ const auditLogs: AuditLog[] = [
 ];
 export function DataSovereigntyAudit() {
   const { t } = useLanguage();
-  const [filter, setFilter] = useState('All');
   return (
     <div className="p-8 space-y-8 bg-white min-h-screen">
       {/* Header Panel */}

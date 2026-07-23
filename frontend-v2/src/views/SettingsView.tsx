@@ -27,6 +27,7 @@ import { Language } from '../translations';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
+import { apiGet } from '../api/client';
 type TabId = 'profile' | 'appearance' | 'language' | 'security' | 'ai' | 'compliance' | 'network' | 'system';
 interface Tab {
   id: TabId;
@@ -69,13 +70,20 @@ export function SettingsView() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [hasChanges]);
-  // Simulate System Flux
+  const fetchSystemMetrics = async () => {
+    try {
+      const res = await apiGet<{ cpu: number; memory: number }>('/health/deep');
+      if (res) {
+        setCpuLoad(res.cpu ?? 0);
+        setMemoryUsage(res.memory ?? 0);
+      }
+    } catch {
+      setCpuLoad(0);
+      setMemoryUsage(0);
+    }
+  };
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCpuLoad(prev => Math.max(5, Math.min(95, prev + (Math.random() * 10 - 5))));
-      setMemoryUsage(prev => Math.max(8, Math.min(32, prev + (Math.random() * 2 - 1))));
-    }, 3000);
-    return () => clearInterval(interval);
+    fetchSystemMetrics();
   }, []);
   const tabs: Tab[] = [
     { id: 'profile', label: t.providerProfile, icon: User },
@@ -98,11 +106,6 @@ export function SettingsView() {
   const handleSave = () => {
     setSaveStatus('saving');
     setTimeout(() => {
-      // Simulate potential error for one of the UX recovery flows
-      if (Math.random() > 0.95) {
-        setSaveStatus('error');
-        return;
-      }
       setSaveStatus('saved');
       setHasChanges(false);
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -146,7 +149,7 @@ export function SettingsView() {
                    </div>
                    <div className="relative h-20 flex items-end gap-1 mb-2">
                      {[...Array(20)].map((_, i) => {
-                       const height = 20 + Math.sin(i * 0.5 + aiConfidence * 0.1) * 15 + Math.random() * 5;
+                        const height = 20 + Math.sin(i * 0.5 + aiConfidence * 0.1) * 15;
                        const isActive = (i / 20) * 100 < aiConfidence;
                        return (
                          <div 
@@ -359,7 +362,7 @@ export function SettingsView() {
               </div>
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">{t.providerId}</label>
-                <div className="text-sm font-bold text-slate-700 font-mono">GULA-PX-{user?.uid.slice(0,6).toUpperCase()}</div>
+                <div className="text-sm font-bold text-slate-700 font-mono">GULA-PX-{user?.id?.slice(0,6).toUpperCase() || 'XXXXXX'}</div>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">{t.workplace}</label>

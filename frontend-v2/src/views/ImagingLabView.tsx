@@ -37,7 +37,7 @@ export const ImagingLabView: React.FC = () => {
   };
   const handleSaveEditedImage = (newImageUrl: string) => {
     const newItem: HistoryItem = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: `img-${Date.now()}-${history.length}`,
       url: newImageUrl,
       timestamp: new Date(),
       name: `Edited_${new Date().toLocaleTimeString()}.jpg`

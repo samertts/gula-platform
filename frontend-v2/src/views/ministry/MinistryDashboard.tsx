@@ -36,10 +36,10 @@ export function MinistryDashboard() {
           const ys = [50, 150, 300, 450, 550, 520, 400, 200];
           const nodes: MapNode[] = hospitals.slice(0, 8).map((h: any, idx: number) => ({
             label: h.name_ar || h.name || h.code || `Node ${idx + 1}`,
-            val: Math.floor(Math.random() * 40) + 30,
+            val: 0,
             color: colors[idx % colors.length] || '#6366f1',
             hospitals: 1,
-            critical: Math.floor(Math.random() * 15) + 1,
+            critical: 0,
             x: xs[idx % xs.length] || 400,
             y: ys[idx % ys.length] || 50,
           }));
@@ -51,10 +51,10 @@ export function MinistryDashboard() {
           const ys = [50, 150, 300, 450, 550, 520, 400, 200];
           const nodes: MapNode[] = types.slice(0, 8).map((type: string, idx: number) => ({
             label: type,
-            val: nationalRes.value.laboratories.by_type[type] || 50,
+            val: nationalRes.value.laboratories.by_type[type] || 0,
             color: colors[idx % colors.length] || '#6366f1',
             hospitals: nationalRes.value.laboratories.by_type[type] || 0,
-            critical: Math.floor(Math.random() * 10) + 1,
+            critical: 0,
             x: xs[idx % xs.length] || 400,
             y: ys[idx % ys.length] || 50,
           }));
@@ -80,10 +80,7 @@ export function MinistryDashboard() {
           setTasks(mapped);
         }
       } catch {
-        setMapNodes([
-          { label: 'Baghdad', val: 72, color: '#6366f1', hospitals: 12, critical: 4, x: 400, y: 50 },
-          { label: 'Basrah', val: 88, color: '#f43f5e', hospitals: 8, critical: 7, x: 550, y: 150 },
-        ]);
+        setMapNodes([]);
       }
     };
     fetchData();

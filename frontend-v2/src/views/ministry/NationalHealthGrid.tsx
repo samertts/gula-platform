@@ -34,46 +34,41 @@ export function NationalHealthGrid() {
           if (n?.workforce?.by_profession) {
             const procs = Object.entries(n.workforce.by_profession);
             procs.forEach(([name, count], idx) => {
-              regions.push({ name: name || `Region ${idx + 1}`, value: Number(count) || 50, load: 30 + (idx * 20) % 70, active: Math.floor(Math.random() * 40) + 10 });
+              regions.push({ name: name || `Region ${idx + 1}`, value: Number(count) || 0, load: 0, active: 0 });
             });
           }
           if (n?.laboratories?.by_type) {
             const labs = Object.entries(n.laboratories.by_type);
             labs.forEach(([name, count], idx) => {
               if (!regions.find(r => r.name === name)) {
-                regions.push({ name: name || `LabType ${idx + 1}`, value: Number(count) || 30, load: 30 + (idx * 15) % 60, active: Math.floor(Math.random() * 20) + 5 });
+                regions.push({ name: name || `LabType ${idx + 1}`, value: Number(count) || 0, load: 0, active: 0 });
               }
             });
           }
-          if (!n && !hospRes) regions.push({ name: 'Baghdad', value: 85, load: 72, active: 24 }, { name: 'Basrah', value: 62, load: 88, active: 18 }, { name: 'Nineveh', value: 30, load: 45, active: 10 });
         }
         if (hospRes.status === 'fulfilled') {
           const items = (hospRes.value?.items || []).slice(0, 10);
-          const trends = ['+12%', '+5%', 'stable', '-3%'];
           hospitals = items.map((h: any) => ({
             name: h.name_ar || h.name || h.code,
-            cases: Math.floor(Math.random() * 200) + 20,
-            load: Math.min(100, Math.floor(Math.random() * 60) + 20),
-            trend: trends[Math.floor(Math.random() * trends.length)] || 'stable',
+            cases: 0,
+            load: 0,
+            trend: '0%',
           }));
           if (items.length > 0 && regions.length === 0) {
             items.slice(0, 5).forEach((h: any, idx: number) => {
-              regions.push({ name: h.city || h.province || `Region ${idx + 1}`, value: 50 + idx * 20, load: 30 + idx * 15, active: 10 + idx * 5 });
+              regions.push({ name: h.city || h.province || `Region ${idx + 1}`, value: 0, load: 0, active: 0 });
             });
           }
         }
         if (occRes.status === 'fulfilled' && occRes.value && hospitals.length === 0) {
-          const o = occRes.value;
-          hospitals = [{ name: 'National', cases: o.occupied || 50, load: o.occupancy_rate || 65, trend: 'stable' }];
-        }
-        if (regions.length === 0) {
-          regions.push({ name: 'National', value: 75, load: 65, active: 20 });
+          const o = occRes.value as any;
+          hospitals = [{ name: 'National', cases: o.occupied || 0, load: o.occupancy_rate || 0, trend: '0%' }];
         }
         setData(regions);
-        setDisplayedHospitals(hospitals.length > 0 ? hospitals : [{ name: 'National Health System', cases: 120, load: 65, trend: 'stable' }]);
+        setDisplayedHospitals(hospitals.length > 0 ? hospitals : []);
       } catch {
-        setData([{ name: 'Baghdad', value: 85, load: 72, active: 24 }, { name: 'Basrah', value: 62, load: 88, active: 18 }]);
-        setDisplayedHospitals([{ name: 'National Health System', cases: 120, load: 65, trend: 'stable' }]);
+        setData([]);
+        setDisplayedHospitals([]);
       }
     };
     fetchData();

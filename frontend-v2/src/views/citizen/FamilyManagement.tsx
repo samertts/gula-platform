@@ -22,18 +22,14 @@ export function FamilyManagement() {
           id: m.id || `fam-${idx}`,
           name: m.full_name || m.name || `Family Member ${idx + 1}`,
           role: m.relationship || 'Dependent',
-          status: m.status || 'Stable',
-          score: m.health_score || Math.floor(60 + Math.random() * 35),
-          lastCheck: m.last_checkup || 'Recently',
-          avatar: ['👶', '👩', '👴', '👧', '👨'][idx % 5],
+          status: m.status || 'Active',
+          score: m.health_score || 0,
+          lastCheck: m.last_checkup || '',
+          avatar: (['👶', '👩', '👴', '👧', '👨'][idx % 5]) ?? '',
         }));
-        setFamilyMembers(members.length > 0 ? members.map(m => ({ ...m, avatar: m.avatar ?? '' })) : [
-          { id: 'f1', name: 'Family Member', role: 'Dependent', status: 'Active', score: 85, lastCheck: 'Recently', avatar: '👤' },
-        ]);
+        setFamilyMembers(members.length > 0 ? members.map(m => ({ ...m, avatar: m.avatar ?? '' })) : []);
       } catch {
-        setFamilyMembers([
-          { id: 'f1', name: 'Family Member', role: 'Dependent', status: 'Active', score: 85, lastCheck: 'Recently', avatar: '👤' },
-        ]);
+        setFamilyMembers([]);
       } finally {
         setLoading(false);
       }

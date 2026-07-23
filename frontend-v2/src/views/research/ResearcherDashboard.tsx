@@ -10,31 +10,14 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { cn } from '../../lib/utils';
 import { apiGet } from '../../api/client';
 type ChartRow = { name: string; glucose: number; infection: number; cholesterol: number };
-const DEFAULT_DATA: ChartRow[] = [
-  { name: 'Jan', glucose: 4000, infection: 2400, cholesterol: 2400 },
-  { name: 'Feb', glucose: 3000, infection: 1398, cholesterol: 2210 },
-  { name: 'Mar', glucose: 2000, infection: 9800, cholesterol: 2290 },
-  { name: 'Apr', glucose: 2780, infection: 3908, cholesterol: 2000 },
-  { name: 'May', glucose: 1890, infection: 4800, cholesterol: 2181 },
-  { name: 'Jun', glucose: 2390, infection: 3800, cholesterol: 2500 },
-];
 type StatItem = { label: string; value: string; trend: string; icon: any; color: string };
 type FeedItem = { id: string; type: string; area: string; status: string; time: string; pulse?: boolean };
 export function ResearcherDashboard() {
   useLanguage();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ChartRow[]>(DEFAULT_DATA);
-  const [stats, setStats] = useState<StatItem[]>([
-    { label: 'Total Scanned Records', value: '42.8k', trend: '+12%', icon: Users, color: 'indigo' },
-    { label: 'Diagnostic Accuracy', value: '99.4%', trend: '+0.2%', icon: Activity, color: 'emerald' },
-    { label: 'Regional Alerts', value: '24', trend: '-14%', icon: ShieldCheck, color: 'amber' },
-    { label: 'Active Researchers', value: '182', trend: '+5%', icon: TrendingUp, color: 'blue' }
-  ]);
-  const [feedItems, setFeedItems] = useState<FeedItem[]>([
-    { id: 'AN-01', type: 'Viral Load', area: 'Urban A', status: 'Stable', time: '14m ago' },
-    { id: 'AN-02', type: 'Pathogen-X', area: 'Sector 4', status: 'Elevated', time: '1h ago', pulse: true },
-    { id: 'AN-03', type: 'Water Toxins', area: 'Coastline', status: 'Normal', time: '3h ago' }
-  ]);
+  const [data, setData] = useState<ChartRow[]>([]);
+  const [stats, setStats] = useState<StatItem[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   useEffect(() => {
     const fetchData = async () => {
       try {

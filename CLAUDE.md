@@ -164,9 +164,10 @@ concurrency middlewares.
   - `services/lab`, `order`, `patient`, `result`, `sample`, `notification`, `ai`,
     `autonomous_manager` — future-decomposed microservices shipped as images via CI matrix;
     monolith is still the source of truth for business logic.
-- **`frontend-v2/`** — Rich React + Firebase UI (formerly `samertts/Front-end-`).
+- **`frontend-v2/`** — Rich React SPA (formerly `samertts/Front-end-`).
   Contains citizen portal, Ministry Command Centre, predictive analytics, doctor/lab
-  dashboards. Firebase-backed (Firestore + Auth). Run: `cd frontend-v2 && npm install && npm run dev`
+  dashboards. Firebase dependency removed — all data flows through backend API only.
+  Run: `cd frontend-v2 && npm install && npm run dev`
 - **`client/`** — Lightweight tRPC + React SPA connected to `gula-backend`.
 - **`frontend/`** — Static HTML PWA (offline-capable).
 - **`nhop-platform/`** — National Health Oversight Platform (separate FastAPI app on port 8100).
@@ -539,3 +540,14 @@ Key env vars added with recent features:
 | `RUNTIME_MODE` | Execution context: api / worker / test / cli (default: api) |
 | `FEATURE_BACKGROUND_TASKS` | Enable background worker on startup (default: true) |
 | `SENTRY_DSN` | Optional Sentry error tracking DSN |
+
+## Firebase Removal
+
+Firebase (firebase, firebase-auth, Firestore) has been fully removed from the
+frontend-v2 production codebase:
+- `src/firebase.ts` and `src/firebase-auth.ts` deleted (unused — no views imported them)
+- `firebase` and `@firebase/eslint-plugin-security-rules` removed from package.json
+- All data flows exclusively through `api/client.ts` → backend API
+
+The only remaining Firebase reference is `FCM_SERVER_KEY` in backend `config.py`
+(optional Firebase Cloud Messaging for push notifications — not a data dependency).

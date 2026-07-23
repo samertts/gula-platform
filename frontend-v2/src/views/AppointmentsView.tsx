@@ -7,50 +7,41 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 
 import { apiGet } from '../api/client';
 type Appointment = { patient: string; id: string; time: string; doctor: string; specialty: string; status: string };
 type ChartItem = { name: string; value: number; color: string };
-const DEFAULT_CHART: ChartItem[] = [
-  { name: 'Cardio', value: 42, color: '#4f46e5' },
-  { name: 'Pedia', value: 38, color: '#0ea5e9' },
-  { name: 'Neuro', value: 25, color: '#8b5cf6' },
-  { name: 'General', value: 54, color: '#10b981' },
-];
 export function AppointmentsView() {
   const { t } = useLanguage();
   const [, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<ChartItem[]>(DEFAULT_CHART);
+  const [chartData, setChartData] = useState<ChartItem[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [apptsRes] = await Promise.allSettled([
-          apiGet<{ items: any[]; total: number }>('/hospital/appointments'),
-        ]);
-        if (apptsRes.status === 'fulfilled') {
-          const items = apptsRes.value?.items || [];
-          setAppointments(items.map((a: any) => ({
-            patient: a.patient_name || a.patient || 'Patient',
-            id: a.id || `APT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-            time: a.appointment_time || a.time || a.scheduled_time || '09:00',
-            doctor: a.doctor_name || a.doctor || 'Dr.',
-            specialty: a.specialty || a.department || 'General',
-            status: a.status || (a.is_confirmed ? 'Confirmed' : 'Pending'),
-          })));
-          if (items.length > 0) {
-            const deptCounts: Record<string, number> = {};
-            items.forEach((a: any) => {
-              const dept = a.specialty || a.department || 'General';
-              deptCounts[dept] = (deptCounts[dept] || 0) + 1;
-            });
-            const colors = ['#4f46e5', '#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e'];
-            const chart = Object.entries(deptCounts).slice(0, 6).map(([name, count], idx) => ({
-              name: name.length > 6 ? name.slice(0, 6) : name,
-              value: Math.round(count / items.length * 100),
-              color: colors[idx % colors.length] ?? '#4f46e5',
-            }));
-            if (chart.length > 0) setChartData(chart);
-          }
+        const apptsRes = await apiGet<{ items: any[]; total: number }>('/hospital/appointments');
+        const items = apptsRes?.items || [];
+        setAppointments(items.map((a: any, idx: number) => ({
+          patient: a.patient_name || a.patient || 'Patient',
+          id: a.id || `APT-${idx}`,
+          time: a.appointment_time || a.time || a.scheduled_time || '09:00',
+          doctor: a.doctor_name || a.doctor || 'Dr.',
+          specialty: a.specialty || a.department || 'General',
+          status: a.status || (a.is_confirmed ? 'Confirmed' : 'Pending'),
+        })));
+        if (items.length > 0) {
+          const deptCounts: Record<string, number> = {};
+          items.forEach((a: any) => {
+            const dept = a.specialty || a.department || 'General';
+            deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+          });
+          const colors = ['#4f46e5', '#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e'];
+          const chart = Object.entries(deptCounts).slice(0, 6).map(([name, count], idx) => ({
+            name: name.length > 6 ? name.slice(0, 6) : name,
+            value: Math.round(count / items.length * 100),
+            color: colors[idx % colors.length] || '#4f46e5',
+          }));
+          if (chart.length > 0) setChartData(chart);
         }
       } catch {
-        // Use defaults
+        setAppointments([]);
+        setChartData([]);
       } finally {
         setLoading(false);
       }

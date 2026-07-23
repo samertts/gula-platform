@@ -118,7 +118,7 @@ export function WorkQueue() {
           priority: o.priority as TaskPriority || 'routine',
           status: o.status === 'pending' ? 'unassigned' as TaskStatus : o.status === 'processing' ? 'in-progress' as TaskStatus : o.status === 'completed' ? 'completed' as TaskStatus : 'unassigned' as TaskStatus,
           slaMinutes: 120,
-          timeRemaining: 60 + Math.floor(Math.random() * 60),
+          timeRemaining: (o as any).sla_remaining_seconds ?? 3600,
           owner: undefined,
           section: (['Hematology', 'Biochemistry', 'Serology', 'Microbiology'][idx % 4]) ?? 'Hematology',
           dueAt: new Date(new Date(o.created_at || Date.now()).getTime() + 120 * 60000),
