@@ -551,3 +551,29 @@ frontend-v2 production codebase:
 
 The only remaining Firebase reference is `FCM_SERVER_KEY` in backend `config.py`
 (optional Firebase Cloud Messaging for push notifications — not a data dependency).
+
+## Demo Data Generator
+
+`scripts/generate_demo_data.py` generates a complete synthetic national healthcare
+ecosystem in an isolated Demo Tenant. Run against a dedicated demo database:
+
+```bash
+# Set up demo database
+createdb gula_demo
+# Run migrations on demo DB
+DATABASE_URL=postgresql://gula:gula@localhost:5432/gula_demo alembic upgrade head
+# Generate demo data (200+ users, 200 patients, all roles, 18 governorates)
+DATABASE_URL=postgresql://gula:gula@localhost:5432/gula_demo python3 scripts/generate_demo_data.py
+```
+
+Demo admin credentials: `admin@demo.gula.iq` / `Demo@ADMIN!`
+
+The generator creates:
+- National tenant + 18 governorate sub-tenants
+- Organizations (health directorates), facilities (hospitals, PHCs, labs), departments, sections
+- Users for every healthcare role (65+ role types, 200+ accounts)
+- Synthetic patients (200+), orders, samples, lab results, audit logs
+- CSV/Markdown output files (USER_MATRIX.csv, ROLE_MATRIX.csv, DEMO_PASSWORDS.md, etc.)
+
+All data uses the `DEMO_` prefix and is fully isolated from production.
+Never run against a production database.
