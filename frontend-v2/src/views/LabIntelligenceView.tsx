@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Activity as ActivityIcon, Send, Sparkles, AlertCircle, Bot, User, Camera, Image as ImageIcon, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { apiPost } from '../api/client';
 import { getClinicalInsight } from '../services/geminiService';
 import { cn } from '../lib/utils';
 
@@ -45,7 +46,12 @@ export function LabIntelligenceView() {
     setIsTyping(true);
 
     const context = "Current Patient Profile: Male, 45y. HbA1c: 7.2 (Elevated), LDL: 160 (High). BP: 145/92.";
-    const response = await getClinicalInsight(userMessage, context, imgData || undefined);
+    let response: string | null = null;
+    try {
+      const backendRes = await apiPost<{ response: string }>('/api/ai/v2/orchestrate', { query: userMessage, session_id: 'lab-intel' });
+      if (backendRes?.response) response = backendRes.response;
+    } catch {}
+    if (!response) response = (await getClinicalInsight(userMessage, context, imgData || undefined)) ?? null;
     
     setMessages(prev => [...prev, { role: 'ai', text: response ?? '' }]);
     setIsTyping(false);
