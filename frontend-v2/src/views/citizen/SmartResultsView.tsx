@@ -1,27 +1,53 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   FlaskConical, AlertCircle, CheckCircle2, TrendingUp, 
   Download, Info, BrainCircuit,
-  MessageSquare, Stethoscope
+  MessageSquare, Stethoscope, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { LabTestResult } from '../../types/domain';
 import { analyzeLabTrends } from '../../services/aiService';
 import Markdown from 'react-markdown';
+import { apiGet } from '../../api/client';
+import { LabResult } from '../../api/types';
 export function SmartResultsView() {
   const { t } = useLanguage();
   const [selectedResult, setSelectedResult] = useState<LabTestResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
-  const mockResults: LabTestResult[] = [];
+  const [results, setResults] = useState<LabTestResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        const data = await apiGet<{ data: LabResult[] }>('/citizen/results');
+        const items = (data?.data || []).map((r: LabResult) => ({
+          id: r.id,
+          testName: r.test_name,
+          testNameAr: r.test_name_ar || '',
+          value: r.value,
+          unit: r.unit,
+          range: r.reference_range,
+          flag: r.flag,
+          status: r.status,
+        } as unknown as LabTestResult));
+        setResults(items);
+      } catch {
+        console.error('Failed to load citizen results');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchResults();
+  }, []);
   const handleExplain = async (result: LabTestResult) => {
     setSelectedResult(result);
     setIsAnalyzing(true);
     try {
       const explanation = await analyzeLabTrends([result]);
-      setAiExplanation(explanation);
+      setAiExplanation(explanation ?? null);
     } catch (error) {
       setAiExplanation("I'm having trouble analyzing this right now. Please consult your physician for a detailed interpretation.");
     } finally {
@@ -52,7 +78,11 @@ export function SmartResultsView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Results List */}
         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockResults.length === 0 ? (
+          {loading ? (
+            <div className="lg:col-span-3 flex justify-center py-20">
+              <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+            </div>
+          ) : results.length === 0 ? (
             <div className="lg:col-span-3 text-center py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
               <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-4">
                 <FlaskConical size={32} />
@@ -60,7 +90,7 @@ export function SmartResultsView() {
               <p className="text-slate-500 font-bold text-lg">No lab results yet</p>
               <p className="text-slate-400 text-sm mt-2">Results from connected laboratories will appear here.</p>
             </div>
-          ) : mockResults.map((result) => {
+          ) : results.map((result) => {
             const interp = getInterpretation(result.flag || 'N');
             return (
               <motion.div 

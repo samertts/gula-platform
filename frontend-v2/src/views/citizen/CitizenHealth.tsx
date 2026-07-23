@@ -45,7 +45,7 @@ export function CitizenHealth() {
       setIsExplaining(true);
       try {
         const result = await analyzeLabTrends([explainingResult]);
-        setAiExplanation(result);
+        setAiExplanation(result ?? null);
       } catch (error) {
         setAiExplanation("AI analysis temporarily unavailable. Direct consultation with your pathology lead is recommended.");
       } finally {
@@ -230,7 +230,7 @@ export function CitizenHealth() {
                      stroke="url(#health-gradient)" 
                      strokeWidth="8" fill="transparent" 
                      initial={{ strokeDashoffset: 364 }}
-                     animate={{ strokeDashoffset: 364 - (364 * healthScore) / 100 }} 
+                      animate={{ strokeDashoffset: 364 - (364 * (healthScore ?? 0)) / 100 }} 
                      strokeDasharray={364}
                      className="transition-all duration-1000 ease-out" 
                      strokeLinecap="round" 

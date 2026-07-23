@@ -1,14 +1,14 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Box, Search, AlertTriangle, Plus, 
   ShoppingCart, BarChart2,
   Trash2, Edit2, Filter, History as HistoryIcon,
-  PackageCheck, Archive
+  PackageCheck, Archive, Loader2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, formatDate } from '../../lib/utils';
-import { apiPost } from '../../api/client';
+import { apiPost, apiGet } from '../../api/client';
 import { toast } from 'sonner';
 interface InventoryItem {
   id: string;
@@ -25,6 +25,8 @@ export function InventoryManagement() {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'all' | 'low' | 'expired'>('all');
   const [isSimulating, setIsSimulating] = useState(false);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const simulateAlert = async () => {
     setIsSimulating(true);
     try {
@@ -42,41 +44,30 @@ export function InventoryManagement() {
       setIsSimulating(false);
     }
   };
-  const inventory: InventoryItem[] = [
-    {
-      id: 'MAT-101',
-      name: 'Glucose Reagent Pack',
-      category: 'Chemistry',
-      quantity: 12,
-      unit: 'packs',
-      minLevel: 20,
-      expiryDate: '2026-10-15',
-      status: 'low',
-      location: 'Fridge A-2'
-    },
-    {
-      id: 'MAT-205',
-      name: 'EDTA Blood Tubes (5ml)',
-      category: 'Consumables',
-      quantity: 1400,
-      unit: 'pcs',
-      minLevel: 500,
-      expiryDate: '2027-01-01',
-      status: 'optimal',
-      location: 'Rack B-1'
-    },
-    {
-      id: 'MAT-044',
-      name: 'Control Serum Level 1',
-      category: 'Quality Control',
-      quantity: 3,
-      unit: 'vials',
-      minLevel: 5,
-      expiryDate: '2026-04-25',
-      status: 'expired',
-      location: 'Zero Freezer'
-    }
-  ];
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const data = await apiGet<{ data: InventoryItem[] }>('/inventory');
+        if (data?.data) setInventory(data.data);
+        else {
+          setInventory([
+            { id: 'MAT-101', name: 'Glucose Reagent Pack', category: 'Chemistry', quantity: 12, unit: 'packs', minLevel: 20, expiryDate: '2026-10-15', status: 'low', location: 'Fridge A-2' },
+            { id: 'MAT-205', name: 'EDTA Blood Tubes (5ml)', category: 'Consumables', quantity: 1400, unit: 'pcs', minLevel: 500, expiryDate: '2027-01-01', status: 'optimal', location: 'Rack B-1' },
+            { id: 'MAT-044', name: 'Control Serum Level 1', category: 'Quality Control', quantity: 3, unit: 'vials', minLevel: 5, expiryDate: '2026-04-25', status: 'expired', location: 'Zero Freezer' }
+          ]);
+        }
+      } catch {
+        setInventory([
+          { id: 'MAT-101', name: 'Glucose Reagent Pack', category: 'Chemistry', quantity: 12, unit: 'packs', minLevel: 20, expiryDate: '2026-10-15', status: 'low', location: 'Fridge A-2' },
+          { id: 'MAT-205', name: 'EDTA Blood Tubes (5ml)', category: 'Consumables', quantity: 1400, unit: 'pcs', minLevel: 500, expiryDate: '2027-01-01', status: 'optimal', location: 'Rack B-1' },
+          { id: 'MAT-044', name: 'Control Serum Level 1', category: 'Quality Control', quantity: 3, unit: 'vials', minLevel: 5, expiryDate: '2026-04-25', status: 'expired', location: 'Zero Freezer' }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
   const filteredItems = inventory.filter(item => {
     if (activeTab === 'low') return item.status === 'low';
     if (activeTab === 'expired') return item.status === 'expired';
@@ -119,12 +110,13 @@ export function InventoryManagement() {
         </div>
       </div>
       {/* High-Impact Stat Grid */}
+      {loading && <div className="flex justify-center"><Loader2 className="w-8 h-8 text-indigo-600 animate-spin" /></div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: t.totalValue || 'Total Valuation', value: '$42,500', icon: BarChart2, color: 'text-indigo-600', bg: 'bg-indigo-600' },
-          { label: t.lowStock || 'Critical Points', value: '8 Nodes', icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-600' },
-          { label: t.expiringSoon || 'Expiry Risk', value: '3 Units', icon: HistoryIcon, color: 'text-rose-600', bg: 'bg-rose-600' },
-          { label: t.activePos || 'Active Logistics', value: '5 Shipments', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-600' },
+          { label: t.totalValue || 'Total Items', value: `${inventory.length}`, icon: BarChart2, color: 'text-indigo-600', bg: 'bg-indigo-600' },
+          { label: t.lowStock || 'Low Stock', value: `${inventory.filter(i => i.status === 'low').length} Items`, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-600' },
+          { label: t.expiringSoon || 'Expired', value: `${inventory.filter(i => i.status === 'expired').length} Units`, icon: HistoryIcon, color: 'text-rose-600', bg: 'bg-rose-600' },
+          { label: t.activePos || 'Optimal', value: `${inventory.filter(i => i.status === 'optimal').length} Items`, icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-600' },
         ].map((stat, i) => (
           <motion.div 
             key={i} 

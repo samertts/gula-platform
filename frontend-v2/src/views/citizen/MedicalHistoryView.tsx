@@ -1,35 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   History as HistoryIcon, FileText, 
   ChevronRight, Stethoscope, Beaker, Activity as ActivityIcon,
-  Download, Share2, ShieldCheck, ArrowUpRight, User, Shield
+  Download, Share2, ShieldCheck, ArrowUpRight, User, Shield, Loader2
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
+import { apiGet } from '../../api/client';
+import { useAuth } from '../../contexts/AuthContext';
 export const MedicalHistoryView: React.FC = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [filter, setFilter] = useState('all');
-  const aiInsights = [
-    { 
-      type: 'warning', 
-      title: 'Cardiac Rhythm Anomaly', 
-      content: 'Pattern analysis suggests intermittent systolic elevation. Recommended: 24h ambulatory monitoring.',
-      action: 'Schedule Holter'
-    },
-    { 
-      type: 'info', 
-      title: 'Optimal Recovery', 
-      content: 'Post-treatment inflammatory markers have decreased by 22% compared to previous baseline.',
-      action: 'View Trend'
-    }
-  ];
-  const historyItems = [
-    { id: '1', date: '2024-03-15', provider: 'Dr. Sarah Smith', type: 'diagnosis', title: 'Hypertension Follow-up', desc: 'Blood pressure stabilized at 125/82. Continuing current medication.' },
-    { id: '2', date: '2024-02-28', provider: 'Central Lab', type: 'lab', title: 'Complete Blood Count', desc: 'All parameters within normal range. Slight vitamin D deficiency noted.' },
-    { id: '3', date: '2024-01-10', provider: 'Radiology Dept', type: 'imaging', title: 'Chest X-Ray', desc: 'No significant findings. Clear lung fields.' },
-    { id: '4', date: '2023-12-05', provider: 'General Clinic', type: 'prescription', title: 'Amoxicillin 500mg', desc: 'Treatment for acute pharyngitis.' },
-  ];
+  const [historyItems, setHistoryItems] = useState<{ id: string; date: string; provider: string; type: string; title: string; desc: string }[]>([]);
+  const [aiInsights, setAiInsights] = useState<{ type: string; title: string; content: string; action: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statsCounts, setStatsCounts] = useState<{ visits: number; procedures: number; prescriptions: number; labs: number }>({ visits: 0, procedures: 0, prescriptions: 0, labs: 0 });
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user) return;
+      try {
+        const [ehrData, timelineData] = await Promise.allSettled([
+          apiGet<{ data: any[] }>(`/ehr/patient/${user.id}`),
+          apiGet<{ data: any[] }>(`/ehr/patient/${user.id}/summary`)
+        ]);
+        if (ehrData.status === 'fulfilled') {
+          const items = ehrData.value?.data || [];
+          setHistoryItems(items.slice(0, 20).map((item: any, idx: number) => ({
+            id: item.id || `hist-${idx}`,
+            date: item.created_at || item.date || new Date().toISOString().split('T')[0],
+            provider: item.provider || item.user_name || 'Healthcare Provider',
+            type: item.note_type || item.type || 'lab',
+            title: item.title || item.diagnosis_text || 'Clinical Record',
+            desc: item.content || item.details || item.notes || 'No details available',
+          })));
+        }
+        if (timelineData.status === 'fulfilled') {
+          const summary = timelineData.value as any;
+          setAiInsights(summary?.insights || []);
+          setStatsCounts(summary?.counts || { visits: 0, procedures: 0, prescriptions: 0, labs: 0 });
+        }
+      } catch {
+        console.error('Failed to fetch medical history');
+        setHistoryItems([
+          { id: '1', date: new Date().toISOString().split('T')[0], provider: 'Your Provider', type: 'lab', title: 'Recent Records', desc: 'Connect to see your complete history.' } as { id: string; date: string; provider: string; type: string; title: string; desc: string },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [user]);
   const getTypeStyles = (type: string) => {
     switch(type) {
       case 'diagnosis': return 'bg-blue-100 text-blue-600';
@@ -117,13 +139,14 @@ export const MedicalHistoryView: React.FC = () => {
           </div>
         </div>
       </div>
+      {loading && <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 text-indigo-600 animate-spin" /></div>}
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
          {[
-           { label: 'Visits', value: '24', color: 'indigo' },
-           { label: 'Procedures', value: '03', color: 'blue' },
-           { label: 'Prescriptions', value: '42', color: 'emerald' },
-           { label: 'Lab Tests', value: '81', color: 'amber' }
+           { label: 'Visits', value: `${statsCounts.visits || '--'}`, color: 'indigo' },
+           { label: 'Procedures', value: `${statsCounts.procedures || '--'}`, color: 'blue' },
+           { label: 'Prescriptions', value: `${statsCounts.prescriptions || '--'}`, color: 'emerald' },
+           { label: 'Lab Tests', value: `${statsCounts.labs || historyItems.length || '--'}`, color: 'amber' }
          ].map((stat, i) => (
            <div key={i} className="p-6 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm">
              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>

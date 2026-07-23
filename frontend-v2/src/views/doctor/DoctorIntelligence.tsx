@@ -35,7 +35,7 @@ export function DoctorIntelligence() {
     setIsTyping(true);
     const response = await getClinicalInsight(userMessage, '');
     
-    setMessages(prev => [...prev, { role: 'ai', text: response }]);
+    setMessages(prev => [...prev, { role: 'ai', text: response ?? '' }]);
     setIsTyping(false);
   };
   return (

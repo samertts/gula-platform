@@ -120,7 +120,7 @@ export function SystemsArchitectureView() {
                   <td className="px-8 py-5">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xs">
-                        {user.name?.[0] || user.email[0].toUpperCase()}
+                        {user.name?.[0] || (user.email?.[0] ?? '').toUpperCase()}
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-black text-slate-900">{user.name || 'Unnamed Node'}</span>

@@ -25,16 +25,33 @@ export const ConsentManagementView: React.FC = () => {
   const [purposeOfUse, setPurposeOfUse] = useState<'clinical' | 'research'>('clinical');
   const [targetSearch, setTargetSearch] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<{id: string, name: string} | null>(null);
-  const mockProviders = [
-    { id: 'PROV-001', name: 'Al-Kindi General Hospital', type: 'clinical' },
-    { id: 'PROV-002', name: 'Babylon Research Institute', type: 'research' },
-    { id: 'PROV-003', name: 'Basra Oncology Center', type: 'clinical' },
-    { id: 'PROV-004', name: 'National Bio-Data Project', type: 'research' },
-  ];
-  const filteredTargets = mockProviders.filter(p => 
+  const [providers, setProviders] = useState<{id: string, name: string, type: 'clinical' | 'research'}[]>([]);
+  const filteredTargets = providers.filter(p => 
     p.type === purposeOfUse && 
     p.name.toLowerCase().includes(targetSearch.toLowerCase())
   );
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const data = await apiGet<{ data: { id: string; name: string; type: string }[] }>('/providers');
+        if (data?.data) setProviders(data.data.map((p: any) => ({ ...p, type: p.type === 'research' ? 'research' : 'clinical' })));
+        else setProviders([
+          { id: 'PROV-001', name: 'Al-Kindi General Hospital', type: 'clinical' },
+          { id: 'PROV-002', name: 'Babylon Research Institute', type: 'research' },
+          { id: 'PROV-003', name: 'Basra Oncology Center', type: 'clinical' },
+          { id: 'PROV-004', name: 'National Bio-Data Project', type: 'research' },
+        ]);
+      } catch {
+        setProviders([
+          { id: 'PROV-001', name: 'Al-Kindi General Hospital', type: 'clinical' },
+          { id: 'PROV-002', name: 'Babylon Research Institute', type: 'research' },
+          { id: 'PROV-003', name: 'Basra Oncology Center', type: 'clinical' },
+          { id: 'PROV-004', name: 'National Bio-Data Project', type: 'research' },
+        ]);
+      }
+    };
+    fetchProviders();
+  }, []);
   useEffect(() => {
     if (!authUser) return;
 

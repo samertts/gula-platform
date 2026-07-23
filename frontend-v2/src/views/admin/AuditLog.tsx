@@ -8,27 +8,57 @@ import {
   Download
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { AuditService } from '../../services/AuditService';
 import { AuditLogViewer } from '../../components/AuditLogViewer';
 import { AuditLogEntry } from '../../types/domain';
+import { apiGet } from '../../api/client';
 export const AuditLog: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  useEffect(() => {
-    const fetchLogs = async () => {
-      setIsLoading(true);
-      const data = await AuditService.getLogs();
-      setLogs(data as AuditLogEntry[]);
-      setIsLoading(false);
-    };
-    fetchLogs();
-  }, []);
-  const stats = [
-    { label: 'Integrity Points', value: '1,024', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
-    { label: 'Security Level', value: 'Level 4', icon: Shield, color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Global Nodes', value: '882', icon: Globe, color: 'bg-blue-50 text-blue-600' },
+  const [stats, setStats] = useState([
+    { label: 'Integrity Points', value: '--', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
+    { label: 'Security Level', value: '--', icon: Shield, color: 'bg-emerald-50 text-emerald-600' },
+    { label: 'Global Nodes', value: '--', icon: Globe, color: 'bg-blue-50 text-blue-600' },
     { label: 'Encryption', value: 'AES-256', icon: Lock, color: 'bg-amber-50 text-amber-600' }
-  ];
+  ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [logsRes, summaryRes] = await Promise.allSettled([
+          apiGet<{ data: any[] }>('/admin/audit-logs'),
+          apiGet<any>('/compliance/audit-summary'),
+        ]);
+        if (logsRes.status === 'fulfilled') {
+          const items = logsRes.value?.data || [];
+          setLogs(items.map((l: any) => ({
+            id: l.id,
+            timestamp: l.created_at || l.timestamp,
+            action: l.action || l.event_type || l.type,
+            actor: l.user_name || l.actor || 'system',
+            target: l.target || l.resource || l.entity,
+            details: l.details || l.description || '',
+            severity: l.severity || 'info',
+          } as unknown as AuditLogEntry)));
+        }
+        if (summaryRes.status === 'fulfilled') {
+          const s = summaryRes.value;
+          if (s) {
+            setStats([
+              { label: 'Integrity Points', value: s.total_logs?.toLocaleString() || s.log_count || '1,024', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'Security Level', value: s.security_level || 'Level 4', icon: Shield, color: 'bg-emerald-50 text-emerald-600' },
+              { label: 'Global Nodes', value: s.node_count || s.total_nodes || '882', icon: Globe, color: 'bg-blue-50 text-blue-600' },
+              { label: 'Encryption', value: 'AES-256', icon: Lock, color: 'bg-amber-50 text-amber-600' }
+            ]);
+          }
+        }
+      } catch {
+        console.error('Failed to load audit data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">

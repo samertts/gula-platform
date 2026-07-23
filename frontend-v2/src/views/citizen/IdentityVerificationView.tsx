@@ -8,9 +8,8 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
 type VerificationStep = 'biometric' | 'document' | 'face' | 'review';
 export const IdentityVerificationView: React.FC = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState<VerificationStep>('biometric');
-  const isRtl = language === 'AR' || language === 'KU' || language === 'SY';
   const steps: { id: VerificationStep; title: string; icon: any; loa: string }[] = [
     { id: 'biometric', title: 'Biometric Scan', icon: Fingerprint, loa: 'LoA 3' },
     { id: 'document', title: 'Document Upload', icon: FileText, loa: 'LoA 2' },
@@ -167,7 +166,7 @@ export const IdentityVerificationView: React.FC = () => {
           <button 
              onClick={() => {
                 const idx = steps.findIndex(x => x.id === currentStep);
-                if(idx > 0) setCurrentStep(steps[idx-1].id);
+                 if(idx > 0) setCurrentStep(steps[idx-1]!.id);
              }}
              className="text-slate-500 font-bold text-sm"
           >
@@ -177,7 +176,7 @@ export const IdentityVerificationView: React.FC = () => {
           <button 
              onClick={() => {
                 const idx = steps.findIndex(x => x.id === currentStep);
-                if(idx < steps.length - 1) setCurrentStep(steps[idx+1].id);
+                 if(idx < steps.length - 1) setCurrentStep(steps[idx+1]!.id);
              }}
              className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
           >
