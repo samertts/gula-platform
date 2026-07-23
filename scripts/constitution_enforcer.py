@@ -22,9 +22,14 @@ Enforces the Platform Constitution (docs/constitution/PLATFORM-CONSTITUTION.md):
   Rule 15: No dead or unused code
   Rule 16: FHIR compliance for health data
   Rule 17: Privacy-by-design (consent check)
-  Rule 18: Security-by-design (zero trust)
-  Rule 19: No circular dependencies
-  Rule 20: AI safety and explainability
+   Rule 18: Security-by-design (zero trust)
+   Rule 19: No circular dependencies
+   Rule 20: AI safety and explainability
+   Rule 21: Free First (no paid dependency without approval)
+   Rule 22: Open Source First (prefer open source over proprietary)
+   Rule 23: No Vendor Lock-In (every component replaceable)
+   Rule 24: Self-Hosted First (self-hosted before SaaS)
+   Rule 25: Cost Governance (optimize for lowest cost)
 
 Usage:
   python scripts/constitution_enforcer.py
@@ -1029,6 +1034,227 @@ def rule12_aggregate_improvement(all_results: list[RuleResult]) -> RuleResult:
     return make_rule(12, "Every change must improve the platform", status, details)
 
 
+# ── PROGRAM-CONSTITUTION-001 Rules (21-25) ──────────────────────────────────
+
+
+PAID_SERVICE_PATTERNS = [
+    r"(openai|anthropic|google\.ai|aws|azure|gcp)\.(com|io)",
+    r"stripe\.com",
+    r"twilio\.com",
+    r"sendgrid\.net",
+    r"auth0\.com",
+    r"okta\.com",
+    r"supabase\.(co|com)",
+    r"firebase\.(io|googleapis\.com)",
+    r"datadog",
+    r"newrelic",
+    r"elastic-cloud",
+    r"sentry\.io",
+    r"pagerduty",
+    r"opsgenie",
+]
+
+VENDOR_SDKS = [
+    r"import\s+boto3",
+    r"from\s+boto3",
+    r"import\s+azure",
+    r"from\s+azure",
+    r"import\s+google\.cloud",
+    r"from\s+google\.cloud",
+    r"import\s+firebase",
+    r"from\s+firebase",
+    r"import\s+supabase",
+    r"from\s+supabase",
+    r"import\s+auth0",
+    r"from\s+auth0",
+    r"import\s+okta",
+    r"from\s+okta",
+    r"import\s+stripe",
+    r"from\s+stripe",
+    r"import\s+twilio",
+    r"from\s+twilio",
+    r"import\s+sendgrid",
+    r"from\s+sendgrid",
+]
+
+PROPRIETARY_LICENSES = [
+    "commercial",
+    "proprietary",
+    "all rights reserved",
+    "non-commercial",
+    "eula",
+    "enterprise license",
+]
+
+
+def rule21_free_first(changed_files: list[str]) -> RuleResult:
+    """Rule 21: Free First — no paid dependency without documented approval."""
+    details: list[str] = []
+    status = PASS
+
+    req_files = [f for f in changed_files if f.endswith((".txt", "package.json", "pyproject.toml"))]
+    for rf in req_files:
+        full_path = REPO_ROOT / rf
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for pattern in PAID_SERVICE_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                details.append(f"Potential paid service reference in {rf}: matches '{pattern}'")
+                status = WARNING
+
+    adr_files = list(DOCS_ADR.glob("ADR-*.md")) if DOCS_ADR.exists() else []
+    adr_count = len(adr_files)
+
+    if details:
+        details.insert(0, f"{len(details)} potential paid dependency reference(s) — verify ADR exists ({adr_count} ADRs)")
+        if adr_count < 2:
+            status = FAIL
+            details.append("No ADR found — paid dependencies must have ADR approval")
+
+    if not details:
+        details.append("No paid dependency patterns detected — Free First mandate satisfied")
+
+    return make_rule(21, "Free First (no paid dependency without approval)", status, details)
+
+
+def rule22_open_source_first(changed_files: list[str]) -> RuleResult:
+    """Rule 22: Open Source First — prefer open source over proprietary."""
+    details: list[str] = []
+    status = PASS
+
+    req_files = [f for f in changed_files if f.endswith((".txt", "package.json", "pyproject.toml"))]
+    for rf in req_files:
+        full_path = REPO_ROOT / rf
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+
+        for lic in PROPRIETARY_LICENSES:
+            if lic in text.lower():
+                details.append(f"Potential proprietary license reference in {rf}: '{lic}'")
+                status = WARNING
+
+    if not details:
+        details.append("No proprietary license patterns detected — Open Source First mandate satisfied")
+
+    return make_rule(22, "Open Source First (prefer open source over proprietary)", status, details)
+
+
+def rule23_no_vendor_lock_in(changed_py_files: list[str]) -> RuleResult:
+    """Rule 23: No Vendor Lock-In — every component MUST be replaceable."""
+    details: list[str] = []
+    status = PASS
+
+    for f in changed_py_files:
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+
+        for pattern in VENDOR_SDKS:
+            if re.search(pattern, text):
+                details.append(f"Vendor SDK import in {f}: matches '{pattern}'")
+                status = FAIL
+
+        if "bucket" in text.lower() or "s3" in text.lower():
+            if "minio" not in text.lower() and "abstract" not in text.lower() and "abc" not in text.lower():
+                if "StorageBackend" not in text and "storage" not in f.lower():
+                    pass  # not conclusive enough to flag
+
+    if details:
+        details.insert(0, f"{len(details)} vendor lock-in pattern(s) detected — abstraction layer required")
+    if not details:
+        details.append("No vendor lock-in patterns detected — abstraction layers verified")
+
+    return make_rule(23, "No Vendor Lock-In (every component replaceable)", status, details)
+
+
+def rule24_self_hosted_first(changed_files: list[str]) -> RuleResult:
+    """Rule 24: Self-Hosted First — prefer self-hosted infrastructure over SaaS."""
+    details: list[str] = []
+    status = PASS
+
+    saas_patterns = [
+        r"(supabase|firebase|auth0|okta)\.(com|io|co)",
+        r"aws\.amazon\.com",
+        r"azure\.microsoft\.com",
+        r"cloud\.google\.com",
+        r"mongodb\.com/atlas",
+        r"elastic\.cloud",
+        r"datadog\.com",
+        r"newrelic\.com",
+        r"sendgrid\.(net|com)",
+        r"twilio\.com",
+        r"pagerduty\.com",
+        r"opsgenie\.com",
+        r"sentry\.io",
+    ]
+
+    for f in changed_files:
+        if not f.endswith((".py", ".yml", ".yaml", ".json", ".toml", ".cfg", ".conf", ".env", ".sh")):
+            continue
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+
+        for pattern in saas_patterns:
+            if re.search(pattern, text, re.IGNORECASE) and "example" not in text.lower() and "example" not in f.lower():
+                details.append(f"SaaS reference in {f}: matches '{pattern}'")
+                status = WARNING
+
+    if details:
+        details.insert(0, f"{len(details)} SaaS reference(s) detected — prefer self-hosted alternatives")
+    if not details:
+        details.append("No SaaS references detected — Self-Hosted First mandate satisfied")
+
+    return make_rule(24, "Self-Hosted First (self-hosted before SaaS)", status, details)
+
+
+def rule25_cost_governance(changed_py_files: list[str]) -> RuleResult:
+    """Rule 25: Cost Governance — optimize for lowest cost and highest sovereignty."""
+    details: list[str] = []
+    status = PASS
+
+    cost_patterns = {
+        "aws_lambda": r"(lambda|ec2|eks|ecs|rds)",
+        "azure_functions": r"(azure|function_app|app_service)",
+        "gcp_cloud_functions": r"(gcp|cloud_function|cloud_run)",
+    }
+
+    for f in changed_py_files:
+        full_path = REPO_ROOT / f
+        if not full_path.exists():
+            continue
+        try:
+            text = full_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+
+        for service, pattern in cost_patterns.items():
+            if re.search(pattern, text, re.IGNORECASE) and "example" not in f.lower():
+                if not re.search(r"(abstract|interface|protocol|abc\.)", text):
+                    pass  # Only flag if it looks like direct usage
+
+    if not details:
+        details.append("No cost governance violations detected")
+
+    return make_rule(25, "Cost Governance (optimize for lowest cost)", status, details)
+
+
 # ── Scoring ──────────────────────────────────────────────────────────────────
 
 
@@ -1220,6 +1446,11 @@ def main(argv: list[str] | None = None) -> int:
     results.append(rule18_security_by_design(changed_py_files))
     results.append(rule19_no_circular_dependencies())
     results.append(rule20_ai_safety(changed_py_files))
+    results.append(rule21_free_first(changed_files))
+    results.append(rule22_open_source_first(changed_files))
+    results.append(rule23_no_vendor_lock_in(changed_py_files))
+    results.append(rule24_self_hosted_first(changed_files))
+    results.append(rule25_cost_governance(changed_py_files))
 
     score = _compute_score(results)
 

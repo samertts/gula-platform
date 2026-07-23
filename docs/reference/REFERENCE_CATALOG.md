@@ -152,6 +152,23 @@
 | G-022 | **Full Stack Docker Compose** | Platform Team | Current | Important | Adopted | `docker-compose.full.yml` |
 | G-023 | **HAProxy Config** | Platform Team | Current | Important | Adopted | `config/haproxy/haproxy.cfg` |
 | G-024 | **Self-Audit Agent** | Platform Team | Current | Important | Adopted | `scripts/self_audit_agent.py` |
+| G-025 | **System Context** | Platform Team | 1.0 | Critical | Adopted | `docs/architecture/SYSTEM_CONTEXT.md` |
+| G-026 | **Architecture Decision Log** | Platform Team | 1.0 | Critical | Adopted | `docs/architecture/ARCHITECTURE_DECISION_LOG.md` |
+| G-027 | **Domain Glossary** | Platform Team | 1.0 | Critical | Adopted | `docs/domain/DOMAIN_GLOSSARY.md` |
+| G-028 | **Event Catalog** | Platform Team | 1.0 | Critical | Adopted | `docs/events/EVENT_CATALOG.md` |
+| G-029 | **Database Schema** | Platform Team | 1.0 | Critical | Adopted | `docs/database/DATABASE_SCHEMA.md` |
+| G-030 | **API Coverage** | Platform Team | 1.1 | Critical | Adopted | `docs/api/API_COVERAGE.md` |
+| G-031 | **UI Component Catalog** | Platform Team | 1.1 | Important | Adopted | `docs/frontend/UI_COMPONENT_CATALOG.md` |
+| G-032 | **Workflow Catalog** | Platform Team | 1.0 | Critical | Adopted | `docs/workflows/WORKFLOW_CATALOG.md` |
+| G-033 | **Module Dependency Matrix** | Platform Team | 1.0 | Important | Adopted | `docs/architecture/MODULE_DEPENDENCY_MATRIX.md` |
+| G-034 | **Migration Guide** | Platform Team | 1.0 | Critical | Adopted | `docs/deployment/MIGRATION_GUIDE.md` |
+| G-035 | **Configuration Reference** | Platform Team | 1.0 | Critical | Adopted | `docs/configuration/CONFIGURATION_REFERENCE.md` |
+| G-036 | **Feature Matrix** | Platform Team | 1.0 | Important | Adopted | `docs/management/FEATURE_MATRIX.md` |
+| G-037 | **Known Limitations** | Platform Team | 1.0 | Important | Adopted | `docs/release/KNOWN_LIMITATIONS.md` |
+| G-038 | **Compatibility Matrix** | Platform Team | 1.0 | Important | Adopted | `docs/platform/COMPATIBILITY_MATRIX.md` |
+| G-039 | **Support Policy** | Platform Team | 1.0 | Important | Adopted | `docs/release/SUPPORT_POLICY.md` |
+| G-040 | **Documentation Inventory** | Platform Team | 1.0 | Important | Adopted | `DOCUMENTATION_INVENTORY.md` |
+| G-041 | **Documentation Gap Analysis** | Platform Team | 1.0 | Important | Adopted | `DOCUMENTATION_GAP_ANALYSIS.md` |
 | G-025 | **K8s Manifests** | Platform Team | Current | Important | Evaluating | `k8s/` |
 
 ---

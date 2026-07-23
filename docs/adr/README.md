@@ -88,6 +88,8 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-021](ADR-021-national-intelligence.md) | National Health Intelligence Platform | Accepted | 2026-07-15 |
 | [ADR-022](ADR-022-doctor-workspace.md) | National Doctor Clinical Workspace | Accepted | 2026-07-15 |
 | [ADR-023](ADR-023-laboratory-desktop.md) | National Laboratory Desktop Professional | Accepted | 2026-07-15 |
+| [ADR-024](ADR-024-Platform-Constitution.md) | Platform Constitution | Accepted | 2026-07-16 |
+| [ADR-025](ADR-025-data-preservation-constitution.md) | Data Preservation Constitution | Accepted | 2026-07-22 |
 
 ## Constitution Reference
 

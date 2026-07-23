@@ -478,6 +478,25 @@ feedback loop before pushing.
 | `docs/sndhs/` | 22-file SNDHS architecture & deployment spec |
 | `docs/sndhs/phase1/RUNBOOK.md` | SNDHS Phase 1 production deployment guide |
 
+## Platform Constitution — Cost Governance & Open Source Mandate
+
+All development is governed by PROGRAM-CONSTITUTION-001 (permanent amendment):
+
+| Article | Mandate |
+|---------|---------|
+| **Free First** | Search for FREE solution before any paid alternative |
+| **Open Source First** | Open Source preferred over proprietary |
+| **Self-Hosted First** | Self-hosted before hosted SaaS |
+| **Reuse Before Build** | Never duplicate existing functionality |
+| **Zero Paid Dependency** | Paid software requires documented exception |
+| **No Vendor Lock-In** | Every component MUST be replaceable |
+| **Free Cloud First** | Free plans before paid cloud |
+| **Local AI First** | Self-hosted inference before API |
+| **Local Storage First** | PostgreSQL/MinIO/Redis before cloud storage |
+| **Free Security First** | OpenSSL, Let's Encrypt, WireGuard before commercial |
+
+Full policy: `docs/constitution/COST_GOVERNANCE.md` and `docs/architecture/FREE_FIRST_POLICY.md`
+
 ## Self-Audit Workflow
 
 A Claude agent that scans the codebase and optionally applies safe fixes:
