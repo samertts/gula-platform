@@ -7,6 +7,7 @@ import {
   Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { apiPost } from '../../api/client';
 import { getClinicalInsight } from '../../services/geminiService';
 import { cn } from '../../lib/utils';
 import { OrganAnalysis } from '../../components/OrganAnalysis';
@@ -33,7 +34,12 @@ export function DoctorIntelligence() {
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsTyping(true);
-    const response = await getClinicalInsight(userMessage, '');
+    let response: string | null = null;
+    try {
+      const backendRes = await apiPost<{ response: string }>('/api/ai/v2/orchestrate', { query: userMessage, session_id: 'dr-intel' });
+      if (backendRes?.response) response = backendRes.response;
+    } catch {}
+    if (!response) response = (await getClinicalInsight(userMessage, '')) ?? null;
     
     setMessages(prev => [...prev, { role: 'ai', text: response ?? '' }]);
     setIsTyping(false);

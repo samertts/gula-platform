@@ -1,3 +1,4 @@
+import {useState, useEffect} from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, ShieldAlert, Fingerprint, 
@@ -8,25 +9,34 @@ import {
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
 import { BiometricStatus } from '../../components/BiometricStatus';
+import { apiGet } from '../../api/client';
 interface AuditLog {
   id: string;
   user: string;
-  role: 'doctor' | 'admin' | 'researcher' | 'lab';
+  role: string;
   action: string;
   resourceId: string;
   timestamp: string;
-  integrity: 'valid' | 'warning' | 'critical';
+  integrity: string;
   ip: string;
   location: string;
 }
-const auditLogs: AuditLog[] = [
-  { id: 'LOG-8821', user: 'Dr. Samer M.', role: 'doctor', action: 'Identity Read', resourceId: 'GID-292-1029', timestamp: '2024-04-25 14:02:11', integrity: 'valid', ip: '192.168.4.12', location: 'Baghdad Central' },
-  { id: 'LOG-8822', user: 'SysAdmin Alpha', role: 'admin', action: 'Grid Mod', resourceId: 'CLUSTER-B3', timestamp: '2024-04-25 13:58:00', integrity: 'warning', ip: '110.12.92.1', location: 'Erbil Sector 1' },
-  { id: 'LOG-8823', user: 'Researcher Z.', role: 'researcher', action: 'Query Bulk', resourceId: 'EPID-X99', timestamp: '2024-04-25 13:12:45', integrity: 'valid', ip: '29.34.1.92', location: 'Basrah Hub' },
-  { id: 'LOG-8824', user: 'Lab Node 04', role: 'lab', action: 'Result Push', resourceId: 'RES-00293', timestamp: '2024-04-24 10:22:11', integrity: 'critical', ip: 'Unknown', location: 'Autonomous' },
-];
 export function DataSovereigntyAudit() {
   const { t } = useLanguage();
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiGet<{ data: any[] }>('/compliance/audit-integrity');
+        if (res?.data) setAuditLogs(res.data.map((l: any) => ({ id: l.id, user: l.user_name || l.user || 'Unknown', role: l.role || 'auditor', action: l.action || '', resourceId: l.resource_id || l.resourceId || '', timestamp: l.created_at || l.timestamp || '', integrity: l.integrity || 'valid', ip: l.ip || '', location: l.location || '' })));
+      } catch {
+        try {
+          const res = await apiGet<{ data: any[] }>('/compliance/audit-summary');
+          if (res?.data) setAuditLogs(res.data.map((l: any) => ({ id: l.id, user: l.user_name || l.user || 'Unknown', role: l.role || 'auditor', action: l.action || '', resourceId: l.resource_id || l.resourceId || '', timestamp: l.created_at || l.timestamp || '', integrity: l.integrity || 'valid', ip: l.ip || '', location: l.location || '' })));
+        } catch {}
+      }
+    })();
+  }, []);
   return (
     <div className="p-8 space-y-8 bg-white min-h-screen">
       {/* Header Panel */}
