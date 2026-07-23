@@ -23,7 +23,7 @@ export const CommandPalette = memo(function CommandPalette() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
-  const availableCommands = useMemo(() => commandsForProfile(profile), [profile]);
+  const availableCommands = useMemo(() => commandsForProfile(profile as any), [profile]);
   const results = useMemo(() => searchCommands(availableCommands, t, query), [availableCommands, t, query]);
   useEffect(() => { setActiveIndex(0); }, [query, isOpen]);
   const open = () => {
@@ -60,7 +60,7 @@ export const CommandPalette = memo(function CommandPalette() {
     if (isOpen) requestAnimationFrame(() => inputRef.current?.focus());
   }, [isOpen]);
   const runCommand = (cmd: CommandDefinition) => {
-    cmd.run({ navigate, t, profile, openShortcuts: () => window.dispatchEvent(new CustomEvent('open-shortcuts')) });
+    cmd.run({ navigate, t, profile: profile as any, openShortcuts: () => window.dispatchEvent(new CustomEvent('open-shortcuts')) });
     close();
   };
   const onInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

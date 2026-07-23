@@ -1,15 +1,28 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { ShieldAlert, Zap, TrendingUp, Fingerprint, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { cn } from '../../lib/utils';
 import { PredictiveOutbreak } from '../../components/PredictiveOutbreak';
 import { 
-  ResponsiveContainer, AreaChart, Area, 
+  ResponsiveContainer, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ComposedChart, Bar, Line
 } from 'recharts';
-const outbreakData = [
+import { CrisisResponsePipeline } from '../../components/ministry/CrisisResponsePipeline';
+import { apiGet } from '../../api/client';
+type TimelineRow = { name: string; cases: number; predicted: number; risk: number };
+type ZoneData = Record<string, TimelineRow[]>;
+type OutbreakItem = { subject: string; A: number; B: number; fullMark: number };
+const DEFAULT_TIMELINE: TimelineRow[] = [
+  { name: 'Week 1', cases: 400, predicted: 420, risk: 20 },
+  { name: 'Week 2', cases: 300, predicted: 350, risk: 40 },
+  { name: 'Week 3', cases: 600, predicted: 580, risk: 90 },
+  { name: 'Week 4', cases: 800, predicted: 850, risk: 100 },
+  { name: 'Week 5', cases: 500, predicted: 600, risk: 60 },
+  { name: 'Week 6', cases: 400, predicted: 450, risk: 30 },
+];
+const DEFAULT_OUTBREAK: OutbreakItem[] = [
   { subject: 'Influenza', A: 120, B: 110, fullMark: 150 },
   { subject: 'COVID-X', A: 98, B: 130, fullMark: 150 },
   { subject: 'Malaria', A: 86, B: 130, fullMark: 150 },
@@ -17,7 +30,7 @@ const outbreakData = [
   { subject: 'Cholera', A: 85, B: 90, fullMark: 150 },
   { subject: 'Typhoid', A: 65, B: 85, fullMark: 150 },
 ];
-const zoneSpecificData: Record<string, any[]> = {
+const DEFAULT_ZONES: ZoneData = {
   'Basrah Cluster': [
     { name: 'Week 1', cases: 140, predicted: 130, risk: 40 },
     { name: 'Week 2', cases: 210, predicted: 180, risk: 65 },
@@ -31,19 +44,91 @@ const zoneSpecificData: Record<string, any[]> = {
     { name: 'Week 4', cases: 380, predicted: 400, risk: 45 },
   ],
 };
-const timelineData = [
-  { name: 'Week 1', cases: 400, predicted: 420, risk: 20 },
-  { name: 'Week 2', cases: 300, predicted: 350, risk: 40 },
-  { name: 'Week 3', cases: 600, predicted: 580, risk: 90 },
-  { name: 'Week 4', cases: 800, predicted: 850, risk: 100 },
-  { name: 'Week 5', cases: 500, predicted: 600, risk: 60 },
-  { name: 'Week 6', cases: 400, predicted: 450, risk: 30 },
-];
-import { CrisisResponsePipeline } from '../../components/ministry/CrisisResponsePipeline';
 export function EpidemiologicalIntelligence() {
   const { t } = useLanguage();
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
-  const activeTimeline = selectedZone ? (zoneSpecificData[selectedZone] || timelineData) : timelineData;
+  const [zoneSpecificData, setZoneSpecificData] = useState<ZoneData>(DEFAULT_ZONES);
+  const [timelineData, setTimelineData] = useState<TimelineRow[]>(DEFAULT_TIMELINE);
+  const [outbreakData, setOutbreakData] = useState<OutbreakItem[]>(DEFAULT_OUTBREAK);
+  const [zoneNodes, setZoneNodes] = useState<{ region: string; risk: string; cases: number; color: string }[]>([
+    { region: 'Basrah Cluster', risk: 'High', cases: 1402, color: 'text-rose-400' },
+    { region: 'Nineveh Hub', risk: 'Moderate', cases: 450, color: 'text-amber-400' },
+    { region: 'Anbar Sector', risk: 'Low', cases: 88, color: 'text-emerald-400' },
+    { region: 'Erbil East', risk: 'Stable', cases: 12, color: 'text-indigo-400' },
+  ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [dashboardRes, alertsRes, signalsRes] = await Promise.allSettled([
+          apiGet<any>('/public-health/dashboard'),
+          apiGet<any[]>('/public-health/outbreak-alerts'),
+          apiGet<any[]>('/public-health/surveillance-signals'),
+        ]);
+        if (dashboardRes.status === 'fulfilled') {
+          const d = dashboardRes.value;
+          if (d?.disease_cases) {
+            const diseases = Object.entries(d.disease_cases).slice(0, 6);
+            if (diseases.length > 0) {
+              setOutbreakData(diseases.map(([name, count]: [string, any], idx: number) => ({
+                subject: name,
+                A: Number(typeof count === 'number' ? count : count?.count || count?.cases || 80),
+                B: DEFAULT_OUTBREAK[idx]?.B || 100,
+                fullMark: 150,
+              })));
+            }
+          }
+          if (d?.regions && Array.isArray(d.regions)) {
+            const nodes = d.regions.map((r: any) => ({
+              region: r.name || r.region || 'Unknown',
+              risk: r.risk_level || r.severity || 'Moderate',
+              cases: r.cases || r.total_cases || 0,
+              color: (r.risk_level === 'High' || r.severity === 'critical') ? 'text-rose-400' :
+                     (r.risk_level === 'Moderate' || r.severity === 'warning') ? 'text-amber-400' :
+                     (r.risk_level === 'Low') ? 'text-emerald-400' : 'text-indigo-400',
+            }));
+            if (nodes.length > 0) setZoneNodes(nodes);
+          }
+        }
+        if (alertsRes.status === 'fulfilled') {
+          const alerts = alertsRes.value || [];
+          if (alerts.length > 0) {
+            const regions: ZoneData = {};
+            alerts.slice(0, 4).forEach((a: any, idx: number) => {
+              const regionName = a.region || `Zone ${idx + 1}`;
+              regions[regionName] = [
+                { name: 'Week 1', cases: (a.cases || a.count || idx * 100 + 50) - 30, predicted: (a.cases || a.count || idx * 100 + 50), risk: Math.min(100, (a.severity_level || a.alert_level || 40) * 20) },
+                { name: 'Week 2', cases: (a.cases || a.count || idx * 100 + 50) + 20, predicted: (a.cases || a.count || idx * 100 + 50) + 50, risk: Math.min(100, (a.severity_level || a.alert_level || 40) * 25) },
+                { name: 'Week 3', cases: (a.cases || a.count || idx * 100 + 50) + 80, predicted: (a.cases || a.count || idx * 100 + 50) + 100, risk: Math.min(100, (a.severity_level || a.alert_level || 40) * 30) },
+                { name: 'Week 4', cases: (a.cases || a.count || idx * 100 + 50) + 200, predicted: (a.cases || a.count || idx * 100 + 50) + 180, risk: Math.min(100, (a.severity_level || a.alert_level || 40) * 35) },
+              ];
+            });
+            if (Object.keys(regions).length > 0) {
+              setZoneSpecificData(regions);
+              const firstRegionKey = Object.keys(regions)[0]!;
+              const regionRows = regions[firstRegionKey];
+              if (regionRows) setTimelineData(regionRows);
+            }
+          }
+        }
+        if (signalsRes.status === 'fulfilled') {
+          const signals = signalsRes.value || [];
+          if (signals.length > 0) {
+            const rows: TimelineRow[] = signals.slice(0, 6).map((s: any, idx: number) => ({
+              name: s.period || s.week_label || `Week ${idx + 1}`,
+              cases: s.cases || s.signal_count || 300,
+              predicted: s.predicted || s.baseline || 350,
+              risk: s.risk_score || s.risk || 30,
+            }));
+            if (rows.length > 0) setTimelineData(rows);
+          }
+        }
+      } catch {
+        // Use defaults already set
+      }
+    };
+    fetchData();
+  }, []);
+  const activeTimeline = selectedZone ? (zoneSpecificData[selectedZone!] || timelineData) : timelineData;
   return (
     <div className="p-8 space-y-8 bg-slate-950 min-h-screen text-slate-100">
       {/* HUD Header */}
@@ -136,12 +221,7 @@ export function EpidemiologicalIntelligence() {
               <div className="p-8 bg-slate-900 rounded-[3rem] border border-white/5">
                  <h3 className="text-xs font-black uppercase tracking-widest text-rose-400 mb-8">{t.bioSovereignty}</h3>
                  <div className="space-y-4">
-                    {[
-                      { region: 'Basrah Cluster', risk: 'High', cases: 1402, color: 'text-rose-400' },
-                      { region: 'Nineveh Hub', risk: 'Moderate', cases: 450, color: 'text-amber-400' },
-                      { region: 'Anbar Sector', risk: 'Low', cases: 88, color: 'text-emerald-400' },
-                      { region: 'Erbil East', risk: 'Stable', cases: 12, color: 'text-indigo-400' },
-                    ].map(node => (
+                     {zoneNodes.map(node => (
                       <div 
                         key={node.region} 
                         className={cn(

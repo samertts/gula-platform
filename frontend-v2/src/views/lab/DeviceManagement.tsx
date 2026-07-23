@@ -1,19 +1,37 @@
+import { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Microscope, Settings, Power, 
   Activity as ActivityIcon, Zap, ShieldAlert,
-  Server, Cpu, Database, Wifi
+  Server, Cpu, Database, Wifi, Loader2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, formatTime } from '../../lib/utils';
+import { apiGet } from '../../api/client';
+interface DeviceData {
+  id: string;
+  name: string;
+  status: string;
+  load: number;
+  model: string;
+}
 export function DeviceManagement() {
   const { language } = useLanguage();
-  const devices = [
-    { id: 'AN-01', name: 'Cobas e801 Immunoassay', status: 'online', load: 82, model: 'Roche' },
-    { id: 'AN-02', name: 'Atellica Solution IM', status: 'online', load: 45, model: 'Siemens' },
-    { id: 'AN-03', name: 'Sysmex XN-3100', status: 'maintenance', load: 0, model: 'Sysmex' },
-    { id: 'AN-04', name: 'AU5800 Analyzer', status: 'online', load: 12, model: 'Beckman Coulter' },
-  ];
+  const [devices, setDevices] = useState<DeviceData[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const data = await apiGet<DeviceData[]>('/edge/devices');
+        setDevices(Array.isArray(data) ? data : []);
+      } catch {
+        console.error('Failed to fetch devices from edge API');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDevices();
+  }, []);
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -32,10 +50,10 @@ export function DeviceManagement() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
          {[
-           { label: 'Total Analyzers', value: '18', icon: Microscope, color: 'text-indigo-600' },
+           { label: 'Total Analyzers', value: loading ? '...' : `${devices.length}`, icon: Microscope, color: 'text-indigo-600' },
            { label: 'Cloud Buffer', value: 'Active', icon: Server, color: 'text-emerald-600' },
-           { label: 'LIS Middleware', value: 'v2.4.1', icon: Database, color: 'text-amber-600' },
-           { label: 'Network Health', value: '99.9%', icon: Wifi, color: 'text-blue-600' }
+           { label: 'LIS Middleware', value: 'Online', icon: Database, color: 'text-amber-600' },
+           { label: 'Network Health', value: devices.length > 0 ? `${Math.round(devices.filter(d => d.status === 'online').length / devices.length * 100)}%` : '--', icon: Wifi, color: 'text-blue-600' }
          ].map(item => (
            <div key={item.label} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-4">
               <div className={cn("p-3 rounded-2xl bg-slate-50", item.color)}>
@@ -48,6 +66,7 @@ export function DeviceManagement() {
            </div>
          ))}
       </div>
+      {loading && <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-indigo-600 animate-spin" /></div>}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
            <div className="flex items-center justify-between px-2">
@@ -126,19 +145,16 @@ export function DeviceManagement() {
                  <ActivityIcon size={24} className="text-indigo-400" />
                  <h3 className="text-xl font-bold">Interface Logs</h3>
               </div>
-              <div className="space-y-3">
-                 {[
-                   'ASTM Interface [AN-01] Handshake OK',
-                   'HL7 Message [ACK] Received from HIS',
-                   'Query Patient Info: PID=9421',
-                   'Device [AN-02] Result Upload Started'
-                 ].map((log, i) => (
-                   <div key={i} className="text-[10px] font-mono text-slate-400 flex gap-3">
-                      <span className="text-indigo-500/50">[{formatTime(new Date(), language)}]</span>
-                      {log}
-                   </div>
-                 ))}
-              </div>
+               <div className="space-y-3">
+                  {devices.length > 0 ? devices.slice(0, 4).map((d, i) => (
+                    <div key={i} className="text-[10px] font-mono text-slate-400 flex gap-3">
+                       <span className="text-indigo-500/50">[{formatTime(new Date(), language)}]</span>
+                       {d.status === 'online' ? `${d.name} [Handshake OK]` : `Device [${d.id}] Status: ${d.status}`}
+                    </div>
+                  )) : (
+                    <div className="text-[10px] font-mono text-slate-500 italic">No devices connected. Waiting for instrument handshake...</div>
+                  )}
+               </div>
            </div>
         </div>
       </div>

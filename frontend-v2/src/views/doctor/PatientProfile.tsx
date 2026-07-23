@@ -6,7 +6,7 @@ import {
   ArrowLeft, FlaskConical, Pill, 
   Calendar, CheckCircle2, AlertCircle, ChevronRight,
   TrendingUp, Download, Share2, ClipboardList,
-  Stethoscope, Send, Plus, Zap, FileText, Search,
+  Stethoscope, Plus, Zap, FileText, Search,
   History as HistoryIcon, Beaker, MapPin, BrainCircuit, Layers, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -16,42 +16,98 @@ import { ClinicalSummaryBento } from '../../components/doctor/ClinicalSummaryBen
 import { AITriageAssistant } from '../../components/doctor/AITriageAssistant';
 import { PrescriptionBuilder } from '../../components/doctor/PrescriptionBuilder';
 import { ClinicalNotes } from '../../components/doctor/ClinicalNotes';
+import { apiGet } from '../../api/client';
 export function PatientProfile() {
-  const { id: _id } = useParams();
+  const { id: patientId } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'timeline' | 'lab' | 'radiology' | 'prescriptions' | 'notes' | 'ai' | 'history' | 'synthesis' | 'triage'>('synthesis');
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(false);
-  // Patient data — loaded from Firestore
-  const patient: {
-    name: string;
-    id: string;
-    nationalHealthId: string;
-    age: number;
-    gender: string;
-    blood: string;
-    weight: string;
-    height: string;
-    lastVisit: string;
-    clinicalSummary: string;
-  } | null = null;
-  // Check for low bandwidth preference
+  const [isLoading, setIsLoading] = useState(true);
+  const [patient, setPatient] = useState<{
+    name: string; id: string; nationalHealthId: string; age: number; gender: string;
+    blood: string; weight: string; height: string; lastVisit: string; clinicalSummary: string;
+  } | null>(null);
+  const [criticalAlerts, setCriticalAlerts] = useState<{ id: string; text: string; type: string }[]>([]);
+  const [timeline, setTimeline] = useState<{ date: string; type: string; title: string; provider: string; status: string; flag?: string }[]>([]);
+  const [medicalHistory, setMedicalHistory] = useState<{ id: string; date: string; type: string; title: string; provider: string; description: string }[]>([]);
+  const [results, setResults] = useState<LabTestResult[]>([]);
+  const [providers, setProviders] = useState<string[]>([]);
+  const filteredHistory = medicalHistory.filter(h => historyFilter === 'all' || h.type === historyFilter);
   useEffect(() => {
-    const isLow = localStorage.getItem('gula_low_bandwidth') === 'true';
-    if (isLow) {
+    if (!patientId) { setIsLoading(false); return; }
+    const fetchPatientData = async () => {
       setIsLoading(true);
-      const timer = setTimeout(() => setIsLoading(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-  const criticalAlerts: { id: string; text: string; type: string }[] = [];
-  const timeline: { date: string; type: string; title: string; provider: string; status: string; flag?: string }[] = [];
-  const medicalHistory: { id: string; date: string; type: string; title: string; provider: string; description: string }[] = [];
-  const filteredHistory = medicalHistory;
-  const results: LabTestResult[] = [];
+      try {
+        const [patientRes, ordersRes, ehrRes, providersRes] = await Promise.allSettled([
+          apiGet<any>(`/patients/${patientId}`),
+          apiGet<{ data: any[] }>(`/patients/${patientId}/orders`),
+          apiGet<{ data: any[] }>(`/ehr/patient/${patientId}`),
+          apiGet<{ data: any[] }>('/providers'),
+        ]);
+        if (patientRes.status === 'fulfilled' && patientRes.value) {
+          const p = patientRes.value;
+          setPatient({
+            name: p.full_name || p.name || 'Patient',
+            id: p.id || patientId,
+            nationalHealthId: p.national_id || p.sndhs_health_id || p.health_id || '',
+            age: p.age || 0,
+            gender: p.gender || p.sex || 'Unknown',
+            blood: p.blood_type || p.blood || '--',
+            weight: p.weight ? `${p.weight} kg` : '--',
+            height: p.height ? `${p.height} cm` : '--',
+            lastVisit: p.last_visit_date || p.updated_at || '',
+            clinicalSummary: p.clinical_summary || p.summary || p.diagnosis || '',
+          });
+        }
+        if (ordersRes.status === 'fulfilled') {
+          const orders = ordersRes.value?.data || [];
+          setResults(orders.map((o: any) => ({
+            id: o.id,
+            testName: o.test_name || 'Lab Test',
+            testNameAr: o.test_name_ar || '',
+            value: o.result_value || o.value || '',
+            unit: o.unit || '',
+            range: o.reference_range || o.normal_range || '',
+            flag: o.flag || 'normal',
+            status: o.status || 'completed',
+          } as unknown as LabTestResult)));
+          setTimeline(orders.slice(0, 20).map((o: any) => ({
+            date: o.created_at || o.date || '',
+            type: 'lab',
+            title: o.test_name || 'Lab Order',
+            provider: o.doctor_name || o.performed_by || 'Lab',
+            status: o.status || 'completed',
+            flag: o.flag,
+          })));
+        }
+        if (ehrRes.status === 'fulfilled') {
+          const items = ehrRes.value?.data || [];
+          setMedicalHistory(items.map((item: any, idx: number) => ({
+            id: item.id || `ehr-${idx}`,
+            date: item.created_at || item.date || '',
+            type: item.note_type || item.type || 'general',
+            title: item.title || item.diagnosis_text || 'Clinical Note',
+            provider: item.provider || item.user_name || 'Provider',
+            description: item.content || item.notes || item.details || '',
+          })));
+        }
+        if (providersRes.status === 'fulfilled' && providersRes.value?.data) {
+          setProviders(providersRes.value.data.map((p: any) => p.name || ''));
+        }
+        if (patientRes.status === 'rejected' && ordersRes.status === 'rejected') {
+          setCriticalAlerts([{ id: 'err-1', text: 'Unable to load patient data. Check connection.', type: 'error' }]);
+        }
+      } catch {
+        setCriticalAlerts([{ id: 'err-1', text: 'Failed to load patient data', type: 'error' }]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPatientData();
+  }, [patientId]);
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -174,7 +230,7 @@ export function PatientProfile() {
             <div className="bg-slate-50 p-6 rounded-[2rem] space-y-4">
                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Medical Guardians</h3>
                <div className="space-y-3">
-                  {['Family Pharmacy', 'National Lab'].map(prov => (
+                   {(providers.length > 0 ? providers : ['Family Pharmacy', 'National Lab']).map(prov => (
                      <div key={prov} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100">
                         <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400">
                            <MapPin size={16} />

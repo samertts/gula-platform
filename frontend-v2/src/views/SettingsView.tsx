@@ -344,7 +344,7 @@ export function SettingsView() {
                 </button>
               </div>
               <div className={cn(isRtl ? "sm:text-right" : "sm:text-left")}>
-                <h3 className="text-2xl font-bold text-slate-900">{profile?.displayName || user?.displayName || t.clinicalPractitioner}</h3>
+                <h3 className="text-2xl font-bold text-slate-900">{profile?.name || user?.name || t.clinicalPractitioner}</h3>
                 <p className="text-slate-500 font-medium">{t.healthcareProfessional}</p>
                 <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
                   <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest rounded-full">{t.activeStatus}</span>

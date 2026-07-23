@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Zap, AlertCircle, Calendar, Pill, BrainCircuit, 
@@ -11,26 +11,53 @@ import { cn } from '../../lib/utils';
 import { HealthTrendChart } from '../../components/HealthTrendChart';
 import { FamilySwitcher } from '../../components/citizen/FamilySwitcher';
 import { Link } from 'react-router-dom';
+import { apiGet } from '../../api/client';
+import { LabOrder } from '../../api/types';
 export function CitizenDashboard() {
   const { t } = useLanguage();
   const [showScoreBreakdown, setShowScoreBreakdown] = useState(false);
-  const healthScore = null;
-  const todayTasks: {
-    id: string;
-    title: string;
-    time: string;
-    type: string;
-    location?: string;
-    dosage?: string;
-    doctor?: string;
-    status: string;
-  }[] = [];
-  const criticalAlerts: {
-    id: string;
-    title: string;
-    description: string;
-    severity: string;
-  }[] = [];
+  const [healthScore, setHealthScore] = useState<number | null>(null);
+  const [todayTasks, setTodayTasks] = useState<{
+    id: string; title: string; time: string; type: string; location?: string; dosage?: string; doctor?: string; status: string;
+  }[]>([]);
+  const [criticalAlerts, setCriticalAlerts] = useState<{
+    id: string; title: string; description: string; severity: string;
+  }[]>([]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [ordersRes, alertsRes] = await Promise.allSettled([
+          apiGet<{ data: LabOrder[] }>('/citizen/orders'),
+          apiGet<{ data: any[] }>('/alerts')
+        ]);
+        if (ordersRes.status === 'fulfilled') {
+          const orders = ordersRes.value?.data || [];
+          setTodayTasks(orders.slice(0, 5).map((o: any) => ({
+            id: o.id,
+            title: `Lab Order #${o.id.slice(0, 8)}`,
+            time: o.created_at ? new Date(o.created_at).toLocaleTimeString() : 'Today',
+            type: 'test',
+            doctor: o.doctor_name || 'Physician',
+            status: o.status === 'completed' ? 'done' : 'due'
+          })));
+          setHealthScore(Math.min(100, Math.max(0, 100 - orders.filter((o: any) => o.status === 'pending').length * 5)));
+        }
+        if (alertsRes.status === 'fulfilled') {
+          const items = alertsRes.value?.data || [];
+          setCriticalAlerts(items.slice(0, 3).map((a: any) => ({
+            id: a.id,
+            title: a.title || 'Alert',
+            description: a.message || a.description || '',
+            severity: a.severity || 'info'
+          })));
+        }
+      } catch {
+        console.error('Failed to fetch citizen data');
+      } finally {
+      }
+    };
+    fetchData();
+  }, []);
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto p-4 md:p-8 animate-in fade-in duration-500 pb-20">
       {/* 🟢 TOP LAYER: PRIORITY ENGINE */}
@@ -89,7 +116,7 @@ export function CitizenDashboard() {
                   stroke="url(#hp-grad)" 
                   strokeWidth="8" fill="transparent" 
                   initial={{ strokeDashoffset: 364 }}
-                  animate={{ strokeDashoffset: 364 - (364 * healthScore) / 100 }} 
+                  animate={{ strokeDashoffset: 364 - (364 * (healthScore ?? 0)) / 100 }} 
                   strokeDasharray={364}
                   className="transition-all duration-1000 ease-out" 
                   strokeLinecap="round" 

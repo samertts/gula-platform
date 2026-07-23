@@ -2,18 +2,19 @@ import {useState, useEffect, useCallback} from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-  Microscope, PlayCircle, CheckCircle2, AlertCircle, 
+  Microscope,   PlayCircle, CheckCircle2, AlertCircle, 
   Clock, User, Shield, Zap, Filter, Search,
-  ArrowRight, PauseCircle, Timer, MoreVertical,
-  Activity as ActivityIcon, Users, Settings,
-  Wifi, WifiOff, AlertTriangle, ClipboardList,
-  Image as ImageIcon, Terminal, Keyboard, Scan,
-  Dna, Cpu, Box
+  MoreVertical,
+  Activity as ActivityIcon, Users,
+  WifiOff, AlertTriangle, ClipboardList,
+  Image as ImageIcon, Terminal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatTime } from '../../lib/utils';
 import { toast } from 'sonner';
 import { ResultEntryUI } from '../../components/lab/ResultEntryUI';
+import { apiGet } from '../../api/client';
+import { LabOrder } from '../../api/types';
 type TaskStatus = 'unassigned' | 'claimed' | 'in-progress' | 'review' | 'completed';
 type TaskPriority = 'routine' | 'urgent'| 'stat';
 interface LabTask {
@@ -44,7 +45,7 @@ export function WorkQueue() {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [confirmingTask, setConfirmingTask] = useState<{ id: string; action: TaskStatus } | null>(null);
-  
+ 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncQueue, setSyncQueue] = useState<{ taskId: string; action: TaskStatus; timestamp: number }[]>([]);
   const [activeWorkId, setActiveWorkId] = useState<string | null>(null);
@@ -103,6 +104,33 @@ export function WorkQueue() {
       processQueue();
     }
   }, [isOffline, syncQueue]);
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const data = await apiGet<{ data: LabOrder[] }>('/orders', { limit: 100 });
+        const orders = data?.data || [];
+        setTasks(orders.map((o, idx) => ({
+          id: o.id,
+          sampleId: `SMP-${o.id.slice(0, 8).toUpperCase()}`,
+          patientId: o.patient_id,
+          patientName: `Patient ${o.patient_id.slice(0, 8)}`,
+          testName: `Order (${o.test_count || 1} tests)`,
+          priority: o.priority as TaskPriority || 'routine',
+          status: o.status === 'pending' ? 'unassigned' as TaskStatus : o.status === 'processing' ? 'in-progress' as TaskStatus : o.status === 'completed' ? 'completed' as TaskStatus : 'unassigned' as TaskStatus,
+          slaMinutes: 120,
+          timeRemaining: 60 + Math.floor(Math.random() * 60),
+          owner: undefined,
+          section: (['Hematology', 'Biochemistry', 'Serology', 'Microbiology'][idx % 4]) ?? 'Hematology',
+          dueAt: new Date(new Date(o.created_at || Date.now()).getTime() + 120 * 60000),
+        })));
+      } catch {
+        toast.error('Failed to load work queue');
+      }
+    };
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const handleClaim = (taskId: string) => {
     setIsProcessing(taskId);
     setTimeout(() => {

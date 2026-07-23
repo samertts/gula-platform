@@ -1,13 +1,15 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { 
-  Search, Scan, Beaker, CheckCircle2, 
-  Truck, Microscope, ShieldCheck, Clock,
-  ArrowRight, MoreVertical, History, MapPin,
+  Search, Scan, CheckCircle2, 
+  ShieldCheck, Clock,
+  MoreVertical, History, MapPin,
   QrCode, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { apiGet } from '../../api/client';
+import { Sample } from '../../api/types';
 interface SampleStep {
   id: string;
   name: string;
@@ -26,25 +28,38 @@ interface SampleRecord {
   priority: 'routine' | 'urgent' | 'stat';
   steps: SampleStep[];
 }
+function mapSampleToRecord(s: Sample): SampleRecord {
+  return {
+    id: s.barcode || s.id,
+    patientName: `Patient #${s.patient_id.slice(0, 8)}`,
+    patientId: s.patient_id,
+    type: s.sample_type,
+    collectedAt: s.collected_at,
+    priority: 'routine',
+    steps: [
+      { id: '1', name: 'Collected', status: 'completed', timestamp: s.collected_at, user: s.collected_by || 'Staff', location: 'Collection Point' },
+      { id: '2', name: 'In Lab', status: s.received_at ? 'completed' : 'current', timestamp: s.received_at || 'Pending', location: 'Lab Reception' },
+      { id: '3', name: 'Processing', status: s.status === 'processing' ? 'current' : s.status === 'completed' ? 'completed' : 'pending', timestamp: s.status === 'completed' ? 'Done' : 'In progress' },
+      { id: '4', name: 'Verified', status: s.status === 'completed' ? 'completed' : 'pending', timestamp: 'Pending' },
+    ]
+  };
+}
 export function SampleTracking() {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSample] = useState<SampleRecord | null>({
-    id: 'SMP-8832-QL',
-    patientName: 'Ahmed Mohammed Ali',
-    patientId: 'PAT-0044-K',
-    type: 'Whole Blood (EDTA)',
-    collectedAt: '2024-03-20 08:30 AM',
-    priority: 'stat',
-    steps: [
-      { id: '1', name: t.collected || 'Collected', status: 'completed', timestamp: '08:35 AM', user: 'Nurse Laila', location: 'Ward 4, Node Alpha' },
-      { id: '2', name: 'Dispatched', status: 'completed', timestamp: '08:42 AM', user: 'Courier-Logistics', location: 'Pneumatic Tube System' },
-      { id: '3', name: t.inLab || 'In Lab', status: 'completed', timestamp: '08:45 AM', user: 'Lab Reception', location: 'Central Sorting' },
-      { id: '4', name: 'Processing', status: 'current', timestamp: 'Executing', user: 'Robot-Arm-04', location: 'Hematology Analyzer A1', notes: 'Analyzer calibration confirmed.' },
-      { id: '5', name: t.verified || 'Verified', status: 'pending', timestamp: 'ETA 09:10 AM' },
-      { id: '6', name: t.delivered || 'Delivered', status: 'pending', timestamp: 'ETA 09:15 AM' },
-    ]
-  });
+  const [activeSample, setActiveSample] = useState<SampleRecord | null>(null);
+  useEffect(() => {
+    const fetchSamples = async () => {
+      try {
+        const data = await apiGet<{ data: Sample[] }>('/samples', { limit: 20 });
+        const items = (data?.data || []).map(mapSampleToRecord);
+        if (items.length > 0 && !activeSample) setActiveSample(items[0] ?? null);
+      } catch {
+        console.error('Failed to load samples');
+      }
+    };
+    fetchSamples();
+  }, [activeSample]);
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       {/* Header & Scanner Integration */}

@@ -109,7 +109,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
                             {n.title}
                           </p>
                           <span className="text-[9px] text-slate-400 whitespace-nowrap shrink-0">
-                            {n.createdAt?.seconds ? formatTime(new Date(n.createdAt.seconds * 1000), language) : 'Now'}
+                            {n.createdAt ? formatTime(new Date(n.createdAt), language) : 'Now'}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{n.message}</p>
