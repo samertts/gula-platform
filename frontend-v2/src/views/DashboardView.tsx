@@ -110,7 +110,7 @@ export function DashboardView() {
             const points: TrendPoint[] = m.series.slice(0, 24).map((s: any, idx: number) => ({
               time: s.date ? new Date(s.date).getHours().toString().padStart(2, '0') : `${idx * 2}`,
               value: s.orders || s.tests || 50,
-              forecast: (s.orders || s.tests || 50) + Math.floor(Math.random() * 20) - 5,
+              forecast: s.forecast ?? (s.orders || s.tests || 0),
             }));
             if (points.length >= 3) setTrendData(points);
           }

@@ -40,7 +40,7 @@ export function InfrastructureView() {
           if (m) {
             const pts: NodePoint[] = [];
             for (let i = 0; i < 12; i++) {
-              pts.push({ time: `${i * 2}h`, load: m.stats?.orders_today ? Math.floor((m.stats.orders_today / m.stats.orders_total) * 40) + 30 + Math.floor(Math.random() * 20) : 50 + Math.floor(Math.random() * 40), latency: 10 + Math.floor(Math.random() * 30) });
+              pts.push({ time: `${i * 2}h`, load: 0, latency: 0 });
             }
             setNodeData(pts);
             setStats([
@@ -57,7 +57,7 @@ export function InfrastructureView() {
             const pts: NodePoint[] = Object.entries(n.equipment.by_status).map(([status, count]) => ({
               time: status,
               load: Number(count) || 0,
-              latency: Math.floor(Math.random() * 30) + 5,
+              latency: 0,
             }));
             if (pts.length > 0) setNodeData(pts);
             setStats([
@@ -70,7 +70,7 @@ export function InfrastructureView() {
         }
       } catch {
         const pts: NodePoint[] = [];
-        for (let i = 0; i < 6; i++) pts.push({ time: `${i * 4}h`, load: 50 + Math.random() * 40, latency: 15 + Math.random() * 20 });
+        for (let i = 0; i < 6; i++) pts.push({ time: `${i * 4}h`, load: 0, latency: 0 });
         setNodeData(pts);
       } finally {
         setLoading(false);
