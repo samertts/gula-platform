@@ -379,18 +379,31 @@
 
 | Document | Location | Description |
 |----------|----------|-------------|
+| **System Context** | `docs/architecture/SYSTEM_CONTEXT.md` | Complete platform context, actors, data flows |
+| **Architecture Decision Log** | `docs/architecture/ARCHITECTURE_DECISION_LOG.md` | Chronological decision history |
+| **Module Dependency Matrix** | `docs/architecture/MODULE_DEPENDENCY_MATRIX.md` | Module coupling and dependency analysis |
 | **Platform Evolution Plan** | `docs/evolution/PLATFORM_EVOLUTION_PLAN.md` | Evolution strategy |
 | **Future Architecture** | `docs/evolution/FUTURE_ARCHITECTURE.md` | Target architecture vision |
 | **Long-Term Evolution** | `docs/evolution/LONG_TERM_EVOLUTION.md` | 5-10 year roadmap |
 | **Digital Library Index** | `docs/reference/DIGITAL_LIBRARY_INDEX.md` | This document |
 | **Reference Catalog** | `docs/reference/REFERENCE_CATALOG.md` | Searchable reference catalog |
 | **Knowledge Graph** | `docs/reference/KNOWLEDGE_GRAPH.md` | Platform knowledge graph |
+| **Domain Glossary** | `docs/domain/DOMAIN_GLOSSARY.md` | Healthcare, lab, admin, clinical terminology |
+| **Event Catalog** | `docs/events/EVENT_CATALOG.md` | All published events with producers, consumers |
+| **Database Schema** | `docs/database/DATABASE_SCHEMA.md` | Tables, relationships, indexes, constraints |
+| **API Coverage** | `docs/api/API_COVERAGE.md` | All API endpoints, coverage analysis |
+| **UI Component Catalog** | `docs/frontend/UI_COMPONENT_CATALOG.md` | Reusable frontend components |
+| **Workflow Catalog** | `docs/workflows/WORKFLOW_CATALOG.md` | Lab-domain workflows with state machines |
+| **Configuration Reference** | `docs/configuration/CONFIGURATION_REFERENCE.md` | All env vars, defaults, secrets |
+| **Feature Matrix** | `docs/management/FEATURE_MATRIX.md` | Feature status across backend/frontend/API/tests |
 
 ### 8.3 Architecture Decision Records (ADRs)
 
 | ADR | Location | Status |
 |-----|----------|--------|
-| (ADRs not yet formally created; create at `docs/adr/` per Phase 1 initiative) | `docs/adr/` | Planned |
+| **ADR Index + 25 records** | `docs/adr/` | Active |
+| **Architecture Decision Log** | `docs/architecture/ARCHITECTURE_DECISION_LOG.md` | Active |
+| **Decision Logs** | `docs/decisions/` | Active |
 
 ### 8.4 SNDHS Documentation
 
@@ -472,7 +485,18 @@
 | **Cloudflare Config** | `cloudflare/` | DNS, Workers, CDN |
 | **DigitalOcean Config** | `digitalocean/` | Droplet deployment |
 
-### 8.10 Routes Reference
+### 8.8 Operational & Release Documentation
+
+| Document | Location | Description |
+|----------|----------|-------------|
+| **Migration Guide** | `docs/deployment/MIGRATION_GUIDE.md` | Upgrade process, rollback, schema migration |
+| **Compatibility Matrix** | `docs/platform/COMPATIBILITY_MATRIX.md` | OS/browser/DB/Redis/Docker/K8s compatibility |
+| **Support Policy** | `docs/release/SUPPORT_POLICY.md` | Release lifecycle, LTS, EOL, upgrade path |
+| **Known Limitations** | `docs/release/KNOWN_LIMITATIONS.md` | Current limitations and technical debt |
+| **Documentation Inventory** | `DOCUMENTATION_INVENTORY.md` | Complete documentation file inventory |
+| **Documentation Gap Analysis** | `DOCUMENTATION_GAP_ANALYSIS.md` | Gap analysis against enterprise standards |
+
+### 8.9 Routes Reference
 
 | Route Module | Path | Description |
 |-------------|------|-------------|

@@ -303,6 +303,41 @@ ENABLE_FINANCIAL_ENGINE = os.getenv("ENABLE_FINANCIAL_ENGINE", "false").lower() 
 ENABLE_ADS = os.getenv("ENABLE_ADS", "false").lower() == "true"
 
 
+# ── Bootstrap Configuration ───────────────────────────────────────────────────
+# Controls the National Bootstrap Engine.
+# ENABLE_BOOTSTRAP — master switch; when false, no bootstrap runs (default: true)
+# ENABLE_NATIONAL_BOOTSTRAP — enables national hierarchy (ministry, directorates, etc.)
+# ENABLE_DEMO_DATA — generates deterministic demo patients/orders/results
+# BOOTSTRAP_COUNTRY — ISO country code (default: IQ)
+# BOOTSTRAP_LANGUAGE — default language code (default: ar)
+# BOOTSTRAP_TIMEZONE — default timezone (default: Asia/Baghdad)
+ENABLE_BOOTSTRAP = os.getenv("ENABLE_BOOTSTRAP", "true").lower() == "true"
+ENABLE_NATIONAL_BOOTSTRAP = os.getenv("ENABLE_NATIONAL_BOOTSTRAP", "true").lower() == "true"
+ENABLE_DEMO_DATA = os.getenv("ENABLE_DEMO_DATA", "false").lower() == "true"
+BOOTSTRAP_COUNTRY = os.getenv("BOOTSTRAP_COUNTRY", "IQ")
+BOOTSTRAP_LANGUAGE = os.getenv("BOOTSTRAP_LANGUAGE", "ar")
+BOOTSTRAP_TIMEZONE = os.getenv("BOOTSTRAP_TIMEZONE", "Asia/Baghdad")
+
+# Bootstrap admin accounts — passwords must come ONLY from environment variables
+MINISTRY_ADMIN_EMAIL = os.getenv("MINISTRY_ADMIN_EMAIL", "ministry@gula-platform.org")
+MINISTRY_ADMIN_PASSWORD = os.getenv("MINISTRY_ADMIN_PASSWORD", "")
+MINISTRY_ADMIN_PASSWORD_HASH = os.getenv("MINISTRY_ADMIN_PASSWORD_HASH", "")
+ORGANIZATION_ADMIN_EMAIL = os.getenv("ORGANIZATION_ADMIN_EMAIL", "org-admin@gula-platform.org")
+ORGANIZATION_ADMIN_PASSWORD = os.getenv("ORGANIZATION_ADMIN_PASSWORD", "")
+ORGANIZATION_ADMIN_PASSWORD_HASH = os.getenv("ORGANIZATION_ADMIN_PASSWORD_HASH", "")
+DIRECTORATE_ADMIN_EMAIL = os.getenv("DIRECTORATE_ADMIN_EMAIL", "directorate-admin@gula-platform.org")
+DIRECTORATE_ADMIN_PASSWORD = os.getenv("DIRECTORATE_ADMIN_PASSWORD", "")
+DIRECTORATE_ADMIN_PASSWORD_HASH = os.getenv("DIRECTORATE_ADMIN_PASSWORD_HASH", "")
+LAB_MANAGER_EMAIL = os.getenv("LAB_MANAGER_EMAIL", "lab-manager@gula-platform.org")
+LAB_MANAGER_PASSWORD = os.getenv("LAB_MANAGER_PASSWORD", "")
+LAB_MANAGER_PASSWORD_HASH = os.getenv("LAB_MANAGER_PASSWORD_HASH", "")
+AUDITOR_EMAIL = os.getenv("AUDITOR_EMAIL", "auditor@gula-platform.org")
+AUDITOR_PASSWORD = os.getenv("AUDITOR_PASSWORD", "")
+AUDITOR_PASSWORD_HASH = os.getenv("AUDITOR_PASSWORD_HASH", "")
+SECURITY_OFFICER_EMAIL = os.getenv("SECURITY_OFFICER_EMAIL", "security@gula-platform.org")
+SECURITY_OFFICER_PASSWORD = os.getenv("SECURITY_OFFICER_PASSWORD", "")
+SECURITY_OFFICER_PASSWORD_HASH = os.getenv("SECURITY_OFFICER_PASSWORD_HASH", "")
+
 # ── Kernel Env Vars ──────────────────────────────────────────────────────────
 # The Kernel is the permanent runtime foundation. Every future module must
 # depend on the Kernel. Nothing should bypass the Kernel.

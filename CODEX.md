@@ -1,0 +1,41 @@
+# Codex Guidance — GULA Platform
+
+## Permanent Platform Constitution (PROGRAM-CONSTITUTION-001)
+
+This section is always enforced, even if not mentioned in prompts.
+
+### Free First
+- Search for FREE solution before any paid alternative
+- Commercial solutions require documented exception
+
+### Open Source First
+- License priority: Apache 2.0 > MIT > BSD > MPL > GPL
+- Commercial products are the final option
+
+### Self-Hosted First
+- PostgreSQL, Redis, MinIO, Grafana, Prometheus before SaaS
+- Commercial SaaS requires architecture review
+
+### No Vendor Lock-In
+- Every component MUST have an abstraction layer
+- Never couple to AWS, Azure, GCP, Firebase, Auth0, etc.
+
+### Zero Paid Dependency
+- Paid dependencies require: reason, cost, free alternative, migration plan
+
+### Reuse Before Build
+- Search existing codebase before writing new code
+- Never duplicate existing functionality
+
+### Local AI First
+- Priority: local model > Ollama > open-weight > free API > commercial API
+
+### Free Security First
+- OpenSSL, Let's Encrypt, WireGuard, Fail2Ban, CrowdSec before commercial
+
+## References
+- `docs/constitution/COST_GOVERNANCE.md`
+- `docs/architecture/FREE_FIRST_POLICY.md`
+- `docs/architecture/OPEN_SOURCE_POLICY.md`
+- `docs/architecture/VENDOR_LOCK_IN_POLICY.md`
+- `docs/architecture/DEPENDENCY_APPROVAL_POLICY.md`

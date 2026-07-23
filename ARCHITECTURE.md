@@ -91,6 +91,40 @@ Request → Auth JWT → RBAC → Route Handler → Service → DB/Redis/Externa
 All patient-data queries MUST filter by `lab_id = current_user.lab_id` (tenant isolation).
 All mutations MUST write to the audit log.
 
+## Cost Governance & Open Source Mandate
+
+The platform is governed by PROGRAM-CONSTITUTION-001, which establishes:
+
+1. **Free First** — Every implementation searches for FREE solution first
+2. **Open Source First** — Open Source software preferred over proprietary
+3. **Self-Hosted First** — Self-hosted infrastructure before SaaS
+4. **No Vendor Lock-In** — Every component MUST be replaceable via abstraction layers
+5. **Zero Paid Dependency** — Paid software requires documented exception + ADR
+6. **Local AI First** — Self-hosted inference (Ollama) before commercial APIs
+7. **Free Security First** — OpenSSL, Let's Encrypt, WireGuard before commercial security
+
+### Approved Self-Hosted Stack
+
+| Category | Technology | Alternative |
+|----------|-----------|-------------|
+| Database | PostgreSQL | — |
+| Cache | Redis | In-memory |
+| Storage | MinIO | Filesystem |
+| Monitoring | Grafana + Prometheus | — |
+| Logging | Loki | — |
+| Auth | Keycloak / Authentik | — |
+| AI | Ollama | Open-weight models |
+| Proxy | Nginx / Traefik | — |
+| Secrets | Vault Community | — |
+
+### Prohibited Patterns
+- Direct vendor SDK usage in core domain (must use abstraction)
+- Firebase, Auth0, Okta, Supabase SDKs (use abstracted identity layer)
+- AWS/Azure/GCP-specific services in business logic
+- Commercial AI APIs without security review (data sovereignty)
+
+Policies: `docs/constitution/COST_GOVERNANCE.md`, `docs/architecture/VENDOR_LOCK_IN_POLICY.md`
+
 ## Component Architecture (within monolith)
 
 ```

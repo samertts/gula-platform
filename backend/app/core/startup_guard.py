@@ -362,11 +362,12 @@ async def seed_critical_data() -> None:
     await loop.run_in_executor(None, _run_perm_version_migration)
     # ↑ raises RuntimeError if lab_users missing — propagates to run_startup_guard
 
-    # ── NON-FATAL: catalog / admin / subscriptions / audit trigger ──────────
+    # ── NON-FATAL: catalog / admin / subscriptions / national bootstrap / audit trigger ──
     for name, fn in [
         ("test types catalog", _run_seed_test_types),
         ("master admin", _run_ensure_master_admin),
         ("default subscriptions", _run_seed_default_subscriptions),
+        ("national bootstrap", _run_national_bootstrap),
         ("audit log trigger", _run_ensure_audit_log_immutable),
     ]:
         try:
@@ -622,6 +623,31 @@ def _run_seed_default_subscriptions() -> None:
         db.close()
 
 
+def _run_national_bootstrap() -> None:
+    """Run the National Bootstrap Engine — idempotent, non-fatal."""
+    try:
+        from .bootstrap import run_bootstrap
+        from ..config import ENABLE_BOOTSTRAP
+
+        if not ENABLE_BOOTSTRAP:
+            logger.info("[STARTUP GUARD] National bootstrap disabled via ENABLE_BOOTSTRAP=false")
+            return
+
+        from ..database import SessionLocal
+        db = SessionLocal()
+        try:
+            counts = run_bootstrap(db=db)
+            if counts:
+                summary = ", ".join(f"{k}={v}" for k, v in counts.items() if v)
+                logger.info("[STARTUP GUARD] National bootstrap complete: %s", summary)
+            else:
+                logger.info("[STARTUP GUARD] National bootstrap: nothing to seed")
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error("[STARTUP GUARD] National bootstrap failed (non-fatal): %s", exc)
+
+
 def _run_ensure_audit_log_immutable() -> None:
     """Apply immutability trigger to audit_logs table (ISO 27001 A.8.15).
     Ensures audit records cannot be modified or deleted after creation.
@@ -662,6 +688,71 @@ def _run_ensure_audit_log_immutable() -> None:
         logger.warning("[STARTUP GUARD] Could not apply audit immutability trigger: %s", e)
     finally:
         db.close()
+
+
+# ─── Constitutional Compliance Check ─────────────────────────────────────────
+
+
+_VENDOR_SDKS = [
+    "boto3", "azure", "google.cloud", "firebase",
+    "supabase", "auth0", "okta", "stripe", "twilio", "sendgrid",
+]
+
+_CONSTITUTION_POLICIES = [
+    ("Free First", "docs/architecture/FREE_FIRST_POLICY.md"),
+    ("Open Source First", "docs/architecture/OPEN_SOURCE_POLICY.md"),
+    ("No Vendor Lock-In", "docs/architecture/VENDOR_LOCK_IN_POLICY.md"),
+    ("Dependency Approval", "docs/architecture/DEPENDENCY_APPROVAL_POLICY.md"),
+    ("Cost Governance", "docs/constitution/COST_GOVERNANCE.md"),
+    ("System Constitution", "docs/constitution/SYSTEM_CONSTITUTION.md"),
+]
+
+
+def _check_constitutional_compliance() -> None:
+    """Verify constitutional policy documents exist and log compliance status.
+    Non-fatal — warns but doesn't block startup.
+    """
+    import pathlib
+    repo_root = pathlib.Path(__file__).resolve().parent.parent.parent.parent
+
+    missing = []
+    for name, path in _CONSTITUTION_POLICIES:
+        full_path = repo_root / path
+        if not full_path.exists():
+            missing.append(f"{name} ({path})")
+
+    if missing:
+        logger.warning(
+            "[CONSTITUTION] Missing constitutional policy documents: %s",
+            "; ".join(missing),
+        )
+    else:
+        logger.info(
+            "[CONSTITUTION] All constitutional policy documents present — PROGRAM-CONSTITUTION-001 enforced"
+        )
+
+    # Quick vendor SDK scan in core app code
+    vendor_found = []
+    for sdk in _VENDOR_SDKS:
+        for pyfile in (repo_root / "backend" / "app").rglob("*.py"):
+            try:
+                if sdk in pyfile.read_text():
+                    rel = pyfile.relative_to(repo_root)
+                    vendor_found.append(f"{rel} (imports {sdk})")
+            except OSError:
+                continue
+
+    if vendor_found:
+        logger.warning(
+            "[CONSTITUTION] Potential vendor SDK usage detected (review required): %s",
+            "; ".join(vendor_found[:5]),
+        )
+    else:
+        logger.info(
+            "[CONSTITUTION] No direct vendor SDK usage detected — Vendor Lock-In policy satisfied"
+        )
+
+    logger.info("[CONSTITUTION] PROGRAM-CONSTITUTION-001 compliance check complete")
 
 
 # ─── Atomic Orchestrator ─────────────────────────────────────────────────────
@@ -738,6 +829,13 @@ async def run_startup_guard() -> None:
                 "[STARTUP GUARD] Kernel initialization FAILED: %s. System will start without Kernel.",
                 e,
             )
+
+    try:
+        _check_constitutional_compliance()
+    except Exception as e:
+        logger.warning(
+            "[STARTUP GUARD] Constitutional compliance check failed (non-fatal): %s", e,
+        )
 
     try:
         await asyncio.wait_for(_run_core_validation(), timeout=STARTUP_TIMEOUT)

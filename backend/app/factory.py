@@ -692,6 +692,9 @@ def _register_routes(app: FastAPI) -> None:
     from .trust.routes import router as trust_router
     app.include_router(trust_router)
 
+    from .identity import get_router as get_niam_router
+    app.include_router(get_niam_router())
+
     from .routes.authorization import router as authorization_router
     app.include_router(authorization_router)
 

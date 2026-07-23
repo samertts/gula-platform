@@ -74,6 +74,10 @@ import app.governance.models  # noqa: F401, E402
 # CareContinuumBase models
 import app.care_continuum.models  # noqa: F401, E402
 
+# IdentityBase models (NIAM — National Identity & Access Management)
+from app.identity.base import IdentityBase
+import app.identity.models  # noqa: F401, E402
+
 # ── Alembic Config object ─────────────────────────────────────────────────────
 config = context.config
 
@@ -110,6 +114,7 @@ target_metadata = [
     TrustBase.metadata,
     GovernanceBase.metadata,
     CareContinuumBase.metadata,
+    IdentityBase.metadata,
 ]
 
 

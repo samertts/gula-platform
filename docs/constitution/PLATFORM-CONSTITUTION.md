@@ -670,11 +670,38 @@ of the GULA National Digital Health Platform.
 
 ---
 
+## Permanent Amendment: PROGRAM-CONSTITUTION-001
+
+**This amendment is permanently attached to this constitution and carries equal authority.**
+
+The following articles are added as a permanent amendment:
+
+| Article | Title | Policy Document |
+|---------|-------|-----------------|
+| XI | Free First | `docs/architecture/FREE_FIRST_POLICY.md` |
+| XII | Open Source First | `docs/architecture/OPEN_SOURCE_POLICY.md` |
+| XIII | Self-Hosted First | `docs/constitution/COST_GOVERNANCE.md` |
+| XIV | No Vendor Lock-In | `docs/architecture/VENDOR_LOCK_IN_POLICY.md` |
+| XV | Zero Paid Dependency | `docs/architecture/DEPENDENCY_APPROVAL_POLICY.md` |
+| XVI | Cost Governance | `docs/constitution/COST_GOVERNANCE.md` |
+| XVII | Platform Sovereignty | `docs/constitution/SYSTEM_CONSTITUTION.md` |
+
+**This amendment NEVER expires. No future implementation may ignore it.**
+
 ## References
 
 - `CLAUDE.md` — Engineering constitution (operational guidance)
+- `AGENTS.md` — AI agent constitution enforcement
+- `CODEX.md` — Codex constitution guidance
+- `COPILOT.md` — Copilot constitution guidance
+- `docs/constitution/COST_GOVERNANCE.md` — Cost Governance policy
+- `docs/constitution/SYSTEM_CONSTITUTION.md` — System Constitution
 - `docs/adr/` — Architecture Decision Records
 - `docs/engineering/` — Engineering assessments
+- `docs/architecture/FREE_FIRST_POLICY.md` — Free First policy
+- `docs/architecture/OPEN_SOURCE_POLICY.md` — Open Source policy
+- `docs/architecture/VENDOR_LOCK_IN_POLICY.md` — Vendor lock-in policy
+- `docs/architecture/DEPENDENCY_APPROVAL_POLICY.md` — Dependency approval policy
 - `config/quality-gates/` — Quality gate scripts
 - `Makefile` — Build and operations
 - `.github/workflows/` — CI/CD pipelines

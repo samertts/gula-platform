@@ -20,6 +20,18 @@ make up
 4. Type check: `mypy backend/app/`
 5. Verify syntax: `python -m py_compile backend/app/main.py`
 
+## Platform Constitution Compliance
+
+Every contribution MUST comply with PROGRAM-CONSTITUTION-001:
+- **Free First** — Always search for free solution before paid
+- **Open Source First** — Prefer open source over proprietary
+- **Self-Hosted First** — Self-hosted before hosted SaaS
+- **No Vendor Lock-In** — Every dependency MUST have an abstraction layer
+- **Reuse Before Build** — Never duplicate existing functionality
+- **Zero Paid Dependency** — Paid dependencies require documented exception
+
+Full policy: `docs/constitution/COST_GOVERNANCE.md`
+
 ## Quality Gates (pre-commit)
 
 Every commit must pass:
@@ -27,6 +39,7 @@ Every commit must pass:
 - **ruff** — no errors (style warnings OK)
 - **mypy** — no type errors
 - **bandit** — no security issues
+- **constitution** — `make constitution-check` verifies compliance
 
 ## Code Standards
 

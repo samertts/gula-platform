@@ -38,6 +38,25 @@ mypy backend/app/
 
 See `CLAUDE.md` for the full developer guide, architecture, migration policy, and quality gates.
 
+## Platform Constitution
+
+This platform is governed by **PROGRAM-CONSTITUTION-001** — permanent amendment
+establishing Free First, Open Source First, Self-Hosted First, and Cost Governance
+as immutable platform rules. All code, dependencies, infrastructure, and architecture
+decisions MUST comply.
+
+| Principle | Summary |
+|-----------|---------|
+| Free First | Free solution before any paid alternative |
+| Open Source First | Open Source before proprietary |
+| Self-Hosted First | Self-hosted before SaaS |
+| No Vendor Lock-In | Every component replaceable |
+| Zero Paid Dependency | Paid requires documented exception |
+| Local AI First | Self-hosted inference before API |
+| Free Security First | Open-source security tools |
+
+Full policy: `docs/constitution/COST_GOVERNANCE.md`
+
 ## Architecture (Monolith-First)
 
 ```
@@ -51,8 +70,13 @@ A parallel microservices tree (`services/`) exists for future decomposition.
 
 - `CLAUDE.md` — Developer guide, architecture, invariants, commands
 - `CHANGELOG.md` — Release history
-- `docs/` — ADRs, SNDHS spec, architecture docs
 - `ARCHITECTURE.md` — Architecture overview
+- `DOCUMENTATION_INVENTORY.md` — Complete documentation inventory
+- `DOCUMENTATION_GAP_ANALYSIS.md` — Documentation gap analysis
+- `docs/` — ADRs, SNDHS spec, domain glossary, event catalog, API coverage,
+  database schema, workflow catalog, configuration reference, feature matrix,
+  UI component catalog, module dependencies, migration guide, compatibility
+  matrix, support policy, known limitations
 
 ## Project Status
 

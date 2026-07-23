@@ -1,0 +1,272 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-07-23T17:40:26.728007+00:00",
+  "components": [
+    {
+      "name": "Identity",
+      "owner": "platform",
+      "version": "2.5.0",
+      "dependencies": [
+        "PostgreSQL",
+        "Redis"
+      ],
+      "status": "certified",
+      "documentation": "docs/identity/",
+      "api_endpoints": [
+        "/api/v1/auth/*",
+        "/api/v1/identity/*"
+      ],
+      "reuse_guide": "Import IdentityService from app.identity",
+      "compatibility": [
+        "FastAPI",
+        "PostgreSQL",
+        "Redis"
+      ]
+    },
+    {
+      "name": "Audit",
+      "owner": "platform",
+      "version": "2.5.0",
+      "dependencies": [
+        "PostgreSQL"
+      ],
+      "status": "certified",
+      "documentation": "docs/audit/",
+      "api_endpoints": [
+        "/api/v1/audit/*"
+      ],
+      "reuse_guide": "Import AuditService from app.audit",
+      "compatibility": [
+        "FastAPI",
+        "PostgreSQL"
+      ]
+    },
+    {
+      "name": "Notification",
+      "owner": "platform",
+      "version": "2.5.0",
+      "dependencies": [
+        "Redis"
+      ],
+      "status": "approved",
+      "documentation": "docs/notifications/",
+      "api_endpoints": [
+        "/api/v1/notifications/*"
+      ],
+      "reuse_guide": "Import NotificationService from app.notifications",
+      "compatibility": [
+        "FastAPI",
+        "Redis"
+      ]
+    },
+    {
+      "name": "Workflow",
+      "owner": "platform",
+      "version": "1.0.0",
+      "dependencies": [
+        "PostgreSQL",
+        "Redis"
+      ],
+      "status": "stable",
+      "documentation": "docs/workflows/",
+      "api_endpoints": [
+        "/api/v1/workflows/*"
+      ],
+      "reuse_guide": "Import WorkflowEngine from app.workflows",
+      "compatibility": [
+        "FastAPI",
+        "PostgreSQL"
+      ]
+    },
+    {
+      "name": "Storage",
+      "owner": "platform",
+      "version": "1.0.0",
+      "dependencies": [
+        "MinIO"
+      ],
+      "status": "certified",
+      "documentation": "docs/storage/",
+      "api_endpoints": [
+        "/api/v1/storage/*"
+      ],
+      "reuse_guide": "Import StorageBackend from app.gateways",
+      "compatibility": [
+        "FastAPI",
+        "MinIO"
+      ]
+    },
+    {
+      "name": "Logging",
+      "owner": "platform",
+      "version": "1.0.0",
+      "dependencies": [
+        "Loki"
+      ],
+      "status": "certified",
+      "documentation": "docs/logging/",
+      "api_endpoints": [],
+      "reuse_guide": "Use structured JSON logging via logging_config.py",
+      "compatibility": [
+        "Loki",
+        "Prometheus"
+      ]
+    },
+    {
+      "name": "Observability",
+      "owner": "platform",
+      "version": "1.0.0",
+      "dependencies": [
+        "Prometheus",
+        "Grafana",
+        "Loki",
+        "Tempo"
+      ],
+      "status": "certified",
+      "documentation": "docs/observability/",
+      "api_endpoints": [
+        "/health/*",
+        "/metrics"
+      ],
+      "reuse_guide": "Use OpenTelemetry for tracing, Prometheus for metrics",
+      "compatibility": [
+        "OpenTelemetry",
+        "Prometheus",
+        "Grafana"
+      ]
+    },
+    {
+      "name": "API Gateway",
+      "owner": "platform",
+      "version": "2.5.0",
+      "dependencies": [
+        "Nginx"
+      ],
+      "status": "certified",
+      "documentation": "docs/gateway/",
+      "api_endpoints": [
+        "/api/v1/*"
+      ],
+      "reuse_guide": "Configure via nginx config in config/nginx/",
+      "compatibility": [
+        "Nginx"
+      ]
+    },
+    {
+      "name": "FHIR",
+      "owner": "platform",
+      "version": "1.0.0",
+      "dependencies": [
+        "PostgreSQL"
+      ],
+      "status": "approved",
+      "documentation": "docs/fhir/",
+      "api_endpoints": [
+        "/api/v1/fhir/*"
+      ],
+      "reuse_guide": "Import FHIRService from app.fhir",
+      "compatibility": [
+        "FastAPI",
+        "FHIR R4"
+      ]
+    },
+    {
+      "name": "AI Platform",
+      "owner": "platform",
+      "version": "1.0.0",
+      "dependencies": [
+        "PostgreSQL",
+        "Redis",
+        "Ollama"
+      ],
+      "status": "experimental",
+      "documentation": "docs/ai/",
+      "api_endpoints": [
+        "/api/v1/ai/*"
+      ],
+      "reuse_guide": "Import AIService from app.ai_fabric",
+      "compatibility": [
+        "FastAPI",
+        "Ollama"
+      ]
+    },
+    {
+      "name": "Authentication",
+      "owner": "platform",
+      "version": "2.5.0",
+      "dependencies": [
+        "PostgreSQL",
+        "Redis",
+        "Keycloak"
+      ],
+      "status": "certified",
+      "documentation": "docs/security/auth.md",
+      "api_endpoints": [
+        "/api/v1/auth/*"
+      ],
+      "reuse_guide": "Use get_current_user dependency",
+      "compatibility": [
+        "FastAPI",
+        "JWT",
+        "Keycloak"
+      ]
+    },
+    {
+      "name": "Authorization",
+      "owner": "platform",
+      "version": "2.5.0",
+      "dependencies": [
+        "PostgreSQL"
+      ],
+      "status": "certified",
+      "documentation": "docs/security/rbac.md",
+      "api_endpoints": [
+        "/api/v1/auth/*"
+      ],
+      "reuse_guide": "Use require_permission decorator",
+      "compatibility": [
+        "FastAPI",
+        "RBAC",
+        "ABAC"
+      ]
+    },
+    {
+      "name": "Scheduling",
+      "owner": "platform",
+      "version": "1.0.0",
+      "dependencies": [
+        "PostgreSQL",
+        "Redis"
+      ],
+      "status": "stable",
+      "documentation": "docs/scheduling/",
+      "api_endpoints": [
+        "/api/v1/schedule/*"
+      ],
+      "reuse_guide": "Import SchedulingService from app.tasks",
+      "compatibility": [
+        "FastAPI",
+        "APScheduler"
+      ]
+    },
+    {
+      "name": "Messaging",
+      "owner": "platform",
+      "version": "1.0.0",
+      "dependencies": [
+        "RabbitMQ",
+        "Redis"
+      ],
+      "status": "approved",
+      "documentation": "docs/messaging/",
+      "api_endpoints": [
+        "/api/v1/messages/*"
+      ],
+      "reuse_guide": "Import EventBus from app.kernel",
+      "compatibility": [
+        "RabbitMQ",
+        "NATS"
+      ]
+    }
+  ]
+}

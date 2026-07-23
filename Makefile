@@ -25,7 +25,7 @@ Q ?= @
         continuous-backup pitr-recover cert-renew secret-rotate key-rotate \
         chaos-run snapshot-create snapshot-list snapshot-cleanup \
         tag-release performance-report security-report \
-        constitution-enforce constitution-audit \
+        constitution-enforce constitution-audit constitution-check constitution-verify \
         trust-platform trust-check \
         factory-validate factory-generate \
         platform-freeze platform-tag
@@ -513,8 +513,25 @@ tag-release:
 # ─────────────────────────────────────────────────────────────────────────────
 # Constitution & Governance
 # ─────────────────────────────────────────────────────────────────────────────
+constitution-check:
+	@echo "=== PROGRAM-CONSTITUTION-001 Compliance Check ==="
+	@echo ""
+	@echo "  ── Free First ────────────────────────────────────────────────"
+	@python3 -c "import re, pathlib; paid=[r'openai\.com', r'anthropic\.com', r'stripe\.com', r'twilio\.com', r'auth0\.com', r'okta\.com', r'supabase\.co', r'firebase\.io', r'sendgrid\.net']; issues=[]; [issues.append(f'{f}: {p}') for f in pathlib.Path('.').glob('requirements*.txt') for p in paid if re.search(p, f.read_text(), re.I)]; print(f'  Free First: {\"WARN\" if issues else \"PASS\"} — {len(issues)} paid ref(s)')"
+	@echo ""
+	@echo "  ── Open Source First ─────────────────────────────────────────"
+	@python3 -c "import pathlib; prop=['commercial','proprietary','all rights reserved','eula']; issues=[]; [issues.append(f'{f}: {l}') for f in pathlib.Path('.').glob('requirements*.txt') for l in prop if l in f.read_text().lower()]; print(f'  Open Source: {\"WARN\" if issues else \"PASS\"} — {len(issues)} proprietary ref(s)')"
+	@echo ""
+	@echo "  ── No Vendor Lock-In ─────────────────────────────────────────"
+	@python3 -c "import pathlib,re,sys; sdks=[(r'import\s+boto3','AWS'),(r'from\s+azure\.','Azure'),(r'from\s+google\.cloud','GCP'),(r'import\s+supabase','Supabase'),(r'import\s+auth0','Auth0'),(r'import\s+okta','Okta'),(r'import\s+stripe','Stripe'),(r'import\s+twilio','Twilio')]; issues=[]; [issues.append(f'{f.relative_to(pathlib.Path(\".\"))}: {n}') for f in pathlib.Path('backend/app').rglob('*.py') for p,n in sdks if re.search(p, f.read_text())]; print(f'  Vendor Lock-In: {\"FAIL\" if issues else \"PASS\"} — {len(issues)} direct SDK(s)'); sys.exit(1 if issues else 0)"
+	@echo ""
+	@echo "  ── Self-Hosted First ─────────────────────────────────────────"
+	@python3 -c "import re, pathlib; saas=[r'supabase\.(co|com)',r'firebase\.io',r'auth0\.com',r'okta\.com',r'datadog\.com',r'newrelic\.com',r'sendgrid\.(net|com)']; issues=[]; [issues.append(f'{f.relative_to(pathlib.Path(\".\"))}: {p}') for f in list(pathlib.Path('backend').rglob('*.py'))+list(pathlib.Path('.github').rglob('*.yml')) for p in saas if re.search(p, f.read_text(), re.I)]; print(f'  Self-Hosted: {\"WARN\" if issues else \"PASS\"} — {len(issues)} SaaS ref(s)')"
+	@echo ""
+	@echo "═══ PROGRAM-CONSTITUTION-001 CHECK COMPLETE ═══"
+
 constitution-enforce:
-	@echo "=== Constitution Enforcer (20 rules) ==="
+	@echo "=== Constitution Enforcer (25 rules) ==="
 	python3 scripts/constitution_enforcer.py --verbose
 
 constitution-audit:
@@ -522,6 +539,10 @@ constitution-audit:
 	python3 scripts/constitution_enforcer.py --verbose
 	python3 scripts/architecture_guardian.py --verbose
 	python3 scripts/dependency_guardian.py --skip-audit
+
+constitution-verify:
+	@echo "=== Constitution Artifact Verification ==="
+	@python3 -c "import pathlib; files=['docs/constitution/COST_GOVERNANCE.md','docs/constitution/SYSTEM_CONSTITUTION.md','docs/architecture/FREE_FIRST_POLICY.md','docs/architecture/OPEN_SOURCE_POLICY.md','docs/architecture/VENDOR_LOCK_IN_POLICY.md','docs/architecture/DEPENDENCY_APPROVAL_POLICY.md','docs/architecture/ARCHITECTURE_RULES_PROGRAM_CONSTITUTION_001.md','AGENTS.md','CODEX.md','COPILOT.md','.github/workflows/constitution-compliance.yml']; missing=[f for f in files if not pathlib.Path(f).exists()]; [print(f'Missing: {f}') for f in missing]; exit(1 if missing else 0) if missing else print(f'All {len(files)} constitution artifacts present\nPROGRAM-CONSTITUTION-001 is fully deployed')"
 
 trust-platform:
 	@echo "=== Trust Platform Check ==="
