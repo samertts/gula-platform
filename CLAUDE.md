@@ -564,6 +564,9 @@ createdb gula_demo
 DATABASE_URL=postgresql://gula:gula@localhost:5432/gula_demo alembic upgrade head
 # Generate demo data (200+ users, 200 patients, all roles, 18 governorates)
 DATABASE_URL=postgresql://gula:gula@localhost:5432/gula_demo python3 scripts/generate_demo_data.py
+
+# National Digital Twin (10K+ users, 100K+ patients, full FHIR/HL7 export)
+DATABASE_URL=postgresql://gula:gula@localhost:5432/gula_demo python3 scripts/generate_demo_data.py --mode twin
 ```
 
 Demo admin credentials: `admin@demo.gula.iq` / `Demo@ADMIN!`
@@ -571,9 +574,12 @@ Demo admin credentials: `admin@demo.gula.iq` / `Demo@ADMIN!`
 The generator creates:
 - National tenant + 18 governorate sub-tenants
 - Organizations (health directorates), facilities (hospitals, PHCs, labs), departments, sections
-- Users for every healthcare role (65+ role types, 200+ accounts)
-- Synthetic patients (200+), orders, samples, lab results, audit logs
+- Users for every healthcare role (65+ role types, 200+ accounts demo / 10K+ twin)
+- Synthetic patients (200+ demo / 100K+ twin), orders, samples, lab results, audit logs
 - CSV/Markdown output files (USER_MATRIX.csv, ROLE_MATRIX.csv, DEMO_PASSWORDS.md, etc.)
+- **Twin mode only**: FHIR export (Patient/Organization resources), HL7 messages (ORU^R01),
+  workflow validation, role validation, performance benchmarks, public health surveillance,
+  security report, enterprise readiness certification
 
 All data uses the `DEMO_` prefix and is fully isolated from production.
 Never run against a production database.
