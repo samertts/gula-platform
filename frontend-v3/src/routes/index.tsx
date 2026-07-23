@@ -33,6 +33,13 @@ const HospitalPage = lazy(() => import("@/pages/hospital/HospitalPage").then(m =
 const EdgePage = lazy(() => import("@/pages/edge/EdgePage").then(m => ({ default: m.EdgePage })));
 const FinancialPage = lazy(() => import("@/pages/financial/FinancialPage").then(m => ({ default: m.FinancialPage })));
 const NationalDataPage = lazy(() => import("@/pages/national-data/NationalDataPage").then(m => ({ default: m.NationalDataPage })));
+const NiamGovernancePage = lazy(() => import("@/pages/niam/GovernancePage"));
+const NiamTrustPage = lazy(() => import("@/pages/niam/TrustPage"));
+const NiamLifecyclePage = lazy(() => import("@/pages/niam/LifecyclePage"));
+const NiamFederationPage = lazy(() => import("@/pages/niam/FederationPage"));
+const NiamCertificatesPage = lazy(() => import("@/pages/niam/CertificatesPage"));
+const NiamWorkflowsPage = lazy(() => import("@/pages/niam/WorkflowsPage"));
+const NiamAdaptiveAuthPage = lazy(() => import("@/pages/niam/AdaptiveAuthPage"));
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem("access_token");
@@ -90,6 +97,13 @@ export const router = createBrowserRouter([
       { path: "edge", element: <LazyPage><EdgePage /></LazyPage> },
       { path: "financial", element: <LazyPage><FinancialPage /></LazyPage> },
       { path: "national-data", element: <LazyPage><NationalDataPage /></LazyPage> },
+      { path: "niam/governance", element: <LazyPage><NiamGovernancePage /></LazyPage> },
+      { path: "niam/trust", element: <LazyPage><NiamTrustPage /></LazyPage> },
+      { path: "niam/lifecycle", element: <LazyPage><NiamLifecyclePage /></LazyPage> },
+      { path: "niam/federation", element: <LazyPage><NiamFederationPage /></LazyPage> },
+      { path: "niam/certificates", element: <LazyPage><NiamCertificatesPage /></LazyPage> },
+      { path: "niam/workflows", element: <LazyPage><NiamWorkflowsPage /></LazyPage> },
+      { path: "niam/adaptive-auth", element: <LazyPage><NiamAdaptiveAuthPage /></LazyPage> },
       { path: "admin", element: <Navigate to="/admin/labs" replace /> },
     ],
   },

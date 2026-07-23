@@ -208,11 +208,15 @@ class Technology:
     status: TechnologyStatus
     version: str = ""
 
+    def __post_init__(self) -> None:
+        if isinstance(self.status, str):
+            self.status = TechnologyStatus(self.status)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "category": self.category,
-            "license": self.license_type,
+            "license_type": self.license_type,
             "maintainer": self.maintainer,
             "maturity": self.maturity,
             "community_size": self.community_size,
@@ -260,7 +264,7 @@ class Dependency:
             "purpose": self.purpose,
             "owner": self.owner,
             "adr": self.adr,
-            "license": self.license_type,
+            "license_type": self.license_type,
             "risk": self.risk,
             "cves": self.cves,
             "security_score": self.security_score,
@@ -285,6 +289,10 @@ class ComponentRegistryEntry:
     api_endpoints: list[str]
     reuse_guide: str
     compatibility: list[str]
+
+    def __post_init__(self) -> None:
+        if isinstance(self.status, str):
+            self.status = ModuleStatus(self.status)
 
     def to_dict(self) -> dict[str, Any]:
         return {
