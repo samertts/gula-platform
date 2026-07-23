@@ -110,6 +110,15 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "nav.financial", path: "/financial", icon: "DollarSign", permissions: ["lab:manage"] },
     { label: "nav.nationalData", path: "/national-data", icon: "BarChart3", permissions: ["patients:read"] },
   ],
+  niam: [
+    { label: "حوكمة الهوية", path: "/niam/governance", icon: "Scale", permissions: ["system:admin"] },
+    { label: "إطار الثقة", path: "/niam/trust", icon: "Shield", permissions: ["system:admin"] },
+    { label: "دورة الحياة", path: "/niam/lifecycle", icon: "UserCircle", permissions: ["system:admin"] },
+    { label: "الاتحاد", path: "/niam/federation", icon: "Globe", permissions: ["system:admin"] },
+    { label: "الشهادات", path: "/niam/certificates", icon: "Certificate", permissions: ["system:admin"] },
+    { label: "سير العمل", path: "/niam/workflows", icon: "Workflow", permissions: ["system:admin"] },
+    { label: "المصادقة التكيفية", path: "/niam/adaptive-auth", icon: "ShieldCheck", permissions: ["system:admin"] },
+  ],
   settings: [
     { label: "nav.profile", path: "/profile", icon: "UserCircle" },
     { label: "nav.settings", path: "/settings", icon: "Settings" },

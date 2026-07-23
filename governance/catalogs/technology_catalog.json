@@ -1,11 +1,11 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-07-23T17:40:25.660232+00:00",
+  "updated_at": "2026-07-23T19:10:15.471490+00:00",
   "technologies": [
     {
       "name": "PostgreSQL",
       "category": "database",
-      "license": "PostgreSQL",
+      "license_type": "PostgreSQL",
       "maintainer": "PostgreSQL Global Development Group",
       "maturity": "mature",
       "community_size": "large",
@@ -26,7 +26,7 @@
     {
       "name": "Redis",
       "category": "cache",
-      "license": "BSD",
+      "license_type": "BSD",
       "maintainer": "Redis Ltd",
       "maturity": "mature",
       "community_size": "large",
@@ -47,7 +47,7 @@
     {
       "name": "MinIO",
       "category": "storage",
-      "license": "AGPLv3",
+      "license_type": "AGPLv3",
       "maintainer": "MinIO Inc",
       "maturity": "mature",
       "community_size": "medium",
@@ -68,7 +68,7 @@
     {
       "name": "Grafana",
       "category": "monitoring",
-      "license": "AGPLv3",
+      "license_type": "AGPLv3",
       "maintainer": "Grafana Labs",
       "maturity": "mature",
       "community_size": "large",
@@ -89,7 +89,7 @@
     {
       "name": "Prometheus",
       "category": "metrics",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "CNCF",
       "maturity": "mature",
       "community_size": "large",
@@ -110,7 +110,7 @@
     {
       "name": "Loki",
       "category": "logging",
-      "license": "AGPLv3",
+      "license_type": "AGPLv3",
       "maintainer": "Grafana Labs",
       "maturity": "mature",
       "community_size": "large",
@@ -131,7 +131,7 @@
     {
       "name": "Ollama",
       "category": "ai",
-      "license": "MIT",
+      "license_type": "MIT",
       "maintainer": "Community",
       "maturity": "active",
       "community_size": "medium",
@@ -152,7 +152,7 @@
     {
       "name": "Keycloak",
       "category": "auth",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "CNCF",
       "maturity": "mature",
       "community_size": "large",
@@ -173,7 +173,7 @@
     {
       "name": "Authentik",
       "category": "auth",
-      "license": "MIT",
+      "license_type": "MIT",
       "maintainer": "Community",
       "maturity": "active",
       "community_size": "medium",
@@ -194,7 +194,7 @@
     {
       "name": "Nginx",
       "category": "proxy",
-      "license": "BSD",
+      "license_type": "BSD",
       "maintainer": "NGINX Inc",
       "maturity": "mature",
       "community_size": "large",
@@ -215,7 +215,7 @@
     {
       "name": "Traefik",
       "category": "proxy",
-      "license": "MIT",
+      "license_type": "MIT",
       "maintainer": "Traefik Labs",
       "maturity": "mature",
       "community_size": "medium",
@@ -236,7 +236,7 @@
     {
       "name": "RabbitMQ",
       "category": "messaging",
-      "license": "MPL 2.0",
+      "license_type": "MPL 2.0",
       "maintainer": "VMware",
       "maturity": "mature",
       "community_size": "large",
@@ -257,7 +257,7 @@
     {
       "name": "NATS",
       "category": "messaging",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "CNCF",
       "maturity": "mature",
       "community_size": "medium",
@@ -278,7 +278,7 @@
     {
       "name": "OpenSearch",
       "category": "search",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "AWS/Community",
       "maturity": "mature",
       "community_size": "large",
@@ -299,7 +299,7 @@
     {
       "name": "Qdrant",
       "category": "vector_db",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "Community",
       "maturity": "active",
       "community_size": "medium",
@@ -320,7 +320,7 @@
     {
       "name": "ChromaDB",
       "category": "vector_db",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "Community",
       "maturity": "active",
       "community_size": "small",
@@ -341,7 +341,7 @@
     {
       "name": "Vault Community",
       "category": "secrets",
-      "license": "MPL 2.0",
+      "license_type": "MPL 2.0",
       "maintainer": "HashiCorp",
       "maturity": "mature",
       "community_size": "large",
@@ -362,7 +362,7 @@
     {
       "name": "WireGuard",
       "category": "vpn",
-      "license": "GPLv2",
+      "license_type": "GPLv2",
       "maintainer": "Community",
       "maturity": "mature",
       "community_size": "medium",
@@ -383,7 +383,7 @@
     {
       "name": "Let's Encrypt",
       "category": "tls",
-      "license": "Mozilla Public License",
+      "license_type": "Mozilla Public License",
       "maintainer": "Internet Security Research Group",
       "maturity": "mature",
       "community_size": "large",
@@ -404,7 +404,7 @@
     {
       "name": "Fail2Ban",
       "category": "security",
-      "license": "GPLv2",
+      "license_type": "GPLv2",
       "maintainer": "Community",
       "maturity": "mature",
       "community_size": "medium",
@@ -425,7 +425,7 @@
     {
       "name": "CrowdSec",
       "category": "security",
-      "license": "MIT",
+      "license_type": "MIT",
       "maintainer": "Community",
       "maturity": "active",
       "community_size": "medium",
@@ -446,7 +446,7 @@
     {
       "name": "OpenTelemetry",
       "category": "observability",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "CNCF",
       "maturity": "mature",
       "community_size": "large",
@@ -467,7 +467,7 @@
     {
       "name": "Docker",
       "category": "container",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "Docker Inc",
       "maturity": "mature",
       "community_size": "large",
@@ -488,7 +488,7 @@
     {
       "name": "Kubernetes",
       "category": "orchestration",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "CNCF",
       "maturity": "mature",
       "community_size": "large",
@@ -509,7 +509,7 @@
     {
       "name": "FastAPI",
       "category": "framework",
-      "license": "MIT",
+      "license_type": "MIT",
       "maintainer": "Community",
       "maturity": "mature",
       "community_size": "large",
@@ -530,7 +530,7 @@
     {
       "name": "SQLAlchemy",
       "category": "orm",
-      "license": "MIT",
+      "license_type": "MIT",
       "maintainer": "Community",
       "maturity": "mature",
       "community_size": "large",
@@ -551,7 +551,7 @@
     {
       "name": "React",
       "category": "frontend",
-      "license": "MIT",
+      "license_type": "MIT",
       "maintainer": "Meta/Community",
       "maturity": "mature",
       "community_size": "large",
@@ -572,7 +572,7 @@
     {
       "name": "OpenAI API",
       "category": "ai",
-      "license": "Proprietary",
+      "license_type": "Proprietary",
       "maintainer": "OpenAI",
       "maturity": "mature",
       "community_size": "large",
@@ -593,7 +593,7 @@
     {
       "name": "Anthropic API",
       "category": "ai",
-      "license": "Proprietary",
+      "license_type": "Proprietary",
       "maintainer": "Anthropic",
       "maturity": "mature",
       "community_size": "large",
@@ -614,7 +614,7 @@
     {
       "name": "Auth0",
       "category": "auth",
-      "license": "Proprietary",
+      "license_type": "Proprietary",
       "maintainer": "Okta",
       "maturity": "mature",
       "community_size": "large",
@@ -635,7 +635,7 @@
     {
       "name": "Firebase",
       "category": "baas",
-      "license": "Proprietary",
+      "license_type": "Proprietary",
       "maintainer": "Google",
       "maturity": "mature",
       "community_size": "large",
@@ -656,7 +656,7 @@
     {
       "name": "Supabase",
       "category": "baas",
-      "license": "Apache 2.0",
+      "license_type": "Apache 2.0",
       "maintainer": "Supabase Inc",
       "maturity": "active",
       "community_size": "medium",
@@ -677,7 +677,7 @@
     {
       "name": "Elastic Cloud",
       "category": "search",
-      "license": "Proprietary",
+      "license_type": "Proprietary",
       "maintainer": "Elastic",
       "maturity": "mature",
       "community_size": "large",
@@ -698,7 +698,7 @@
     {
       "name": "Datadog",
       "category": "monitoring",
-      "license": "Proprietary",
+      "license_type": "Proprietary",
       "maintainer": "Datadog Inc",
       "maturity": "mature",
       "community_size": "large",
