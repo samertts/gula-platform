@@ -25,6 +25,16 @@ import type {
   AIProviderStatus,
   HealthStatus,
   DeepHealth,
+  UpgradeRequest,
+  FeatureFlag,
+  SecurityStatus,
+  EHRNote,
+  EHRCondition,
+  EHRMedication,
+  EHRAllergy,
+  EHRImmunization,
+  ClinicalOrder,
+  FHIRResource,
 } from "@/types";
 
 // ── Auth ──
@@ -70,9 +80,9 @@ export const patientsApi = {
   update: (id: number, data: Record<string, unknown>) =>
     api.put<Record<string, unknown>>(`/patients/${id}`, data).then((r) => r.data),
   getFamily: (familyId: string) =>
-    api.get<Record<string, unknown>>(`/patients/family/${familyId}`).then((r) => r.data),
+    api.get<Patient[]>(`/patients/family/${familyId}`).then((r) => r.data),
   getChildren: (patientId: number) =>
-    api.get<Record<string, unknown>>(`/patients/${patientId}/children`).then((r) => r.data),
+    api.get<Patient[]>(`/patients/${patientId}/children`).then((r) => r.data),
 };
 
 // ── Orders ──
@@ -89,7 +99,7 @@ export const ordersApi = {
   cancel: (id: number) =>
     api.post<Record<string, unknown>>(`/orders/${id}/cancel`).then((r) => r.data),
   analyze: (id: number) =>
-    api.get<Record<string, unknown>>(`/orders/${id}/intelligence`).then((r) => r.data),
+    api.get<AIInterpretation>(`/orders/${id}/intelligence`).then((r) => r.data),
 };
 
 // ── Test Results ──
@@ -105,31 +115,31 @@ export const resultsApi = {
   validate: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/test-results/validate", data).then((r) => r.data),
   citizenResults: (healthId: string, params?: Record<string, unknown>) =>
-    api.get<Record<string, unknown>>(`/test-results/citizen/${healthId}`, { params }).then((r) => r.data),
+    api.get<LabResult[]>(`/test-results/citizen/${healthId}`, { params }).then((r) => r.data),
   citizenTimeline: (healthId: string, params?: { category?: string }) =>
-    api.get<Record<string, unknown>>(`/test-results/citizen/${healthId}/timeline`, { params }).then((r) => r.data),
+    api.get<{ timeline: { category: string; results: LabResult[] }[] }>(`/test-results/citizen/${healthId}/timeline`, { params }).then((r) => r.data),
 };
 
 // ── Public Results ──
 export const publicResultsApi = {
   get: (token: string) =>
-    api.get<Record<string, unknown>>(`/r/${token}`).then((r) => r.data),
+    api.get<{ results: LabResult[]; patient: { full_name: string; health_id: string } }>(`/r/${token}`).then((r) => r.data),
   downloadPdf: (token: string) =>
-    api.get<Record<string, unknown>>(`/r/${token}/pdf`, { responseType: "blob" }).then((r) => r.data),
+    api.get<Blob>(`/r/${token}/pdf`, { responseType: "blob" }).then((r) => r.data),
 };
 
 // ── QR Codes ──
 export const qrApi = {
-  get: (token: string) => api.get<Record<string, unknown>>(`/qr/${token}`).then((r) => r.data),
-  getMedical: (token: string) => api.get<Record<string, unknown>>(`/qr-medical/${token}`).then((r) => r.data),
+  get: (token: string) => api.get<PatientCard>(`/qr/${token}`).then((r) => r.data),
+  getMedical: (token: string) => api.get<{ patient: Patient; results: LabResult[] }>(`/qr-medical/${token}`).then((r) => r.data),
 };
 
 // ── Patient History ──
 export const patientHistoryApi = {
   byId: (patientId: number) =>
-    api.get<Record<string, unknown>>(`/patient-history/${patientId}`).then((r) => r.data),
+    api.get<{ orders: LabOrder[]; results: LabResult[] }>(`/patient-history/${patientId}`).then((r) => r.data),
   byPhone: (phone: string, name?: string) =>
-    api.get<Record<string, unknown>>(`/history/${phone}`, { params: { name } }).then((r) => r.data),
+    api.get<{ patient: Patient; orders: LabOrder[]; results: LabResult[] }>(`/history/${phone}`, { params: { name } }).then((r) => r.data),
 };
 
 // ── Clinical Intelligence ──
@@ -165,7 +175,12 @@ export const labsApi = {
 
 // ── Admin ──
 export const adminApi = {
-  stats: () => api.get<Record<string, unknown>>("/admin/stats").then((r) => r.data),
+  stats: () =>
+    api
+      .get<{ total_labs: number; active_labs: number; total_users: number; total_patients: number; total_orders: number; total_critical: number }>(
+        "/admin/stats",
+      )
+      .then((r) => r.data),
   labs: (params?: { skip?: number; limit?: number }) =>
     api.get<{ total: number; labs: Lab[] }>("/admin/labs", { params }).then((r) => r.data),
   createLab: (data: Record<string, unknown>) =>
@@ -177,7 +192,7 @@ export const adminApi = {
   activateLab: (id: number) =>
     api.put<Record<string, unknown>>(`/admin/labs/${id}/activate`).then((r) => r.data),
   pendingLabs: (params?: { skip?: number; limit?: number }) =>
-    api.get<Record<string, unknown>>("/admin/labs/pending", { params }).then((r) => r.data),
+    api.get<{ total: number; labs: Lab[] }>("/admin/labs/pending", { params }).then((r) => r.data),
   users: (params?: { role?: string; lab_id?: number; skip?: number; limit?: number }) =>
     api.get<{ total: number; users: User[] }>("/admin/users", { params }).then((r) => r.data),
   createUser: (data: Record<string, unknown>) =>
@@ -187,30 +202,40 @@ export const adminApi = {
   toggleUser: (userId: number) =>
     api.put<Record<string, unknown>>(`/admin/users/${userId}/toggle`).then((r) => r.data),
   doctors: (params?: { is_verified?: boolean; skip?: number; limit?: number }) =>
-    api.get<Record<string, unknown>>("/admin/doctors", { params }).then((r) => r.data),
+    api.get<{ total: number; users: User[] }>("/admin/doctors", { params }).then((r) => r.data),
   approveDoctor: (id: number) =>
     api.put<Record<string, unknown>>(`/admin/doctors/${id}/approve`).then((r) => r.data),
   revokeDoctor: (id: number) =>
     api.put<Record<string, unknown>>(`/admin/doctors/${id}/revoke`).then((r) => r.data),
   citizens: (params?: { is_active?: boolean; is_verified?: boolean; skip?: number; limit?: number }) =>
-    api.get<Record<string, unknown>>("/admin/citizens", { params }).then((r) => r.data),
+    api.get<{ total: number; citizens: Patient[] }>("/admin/citizens", { params }).then((r) => r.data),
   toggleCitizen: (id: number) =>
     api.put<Record<string, unknown>>(`/admin/citizens/${id}/toggle`).then((r) => r.data),
   verifyCitizen: (id: number) =>
     api.put<Record<string, unknown>>(`/admin/citizens/${id}/verify`).then((r) => r.data),
   auditLogs: (params?: { action?: string; user_id?: number; skip?: number; limit?: number }) =>
     api.get<{ total: number; logs: AuditLog[] }>("/admin/audit-logs", { params }).then((r) => r.data),
-  killSwitchStatus: () => api.get<Record<string, unknown>>("/admin/kill-switch/status").then((r) => r.data),
+  killSwitchStatus: () =>
+    api
+      .get<{ active: boolean; activated_at?: string; reason?: string; activated_by?: string; deactivated_at?: string }>(
+        "/admin/kill-switch/status",
+      )
+      .then((r) => r.data),
   killSwitchActivate: (reason: string) =>
     api.post<Record<string, unknown>>("/admin/kill-switch/activate", { reason }).then((r) => r.data),
   killSwitchDeactivate: (reason: string) =>
     api.post<Record<string, unknown>>("/admin/kill-switch/deactivate", { reason }).then((r) => r.data),
-  controlLayerStats: () => api.get<Record<string, unknown>>("/admin/control-layer/stats").then((r) => r.data),
+  controlLayerStats: () =>
+    api
+      .get<{ total_requests: number; blocked_requests: number; active_rules: number; rate_limit_hits: number }>(
+        "/admin/control-layer/stats",
+      )
+      .then((r) => r.data),
 };
 
 // ── Admin Log Level ──
 export const adminLogLevelApi = {
-  get: () => api.get<Record<string, unknown>>("/admin/log-level").then((r) => r.data),
+  get: () => api.get<{ level: string }>("/admin/log-level").then((r) => r.data),
   set: (level: string) => api.post<Record<string, unknown>>("/admin/log-level", { level }).then((r) => r.data),
 };
 
@@ -219,14 +244,16 @@ export const notificationsApi = {
   send: (data: { order_id: number; channel?: string }) =>
     api.post<Record<string, unknown>>("/notify/send", data).then((r) => r.data),
   history: (orderId: number) =>
-    api.get<Record<string, unknown>>(`/notify/history/${orderId}`).then((r) => r.data),
+    api
+      .get<{ total_views: number; first_viewed?: string; last_viewed?: string }>(`/notify/history/${orderId}`)
+      .then((r) => r.data),
 };
 
 // ── Critical Alerts ──
 export const criticalAlertsApi = {
   list: (params?: { hours?: number; acknowledged?: boolean }) =>
     api.get<CriticalAlert[]>("/alerts", { params }).then((r) => r.data),
-  stats: () => api.get<Record<string, unknown>>("/alerts/stats").then((r) => r.data),
+  stats: () => api.get<{ total: number; critical: number; acknowledged: number; unacknowledged: number }>("/alerts/stats").then((r) => r.data),
 };
 
 // ── Quality Control ──
@@ -238,7 +265,7 @@ export const qcApi = {
   submitBatch: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/qc/batch", data).then((r) => r.data),
   summary: (params?: { days?: number }) =>
-    api.get<Record<string, unknown>>("/qc/summary", { params }).then((r) => r.data),
+    api.get<{ total_tests: number; passed: number; failed: number; warning: number; pass_rate_pct: number }>("/qc/summary", { params }).then((r) => r.data),
 };
 
 // ── Batch ──
@@ -252,13 +279,13 @@ export const patientCardApi = {
   get: (patientId: number) =>
     api.get<PatientCard>(`/patient-card/${patientId}`).then((r) => r.data),
   qr: (patientId: number) =>
-    api.get<Record<string, unknown>>(`/patient-card/${patientId}/qr.png`, { responseType: "blob" }).then((r) => r.data),
+    api.get<Blob>(`/patient-card/${patientId}/qr.png`, { responseType: "blob" }).then((r) => r.data),
   scan: (token: string) =>
     api.post<Record<string, unknown>>("/patient-card/scan", { token }).then((r) => r.data),
   history: (patientId: number, params?: { limit?: number }) =>
-    api.get<Record<string, unknown>>(`/patient-card/${patientId}/history`, { params }).then((r) => r.data),
+    api.get<{ scans: { scanned_at: string; scanner_ip?: string }[] }>(`/patient-card/${patientId}/history`, { params }).then((r) => r.data),
   print: (patientId: number) =>
-    api.get<Record<string, unknown>>(`/patient-card/${patientId}/print`).then((r) => r.data),
+    api.get<PatientCard>(`/patient-card/${patientId}/print`).then((r) => r.data),
 };
 
 // ── ID Scan ──
@@ -277,7 +304,7 @@ export const identityApi = {
   linkNid: (data: { patient_id: number; national_id: string; confirm_name?: string }) =>
     api.post<Record<string, unknown>>("/identity/link", data).then((r) => r.data),
   lookupByNid: (nationalId: string) =>
-    api.get<Record<string, unknown>>("/identity/lookup", { params: { national_id: nationalId } }).then((r) => r.data),
+    api.get<{ found: boolean; patient?: Patient }>("/identity/lookup", { params: { national_id: nationalId } }).then((r) => r.data),
 };
 
 // ── National Identity ──
@@ -294,20 +321,27 @@ export const tiersApi = {
   demand: (data: { lab_id: number; target_tier: string; reason?: string }) =>
     api.post<Record<string, unknown>>("/tiers/upgrade-demand", data).then((r) => r.data),
   adminDemands: (params?: { limit?: number }) =>
-    api.get<Record<string, unknown>>("/admin/tiers/demands", { params }).then((r) => r.data),
+    api.get<{ demands: UpgradeRequest[] }>("/admin/tiers/demands", { params }).then((r) => r.data),
   adminSetTier: (labId: number, data: Record<string, unknown>) =>
     api.put<Record<string, unknown>>(`/admin/tiers/${labId}`, data).then((r) => r.data),
   adminSetFlag: (labId: number, data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>(`/admin/tiers/flags/${labId}`, data).then((r) => r.data),
   adminListFlags: (labId: number) =>
-    api.get<Record<string, unknown>>(`/admin/tiers/flags/${labId}`).then((r) => r.data),
+    api.get<FeatureFlag[]>(`/admin/tiers/flags/${labId}`).then((r) => r.data),
 };
 
 // ── AI v1 ──
 export const aiApi = {
   suggest: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/api/ai/suggest", data).then((r) => r.data),
-  pending: () => api.get<Record<string, unknown>>("/api/ai/pending").then((r) => r.data),
+  pending: () =>
+    api
+      .get<{
+        total: number;
+        items?: { id: number; order_id: number; test_name: string; patient_name: string; suggestion: string; confidence: number }[];
+        approvals?: { id: number; order_id: number; test_name: string; patient_name: string; suggestion: string; confidence: number }[];
+      }>("/api/ai/pending")
+      .then((r) => r.data),
   approve: (id: string) =>
     api.post<Record<string, unknown>>(`/api/ai/approve/${id}`).then((r) => r.data),
   reject: (id: string, reason?: string) =>
@@ -316,10 +350,11 @@ export const aiApi = {
     api.post<Record<string, unknown>>(`/api/ai/execute/${id}`).then((r) => r.data),
   analyzeOrder: (orderId: number) =>
     api.post<Record<string, unknown>>(`/api/ai/analyze-order/${orderId}`).then((r) => r.data),
-  operations: () => api.get<Record<string, unknown>>("/api/ai/operations").then((r) => r.data),
+  operations: () =>
+    api.get<{ operations: { id: string; type: string; status: string; started_at: string }[] }>("/api/ai/operations").then((r) => r.data),
   providers: () => api.get<AIProviderStatus>("/api/ai/providers").then((r) => r.data),
   criticalAlerts: (params?: { limit?: number }) =>
-    api.get<Record<string, unknown>>("/api/ai/critical-alerts", { params }).then((r) => r.data),
+    api.get<CriticalAlert[]>("/api/ai/critical-alerts", { params }).then((r) => r.data),
   interpret: (token: string) =>
     api.get<AIInterpretation>(`/api/ai/interpret/${token}`).then((r) => r.data),
   chat: (message: string, context?: string) =>
@@ -330,27 +365,47 @@ export const aiApi = {
 export const aiPlatformApi = {
   search: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/search", data).then((r) => r.data),
   index: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/index", data).then((r) => r.data),
-  embeddingInfo: () => api.get<Record<string, unknown>>("/api/ai/v2/embedding-info").then((r) => r.data),
+  embeddingInfo: () =>
+    api.get<{ dimensions: number; model_name: string; total_embeddings: number }>("/api/ai/v2/embedding-info").then((r) => r.data),
   ragQuery: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/rag/query", data).then((r) => r.data),
-  knowledgeGraphInfo: () => api.get<Record<string, unknown>>("/api/ai/v2/knowledge-graph/info").then((r) => r.data),
-  knowledgeGraphSearch: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/knowledge-graph/search", data).then((r) => r.data),
-  knowledgeGraphNode: (nodeId: string) => api.get<Record<string, unknown>>(`/api/ai/v2/knowledge-graph/node/${nodeId}`).then((r) => r.data),
-  knowledgeGraphPath: (params: { from: string; to: string }) => api.get<Record<string, unknown>>("/api/ai/v2/knowledge-graph/path", { params }).then((r) => r.data),
-  agentTools: () => api.get<Record<string, unknown>>("/api/ai/v2/agents/tools").then((r) => r.data),
-  agentExecute: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/agents/execute", data).then((r) => r.data),
-  orchestrate: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/orchestrate", data).then((r) => r.data),
-  orchestrateTasks: () => api.get<Record<string, unknown>>("/api/ai/v2/orchestrate/tasks").then((r) => r.data),
-  createSession: () => api.post<Record<string, unknown>>("/api/ai/v2/sessions").then((r) => r.data),
-  sessionMessage: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/sessions/message", data).then((r) => r.data),
-  sessionHistory: (sessionId: string) => api.get<Record<string, unknown>>(`/api/ai/v2/sessions/${sessionId}`).then((r) => r.data),
-  cdsEvaluate: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/cds/evaluate", data).then((r) => r.data),
-  cdsEvaluateOrder: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/cds/evaluate-order", data).then((r) => r.data),
-  governanceModels: () => api.get<Record<string, unknown>>("/api/ai/v2/governance/models").then((r) => r.data),
-  governancePrompts: () => api.get<Record<string, unknown>>("/api/ai/v2/governance/prompts").then((r) => r.data),
-  governanceEvaluations: () => api.get<Record<string, unknown>>("/api/ai/v2/governance/evaluations").then((r) => r.data),
-  securityScan: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/security/scan", data).then((r) => r.data),
-  metrics: () => api.get<Record<string, unknown>>("/api/ai/v2/metrics").then((r) => r.data),
-  metricsPrometheus: () => api.get<Record<string, unknown>>("/api/ai/v2/metrics/prometheus").then((r) => r.data),
+  knowledgeGraphInfo: () =>
+    api.get<{ node_count: number; edge_count: number; relation_types: string[] }>("/api/ai/v2/knowledge-graph/info").then((r) => r.data),
+  knowledgeGraphSearch: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/ai/v2/knowledge-graph/search", data).then((r) => r.data),
+  knowledgeGraphNode: (nodeId: string) =>
+    api.get<{ id: string; type: string; label: string; properties: Record<string, unknown> }>(`/api/ai/v2/knowledge-graph/node/${nodeId}`).then((r) => r.data),
+  knowledgeGraphPath: (params: { from: string; to: string }) =>
+    api.get<{ nodes: unknown[]; edges: unknown[]; distance: number }>("/api/ai/v2/knowledge-graph/path", { params }).then((r) => r.data),
+  agentTools: () =>
+    api.get<{ tools: { name: string; description: string; parameters: Record<string, unknown> }[] }>("/api/ai/v2/agents/tools").then((r) => r.data),
+  agentExecute: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/ai/v2/agents/execute", data).then((r) => r.data),
+  orchestrate: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/ai/v2/orchestrate", data).then((r) => r.data),
+  orchestrateTasks: () =>
+    api.get<{ tasks: { id: string; workflow: string; status: string; progress: number }[] }>("/api/ai/v2/orchestrate/tasks").then((r) => r.data),
+  createSession: () =>
+    api.post<Record<string, unknown>>("/api/ai/v2/sessions").then((r) => r.data),
+  sessionMessage: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/ai/v2/sessions/message", data).then((r) => r.data),
+  sessionHistory: (sessionId: string) =>
+    api.get<{ id: string; messages: { role: string; content: string; timestamp: string }[] }>(`/api/ai/v2/sessions/${sessionId}`).then((r) => r.data),
+  cdsEvaluate: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/ai/v2/cds/evaluate", data).then((r) => r.data),
+  cdsEvaluateOrder: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/ai/v2/cds/evaluate-order", data).then((r) => r.data),
+  governanceModels: () =>
+    api.get<{ models: { name: string; version: string; status: string; approved: boolean }[] }>("/api/ai/v2/governance/models").then((r) => r.data),
+  governancePrompts: () =>
+    api.get<{ prompts: { id: string; name: string; version: string; status: string }[] }>("/api/ai/v2/governance/prompts").then((r) => r.data),
+  governanceEvaluations: () =>
+    api.get<{ evaluations: { id: string; prompt_id: string; model: string; passed: boolean; score: number; timestamp: string }[] }>("/api/ai/v2/governance/evaluations").then((r) => r.data),
+  securityScan: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/ai/v2/security/scan", data).then((r) => r.data),
+  metrics: () =>
+    api.get<{ total_requests: number; total_tokens: number; avg_latency_ms: number; error_rate: number; period_hours: number }>("/api/ai/v2/metrics").then((r) => r.data),
+  metricsPrometheus: () =>
+    api.get<string>("/api/ai/v2/metrics/prometheus").then((r) => r.data),
 };
 
 // ── AI Telemetry ──
@@ -359,8 +414,13 @@ export const aiTelemetryApi = {
   logFeedback: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/feedback", data).then((r) => r.data),
   logUnresolved: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/unresolved", data).then((r) => r.data),
   safetyFlags: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/safety-flags", data).then((r) => r.data),
-  export: (format: string) => api.get<Record<string, unknown>>("/api/ai/export", { params: { format } }).then((r) => r.data),
-  stats: () => api.get<Record<string, unknown>>("/api/ai/stats").then((r) => r.data),
+  export: (format: string) => api.get<Blob>("/api/ai/export", { params: { format } }).then((r) => r.data),
+  stats: () =>
+    api
+      .get<{ total_interactions: number; total_feedback: number; total_unresolved: number; total_safety_flags: number }>(
+        "/api/ai/stats",
+      )
+      .then((r) => r.data),
 };
 
 // ── Stats ──
@@ -368,11 +428,11 @@ export const statsApi = {
   dailyTrends: (params?: { days?: number }) =>
     api.get<TrendData>("/stats/trends/daily", { params }).then((r) => r.data),
   testFrequency: (params?: { days?: number; limit?: number }) =>
-    api.get<Record<string, unknown>>("/stats/trends/tests", { params }).then((r) => r.data),
+    api.get<{ series: { test_name: string; count: number; date: string }[] }>("/stats/trends/tests", { params }).then((r) => r.data),
   flagDistribution: (params?: { days?: number }) =>
     api.get<FlagDistribution>("/stats/trends/flags", { params }).then((r) => r.data),
   patientGrowth: (params?: { days?: number }) =>
-    api.get<Record<string, unknown>>("/stats/trends/patients", { params }).then((r) => r.data),
+    api.get<{ series: { date: string; new_patients: number; cumulative: number }[] }>("/stats/trends/patients", { params }).then((r) => r.data),
   summary: () => api.get<StatsSummary>("/stats/summary").then((r) => r.data),
   turnaround: (params?: { days?: number }) =>
     api.get<TurnaroundTime>("/stats/turnaround", { params }).then((r) => r.data),
@@ -387,32 +447,58 @@ export const healthApi = {
 };
 
 export const metricsApi = {
-  get: () => api.get<Record<string, unknown>>("/metrics").then((r) => r.data),
-  prom: () => api.get<Record<string, unknown>>("/metrics/prom").then((r) => r.data),
+  get: () => api.get<Record<string, number>>("/metrics").then((r) => r.data),
+  prom: () => api.get<string>("/metrics/prom").then((r) => r.data),
 };
 
 // ── Security ──
 export const securityApi = {
-  status: () => api.get<Record<string, unknown>>("/security/status").then((r) => r.data),
+  status: () => api.get<SecurityStatus>("/security/status").then((r) => r.data),
 };
 
 // ── Compliance ──
 export const complianceApi = {
-  info: () => api.get<Record<string, unknown>>("/compliance/info").then((r) => r.data),
-  auditSummary: () => api.get<Record<string, unknown>>("/compliance/audit-summary").then((r) => r.data),
+  info: () =>
+    api
+      .get<{ compliance_framework: string; standards: string[]; last_assessment: string; overall_status: string }>(
+        "/compliance/info",
+      )
+      .then((r) => r.data),
+  auditSummary: () =>
+    api
+      .get<{ total_audits: number; passed: number; failed: number; in_progress: number; last_audit_date: string }>(
+        "/compliance/audit-summary",
+      )
+      .then((r) => r.data),
   fhirPatient: (patientId: number) =>
-    api.get<Record<string, unknown>>(`/compliance/fhir/patient/${patientId}`).then((r) => r.data),
+    api.get<FHIRResource>(`/compliance/fhir/patient/${patientId}`).then((r) => r.data),
   fhirObservation: (orderId: number) =>
-    api.get<Record<string, unknown>>(`/compliance/fhir/observation/${orderId}`).then((r) => r.data),
+    api.get<FHIRResource>(`/compliance/fhir/observation/${orderId}`).then((r) => r.data),
   fhirDiagnosticReport: (orderId: number) =>
-    api.get<Record<string, unknown>>(`/compliance/fhir/diagnostic-report/${orderId}`).then((r) => r.data),
+    api.get<FHIRResource>(`/compliance/fhir/diagnostic-report/${orderId}`).then((r) => r.data),
   fhirServiceRequest: (orderId: number) =>
-    api.get<Record<string, unknown>>(`/compliance/fhir/service-request/${orderId}`).then((r) => r.data),
+    api.get<FHIRResource>(`/compliance/fhir/service-request/${orderId}`).then((r) => r.data),
   dhis2Aggregate: () => api.get<Record<string, unknown>>("/compliance/dhis2/aggregate").then((r) => r.data),
-  auditIntegrity: () => api.get<Record<string, unknown>>("/compliance/audit-integrity").then((r) => r.data),
-  securityReport: () => api.get<Record<string, unknown>>("/compliance/security-report").then((r) => r.data),
-  timeSync: () => api.get<Record<string, unknown>>("/compliance/time-sync").then((r) => r.data),
-  systemStatus: () => api.get<Record<string, unknown>>("/compliance/system-status").then((r) => r.data),
+  auditIntegrity: () =>
+    api
+      .get<{ status: string; checks: { check: string; passed: boolean; details?: string }[] }>(
+        "/compliance/audit-integrity",
+      )
+      .then((r) => r.data),
+  securityReport: () =>
+    api
+      .get<{ overall_grade: string; findings: { severity: string; description: string }[]; recommendations: string[] }>(
+        "/compliance/security-report",
+      )
+      .then((r) => r.data),
+  timeSync: () =>
+    api
+      .get<{ server_time_utc: string; ntp_synced: boolean; offset_ms: number }>("/compliance/time-sync")
+      .then((r) => r.data),
+  systemStatus: () =>
+    api
+      .get<{ components: { name: string; status: string; latency_ms?: number }[] }>("/compliance/system-status")
+      .then((r) => r.data),
 };
 
 // ── MFA ──
@@ -422,18 +508,38 @@ export const mfaApi = {
   verifyTotp: (token: string) =>
     api.post<Record<string, unknown>>("/mfa/totp/verify", { token }).then((r) => r.data),
   webauthnRegisterBegin: () => api.post<Record<string, unknown>>("/mfa/webauthn/register/begin").then((r) => r.data),
-  webauthnRegisterComplete: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/mfa/webauthn/register/complete", data).then((r) => r.data),
+  webauthnRegisterComplete: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/mfa/webauthn/register/complete", data).then((r) => r.data),
   webauthnAuthBegin: () => api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/begin").then((r) => r.data),
-  webauthnAuthComplete: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/complete", data).then((r) => r.data),
-  devices: () => api.get<Record<string, unknown>>("/mfa/devices").then((r) => r.data),
+  webauthnAuthComplete: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/complete", data).then((r) => r.data),
+  devices: () =>
+    api
+      .get<{ devices: { id: number; type: string; name: string; created_at: string; last_used?: string }[] }>(
+        "/mfa/devices",
+      )
+      .then((r) => r.data),
   removeDevice: (deviceId: number) =>
     api.delete<Record<string, unknown>>(`/mfa/devices/${deviceId}`).then((r) => r.data),
-  status: () => api.get<Record<string, unknown>>("/mfa/status").then((r) => r.data),
+  status: () =>
+    api
+      .get<{
+        mfa_enabled: boolean;
+        totp_configured: boolean;
+        webauthn_configured: boolean;
+        recommended_method: string;
+      }>("/mfa/status")
+      .then((r) => r.data),
 };
 
 // ── Service Accounts ──
 export const serviceAccountsApi = {
-  list: () => api.get<Record<string, unknown>>("/service-accounts").then((r) => r.data),
+  list: () =>
+    api
+      .get<{ accounts: { id: string; name: string; role: string; is_active: boolean; created_at: string; last_used?: string }[] }>(
+        "/service-accounts",
+      )
+      .then((r) => r.data),
   create: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/service-accounts", data).then((r) => r.data),
   revoke: (id: string) =>
@@ -442,155 +548,352 @@ export const serviceAccountsApi = {
     api.post<Record<string, unknown>>(`/service-accounts/${id}/rotate`).then((r) => r.data),
 };
 
+type CanonicalPatientEntry = {
+  id: string;
+  gpid: string;
+  patient?: Patient;
+  citizen_id?: string;
+  linked_patients: number[];
+  linked_citizens: string[];
+  created_at: string;
+};
+
 // ── Canonical Patient ──
 export const canonicalPatientApi = {
-  create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/v1/canonical-patients", data).then((r) => r.data),
-  get: (id: string) => api.get<Record<string, unknown>>(`/api/v1/canonical-patients/${id}`).then((r) => r.data),
-  merge: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/v1/canonical-patients/merge", data).then((r) => r.data),
-  byPatient: (patientId: number) => api.get<Record<string, unknown>>(`/api/v1/canonical-patients/by-patient/${patientId}`).then((r) => r.data),
-  byCitizen: (citizenId: string) => api.get<Record<string, unknown>>(`/api/v1/canonical-patients/by-citizen/${citizenId}`).then((r) => r.data),
-  search: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/api/v1/canonical-patients", { params }).then((r) => r.data),
-  linkPatient: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/v1/canonical-patients/link-patient", data).then((r) => r.data),
-  linkCitizen: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/v1/canonical-patients/link-citizen", data).then((r) => r.data),
+  create: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/v1/canonical-patients", data).then((r) => r.data),
+  get: (id: string) => api.get<CanonicalPatientEntry>(`/api/v1/canonical-patients/${id}`).then((r) => r.data),
+  merge: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/v1/canonical-patients/merge", data).then((r) => r.data),
+  byPatient: (patientId: number) =>
+    api.get<CanonicalPatientEntry>(`/api/v1/canonical-patients/by-patient/${patientId}`).then((r) => r.data),
+  byCitizen: (citizenId: string) =>
+    api.get<CanonicalPatientEntry>(`/api/v1/canonical-patients/by-citizen/${citizenId}`).then((r) => r.data),
+  search: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; items: { id: string; gpid: string; patient?: Patient }[] }>(
+      "/api/v1/canonical-patients",
+      { params },
+    ).then((r) => r.data),
+  linkPatient: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/v1/canonical-patients/link-patient", data).then((r) => r.data),
+  linkCitizen: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/api/v1/canonical-patients/link-citizen", data).then((r) => r.data),
 };
 
 // ── EHR (Electronic Health Record) ──
 export const ehrApi = {
   // Clinical Notes
-  createClinicalNote: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/clinical-notes", data).then((r) => r.data),
-  getClinicalNote: (id: number) => api.get<Record<string, unknown>>(`/ehr/clinical-notes/${id}`).then((r) => r.data),
-  updateClinicalNote: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/clinical-notes/${id}`, data).then((r) => r.data),
-  deleteClinicalNote: (id: number) => api.delete<Record<string, unknown>>(`/ehr/clinical-notes/${id}`).then((r) => r.data),
-  listClinicalNotes: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/clinical-notes", { params }).then((r) => r.data),
-  searchClinicalNotes: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/clinical-notes/search", { params }).then((r) => r.data),
+  createClinicalNote: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/clinical-notes", data).then((r) => r.data),
+  getClinicalNote: (id: number) =>
+    api.get<EHRNote>(`/ehr/clinical-notes/${id}`).then((r) => r.data),
+  updateClinicalNote: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/clinical-notes/${id}`, data).then((r) => r.data),
+  deleteClinicalNote: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/clinical-notes/${id}`).then((r) => r.data),
+  listClinicalNotes: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; notes: EHRNote[] }>("/ehr/clinical-notes", { params }).then((r) => r.data),
+  searchClinicalNotes: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; notes: EHRNote[] }>("/ehr/clinical-notes/search", { params }).then((r) => r.data),
 
   // Allergies
-  createAllergy: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/allergies", data).then((r) => r.data),
-  getAllergy: (id: number) => api.get<Record<string, unknown>>(`/ehr/allergies/${id}`).then((r) => r.data),
-  updateAllergy: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/allergies/${id}`, data).then((r) => r.data),
-  deleteAllergy: (id: number) => api.delete<Record<string, unknown>>(`/ehr/allergies/${id}`).then((r) => r.data),
-  listAllergies: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/allergies", { params }).then((r) => r.data),
+  createAllergy: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/allergies", data).then((r) => r.data),
+  getAllergy: (id: number) =>
+    api.get<EHRAllergy>(`/ehr/allergies/${id}`).then((r) => r.data),
+  updateAllergy: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/allergies/${id}`, data).then((r) => r.data),
+  deleteAllergy: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/allergies/${id}`).then((r) => r.data),
+  listAllergies: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; allergies: EHRAllergy[] }>("/ehr/allergies", { params }).then((r) => r.data),
 
   // Medication Statements
-  createMedicationStatement: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/medication-statements", data).then((r) => r.data),
-  getMedicationStatement: (id: number) => api.get<Record<string, unknown>>(`/ehr/medication-statements/${id}`).then((r) => r.data),
-  updateMedicationStatement: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/medication-statements/${id}`, data).then((r) => r.data),
-  deleteMedicationStatement: (id: number) => api.delete<Record<string, unknown>>(`/ehr/medication-statements/${id}`).then((r) => r.data),
-  listMedicationStatements: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/medication-statements", { params }).then((r) => r.data),
+  createMedicationStatement: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/medication-statements", data).then((r) => r.data),
+  getMedicationStatement: (id: number) =>
+    api.get<EHRMedication>(`/ehr/medication-statements/${id}`).then((r) => r.data),
+  updateMedicationStatement: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/medication-statements/${id}`, data).then((r) => r.data),
+  deleteMedicationStatement: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/medication-statements/${id}`).then((r) => r.data),
+  listMedicationStatements: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; medications: EHRMedication[] }>("/ehr/medication-statements", { params }).then((r) => r.data),
 
   // Medication Requests
-  createMedicationRequest: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/medication-requests", data).then((r) => r.data),
-  getMedicationRequest: (id: number) => api.get<Record<string, unknown>>(`/ehr/medication-requests/${id}`).then((r) => r.data),
-  updateMedicationRequest: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/medication-requests/${id}`, data).then((r) => r.data),
-  deleteMedicationRequest: (id: number) => api.delete<Record<string, unknown>>(`/ehr/medication-requests/${id}`).then((r) => r.data),
-  listMedicationRequests: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/medication-requests", { params }).then((r) => r.data),
+  createMedicationRequest: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/medication-requests", data).then((r) => r.data),
+  getMedicationRequest: (id: number) =>
+    api.get<ClinicalOrder>(`/ehr/medication-requests/${id}`).then((r) => r.data),
+  updateMedicationRequest: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/medication-requests/${id}`, data).then((r) => r.data),
+  deleteMedicationRequest: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/medication-requests/${id}`).then((r) => r.data),
+  listMedicationRequests: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; orders: ClinicalOrder[] }>("/ehr/medication-requests", { params }).then((r) => r.data),
 
   // Medication Dispenses
-  createMedicationDispense: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/medication-dispenses", data).then((r) => r.data),
-  getMedicationDispense: (id: number) => api.get<Record<string, unknown>>(`/ehr/medication-dispenses/${id}`).then((r) => r.data),
-  updateMedicationDispense: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/medication-dispenses/${id}`, data).then((r) => r.data),
-  deleteMedicationDispense: (id: number) => api.delete<Record<string, unknown>>(`/ehr/medication-dispenses/${id}`).then((r) => r.data),
-  listMedicationDispenses: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/medication-dispenses", { params }).then((r) => r.data),
+  createMedicationDispense: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/medication-dispenses", data).then((r) => r.data),
+  getMedicationDispense: (id: number) =>
+    api
+      .get<{ id: number; medication_name: string; dosage?: string; dispensed_date: string; dispensed_by?: string; status: string }>(
+        `/ehr/medication-dispenses/${id}`,
+      )
+      .then((r) => r.data),
+  updateMedicationDispense: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/medication-dispenses/${id}`, data).then((r) => r.data),
+  deleteMedicationDispense: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/medication-dispenses/${id}`).then((r) => r.data),
+  listMedicationDispenses: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; dispenses: { id: number; medication_name: string; dosage?: string; dispensed_date: string; status: string }[] }>(
+      "/ehr/medication-dispenses",
+      { params },
+    ).then((r) => r.data),
 
   // Care Plans
-  createCarePlan: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/care-plans", data).then((r) => r.data),
-  getCarePlan: (id: number) => api.get<Record<string, unknown>>(`/ehr/care-plans/${id}`).then((r) => r.data),
-  updateCarePlan: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/care-plans/${id}`, data).then((r) => r.data),
-  deleteCarePlan: (id: number) => api.delete<Record<string, unknown>>(`/ehr/care-plans/${id}`).then((r) => r.data),
-  listCarePlans: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/care-plans", { params }).then((r) => r.data),
-  addCarePlanGoal: (planId: number, data: Record<string, unknown>) => api.post<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals`, data).then((r) => r.data),
-  updateCarePlanGoal: (planId: number, goalId: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals/${goalId}`, data).then((r) => r.data),
-  deleteCarePlanGoal: (planId: number, goalId: number) => api.delete<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals/${goalId}`).then((r) => r.data),
+  createCarePlan: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/care-plans", data).then((r) => r.data),
+  getCarePlan: (id: number) =>
+    api
+      .get<{ id: number; patient_id: number; plan_name: string; status: string; goals: { id: number; description: string; status: string }[] }>(
+        `/ehr/care-plans/${id}`,
+      )
+      .then((r) => r.data),
+  updateCarePlan: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/care-plans/${id}`, data).then((r) => r.data),
+  deleteCarePlan: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/care-plans/${id}`).then((r) => r.data),
+  listCarePlans: (params?: Record<string, unknown>) =>
+    api
+      .get<{ total: number; care_plans: { id: number; patient_id: number; plan_name: string; status: string }[] }>(
+        "/ehr/care-plans",
+        { params },
+      )
+      .then((r) => r.data),
+  addCarePlanGoal: (planId: number, data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals`, data).then((r) => r.data),
+  updateCarePlanGoal: (planId: number, goalId: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals/${goalId}`, data).then((r) => r.data),
+  deleteCarePlanGoal: (planId: number, goalId: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals/${goalId}`).then((r) => r.data),
 
   // Problem List
-  createProblemListItem: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/problem-list", data).then((r) => r.data),
-  getProblemListItem: (id: number) => api.get<Record<string, unknown>>(`/ehr/problem-list/${id}`).then((r) => r.data),
-  updateProblemListItem: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/problem-list/${id}`, data).then((r) => r.data),
-  deleteProblemListItem: (id: number) => api.delete<Record<string, unknown>>(`/ehr/problem-list/${id}`).then((r) => r.data),
-  listProblemList: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/problem-list", { params }).then((r) => r.data),
+  createProblemListItem: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/problem-list", data).then((r) => r.data),
+  getProblemListItem: (id: number) =>
+    api
+      .get<{ id: number; patient_id: number; problem: string; onset_date?: string; status: string }>(
+        `/ehr/problem-list/${id}`,
+      )
+      .then((r) => r.data),
+  updateProblemListItem: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/problem-list/${id}`, data).then((r) => r.data),
+  deleteProblemListItem: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/problem-list/${id}`).then((r) => r.data),
+  listProblemList: (params?: Record<string, unknown>) =>
+    api
+      .get<{ total: number; items: { id: number; patient_id: number; problem: string; onset_date?: string; status: string }[] }>(
+        "/ehr/problem-list",
+        { params },
+      )
+      .then((r) => r.data),
 
   // Conditions
-  createCondition: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/conditions", data).then((r) => r.data),
-  getCondition: (id: number) => api.get<Record<string, unknown>>(`/ehr/conditions/${id}`).then((r) => r.data),
-  updateCondition: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/conditions/${id}`, data).then((r) => r.data),
-  deleteCondition: (id: number) => api.delete<Record<string, unknown>>(`/ehr/conditions/${id}`).then((r) => r.data),
-  listConditions: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/conditions", { params }).then((r) => r.data),
+  createCondition: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/conditions", data).then((r) => r.data),
+  getCondition: (id: number) =>
+    api.get<EHRCondition>(`/ehr/conditions/${id}`).then((r) => r.data),
+  updateCondition: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/conditions/${id}`, data).then((r) => r.data),
+  deleteCondition: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/conditions/${id}`).then((r) => r.data),
+  listConditions: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; conditions: EHRCondition[] }>("/ehr/conditions", { params }).then((r) => r.data),
 
   // Diagnoses
-  createDiagnosis: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/diagnoses", data).then((r) => r.data),
-  getDiagnosis: (id: number) => api.get<Record<string, unknown>>(`/ehr/diagnoses/${id}`).then((r) => r.data),
-  updateDiagnosis: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/diagnoses/${id}`, data).then((r) => r.data),
-  deleteDiagnosis: (id: number) => api.delete<Record<string, unknown>>(`/ehr/diagnoses/${id}`).then((r) => r.data),
-  listDiagnoses: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/diagnoses", { params }).then((r) => r.data),
+  createDiagnosis: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/diagnoses", data).then((r) => r.data),
+  getDiagnosis: (id: number) =>
+    api.get<EHRCondition>(`/ehr/diagnoses/${id}`).then((r) => r.data),
+  updateDiagnosis: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/diagnoses/${id}`, data).then((r) => r.data),
+  deleteDiagnosis: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/diagnoses/${id}`).then((r) => r.data),
+  listDiagnoses: (params?: Record<string, unknown>) =>
+    api.get<{ total: number; diagnoses: EHRCondition[] }>("/ehr/diagnoses", { params }).then((r) => r.data),
 
   // Family History
-  createFamilyHistory: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/family-history", data).then((r) => r.data),
-  getFamilyHistory: (id: number) => api.get<Record<string, unknown>>(`/ehr/family-history/${id}`).then((r) => r.data),
-  updateFamilyHistory: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/family-history/${id}`, data).then((r) => r.data),
-  deleteFamilyHistory: (id: number) => api.delete<Record<string, unknown>>(`/ehr/family-history/${id}`).then((r) => r.data),
-  listFamilyHistory: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/family-history", { params }).then((r) => r.data),
+  createFamilyHistory: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/family-history", data).then((r) => r.data),
+  getFamilyHistory: (id: number) =>
+    api
+      .get<{ id: number; patient_id: number; relation: string; condition: string; notes?: string }>(
+        `/ehr/family-history/${id}`,
+      )
+      .then((r) => r.data),
+  updateFamilyHistory: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/family-history/${id}`, data).then((r) => r.data),
+  deleteFamilyHistory: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/family-history/${id}`).then((r) => r.data),
+  listFamilyHistory: (params?: Record<string, unknown>) =>
+    api
+      .get<{ total: number; history: { id: number; patient_id: number; relation: string; condition: string; notes?: string }[] }>(
+        "/ehr/family-history",
+        { params },
+      )
+      .then((r) => r.data),
 
   // Social History
-  createSocialHistory: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/social-history", data).then((r) => r.data),
-  getSocialHistory: (id: number) => api.get<Record<string, unknown>>(`/ehr/social-history/${id}`).then((r) => r.data),
-  updateSocialHistory: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/social-history/${id}`, data).then((r) => r.data),
-  deleteSocialHistory: (id: number) => api.delete<Record<string, unknown>>(`/ehr/social-history/${id}`).then((r) => r.data),
-  listSocialHistory: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/social-history", { params }).then((r) => r.data),
+  createSocialHistory: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/social-history", data).then((r) => r.data),
+  getSocialHistory: (id: number) =>
+    api
+      .get<{ id: number; patient_id: number; habit: string; status: string; notes?: string }>(
+        `/ehr/social-history/${id}`,
+      )
+      .then((r) => r.data),
+  updateSocialHistory: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/social-history/${id}`, data).then((r) => r.data),
+  deleteSocialHistory: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/social-history/${id}`).then((r) => r.data),
+  listSocialHistory: (params?: Record<string, unknown>) =>
+    api
+      .get<{ total: number; history: { id: number; patient_id: number; habit: string; status: string; notes?: string }[] }>(
+        "/ehr/social-history",
+        { params },
+      )
+      .then((r) => r.data),
 
   // Risk Factors
-  createRiskFactor: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/risk-factors", data).then((r) => r.data),
-  getRiskFactor: (id: number) => api.get<Record<string, unknown>>(`/ehr/risk-factors/${id}`).then((r) => r.data),
-  updateRiskFactor: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/risk-factors/${id}`, data).then((r) => r.data),
-  deleteRiskFactor: (id: number) => api.delete<Record<string, unknown>>(`/ehr/risk-factors/${id}`).then((r) => r.data),
-  listRiskFactors: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/risk-factors", { params }).then((r) => r.data),
+  createRiskFactor: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/risk-factors", data).then((r) => r.data),
+  getRiskFactor: (id: number) =>
+    api
+      .get<{ id: number; patient_id: number; factor: string; severity: string; notes?: string }>(
+        `/ehr/risk-factors/${id}`,
+      )
+      .then((r) => r.data),
+  updateRiskFactor: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/risk-factors/${id}`, data).then((r) => r.data),
+  deleteRiskFactor: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/risk-factors/${id}`).then((r) => r.data),
+  listRiskFactors: (params?: Record<string, unknown>) =>
+    api
+      .get<{ total: number; factors: { id: number; patient_id: number; factor: string; severity: string; notes?: string }[] }>(
+        "/ehr/risk-factors",
+        { params },
+      )
+      .then((r) => r.data),
 
   // Immunizations
-  createImmunization: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/immunizations", data).then((r) => r.data),
-  getImmunization: (id: number) => api.get<Record<string, unknown>>(`/ehr/immunizations/${id}`).then((r) => r.data),
-  updateImmunization: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/immunizations/${id}`, data).then((r) => r.data),
-  deleteImmunization: (id: number) => api.delete<Record<string, unknown>>(`/ehr/immunizations/${id}`).then((r) => r.data),
-  listImmunizations: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/immunizations", { params }).then((r) => r.data),
+  createImmunization: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/immunizations", data).then((r) => r.data),
+  getImmunization: (id: number) =>
+    api.get<EHRImmunization>(`/ehr/immunizations/${id}`).then((r) => r.data),
+  updateImmunization: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/immunizations/${id}`, data).then((r) => r.data),
+  deleteImmunization: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/immunizations/${id}`).then((r) => r.data),
+  listImmunizations: (params?: Record<string, unknown>) =>
+    api
+      .get<{ total: number; immunizations: EHRImmunization[] }>("/ehr/immunizations", { params })
+      .then((r) => r.data),
 
   // Attachments
-  createAttachment: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/ehr/attachments", data).then((r) => r.data),
-  getAttachment: (id: number) => api.get<Record<string, unknown>>(`/ehr/attachments/${id}`).then((r) => r.data),
-  updateAttachment: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/ehr/attachments/${id}`, data).then((r) => r.data),
-  deleteAttachment: (id: number) => api.delete<Record<string, unknown>>(`/ehr/attachments/${id}`).then((r) => r.data),
-  listAttachments: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/ehr/attachments", { params }).then((r) => r.data),
-  downloadAttachment: (id: number) => api.get<Record<string, unknown>>(`/ehr/attachments/${id}/download`, { responseType: "blob" }).then((r) => r.data),
+  createAttachment: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/ehr/attachments", data).then((r) => r.data),
+  getAttachment: (id: number) =>
+    api
+      .get<{ id: number; file_name: string; mime_type: string; file_size: number; uploaded_at: string }>(
+        `/ehr/attachments/${id}`,
+      )
+      .then((r) => r.data),
+  updateAttachment: (id: number, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/ehr/attachments/${id}`, data).then((r) => r.data),
+  deleteAttachment: (id: number) =>
+    api.delete<Record<string, unknown>>(`/ehr/attachments/${id}`).then((r) => r.data),
+  listAttachments: (params?: Record<string, unknown>) =>
+    api
+      .get<{ total: number; attachments: { id: number; file_name: string; mime_type: string; file_size: number }[] }>(
+        "/ehr/attachments",
+        { params },
+      )
+      .then((r) => r.data),
+  downloadAttachment: (id: number) =>
+    api.get<Blob>(`/ehr/attachments/${id}/download`, { responseType: "blob" }).then((r) => r.data),
 
   // Patient Summary
-  getPatientEhr: (patientId: number) => api.get<Record<string, unknown>>(`/ehr/patient/${patientId}`).then((r) => r.data),
-  getPatientSummary: (patientId: number) => api.get<Record<string, unknown>>(`/ehr/patient/${patientId}/summary`).then((r) => r.data),
+  getPatientEhr: (patientId: number) =>
+    api
+      .get<{
+        patient: Patient;
+        clinical_notes: EHRNote[];
+        conditions: EHRCondition[];
+        medications: EHRMedication[];
+        allergies: EHRAllergy[];
+        immunizations: EHRImmunization[];
+      }>(`/ehr/patient/${patientId}`)
+      .then((r) => r.data),
+  getPatientSummary: (patientId: number) =>
+    api
+      .get<{
+        patient_name: string;
+        health_id: string;
+        age: number;
+        gender: string;
+        recent_results: LabResult[];
+        active_conditions: string[];
+        active_medications: string[];
+      }>(`/ehr/patient/${patientId}/summary`)
+      .then((r) => r.data),
 };
 
 // ── EHR FHIR (all FHIR resources) ──
 export const ehrFhirApi = {
-  getPatient: (id: string) => api.get<Record<string, unknown>>(`/fhir/Patient/${id}`).then((r) => r.data),
-  getEncounter: (id: string) => api.get<Record<string, unknown>>(`/fhir/Encounter/${id}`).then((r) => r.data),
-  getCondition: (id: string) => api.get<Record<string, unknown>>(`/fhir/Condition/${id}`).then((r) => r.data),
-  searchConditions: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/fhir/Condition", { params }).then((r) => r.data),
-  getObservation: (id: string) => api.get<Record<string, unknown>>(`/fhir/Observation/${id}`).then((r) => r.data),
-  searchObservations: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/fhir/Observation", { params }).then((r) => r.data),
-  getMedicationRequest: (id: string) => api.get<Record<string, unknown>>(`/fhir/MedicationRequest/${id}`).then((r) => r.data),
-  searchMedicationRequests: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/fhir/MedicationRequest", { params }).then((r) => r.data),
-  getMedicationStatement: (id: string) => api.get<Record<string, unknown>>(`/fhir/MedicationStatement/${id}`).then((r) => r.data),
-  getCarePlan: (id: string) => api.get<Record<string, unknown>>(`/fhir/CarePlan/${id}`).then((r) => r.data),
-  getProcedure: (id: string) => api.get<Record<string, unknown>>(`/fhir/Procedure/${id}`).then((r) => r.data),
-  searchProcedures: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/fhir/Procedure", { params }).then((r) => r.data),
-  getAllergyIntolerance: (id: string) => api.get<Record<string, unknown>>(`/fhir/AllergyIntolerance/${id}`).then((r) => r.data),
-  searchAllergyIntolerances: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/fhir/AllergyIntolerance", { params }).then((r) => r.data),
-  getImmunization: (id: string) => api.get<Record<string, unknown>>(`/fhir/Immunization/${id}`).then((r) => r.data),
-  searchImmunizations: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/fhir/Immunization", { params }).then((r) => r.data),
-  getDocumentReference: (id: string) => api.get<Record<string, unknown>>(`/fhir/DocumentReference/${id}`).then((r) => r.data),
-  searchDocumentReferences: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/fhir/DocumentReference", { params }).then((r) => r.data),
-  getComposition: (id: string) => api.get<Record<string, unknown>>(`/fhir/Composition/${id}`).then((r) => r.data),
-  searchCompositions: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/fhir/Composition", { params }).then((r) => r.data),
-  getBundle: (id: string) => api.get<Record<string, unknown>>(`/fhir/Bundle/${id}`).then((r) => r.data),
-  createResource: (resourceType: string, data: Record<string, unknown>) => api.post<Record<string, unknown>>(`/fhir/${resourceType}`, data).then((r) => r.data),
-  updateResource: (resourceType: string, id: string, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/fhir/${resourceType}/${id}`, data).then((r) => r.data),
-  deleteResource: (resourceType: string, id: string) => api.delete<Record<string, unknown>>(`/fhir/${resourceType}/${id}`).then((r) => r.data),
-  executeBatch: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/fhir", data).then((r) => r.data),
+  getPatient: (id: string) => api.get<FHIRResource>(`/fhir/Patient/${id}`).then((r) => r.data),
+  getEncounter: (id: string) => api.get<FHIRResource>(`/fhir/Encounter/${id}`).then((r) => r.data),
+  getCondition: (id: string) => api.get<FHIRResource>(`/fhir/Condition/${id}`).then((r) => r.data),
+  searchConditions: (params?: Record<string, unknown>) =>
+    api.get<FHIRResource[]>("/fhir/Condition", { params }).then((r) => r.data),
+  getObservation: (id: string) => api.get<FHIRResource>(`/fhir/Observation/${id}`).then((r) => r.data),
+  searchObservations: (params?: Record<string, unknown>) =>
+    api.get<FHIRResource[]>("/fhir/Observation", { params }).then((r) => r.data),
+  getMedicationRequest: (id: string) =>
+    api.get<FHIRResource>(`/fhir/MedicationRequest/${id}`).then((r) => r.data),
+  searchMedicationRequests: (params?: Record<string, unknown>) =>
+    api.get<FHIRResource[]>("/fhir/MedicationRequest", { params }).then((r) => r.data),
+  getMedicationStatement: (id: string) =>
+    api.get<FHIRResource>(`/fhir/MedicationStatement/${id}`).then((r) => r.data),
+  getCarePlan: (id: string) => api.get<FHIRResource>(`/fhir/CarePlan/${id}`).then((r) => r.data),
+  getProcedure: (id: string) => api.get<FHIRResource>(`/fhir/Procedure/${id}`).then((r) => r.data),
+  searchProcedures: (params?: Record<string, unknown>) =>
+    api.get<FHIRResource[]>("/fhir/Procedure", { params }).then((r) => r.data),
+  getAllergyIntolerance: (id: string) =>
+    api.get<FHIRResource>(`/fhir/AllergyIntolerance/${id}`).then((r) => r.data),
+  searchAllergyIntolerances: (params?: Record<string, unknown>) =>
+    api.get<FHIRResource[]>("/fhir/AllergyIntolerance", { params }).then((r) => r.data),
+  getImmunization: (id: string) =>
+    api.get<FHIRResource>(`/fhir/Immunization/${id}`).then((r) => r.data),
+  searchImmunizations: (params?: Record<string, unknown>) =>
+    api.get<FHIRResource[]>("/fhir/Immunization", { params }).then((r) => r.data),
+  getDocumentReference: (id: string) =>
+    api.get<FHIRResource>(`/fhir/DocumentReference/${id}`).then((r) => r.data),
+  searchDocumentReferences: (params?: Record<string, unknown>) =>
+    api.get<FHIRResource[]>("/fhir/DocumentReference", { params }).then((r) => r.data),
+  getComposition: (id: string) =>
+    api.get<FHIRResource>(`/fhir/Composition/${id}`).then((r) => r.data),
+  searchCompositions: (params?: Record<string, unknown>) =>
+    api.get<FHIRResource[]>("/fhir/Composition", { params }).then((r) => r.data),
+  getBundle: (id: string) => api.get<FHIRResource>(`/fhir/Bundle/${id}`).then((r) => r.data),
+  createResource: (resourceType: string, data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>(`/fhir/${resourceType}`, data).then((r) => r.data),
+  updateResource: (resourceType: string, id: string, data: Record<string, unknown>) =>
+    api.put<Record<string, unknown>>(`/fhir/${resourceType}/${id}`, data).then((r) => r.data),
+  deleteResource: (resourceType: string, id: string) =>
+    api.delete<Record<string, unknown>>(`/fhir/${resourceType}/${id}`).then((r) => r.data),
+  executeBatch: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/fhir", data).then((r) => r.data),
 };
 
 // ── Care Continuum ──
