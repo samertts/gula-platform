@@ -1,3 +1,100 @@
+# GULA Platform — Roadmap
+
+**Last updated:** 2026-07-24
+
+---
+
+## Project Status
+
+The GULA Platform is currently in **active production use** with a stable feature
+set covering laboratory management, EHR, security, and identity. The project has
+completed its core platform foundation and is expanding into national-scale
+healthcare modules.
+
+## Completed Milestones
+
+### Foundation (v1.0 - v2.1)
+- ✅ Core LIMS: orders, specimens, results, quality control
+- ✅ Multi-tier SaaS subscription model
+- ✅ RBAC with 9 roles and granular permissions
+- ✅ JWT authentication with token rotation
+- ✅ Docker Compose deployment with PostgreSQL + Redis
+- ✅ Arabic-first UI with full RTL support
+- ✅ Lab instrument integration (ASTM/HL7)
+- ✅ Offline-capable architecture
+
+### National Platform (v2.2 - v2.3)
+- ✅ National EHR Platform with FHIR R4
+- ✅ National Health Data Platform and Analytics
+- ✅ National Citizen Super App (mobile + PWA)
+- ✅ National Doctor Clinical Workspace
+- ✅ National Laboratory Desktop Professional
+- ✅ Hospital Desktop Workspace (NHDW)
+- ✅ Nursing & Care Coordination Platform
+- ✅ Pharmacy Information Platform (NPIP)
+- ✅ Radiology Information System & PACS (NRISP)
+- ✅ Health Intelligence & AI Platform
+
+### Engineering & Quality (v2.1+)
+- ✅ Engineering Factory automation (code generation, CLI tools)
+- ✅ Capability-driven development framework
+- ✅ Quality gates, architecture compliance, scorecard
+- ✅ Comprehensive CI/CD (18 GitHub Actions workflows)
+- ✅ Security auditing (SAST, DAST, dependency scanning)
+- ✅ Chaos engineering and resilience testing
+
+### Constitution & Governance
+- ✅ Platform Constitution (PROGRAM-CONSTITUTION-001)
+- ✅ National Trust, Compliance & Privacy Platform
+- ✅ Autonomous Platform Factory
+- ✅ Free-First, Open-Source-First, Self-Hosted-First policies
+
+## Current Focus
+
+### Authorization Expansion (In Progress)
+
+The authorization system is being expanded to support national-scale
+identity and access management. See the detailed plan below.
+
+## Near-Term Roadmap (Next 3 months)
+
+| Priority | Area | Description |
+|----------|------|-------------|
+| P0 | Authorization | Role-based access expansion (1,284 permissions, 171 roles) |
+| P0 | Frontend Auth | Backend-driven menus, routes, and component security |
+| P0 | Offline Sync | Production-ready offline synchronization engine |
+| P1 | Field Security | Field-level data masking and access control |
+| P1 | Role Preview | Role simulation and visual certification |
+| P1 | CI/CD Hardening | Reproducible builds, signed releases, SBOM automation |
+| P2 | Performance | Query optimization, caching layer enhancements |
+| P2 | Documentation | API reference, user guides, deployment cookbook |
+
+## Medium-Term Roadmap (3-12 months)
+
+| Area | Description |
+|------|-------------|
+| Multi-Region | Active-active deployment across governorates |
+| Telemedicine | Integrated video consultation platform |
+| Blood Bank | National blood bank management system |
+| Emergency | Emergency department information system |
+| Research | Clinical research data platform |
+| Open Source | Community building, contributor documentation, governance maturity |
+
+## Long-Term Vision
+
+- National-scale health information exchange across Iraq
+- AI-powered clinical decision support at point of care
+- Interoperability with international health information systems
+- Full FHIR R4 compliance across all clinical domains
+- Community-driven open-source governance model
+
+---
+
+The remainder of this document details the **Authorization Expansion** roadmap,
+which is the current active workstream.
+
+---
+
 # GULA Platform — Authorization Expansion Roadmap
 
 **Version:** 1.0.0
