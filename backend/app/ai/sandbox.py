@@ -1,5 +1,4 @@
-"""
-AI Sandbox — GULA Platform
+"""AI Sandbox — GULA Platform
 ============================
 The only place where an approved AI suggestion can be executed.
 
@@ -62,8 +61,7 @@ def _register(operation: str) -> Callable:
 
 @_register("suggest_interpretation")
 def _suggest_interpretation(payload: dict[str, Any]) -> dict[str, Any]:
-    """
-    Interpret a single lab result using the rules-based interpretation engine.
+    """Interpret a single lab result using the rules-based interpretation engine.
     Delegates to app.services.interpretation — deterministic, no ML involved.
     """
     from app.services.interpretation import get_flag, interpret_result
@@ -98,8 +96,7 @@ def _suggest_interpretation(payload: dict[str, Any]) -> dict[str, Any]:
 
 @_register("analyze_order")
 def _analyze_order(payload: dict[str, Any]) -> dict[str, Any]:
-    """
-    Run multi-test clinical pattern analysis on an order's results.
+    """Run multi-test clinical pattern analysis on an order's results.
     Uses the rules-based clinical_intelligence engine (deterministic, not ML).
 
     Returns pattern alerts + per-result flag summary + individual interpretations.
@@ -142,7 +139,7 @@ def _analyze_order(payload: dict[str, Any]) -> dict[str, Any]:
                 "interpretation_ar": interp.get("interpretation_ar"),
                 "advice": interp.get("advice"),
                 "advice_ar": interp.get("advice_ar"),
-            }
+            },
         )
 
     return {
@@ -191,8 +188,7 @@ def _translate_report(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class AISandbox:
-    """
-    Executes approved AI operations in an isolated, audited context.
+    """Executes approved AI operations in an isolated, audited context.
 
     Usage::
 
@@ -208,13 +204,13 @@ class AISandbox:
 
         if not approval.is_executable:
             raise AIGuardrailViolation(
-                f"Cannot execute approval {approval.id}: status={approval.status.value}"
+                f"Cannot execute approval {approval.id}: status={approval.status.value}",
             )
 
         if op not in _REGISTRY:
             raise AIGuardrailViolation(
                 f"Operation '{op}' is not in the AI sandbox whitelist. "
-                "Only explicitly registered operations can be executed."
+                "Only explicitly registered operations can be executed.",
             )
 
         logger.info(

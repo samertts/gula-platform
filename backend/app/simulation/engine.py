@@ -169,7 +169,7 @@ class DigitalTwinEngine:
         self.db = db
 
     async def get_or_create_twin(
-        self, twin_type: TwinType, entity_id: int, entity_type: str
+        self, twin_type: TwinType, entity_id: int, entity_type: str,
     ) -> DigitalTwin:
         twin = (
             self.db.query(DigitalTwin)
@@ -377,7 +377,7 @@ class DigitalTwinEngine:
     # ── Private helpers ────────────────────────────────────────────────────────
 
     def _resolve_entity_name(
-        self, twin_type: TwinType, entity_id: int, entity_type: str
+        self, twin_type: TwinType, entity_id: int, entity_type: str,
     ) -> str:
         if entity_type == "lab":
             lab = self.db.query(Lab).filter(Lab.id == entity_id).first()
@@ -438,7 +438,7 @@ class DigitalTwinEngine:
         return cls(twin, self.db)
 
     def _forecast(
-        self, twin: DigitalTwin, metric: str, horizon_days: int
+        self, twin: DigitalTwin, metric: str, horizon_days: int,
     ) -> tuple[dict, float, dict]:
         features = {"metric": metric, "horizon_days": horizon_days, "method": "linear_trend"}
 
@@ -478,7 +478,7 @@ class DigitalTwinEngine:
         }, 0.1, features
 
     def _create_capacity_plan(
-        self, twin: DigitalTwin, metric: str, predicted_value: dict, horizon_days: int
+        self, twin: DigitalTwin, metric: str, predicted_value: dict, horizon_days: int,
     ) -> None:
         current = predicted_value.get("current_value", 0)
         peak = predicted_value.get("peak_demand", 0)
@@ -1146,7 +1146,7 @@ class NationalHealthTwin:
         return await simulator(parameters.get("metrics", []))
 
     async def simulate_outbreak_scenario(
-        self, pathogen: str, parameters: dict | None = None
+        self, pathogen: str, parameters: dict | None = None,
     ) -> dict:
         params = parameters or {}
         population = params.get("population", 40000000)  # Iraq ~40M

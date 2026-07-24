@@ -501,7 +501,7 @@ __all__ = ["{cap_cap}Capability"]
         )
 
     def _generate_capability(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str
+        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str,
     ) -> None:
         deps = "\n".join(f"        # Depends on: {d}" for d in spec.dependencies)
         self._write(
@@ -560,7 +560,7 @@ class {cap_cap}Capability:
         )
 
     def _generate_domain(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec
+        self, cap: str, cap_cap: str, spec: CapabilitySpec,
     ) -> None:
         fields_str = "\n".join(
             f"    {f.name}: {f.type}{'' if f.required else ' = None'}"
@@ -602,7 +602,7 @@ class {cap_cap}Capability:
         )
 
     def _generate_repository(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str
+        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str,
     ) -> None:
         self._write(
             f"{cap}/application/__init__.py",
@@ -613,7 +613,7 @@ class {cap_cap}Capability:
         )
 
     def _generate_service(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str
+        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str,
     ) -> None:
         entity_name = cap_cap
         self._write(
@@ -760,7 +760,7 @@ class {qry_cap}Query:
             for p in spec.permissions
         )
         desc_items = ",\n        ".join(
-            f"        \"{cap.lower()}:{p.lower()}\": \"{p.replace('_', ' ').title()}\""
+            f'        "{cap.lower()}:{p.lower()}": "{p.replace('_', ' ').title()}"'
             for p in spec.permissions
         )
         self._write(
@@ -785,7 +785,7 @@ class {qry_cap}Query:
         )
 
     def _generate_tests(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str, prefix: str
+        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str, prefix: str,
     ) -> None:
         self._write(
             f"{cap}/tests/__init__.py",
@@ -850,7 +850,7 @@ class {qry_cap}Query:
         )
 
     def _generate_capability_descriptor(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, prefix: str, module_path: str
+        self, cap: str, cap_cap: str, spec: CapabilitySpec, prefix: str, module_path: str,
     ) -> None:
         events = "\n".join(
             f'        {{"name": "{e}", "version": 1, "description": "", "type": "domain"}},'

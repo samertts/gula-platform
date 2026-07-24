@@ -13,7 +13,7 @@ class ModuleDependencyResolver:
         for dep_name, _dep_version in descriptor.dependencies.items():
             if dep_name not in existing_names:
                 raise ValueError(
-                    f"Module '{descriptor.name}' requires '{dep_name}' which is not loaded"
+                    f"Module '{descriptor.name}' requires '{dep_name}' which is not loaded",
                 )
 
     def resolve_order(self, modules: list[ModuleDescriptor]) -> list[ModuleDescriptor]:

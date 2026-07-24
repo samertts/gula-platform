@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
@@ -22,12 +22,12 @@ class NotificationService:
         recipient_id: str,
         notification_type: str,
         channel: str,
-        subject: Optional[str] = None,
-        body: Optional[str] = None,
-        context: Optional[dict[str, Any]] = None,
+        subject: str | None = None,
+        body: str | None = None,
+        context: dict[str, Any] | None = None,
         priority: str = "medium",
         recipient_type: str = "person",
-        scheduled_at: Optional[datetime] = None,
+        scheduled_at: datetime | None = None,
     ) -> NotificationQueue:
         queue_id = str(uuid.uuid4()).replace("-", "").upper()[:26]
         now = datetime.now(UTC)
@@ -63,11 +63,11 @@ class NotificationService:
         self,
         template_id: str,
         recipient_id: str,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         priority: str = "medium",
         recipient_type: str = "person",
-        scheduled_at: Optional[datetime] = None,
-    ) -> Optional[NotificationQueue]:
+        scheduled_at: datetime | None = None,
+    ) -> NotificationQueue | None:
         stmt = select(NotificationTemplate).where(
             NotificationTemplate.template_id == template_id,
             NotificationTemplate.is_active.is_(True),
@@ -116,7 +116,7 @@ class NotificationService:
         await self.session.flush()
         return notification
 
-    async def mark_sent(self, queue_id: str) -> Optional[NotificationQueue]:
+    async def mark_sent(self, queue_id: str) -> NotificationQueue | None:
         stmt = select(NotificationQueue).where(
             NotificationQueue.queue_id == queue_id,
         )
@@ -129,7 +129,7 @@ class NotificationService:
         await self.session.flush()
         return notification
 
-    async def mark_delivered(self, queue_id: str) -> Optional[NotificationQueue]:
+    async def mark_delivered(self, queue_id: str) -> NotificationQueue | None:
         stmt = select(NotificationQueue).where(
             NotificationQueue.queue_id == queue_id,
         )
@@ -142,7 +142,7 @@ class NotificationService:
         await self.session.flush()
         return notification
 
-    async def mark_read(self, queue_id: str) -> Optional[NotificationQueue]:
+    async def mark_read(self, queue_id: str) -> NotificationQueue | None:
         stmt = select(NotificationQueue).where(
             NotificationQueue.queue_id == queue_id,
         )
@@ -186,8 +186,8 @@ class NotificationService:
         channel: str,
         enabled: bool,
         recipient_type: str = "person",
-        quiet_hours_start: Optional[str] = None,
-        quiet_hours_end: Optional[str] = None,
+        quiet_hours_start: str | None = None,
+        quiet_hours_end: str | None = None,
     ) -> NotificationPreference:
         stmt = select(NotificationPreference).where(
             NotificationPreference.recipient_id == recipient_id,
@@ -230,8 +230,8 @@ class NotificationService:
         name: str,
         notification_type: str,
         body: str,
-        subject: Optional[str] = None,
-        variables: Optional[list[str]] = None,
+        subject: str | None = None,
+        variables: list[str] | None = None,
         locale: str = "ar",
         version: str = "1.0",
     ) -> NotificationTemplate:

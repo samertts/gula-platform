@@ -75,7 +75,7 @@ class GovernanceHierarchyService:
                 or_(
                     GovernanceNode.id == root_id,
                     GovernanceNode.root_id == root_id,
-                )
+                ),
             )
             .order_by(GovernanceNode.node_type, GovernanceNode.code)
             .all()

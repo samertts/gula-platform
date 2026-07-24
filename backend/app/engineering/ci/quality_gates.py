@@ -51,7 +51,7 @@ class QualityGates:
 
     def run_coverage(self, min_pct: int = 80) -> GateResult:
         return self._run(
-            "coverage", "python", "-m", "pytest", "--cov=.", "--cov-fail-under", str(min_pct)
+            "coverage", "python", "-m", "pytest", "--cov=.", "--cov-fail-under", str(min_pct),
         )
 
     def run_bandit(self) -> GateResult:

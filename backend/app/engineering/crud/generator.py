@@ -50,7 +50,7 @@ class CRUDGenerator(BaseGenerator):
         return self._result
 
     def _generate_entity(
-        self, module: str, spec: EntitySpec, table: str, fields: list[EntityField]
+        self, module: str, spec: EntitySpec, table: str, fields: list[EntityField],
     ) -> None:
         lines = [
             "from __future__ import annotations",
@@ -82,7 +82,7 @@ class CRUDGenerator(BaseGenerator):
             unique = ", unique=True" if f.unique else ""
             index = ", index=True" if f.indexed else ""
             lines.append(
-                f"    {f.name}: {f.type} = Column({col_type}{nullable}{default}{unique}{index})"
+                f"    {f.name}: {f.type} = Column({col_type}{nullable}{default}{unique}{index})",
             )
         if spec.audit_fields:
             for line in audit.strip("\n").split("\n"):

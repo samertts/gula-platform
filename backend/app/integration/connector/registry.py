@@ -89,12 +89,12 @@ class ConnectorRegistry:
         spec.status = status
         spec.updated_at = time.time()
         logger.info(
-            "Connector %s status updated: %s", connector_id, status.name
+            "Connector %s status updated: %s", connector_id, status.name,
         )
         return True
 
     def record_health(
-        self, connector_id: str, status: str, latency_ms: float = 0.0
+        self, connector_id: str, status: str, latency_ms: float = 0.0,
     ) -> bool:
         spec = self._connectors.get(connector_id)
         if spec is None:

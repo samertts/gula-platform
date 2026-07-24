@@ -55,7 +55,7 @@ def register_device(
     current = (
         db.query(EdgeDevice)
         .filter(
-            EdgeDevice.lab_id == lab_id, EdgeDevice.status.in_(("active", "pending", "quarantined"))
+            EdgeDevice.lab_id == lab_id, EdgeDevice.status.in_(("active", "pending", "quarantined")),
         )
         .count()
     )
@@ -98,7 +98,7 @@ def register_device(
                 "agent_version": agent_version,
                 "fingerprint": fp,
             },
-        )
+        ),
     )
     return device
 
@@ -143,7 +143,7 @@ def heartbeat(
                 event_type="device_activated",
                 severity="info",
                 details={"agent_version": agent_version},
-            )
+            ),
         )
     return device
 
@@ -162,7 +162,7 @@ def quarantine(db: Session, device: EdgeDevice, *, reason: str, actor_user_id: i
             severity="warning",
             actor_user_id=actor_user_id,
             details={"reason": reason},
-        )
+        ),
     )
 
 
@@ -177,7 +177,7 @@ def revoke(db: Session, device: EdgeDevice, *, reason: str, actor_user_id: int |
             severity="critical",
             actor_user_id=actor_user_id,
             details={"reason": reason},
-        )
+        ),
     )
 
 
@@ -194,12 +194,12 @@ def reinstate(db: Session, device: EdgeDevice, *, actor_user_id: int | None) -> 
             event_type="device_reinstated",
             severity="info",
             actor_user_id=actor_user_id,
-        )
+        ),
     )
 
 
 def kill_switch_set(
-    db: Session, device: EdgeDevice, on: bool, *, actor_user_id: int | None
+    db: Session, device: EdgeDevice, on: bool, *, actor_user_id: int | None,
 ) -> None:
     device.kill_switched = on
     db.add(
@@ -210,7 +210,7 @@ def kill_switch_set(
             severity="critical" if on else "info",
             actor_user_id=actor_user_id,
             details={"on": on},
-        )
+        ),
     )
 
 

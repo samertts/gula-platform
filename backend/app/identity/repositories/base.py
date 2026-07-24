@@ -1,4 +1,4 @@
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,7 @@ class IdentityRepositoryBase(Generic[T]):
         await self.session.flush()
         return entity
 
-    async def get_by_id(self, entity_id: str) -> Optional[T]:
+    async def get_by_id(self, entity_id: str) -> T | None:
         stmt = select(self.model_class).where(
             self.model_class.id == entity_id,
             self.model_class.is_active.is_(True),
@@ -28,7 +28,7 @@ class IdentityRepositoryBase(Generic[T]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_uuid(self, uuid: str) -> Optional[T]:
+    async def get_by_uuid(self, uuid: str) -> T | None:
         stmt = select(self.model_class).where(
             self.model_class.uuid == uuid,
             self.model_class.is_active.is_(True),

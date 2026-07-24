@@ -148,8 +148,8 @@ class BarcodeConnector(BaseConnector):
         try:
             from io import BytesIO
 
-            import pyzbar.pyzbar as pyzbar
             from PIL import Image
+            from pyzbar import pyzbar
 
             if image_data.startswith("data:image"):
                 b64_data = image_data.split(",")[1]

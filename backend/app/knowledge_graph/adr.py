@@ -174,7 +174,7 @@ class ADRManager:
 
     def load_from_docs(self, adr_dir: str | None = None) -> int:
         project_root = os.path.abspath(
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
         )
         docs_adr = adr_dir or os.path.join(project_root, "docs", "adr")
         if not os.path.isdir(docs_adr):

@@ -346,7 +346,7 @@ class ReorderService:
     def _calculate_average_usage(self, drug_catalog_id: str, days: int = 90) -> int:
         start_date = datetime.now(UTC) - timedelta(days=days)
         result = self.db.query(
-            func.coalesce(func.sum(StockMovement.quantity), 0)
+            func.coalesce(func.sum(StockMovement.quantity), 0),
         ).filter(
             StockMovement.drug_catalog_id == drug_catalog_id,
             StockMovement.movement_type.in_([StockMovementType.DISPENSED, StockMovementType.WASTED]),

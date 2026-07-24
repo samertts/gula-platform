@@ -88,7 +88,7 @@ class EventCatalog:
             import ast as _ast
 
             backend_app = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "app"
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "app",
             )
             for root, _dirs, files in os.walk(backend_app):
                 for fname in files:
@@ -147,7 +147,7 @@ class EventCatalog:
 
     def _scan_event_modules(self) -> None:
         backend_app = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "app"
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "app",
         )
         for root, _dirs, files in os.walk(backend_app):
             for fname in files:

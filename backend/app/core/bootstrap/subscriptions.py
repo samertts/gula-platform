@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
 
 from sqlalchemy.orm import Session
 
@@ -11,7 +10,7 @@ from app.models.subscription import LabSubscription
 
 logger = logging.getLogger("gula.bootstrap.subscriptions")
 
-TIER_CONFIGS: Dict[str, Dict] = {
+TIER_CONFIGS: dict[str, dict] = {
     "starter": {
         "tier": "starter",
         "deployment_mode": "single",
@@ -67,7 +66,7 @@ def seed_subscriptions(db: Session | None = None) -> int:
         labs = db.query(Lab).filter(Lab.is_active).all()
         for lab in labs:
             existing = db.query(LabSubscription).filter(
-                LabSubscription.lab_id == lab.id
+                LabSubscription.lab_id == lab.id,
             ).first()
             if existing:
                 continue
@@ -110,19 +109,19 @@ def upgrade_subscription(
     lab_id: int,
     tier: str,
     db: Session,
-) -> Optional[LabSubscription]:
+) -> LabSubscription | None:
     tier_config = TIER_CONFIGS.get(tier)
     if not tier_config:
         logger.error("Unknown tier: %s", tier)
         return None
 
     sub = db.query(LabSubscription).filter(
-        LabSubscription.lab_id == lab_id
+        LabSubscription.lab_id == lab_id,
     ).first()
 
     if sub:
         existing_tier_level = list(TIER_CONFIGS.keys()).index(
-            sub.tier if sub.tier in TIER_CONFIGS else "starter"
+            sub.tier if sub.tier in TIER_CONFIGS else "starter",
         )
         target_tier_level = list(TIER_CONFIGS.keys()).index(tier)
         if target_tier_level <= existing_tier_level:

@@ -142,7 +142,7 @@ def create_twin(
             twin_type=data.twin_type,
             entity_id=data.entity_id,
             entity_type=data.entity_type,
-        )
+        ),
     )
     return TwinResponse(
         id=twin.id,
@@ -205,7 +205,7 @@ def run_simulation(
             simulation_type=data.simulation_type,
             parameters=data.parameters,
             triggered_by=current_user.id,
-        )
+        ),
     )
     return SimulationResponse(
         id=sim.id,
@@ -275,7 +275,7 @@ def create_prediction(
             twin_id=twin_id,
             metric=data.prediction_type,
             horizon_days=data.horizon_days,
-        )
+        ),
     )
     return PredictionResponse(
         id=prediction.id,
@@ -380,7 +380,7 @@ def get_dashboard(
                 prediction_count=pred_count,
                 last_updated=_format_dt(twin.updated_at),
                 is_active=twin.is_active,
-            )
+            ),
         )
 
     return DashboardResponse(

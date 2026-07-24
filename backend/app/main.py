@@ -34,8 +34,7 @@ app = create_app()
 # ===== HEALTH & STATUS =====
 @app.get("/health", tags=["system"])
 def health():
-    """
-    Liveness probe — always returns 200 if the process is alive.
+    """Liveness probe — always returns 200 if the process is alive.
     Includes circuit breaker state and pool info for observability.
     """
     from .core.self_healing import health as sys_health
@@ -92,8 +91,7 @@ def liveness():
 
 @app.get("/health/status", tags=["system"])
 def health_status():
-    """
-    Full diagnostic status — shows exactly why the system is or isn't ready.
+    """Full diagnostic status — shows exactly why the system is or isn't ready.
     Useful for debugging startup failures without needing server access.
     Always returns 200 — check 'ready' field for actual state.
     """
@@ -145,8 +143,7 @@ def health_status():
 
 @app.get("/health/deep", tags=["system"])
 def health_deep():
-    """
-    Deep diagnostic endpoint — comprehensive latency + queue + memory snapshot.
+    """Deep diagnostic endpoint — comprehensive latency + queue + memory snapshot.
     Designed for monitoring dashboards and alerting (Prometheus, Grafana, etc.).
 
     Returns overall health grade:
@@ -294,8 +291,7 @@ def health_deep():
 # ===== KERNEL HEALTH =====
 @app.get("/health/kernel", tags=["system"])
 async def kernel_health():
-    """
-    Kernel health and diagnostics.
+    """Kernel health and diagnostics.
     Returns the Kernel's internal state, component status, and uptime.
     Bypasses all middlewares so it is always reachable.
     """
@@ -317,11 +313,9 @@ _test_types_cache: dict = {"data": None, "at": 0.0}
 
 @app.get("/test-types", tags=["system"])
 def list_test_types():
-    """
-    Returns all available test types and their reference ranges.
+    """Returns all available test types and their reference ranges.
     Cached in-memory for 5 minutes to reduce database load.
     """
-
     cache = _test_types_cache
     if cache["data"] is not None and (time.time() - cache["at"]) < 300:
         return cache["data"]

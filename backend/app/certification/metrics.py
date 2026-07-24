@@ -468,7 +468,7 @@ class MetricsCollector:
                         value=0,
                         category=MetricCategory.MAINTAINABILITY,
                         passed=False,
-                    )
+                    ),
                 )
         return results
 

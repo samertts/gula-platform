@@ -1,5 +1,4 @@
-"""
-GULA Clinical Intelligence Layer
+"""GULA Clinical Intelligence Layer
 Detects multi-test patterns and generates composite clinical alerts.
 
 Rules-based (NOT AI) — deterministic, auditable, safe for clinical use.
@@ -228,14 +227,14 @@ CLINICAL_PATTERNS = [
 
 
 def analyze_results(results: list[dict]) -> list[dict]:
-    """
-    Analyze a list of lab results for multi-test clinical patterns.
+    """Analyze a list of lab results for multi-test clinical patterns.
 
     Args:
         results: list of dicts with keys: test_name, value
 
     Returns:
         list of detected pattern alerts (empty if all normal)
+
     """
     # Build normalized lookup: {test_key: value}
     lookup: dict[str, float] = {}
@@ -268,7 +267,7 @@ def analyze_results(results: list[dict]) -> list[dict]:
                         "action": pattern["action"],
                         "action_ar": pattern["action_ar"],
                         "tests_involved": present,
-                    }
+                    },
                 )
         except Exception:
             continue
@@ -279,8 +278,7 @@ def analyze_results(results: list[dict]) -> list[dict]:
 
 
 def quick_flag_summary(results: list[dict]) -> dict:
-    """
-    Produce a quick summary of result flags for a batch.
+    """Produce a quick summary of result flags for a batch.
     Returns counts: {normal, high, low, critical, total}
     """
     from .interpretation import get_flag

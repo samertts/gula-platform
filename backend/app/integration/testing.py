@@ -477,7 +477,7 @@ class IntegrationTestSuite:
 
         if self.contract._contracts:
             suites["contract"] = await self.contract.run_all(
-                dict.fromkeys(self.contract._contracts, target_url)
+                dict.fromkeys(self.contract._contracts, target_url),
             )
 
         if self._fhir_service and self.fhir_validation._test_resources:

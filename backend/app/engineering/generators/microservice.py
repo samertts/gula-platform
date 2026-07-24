@@ -12,10 +12,10 @@ class MicroserviceSpec:
     port: int = 8000
     description: str = ""
     dependencies: list[str] = field(
-        default_factory=lambda: ["fastapi", "uvicorn", "pydantic", "httpx"]
+        default_factory=lambda: ["fastapi", "uvicorn", "pydantic", "httpx"],
     )
     dev_dependencies: list[str] = field(
-        default_factory=lambda: ["pytest", "ruff", "mypy", "coverage", "bandit"]
+        default_factory=lambda: ["pytest", "ruff", "mypy", "coverage", "bandit"],
     )
     has_database: bool = True
     has_redis: bool = False

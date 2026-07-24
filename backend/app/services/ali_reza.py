@@ -1,5 +1,4 @@
-"""
-ali_reza.py — thin compatibility shim.
+"""ali_reza.py — thin compatibility shim.
 All logic lives in ali_reza_engine.py (richer thresholds, more tests).
 """
 

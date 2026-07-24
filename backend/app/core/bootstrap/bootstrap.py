@@ -1,30 +1,28 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict
 
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 
 from .config import load_bootstrap_config
-from .master_admin import _ensure_master_admin
-from .ministry import seed_ministry_of_health
+from .demo_data import seed_demo_data
+from .departments import seed_departments
 from .directorates import seed_health_directorates
 from .facilities import seed_platform_facilities
 from .laboratories import seed_laboratory_types
-from .departments import seed_departments
-from .roles import seed_roles
+from .master_admin import _ensure_master_admin
+from .ministry import seed_ministry_of_health
 from .permissions import seed_permissions
-from .users import seed_national_admin_accounts
+from .roles import seed_roles
 from .subscriptions import seed_subscriptions
-from .demo_data import seed_demo_data
-from .validation import ValidationReport, validate_bootstrap
+from .users import seed_national_admin_accounts
 
 logger = logging.getLogger("gula.bootstrap")
 
 
-def run_bootstrap(db: Session | None = None) -> Dict[str, int]:
+def run_bootstrap(db: Session | None = None) -> dict[str, int]:
     if db is None:
         db = SessionLocal()
         own_session = True
@@ -32,8 +30,8 @@ def run_bootstrap(db: Session | None = None) -> Dict[str, int]:
         own_session = False
 
     cfg = load_bootstrap_config()
-    counts: Dict[str, int] = {}
-    results: Dict[str, bool] = {}
+    counts: dict[str, int] = {}
+    results: dict[str, bool] = {}
 
     try:
         if not cfg.enable_bootstrap:

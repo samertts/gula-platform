@@ -4,7 +4,7 @@ import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { LoadingSpinner } from "@/components/shared/PageComponents";
 import { RoleGuard } from "@/components/auth/RoleGuard";
-import type { UserRole } from "@/types/backend";
+import type { UserRole } from "@/types";
 
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));

@@ -74,7 +74,7 @@ def generate_token_id() -> str:
 def verify_pkce(code_verifier: str, code_challenge: str, method: str) -> bool:
     if method == "S256":
         computed = urlsafe_b64encode(
-            hashlib.sha256(code_verifier.encode("ascii")).digest()
+            hashlib.sha256(code_verifier.encode("ascii")).digest(),
         ).rstrip(b"=").decode()
         return computed == code_challenge
     if method == "plain":
@@ -169,7 +169,7 @@ def get_jwks() -> list[dict[str, Any]]:
     logger.warning(
         "JWKS endpoint called with symmetric HMAC signing — "
         "no asymmetric public keys are available. "
-        "Clients expecting RSA/EC keys will receive an empty set."
+        "Clients expecting RSA/EC keys will receive an empty set.",
     )
     return []
 

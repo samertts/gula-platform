@@ -77,7 +77,7 @@ class ConsentEngine:
         return record
 
     def revoke_consent(
-        self, citizen_id: str, consent_id: str, reason: str = ""
+        self, citizen_id: str, consent_id: str, reason: str = "",
     ) -> bool:
         consents = self._consents.get(citizen_id, [])
         for c in consents:
@@ -89,7 +89,7 @@ class ConsentEngine:
         return False
 
     def check_consent(
-        self, citizen_id: str, scope: str, granted_to: str
+        self, citizen_id: str, scope: str, granted_to: str,
     ) -> bool:
         consents = self._consents.get(citizen_id, [])
         now = datetime.now(UTC).isoformat()
@@ -138,7 +138,7 @@ class PrivacyDashboard:
         }
 
     def get_recent_access_activity(
-        self, access_logs: list[AccessLogEntry], limit: int = 20
+        self, access_logs: list[AccessLogEntry], limit: int = 20,
     ) -> list[AccessLogEntry]:
         access_logs.sort(key=lambda a: a.accessed_at, reverse=True)
         return access_logs[:limit]
@@ -238,7 +238,7 @@ class DataSharingControls:
 
     def remove_sharing_rule(self, citizen_id: str, rule_id: str) -> bool:
         return self._consent_engine.revoke_consent(
-            citizen_id, rule_id, reason="Removed by user"
+            citizen_id, rule_id, reason="Removed by user",
         )
 
     def get_active_sharing_rules(self, citizen_id: str) -> list[dict[str, Any]]:
@@ -246,7 +246,7 @@ class DataSharingControls:
 
     def get_shared_partners(self, citizen_id: str) -> list[str]:
         return list(
-            {r["partner"] for r in self._sharing_rules.get(citizen_id, []) if r["status"] == "active"}
+            {r["partner"] for r in self._sharing_rules.get(citizen_id, []) if r["status"] == "active"},
         )
 
 
@@ -300,7 +300,7 @@ class EmergencyBreakGlass:
         ]
 
     def get_break_glass_history(
-        self, citizen_id: str | None = None
+        self, citizen_id: str | None = None,
     ) -> list[dict[str, Any]]:
         if citizen_id:
             return [

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +39,7 @@ class ComplianceService:
         await self.session.flush()
         return framework
 
-    async def get_framework(self, framework_id: str) -> Optional[ComplianceFramework]:
+    async def get_framework(self, framework_id: str) -> ComplianceFramework | None:
         stmt = select(ComplianceFramework).where(
             ComplianceFramework.framework_id == framework_id,
             ComplianceFramework.is_active.is_(True),
@@ -156,7 +156,7 @@ class ComplianceService:
         await self.session.flush()
         return report
 
-    async def get_report(self, report_id: str) -> Optional[ComplianceReport]:
+    async def get_report(self, report_id: str) -> ComplianceReport | None:
         stmt = select(ComplianceReport).where(
             ComplianceReport.report_id == report_id,
             ComplianceReport.is_active.is_(True),
@@ -172,7 +172,7 @@ class ComplianceService:
                 ComplianceFramework.framework_type,
                 func.count(ComplianceCheck.id).label("total_checks"),
                 func.sum(
-                    func.case((ComplianceCheck.status == "passed", 1), else_=0)
+                    func.case((ComplianceCheck.status == "passed", 1), else_=0),
                 ).label("passed_checks"),
             )
             .join(ComplianceCheck, ComplianceCheck.framework_id == ComplianceFramework.id)

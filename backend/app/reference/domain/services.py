@@ -54,7 +54,7 @@ class PatientValidationService:
             errors.append("رقم الهاتف غير صالح")
 
         if patient.national_id and not self.NATIONAL_ID_PATTERN.match(
-            patient.national_id
+            patient.national_id,
         ):
             errors.append("الرقم الوطني غير صالح")
 
@@ -124,7 +124,7 @@ class OrderProcessingService:
         }
         if missing:
             raise InvalidOrderError(
-                f"الحقول المطلوبة مفقودة: {', '.join(sorted(missing))}"
+                f"الحقول المطلوبة مفقودة: {', '.join(sorted(missing))}",
             )
 
         patient = await patient_repo.get_by_id(order.patient_id)
@@ -168,10 +168,10 @@ class ResultValidationService:
         order = await order_repo.get_by_id(result.order_id)
         if order is None:
             raise InvalidOrderError(
-                f"الطلب {result.order_id} غير موجود — لا يمكن إضافة نتيجة"
+                f"الطلب {result.order_id} غير موجود — لا يمكن إضافة نتيجة",
             )
 
-        if result.value < Decimal("0"):
+        if result.value < Decimal(0):
             raise InvalidOrderError("قيمة النتيجة لا يمكن أن تكون سالبة")
 
         if not result.analyte.strip():

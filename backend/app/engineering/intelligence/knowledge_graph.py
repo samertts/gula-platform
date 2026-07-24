@@ -118,7 +118,7 @@ class KnowledgeGraphGenerator:
                         file=relative,
                         line=node.lineno,
                         docstring=docstring,
-                    )
+                    ),
                 )
 
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -151,7 +151,7 @@ class KnowledgeGraphGenerator:
                         file=relative,
                         line=node.lineno,
                         docstring=docstring,
-                    )
+                    ),
                 )
 
     def _extract_edges(self, file: Path, tree: ast.AST) -> None:
@@ -165,7 +165,7 @@ class KnowledgeGraphGenerator:
                     if isinstance(child, ast.Assign):
                         for target in child.targets:
                             if isinstance(target, ast.Attribute) and isinstance(
-                                target.value, ast.Call
+                                target.value, ast.Call,
                             ):
                                 if (
                                     hasattr(target.value.func, "attr")
@@ -183,7 +183,7 @@ class KnowledgeGraphGenerator:
                                             source=source,
                                             target=str(arg.value),
                                             relationship="imports",
-                                        )
+                                        ),
                                     )
                     if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
                         if child.func.attr in ("subscribe", "register", "on", "listen"):
@@ -194,7 +194,7 @@ class KnowledgeGraphGenerator:
                                             source=source,
                                             target=str(arg.id),
                                             relationship="subscribes_to",
-                                        )
+                                        ),
                                     )
                         elif child.func.attr in ("publish", "emit", "dispatch", "send"):
                             for arg in child.args:
@@ -204,7 +204,7 @@ class KnowledgeGraphGenerator:
                                             source=source,
                                             target=str(arg.id),
                                             relationship="publishes",
-                                        )
+                                        ),
                                     )
 
                 for base in node.bases:
@@ -214,5 +214,5 @@ class KnowledgeGraphGenerator:
                                 source=source,
                                 target=f":::{base.id}",
                                 relationship="extends",
-                            )
+                            ),
                         )

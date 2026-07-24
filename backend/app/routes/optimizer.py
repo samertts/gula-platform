@@ -1,5 +1,4 @@
-"""
-System Optimizer Routes — GULA Platform
+"""System Optimizer Routes — GULA Platform
 =========================================
 Read-only performance monitoring and AI-powered optimization recommendations.
 Admin-only: requires role in {admin, lab_admin, province_admin, ministry_admin, master_admin}.
@@ -25,7 +24,7 @@ _ADMIN_ROLES = frozenset(
         "province_admin",
         "ministry_admin",
         "master_admin",
-    }
+    },
 )
 
 
@@ -40,8 +39,7 @@ def _require_admin(user) -> None:
 
 @router.get("/metrics")
 def get_metrics(current_user=Depends(get_current_user)):
-    """
-    Return current system metrics snapshot.
+    """Return current system metrics snapshot.
     Results are cached for up to 30 seconds — safe to poll.
     """
     _require_admin(current_user)
@@ -86,8 +84,7 @@ async def run_analysis(
     ),
     current_user=Depends(get_current_user),
 ):
-    """
-    Full system analysis with rule-based + optional AI recommendations.
+    """Full system analysis with rule-based + optional AI recommendations.
 
     - Results cached for 60 seconds — safe to poll from dashboards.
     - AI calls are rate-limited (1/min) and hard-timeout (15s) to protect the server.

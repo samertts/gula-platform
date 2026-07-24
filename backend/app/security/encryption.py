@@ -26,7 +26,7 @@ if not _key:
     _key = Fernet.generate_key().decode()
     _logger.warning(
         "[SECURITY] ENCRYPTION_KEY not set — using ephemeral key. "
-        "Set ENCRYPTION_KEY in .env for production."
+        "Set ENCRYPTION_KEY in .env for production.",
     )
 
 

@@ -174,7 +174,7 @@ class Evaluator:
         self._results: list[EvaluationResult] = []
 
     async def evaluate(
-        self, prompt: str, response: str, model: str, duration_ms: float
+        self, prompt: str, response: str, model: str, duration_ms: float,
     ) -> EvaluationResult:
         score = self._compute_score(prompt, response)
         metrics = self._compute_metrics(response)

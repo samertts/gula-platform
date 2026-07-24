@@ -115,7 +115,7 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
                 session.query(NationalTaskModel).filter(
                     NationalTaskModel.sla_due_at <= before,
                     NationalTaskModel.status.in_(["pending", "assigned", "in_progress"]),
-                )
+                ),
             )
             return [self._model_to_domain(row[0]) for row in results]
 
@@ -129,8 +129,8 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
         async with SessionLocal() as session:
             result = await session.execute(
                 session.query(
-                    NationalTaskModel.status, text("count(*) as cnt")
-                ).group_by(NationalTaskModel.status)
+                    NationalTaskModel.status, text("count(*) as cnt"),
+                ).group_by(NationalTaskModel.status),
             )
             return {row[0]: row[1] for row in result}
 

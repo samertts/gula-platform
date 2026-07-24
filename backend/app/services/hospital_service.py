@@ -453,7 +453,7 @@ class HospitalService:
                     HospitalDepartment.hospital_id == hospital_id,
                     HospitalDepartment.lab_id == lab_id,
                     ~HospitalDepartment.is_deleted,
-                )
+                ),
             ),
             ~Room.is_deleted,
         ).scalar() or 0

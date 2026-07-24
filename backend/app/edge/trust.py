@@ -64,7 +64,7 @@ def adjust(
                 severity="warning",
                 actor_user_id=actor_user_id,
                 details={"reason": reason},
-            )
+            ),
         )
         return device.trust_score
 
@@ -86,7 +86,7 @@ def adjust(
                 severity="critical",
                 actor_user_id=actor_user_id,
                 details={"trust_score": new_score, "trigger": reason},
-            )
+            ),
         )
 
     db.add(
@@ -97,7 +97,7 @@ def adjust(
             severity="info",
             actor_user_id=actor_user_id,
             details={"reason": reason, "delta": delta, "new": new_score},
-        )
+        ),
     )
     return new_score
 

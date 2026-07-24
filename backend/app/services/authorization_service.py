@@ -161,7 +161,7 @@ class RoleAssignmentService:
                 mfa_required = True
             if role.parent_role_id:
                 parent_perms = self.db.query(RolePermission).filter(
-                    RolePermission.role_id == role.parent_role_id
+                    RolePermission.role_id == role.parent_role_id,
                 ).all()
                 for rp in parent_perms:
                     permissions.add(rp.permission_id)
@@ -350,7 +350,7 @@ class AuthorizationCheckService:
 
         subject = self._build_subject(user)
         abac_decision, applied_policies = self.policy_service.evaluate_policies(
-            subject, perm.domain, perm.action, resource_attrs, environment
+            subject, perm.domain, perm.action, resource_attrs, environment,
         )
         if abac_decision == "deny" and applied_policies:
             self._log_decision(decision_id, user, permission_id, "deny", perm.domain, applied_policies, resource_attrs, risk_score=perm.is_sensitive, is_emergency=is_emergency)
@@ -816,7 +816,7 @@ class MenuService:
         return self._filter_menu(structure, perm_set)
 
     def _filter_menu(
-        self, items: list[dict[str, Any]], permissions: set[str]
+        self, items: list[dict[str, Any]], permissions: set[str],
     ) -> list[dict[str, Any]]:
         result = []
         for item in items:

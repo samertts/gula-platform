@@ -93,7 +93,8 @@ def get_patient_card_qr(
     db: Session = Depends(get_db),
 ):
     """PNG image of the patient-card QR. Always issues a fresh token so an
-    intercepted image with an expired token cannot be reused indefinitely."""
+    intercepted image with an expired token cannot be reused indefinitely.
+    """
     rate_limit_user(request, current_user.id, max_per_minute=60)
 
     patient = lookup_patient_for_lab(db, patient_id=patient_id, lab_id=current_user.lab_id)

@@ -1,4 +1,3 @@
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -27,8 +26,8 @@ class LoginResponse(BaseModel):
 @router.post("/login")
 async def login(
     body: LoginRequest,
-    ip_address: Optional[str] = None,
-    user_agent: Optional[str] = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = AuthenticationService(db)

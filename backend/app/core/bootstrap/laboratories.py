@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -13,7 +12,7 @@ from .ministry import MINISTRY_ORG_ID
 logger = logging.getLogger("gula.bootstrap.laboratories")
 
 
-LAB_TYPES: List[dict] = [
+LAB_TYPES: list[dict] = [
     {"type": "public_health_lab", "name_en": "Public Health Laboratory", "name_ar": "مختبر الصحة العامة"},
     {"type": "blood_bank", "name_en": "Blood Bank", "name_ar": "بنك الدم"},
     {"type": "forensic_lab", "name_en": "Forensic Medicine Laboratory", "name_ar": "مختبر الطب العدلي"},
@@ -36,13 +35,13 @@ def seed_laboratory_types(db: Session | None = None) -> int:
     created = 0
     try:
         moh = db.query(Organization).filter(
-            Organization.org_id == MINISTRY_ORG_ID
+            Organization.org_id == MINISTRY_ORG_ID,
         ).first()
 
         for lt in LAB_TYPES:
             fac_id = f"lab-type-{lt['type']}"
             existing = db.query(Facility).filter(
-                Facility.facility_id == fac_id
+                Facility.facility_id == fac_id,
             ).first()
             if existing:
                 continue

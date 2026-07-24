@@ -1,5 +1,4 @@
-"""
-AI System Optimizer — GULA Platform
+"""AI System Optimizer — GULA Platform
 =====================================
 Lightweight, server-safe performance monitoring and optimization engine.
 
@@ -134,7 +133,7 @@ def _collect_cpu() -> CPUMetrics:
         num_cpus = 1
 
     return CPUMetrics(
-        load_1m=load_1m, load_5m=load_5m, load_15m=load_15m, num_cpus=max(num_cpus, 1)
+        load_1m=load_1m, load_5m=load_5m, load_15m=load_15m, num_cpus=max(num_cpus, 1),
     )
 
 
@@ -155,7 +154,7 @@ def _collect_memory() -> MemoryMetrics:
     used_pct = round(used_mb / max(total_mb, 1) * 100, 1)
 
     return MemoryMetrics(
-        total_mb=total_mb, available_mb=available_mb, used_mb=used_mb, used_pct=used_pct
+        total_mb=total_mb, available_mb=available_mb, used_mb=used_mb, used_pct=used_pct,
     )
 
 
@@ -207,7 +206,7 @@ def _rule_recommendations(snap: SystemSnapshot) -> list[dict[str, str]]:
                 "area": "cpu",
                 "message": f"CPU load/core is {snap.cpu.load_per_cpu:.1f}x — reduce WEB_CONCURRENCY or scale horizontally.",
                 "message_ar": f"حمل المعالج {snap.cpu.load_per_cpu:.1f}x — قلّل عدد العمال أو وسّع الخادم.",
-            }
+            },
         )
     elif snap.cpu.status == "high":
         recs.append(
@@ -216,7 +215,7 @@ def _rule_recommendations(snap: SystemSnapshot) -> list[dict[str, str]]:
                 "area": "cpu",
                 "message": f"CPU load/core is {snap.cpu.load_per_cpu:.1f}x — enable response caching or tune Nginx worker_processes.",
                 "message_ar": f"حمل المعالج {snap.cpu.load_per_cpu:.1f}x — فعّل التخزين المؤقت أو اضبط worker_processes.",
-            }
+            },
         )
 
     if snap.memory.status == "critical":
@@ -226,7 +225,7 @@ def _rule_recommendations(snap: SystemSnapshot) -> list[dict[str, str]]:
                 "area": "memory",
                 "message": f"Memory at {snap.memory.used_pct}% — restart workers or add RAM.",
                 "message_ar": f"الذاكرة {snap.memory.used_pct}% — أعد تشغيل العمال أو أضف ذاكرة.",
-            }
+            },
         )
     elif snap.memory.status == "high":
         recs.append(
@@ -235,7 +234,7 @@ def _rule_recommendations(snap: SystemSnapshot) -> list[dict[str, str]]:
                 "area": "memory",
                 "message": f"Memory at {snap.memory.used_pct}% — check for leaks, lower DB_POOL_SIZE.",
                 "message_ar": f"الذاكرة {snap.memory.used_pct}% — افحص تسرّبات الذاكرة، قلّل DB_POOL_SIZE.",
-            }
+            },
         )
 
     if snap.db.status == "critical":
@@ -245,7 +244,7 @@ def _rule_recommendations(snap: SystemSnapshot) -> list[dict[str, str]]:
                 "area": "database",
                 "message": f"DB pool {snap.db.utilization_pct}% full — increase DB_MAX_OVERFLOW or investigate slow queries.",
                 "message_ar": f"مجموعة DB {snap.db.utilization_pct}% — زد DB_MAX_OVERFLOW أو افحص الاستعلامات البطيئة.",
-            }
+            },
         )
     elif snap.db.status == "high":
         recs.append(
@@ -254,7 +253,7 @@ def _rule_recommendations(snap: SystemSnapshot) -> list[dict[str, str]]:
                 "area": "database",
                 "message": f"DB pool {snap.db.utilization_pct}% utilized — monitor for saturation.",
                 "message_ar": f"استخدام مجموعة DB {snap.db.utilization_pct}% — راقب للتشبع.",
-            }
+            },
         )
 
     if not recs:
@@ -264,7 +263,7 @@ def _rule_recommendations(snap: SystemSnapshot) -> list[dict[str, str]]:
                 "area": "system",
                 "message": "System is operating within normal parameters.",
                 "message_ar": "النظام يعمل ضمن المعاملات الطبيعية.",
-            }
+            },
         )
 
     return recs
@@ -276,8 +275,7 @@ _last_ollama_call: float = 0.0
 
 
 async def _ask_ollama(prompt: str) -> str | None:
-    """
-    Call local Ollama. Never raises — returns None on any failure.
+    """Call local Ollama. Never raises — returns None on any failure.
     Rate-limited: max 1 call per OLLAMA_RATE_LIMIT_SECONDS.
     Hard timeout: OLLAMA_TIMEOUT seconds.
     """
@@ -332,8 +330,7 @@ _analysis_ts: float = 0.0
 
 
 async def analyze(use_ai: bool = True) -> dict[str, Any]:
-    """
-    Full system analysis with optional Ollama-powered narrative.
+    """Full system analysis with optional Ollama-powered narrative.
     Cached for ANALYSIS_CACHE_SECONDS — safe to poll repeatedly.
     """
     global _analysis_cache, _analysis_ts

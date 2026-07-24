@@ -24,7 +24,7 @@ class WorkflowDefinitionRepository(ABC):
 
     @abstractmethod
     async def list(
-        self, skip: int = 0, limit: int = 100, filters: dict | None = None
+        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
     ) -> list[WorkflowDefinition]: ...
 
     @abstractmethod
@@ -58,7 +58,7 @@ class WorkflowExecutionRepository(ABC):
 
     @abstractmethod
     async def list(
-        self, skip: int = 0, limit: int = 100, filters: dict | None = None
+        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
     ) -> list[WorkflowExecution]: ...
 
     @abstractmethod
@@ -95,7 +95,7 @@ class WorkflowExecutionStepRepository(ABC):
 
     @abstractmethod
     async def find_by_execution_and_step(
-        self, execution_id: str, step_id: str
+        self, execution_id: str, step_id: str,
     ) -> WorkflowExecutionStep | None: ...
 
 
@@ -158,7 +158,7 @@ class WorkflowTemplateRepository(ABC):
 
     @abstractmethod
     async def list(
-        self, skip: int = 0, limit: int = 100, filters: dict | None = None
+        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
     ) -> list[WorkflowTemplate]: ...
 
     @abstractmethod

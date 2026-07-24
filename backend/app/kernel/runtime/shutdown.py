@@ -39,7 +39,7 @@ class ShutdownManager:
                         "name": handler.name,
                         "success": True,
                         "duration_ms": round((time.monotonic() - start) * 1000),
-                    }
+                    },
                 )
             except Exception as e:
                 results.append(
@@ -48,7 +48,7 @@ class ShutdownManager:
                         "success": False,
                         "error": str(e),
                         "duration_ms": round((time.monotonic() - start) * 1000),
-                    }
+                    },
                 )
                 logger.error(
                     "Shutdown handler failed",

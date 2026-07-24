@@ -47,7 +47,7 @@ class BanditScanner:
                         confidence=result.get("issue_confidence", ""),
                         cwe=result.get("cwe", ""),
                         message=result.get("issue_text", ""),
-                    )
+                    ),
                 )
             return issues
         except (json.JSONDecodeError, KeyError):
@@ -86,7 +86,7 @@ class SemgrepScanner:
                         confidence="HIGH",
                         cwe=result.get("extra", {}).get("metadata", {}).get("cwe", ""),
                         message=result.get("extra", {}).get("message", ""),
-                    )
+                    ),
                 )
             return issues
         except (json.JSONDecodeError, KeyError):
@@ -129,6 +129,6 @@ class SecretsScanner:
                                 confidence="MEDIUM",
                                 cwe="CWE-312",
                                 message=f"Possible secret exposure: '{pattern}' found in source",
-                            )
+                            ),
                         )
         return issues

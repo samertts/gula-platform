@@ -37,7 +37,7 @@ class DuplicateDetector:
                         code_hash = self._hash_node(node)
                         if code_hash:
                             blocks[code_hash].append(
-                                (str(py_file.relative_to(self.project_root)), node.lineno)
+                                (str(py_file.relative_to(self.project_root)), node.lineno),
                             )
 
         duplicates = []
@@ -57,7 +57,7 @@ class DuplicateDetector:
                         code_hash=code_hash,
                         files=locations,
                         lines_of_code=lines_of_code,
-                    )
+                    ),
                 )
 
         return duplicates
@@ -105,7 +105,7 @@ class DeadCodeDetector:
                                 "line": node.lineno,
                                 "name": name,
                                 "type": "unused_function",
-                            }
+                            },
                         )
         return dead
 
@@ -121,6 +121,6 @@ class DeadCodeDetector:
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     defs[node.name].append(
-                        (str(py_file.relative_to(self.project_root)), node.lineno)
+                        (str(py_file.relative_to(self.project_root)), node.lineno),
                     )
         return defs

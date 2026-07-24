@@ -114,7 +114,7 @@ def _apply_lab_filter(query, model, lab_id: int | None):
 
 
 def create_primary_care_encounter(
-    db: Session, data: dict, lab_id: int | None = None
+    db: Session, data: dict, lab_id: int | None = None,
 ) -> dict:
     enc = PrimaryCareEncounter(**data)
     db.add(enc)
@@ -125,7 +125,7 @@ def create_primary_care_encounter(
 
 def get_primary_care_encounter(db: Session, encounter_id: str) -> dict | None:
     enc = db.query(PrimaryCareEncounter).filter(
-        PrimaryCareEncounter.id == encounter_id, PrimaryCareEncounter.is_deleted.is_(False)
+        PrimaryCareEncounter.id == encounter_id, PrimaryCareEncounter.is_deleted.is_(False),
     ).first()
     return enc.to_dict() if enc else None
 
@@ -315,7 +315,7 @@ def get_referral_timeline(db: Session, referral_id: str) -> list[dict]:
 
 
 def _add_referral_timeline(
-    db: Session, referral_id: str, event_type: str, description: str, **extra
+    db: Session, referral_id: str, event_type: str, description: str, **extra,
 ) -> ReferralTimeline:
     entry = ReferralTimeline(
         referral_request_id=referral_id,
@@ -344,7 +344,7 @@ def create_referral_response(db: Session, data: dict) -> dict:
     db.refresh(resp)
 
     ref = db.query(ReferralRequest).filter(
-        ReferralRequest.id == resp.referral_request_id
+        ReferralRequest.id == resp.referral_request_id,
     ).first()
     if ref and resp.decision == "accepted":
         ref.status = ReferralStatus.ACCEPTED
@@ -370,7 +370,7 @@ def get_referral_analytics(
             or_(
                 ReferralRequest.referring_facility_id == facility_id,
                 ReferralRequest.receiving_facility_id == facility_id,
-            )
+            ),
         )
     if start_date:
         q = q.filter(ReferralRequest.created_at >= start_date)
@@ -428,7 +428,7 @@ def create_care_journey(db: Session, data: dict) -> dict:
 
 def get_care_journey(db: Session, journey_id: str) -> dict | None:
     cj = db.query(CareJourney).filter(
-        CareJourney.id == journey_id, CareJourney.is_deleted.is_(False)
+        CareJourney.id == journey_id, CareJourney.is_deleted.is_(False),
     ).first()
     return cj.to_dict() if cj else None
 
@@ -642,7 +642,7 @@ def create_pregnancy_record(db: Session, data: dict) -> dict:
 
 def get_pregnancy_record(db: Session, pregnancy_id: str) -> dict | None:
     pr = db.query(PregnancyRecord).filter(
-        PregnancyRecord.id == pregnancy_id, PregnancyRecord.is_deleted.is_(False)
+        PregnancyRecord.id == pregnancy_id, PregnancyRecord.is_deleted.is_(False),
     ).first()
     return pr.to_dict() if pr else None
 
@@ -664,7 +664,7 @@ def create_antenatal_care_visit(db: Session, data: dict) -> dict:
     db.commit()
 
     pregnancy = db.query(PregnancyRecord).filter(
-        PregnancyRecord.id == anc.pregnancy_id
+        PregnancyRecord.id == anc.pregnancy_id,
     ).first()
     if pregnancy:
         pregnancy.anc_visits_completed = (pregnancy.anc_visits_completed or 0) + 1
@@ -680,7 +680,7 @@ def create_delivery_record(db: Session, data: dict) -> dict:
     db.commit()
 
     pregnancy = db.query(PregnancyRecord).filter(
-        PregnancyRecord.id == dr.pregnancy_id
+        PregnancyRecord.id == dr.pregnancy_id,
     ).first()
     if pregnancy:
         pregnancy.status = PregnancyStatus.POSTPARTUM
@@ -736,7 +736,7 @@ def create_vaccination_record(db: Session, data: dict) -> dict:
     db.refresh(vr)
 
     schedule = db.query(ImmunizationSchedule).filter(
-        ImmunizationSchedule.id == vr.schedule_id
+        ImmunizationSchedule.id == vr.schedule_id,
     ).first() if vr.schedule_id else None
     if schedule:
         schedule.status = VaccinationStatus.GIVEN
@@ -744,7 +744,7 @@ def create_vaccination_record(db: Session, data: dict) -> dict:
         db.commit()
 
     inventory = db.query(VaccineInventory).filter(
-        VaccineInventory.id == vr.vaccine_stock_id
+        VaccineInventory.id == vr.vaccine_stock_id,
     ).first() if vr.vaccine_stock_id else None
     if inventory:
         inventory.quantity_available = max(0, (inventory.quantity_available or 0) - 1)

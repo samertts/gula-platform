@@ -1,5 +1,4 @@
-"""
-GULA National Trust Platform
+"""GULA National Trust Platform
 ============================
 Trust, compliance, privacy, sovereignty, and audit services.
 

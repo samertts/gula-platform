@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,21 +19,21 @@ router = APIRouter(prefix="/federation", tags=["NIAM Federation"])
 async def register_provider(
     provider_id: str,
     name_en: str,
-    name_ar: Optional[str] = None,
+    name_ar: str | None = None,
     provider_type: str = "oauth2",
     issuer_url: str = ...,
-    authorization_endpoint: Optional[str] = None,
-    token_endpoint: Optional[str] = None,
-    jwks_uri: Optional[str] = None,
-    userinfo_endpoint: Optional[str] = None,
-    client_id: Optional[str] = None,
-    client_secret_encrypted: Optional[str] = None,
-    scopes: Optional[list[str]] = None,
-    redirect_uris: Optional[list[str]] = None,
-    certificate: Optional[str] = None,
-    signature_algorithm: Optional[str] = None,
-    trust_anchor_id: Optional[str] = None,
-    metadata_url: Optional[str] = None,
+    authorization_endpoint: str | None = None,
+    token_endpoint: str | None = None,
+    jwks_uri: str | None = None,
+    userinfo_endpoint: str | None = None,
+    client_id: str | None = None,
+    client_secret_encrypted: str | None = None,
+    scopes: list[str] | None = None,
+    redirect_uris: list[str] | None = None,
+    certificate: str | None = None,
+    signature_algorithm: str | None = None,
+    trust_anchor_id: str | None = None,
+    metadata_url: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = FederationService(db)
@@ -65,7 +65,7 @@ async def register_provider(
 
 @router.get("/providers")
 async def list_providers(
-    status: Optional[str] = None,
+    status: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = FederationService(db)
@@ -112,8 +112,8 @@ async def link_identity(
     person_id: str,
     provider_id: str,
     external_subject_id: str,
-    external_attributes: Optional[dict[str, Any]] = None,
-    identity_id: Optional[str] = None,
+    external_attributes: dict[str, Any] | None = None,
+    identity_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = FederationService(db)
@@ -175,8 +175,8 @@ async def establish_trust(
     target_org_id: str,
     trust_level: str = "full",
     trust_type: str = "bilateral",
-    agreement: Optional[dict[str, Any]] = None,
-    established_by: Optional[str] = None,
+    agreement: dict[str, Any] | None = None,
+    established_by: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = CrossOrgTrustService(db)
@@ -220,12 +220,12 @@ async def create_agreement(
     name: str,
     parties: list[str],
     agreement_type: str,
-    scope: Optional[dict[str, Any]] = None,
-    terms: Optional[dict[str, Any]] = None,
-    security_requirements: Optional[dict[str, Any]] = None,
-    effective_date: Optional[str] = None,
-    expiry_date: Optional[str] = None,
-    governing_law: Optional[str] = None,
+    scope: dict[str, Any] | None = None,
+    terms: dict[str, Any] | None = None,
+    security_requirements: dict[str, Any] | None = None,
+    effective_date: str | None = None,
+    expiry_date: str | None = None,
+    governing_law: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = FederationAgreementService(db)
@@ -247,8 +247,8 @@ async def create_agreement(
 
 @router.get("/agreements")
 async def list_agreements(
-    status: Optional[str] = None,
-    agreement_type: Optional[str] = None,
+    status: str | None = None,
+    agreement_type: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = FederationAgreementService(db)
@@ -307,7 +307,7 @@ async def create_federated_session(
     provider_id: str,
     fed_identity_id: str,
     tokens: dict[str, Any],
-    attributes: Optional[dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = FederationService(db)

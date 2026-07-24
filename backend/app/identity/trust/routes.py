@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,11 +29,11 @@ async def create_framework(
     name_en: str,
     name_ar: str,
     version: str,
-    effective_date: Optional[datetime] = None,
-    supersedes_framework_id: Optional[str] = None,
-    authority_id: Optional[str] = None,
-    scope: Optional[dict] = None,
-    assurance_policies: Optional[dict] = None,
+    effective_date: datetime | None = None,
+    supersedes_framework_id: str | None = None,
+    authority_id: str | None = None,
+    scope: dict | None = None,
+    assurance_policies: dict | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = TrustFrameworkService(db)
@@ -119,8 +119,8 @@ async def create_assurance_profile(
     ial: str = "IAL1",
     aal: str = "AAL1",
     fal: str = "FAL1",
-    assessed_by: Optional[str] = None,
-    evidence: Optional[dict] = None,
+    assessed_by: str | None = None,
+    evidence: dict | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = AssuranceService(db)
@@ -216,13 +216,13 @@ async def create_anchor(
     anchor_id: str,
     name: str,
     anchor_type: str,
-    public_key_hash: Optional[str] = None,
-    certificate_chain: Optional[str] = None,
-    issuer: Optional[str] = None,
-    subject: Optional[str] = None,
-    valid_from: Optional[datetime] = None,
-    valid_to: Optional[datetime] = None,
-    signed_by: Optional[str] = None,
+    public_key_hash: str | None = None,
+    certificate_chain: str | None = None,
+    issuer: str | None = None,
+    subject: str | None = None,
+    valid_from: datetime | None = None,
+    valid_to: datetime | None = None,
+    signed_by: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = TrustAnchorService(db)
@@ -306,10 +306,10 @@ async def create_federation_trust(
     target_org_id: str,
     trust_type: str = "direct",
     trust_level: str = "limited",
-    scope: Optional[dict] = None,
-    agreement_id: Optional[str] = None,
-    expires_at: Optional[datetime] = None,
-    terms: Optional[dict] = None,
+    scope: dict | None = None,
+    agreement_id: str | None = None,
+    expires_at: datetime | None = None,
+    terms: dict | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = FederationTrustService(db)
@@ -415,9 +415,9 @@ async def create_proofing(
     identity_id: str,
     proofing_level: str = "IAL1",
     method: str = "remote",
-    evidence_type: Optional[dict] = None,
-    evidence_documents: Optional[dict] = None,
-    authority_id: Optional[str] = None,
+    evidence_type: dict | None = None,
+    evidence_documents: dict | None = None,
+    authority_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = IdentityProofingService(db)
@@ -520,13 +520,13 @@ async def create_evaluation(
     evaluation_id: str,
     target_type: str,
     target_id: str,
-    evaluated_by: Optional[str] = None,
-    assurance_score: Optional[int] = None,
-    confidence_score: Optional[int] = None,
-    risk_score: Optional[int] = None,
-    evaluation_method: Optional[str] = None,
-    findings: Optional[dict] = None,
-    recommendations: Optional[dict] = None,
+    evaluated_by: str | None = None,
+    assurance_score: int | None = None,
+    confidence_score: int | None = None,
+    risk_score: int | None = None,
+    evaluation_method: str | None = None,
+    findings: dict | None = None,
+    recommendations: dict | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = TrustEvaluationService(db)

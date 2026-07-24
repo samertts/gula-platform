@@ -125,7 +125,7 @@ class DataPlatformService:
         db.flush()
 
         DuplicateRecord.update_golden(
-            db, golden_record_id=golden_record_id, resolution="merged"
+            db, golden_record_id=golden_record_id, resolution="merged",
         )
 
         emit_to_outbox(

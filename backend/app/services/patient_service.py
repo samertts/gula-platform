@@ -124,7 +124,7 @@ def create_patient(
     # Duplicate detection (unless force_create is True)
     if not force_create:
         duplicate_result = _check_duplicates(
-            db, lab_id, full_name, phone, birth_date or "", nid_hash
+            db, lab_id, full_name, phone, birth_date or "", nid_hash,
         )
         if duplicate_result:
             return duplicate_result
@@ -156,7 +156,7 @@ def create_patient(
 
     # MPI resolution
     citizen_ulid, mpi_match_method = _resolve_mpi(
-        db, patient, national_id, family_id, user_id, lab_id
+        db, patient, national_id, family_id, user_id, lab_id,
     )
 
     log_action(
@@ -259,7 +259,7 @@ def get_family_members(db: Session, family_id: str, lab_id: int) -> dict:
         db.query(LabOrder.patient_id, func.count(LabOrder.id), func.max(LabOrder.created_at))
         .filter(LabOrder.patient_id.in_([m.id for m in members]))
         .group_by(LabOrder.patient_id)
-        .all()
+        .all(),
     )
 
     result = []

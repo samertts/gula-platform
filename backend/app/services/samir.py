@@ -1,5 +1,4 @@
-"""
-samir.py — thin compatibility shim.
+"""samir.py — thin compatibility shim.
 All logic lives in samir_engine.py (richer tips, more pages, type checking).
 """
 

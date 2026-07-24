@@ -37,8 +37,7 @@ def create_claim(
     order_id: int | None = None,
     idempotency_key: str | None = None,
 ) -> Claim:
-    """
-    Create a new insurance claim in 'draft' status.
+    """Create a new insurance claim in 'draft' status.
 
     If idempotency_key is provided and a claim already exists for that key
     within this lab, the existing claim is returned without side-effects.
@@ -57,7 +56,7 @@ def create_claim(
         )
         if existing:
             logger.info(
-                "[CLAIMS] Idempotent return for key=%s claim_id=%d", idempotency_key, existing.id
+                "[CLAIMS] Idempotent return for key=%s claim_id=%d", idempotency_key, existing.id,
             )
             return existing
 
@@ -98,7 +97,7 @@ def create_claim(
                 quantity=int(item.get("quantity", 1)),
                 unit_price=Decimal(str(item["unit_price"])),
                 amount=Decimal(str(item["amount"])),
-            )
+            ),
         )
 
     db.commit()
@@ -117,8 +116,7 @@ def create_claim(
 
 
 def validate_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
-    """
-    Transition a claim from 'draft' → 'validated'.
+    """Transition a claim from 'draft' → 'validated'.
 
     Checks:
       - Claim belongs to lab (security)
@@ -137,11 +135,11 @@ def validate_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
     for item in claim.items:
         if item.amount <= 0:
             raise ValueError(
-                f"Claim item {item.id} (test_code={item.test_code}) has non-positive amount {item.amount}"
+                f"Claim item {item.id} (test_code={item.test_code}) has non-positive amount {item.amount}",
             )
         if item.unit_price <= 0:
             raise ValueError(
-                f"Claim item {item.id} (test_code={item.test_code}) has non-positive unit_price {item.unit_price}"
+                f"Claim item {item.id} (test_code={item.test_code}) has non-positive unit_price {item.unit_price}",
             )
 
     claim.status = "validated"
@@ -156,8 +154,7 @@ def validate_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
 
 
 def submit_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
-    """
-    Transition a claim from 'validated' → 'submitted'.
+    """Transition a claim from 'validated' → 'submitted'.
 
     Emits a 'claim_submitted' outbox event for async delivery to the
     insurance gateway / government system.
@@ -204,7 +201,7 @@ def submit_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
     db.commit()
     db.refresh(claim)
     logger.info(
-        "[CLAIMS] Submitted claim_id=%d lab_id=%d total=%s", claim_id, lab_id, claim.total_amount
+        "[CLAIMS] Submitted claim_id=%d lab_id=%d total=%s", claim_id, lab_id, claim.total_amount,
     )
     return claim
 
@@ -213,8 +210,7 @@ def submit_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
 
 
 def get_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
-    """
-    Retrieve a claim by ID, enforcing lab_id ownership.
+    """Retrieve a claim by ID, enforcing lab_id ownership.
     Raises ValueError if not found or wrong lab.
     """
     return _get_claim_or_raise(db, claim_id, lab_id)

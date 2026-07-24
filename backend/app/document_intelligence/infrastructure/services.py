@@ -174,7 +174,7 @@ class InfrastructureGovernmentRecordsService:
     async def register_government_document(self, document_id: UUID, gov_record: GovernmentDocument) -> GovernmentDocument:
         if not gov_record.reference_number:
             gov_record.reference_number = await self.generate_reference_number(
-                gov_record.issuing_authority, "GOV"
+                gov_record.issuing_authority, "GOV",
             )
         return await self._gov_repo.save(gov_record)
 
@@ -187,7 +187,7 @@ class InfrastructureGovernmentRecordsService:
     async def track_order_lifecycle(self, document_id: UUID) -> list[dict[str, Any]]:
         items = []
         for status_name in (
-            "draft", "submitted", "under_review", "approved", "implemented", "completed"
+            "draft", "submitted", "under_review", "approved", "implemented", "completed",
         ):
             items.append({"status": status_name, "timestamp": datetime.utcnow().isoformat()})
         return items

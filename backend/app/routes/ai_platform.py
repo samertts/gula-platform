@@ -1,5 +1,4 @@
-"""
-AI Platform Routes — GULA Platform
+"""AI Platform Routes — GULA Platform
 ====================================
 Enterprise AI platform endpoints for vector search, RAG, knowledge graph,
 agent execution, orchestration, governance, healthcare CDS, and observability.

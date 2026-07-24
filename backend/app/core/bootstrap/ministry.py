@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.organization import Organization
 
-from .models import NATIONAL_ORG_NAME_EN, NATIONAL_ORG_NAME_AR, NATIONAL_ORG_TYPE
+from .models import NATIONAL_ORG_NAME_AR, NATIONAL_ORG_NAME_EN, NATIONAL_ORG_TYPE
 from .organizations import seed_organizations
 
 logger = logging.getLogger("gula.bootstrap.ministry")
@@ -25,7 +25,7 @@ def seed_ministry_of_health(db: Session | None = None) -> bool:
 
     try:
         existing = db.query(Organization).filter(
-            Organization.org_id == MINISTRY_ORG_ID
+            Organization.org_id == MINISTRY_ORG_ID,
         ).first()
         if existing:
             logger.info("Ministry of Health already exists (org_id=%s)", MINISTRY_ORG_ID)

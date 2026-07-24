@@ -59,7 +59,7 @@ class SQLAlchemyWorkflowDefinitionRepository(WorkflowDefinitionRepository):
             return model.to_domain()
 
     async def list(
-        self, skip: int = 0, limit: int = 100, filters: dict | None = None
+        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
     ) -> list[WorkflowDefinition]:
         async with SessionLocal() as session:
             query = session.query(NationalWorkflowDefinition)
@@ -87,7 +87,7 @@ class SQLAlchemyWorkflowDefinitionRepository(WorkflowDefinitionRepository):
             query = session.query(NationalWorkflowDefinition)
             for tag in tags:
                 query = query.filter(
-                    NationalWorkflowDefinition.tags.contains(json.dumps(tag))
+                    NationalWorkflowDefinition.tags.contains(json.dumps(tag)),
                 )
             results = await session.execute(query)
             return [row[0].to_domain() for row in results]
@@ -101,7 +101,7 @@ class SQLAlchemyWorkflowDefinitionRepository(WorkflowDefinitionRepository):
                     NationalWorkflowDefinition.status == "active",
                 )
                 .order_by(desc(NationalWorkflowDefinition.version))
-                .limit(1)
+                .limit(1),
             )
             row = model.scalar_one_or_none()
             return row.to_domain() if row else None
@@ -172,7 +172,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             return model.to_domain()
 
     async def list(
-        self, skip: int = 0, limit: int = 100, filters: dict | None = None
+        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
     ) -> list[WorkflowExecution]:
         async with SessionLocal() as session:
             query = session.query(NationalWorkflowExecution)
@@ -180,7 +180,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                 for key, value in filters.items():
                     if hasattr(NationalWorkflowExecution, key):
                         query = query.filter(
-                            getattr(NationalWorkflowExecution, key) == value
+                            getattr(NationalWorkflowExecution, key) == value,
                         )
             query = query.order_by(desc(NationalWorkflowExecution.created_at))
             query = query.offset(skip).limit(limit)
@@ -194,12 +194,12 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         return await self.list(filters={"trigger": trigger})
 
     async def find_by_correlation_id(
-        self, correlation_id: str
+        self, correlation_id: str,
     ) -> list[WorkflowExecution]:
         return await self.list(filters={"correlation_id": correlation_id})
 
     async def find_stalled(
-        self, timeout_minutes: int = 30
+        self, timeout_minutes: int = 30,
     ) -> list[WorkflowExecution]:
         cutoff = datetime.now(UTC) - timedelta(minutes=timeout_minutes)
         async with SessionLocal() as session:
@@ -216,7 +216,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                 session.query(
                     NationalWorkflowExecution.status,
                     text("count(*) as cnt"),
-                ).group_by(NationalWorkflowExecution.status)
+                ).group_by(NationalWorkflowExecution.status),
             )
             stats = {"total": 0, "by_status": {}}
             for row in result:
@@ -233,7 +233,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                 for key, value in filters.items():
                     if hasattr(NationalWorkflowExecution, key):
                         query = query.filter(
-                            getattr(NationalWorkflowExecution, key) == value
+                            getattr(NationalWorkflowExecution, key) == value,
                         )
             result = await session.execute(query)
             return len(result.all())

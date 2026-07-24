@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -27,7 +26,7 @@ def seed_organizations(
     try:
         for odef in orgs:
             existing = db.query(Organization).filter(
-                Organization.org_id == odef.org_id
+                Organization.org_id == odef.org_id,
             ).first()
             if existing:
                 continue
@@ -58,5 +57,5 @@ def seed_organizations(
     return created
 
 
-def get_organization(db: Session, org_id: str) -> Optional[Organization]:
+def get_organization(db: Session, org_id: str) -> Organization | None:
     return db.query(Organization).filter(Organization.org_id == org_id).first()

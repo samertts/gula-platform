@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +9,6 @@ from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus, AccountType
 from app.identity.repositories.account_repository import AccountRepository
 from app.security.auth import hash_password, verify_password
-
 
 PASSWORD_MIN_LENGTH = 12
 ACCOUNT_LOCKOUT_THRESHOLD = 5
@@ -27,10 +25,10 @@ class AccountService:
         self,
         identity_id: str,
         account_type: AccountType = AccountType.human,
-        email: Optional[str] = None,
-        phone: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        email: str | None = None,
+        phone: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
     ) -> Account:
         password_hash = None
         if password:
@@ -59,7 +57,7 @@ class AccountService:
         )
         return await self.repo.create(account)
 
-    async def authenticate(self, login: str, password: str) -> Optional[Account]:
+    async def authenticate(self, login: str, password: str) -> Account | None:
         account = await self.repo.find_by_email(login)
         if not account:
             account = await self.repo.find_by_username(login)
@@ -93,10 +91,10 @@ class AccountService:
         await self.repo.session.flush()
         return account
 
-    async def get_account(self, account_id: str) -> Optional[Account]:
+    async def get_account(self, account_id: str) -> Account | None:
         return await self.repo.get_by_id(account_id)
 
-    async def find_by_email(self, email: str) -> Optional[Account]:
+    async def find_by_email(self, email: str) -> Account | None:
         return await self.repo.find_by_email(email)
 
     async def change_password(self, account_id: str, old_password: str, new_password: str) -> bool:

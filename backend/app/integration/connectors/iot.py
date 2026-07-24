@@ -25,7 +25,7 @@ class IoTConnector(BaseConnector):
         if self._protocol not in SUPPORTED_PROTOCOLS:
             raise ValueError(
                 f"Unsupported IoT protocol: {self._protocol}. "
-                f"Supported: {', '.join(sorted(SUPPORTED_PROTOCOLS))}"
+                f"Supported: {', '.join(sorted(SUPPORTED_PROTOCOLS))}",
             )
         self._broker_url = self.config.get("broker_url", "")
         self._hub_url = self.config.get("hub_url", "")

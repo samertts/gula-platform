@@ -38,7 +38,7 @@ class IdentityRecordRepository(GovernanceRepository[GovernanceIdentityRecord]):
                 or_(
                     GovernanceIdentityRecord.full_name.ilike(pattern),
                     GovernanceIdentityRecord.health_number.ilike(pattern),
-                )
+                ),
             )
             .offset(skip)
             .limit(limit)

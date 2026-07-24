@@ -297,7 +297,7 @@ class BiomedicalService:
             MedicalDeviceModel.is_deleted.isnot(True),
         ).count()
         open_work_orders = self.db.query(WorkOrderModel).filter(
-            WorkOrderModel.status.in_(["pending", "assigned", "in_progress", "on_hold"])
+            WorkOrderModel.status.in_(["pending", "assigned", "in_progress", "on_hold"]),
         ).count()
         open_incidents = self.db.query(DeviceIncidentModel).filter_by(status="open").count()
         return {

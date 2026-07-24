@@ -4,7 +4,6 @@ import hashlib
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -26,7 +25,7 @@ def _deterministic_uuid(seed: str) -> UUID:
     return uuid.UUID(h.hexdigest())
 
 
-DEMO_PATIENTS: List[Dict] = [
+DEMO_PATIENTS: list[dict] = [
     {"name": "Ahmed Hassan Ali", "phone": "07700000001", "gender": "male", "age": 45},
     {"name": "Fatima Ibrahim Said", "phone": "07700000002", "gender": "female", "age": 32},
     {"name": "Mohammed Jassim Kadhim", "phone": "07700000003", "gender": "male", "age": 28},
@@ -44,13 +43,13 @@ DEMO_PATIENTS: List[Dict] = [
     {"name": "Rami Adel Shakir", "phone": "07700000015", "gender": "male", "age": 41},
 ]
 
-DEMO_TECHNICIANS: List[Dict] = [
+DEMO_TECHNICIANS: list[dict] = [
     {"name": "Technician One", "email": "tech1@demo.gula.iq"},
     {"name": "Technician Two", "email": "tech2@demo.gula.iq"},
     {"name": "Technician Three", "email": "tech3@demo.gula.iq"},
 ]
 
-DEMO_DOCTORS: List[Dict] = [
+DEMO_DOCTORS: list[dict] = [
     {"name": "Dr. Ahmed Al-Jubouri", "email": "doctor1@demo.gula.iq"},
     {"name": "Dr. Sarah Al-Tikriti", "email": "doctor2@demo.gula.iq"},
     {"name": "Dr. Karim Al-Maliki", "email": "doctor3@demo.gula.iq"},
@@ -70,14 +69,14 @@ TEST_TYPES_POOL = [
 ]
 
 
-def seed_demo_data(db: Session | None = None) -> Dict[str, int]:
+def seed_demo_data(db: Session | None = None) -> dict[str, int]:
     if db is None:
         db = SessionLocal()
         own_session = True
     else:
         own_session = False
 
-    counts: Dict[str, int] = {
+    counts: dict[str, int] = {
         "patients": 0,
         "technicians": 0,
         "doctors": 0,
@@ -149,7 +148,7 @@ def seed_demo_data(db: Session | None = None) -> Dict[str, int]:
             order_ref = f"DEMO-ORD-{i+1:04d}"
 
             existing_order = db.query(LabOrder).filter(
-                LabOrder.order_id == order_ref
+                LabOrder.order_id == order_ref,
             ).first()
             if existing_order:
                 continue
@@ -182,7 +181,7 @@ def seed_demo_data(db: Session | None = None) -> Dict[str, int]:
 
             import random
             result_value = round(
-                random.uniform(test["low"] * 0.8, test["high"] * 1.2), 1
+                random.uniform(test["low"] * 0.8, test["high"] * 1.2), 1,
             )
             result = LabResult(
                 lab_id=lab.id,

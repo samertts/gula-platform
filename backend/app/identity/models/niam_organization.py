@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
 
-from app._compat import UTC
 from app.identity.base import IdentityBaseEntity
-
 
 ORG_TYPES = [
     "ministry", "directorate", "government_hospital", "private_hospital",

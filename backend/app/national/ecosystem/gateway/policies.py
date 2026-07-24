@@ -134,7 +134,7 @@ class IPWhitelistPolicy(BasePolicy):
             import ipaddress
             return ipaddress.ip_address(address) in ipaddress.ip_network(cidr, strict=False)
         except ImportError:
-            return address == cidr.split("/")[0]
+            return address == cidr.split("/", maxsplit=1)[0]
 
 
 class IPBlacklistPolicy(BasePolicy):

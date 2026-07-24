@@ -524,7 +524,7 @@ def get_asyncapi_spec() -> dict:
     channels = {}
     for event_name, event_def in EVENT_REGISTRY.items():
         topic = event_name.replace(  # camelCase → kebab-case
-            event_name[0], event_name[0].lower(), 1
+            event_name[0], event_name[0].lower(), 1,
         )
         topic = "".join([f"-{c.lower()}" if c.isupper() else c for c in topic]).lstrip("-")
         topic = topic.replace("_", "-")
@@ -540,7 +540,7 @@ def get_asyncapi_spec() -> dict:
                     "payload": event_def["payload"],
                     "tags": [{"name": t} for t in event_def.get("tags", [])],
                     "correlationId": {
-                        "location": f"$message.payload#/{event_def['correlation_id']}"
+                        "location": f"$message.payload#/{event_def['correlation_id']}",
                     },
                 },
             },

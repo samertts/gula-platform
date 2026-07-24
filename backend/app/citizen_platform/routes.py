@@ -63,7 +63,7 @@ async def list_appointments(
 ):
     try:
         appointments = await sdk.appointments.list_appointments(
-            citizen_id, status=status, date_from=date_from, date_to=date_to, skip=skip, limit=limit
+            citizen_id, status=status, date_from=date_from, date_to=date_to, skip=skip, limit=limit,
         )
         return {"appointments": [a.__dict__ for a in appointments], "total": len(appointments)}
     except Exception as exc:
@@ -111,7 +111,7 @@ async def list_lab_results(
 ):
     try:
         results = sdk.laboratory.get_results(
-            citizen_id, lab_id=lab_id, status=status, skip=skip, limit=limit
+            citizen_id, lab_id=lab_id, status=status, skip=skip, limit=limit,
         )
         return {"results": [r.__dict__ for r in results], "total": len(results)}
     except Exception as exc:
@@ -162,7 +162,7 @@ async def get_notifications(
 ):
     try:
         notifications = sdk.notifications.get_notifications(
-            citizen_id, unread_only=unread_only, skip=skip, limit=limit
+            citizen_id, unread_only=unread_only, skip=skip, limit=limit,
         )
         return {
             "notifications": [

@@ -1,5 +1,4 @@
-"""
-Cloudflare Gateway — DNS + WAF + Workers + R2
+"""Cloudflare Gateway — DNS + WAF + Workers + R2
 ===============================================
 Trust level: ENRICHMENT — operational/infra, never touches clinical data.
 

@@ -406,7 +406,7 @@ class PharmacyAuditTrail:
 
         if controlled_substance:
             entry["hash"] = hashlib.sha256(
-                json.dumps(entry, sort_keys=True, default=str).encode()
+                json.dumps(entry, sort_keys=True, default=str).encode(),
             ).hexdigest()
 
         self._entries.append(entry)
@@ -430,7 +430,7 @@ class PharmacyAuditTrail:
                 entry_copy = dict(entry)
                 entry_copy.pop("hash")
                 computed_hash = hashlib.sha256(
-                    json.dumps(entry_copy, sort_keys=True, default=str).encode()
+                    json.dumps(entry_copy, sort_keys=True, default=str).encode(),
                 ).hexdigest()
                 if stored_hash != computed_hash or (previous_hash and stored_hash == previous_hash):
                     return False

@@ -1,4 +1,3 @@
-from typing import Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,9 +12,9 @@ router = APIRouter(prefix="/devices", tags=["NIAM Devices"])
 async def register_device(
     person_uuid: str,
     device_fingerprint: str,
-    device_name: Optional[str] = None,
-    device_type: Optional[str] = None,
-    ip_address: Optional[str] = None,
+    device_name: str | None = None,
+    device_type: str | None = None,
+    ip_address: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = DeviceService(db)

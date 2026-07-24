@@ -1,4 +1,3 @@
-from typing import Optional
 
 from sqlalchemy import select
 
@@ -10,7 +9,7 @@ class OrganizationRepository(IdentityRepositoryBase[NIAMOrganization]):
 
     model_class = NIAMOrganization
 
-    async def find_by_org_id(self, org_id: str) -> Optional[NIAMOrganization]:
+    async def find_by_org_id(self, org_id: str) -> NIAMOrganization | None:
         stmt = select(self.model_class).where(
             self.model_class.org_id == org_id,
             self.model_class.is_active.is_(True),

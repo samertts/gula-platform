@@ -1,48 +1,49 @@
-from .person import Person
-from .identity import IdentityType, IdentityRecord
-from .niam_organization import NIAMOrganization
-from .enterprise_account import EnterpriseAccount
-from .account import Account, AccountStatus, AccountType
-from .employment import Employment, EmploymentStatus
-from .assignment import Assignment, AssignmentStatus
-from .license import ProfessionalLicense, LicenseStatus
-from .credential import Credential, CredentialType
-from .session import UserSession
-from .device import Device
-from .machine_identity import MachineIdentity
-from .policy import IdentityPolicy
-from .audit import IdentityAuditEntry
 from app.identity.certificates.models import (
-    DigitalCertificate,
+    APIKey,
     CertificateAuthority,
     CertificateRevocationList,
-    APIKey,
+    DigitalCertificate,
 )
 
+from .account import Account, AccountStatus, AccountType
+from .assignment import Assignment, AssignmentStatus
+from .audit import IdentityAuditEntry
+from .credential import Credential, CredentialType
+from .device import Device
+from .employment import Employment, EmploymentStatus
+from .enterprise_account import EnterpriseAccount
+from .identity import IdentityRecord, IdentityType
+from .license import LicenseStatus, ProfessionalLicense
+from .machine_identity import MachineIdentity
+from .niam_organization import NIAMOrganization
+from .person import Person
+from .policy import IdentityPolicy
+from .session import UserSession
+
 __all__ = [
-    "Person",
-    "IdentityType",
-    "IdentityRecord",
-    "NIAMOrganization",
-    "EnterpriseAccount",
+    "APIKey",
     "Account",
     "AccountStatus",
     "AccountType",
-    "Employment",
-    "EmploymentStatus",
     "Assignment",
     "AssignmentStatus",
-    "ProfessionalLicense",
-    "LicenseStatus",
-    "Credential",
-    "CredentialType",
-    "UserSession",
-    "Device",
-    "MachineIdentity",
-    "IdentityPolicy",
-    "IdentityAuditEntry",
-    "DigitalCertificate",
     "CertificateAuthority",
     "CertificateRevocationList",
-    "APIKey",
+    "Credential",
+    "CredentialType",
+    "Device",
+    "DigitalCertificate",
+    "Employment",
+    "EmploymentStatus",
+    "EnterpriseAccount",
+    "IdentityAuditEntry",
+    "IdentityPolicy",
+    "IdentityRecord",
+    "IdentityType",
+    "LicenseStatus",
+    "MachineIdentity",
+    "NIAMOrganization",
+    "Person",
+    "ProfessionalLicense",
+    "UserSession",
 ]

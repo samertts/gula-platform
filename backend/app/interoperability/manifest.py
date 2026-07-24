@@ -48,7 +48,7 @@ def validate_manifest(domain: TrustDomain) -> None:
         if leakage:
             raise ManifestError(
                 "national_aggregator must not declare data_classes_in: "
-                + ", ".join(sorted(leakage))
+                + ", ".join(sorted(leakage)),
             )
     if domain.require_jwe_for_classes - domain.data_classes_in - domain.data_classes_out:
         raise ManifestError("require_jwe_for_classes must reference declared data classes")

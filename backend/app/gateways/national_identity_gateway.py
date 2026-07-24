@@ -1,5 +1,4 @@
-"""
-Iraqi National Identity Gateway — Ministry of Interior Integration
+"""Iraqi National Identity Gateway — Ministry of Interior Integration
 ==================================================================
 Trust level: NON_CRITICAL — used for identity enrichment, not clinical decisions.
 
@@ -133,8 +132,7 @@ def get_national_identity_gateway() -> NationalIdentityGateway:
 
 
 def verify_national_id(national_id: str) -> ExternalDataResult:
-    """
-    Verify a national ID number.
+    """Verify a national ID number.
 
     Returns ExternalDataResult. Callers must NOT use this result for any
     clinical decision — it is NON_CRITICAL enrichment only.
@@ -143,7 +141,7 @@ def verify_national_id(national_id: str) -> ExternalDataResult:
     return gw.call(
         action="verify_national_id",
         cache_key=NationalIdentityGateway._make_cache_key(
-            "national_identity", national_id=national_id
+            "national_identity", national_id=national_id,
         ),
         fallback={"valid": False, "source": "fallback"},
         national_id=national_id,

@@ -93,10 +93,10 @@ class KnowledgeEdge(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     source_node_id = Column(
-        Integer, ForeignKey("knowledge_nodes.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("knowledge_nodes.id", ondelete="CASCADE"), nullable=False, index=True,
     )
     target_node_id = Column(
-        Integer, ForeignKey("knowledge_nodes.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("knowledge_nodes.id", ondelete="CASCADE"), nullable=False, index=True,
     )
     edge_type = Column(String(50), nullable=False, index=True)
     extra_metadata = Column(JSON, default=dict)

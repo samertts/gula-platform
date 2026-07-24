@@ -1,5 +1,4 @@
-"""
-Citizen Portal API
+"""Citizen Portal API
 ==================
 Authenticated endpoints for patients (citizens) to access their own clinical
 records across ALL labs where they have been registered, linked via phone number.
@@ -141,8 +140,7 @@ def citizen_login(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    """
-    Citizen-only login.  Rejects lab staff accounts.
+    """Citizen-only login.  Rejects lab staff accounts.
     Sets httpOnly access_token + refresh_token cookies.
     """
     rate_limit_auth(request)
@@ -226,7 +224,7 @@ def citizen_login(
 
     cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": IS_PRODUCTION}
     response.set_cookie(
-        "access_token", access_token, max_age=JWT_EXPIRE_MINUTES * 60, path="/", **cookie_kwargs
+        "access_token", access_token, max_age=JWT_EXPIRE_MINUTES * 60, path="/", **cookie_kwargs,
     )
     response.set_cookie(
         "refresh_token",
@@ -289,8 +287,7 @@ def citizen_results(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    """
-    All test results for this citizen across all labs.
+    """All test results for this citizen across all labs.
     Results are linked via the patient's phone number or national ID.
     Returns newest first.
     """
@@ -339,7 +336,7 @@ def citizen_results(
                     "collected_at": order.created_at.isoformat() if order.created_at else None,
                     "result_token": r.token,
                     "is_validated": order.status == "validated",
-                }
+                },
             )
 
     total = len(all_results)
@@ -396,7 +393,7 @@ def citizen_orders(
                 "result_count": len(o.results),
                 "created_at": o.created_at.isoformat() if o.created_at else None,
                 "validated_at": o.validated_at.isoformat() if o.validated_at else None,
-            }
+            },
         )
 
     return {"orders": result, "total": total, "offset": offset, "limit": limit}
@@ -404,8 +401,7 @@ def citizen_orders(
 
 @router.get("/health-record")
 def citizen_health_record(request: Request, db: Session = Depends(get_db)):
-    """
-    Structured health record summary for the citizen.
+    """Structured health record summary for the citizen.
     Aggregates all results into an EHR-lite view with:
     - latest value per test type
     - abnormal flags summary
@@ -451,7 +447,7 @@ def citizen_health_record(request: Request, db: Session = Depends(get_db)):
                 "lab": lab_name,
                 "tests": len(order.results),
                 "status": _status_label(order.status),
-            }
+            },
         )
         for r in order.results:
             key = r.test_name.lower().strip()

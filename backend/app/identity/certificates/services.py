@@ -5,7 +5,7 @@ import hmac
 import secrets
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,8 +20,8 @@ from app.identity.certificates.models import (
 
 
 def _generate_key_pair() -> tuple[str, str]:
-    import cryptography.hazmat.primitives.asymmetric.rsa as rsa
     from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
 
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     public_key = private_key.public_key()
@@ -64,15 +64,15 @@ class CertificateService:
         self,
         cert_type: str,
         subject: str,
-        issuer: Optional[str] = None,
-        organization_id: Optional[str] = None,
-        person_id: Optional[str] = None,
-        machine_id: Optional[str] = None,
+        issuer: str | None = None,
+        organization_id: str | None = None,
+        person_id: str | None = None,
+        machine_id: str | None = None,
         signature_algorithm: str = "SHA256withRSA",
         key_size: int = 2048,
         validity_days: int = 365,
-        rotation_period_days: Optional[int] = None,
-        issuer_ca_id: Optional[str] = None,
+        rotation_period_days: int | None = None,
+        issuer_ca_id: str | None = None,
     ) -> DigitalCertificate:
         priv_pem, pub_pem = _generate_key_pair()
 
@@ -111,7 +111,7 @@ class CertificateService:
         await self.session.flush()
         return cert
 
-    async def revoke_certificate(self, certificate_id: str, reason: str) -> Optional[DigitalCertificate]:
+    async def revoke_certificate(self, certificate_id: str, reason: str) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.certificate_id == certificate_id,
             DigitalCertificate.is_active.is_(True),
@@ -129,7 +129,7 @@ class CertificateService:
         await self.session.flush()
         return cert
 
-    async def rotate_certificate(self, certificate_id: str) -> Optional[DigitalCertificate]:
+    async def rotate_certificate(self, certificate_id: str) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.certificate_id == certificate_id,
         )
@@ -175,7 +175,7 @@ class CertificateService:
             return {"valid": False, "reason": "expired", "expires_at": cert.expires_at.isoformat()}
         return {"valid": True, "subject": cert.subject, "certificate_type": cert.certificate_type, "expires_at": cert.expires_at.isoformat() if cert.expires_at else None}
 
-    async def get_certificate(self, thumbprint: str) -> Optional[DigitalCertificate]:
+    async def get_certificate(self, thumbprint: str) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(DigitalCertificate.thumbprint == thumbprint)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -221,12 +221,12 @@ class CertificateAuthorityService:
         self,
         name: str,
         ca_type: str,
-        organization_id: Optional[str] = None,
+        organization_id: str | None = None,
         signing_algorithm: str = "SHA256withRSA",
         key_size: int = 4096,
         validity_days: int = 3650,
-        path_length_constraint: Optional[int] = None,
-        parent_ca_id: Optional[str] = None,
+        path_length_constraint: int | None = None,
+        parent_ca_id: str | None = None,
     ) -> CertificateAuthority:
         priv_pem, pub_pem = _generate_key_pair()
         cert_pem = pub_pem
@@ -263,7 +263,7 @@ class CertificateAuthorityService:
         await self.session.flush()
         return ca
 
-    async def get_ca(self, ca_id: str) -> Optional[CertificateAuthority]:
+    async def get_ca(self, ca_id: str) -> CertificateAuthority | None:
         stmt = select(CertificateAuthority).where(
             CertificateAuthority.ca_id == ca_id,
             CertificateAuthority.is_active.is_(True),
@@ -280,7 +280,7 @@ class CertificateAuthorityService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def generate_crl(self, ca_id: str) -> Optional[CertificateRevocationList]:
+    async def generate_crl(self, ca_id: str) -> CertificateRevocationList | None:
         ca = await self.get_ca(ca_id)
         if not ca:
             return None
@@ -324,7 +324,7 @@ class CertificateAuthorityService:
         await self.session.flush()
         return crl
 
-    async def get_crl(self, ca_id: str) -> Optional[CertificateRevocationList]:
+    async def get_crl(self, ca_id: str) -> CertificateRevocationList | None:
         ca = await self.get_ca(ca_id)
         if not ca:
             return None
@@ -354,15 +354,15 @@ class APIKeyService:
         self,
         name: str,
         organization_id: str,
-        enterprise_account_id: Optional[str] = None,
-        person_id: Optional[str] = None,
-        scopes: Optional[list[str]] = None,
-        permissions: Optional[list[str]] = None,
-        allowed_ips: Optional[list[str]] = None,
-        allowed_referrers: Optional[list[str]] = None,
-        rate_limit: Optional[int] = None,
-        created_by: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
+        enterprise_account_id: str | None = None,
+        person_id: str | None = None,
+        scopes: list[str] | None = None,
+        permissions: list[str] | None = None,
+        allowed_ips: list[str] | None = None,
+        allowed_referrers: list[str] | None = None,
+        rate_limit: int | None = None,
+        created_by: str | None = None,
+        expires_at: datetime | None = None,
     ) -> tuple[APIKey, str]:
         raw_key, prefix, key_hash = _generate_api_key()
         api_key_id = f"ak-{uuid.uuid4().hex[:16]}"
@@ -391,7 +391,7 @@ class APIKeyService:
         await self.session.flush()
         return ak, raw_key
 
-    async def validate_key(self, key_prefix: str, key: str) -> Optional[APIKey]:
+    async def validate_key(self, key_prefix: str, key: str) -> APIKey | None:
         stmt = select(APIKey).where(
             APIKey.key_prefix == key_prefix,
             APIKey.is_active.is_(True),
@@ -410,7 +410,7 @@ class APIKeyService:
 
         return ak
 
-    async def revoke_key(self, api_key_id: str) -> Optional[APIKey]:
+    async def revoke_key(self, api_key_id: str) -> APIKey | None:
         stmt = select(APIKey).where(
             APIKey.api_key_id == api_key_id,
             APIKey.is_active.is_(True),
@@ -424,7 +424,7 @@ class APIKeyService:
         await self.session.flush()
         return ak
 
-    async def rotate_key(self, api_key_id: str) -> Optional[tuple[APIKey, str]]:
+    async def rotate_key(self, api_key_id: str) -> tuple[APIKey, str] | None:
         stmt = select(APIKey).where(
             APIKey.api_key_id == api_key_id,
         )
@@ -465,7 +465,7 @@ class APIKeyService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_id(self, api_key_id: str) -> Optional[APIKey]:
+    async def get_by_id(self, api_key_id: str) -> APIKey | None:
         stmt = select(APIKey).where(APIKey.api_key_id == api_key_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()

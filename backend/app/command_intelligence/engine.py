@@ -20,7 +20,7 @@ from .models import (
 
 class CommandIntelligenceEngine:
     async def get_situation_status(
-        self, db: Session, region: str | None = None
+        self, db: Session, region: str | None = None,
     ) -> dict[str, Any]:
         query = db.query(SituationRoom)
         if region:
@@ -49,8 +49,7 @@ class CommandIntelligenceEngine:
         for room in rooms:
             status = room.status or SituationRoomStatus.GREEN.value
             score = status_scores.get(status, 0)
-            if score > max_score:
-                max_score = score
+            max_score = max(max_score, score)
             alerts = room.alerts or []
             total_alerts += len(alerts)
             room_list.append(
@@ -61,7 +60,7 @@ class CommandIntelligenceEngine:
                     "metrics": room.metrics or {},
                     "alerts_count": len(alerts),
                     "region": room.region,
-                }
+                },
             )
 
         status_by_score = [
@@ -80,7 +79,7 @@ class CommandIntelligenceEngine:
         }
 
     async def get_national_kpis(
-        self, db: Session, category: str | None = None
+        self, db: Session, category: str | None = None,
     ) -> list[dict[str, Any]]:
         query = db.query(NationalKPI)
         if category:
@@ -108,10 +107,10 @@ class CommandIntelligenceEngine:
         ]
 
     async def get_active_incidents(
-        self, db: Session, severity: str | None = None
+        self, db: Session, severity: str | None = None,
     ) -> list[dict[str, Any]]:
         query = db.query(IncidentIntelligence).filter(
-            IncidentIntelligence.status != "resolved"
+            IncidentIntelligence.status != "resolved",
         )
         if severity:
             query = query.filter(IncidentIntelligence.severity == severity)
@@ -136,7 +135,7 @@ class CommandIntelligenceEngine:
         ]
 
     async def get_capacity_intelligence(
-        self, db: Session, entity_type: str | None = None
+        self, db: Session, entity_type: str | None = None,
     ) -> list[dict[str, Any]]:
         query = db.query(CapacityIntelligence)
         if entity_type:
@@ -165,7 +164,7 @@ class CommandIntelligenceEngine:
         ]
 
     async def generate_recommendation(
-        self, db: Session, context: dict[str, Any]
+        self, db: Session, context: dict[str, Any],
     ) -> dict[str, Any]:
         rec_type = context.get("recommendation_type", "general")
         priority = context.get("priority", 0)
@@ -202,7 +201,7 @@ class CommandIntelligenceEngine:
         }
 
     async def get_live_situation_room(
-        self, db: Session, region: str | None = None
+        self, db: Session, region: str | None = None,
     ) -> dict[str, Any]:
         status = await self.get_situation_status(db, region)
         kpis = await self.get_national_kpis(db)
@@ -295,7 +294,7 @@ class SituationAnalyzer:
         }
 
     async def analyze_regional_health(
-        self, db: Session, region: str
+        self, db: Session, region: str,
     ) -> dict[str, Any]:
         total_kpis = (
             db.query(func.count(NationalKPI.id))
@@ -370,7 +369,7 @@ class SituationAnalyzer:
                     "region": kpi.region,
                     "details": f"KPI {kpi.kpi_name} at {kpi.kpi_value} is below 50% of target {kpi.target_value}",
                     "detected_at": datetime.now(UTC).isoformat(),
-                }
+                },
             )
 
         over_capacity = (
@@ -392,7 +391,7 @@ class SituationAnalyzer:
                     "threshold": cap.threshold,
                     "details": f"Capacity {cap.metric} for {cap.entity_type} {cap.entity_id} exceeds threshold",
                     "detected_at": datetime.now(UTC).isoformat(),
-                }
+                },
             )
 
         critical_incidents = (
@@ -412,7 +411,7 @@ class SituationAnalyzer:
                     "incident_type": inc.incident_type,
                     "details": inc.description or "Critical active incident",
                     "detected_at": inc.detected_at.isoformat() if inc.detected_at else None,
-                }
+                },
             )
 
         return anomalies
@@ -463,7 +462,7 @@ class SituationAnalyzer:
 
 class KPIEngine:
     async def calculate_kpi(
-        self, db: Session, kpi_name: str, region: str | None = None
+        self, db: Session, kpi_name: str, region: str | None = None,
     ) -> float | None:
         query = db.query(NationalKPI).filter(NationalKPI.kpi_name == kpi_name)
         if region:
@@ -475,7 +474,7 @@ class KPIEngine:
         return latest.kpi_value
 
     async def get_kpi_trend(
-        self, db: Session, kpi_name: str, days: int = 30
+        self, db: Session, kpi_name: str, days: int = 30,
     ) -> list[dict[str, Any]]:
         since = datetime.now(UTC) - timedelta(days=days)
         kpis = (
@@ -501,7 +500,7 @@ class KPIEngine:
         ]
 
     async def compare_kpis(
-        self, db: Session, region_a: str, region_b: str
+        self, db: Session, region_a: str, region_b: str,
     ) -> dict[str, Any]:
         categories = (
             db.query(NationalKPI.kpi_category)
@@ -539,7 +538,7 @@ class KPIEngine:
                     "region_a": {"region": region_a, "average_value": round(float(a_avg), 2)},
                     "region_b": {"region": region_b, "average_value": round(float(b_avg), 2)},
                     "difference": round(float(a_avg - b_avg), 2),
-                }
+                },
             )
 
         return {

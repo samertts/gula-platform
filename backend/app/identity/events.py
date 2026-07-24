@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 
 class IdentityEventBus:
@@ -11,7 +11,7 @@ class IdentityEventBus:
             self._handlers[event_type] = []
         self._handlers[event_type].append(handler)
 
-    def publish(self, event_type: str, payload: Optional[dict[str, Any]] = None) -> None:
+    def publish(self, event_type: str, payload: dict[str, Any] | None = None) -> None:
         handlers = self._handlers.get(event_type, [])
         for handler in handlers:
             handler(payload or {})

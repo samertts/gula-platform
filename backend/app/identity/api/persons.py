@@ -1,5 +1,4 @@
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,15 +13,15 @@ router = APIRouter(prefix="/persons", tags=["NIAM Persons"])
 async def create_person(
     given_name: str,
     family_name: str,
-    middle_name: Optional[str] = None,
-    full_name_ar: Optional[str] = None,
-    gender: Optional[str] = None,
-    birth_date: Optional[date] = None,
+    middle_name: str | None = None,
+    full_name_ar: str | None = None,
+    gender: str | None = None,
+    birth_date: date | None = None,
     nationality: str = "IRQ",
-    email: Optional[str] = None,
-    phone: Optional[str] = None,
-    national_id_hash: Optional[str] = None,
-    health_id: Optional[str] = None,
+    email: str | None = None,
+    phone: str | None = None,
+    national_id_hash: str | None = None,
+    health_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = PersonService(db)

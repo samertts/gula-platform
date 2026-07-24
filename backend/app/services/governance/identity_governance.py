@@ -149,7 +149,7 @@ class IdentityGovernanceService:
                 document_number=national_id,
                 issuing_authority="Iraq Ministry of Interior",
                 issuing_country="IQ",
-            )
+            ),
         )
         record.add_history_entry({
             "action": "citizen_registered",
@@ -185,7 +185,7 @@ class IdentityGovernanceService:
                     document_type=IdentityDocumentType.BIRTH_CERTIFICATE,
                     document_number=birth_certificate_number,
                     issuing_authority="Iraq Ministry of Health",
-                )
+                ),
             )
         record.add_history_entry({
             "action": "newborn_registered",
@@ -221,7 +221,7 @@ class IdentityGovernanceService:
                 document_number=passport_number,
                 issuing_authority=country_of_origin,
                 issuing_country=country_of_origin,
-            )
+            ),
         )
         if visa_number:
             record.add_document(
@@ -229,7 +229,7 @@ class IdentityGovernanceService:
                     document_type=IdentityDocumentType.VISA,
                     document_number=visa_number,
                     issuing_authority="Iraq Ministry of Interior",
-                )
+                ),
             )
         record.add_history_entry({
             "action": "foreigner_registered",
@@ -264,7 +264,7 @@ class IdentityGovernanceService:
                 document_type=IdentityDocumentType.RESIDENCY,
                 document_number=residency_number,
                 issuing_authority="Iraq Ministry of Interior",
-            )
+            ),
         )
         record.add_history_entry({
             "action": "resident_registered",
@@ -298,14 +298,14 @@ class IdentityGovernanceService:
                 document_number=passport_number,
                 issuing_authority=country_of_origin,
                 issuing_country=country_of_origin,
-            )
+            ),
         )
         record.add_document(
             IdentityDocument(
                 document_type=IdentityDocumentType.VISA,
                 document_number=visa_number,
                 issuing_authority="Iraq Ministry of Interior",
-            )
+            ),
         )
         record.add_history_entry({
             "action": "visitor_registered",
@@ -345,7 +345,7 @@ class IdentityGovernanceService:
         return record
 
     def link_birth_certificate(
-        self, health_number: str, birth_certificate_number: str
+        self, health_number: str, birth_certificate_number: str,
     ) -> IdentityRecord:
         record = self._get_by_health_number(health_number)
         record.add_document(
@@ -354,7 +354,7 @@ class IdentityGovernanceService:
                 document_number=birth_certificate_number,
                 issuing_authority="Iraq Ministry of Health",
                 verification_status=DocumentVerificationStatus.PENDING,
-            )
+            ),
         )
         record.add_history_entry({
             "action": "birth_certificate_linked",
@@ -363,7 +363,7 @@ class IdentityGovernanceService:
         return record
 
     def link_passport(
-        self, health_number: str, passport_number: str, issuing_country: str = "IQ"
+        self, health_number: str, passport_number: str, issuing_country: str = "IQ",
     ) -> IdentityRecord:
         record = self._get_by_health_number(health_number)
         record.add_document(
@@ -371,7 +371,7 @@ class IdentityGovernanceService:
                 document_type=IdentityDocumentType.PASSPORT,
                 document_number=passport_number,
                 issuing_country=issuing_country,
-            )
+            ),
         )
         record.add_history_entry({
             "action": "passport_linked",
@@ -380,7 +380,7 @@ class IdentityGovernanceService:
         return record
 
     def link_visa(
-        self, health_number: str, visa_number: str
+        self, health_number: str, visa_number: str,
     ) -> IdentityRecord:
         record = self._get_by_health_number(health_number)
         record.add_document(
@@ -388,7 +388,7 @@ class IdentityGovernanceService:
                 document_type=IdentityDocumentType.VISA,
                 document_number=visa_number,
                 issuing_authority="Iraq Ministry of Interior",
-            )
+            ),
         )
         record.add_history_entry({
             "action": "visa_linked",
@@ -452,7 +452,7 @@ class IdentityGovernanceService:
         if not nid or not self._nid_hmac_key:
             return hashlib.sha256(nid.encode()).hexdigest()
         return hmac.new(
-            self._nid_hmac_key.encode(), nid.encode(), hashlib.sha256
+            self._nid_hmac_key.encode(), nid.encode(), hashlib.sha256,
         ).hexdigest()
 
     def _generate_health_number(self, seed: str) -> str:

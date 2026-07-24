@@ -129,7 +129,7 @@ class NotificationPlatformService:
         rendered_subject, rendered_body = subject, body
         if template_id:
             rendered_subject, rendered_body = await self.render_template(
-                template_id, channel, template_data or {}
+                template_id, channel, template_data or {},
             )
 
         notification_id = _ulid()
@@ -188,7 +188,7 @@ class NotificationPlatformService:
                 TaskPayload(
                     type="national_notification_deliver",
                     payload={"notification_id": n_id, "batch_id": batch.id},
-                )
+                ),
             )
 
         return batch
@@ -334,7 +334,7 @@ class NotificationPlatformService:
                 type="national_notification_deliver",
                 payload={"notification_id": notification_id, "scheduled": True},
                 timeout_s=int(delay_s) + 60,
-            )
+            ),
         )
 
         return schedule

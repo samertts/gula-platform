@@ -66,8 +66,7 @@ class IdempotencyResult:
     _endpoint: str
 
     def cache(self, status_code: int, body: Any) -> None:
-        """
-        Cache the response for this key so replay requests return the same answer.
+        """Cache the response for this key so replay requests return the same answer.
         Call this AFTER the business operation succeeds.
         """
         if self.is_duplicate:
@@ -96,8 +95,7 @@ def idempotency_check(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> IdempotencyResult:
-    """
-    FastAPI dependency.  Use on any POST endpoint that creates or mutates data.
+    """FastAPI dependency.  Use on any POST endpoint that creates or mutates data.
 
     If no Idempotency-Key header is present, the check passes through
     (not all clients send one; we do not require it).
@@ -172,8 +170,7 @@ def idempotency_check(
 
 
 def purge_expired_keys(db: Session) -> int:
-    """
-    Delete idempotency keys older than _KEY_TTL_HOURS.
+    """Delete idempotency keys older than _KEY_TTL_HOURS.
     Call from a maintenance CRON or startup task.
     """
     from datetime import datetime, timedelta

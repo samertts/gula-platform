@@ -1,5 +1,4 @@
-"""
-Google AI Studio gateway — GULA Platform
+"""Google AI Studio gateway — GULA Platform
 Official SDK: https://aistudio.google.com/apikey
 
 Priority: SDK (google-generativeai) → raw HTTP fallback.
@@ -48,7 +47,7 @@ if _API_KEY:
     except ImportError:
         logger.info(
             "[GoogleAI] google-generativeai not installed; raw HTTP fallback active. "
-            "Install: pip install 'google-generativeai>=0.8.0'"
+            "Install: pip install 'google-generativeai>=0.8.0'",
         )
 
 # ── System instructions ───────────────────────────────────────────────────────
@@ -89,8 +88,7 @@ def sdk_available() -> bool:
 
 
 async def generate_clinical(prompt: str) -> str:
-    """
-    Generate a plain-Arabic lab-result explanation.
+    """Generate a plain-Arabic lab-result explanation.
 
     Uses the SDK when available (proper system_instruction + safety settings),
     otherwise falls back to raw HTTPS.
@@ -141,8 +139,7 @@ async def _http_clinical(prompt: str) -> str:
 
 
 async def generate_chat(message: str, context: str | None = None) -> str:
-    """
-    Generate an assistant chat reply for lab staff.
+    """Generate an assistant chat reply for lab staff.
 
     Uses the SDK when available (system_instruction kept separate from user message),
     otherwise falls back to raw HTTPS with an inline system prefix.

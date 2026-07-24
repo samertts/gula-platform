@@ -13,7 +13,7 @@ class RESTSpec:
     version: str = "v1"
     tags: list[str] = field(default_factory=list)
     operations: list[str] = field(
-        default_factory=lambda: ["list", "get", "create", "update", "delete"]
+        default_factory=lambda: ["list", "get", "create", "update", "delete"],
     )
     auth: bool = True
     pagination: bool = True

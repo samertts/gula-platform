@@ -782,7 +782,7 @@ def _exception_handler(request: Request, exc: Exception) -> JSONResponse:
         )
     if IS_PRODUCTION:
         logger.error(
-            "[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path
+            "[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path,
         )
         return JSONResponse(
             status_code=500,
@@ -810,6 +810,7 @@ def create_app(override_mode: str | None = None) -> FastAPI:
     Args:
         override_mode: Optional override for RUNTIME_MODE. If None, uses the
                       configured RUNTIME_MODE from config.py.
+
     """
     if override_mode:
         os.environ["RUNTIME_MODE"] = override_mode

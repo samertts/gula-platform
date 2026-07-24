@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -12,10 +11,10 @@ class RoleDef:
     description: str
     level: int
     scope: str
-    parent_role_id: Optional[str] = None
+    parent_role_id: str | None = None
     requires_mfa: bool = False
     is_delegatable: bool = True
-    default_permissions: List[str] = field(default_factory=list)
+    default_permissions: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -46,7 +45,7 @@ class PermissionDef:
     requires_mfa: bool = False
     requires_justification: bool = False
     is_audited: bool = True
-    default_roles: List[str] = field(default_factory=list)
+    default_roles: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -72,9 +71,9 @@ class OrganizationDef:
     name_en: str
     name_ar: str
     org_type: str
-    parent_org_id: Optional[str] = None
-    governorate_id: Optional[str] = None
-    directorate_id: Optional[str] = None
+    parent_org_id: str | None = None
+    governorate_id: str | None = None
+    directorate_id: str | None = None
     is_active: bool = True
 
     def to_dict(self) -> dict:

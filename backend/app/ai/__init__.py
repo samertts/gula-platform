@@ -1,5 +1,4 @@
-"""
-GULA AI Platform
+"""GULA AI Platform
 ================
 Enterprise AI platform for healthcare laboratory operations.
 

@@ -29,7 +29,7 @@ class PaymentCreate(BaseModel):
     payment_method: str | None = None
     payment_date: date | None = None
     reference_number: str | None = None
-    adjustment_amount: Decimal | None = Decimal("0")
+    adjustment_amount: Decimal | None = Decimal(0)
     adjustment_reason: str | None = None
     notes: str | None = None
 
@@ -321,8 +321,8 @@ def create_settlement(
     ).all()
 
     total_billed = sum(c.total_billed for c in claims)
-    total_paid = sum(c.total_paid or Decimal("0") for c in claims)
-    total_allowed = sum(c.total_allowed or Decimal("0") for c in claims)
+    total_paid = sum(c.total_paid or Decimal(0) for c in claims)
+    total_allowed = sum(c.total_allowed or Decimal(0) for c in claims)
 
     settlement = Settlement(
         lab_id=current_user.lab_id,
@@ -375,10 +375,10 @@ def calculate_settlement(
 
     settlement.total_claims = len(claims)
     settlement.total_billed = sum(c.total_billed for c in claims)
-    settlement.total_allowed = sum(c.total_allowed or Decimal("0") for c in claims)
-    settlement.total_paid = sum(c.total_paid or Decimal("0") for c in claims)
-    settlement.total_deductible = sum(c.total_deductible or Decimal("0") for c in claims)
-    settlement.total_copay = sum(c.total_copay or Decimal("0") for c in claims)
+    settlement.total_allowed = sum(c.total_allowed or Decimal(0) for c in claims)
+    settlement.total_paid = sum(c.total_paid or Decimal(0) for c in claims)
+    settlement.total_deductible = sum(c.total_deductible or Decimal(0) for c in claims)
+    settlement.total_copay = sum(c.total_copay or Decimal(0) for c in claims)
     settlement.net_amount = settlement.total_paid
 
     log_action(
@@ -717,8 +717,8 @@ def profit_loss_report(
     claims = q.all()
 
     total_billed = sum(c.total_billed for c in claims)
-    total_paid = sum(c.total_paid or Decimal("0") for c in claims)
-    total_allowed = sum(c.total_allowed or Decimal("0") for c in claims)
+    total_paid = sum(c.total_paid or Decimal(0) for c in claims)
+    total_allowed = sum(c.total_allowed or Decimal(0) for c in claims)
     total_adjustments = total_billed - total_allowed
 
     return {
@@ -758,7 +758,7 @@ def trial_balance(
     ).all()
 
     total_payments = sum(p.amount for p in payments)
-    total_adjustments = sum(p.adjustment_amount or Decimal("0") for p in payments)
+    total_adjustments = sum(p.adjustment_amount or Decimal(0) for p in payments)
     total_net_payments = total_payments - total_adjustments
 
     return {
@@ -771,7 +771,7 @@ def trial_balance(
         },
         "settlements": {
             "total_settlements": len(settlements),
-            "total_settlement_amount": float(sum(s.net_amount or Decimal("0") for s in settlements)),
+            "total_settlement_amount": float(sum(s.net_amount or Decimal(0) for s in settlements)),
         },
         "balance": float(total_net_payments),
     }

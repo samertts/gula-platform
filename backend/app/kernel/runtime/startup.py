@@ -63,6 +63,6 @@ class StartupManager:
                     "completed": task.completed,
                     "error": task.error,
                     "duration_ms": task.duration_ms,
-                }
+                },
             )
         return results

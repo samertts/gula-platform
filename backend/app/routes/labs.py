@@ -110,7 +110,7 @@ def list_my_employees(
                 "created_at": u.created_at.isoformat() if u.created_at else None,
             }
             for u in employees
-        ]
+        ],
     }
 
 

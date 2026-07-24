@@ -59,7 +59,7 @@ class TestResultCreate(BaseModel):
     sample_type: str | None = Field("blood", max_length=50)
     doctor_name: str | None = Field(None, max_length=200)
     order_id: int | None = Field(
-        None, description="Attach to an existing order; otherwise a new one is created."
+        None, description="Attach to an existing order; otherwise a new one is created.",
     )
 
     @field_validator("test_name", "doctor_name")
@@ -103,7 +103,7 @@ def _result_dict(r: LabResult, patient: Patient | None = None) -> dict:
     interpretation = None
     if r.value is not None:
         interpretation = interpret_result(
-            r.test_name, r.value, r.normal_range_low, r.normal_range_high
+            r.test_name, r.value, r.normal_range_low, r.normal_range_high,
         )
     flag = r.flag or "unknown"
     is_critical = flag == "critical"
@@ -170,7 +170,7 @@ def _validate_payload(
                 "message": f"Unit '{unit}' does not match expected '{tt.unit}' for {test_name}.",
                 "expected": tt.unit,
                 "provided": unit,
-            }
+            },
         )
 
     # Reference range inversion
@@ -179,7 +179,7 @@ def _validate_payload(
             {
                 "code": "range_inverted",
                 "message": "normal_range_low is greater than normal_range_high.",
-            }
+            },
         )
 
     # Value sanity
@@ -189,7 +189,7 @@ def _validate_payload(
                 {
                     "code": "negative_value",
                     "message": "Numeric lab value should not be negative.",
-                }
+                },
             )
         # If we know the canonical range, flag extreme outliers (10× high / 0.1× low)
         ref_low = normal_low if normal_low is not None else (tt.normal_range_low if tt else None)
@@ -201,14 +201,14 @@ def _validate_payload(
                 {
                     "code": "implausibly_high",
                     "message": f"Value {value} is more than 10× the upper reference limit ({ref_high}).",
-                }
+                },
             )
         if ref_low is not None and ref_low > 0 and value < ref_low * 0.1:
             warnings.append(
                 {
                     "code": "implausibly_low",
                     "message": f"Value {value} is less than 10% of the lower reference limit ({ref_low}).",
-                }
+                },
             )
         # Critical value hint (informational — the client may want to confirm)
         crit = check_critical(test_name, value)
@@ -218,7 +218,7 @@ def _validate_payload(
                     "code": "critical_range",
                     "message": crit["message"],
                     "severity": crit["severity"],
-                }
+                },
             )
 
     # Missing numeric value AND missing text — nothing to store
@@ -227,7 +227,7 @@ def _validate_payload(
             {
                 "code": "unknown_test",
                 "message": f"Test '{test_name}' is not in the reference catalog.",
-            }
+            },
         )
 
     return warnings
@@ -621,7 +621,7 @@ def list_citizen_results(
                 date_from,
                 datetime.min.time(),
                 tzinfo=UTC,
-            )
+            ),
         )
     if date_to:
         q = q.filter(
@@ -630,7 +630,7 @@ def list_citizen_results(
                 date_to,
                 datetime.max.time(),
                 tzinfo=UTC,
-            )
+            ),
         )
     if is_abnormal is True:
         q = q.filter(LabResult.flag.in_(("critical", "H", "L")))
@@ -718,7 +718,7 @@ def citizen_timeline(
                 "date": r.created_at.isoformat() if r.created_at else None,
                 "value": r.value,
                 "flag": r.flag,
-            }
+            },
         )
 
     return {

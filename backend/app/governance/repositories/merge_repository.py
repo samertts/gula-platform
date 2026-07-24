@@ -36,7 +36,7 @@ class MergedIdentityRecordRepository(GovernanceRepository[MergedIdentityRecord])
             self._db.query(MergedIdentityRecord)
             .filter(
                 (MergedIdentityRecord.primary_health_number == health_number)
-                | (MergedIdentityRecord.secondary_health_number == health_number)
+                | (MergedIdentityRecord.secondary_health_number == health_number),
             )
             .order_by(MergedIdentityRecord.occurred_at.desc())
             .all()

@@ -171,7 +171,7 @@ class OutbreakDetectionEngine:
                 if i != j:
                     dist = math.sqrt(
                         (coordinates[i][0] - coordinates[j][0]) ** 2 +
-                        (coordinates[i][1] - coordinates[j][1]) ** 2
+                        (coordinates[i][1] - coordinates[j][1]) ** 2,
                     )
                     if dist < 0.05:
                         cluster_members.append(j)

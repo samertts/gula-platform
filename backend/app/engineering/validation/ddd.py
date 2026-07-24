@@ -46,7 +46,7 @@ class DDDValidator:
                             line=node.lineno,
                             principle="UL",
                             message=f"Class '{name}' uses anemic naming — prefer domain language over '{'/'.join(word for word in ['Manager', 'Util', 'Helper'] if word in name)}'",
-                        )
+                        ),
                     )
 
     def _check_value_objects(self, file: Path, tree: ast.AST) -> None:
@@ -69,7 +69,7 @@ class DDDValidator:
                                 principle="VO",
                                 message=f"Value Object '{node.name}' should implement __hash__ for immutability",
                                 severity="info",
-                            )
+                            ),
                         )
 
     def _check_aggregate_boundaries(self, file: Path, tree: ast.AST) -> None:
@@ -87,7 +87,7 @@ class DDDValidator:
                                 principle="AGG",
                                 message=f"Aggregate '{node.name}' should have apply_* methods for event application",
                                 severity="info",
-                            )
+                            ),
                         )
 
     def _check_repository_abstraction(self, file: Path, tree: ast.AST) -> None:
@@ -110,7 +110,7 @@ class DDDValidator:
                                 line=node.lineno,
                                 principle="REPO",
                                 message=f"Repository '{node.name}' should implement a domain interface",
-                            )
+                            ),
                         )
 
     def _check_domain_events(self, file: Path, tree: ast.AST) -> None:
@@ -131,5 +131,5 @@ class DDDValidator:
                                 principle="EVT",
                                 message=f"Domain event '{node.name}' should include a timestamp",
                                 severity="info",
-                            )
+                            ),
                         )

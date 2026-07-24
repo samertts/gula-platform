@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.authorization import Role, RolePermission
 
-from .models import RoleDef, ALL_BOOTSTRAP_ROLES
+from .models import RoleDef
 from .permissions import define_permissions
 
 logger = logging.getLogger("gula.bootstrap.roles")
 
 
-def define_enterprise_roles() -> List[RoleDef]:
+def define_enterprise_roles() -> list[RoleDef]:
     return [
         RoleDef(
             role_id="master_admin",
@@ -227,7 +226,7 @@ def link_role_permissions(db: Session) -> None:
     linked = 0
     for pdef in perms:
         perm_row = db.query(PermissionModel).filter(
-            PermissionModel.permission_id == pdef.permission_id
+            PermissionModel.permission_id == pdef.permission_id,
         ).first()
         if not perm_row:
             continue

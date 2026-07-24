@@ -333,6 +333,6 @@ class CitizenRegistryConnectorService:
         return adapter.verify(identity)
 
     def register_adapter(
-        self, connector_type: ConnectorType, adapter: ConnectorAdapter
+        self, connector_type: ConnectorType, adapter: ConnectorAdapter,
     ) -> None:
         self._adapters[connector_type] = adapter

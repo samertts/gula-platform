@@ -228,7 +228,7 @@ class ClinicalRecommendationEngine:
                     description="Continue routine health maintenance and age-appropriate screenings",
                     evidence_level="A",
                     priority=1,
-                )
+                ),
             )
         return self.rank_recommendations(recommendations)
 
@@ -241,7 +241,7 @@ class ClinicalRecommendationEngine:
                     "title": f"Standard care for {condition}",
                     "evidence_level": "C",
                     "source": "Clinical practice guidelines",
-                }
+                },
             ],
         )
 
@@ -298,7 +298,7 @@ class DrugInteractionEngine:
                             mechanism=data.get("mechanism", ""),
                             recommendation=data.get("recommendation", ""),
                             alternatives=self.suggest_alternatives(med_a, data),
-                        )
+                        ),
                     )
         return interactions
 
@@ -339,7 +339,7 @@ class DuplicateTherapyDetector:
                 active_medications=[m["name"] for m in same_class_meds],
                 severity=_SEVERITY_MODERATE if len(same_class_meds) > 1 else _SEVERITY_MILD,
                 consolidation_suggestion=self.suggest_consolidation(
-                    {"medication": medication, "therapeutic_class": target_class, "existing": [m["name"] for m in same_class_meds]}
+                    {"medication": medication, "therapeutic_class": target_class, "existing": [m["name"] for m in same_class_meds]},
                 ),
             )
             duplicates.append(dup)

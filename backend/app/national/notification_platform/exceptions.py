@@ -31,7 +31,7 @@ class DeliveryFailedError(NotificationPlatformError):
         self.recipient = recipient
         self.reason = reason
         super().__init__(
-            f"Delivery failed for {notification_id} via {channel} to {recipient}: {reason}"
+            f"Delivery failed for {notification_id} via {channel} to {recipient}: {reason}",
         )
 
 

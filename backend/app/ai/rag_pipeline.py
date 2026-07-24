@@ -150,7 +150,7 @@ class RAGPipeline:
         return [doc for _, doc in scored[:top_k]]
 
     def _extract_citations(
-        self, response: str, documents: list[VectorSearchResult]
+        self, response: str, documents: list[VectorSearchResult],
     ) -> list[dict[str, Any]]:
         citations = []
         for doc in documents:
@@ -167,7 +167,7 @@ class RAGPipeline:
         return citations
 
     def _detect_hallucination(
-        self, response: str, documents: list[VectorSearchResult]
+        self, response: str, documents: list[VectorSearchResult],
     ) -> float:
         score = 0.0
         response_lower = response.lower()

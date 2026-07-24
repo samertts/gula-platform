@@ -1,5 +1,4 @@
-"""
-AI Approval Workflow — GULA Platform
+"""AI Approval Workflow — GULA Platform
 =====================================
 Human-in-the-loop gate between AI suggestions and system execution.
 
@@ -62,8 +61,7 @@ class PendingApproval:
 
 
 class ApprovalStore:
-    """
-    In-memory store for pending AI approvals.
+    """In-memory store for pending AI approvals.
 
     In production, persist to the database via AuditLog or a dedicated table
     so approvals survive restarts and are fully auditable.
@@ -73,8 +71,7 @@ class ApprovalStore:
         self._store: dict[str, PendingApproval] = {}
 
     def submit(self, suggestion: AISuggestion) -> PendingApproval:
-        """
-        Submit an AI suggestion for human review.
+        """Submit an AI suggestion for human review.
         DISPLAY_ONLY operations are auto-approved (they don't change state).
         """
         if suggestion.operation_type == AIOperationType.DISPLAY_ONLY:
@@ -118,7 +115,7 @@ class ApprovalStore:
 
         if approval.status != ApprovalStatus.PENDING:
             raise ValueError(
-                f"Approval {approval_id} is not pending (status={approval.status.value})"
+                f"Approval {approval_id} is not pending (status={approval.status.value})",
             )
 
         approval.status = ApprovalStatus.APPROVED
@@ -138,7 +135,7 @@ class ApprovalStore:
 
         if approval.status != ApprovalStatus.PENDING:
             raise ValueError(
-                f"Approval {approval_id} is not pending (status={approval.status.value})"
+                f"Approval {approval_id} is not pending (status={approval.status.value})",
             )
 
         approval.status = ApprovalStatus.REJECTED

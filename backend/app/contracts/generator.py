@@ -80,7 +80,7 @@ class ContractGenerator:
                     "description": "Local development",
                 },
             ],
-            "paths": paths if paths else self._default_paths(),
+            "paths": paths or self._default_paths(),
             "components": {
                 "securitySchemes": {
                     "bearerAuth": {
@@ -112,7 +112,7 @@ class ContractGenerator:
                 name = evt.get("name", "UnknownEvent")
                 topic_name = name[0].lower() + name[1:]
                 topic_name = "".join(
-                    [f"-{c.lower()}" if c.isupper() else c for c in topic_name]
+                    [f"-{c.lower()}" if c.isupper() else c for c in topic_name],
                 ).lstrip("-")
                 channels[f"gula.{topic_name}"] = {
                     "description": evt.get("description", ""),
@@ -121,7 +121,7 @@ class ContractGenerator:
                             "name": name,
                             "contentType": "application/json",
                             "payload": evt.get("payload", {"type": "object"}),
-                        }
+                        },
                     },
                 }
             return {
@@ -426,14 +426,14 @@ class ContractGenerator:
                     "summary": "Liveness probe",
                     "tags": ["system"],
                     "responses": {"200": {"description": "Process is alive"}},
-                }
+                },
             },
             "/health/ready": {
                 "get": {
                     "summary": "Readiness probe",
                     "tags": ["system"],
                     "responses": {"200": {"description": "System is ready"}},
-                }
+                },
             },
             "/login": {
                 "post": {
@@ -449,15 +449,15 @@ class ContractGenerator:
                                         "password": {"type": "string"},
                                     },
                                     "required": ["email", "password"],
-                                }
-                            }
-                        }
+                                },
+                            },
+                        },
                     },
                     "responses": {
                         "200": {"description": "Login successful"},
                         "401": {"description": "Invalid credentials"},
                     },
-                }
+                },
             },
         }
 

@@ -80,7 +80,8 @@ class PaymentResult:
 class ClaimAdjudicator:
     """Adjudicates insurance claims against policy terms, fee schedules,
     benefit limits, deductibles, copays, coinsurance, and pre-existing
-    condition rules."""
+    condition rules.
+    """
 
     def __init__(self, db_session: Session) -> None:
         self._db = db_session
@@ -100,29 +101,29 @@ class ClaimAdjudicator:
             return AdjudicationResult(
                 claim_id=claim_id,
                 status="denied",
-                total_billed=claim.total_billed or Decimal("0"),
-                total_allowed=Decimal("0"),
-                total_deductible=Decimal("0"),
-                total_copay=Decimal("0"),
-                total_coinsurance=Decimal("0"),
-                total_net_payment=Decimal("0"),
-                total_patient_responsibility=Decimal("0"),
+                total_billed=claim.total_billed or Decimal(0),
+                total_allowed=Decimal(0),
+                total_deductible=Decimal(0),
+                total_copay=Decimal(0),
+                total_coinsurance=Decimal(0),
+                total_net_payment=Decimal(0),
+                total_patient_responsibility=Decimal(0),
                 adjudication_notes=notes,
                 line_items=[],
             )
 
         coverage = self._get_coverage_for_claim(claim)
         line_items = []
-        total_billed = Decimal("0")
-        total_allowed = Decimal("0")
-        total_deductible = Decimal("0")
-        total_copay = Decimal("0")
-        total_coinsurance = Decimal("0")
-        total_patient_resp = Decimal("0")
+        total_billed = Decimal(0)
+        total_allowed = Decimal(0)
+        total_deductible = Decimal(0)
+        total_copay = Decimal(0)
+        total_coinsurance = Decimal(0)
+        total_patient_resp = Decimal(0)
         all_notes: list[str] = []
 
         for item in (claim.items or []):
-            billed = item.billed_amount or Decimal("0")
+            billed = item.billed_amount or Decimal(0)
             total_billed += billed
 
             allowed_info = self.calculate_allowed_amounts(item)
@@ -156,7 +157,7 @@ class ClaimAdjudicator:
 
             pre_existing = self.check_pre_existing(item, coverage)
             if not pre_existing.get("covered", True):
-                net_payment = Decimal("0")
+                net_payment = Decimal(0)
                 patient_resp = billed
                 all_notes.append(pre_existing.get("reason", "Pre-existing condition exclusion"))
 
@@ -175,8 +176,7 @@ class ClaimAdjudicator:
             })
 
         net_payment_total = total_allowed - total_deductible - total_copay - total_coinsurance
-        if net_payment_total < Decimal("0"):
-            net_payment_total = Decimal("0")
+        net_payment_total = max(net_payment_total, Decimal(0))
 
         claim.total_allowed = total_allowed
         claim.total_deductible = total_deductible
@@ -226,7 +226,7 @@ class ClaimAdjudicator:
             return {"eligible": False, "reason": f"Coverage status is {coverage.status}"}
 
         policy = self._db.query(InsurancePolicy).filter(
-            InsurancePolicy.id == coverage.policy_id
+            InsurancePolicy.id == coverage.policy_id,
         ).first()
         if not policy or policy.status != "active":
             return {"eligible": False, "reason": "Policy not active"}
@@ -252,7 +252,7 @@ class ClaimAdjudicator:
         elif fee:
             allowed = fee.negotiated_price * (item.quantity or 1)
         else:
-            allowed = item.billed_amount or Decimal("0")
+            allowed = item.billed_amount or Decimal(0)
 
         return {
             "allowed_amount": allowed,
@@ -261,9 +261,9 @@ class ClaimAdjudicator:
         }
 
     def apply_deductible(self, item: InsuranceClaimItem, coverage: Coverage, allowed_amount: Decimal) -> dict[str, Any]:
-        deduct_remaining = coverage.deductible_remaining or Decimal("0")
-        if deduct_remaining <= Decimal("0"):
-            return {"deductible_amount": Decimal("0"), "deductible_remaining": deduct_remaining}
+        deduct_remaining = coverage.deductible_remaining or Decimal(0)
+        if deduct_remaining <= Decimal(0):
+            return {"deductible_amount": Decimal(0), "deductible_remaining": deduct_remaining}
 
         deductible = min(allowed_amount, deduct_remaining)
         new_remaining = deduct_remaining - deductible
@@ -287,9 +287,9 @@ class ClaimAdjudicator:
                 copay = min(fee_item.copay_amount, amount_after_deductible)
                 return {"copay_amount": copay, "copay_percentage": 0.0, "copay_fixed": float(copay)}
 
-            return {"copay_amount": Decimal("0"), "copay_percentage": 0.0}
+            return {"copay_amount": Decimal(0), "copay_percentage": 0.0}
 
-        copay = (amount_after_deductible * Decimal(str(copay_pct))) / Decimal("100")
+        copay = (amount_after_deductible * Decimal(str(copay_pct))) / Decimal(100)
         copay = min(copay, amount_after_deductible)
 
         return {"copay_amount": copay, "copay_percentage": copay_pct, "copay_fixed": None}
@@ -302,19 +302,19 @@ class ClaimAdjudicator:
 
         coinsurance_pct = fee_item.coinsurance_percentage if fee_item and fee_item.coinsurance_percentage else 0.0
         if coinsurance_pct <= 0:
-            return {"coinsurance_amount": Decimal("0"), "coinsurance_percentage": 0.0}
+            return {"coinsurance_amount": Decimal(0), "coinsurance_percentage": 0.0}
 
-        coinsurance = (amount_after_copay * Decimal(str(coinsurance_pct))) / Decimal("100")
+        coinsurance = (amount_after_copay * Decimal(str(coinsurance_pct))) / Decimal(100)
         coinsurance = min(coinsurance, amount_after_copay)
 
         return {"coinsurance_amount": coinsurance, "coinsurance_percentage": coinsurance_pct}
 
     def check_benefit_limits(self, item: InsuranceClaimItem, coverage: Coverage, net_payment: Decimal) -> dict[str, Any]:
-        benefit_remaining = coverage.benefit_remaining or Decimal("0")
-        if benefit_remaining <= Decimal("0") and coverage.benefit_total and coverage.benefit_total > 0:
-            return {"limited": True, "adjusted_amount": Decimal("0"), "status": "denied", "note": "Benefit limit exhausted"}
+        benefit_remaining = coverage.benefit_remaining or Decimal(0)
+        if benefit_remaining <= Decimal(0) and coverage.benefit_total and coverage.benefit_total > 0:
+            return {"limited": True, "adjusted_amount": Decimal(0), "status": "denied", "note": "Benefit limit exhausted"}
 
-        if benefit_remaining > Decimal("0") and net_payment > benefit_remaining:
+        if benefit_remaining > Decimal(0) and net_payment > benefit_remaining:
             return {
                 "limited": True,
                 "adjusted_amount": benefit_remaining,
@@ -327,7 +327,7 @@ class ClaimAdjudicator:
     def check_pre_existing(self, item: InsuranceClaimItem, coverage: Coverage) -> dict[str, Any]:
         if coverage.pre_existing_wait_period:
             policy = self._db.query(InsurancePolicy).filter(
-                InsurancePolicy.id == coverage.policy_id
+                InsurancePolicy.id == coverage.policy_id,
             ).first()
             if policy and policy.start_date:
                 days_since_start = (date.today() - policy.start_date).days
@@ -340,14 +340,14 @@ class ClaimAdjudicator:
         return {"covered": True, "reason": None}
 
     def calculate_net_payment(self, claim: InsuranceClaim) -> Decimal:
-        total = Decimal("0")
+        total = Decimal(0)
         for item in (claim.items or []):
-            allowed = item.allowed_amount or item.billed_amount or Decimal("0")
-            deductible = item.deductible_amount or Decimal("0")
-            copay = item.copay_amount or Decimal("0")
-            patient_resp = item.patient_responsibility or Decimal("0")
+            allowed = item.allowed_amount or item.billed_amount or Decimal(0)
+            deductible = item.deductible_amount or Decimal(0)
+            copay = item.copay_amount or Decimal(0)
+            patient_resp = item.patient_responsibility or Decimal(0)
             net = allowed - deductible - copay - patient_resp
-            if net > Decimal("0"):
+            if net > Decimal(0):
                 total += net
         return total
 
@@ -372,7 +372,7 @@ class ClaimAdjudicator:
 
     def _get_coverage_for_claim(self, claim: InsuranceClaim) -> Coverage | None:
         return self._db.query(Coverage).filter(
-            Coverage.id == claim.coverage_id
+            Coverage.id == claim.coverage_id,
         ).first()
 
 
@@ -384,7 +384,8 @@ class ClaimAdjudicator:
 class PaymentProcessor:
     """Processes insurance payments, including individual and batch
     processing, reversals, reconciliation, EFT/check file generation,
-    and tax withholding."""
+    and tax withholding.
+    """
 
     def __init__(self, db_session: Session) -> None:
         self._db = db_session
@@ -393,7 +394,7 @@ class PaymentProcessor:
         self, claim_id: int, amount: Decimal, method: str,
     ) -> InsurancePayment:
         claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == claim_id
+            InsuranceClaim.id == claim_id,
         ).first()
         if not claim:
             raise ValueError(f"Claim {claim_id} not found")
@@ -416,10 +417,10 @@ class PaymentProcessor:
         self._db.add(payment)
         self._db.flush()
 
-        claim.total_paid = (claim.total_paid or Decimal("0")) + amount
+        claim.total_paid = (claim.total_paid or Decimal(0)) + amount
         claim.paid_date = now.date()
 
-        total_allowed = claim.total_allowed or Decimal("0")
+        total_allowed = claim.total_allowed or Decimal(0)
         if claim.total_paid >= total_allowed > 0:
             claim.status = ClaimStatus.PAID
         elif claim.total_paid and claim.total_paid > 0:
@@ -438,23 +439,23 @@ class PaymentProcessor:
         payments: list[InsurancePayment] = []
         for cid in claim_ids:
             claim = self._db.query(InsuranceClaim).filter(
-                InsuranceClaim.id == cid
+                InsuranceClaim.id == cid,
             ).first()
             if not claim:
                 logger.warning("[PAYMENT] Skipping missing claim %d in batch", cid)
                 continue
 
-            net = (claim.total_allowed or Decimal("0")
-                   - (claim.total_deductible or Decimal("0"))
-                   - (claim.total_copay or Decimal("0")))
-            if net > Decimal("0"):
+            net = (claim.total_allowed or Decimal(0)
+                   - (claim.total_deductible or Decimal(0))
+                   - (claim.total_copay or Decimal(0)))
+            if net > Decimal(0):
                 payment = self.process_payment(cid, net, "batch_eft")
                 payments.append(payment)
         return payments
 
     def reverse_payment(self, payment_id: int, reason: str) -> InsurancePayment:
         payment = self._db.query(InsurancePayment).filter(
-            InsurancePayment.id == payment_id
+            InsurancePayment.id == payment_id,
         ).first()
         if not payment:
             raise ValueError(f"Payment {payment_id} not found")
@@ -466,13 +467,13 @@ class PaymentProcessor:
         payment.adjustment_amount = payment.amount
 
         claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == payment.claim_id
+            InsuranceClaim.id == payment.claim_id,
         ).first()
         if claim:
-            claim.total_paid = (claim.total_paid or Decimal("0")) - payment.amount
-            if claim.total_paid <= Decimal("0"):
+            claim.total_paid = (claim.total_paid or Decimal(0)) - payment.amount
+            if claim.total_paid <= Decimal(0):
                 claim.status = ClaimStatus.ADJUDICATED
-                claim.total_paid = Decimal("0")
+                claim.total_paid = Decimal(0)
 
         self._db.commit()
         self._db.refresh(payment)
@@ -484,7 +485,7 @@ class PaymentProcessor:
 
     def reconcile_payment(self, payment_id: int, reference: str) -> dict[str, Any]:
         payment = self._db.query(InsurancePayment).filter(
-            InsurancePayment.id == payment_id
+            InsurancePayment.id == payment_id,
         ).first()
         if not payment:
             raise ValueError(f"Payment {payment_id} not found")
@@ -542,14 +543,14 @@ class PaymentProcessor:
     def calculate_withholding(self, payment: InsurancePayment, tax_rules: dict[str, Any]) -> Decimal:
         rate = Decimal(str(tax_rules.get("withholding_rate", 0)))
         if rate <= 0:
-            return Decimal("0")
+            return Decimal(0)
 
         exemption = Decimal(str(tax_rules.get("exemption_amount", 0)))
         taxable = payment.amount - exemption
         if taxable <= 0:
-            return Decimal("0")
+            return Decimal(0)
 
-        withholding = (taxable * rate) / Decimal("100")
+        withholding = (taxable * rate) / Decimal(100)
         return withholding.quantize(Decimal("0.01"))
 
 
@@ -584,7 +585,7 @@ class SettlementEngine:
 
     def calculate_settlement_amounts(self, settlement_id: int) -> dict[str, Any]:
         settlement = self._db.query(Settlement).filter(
-            Settlement.id == settlement_id
+            Settlement.id == settlement_id,
         ).first()
         if not settlement:
             raise ValueError(f"Settlement {settlement_id} not found")
@@ -604,11 +605,11 @@ class SettlementEngine:
         )
 
         total_claims = len(claims)
-        total_billed = sum(c.total_billed or Decimal("0") for c in claims)
-        total_allowed = sum(c.total_allowed or Decimal("0") for c in claims)
-        total_paid = sum(c.total_paid or Decimal("0") for c in claims)
-        total_deductible = sum(c.total_deductible or Decimal("0") for c in claims)
-        total_copay = sum(c.total_copay or Decimal("0") for c in claims)
+        total_billed = sum(c.total_billed or Decimal(0) for c in claims)
+        total_allowed = sum(c.total_allowed or Decimal(0) for c in claims)
+        total_paid = sum(c.total_paid or Decimal(0) for c in claims)
+        total_deductible = sum(c.total_deductible or Decimal(0) for c in claims)
+        total_copay = sum(c.total_copay or Decimal(0) for c in claims)
         net_amount = total_allowed - total_deductible - total_copay
 
         settlement.total_claims = total_claims
@@ -633,7 +634,7 @@ class SettlementEngine:
 
     def reconcile_settlement(self, settlement_id: int) -> dict[str, Any]:
         settlement = self._db.query(Settlement).filter(
-            Settlement.id == settlement_id
+            Settlement.id == settlement_id,
         ).first()
         if not settlement:
             raise ValueError(f"Settlement {settlement_id} not found")
@@ -674,7 +675,7 @@ class SettlementEngine:
 
     def close_settlement(self, settlement_id: int) -> Settlement:
         settlement = self._db.query(Settlement).filter(
-            Settlement.id == settlement_id
+            Settlement.id == settlement_id,
         ).first()
         if not settlement:
             raise ValueError(f"Settlement {settlement_id} not found")
@@ -687,7 +688,7 @@ class SettlementEngine:
 
     def generate_settlement_report(self, settlement_id: int) -> dict[str, Any]:
         settlement = self._db.query(Settlement).filter(
-            Settlement.id == settlement_id
+            Settlement.id == settlement_id,
         ).first()
         if not settlement:
             raise ValueError(f"Settlement {settlement_id} not found")
@@ -709,7 +710,7 @@ class SettlementEngine:
             status_breakdown[key] = status_breakdown.get(key, 0) + 1
 
         provider = self._db.query(InsuranceProvider).filter(
-            InsuranceProvider.id == settlement.provider_id
+            InsuranceProvider.id == settlement.provider_id,
         ).first()
 
         return {
@@ -732,11 +733,11 @@ class SettlementEngine:
     def age_analysis(self, provider_id: int) -> dict[str, Any]:
         today = date.today()
         buckets = {
-            "0-30": {"min": 0, "max": 30, "count": 0, "amount": Decimal("0")},
-            "31-60": {"min": 31, "max": 60, "count": 0, "amount": Decimal("0")},
-            "61-90": {"min": 61, "max": 90, "count": 0, "amount": Decimal("0")},
-            "91-180": {"min": 91, "max": 180, "count": 0, "amount": Decimal("0")},
-            "180+": {"min": 181, "max": None, "count": 0, "amount": Decimal("0")},
+            "0-30": {"min": 0, "max": 30, "count": 0, "amount": Decimal(0)},
+            "31-60": {"min": 31, "max": 60, "count": 0, "amount": Decimal(0)},
+            "61-90": {"min": 61, "max": 90, "count": 0, "amount": Decimal(0)},
+            "91-180": {"min": 91, "max": 180, "count": 0, "amount": Decimal(0)},
+            "180+": {"min": 181, "max": None, "count": 0, "amount": Decimal(0)},
         }
 
         claims = (
@@ -756,7 +757,7 @@ class SettlementEngine:
             if isinstance(ref, datetime):
                 ref = ref.date()
             age = (today - ref).days
-            amount = (c.total_allowed or c.total_billed or Decimal("0"))
+            amount = (c.total_allowed or c.total_billed or Decimal(0))
 
             for _bucket_name, bucket in buckets.items():
                 if bucket["min"] <= age and (bucket["max"] is None or age <= bucket["max"]):
@@ -777,9 +778,9 @@ class SettlementEngine:
 
     def calculate_interest(self, overdue_amount: Decimal, days: int) -> Decimal:
         if overdue_amount <= 0 or days <= 0:
-            return Decimal("0")
+            return Decimal(0)
         annual_rate = Decimal("0.08")
-        interest = overdue_amount * annual_rate * Decimal(str(days)) / Decimal("365")
+        interest = overdue_amount * annual_rate * Decimal(str(days)) / Decimal(365)
         return interest.quantize(Decimal("0.01"))
 
 
@@ -796,14 +797,14 @@ class InvoiceGenerator:
 
     def generate_invoice(self, claim_id: int) -> dict[str, Any]:
         claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == claim_id
+            InsuranceClaim.id == claim_id,
         ).first()
         if not claim:
             raise ValueError(f"Claim {claim_id} not found")
 
         invoice_number = f"INV-{claim.claim_number}-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
-        tax = self.calculate_tax(claim.total_allowed or Decimal("0"), Decimal("0"))
-        total_with_tax = (claim.total_allowed or Decimal("0")) + tax
+        tax = self.calculate_tax(claim.total_allowed or Decimal(0), Decimal(0))
+        total_with_tax = (claim.total_allowed or Decimal(0)) + tax
 
         items = []
         for item in (claim.items or []):
@@ -870,8 +871,8 @@ class InvoiceGenerator:
 
     def calculate_tax(self, amount: Decimal, tax_rate: Decimal) -> Decimal:
         if tax_rate <= 0:
-            return Decimal("0")
-        return (amount * tax_rate / Decimal("100")).quantize(Decimal("0.01"))
+            return Decimal(0)
+        return (amount * tax_rate / Decimal(100)).quantize(Decimal("0.01"))
 
     def generate_invoice_pdf(self, invoice_id: str) -> str:
         filename = f"/tmp/invoice_{invoice_id}.pdf"
@@ -905,7 +906,7 @@ class BudgetManager:
         }
 
     def track_spend(self, budget_id: str, claim: InsuranceClaim) -> dict[str, Any]:
-        allowed = claim.total_allowed or Decimal("0")
+        allowed = claim.total_allowed or Decimal(0)
         return {
             "budget_id": budget_id,
             "claim_id": claim.id,
@@ -960,7 +961,8 @@ class BudgetManager:
 
 class MonthlyClosingEngine:
     """Monthly financial closing — trial balance, P&L, balance sheet, and
-    discrepancy reconciliation."""
+    discrepancy reconciliation.
+    """
 
     def __init__(self, db_session: Session) -> None:
         self._db = db_session
@@ -984,11 +986,11 @@ class MonthlyClosingEngine:
             .all()
         )
 
-        total_billed = sum(c.total_billed or Decimal("0") for c in claims)
-        total_allowed = sum(c.total_allowed or Decimal("0") for c in claims)
-        total_paid = sum(c.total_paid or Decimal("0") for c in claims)
-        total_deductible = sum(c.total_deductible or Decimal("0") for c in claims)
-        total_copay = sum(c.total_copay or Decimal("0") for c in claims)
+        total_billed = sum(c.total_billed or Decimal(0) for c in claims)
+        total_allowed = sum(c.total_allowed or Decimal(0) for c in claims)
+        total_paid = sum(c.total_paid or Decimal(0) for c in claims)
+        total_deductible = sum(c.total_deductible or Decimal(0) for c in claims)
+        total_copay = sum(c.total_copay or Decimal(0) for c in claims)
 
         claim_count = len(claims)
         paid_count = sum(
@@ -1044,11 +1046,11 @@ class MonthlyClosingEngine:
             .all()
         )
 
-        total_billed = sum(c.total_billed or Decimal("0") for c in claims)
-        total_allowed = sum(c.total_allowed or Decimal("0") for c in claims)
-        total_paid = sum(c.total_paid or Decimal("0") for c in claims)
-        total_deductible = sum(c.total_deductible or Decimal("0") for c in claims)
-        total_copay = sum(c.total_copay or Decimal("0") for c in claims)
+        total_billed = sum(c.total_billed or Decimal(0) for c in claims)
+        total_allowed = sum(c.total_allowed or Decimal(0) for c in claims)
+        total_paid = sum(c.total_paid or Decimal(0) for c in claims)
+        total_deductible = sum(c.total_deductible or Decimal(0) for c in claims)
+        total_copay = sum(c.total_copay or Decimal(0) for c in claims)
 
         payments = (
             self._db.query(func.coalesce(func.sum(InsurancePayment.amount), 0))
@@ -1058,7 +1060,7 @@ class MonthlyClosingEngine:
                 InsurancePayment.status != PaymentStatus.REVERSED,
             )
             .scalar()
-        ) or Decimal("0")
+        ) or Decimal(0)
 
         return {
             "period": {"start": start.isoformat(), "end": end.isoformat()},
@@ -1090,9 +1092,9 @@ class MonthlyClosingEngine:
             .all()
         )
 
-        revenue = sum(c.total_allowed or Decimal("0") for c in claims)
+        revenue = sum(c.total_allowed or Decimal(0) for c in claims)
         deductions = sum(
-            (c.total_deductible or Decimal("0")) + (c.total_copay or Decimal("0"))
+            (c.total_deductible or Decimal(0)) + (c.total_copay or Decimal(0))
             for c in claims
         )
         net_revenue = revenue - deductions
@@ -1105,7 +1107,7 @@ class MonthlyClosingEngine:
                 "net_revenue": str(net_revenue),
             },
             "expenses": {
-                "claims_paid": str(sum(c.total_paid or Decimal("0") for c in claims)),
+                "claims_paid": str(sum(c.total_paid or Decimal(0) for c in claims)),
             },
             "net_income": str(net_revenue),
         }
@@ -1120,7 +1122,7 @@ class MonthlyClosingEngine:
                 ]),
             )
             .scalar()
-        ) or Decimal("0")
+        ) or Decimal(0)
 
         total_payables = (
             self._db.query(func.coalesce(func.sum(Settlement.net_amount), 0))
@@ -1130,7 +1132,7 @@ class MonthlyClosingEngine:
                 ]),
             )
             .scalar()
-        ) or Decimal("0")
+        ) or Decimal(0)
 
         return {
             "as_of_date": as_of_date.isoformat(),
@@ -1166,14 +1168,15 @@ class MonthlyClosingEngine:
 
 class FinancialAuditor:
     """Financial audit trail — claim payment audits, provider audits,
-    period audits, anomaly detection, and full integrity verification."""
+    period audits, anomaly detection, and full integrity verification.
+    """
 
     def __init__(self, db_session: Session) -> None:
         self._db = db_session
 
     def audit_claim_payment(self, claim_id: int) -> dict[str, Any]:
         claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == claim_id
+            InsuranceClaim.id == claim_id,
         ).first()
         if not claim:
             raise ValueError(f"Claim {claim_id} not found")
@@ -1200,7 +1203,7 @@ class FinancialAuditor:
             findings.append({
                 "severity": "warning",
                 "message": f"Claim allowed {claim.total_allowed} but paid {total_paid}",
-                "difference": float((claim.total_allowed or Decimal("0")) - total_paid),
+                "difference": float((claim.total_allowed or Decimal(0)) - total_paid),
             })
 
         return {
@@ -1243,9 +1246,9 @@ class FinancialAuditor:
             .all()
         )
 
-        total_billed = sum(c.total_billed or Decimal("0") for c in claims)
-        total_allowed = sum(c.total_allowed or Decimal("0") for c in claims)
-        total_paid = sum(c.total_paid or Decimal("0") for c in claims)
+        total_billed = sum(c.total_billed or Decimal(0) for c in claims)
+        total_allowed = sum(c.total_allowed or Decimal(0) for c in claims)
+        total_paid = sum(c.total_paid or Decimal(0) for c in claims)
 
         payments_count = (
             self._db.query(func.count(InsurancePayment.id))
@@ -1266,8 +1269,8 @@ class FinancialAuditor:
             "total_paid": str(total_paid),
             "payments_count": payments_count,
             "payment_efficiency_pct": float(
-                (total_paid / total_allowed * Decimal("100"))
-                if total_allowed > 0 else 0
+                (total_paid / total_allowed * Decimal(100))
+                if total_allowed > 0 else 0,
             ),
             "audited_at": datetime.now(UTC).isoformat(),
         }
@@ -1283,9 +1286,9 @@ class FinancialAuditor:
         )
 
         total_claims = sum(s.total_claims or 0 for s in settlements)
-        total_billed = sum(s.total_billed or Decimal("0") for s in settlements)
-        total_paid = sum(s.total_paid or Decimal("0") for s in settlements)
-        total_net = sum(s.net_amount or Decimal("0") for s in settlements)
+        total_billed = sum(s.total_billed or Decimal(0) for s in settlements)
+        total_paid = sum(s.total_paid or Decimal(0) for s in settlements)
+        total_net = sum(s.net_amount or Decimal(0) for s in settlements)
 
         return {
             "period": {"start": start.isoformat(), "end": end.isoformat()},
@@ -1308,8 +1311,8 @@ class FinancialAuditor:
 
         mean = sum(amounts) / len(amounts)
         variance = sum((a - mean) ** 2 for a in amounts) / len(amounts)
-        std_dev = variance.sqrt() if variance > 0 else Decimal("0")
-        threshold = mean + (Decimal("2") * std_dev)
+        std_dev = variance.sqrt() if variance > 0 else Decimal(0)
+        threshold = mean + (Decimal(2) * std_dev)
 
         for t in transactions:
             amt = Decimal(str(t.get("amount", 0)))
@@ -1319,7 +1322,7 @@ class FinancialAuditor:
                     "type": "amount_outlier",
                     "amount": str(amt),
                     "expected_max": str(threshold.quantize(Decimal("0.01"))),
-                    "severity": "high" if amt > mean + (Decimal("3") * std_dev) else "medium",
+                    "severity": "high" if amt > mean + (Decimal(3) * std_dev) else "medium",
                     "description": f"Amount {amt} exceeds expected threshold {threshold.quantize(Decimal('0.01'))}",
                 })
 
@@ -1336,7 +1339,7 @@ class FinancialAuditor:
     def generate_audit_trail(self, claim_id: int) -> list[dict[str, Any]]:
         trail: list[dict[str, Any]] = []
         claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == claim_id
+            InsuranceClaim.id == claim_id,
         ).first()
         if not claim:
             return trail
@@ -1441,7 +1444,7 @@ class FinancialAuditor:
                 "orphan_payments": orphan_payments,
                 "missing_allowed": missing_allowed,
                 "mismatched_paid": mismatched,
-            }, sort_keys=True).encode()
+            }, sort_keys=True).encode(),
         ).hexdigest()
 
         return {

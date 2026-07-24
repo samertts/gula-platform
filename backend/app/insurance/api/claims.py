@@ -495,7 +495,7 @@ def adjudicate_claim(
     claim.adjudication_notes = adjudication_notes
 
     if allowed_amount is not None:
-        ratio = allowed_amount / claim.total_billed if claim.total_billed else Decimal("0")
+        ratio = allowed_amount / claim.total_billed if claim.total_billed else Decimal(0)
         claim.total_allowed = allowed_amount
         for item in claim.items:
             item.allowed_amount = item.billed_amount * ratio

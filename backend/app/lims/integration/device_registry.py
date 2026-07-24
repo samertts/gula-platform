@@ -13,6 +13,7 @@ logger = logging.getLogger("gula.lims.integration.device_registry")
 @dataclass
 class DeviceConnection:
     """Active instrument connection state."""
+
     instrument_id: int
     instrument_code: str
     protocol: str                      # astm, hl7, fhir, rest

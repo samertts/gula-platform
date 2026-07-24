@@ -18,7 +18,7 @@ class SagaEngine:
         self._compensation_strategy: CompensationStrategy = CompensationStrategy.REVERSE_ORDER
 
     async def execute_step(
-        self, saga_id: str, step_id: str, step_type: str, data: dict[str, Any]
+        self, saga_id: str, step_id: str, step_type: str, data: dict[str, Any],
     ) -> SagaLog:
         log = SagaLog(
             id=str(uuid.uuid4()),
@@ -68,7 +68,7 @@ class SagaEngine:
         return log
 
     async def compensate(
-        self, saga_id: str, completed_steps: list[str]
+        self, saga_id: str, completed_steps: list[str],
     ) -> list[SagaLog]:
         compensated: list[SagaLog] = []
         steps_to_compensate: list[str] = list(completed_steps)

@@ -53,7 +53,7 @@ async def edge_maintenance_loop(interval_s: int = 30) -> None:
 
             loop = asyncio.get_event_loop()
             n_stale, n_off, n_tele = await loop.run_in_executor(
-                None, _run_maintenance, sweep_counter
+                None, _run_maintenance, sweep_counter,
             )
             if n_stale or n_off or n_tele:
                 logger.info(
@@ -90,7 +90,7 @@ def _mark_offline_devices(db) -> int:
                 event_type="device_offline",
                 severity="warning",
                 details={"last_seen_at": d.last_seen_at.isoformat() if d.last_seen_at else None},
-            )
+            ),
         )
         n += 1
     return n

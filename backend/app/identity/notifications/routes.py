@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,12 +18,12 @@ async def send_notification(
     recipient_id: str,
     notification_type: str,
     channel: str,
-    subject: Optional[str] = None,
-    body: Optional[str] = None,
-    context: Optional[dict[str, Any]] = None,
+    subject: str | None = None,
+    body: str | None = None,
+    context: dict[str, Any] | None = None,
     priority: str = "medium",
     recipient_type: str = "person",
-    scheduled_at: Optional[datetime] = None,
+    scheduled_at: datetime | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)
@@ -47,8 +47,8 @@ async def create_template(
     name: str,
     notification_type: str,
     body: str,
-    subject: Optional[str] = None,
-    variables: Optional[list[str]] = None,
+    subject: str | None = None,
+    variables: list[str] | None = None,
     locale: str = "ar",
     version: str = "1.0",
     db: AsyncSession = Depends(get_db),
@@ -123,8 +123,8 @@ async def update_preferences(
     channel: str,
     enabled: bool,
     recipient_type: str = "person",
-    quiet_hours_start: Optional[str] = None,
-    quiet_hours_end: Optional[str] = None,
+    quiet_hours_start: str | None = None,
+    quiet_hours_end: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)
@@ -144,10 +144,10 @@ async def update_preferences(
 async def send_template_notification(
     template_id: str,
     recipient_id: str,
-    context: Optional[dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
     priority: str = "medium",
     recipient_type: str = "person",
-    scheduled_at: Optional[datetime] = None,
+    scheduled_at: datetime | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)

@@ -63,7 +63,7 @@ def _ensure_master_admin(db: Session) -> LabUser | None:
         plaintext = cfg.admin_password.strip() or None
         if not plaintext:
             logger.error(
-                "Bootstrap SKIPPED: GULA_ADMIN_PASSWORD not set. Set it in .env and restart."
+                "Bootstrap SKIPPED: GULA_ADMIN_PASSWORD not set. Set it in .env and restart.",
             )
             return None
         password_hash = hash_password(plaintext)

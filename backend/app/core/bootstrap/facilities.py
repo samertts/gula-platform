@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -14,7 +13,7 @@ logger = logging.getLogger("gula.bootstrap.facilities")
 
 
 def seed_facilities(
-    facilities: List[FacilityDef],
+    facilities: list[FacilityDef],
     db: Session | None = None,
 ) -> int:
     if db is None:
@@ -27,12 +26,12 @@ def seed_facilities(
     try:
         for fdef in facilities:
             existing = db.query(Facility).filter(
-                Facility.facility_id == fdef.facility_id
+                Facility.facility_id == fdef.facility_id,
             ).first()
             if existing:
                 continue
             org = db.query(Organization).filter(
-                Organization.org_id == fdef.organization_id
+                Organization.org_id == fdef.organization_id,
             ).first()
             if not org:
                 logger.warning(
@@ -67,11 +66,11 @@ def seed_facilities(
 
 def seed_platform_facilities(db: Session | None = None) -> int:
     from .models import (
-        PLATFORM_ORG_NAME_EN,
         PLATFORM_DIRECTORATE_NAME_EN,
-        PLATFORM_HOSPITAL_NAME_EN,
         PLATFORM_HOSPITAL_NAME_AR,
+        PLATFORM_HOSPITAL_NAME_EN,
         PLATFORM_LAB_NAME,
+        PLATFORM_ORG_NAME_EN,
     )
 
     if db is None:
@@ -83,21 +82,21 @@ def seed_platform_facilities(db: Session | None = None) -> int:
     created = 0
     try:
         platform_org = db.query(Organization).filter(
-            Organization.name_en == PLATFORM_ORG_NAME_EN
+            Organization.name_en == PLATFORM_ORG_NAME_EN,
         ).first()
         if not platform_org:
             logger.warning("Platform organization not found — skipping platform facilities")
             return 0
 
         platform_dir = db.query(Organization).filter(
-            Organization.name_en == PLATFORM_DIRECTORATE_NAME_EN
+            Organization.name_en == PLATFORM_DIRECTORATE_NAME_EN,
         ).first()
 
         platform_hospital_org = db.query(Organization).filter(
-            Organization.name_en == PLATFORM_HOSPITAL_NAME_EN
+            Organization.name_en == PLATFORM_HOSPITAL_NAME_EN,
         ).first()
 
-        facilities: List[FacilityDef] = []
+        facilities: list[FacilityDef] = []
 
         if platform_dir:
             facilities.append(FacilityDef(

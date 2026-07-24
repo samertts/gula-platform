@@ -1,5 +1,4 @@
-"""
-GULA Platform — Kill Switch
+"""GULA Platform — Kill Switch
 ==============================
 Central emergency stop for all autonomous system actions.
 
@@ -44,8 +43,7 @@ _activated_reason: str = ""
 
 
 def is_kill_switch_active() -> bool:
-    """
-    Return True if kill switch is active.
+    """Return True if kill switch is active.
     Checks (in order): in-memory flag → Redis key → env var.
     """
     # In-memory (fastest, set by API)
@@ -70,8 +68,7 @@ def is_kill_switch_active() -> bool:
 
 
 def activate(reason: str = "manual", propagate: bool = True) -> dict:
-    """
-    Activate the kill switch immediately.
+    """Activate the kill switch immediately.
     propagate=True writes to Redis so all instances see it.
     """
     global _in_memory_active, _activated_at, _activated_reason

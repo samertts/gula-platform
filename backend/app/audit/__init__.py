@@ -23,10 +23,10 @@ def audit_log(action: str) -> Callable:
             result = func(*args, **kwargs)
             try:
                 request: Request | None = kwargs.get("request") or next(
-                    (a for a in args if isinstance(a, Request)), None
+                    (a for a in args if isinstance(a, Request)), None,
                 )
                 db: SASession | None = kwargs.get("db") or next(
-                    (a for a in args if isinstance(a, SASession)), None
+                    (a for a in args if isinstance(a, SASession)), None,
                 )
                 if request and db:
                     user_id = getattr(request.state, "user_id", None) or 0

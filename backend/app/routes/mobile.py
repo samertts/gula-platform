@@ -1,5 +1,4 @@
-"""
-Mobile API - GULA Platform
+"""Mobile API - GULA Platform
 Endpoints optimized for Android and iOS applications.
 Supports token refresh, device registration, and mobile-friendly data.
 """
@@ -55,8 +54,7 @@ def refresh_access_token(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    """
-    Exchange a refresh token for a new access token.
+    """Exchange a refresh token for a new access token.
 
     Used by mobile apps to stay logged in without re-entering credentials.
     Refresh tokens expire after 30 days (configurable via REFRESH_TOKEN_EXPIRE_DAYS).
@@ -181,7 +179,7 @@ def change_password(
         raise HTTPException(status_code=400, detail="كلمة المرور الحالية غير صحيحة")
     if len(data.new_password) < 8:
         raise HTTPException(
-            status_code=400, detail="كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل"
+            status_code=400, detail="كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل",
         )
     current_user.password_hash = hash_password(data.new_password)
     # Invalidate all active sessions — user must log in again with new password
@@ -203,8 +201,7 @@ mobile_router = APIRouter(prefix="/mobile", tags=["mobile / info"])
 
 @mobile_router.get("/app-info", summary="Mobile app configuration")
 def get_app_info():
-    """
-    Returns app configuration for mobile clients.
+    """Returns app configuration for mobile clients.
     Use this to check if app update is required and get feature flags.
     """
     return {
@@ -239,8 +236,7 @@ def get_current_user_profile(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns the authenticated user's profile and lab information.
+    """Returns the authenticated user's profile and lab information.
     Optimized for mobile app home screen.
     """
     lab = None
@@ -289,15 +285,14 @@ class DeviceTokenRequest(BaseModel):
 
 
 @mobile_router.post(
-    "/register-device", status_code=201, summary="Register device for push notifications"
+    "/register-device", status_code=201, summary="Register device for push notifications",
 )
 def register_device(
     data: DeviceTokenRequest,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Register a mobile device for push notifications (FCM/APNS).
+    """Register a mobile device for push notifications (FCM/APNS).
     Call this after login and when the device token changes.
 
     **Android:** Pass the FCM registration token.
@@ -333,8 +328,7 @@ def mobile_stats(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns key statistics for the mobile app dashboard.
+    """Returns key statistics for the mobile app dashboard.
     Optimized: single query returns all needed counts.
     """
     from datetime import datetime, timedelta

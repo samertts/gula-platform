@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,15 +17,15 @@ router = APIRouter(prefix="/certificates", tags=["NIAM Certificates"])
 async def issue_certificate(
     cert_type: str,
     subject: str,
-    issuer: Optional[str] = None,
-    organization_id: Optional[str] = None,
-    person_id: Optional[str] = None,
-    machine_id: Optional[str] = None,
+    issuer: str | None = None,
+    organization_id: str | None = None,
+    person_id: str | None = None,
+    machine_id: str | None = None,
     signature_algorithm: str = "SHA256withRSA",
     key_size: int = 2048,
     validity_days: int = 365,
-    rotation_period_days: Optional[int] = None,
-    issuer_ca_id: Optional[str] = None,
+    rotation_period_days: int | None = None,
+    issuer_ca_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = CertificateService(db)
@@ -108,12 +106,12 @@ async def list_expiring_certificates(
 async def register_ca(
     name: str,
     ca_type: str,
-    organization_id: Optional[str] = None,
+    organization_id: str | None = None,
     signing_algorithm: str = "SHA256withRSA",
     key_size: int = 4096,
     validity_days: int = 3650,
-    path_length_constraint: Optional[int] = None,
-    parent_ca_id: Optional[str] = None,
+    path_length_constraint: int | None = None,
+    parent_ca_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = CertificateAuthorityService(db)
@@ -155,15 +153,15 @@ async def generate_crl(
 async def generate_api_key(
     name: str,
     organization_id: str,
-    enterprise_account_id: Optional[str] = None,
-    person_id: Optional[str] = None,
-    scopes: Optional[list[str]] = None,
-    permissions: Optional[list[str]] = None,
-    allowed_ips: Optional[list[str]] = None,
-    allowed_referrers: Optional[list[str]] = None,
-    rate_limit: Optional[int] = None,
-    created_by: Optional[str] = None,
-    expires_at: Optional[str] = None,
+    enterprise_account_id: str | None = None,
+    person_id: str | None = None,
+    scopes: list[str] | None = None,
+    permissions: list[str] | None = None,
+    allowed_ips: list[str] | None = None,
+    allowed_referrers: list[str] | None = None,
+    rate_limit: int | None = None,
+    created_by: str | None = None,
+    expires_at: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = APIKeyService(db)

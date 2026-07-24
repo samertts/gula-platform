@@ -1,5 +1,4 @@
-"""
-Production Startup Guard — GULA Platform
+"""Production Startup Guard — GULA Platform
 =========================================
 Fail-fast, atomic sequential validation chain that runs before the app
 accepts traffic.
@@ -82,7 +81,7 @@ def is_system_ready() -> tuple[bool, str]:
     except Exception:
         logger.warning(
             "[READINESS] Redis unreachable — system continues in degraded mode "
-            "(in-memory fallback active; cross-process invalidation weakened)"
+            "(in-memory fallback active; cross-process invalidation weakened)",
         )
         # Return ready=True with a warning reason instead of blocking all traffic
         return True, "degraded_redis"
@@ -124,7 +123,7 @@ def validate_config() -> None:
     elif IS_PRODUCTION and _is_weak(SECRET_KEY):
         errors.append(
             "SECRET_KEY looks like a placeholder/default value. "
-            "Set a strong random secret: openssl rand -hex 64"
+            "Set a strong random secret: openssl rand -hex 64",
         )
 
     if not ENCRYPTION_KEY:
@@ -133,7 +132,7 @@ def validate_config() -> None:
     elif IS_PRODUCTION and _is_weak(ENCRYPTION_KEY):
         errors.append(
             "ENCRYPTION_KEY looks like a placeholder. Generate with: "
-            'python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+            'python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"',
         )
     elif IS_PRODUCTION:
         # Validate it's actually a Fernet-compatible key (32 bytes, base64url, 44 chars)
@@ -144,14 +143,14 @@ def validate_config() -> None:
         except Exception:
             errors.append(
                 "ENCRYPTION_KEY is not a valid Fernet key (must be 44 base64url chars). "
-                'Run: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+                'Run: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"',
             )
 
     if not NID_HMAC_KEY:
         if IS_PRODUCTION:
             errors.append(
                 "NID_HMAC_KEY is not set. "
-                "Existing NID lookups will break if this changes between deployments."
+                "Existing NID lookups will break if this changes between deployments.",
             )
     elif IS_PRODUCTION and _is_weak(NID_HMAC_KEY):
         errors.append("NID_HMAC_KEY looks like a placeholder. Set a stable random key.")
@@ -167,7 +166,7 @@ def validate_config() -> None:
             logger.critical("[STARTUP GUARD] CONFIG ERROR: %s", err)
         raise RuntimeError(
             "Startup aborted — insecure configuration detected:\n"
-            + "\n".join(f"  • {e}" for e in errors)
+            + "\n".join(f"  • {e}" for e in errors),
         )
 
     logger.info("[STARTUP GUARD] Config validated OK")
@@ -177,8 +176,7 @@ def validate_config() -> None:
 
 
 async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
-    """
-    Wait for DB to become reachable with smart per-error-type retry logic.
+    """Wait for DB to become reachable with smart per-error-type retry logic.
 
     - "refused" / "timeout" → transient, keep retrying (postgres still starting)
     - "auth_failed"         → permanent, stop immediately (retrying won't help)
@@ -277,7 +275,7 @@ async def check_redis(max_retries: int = 5, delay: int = 2) -> None:
     raise RuntimeError(
         "[STARTUP GUARD] Redis unreachable after %d attempts. "
         "Check REDIS_URL / REDIS_PASSWORD and redis container status. "
-        "Without Redis, token blacklisting and rate limiting are per-worker only."
+        "Without Redis, token blacklisting and rate limiting are per-worker only.",
     )
 
 
@@ -392,14 +390,14 @@ def _run_perm_version_migration() -> None:
     insp = inspect(engine)
     if not insp.has_table("lab_users"):
         raise RuntimeError(
-            "lab_users table does not exist — alembic upgrade head must run before seeding"
+            "lab_users table does not exist — alembic upgrade head must run before seeding",
         )
     with engine.connect() as conn:
         conn.execute(
             text(
                 "ALTER TABLE lab_users "
-                "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1"
-            )
+                "ADD COLUMN IF NOT EXISTS perm_version INTEGER NOT NULL DEFAULT 1",
+            ),
         )
         conn.execute(text("UPDATE lab_users SET perm_version = 1 WHERE perm_version IS NULL"))
         conn.commit()
@@ -626,8 +624,8 @@ def _run_seed_default_subscriptions() -> None:
 def _run_national_bootstrap() -> None:
     """Run the National Bootstrap Engine — idempotent, non-fatal."""
     try:
-        from .bootstrap import run_bootstrap
         from ..config import ENABLE_BOOTSTRAP
+        from .bootstrap import run_bootstrap
 
         if not ENABLE_BOOTSTRAP:
             logger.info("[STARTUP GUARD] National bootstrap disabled via ENABLE_BOOTSTRAP=false")
@@ -671,7 +669,7 @@ def _run_ensure_audit_log_immutable() -> None:
                 RETURN NULL;
             END;
             $$ LANGUAGE plpgsql;
-        """)
+        """),
         )
         db.execute(
             text("""
@@ -679,7 +677,7 @@ def _run_ensure_audit_log_immutable() -> None:
             CREATE TRIGGER audit_logs_immutable
                 BEFORE UPDATE OR DELETE ON audit_logs
                 FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
-        """)
+        """),
         )
         db.commit()
         logger.info("[STARTUP GUARD] Audit log immutability trigger applied")
@@ -728,7 +726,7 @@ def _check_constitutional_compliance() -> None:
         )
     else:
         logger.info(
-            "[CONSTITUTION] All constitutional policy documents present — PROGRAM-CONSTITUTION-001 enforced"
+            "[CONSTITUTION] All constitutional policy documents present — PROGRAM-CONSTITUTION-001 enforced",
         )
 
     # Quick vendor SDK scan in core app code
@@ -749,7 +747,7 @@ def _check_constitutional_compliance() -> None:
         )
     else:
         logger.info(
-            "[CONSTITUTION] No direct vendor SDK usage detected — Vendor Lock-In policy satisfied"
+            "[CONSTITUTION] No direct vendor SDK usage detected — Vendor Lock-In policy satisfied",
         )
 
     logger.info("[CONSTITUTION] PROGRAM-CONSTITUTION-001 compliance check complete")
@@ -804,7 +802,7 @@ async def run_startup_guard() -> None:
         db_connected = await wait_for_db(max_retries=15, initial_delay=10)  # Step 2
         if not db_connected:
             logger.critical(
-                "[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state."
+                "[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state.",
             )
             return
         await check_redis()  # Step 3 — Redis reachable

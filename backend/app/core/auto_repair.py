@@ -1,5 +1,4 @@
-"""
-GULA Platform — Auto-Repair Engine
+"""GULA Platform — Auto-Repair Engine
 ====================================
 Autonomous repair and self-management layer.
 
@@ -223,16 +222,16 @@ class RepairEngine:
 
         # Register actions
         self._register(
-            RepairAction("memory_gc", "Force GC on memory pressure", "warn", cooldown_s=180)
+            RepairAction("memory_gc", "Force GC on memory pressure", "warn", cooldown_s=180),
         )
         self._register(
-            RepairAction("circuit_probe", "Force-probe open circuit breaker", "warn", cooldown_s=60)
+            RepairAction("circuit_probe", "Force-probe open circuit breaker", "warn", cooldown_s=60),
         )
         self._register(
-            RepairAction("pool_recycle", "Recycle stale DB connections", "warn", cooldown_s=300)
+            RepairAction("pool_recycle", "Recycle stale DB connections", "warn", cooldown_s=300),
         )
         self._register(
-            RepairAction("redis_reconnect", "Force Redis reconnect", "critical", cooldown_s=30)
+            RepairAction("redis_reconnect", "Force Redis reconnect", "critical", cooldown_s=30),
         )
 
         while True:

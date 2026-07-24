@@ -182,7 +182,7 @@ def result_to_dict(r: LabResult) -> dict:
     interpretation = None
     if r.value is not None:
         interpretation = interpret_result(
-            r.test_name, r.value, r.normal_range_low, r.normal_range_high
+            r.test_name, r.value, r.normal_range_low, r.normal_range_high,
         )
 
     return {
@@ -238,7 +238,7 @@ def _generate_unique_token(db: Session) -> tuple[str, str]:
 
 
 def _build_sharing_links(
-    patient_phone: str | None, patient_name: str | None, result_links: list
+    patient_phone: str | None, patient_name: str | None, result_links: list,
 ) -> dict:
     """Build WhatsApp and SMS sharing links."""
     whatsapp_link = None
@@ -275,7 +275,7 @@ def _check_critical_alerts(results: list) -> list:
                         "test_name": item["test_name"],
                         "value": item["value"],
                         **alert,
-                    }
+                    },
                 )
     return critical_alerts
 
@@ -427,7 +427,7 @@ def create_order(
         "result_links": result_links,
         "whatsapp_link": sharing["whatsapp_link"],
         "sms_link": sharing["sms_link"],
-        "critical_alerts": critical_alerts if critical_alerts else None,
+        "critical_alerts": critical_alerts or None,
     }
 
     # Cache under idempotency key
@@ -437,14 +437,14 @@ def create_order(
 
     # Emit events
     _emit_order_events(
-        order, patient.full_name, patient.phone, len(results_data), user_id, critical_alerts
+        order, patient.full_name, patient.phone, len(results_data), user_id, critical_alerts,
     )
 
     return response_body
 
 
 def get_order_by_id(
-    db: Session, order_id: int, lab_id: int, user_role: str, user_id: int
+    db: Session, order_id: int, lab_id: int, user_role: str, user_id: int,
 ) -> dict | None:
     """Get a single order by ID."""
     order = (
@@ -475,7 +475,7 @@ def list_orders(
                 Patient.full_name.ilike(term),
                 Patient.phone.ilike(term),
                 LabOrder.doctor_name.ilike(term),
-            )
+            ),
         )
     total = query.count()
     orders = query.order_by(LabOrder.created_at.desc()).offset(skip).limit(limit).all()
@@ -610,7 +610,7 @@ def get_public_result(db: Session, token: str, ip_address: str | None = None) ->
     order = (
         db.query(LabOrder)
         .options(
-            joinedload(LabOrder.patient), joinedload(LabOrder.lab), joinedload(LabOrder.results)
+            joinedload(LabOrder.patient), joinedload(LabOrder.lab), joinedload(LabOrder.results),
         )
         .filter(LabOrder.id == result.order_id)
         .first()
@@ -639,7 +639,7 @@ def get_public_result(db: Session, token: str, ip_address: str | None = None) ->
                 "flag": r.flag,
                 "interpretation": interp,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
+            },
         )
 
     log_action(
@@ -689,7 +689,7 @@ def download_result_pdf(db: Session, token: str, ip_address: str | None = None) 
     order = (
         db.query(LabOrder)
         .options(
-            joinedload(LabOrder.patient), joinedload(LabOrder.lab), joinedload(LabOrder.results)
+            joinedload(LabOrder.patient), joinedload(LabOrder.lab), joinedload(LabOrder.results),
         )
         .filter(LabOrder.id == result.order_id)
         .first()
@@ -716,7 +716,7 @@ def download_result_pdf(db: Session, token: str, ip_address: str | None = None) 
                 "normal_range_high": r.normal_range_high,
                 "flag": r.flag,
                 "interpretation": interp,
-            }
+            },
         )
 
     data = {
@@ -794,7 +794,7 @@ def get_patient_history_by_id(db: Session, patient_id: int, lab_id: int) -> dict
                         "value": result.value,
                         "date": result.created_at.isoformat() if result.created_at else None,
                         "flag": result.flag,
-                    }
+                    },
                 )
 
     return {
@@ -855,7 +855,7 @@ def get_patient_history_by_phone(db: Session, phone: str, name: str | None = Non
                     "unit": result.unit,
                     "flag": result.flag,
                     "date": result.created_at.isoformat() if result.created_at else None,
-                }
+                },
             )
 
     return {

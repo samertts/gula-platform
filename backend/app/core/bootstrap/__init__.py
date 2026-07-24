@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -53,9 +54,9 @@ from .subscriptions import seed_subscriptions
 from .validation import validate_bootstrap
 
 __all__ = [
+    "BOOTSTRAP_SEQUENCE",
     "BootstrapContext",
     "BootstrapPhase",
-    "BOOTSTRAP_SEQUENCE",
     "ensure_master_admin",
     "run_bootstrap",
     "seed_subscriptions",

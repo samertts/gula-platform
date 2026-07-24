@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -10,7 +9,7 @@ from app.models.lab import Lab
 
 logger = logging.getLogger("gula.bootstrap.departments")
 
-STANDARD_DEPARTMENTS: List[dict] = [
+STANDARD_DEPARTMENTS: list[dict] = [
     {"code": "chem", "name_en": "Clinical Chemistry", "name_ar": "الكيمياء السريرية"},
     {"code": "hema", "name_en": "Hematology", "name_ar": "أمراض الدم"},
     {"code": "micro", "name_en": "Microbiology", "name_ar": "علم الأحياء الدقيقة"},

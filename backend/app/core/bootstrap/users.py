@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -12,12 +11,12 @@ from app.models.lab_user import LabUser
 from app.security.auth import hash_password
 
 from .config import load_bootstrap_config
-from .models import AdminAccountDef, PLATFORM_LAB_NAME, MASTER_ADMIN_ROLE
+from .models import MASTER_ADMIN_ROLE, PLATFORM_LAB_NAME, AdminAccountDef
 
 logger = logging.getLogger("gula.bootstrap.users")
 
 
-ADMIN_ACCOUNTS: List[AdminAccountDef] = [
+ADMIN_ACCOUNTS: list[AdminAccountDef] = [
     AdminAccountDef(
         email="MINISTRY_ADMIN_EMAIL",
         name="Ministry Admin",
@@ -63,7 +62,7 @@ ADMIN_ACCOUNTS: List[AdminAccountDef] = [
 ]
 
 
-def _resolve_account(acct: AdminAccountDef) -> Optional[dict]:
+def _resolve_account(acct: AdminAccountDef) -> dict | None:
     email_val = os.getenv(acct.email, "")
     if not email_val:
         email_val = acct.email.lower().replace("_", "-") + "@gula-platform.org"
@@ -125,7 +124,7 @@ def seed_national_admin_accounts(db: Session | None = None) -> int:
                 continue
 
             existing = db.query(LabUser).filter(
-                LabUser.email == resolved["email"]
+                LabUser.email == resolved["email"],
             ).first()
             if existing:
                 logger.debug(

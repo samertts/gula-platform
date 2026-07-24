@@ -181,7 +181,7 @@ def get_sovereignty_rules(
                 "data_residency": r.data_residency,
             }
             for r in rules
-        ]
+        ],
     }
 
 

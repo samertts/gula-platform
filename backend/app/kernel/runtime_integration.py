@@ -172,7 +172,7 @@ def _init_runtime_observability(kernel: Kernel, lifecycle) -> None:
                         "type": self.type,
                         "version": self.version,
                     },
-                })()
+                })(),
             )
 
         comp.on_start(_register_topology)

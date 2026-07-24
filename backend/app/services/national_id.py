@@ -9,6 +9,7 @@ def mask_national_id(nid) -> str:
 
     Returns:
         A masked string, or an empty string if `nid` is None / empty.
+
     """
     if nid is None:
         return ""

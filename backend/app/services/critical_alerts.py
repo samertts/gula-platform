@@ -132,7 +132,7 @@ def get_critical_alerts(
                 "order_id": r.order_id,
                 "doctor_name": r.order.doctor_name if r.order else None,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
+            },
         )
 
     return {

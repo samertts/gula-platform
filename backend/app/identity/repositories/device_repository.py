@@ -1,4 +1,3 @@
-from typing import Optional
 
 from sqlalchemy import select
 
@@ -10,7 +9,7 @@ class DeviceRepository(IdentityRepositoryBase[Device]):
 
     model_class = Device
 
-    async def find_by_fingerprint(self, fingerprint: str) -> Optional[Device]:
+    async def find_by_fingerprint(self, fingerprint: str) -> Device | None:
         stmt = select(self.model_class).where(
             self.model_class.device_fingerprint == fingerprint,
             self.model_class.is_active.is_(True),

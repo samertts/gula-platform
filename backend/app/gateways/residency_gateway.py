@@ -1,5 +1,4 @@
-"""
-Iraqi Residency Gateway — foreign traveler residency verification
+"""Iraqi Residency Gateway — foreign traveler residency verification
 ===================================================================
 Trust level: NON_CRITICAL — used for patient-registry enrichment (whether a
 presented passport/residency number maps to a currently valid residency

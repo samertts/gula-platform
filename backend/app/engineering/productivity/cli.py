@@ -356,7 +356,7 @@ def _handle_new(args: argparse.Namespace) -> None:
 
     if args.new_type == "project":
         spec = ProjectSpec(
-            name=args.name, description=args.description, version=getattr(args, "version", "0.1.0")
+            name=args.name, description=args.description, version=getattr(args, "version", "0.1.0"),
         )
         gen = ProjectGenerator(target_dir=target)
         result = gen.generate(spec=spec)
@@ -677,7 +677,7 @@ def _handle_validate(args: argparse.Namespace) -> None:
         else:
             for issue in issues:
                 print(
-                    f"  [{issue.severity}] {issue.file}:{issue.line} [{issue.principle}] {issue.message}"
+                    f"  [{issue.severity}] {issue.file}:{issue.line} [{issue.principle}] {issue.message}",
                 )
             print(f"\n  Found {len(issues)} issues.")
 
@@ -722,7 +722,7 @@ def _validate_cqrs(root: Path) -> None:
         if "class" in content and "Repository" in content and "Command" in content:
             if "command" not in py_file.parts:
                 issues.append(
-                    f"{py_file.relative_to(root)}: Repository found outside commands context"
+                    f"{py_file.relative_to(root)}: Repository found outside commands context",
                 )
 
     if not issues:

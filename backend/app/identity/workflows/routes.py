@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,12 +18,12 @@ async def create_definition(
     name: str,
     workflow_type: str,
     steps: list[dict[str, Any]],
-    description: Optional[str] = None,
+    description: str | None = None,
     version: str = "1.0",
-    timeout_hours: Optional[int] = None,
-    escalation_step: Optional[str] = None,
-    retry_policy: Optional[dict[str, Any]] = None,
-    notification_triggers: Optional[dict[str, Any]] = None,
+    timeout_hours: int | None = None,
+    escalation_step: str | None = None,
+    retry_policy: dict[str, Any] | None = None,
+    notification_triggers: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     engine = WorkflowEngine(db)
@@ -71,7 +71,7 @@ async def start_instance(
     trigger_type: str,
     trigger_id: str,
     initiator_id: str,
-    context: Optional[dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     engine = WorkflowEngine(db)
@@ -104,7 +104,7 @@ async def submit_approval(
     instance_id: str,
     approver_id: str,
     decision: str,
-    comments: Optional[str] = None,
+    comments: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     engine = WorkflowEngine(db)

@@ -128,12 +128,10 @@ class ValueMapper:
                 result = result[:max_len]
             elif t_type == "strip_prefix" and isinstance(result, str):
                 prefix = transform.get("prefix", "")
-                if result.startswith(prefix):
-                    result = result[len(prefix):]
+                result = result.removeprefix(prefix)
             elif t_type == "strip_suffix" and isinstance(result, str):
                 suffix = transform.get("suffix", "")
-                if result.endswith(suffix):
-                    result = result[: -len(suffix)]
+                result = result.removesuffix(suffix)
             elif t_type == "default" and (result is None or result == ""):
                 result = transform.get("default_value", "")
             elif t_type == "format_date":

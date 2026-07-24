@@ -1,5 +1,4 @@
-"""
-Reference Implementation — GULA Architecture-Conformant Patterns.
+"""Reference Implementation — GULA Architecture-Conformant Patterns.
 
 This package demonstrates COMPLIANT layering per the Platform Constitution.
 Every layer respects strict dependency direction:
