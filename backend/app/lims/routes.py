@@ -483,7 +483,7 @@ def register_specimen(
             clinical_info=data.clinical_info,
         )
     except DuplicateSpecimenBarcode as e:
-        raise HTTPException(409, detail=str(e)) from e
+        raise HTTPException(409, detail="Resource conflict") from e
 
     db.commit()
     db.refresh(specimen)
@@ -550,7 +550,7 @@ def transition_specimen(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, detail=str(e)) from e
+        raise HTTPException(400, detail="Invalid request") from e
 
     db.commit()
     db.refresh(specimen)
@@ -599,7 +599,7 @@ def create_lims_order(
             diagnosis_code=data.diagnosis_code,
         )
     except AccessionNumberConflict as e:
-        raise HTTPException(409, detail=str(e)) from e
+        raise HTTPException(409, detail="Resource conflict") from e
 
     db.commit()
     db.refresh(lims_order)
@@ -660,7 +660,7 @@ def transition_order(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, detail=str(e)) from e
+        raise HTTPException(400, detail="Invalid request") from e
 
     db.commit()
     db.refresh(lims_order)
@@ -1052,7 +1052,7 @@ def evaluate_indicator(
     try:
         return evaluate_iso_15189_indicator(indicator_id, value)
     except ValueError as e:
-        raise HTTPException(404, detail=str(e)) from e
+        raise HTTPException(404, detail="Resource not found") from e
 
 
 # ===========================================================================

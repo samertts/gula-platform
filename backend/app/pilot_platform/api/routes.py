@@ -61,7 +61,7 @@ async def get_pilot(
     try:
         return _program_to_dict(service.get_pilot(pilot_id))
     except PilotNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.put("/pilots/{pilot_id}/phase")
@@ -73,7 +73,7 @@ async def advance_phase(
     try:
         return _program_to_dict(service.advance_phase(pilot_id, body.get("phase", "")))
     except PilotNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 # ── Pilot Facilities ──
@@ -115,7 +115,7 @@ async def get_facility_readiness(
     try:
         return _readiness_to_dict(service.get_facility_readiness(facility_id, pilot_id))
     except ReadinessAssessmentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 # ── Go/No-Go Gates ──

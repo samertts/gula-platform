@@ -168,7 +168,7 @@ def update_program_status(
     try:
         return eng.update_program_status(program_id, body.status)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="Resource not found") from e
 
 
 # ── Mission endpoints ───────────────────────────────────────────────────────
@@ -232,7 +232,7 @@ def update_mission_status(
     try:
         return eng.update_mission_status(mission_id, body.status)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="Resource not found") from e
 
 
 # ── Epic & Task endpoints ───────────────────────────────────────────────────
@@ -270,7 +270,7 @@ def update_task_status(
     try:
         return eng.update_task_status(task_id, body.status)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="Resource not found") from e
 
 
 # ── Critical path & dependency graph ────────────────────────────────────────

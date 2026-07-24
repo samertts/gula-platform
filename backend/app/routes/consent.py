@@ -121,7 +121,7 @@ def grant(
             ip_address=request.client.host if request.client else None,
         )
     except ConsentError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid request") from e
 
     db.commit()
     return GrantResponse(

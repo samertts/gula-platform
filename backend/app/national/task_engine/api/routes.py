@@ -143,7 +143,7 @@ async def delete_task(task_id: str, current_user: Any = Depends(get_current_user
         await svc.delete_task(task_id)
         return {"success": True}
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e)) from e
+        raise HTTPException(status_code=409, detail="Resource conflict") from e
 
 
 @router.post("/{task_id}/assign")

@@ -474,4 +474,4 @@ def respond_to_approval(
             raise HTTPException(status_code=400, detail=f"Invalid decision: {decision}")
         return result
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid request") from exc

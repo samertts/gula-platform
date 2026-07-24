@@ -26,7 +26,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend-v3/package-lock.json
 
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
 
       - run: npx playwright install chromium --with-deps
 

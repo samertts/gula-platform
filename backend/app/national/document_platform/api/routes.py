@@ -79,7 +79,7 @@ async def create_document(
         )
         return _document_to_response(document)
     except DocumentValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.get("/")
@@ -166,7 +166,7 @@ async def get_document(
 
         return result
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.put("/{document_id}")
@@ -179,11 +179,11 @@ async def update_document(
         document = await service.update_document(document_id, body)
         return _document_to_response(document)
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except DocumentStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
     except DocumentValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -197,9 +197,9 @@ async def delete_document(
     try:
         await service.delete_document(document_id, reason=body.get("reason", ""))
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except DocumentStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 @router.post("/{document_id}/versions", status_code=status.HTTP_201_CREATED)
@@ -229,11 +229,11 @@ async def create_version(
             "change_summary": version.change_summary,
         }
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except DocumentStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
     except DocumentValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.get("/{document_id}/versions")
@@ -260,7 +260,7 @@ async def list_versions(
             for v in versions
         ]
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.post("/{document_id}/sign", status_code=status.HTTP_201_CREATED)
@@ -291,9 +291,9 @@ async def sign_document(
             "hash_chain_current": signature.hash_chain_current,
         }
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except DocumentStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 @router.get("/{document_id}/signatures")
@@ -322,7 +322,7 @@ async def list_signatures(
             for s in signatures
         ]
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.post("/{document_id}/verify")
@@ -340,14 +340,14 @@ async def verify_document(
                 return {"valid": False, "reason": "No signatures found for this document"}
             signature_id = signatures[-1].id
         except DocumentNotFoundError as e:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
     try:
         return await service.verify_signature(document_id, signature_id)
     except (SignatureNotFoundError, DocumentNotFoundError) as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except SignatureVerificationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request") from e
 
 
 @router.post("/{document_id}/qrcode", status_code=status.HTTP_201_CREATED)
@@ -372,7 +372,7 @@ async def generate_qr_code(
             "scanned_count": qr.scanned_count,
         }
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/{document_id}/qrcode")
@@ -394,7 +394,7 @@ async def get_qr_code(
             "scanned_count": qr.scanned_count,
         }
     except (DocumentNotFoundError, QRCodeNotFoundError) as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/{document_id}/attachments")
@@ -419,7 +419,7 @@ async def list_attachments(
             for a in attachments
         ]
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.post("/{document_id}/attachments", status_code=status.HTTP_201_CREATED)
@@ -446,9 +446,9 @@ async def add_attachment(
             "created_at": attachment.created_at.isoformat() if attachment.created_at else None,
         }
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except DocumentStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 @router.post("/{document_id}/archive")
@@ -463,9 +463,9 @@ async def archive_document(
         document = await service.archive_document(document_id, reason=body.get("reason", ""))
         return {"id": document.id, "status": document.status.value, "archived": True}
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except DocumentStateTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 @router.post("/{document_id}/generate-pdf")
@@ -480,9 +480,9 @@ async def generate_pdf(
         pdf_bytes = await service.generate_pdf(document_id, template=body.get("template", ""))
         return {"document_id": document_id, "pdf_size_bytes": len(pdf_bytes), "generated": True}
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except DocumentValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.post("/{document_id}/retention")
@@ -493,7 +493,7 @@ async def apply_retention(
     try:
         return await service.apply_retention_policy(document_id)
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/{document_id}/history")
@@ -506,7 +506,7 @@ async def get_document_history(
     try:
         return await service.get_document_history(document_id, skip=skip, limit=limit)
     except DocumentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/categories")
