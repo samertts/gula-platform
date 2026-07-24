@@ -2,19 +2,59 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.1.x   | :white_check_mark: |
-| < 2.0   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| 2.5.x   | ✅ Active development |
+| 2.4.x   | ✅ Security patches |
+| 2.3.x   | ✅ Security patches |
+| 2.2.x   | ✅ Security patches |
+| 2.1.x   | ✅ Security patches |
+| 2.0.x   | ❌ End of life |
+| < 2.0   | ❌ End of life |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in this platform,
-please report it privately.
+We take the security of GULA Platform seriously. If you believe you have found
+a security vulnerability, please report it to us as described below.
 
-Email: security@yourdomain.com
+### Private Disclosure Process
 
-Do not publish vulnerabilities publicly until they are fixed.
+**Please do not report security vulnerabilities through public GitHub issues.**
+
+Instead, please report them via email:
+
+**security@gulaplatform.com**
+
+You should receive a response within 48 hours. If you do not, please follow up
+to ensure we received your message.
+
+### What to Include
+
+To help us understand and fix the issue quickly, please include:
+
+- Type of vulnerability (e.g., SQL injection, XSS, privilege escalation)
+- Full path(s) of affected source file(s)
+- Step-by-step reproduction instructions
+- Proof-of-concept or exploit code (if available)
+- Impact of the vulnerability
+- Your preferred contact method for follow-up questions
+
+### What to Expect
+
+1. **Acknowledgment**: We will acknowledge receipt within 48 hours
+2. **Triage**: We will assess the vulnerability and assign a severity level
+3. **Fix Development**: We will develop and test a fix
+4. **Release**: We will release a security patch according to this timeline:
+   - **Critical**: 48 hours
+   - **High**: 7 days
+   - **Medium**: 30 days
+   - **Low**: Next regular release
+5. **Disclosure**: We will publish a security advisory after the fix is released
+
+### Bug Bounty
+
+We do not currently offer a bug bounty program, but we will publicly
+acknowledge security researchers who responsibly disclose vulnerabilities.
 
 ## Security Architecture
 

@@ -7,7 +7,15 @@ name = "gula-platform"
 version = "2.5.0"
 description = "GULA National Healthcare Platform — Unified Engineering Factory"
 requires-python = ">=3.12"
-license = { text = "Proprietary" }
+license = { text = "Apache-2.0" }
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Healthcare Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
 
 [project.scripts]
 gula = "cli.main:main"
