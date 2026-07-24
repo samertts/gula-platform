@@ -14,7 +14,7 @@ import { queryKeys } from "./queryKeys";
 import type { LoginRequest } from "@/types/api";
 import type {
   Patient, LabOrder, Sample, Lab, CriticalAlert, QualityControl, LabResult,
-  DashboardData, StatsSummary, TrendData,
+  DashboardData, StatsSummary, TrendData, HealthStatus, DeepHealth,
   SubscriptionTier, SubscriptionInfo, User, AuditLog, AIProviderStatus,
 } from "@/types";
 
@@ -256,10 +256,10 @@ export function useDeidentificationJobs(params?: Record<string, unknown>, opts?:
 }
 
 // ── Health ──
-export function useHealthCheck(opts?: UseQueryOptions<Record<string, unknown>>) {
+export function useHealthCheck(opts?: UseQueryOptions<HealthStatus>) {
   return useQuery({ queryKey: queryKeys.health.basic, queryFn: () => healthApi.health(), ...opts });
 }
-export function useDeepHealth(opts?: UseQueryOptions<Record<string, unknown>>) {
+export function useDeepHealth(opts?: UseQueryOptions<DeepHealth>) {
   return useQuery({ queryKey: queryKeys.health.deep, queryFn: () => healthApi.deep(), ...opts });
 }
 
