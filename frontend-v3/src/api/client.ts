@@ -63,11 +63,8 @@ class ApiClient {
 
       axios
         .post<{ token: string; refresh_token: string }>(
-          `${API_BASE_URL}/login`,
-          {},
-          {
-            headers: { Authorization: `Bearer ${refreshToken}` },
-          },
+          `${API_BASE_URL}/auth/refresh`,
+          { refresh_token: refreshToken },
         )
         .then((res) => {
           localStorage.setItem("access_token", res.data.token);

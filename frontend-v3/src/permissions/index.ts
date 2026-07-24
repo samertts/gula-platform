@@ -6,7 +6,7 @@ export const ROLE_LEVELS: Record<string, number> = {
   lab_admin: 50,
   doctor: 40,
   technician: 20,
-   staff: 20,
+  staff: 20,
   lab_staff: 20,
   receptionist: 25,
   citizen: 10,
