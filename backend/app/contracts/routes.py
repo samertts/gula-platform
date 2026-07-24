@@ -174,4 +174,4 @@ async def export_contracts(export: ContractExport):
         )
     except Exception as exc:
         logger.exception("Contract export failed")
-        raise HTTPException(status_code=500, detail=f"Export failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Export failed") from exc

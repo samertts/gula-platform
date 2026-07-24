@@ -130,7 +130,7 @@ def create_claim(
             idempotency_key=data.idempotency_key,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail="Resource not found") from exc
 
     return _claim_to_response(claim)
 
@@ -151,8 +151,8 @@ def validate_claim(
     except ValueError as exc:
         msg = str(exc)
         if "not found" in msg:
-            raise HTTPException(status_code=404, detail=msg) from exc
-        raise HTTPException(status_code=400, detail=msg) from exc
+            raise HTTPException(status_code=404, detail="Resource not found") from exc
+        raise HTTPException(status_code=400, detail="Invalid request") from exc
 
     return _claim_to_response(claim)
 
@@ -173,8 +173,8 @@ def submit_claim(
     except ValueError as exc:
         msg = str(exc)
         if "not found" in msg:
-            raise HTTPException(status_code=404, detail=msg) from exc
-        raise HTTPException(status_code=400, detail=msg) from exc
+            raise HTTPException(status_code=404, detail="Resource not found") from exc
+        raise HTTPException(status_code=400, detail="Invalid request") from exc
 
     return _claim_to_response(claim)
 
@@ -193,6 +193,6 @@ def get_claim(
             lab_id=current_user.lab_id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail="Resource not found") from exc
 
     return _claim_to_response(claim)

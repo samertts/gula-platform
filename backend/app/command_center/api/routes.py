@@ -61,7 +61,7 @@ async def get_emergency(
     try:
         return _emergency_to_dict(service.get_emergency(emergency_id))
     except EmergencyNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.post("/emergencies/{emergency_id}/resolve")
@@ -74,7 +74,7 @@ async def resolve_emergency(
         return _emergency_to_dict(service.resolve_emergency(
             emergency_id, body.get("resolved_by", ""), body.get("notes", "")))
     except EmergencyNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 # ── Resource Requests ──
@@ -107,7 +107,7 @@ async def fulfill_resource(
     try:
         return _resource_to_dict(service.fulfill_resource(request_id, body))
     except ResourceRequestNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 # ── Situation Reports ──

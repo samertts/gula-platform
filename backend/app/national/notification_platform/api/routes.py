@@ -178,17 +178,17 @@ async def send_notification(
         )
         return _notification_to_dict(notification)
     except ChannelNotAvailableError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request") from e
     except RecipientNotSpecifiedError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
     except QuietHoursBlockedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied") from e
     except RateLimitExceededError as e:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many requests") from e
     except TemplateNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except TemplateRenderError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.post("/send/batch", status_code=status.HTTP_201_CREATED)
@@ -265,7 +265,7 @@ async def get_notification(
         notification = await service.get_notification(notification_id)
         return _notification_to_dict(notification)
     except NotificationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.delete("/{notification_id}", status_code=status.HTTP_200_OK)
@@ -277,9 +277,9 @@ async def cancel_notification(
         await service.cancel(notification_id)
         return {"status": "cancelled", "id": notification_id}
     except NotificationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 @router.post("/templates", status_code=status.HTTP_201_CREATED)
@@ -331,7 +331,7 @@ async def get_template(
         template = await service.get_template(template_id)
         return _template_to_dict(template)
     except TemplateNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.put("/templates/{template_id}")
@@ -352,7 +352,7 @@ async def update_template(
         )
         return _template_to_dict(template)
     except TemplateNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -363,7 +363,7 @@ async def delete_template(
     try:
         await service.delete_template(template_id)
     except TemplateNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.post("/templates/{template_id}/render")
@@ -378,9 +378,9 @@ async def render_template(
         subject, rendered = await service.render_template(template_id, channel, data)
         return {"subject": subject, "body": rendered}
     except TemplateNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except TemplateRenderError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.get("/delivery/{notification_id}")
@@ -405,7 +405,7 @@ async def get_delivery_report(
             for r in reports
         ]
     except NotificationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/preferences")
@@ -522,7 +522,7 @@ async def schedule_notification(
             "cron_expression": schedule.cron_expression,
         }
     except NotificationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/schedules")

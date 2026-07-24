@@ -59,7 +59,7 @@ async def evaluate_rules(
             for r in results
         ]
     except RuleEvaluationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.post("/simulate")
@@ -71,7 +71,7 @@ async def simulate_rule(
     try:
         return await service.simulate(rule, context)
     except RuleValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -89,7 +89,7 @@ async def create_rule(
             "version": saved.version,
         }
     except RuleValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.get("/")
@@ -164,7 +164,7 @@ async def get_rule(
             "metadata": rule.metadata,
         }
     except RuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.put("/{rule_id}")
@@ -213,9 +213,9 @@ async def update_rule(
         saved = await service.repository.save(rule)
         return {"id": saved.id, "name": saved.name, "status": saved.status.value, "version": saved.version}
     except RuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except RuleValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -226,7 +226,7 @@ async def delete_rule(
     try:
         await service.delete_rule(rule_id)
     except RuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.post("/{rule_id}/activate")
@@ -238,9 +238,9 @@ async def activate_rule(
         rule = await service.activate_rule(rule_id)
         return {"id": rule.id, "name": rule.name, "status": rule.status.value}
     except RuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except RuleValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.post("/{rule_id}/deactivate")
@@ -252,9 +252,9 @@ async def deactivate_rule(
         rule = await service.deactivate_rule(rule_id)
         return {"id": rule.id, "name": rule.name, "status": rule.status.value}
     except RuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except RuleValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.post("/{rule_id}/version")
@@ -272,9 +272,9 @@ async def create_rule_version(
             "status": new_rule.status.value,
         }
     except RuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except (RuleValidationError, RuleVersionError) as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
 @router.get("/{rule_id}/versions")
@@ -296,7 +296,7 @@ async def list_rule_versions(
             for r in sorted(versions, key=lambda x: x.version)
         ]
     except RuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/{rule_id}/evaluations")
@@ -323,7 +323,7 @@ async def get_rule_evaluations(
             for log in logs
         ]
     except RuleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/categories")

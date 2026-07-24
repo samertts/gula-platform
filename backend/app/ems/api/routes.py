@@ -58,7 +58,7 @@ async def get_incident(
     try:
         return _incident_to_dict(service.get_incident(incident_id))
     except IncidentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.put("/incidents/{incident_id}/status")
@@ -70,9 +70,9 @@ async def update_incident_status(
     try:
         return _incident_to_dict(service.update_incident_status(incident_id, body.get("status", "")))
     except IncidentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except InvalidIncidentStateError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 # ---- Dispatch ----
@@ -90,9 +90,9 @@ async def dispatch_incident(
         )
         return _dispatch_to_dict(dispatch)
     except IncidentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
     except AmbulanceNotAvailableError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 # ---- Ambulances ----
@@ -124,7 +124,7 @@ async def get_ambulance(
     try:
         return _ambulance_to_dict(service.get_ambulance(ambulance_id))
     except AmbulanceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.put("/ambulances/{ambulance_id}/location")
@@ -138,7 +138,7 @@ async def update_ambulance_location(
             ambulance_id, body.get("lat", 0.0), body.get("lng", 0.0),
         ))
     except AmbulanceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.put("/ambulances/{ambulance_id}/status")
@@ -152,7 +152,7 @@ async def update_ambulance_status(
             ambulance_id, body.get("status", ""), body.get("reason", ""),
         ))
     except AmbulanceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 # ---- Crew ----
@@ -221,7 +221,7 @@ async def get_epcr(
     try:
         return _epcr_to_dict(service.get_epcr(epcr_id))
     except ePCRNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.post("/epcr/{epcr_id}/submit")
@@ -232,7 +232,7 @@ async def submit_epcr(
     try:
         return _epcr_to_dict(service.submit_epcr(epcr_id))
     except ePCRNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 # ---- Hospital Status ----

@@ -5,11 +5,13 @@ on:
     branches: [main, develop]
     paths:
       - 'frontend-v2/**'
+      - 'frontend-v3/**'
       - '.github/workflows/frontend-pwa.yml'
   pull_request:
     branches: [main]
     paths:
       - 'frontend-v2/**'
+      - 'frontend-v3/**'
   workflow_dispatch:
     inputs:
       environment:

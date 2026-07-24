@@ -132,7 +132,7 @@ def create_suggestion(
             entity_id=body.entity_id,
         )
     except AIGuardrailViolationError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=403, detail="Access denied") from exc
 
     approval = approval_store.submit(suggestion)
     return {
@@ -182,7 +182,7 @@ def approve_suggestion(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Approval not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid request") from exc
 
     return {
         "approval_id": approval.id,
@@ -208,7 +208,7 @@ def reject_suggestion(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Approval not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid request") from exc
 
     return {
         "approval_id": approval.id,
@@ -239,7 +239,7 @@ def execute_suggestion(
     try:
         result = AISandbox.execute(approval)
     except AIGuardrailViolationError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=403, detail="Access denied") from exc
 
     return {
         "approval_id": result.approval_id,
@@ -306,7 +306,7 @@ def analyze_order(
             entity_id=order_id,
         )
     except AIGuardrailViolationError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=403, detail="Access denied") from exc
 
     approval = approval_store.submit(suggestion)
 

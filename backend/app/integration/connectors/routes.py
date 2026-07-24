@@ -56,7 +56,7 @@ async def connect_connector(name: str) -> dict[str, Any]:
             return {"name": name, "connected": True}
         raise HTTPException(status_code=502, detail=f"Failed to connect {name}")
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="Upstream service error") from exc
 
 
 @router.post("/{name}/disconnect")
@@ -66,7 +66,7 @@ async def disconnect_connector(name: str) -> dict[str, Any]:
         disconnected = await connector.disconnect()
         return {"name": name, "disconnected": disconnected}
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="Upstream service error") from exc
 
 
 @router.get("/{name}/health")
@@ -78,7 +78,7 @@ async def connector_health(name: str) -> dict[str, Any]:
         health = await connector.health_check()
         return {"name": name, **health}
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="Upstream service error") from exc
 
 
 @router.post("/{name}/send")
@@ -90,7 +90,7 @@ async def send_through_connector(name: str, data: dict[str, Any]) -> dict[str, A
         result = await connector.send(data)
         return {"name": name, "result": result}
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="Upstream service error") from exc
 
 
 @router.post("/{name}/configure")

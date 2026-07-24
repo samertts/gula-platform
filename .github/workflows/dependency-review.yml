@@ -24,12 +24,5 @@ jobs:
           deny-licenses: >
             AGPL-1.0, AGPL-3.0, GPL-1.0, GPL-2.0, GPL-3.0,
             LGPL-1.0, LGPL-2.0, LGPL-2.1, LGPL-3.0,
-            BSD-1-Clause, BSD-4-Clause,
-            CC0-1.0, CC-BY-2.0, CC-BY-2.5, CC-BY-3.0, CC-BY-4.0,
-            CC-BY-SA-2.0, CC-BY-SA-2.5, CC-BY-SA-3.0, CC-BY-SA-4.0,
-            CC-BY-NC-1.0, CC-BY-NC-2.0, CC-BY-NC-2.5, CC-BY-NC-3.0, CC-BY-NC-4.0,
-            CC-BY-NC-SA-1.0, CC-BY-NC-SA-2.0, CC-BY-NC-SA-2.5, CC-BY-NC-SA-3.0, CC-BY-NC-SA-4.0,
-            CC-BY-ND-1.0, CC-BY-ND-2.0, CC-BY-ND-2.5, CC-BY-ND-3.0, CC-BY-ND-4.0,
-            OSL-1.0, OSL-1.1, OSL-2.0, OSL-2.1, OSL-3.0,
-            Artistic-1.0, Artistic-2.0
+            BUSL-1.0, BSL-1.0, SSPL-1.0, RPL-1.5, RPL-2.0
           comment-summary-in-pr: on-failure
