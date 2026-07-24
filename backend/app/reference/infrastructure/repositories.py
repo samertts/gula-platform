@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import and_, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,7 +56,7 @@ class SQLPatientRepository(PatientRepository):
                 created_at,
                 updated_at
         """)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         row = (
             await self._session.execute(
                 stmt,
@@ -207,7 +207,7 @@ class SQLOrderRepository(OrderRepository):
                 id AS order_id, patient_id, lab_id, test_type, status,
                 priority, notes, created_at, updated_at, performed_by
         """)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         row = (
             await self._session.execute(
                 stmt,
@@ -313,7 +313,7 @@ class SQLResultRepository(ResultRepository):
                 min_value, max_value, min_critical, max_critical,
                 is_critical, flagged, notes, created_at, performed_by
         """)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         rr = result.reference_range
         row = (
             await self._session.execute(

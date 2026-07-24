@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from app.kernel import Kernel
@@ -49,7 +49,7 @@ class RuleExecutionResult:
     message: str = ""
     actions_taken: list[str] = field(default_factory=list)
     execution_time_ms: float = 0.0
-    triggered_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    triggered_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def add_evidence(self, ev: RuleExecutionEvidence) -> None:
         self.evidence.append(ev)

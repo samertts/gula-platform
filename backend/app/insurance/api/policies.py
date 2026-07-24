@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -269,7 +269,7 @@ def cancel_policy(
         raise HTTPException(status_code=400, detail="Policy is already cancelled")
 
     policy.status = PolicyStatus.CANCELLED
-    policy.cancelled_at = __import__("datetime").datetime.utcnow()
+    policy.cancelled_at = datetime.now(timezone.utc)
 
     log_action(
         db=db,

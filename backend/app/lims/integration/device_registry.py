@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger("gula.lims.integration.device_registry")
@@ -58,7 +58,7 @@ class DeviceRegistry:
     def mark_heartbeat(self, instrument_id: int) -> None:
         conn = self._connections.get(instrument_id)
         if conn:
-            conn.last_heartbeat = datetime.utcnow()
+            conn.last_heartbeat = datetime.now(timezone.utc)
             conn.connected = True
 
     def mark_disconnected(self, instrument_id: int) -> None:

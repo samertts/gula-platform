@@ -7,7 +7,7 @@ import json
 import logging
 import re
 import zlib
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger("gula.ecosystem.transformation")
@@ -33,7 +33,7 @@ class SchemaRegistry:
         self._versions: dict[str, list[dict]] = {}
 
     def register_schema(self, name: str, schema: dict, version: str = "1.0.0") -> dict:
-        entry = {"name": name, "schema": schema, "version": version, "created_at": datetime.utcnow().isoformat()}
+        entry = {"name": name, "schema": schema, "version": version, "created_at": datetime.now(timezone.utc).isoformat()}
         self._schemas[name] = entry
         if name not in self._versions:
             self._versions[name] = []

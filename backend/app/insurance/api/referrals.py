@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -383,7 +383,7 @@ def complete_referral(
 
     old_status = referral.status
     referral.status = ReferralStatus.COMPLETED
-    referral.completed_at = datetime.utcnow()
+    referral.completed_at = datetime.now(timezone.utc)
     referral.completed_notes = completed_notes
     _record_history(
         db=db, referral_id=referral.id, lab_id=current_user.lab_id,
@@ -423,7 +423,7 @@ def cancel_referral(
 
     old_status = referral.status
     referral.status = ReferralStatus.CANCELLED
-    referral.cancelled_at = datetime.utcnow()
+    referral.cancelled_at = datetime.now(timezone.utc)
     referral.cancellation_reason = reason
     _record_history(
         db=db, referral_id=referral.id, lab_id=current_user.lab_id,
@@ -470,7 +470,7 @@ def validate_referral(
         qr_verified=validation_method == ValidationMethod.QR_SCAN,
         identity_verified=bool(identity_document),
         identity_document=identity_document,
-        verified_at=datetime.utcnow(),
+        verified_at=datetime.now(timezone.utc),
         is_valid=True,
     )
     db.add(validation)

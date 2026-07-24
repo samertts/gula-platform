@@ -5,7 +5,7 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -183,7 +183,7 @@ class TimeRestrictionPolicy(BasePolicy):
         self._allowed_days: list[int] = list(range(7))
 
     def evaluate(self, request: dict) -> PolicyResult:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         hour = now.hour
         day = now.weekday()
 

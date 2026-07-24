@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -101,7 +101,7 @@ class InvoiceService:
             or 0
         )
         invoice_number = f"INV-{lab_id:04d}-{invoice_count + 1:06d}"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         invoice = FinInvoice(
             lab_id=lab_id,
             invoice_number=invoice_number,
@@ -223,7 +223,7 @@ class PaymentService:
         if not invoice:
             raise ValueError("Invoice not found")
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         payment = FinPayment(
             invoice_id=invoice_id,
             lab_id=lab_id,
