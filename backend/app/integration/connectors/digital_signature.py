@@ -36,7 +36,7 @@ class DigitalSignatureConnector(BaseConnector):
                 headers["Authorization"] = f"Bearer {self._api_key}"
             if self._pki_cert:
                 headers["X-Certificate-Thumbprint"] = hashlib.sha256(
-                    self._pki_cert.encode()
+                    self._pki_cert.encode(),
                 ).hexdigest()
             self._client = httpx.AsyncClient(
                 timeout=self._timeout,

@@ -66,7 +66,7 @@ class UniversalIdentifierService:
     def _generate_uuid(self, id_type: IdentifierType, tenant_id: str, seed: str) -> str:
         prefix = self._prefixes.get(id_type, "ID")
         raw = str(uuid.uuid4()) if not seed else hashlib.sha256(
-            (seed + str(uuid.uuid4())).encode()
+            (seed + str(uuid.uuid4())).encode(),
         ).hexdigest()[:16]
         if tenant_id:
             return f"{prefix}-{tenant_id}-{raw[:12].upper()}"
@@ -85,7 +85,7 @@ class UniversalIdentifierService:
     def _generate_hash(self, id_type: IdentifierType, tenant_id: str, seed: str) -> str:
         prefix = self._prefixes.get(id_type, "ID")
         raw = hashlib.sha256(
-            (seed + str(time.time()) + (tenant_id or "")).encode()
+            (seed + str(time.time()) + (tenant_id or "")).encode(),
         ).hexdigest()[:16].upper()
         return f"{prefix}-{raw[:8]}-{raw[8:16]}"
 

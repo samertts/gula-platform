@@ -83,7 +83,7 @@ class LabResultDomain:
     result_id: str | None = None
     order_id: str = ""
     analyte: str = ""
-    value: Decimal = Decimal("0")
+    value: Decimal = Decimal(0)
     unit: str = ""
     reference_range: ReferenceRange | None = None
     is_critical: bool = False

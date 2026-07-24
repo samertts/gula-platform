@@ -105,7 +105,7 @@ class PharmacyService:
                     DrugCatalog.generic_name.ilike(pattern),
                     DrugCatalog.brand_name.ilike(pattern),
                     DrugCatalog.code.ilike(pattern),
-                )
+                ),
             )
         if category:
             q = q.filter(DrugCatalog.category == category)
@@ -307,7 +307,7 @@ class PharmacyService:
     # ── Dispensing Workflow ────────────────────────────────────────────────────
 
     def get_dispense_queue(
-        self, status: str | None = None, priority: str | None = None, skip: int = 0, limit: int = 50
+        self, status: str | None = None, priority: str | None = None, skip: int = 0, limit: int = 50,
     ) -> tuple[list[DispenseQueue], int]:
         q = self.db.query(DispenseQueue).filter(~~DispenseQueue.is_deleted)
         if self.lab_id:
@@ -533,7 +533,7 @@ class PharmacyService:
         return stock
 
     def get_movements(
-        self, drug_id: str | None = None, movement_type: str | None = None, skip: int = 0, limit: int = 50
+        self, drug_id: str | None = None, movement_type: str | None = None, skip: int = 0, limit: int = 50,
     ) -> tuple[list[StockMovement], int]:
         q = self.db.query(StockMovement).filter(~~StockMovement.is_deleted)
         if self.lab_id:
@@ -756,8 +756,8 @@ class PharmacyService:
 
         wait_times = self.db.query(
             func.avg(
-                func.extract("epoch", DispenseQueue.completion_time - DispenseQueue.queued_at)
-            )
+                func.extract("epoch", DispenseQueue.completion_time - DispenseQueue.queued_at),
+            ),
         ).filter(
             DispenseQueue.status == DispenseStatus.DISPENSED,
             DispenseQueue.completion_time.isnot(None),

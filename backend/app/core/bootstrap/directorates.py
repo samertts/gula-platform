@@ -1,21 +1,20 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.organization import Organization
 
-from .models import OrganizationDef
 from .ministry import MINISTRY_ORG_ID
+from .models import OrganizationDef
 from .organizations import seed_organizations
 
 logger = logging.getLogger("gula.bootstrap.directorates")
 
 
-IRAQ_GOVERNORATES: List[dict] = [
+IRAQ_GOVERNORATES: list[dict] = [
     {"id": "bg", "name_en": "Baghdad", "name_ar": "بغداد"},
     {"id": "bb", "name_en": "Babylon", "name_ar": "بابل"},
     {"id": "ka", "name_en": "Karbala", "name_ar": "كربلاء"},
@@ -38,8 +37,8 @@ IRAQ_GOVERNORATES: List[dict] = [
 ]
 
 
-def build_directorate_defs(parent_org_id: str = MINISTRY_ORG_ID) -> List[OrganizationDef]:
-    defs: List[OrganizationDef] = []
+def build_directorate_defs(parent_org_id: str = MINISTRY_ORG_ID) -> list[OrganizationDef]:
+    defs: list[OrganizationDef] = []
     for gov in IRAQ_GOVERNORATES:
         gov_id = gov["id"]
         dir_id = f"dir-{gov_id}"
@@ -65,7 +64,7 @@ def seed_health_directorates(db: Session | None = None) -> int:
 
     try:
         moh = db.query(Organization).filter(
-            Organization.org_id == MINISTRY_ORG_ID
+            Organization.org_id == MINISTRY_ORG_ID,
         ).first()
         if not moh:
             logger.error("Ministry of Health not found — seed ministry first")

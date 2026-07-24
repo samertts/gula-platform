@@ -50,7 +50,7 @@ class CQRSValidator:
                                             line=node.lineno,
                                             pattern="CQS",
                                             message=f"Handler '{name}' handles both commands and queries — CQRS requires separation",
-                                        )
+                                        ),
                                     )
 
     def _check_command_return_type(self, file: Path, tree: ast.AST) -> None:
@@ -71,7 +71,7 @@ class CQRSValidator:
                                             line=child.lineno,
                                             pattern="CMD",
                                             message=f"Command handler '{node.name}.{child.name}' returns data — commands should return void or success/failure",
-                                        )
+                                        ),
                                     )
 
     def _check_query_side_effects(self, file: Path, tree: ast.AST) -> None:
@@ -92,7 +92,7 @@ class CQRSValidator:
                                         line=child.lineno,
                                         pattern="QRS",
                                         message=f"Query handler '{node.name}.{child.name}' performs write operations — queries must be side-effect free",
-                                    )
+                                    ),
                                 )
 
     def _check_handler_structure(self, file: Path, tree: ast.AST) -> None:
@@ -109,7 +109,7 @@ class CQRSValidator:
                             line=node.lineno,
                             pattern="HND",
                             message=f"Handler '{node.name}' should implement a 'handle' method",
-                        )
+                        ),
                     )
 
     def _check_bus_pattern(self, file: Path, tree: ast.AST) -> None:
@@ -127,5 +127,5 @@ class CQRSValidator:
                             line=node.lineno,
                             pattern="BUS",
                             message=f"Bus '{node.name}' should implement dispatch/ask methods",
-                        )
+                        ),
                     )

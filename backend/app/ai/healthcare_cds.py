@@ -95,7 +95,7 @@ class ClinicalDecisionSupport:
         }
 
     async def evaluate_order(
-        self, results: list[dict[str, Any]], patient_id: int | None = None, patient_age: int | None = None, patient_gender: str | None = None
+        self, results: list[dict[str, Any]], patient_id: int | None = None, patient_age: int | None = None, patient_gender: str | None = None,
     ) -> dict[str, Any]:
         all_alerts: list[CDSAlert] = []
         total_critical = 0

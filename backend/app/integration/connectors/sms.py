@@ -195,7 +195,7 @@ class SMSConnector(BaseConnector):
             return {"success": False, "error": "message_id required"}
         try:
             resp = await self._client.get(
-                urljoin(self._base_url, f"/api/sms/{message_id}/status")
+                urljoin(self._base_url, f"/api/sms/{message_id}/status"),
             )
             if resp.is_success:
                 return {"success": True, "delivery": resp.json()}

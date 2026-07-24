@@ -1,4 +1,3 @@
-from typing import Optional
 
 from sqlalchemy import select
 
@@ -32,7 +31,7 @@ class IdentityRepository(IdentityRepositoryBase[IdentityRecord]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_primary(self, person_id: str) -> Optional[IdentityRecord]:
+    async def find_primary(self, person_id: str) -> IdentityRecord | None:
         stmt = (
             select(self.model_class)
             .where(

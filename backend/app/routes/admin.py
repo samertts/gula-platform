@@ -133,7 +133,7 @@ def list_all_labs(
             db.query(LabUser.lab_id, func.count(LabUser.id))
             .filter(LabUser.lab_id.in_(lab_ids))
             .group_by(LabUser.lab_id)
-            .all()
+            .all(),
         )
         if lab_ids
         else {}
@@ -144,7 +144,7 @@ def list_all_labs(
             db.query(Patient.lab_id, func.count(Patient.id))
             .filter(Patient.lab_id.in_(lab_ids))
             .group_by(Patient.lab_id)
-            .all()
+            .all(),
         )
         if lab_ids
         else {}
@@ -283,7 +283,7 @@ def list_pending_labs(
                 "created_at": lab.created_at.isoformat() if lab.created_at else None,
                 "admin_email": admin_user.email if admin_user else None,
                 "admin_name": admin_user.name if admin_user else None,
-            }
+            },
         )
 
     return {"total": total, "pending_labs": result}
@@ -670,7 +670,7 @@ def list_users(
     if role:
         if role not in VALID_ROLES:
             raise HTTPException(
-                status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}"
+                status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}",
             )
         if not can_manage_role(actor.role, role):
             raise HTTPException(status_code=403, detail="Cannot view users of that role level")
@@ -994,7 +994,7 @@ def kill_switch_activate(
     )
     db.commit()
     logger.critical(
-        "[KILL-SWITCH] Activated by %s (id=%d) — reason: %s", admin.email, admin.id, body.reason
+        "[KILL-SWITCH] Activated by %s (id=%d) — reason: %s", admin.email, admin.id, body.reason,
     )
     return result
 
@@ -1020,7 +1020,7 @@ def kill_switch_deactivate(
     )
     db.commit()
     logger.warning(
-        "[KILL-SWITCH] Deactivated by %s (id=%d) — reason: %s", admin.email, admin.id, body.reason
+        "[KILL-SWITCH] Deactivated by %s (id=%d) — reason: %s", admin.email, admin.id, body.reason,
     )
     return result
 

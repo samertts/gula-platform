@@ -76,7 +76,7 @@ class PHRService:
         return max(metrics, key=lambda m: m.recorded_at)
 
     def update_health_data(
-        self, citizen_id: str, data_type: str, data: dict[str, Any]
+        self, citizen_id: str, data_type: str, data: dict[str, Any],
     ) -> None:
         if citizen_id not in self._health_data:
             self._health_data[citizen_id] = {}

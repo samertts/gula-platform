@@ -98,7 +98,7 @@ def require_consent(
         if gpid is None:
             # Mis-wired route — fail closed.
             raise HTTPException(
-                status_code=500, detail=f"consent dep: missing path param {gpid_path_param}"
+                status_code=500, detail=f"consent dep: missing path param {gpid_path_param}",
             )
 
         actor_id = _actor_id_for(current_user)

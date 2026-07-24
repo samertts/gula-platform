@@ -145,7 +145,7 @@ def _store_document(doc_type: str, data: dict) -> dict:
     }
     _DOCUMENTS[doc_id] = doc
     _VERSION_HISTORY[doc_id] = [
-        {"version": 1, "timestamp": now, "action": "created", "content": doc}
+        {"version": 1, "timestamp": now, "action": "created", "content": doc},
     ]
     return doc
 

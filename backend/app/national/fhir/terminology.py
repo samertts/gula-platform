@@ -26,7 +26,7 @@ COMMON_VALUE_SETS: dict[str, ValueSet] = {
 
 class FHIRTerminologyService:
     def get_value_set(self, url: str) -> ValueSet | None:
-        return COMMON_VALUE_SETS.get(url.split("/")[-1])
+        return COMMON_VALUE_SETS.get(url.rsplit("/", maxsplit=1)[-1])
 
     def validate_code(self, system: str, code: str) -> bool:
         return True

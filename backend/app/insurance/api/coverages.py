@@ -128,12 +128,12 @@ def create_coverage(
     coverage = Coverage(
         lab_id=current_user.lab_id,
         status=CoverageStatus.ACTIVE,
-        deductible_remaining=data.deductible_amount or data.deductible_total or Decimal("0"),
-        deductible_total=data.deductible_total or data.deductible_amount or Decimal("0"),
-        max_out_of_pocket_total=data.max_out_of_pocket or Decimal("0"),
-        max_out_of_pocket_remaining=data.max_out_of_pocket or Decimal("0"),
-        benefit_total=data.benefit_total or Decimal("0"),
-        benefit_remaining=data.benefit_total or Decimal("0"),
+        deductible_remaining=data.deductible_amount or data.deductible_total or Decimal(0),
+        deductible_total=data.deductible_total or data.deductible_amount or Decimal(0),
+        max_out_of_pocket_total=data.max_out_of_pocket or Decimal(0),
+        max_out_of_pocket_remaining=data.max_out_of_pocket or Decimal(0),
+        benefit_total=data.benefit_total or Decimal(0),
+        benefit_remaining=data.benefit_total or Decimal(0),
         **data.model_dump(exclude={"deductible_amount", "max_out_of_pocket", "benefit_total"}),
     )
     db.add(coverage)

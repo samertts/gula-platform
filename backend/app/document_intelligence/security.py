@@ -35,7 +35,7 @@ class InputValidator:
     MAX_LIST_SIZE = 1000
     MAX_DICT_DEPTH = 10
 
-    _UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
+    _UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
     @staticmethod
     def sanitize_string(value: str, max_length: int = MAX_STRING_LENGTH) -> str:

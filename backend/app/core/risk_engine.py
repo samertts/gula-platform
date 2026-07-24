@@ -1,5 +1,4 @@
-"""
-GULA Platform — Risk Scoring Engine
+"""GULA Platform — Risk Scoring Engine
 =======================================
 Computes a numeric risk score (0–10) for any proposed action before execution.
 
@@ -53,8 +52,7 @@ def compute_risk(
     action: str,
     context: dict | None = None,
 ) -> RiskAssessment:
-    """
-    Compute risk score for an action.
+    """Compute risk score for an action.
 
     Context keys (all optional, default False/0):
       env:            "production" | "development" | "test"

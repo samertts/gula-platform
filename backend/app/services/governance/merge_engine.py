@@ -33,7 +33,7 @@ class IdentityMergeEngine:
         self._merge_history: list[dict[str, Any]] = []
 
     def calculate_confidence(
-        self, primary_hn: str, duplicate_hn: str
+        self, primary_hn: str, duplicate_hn: str,
     ) -> float:
         primary = self._identity._get_by_health_number(primary_hn)
         duplicate = self._identity._get_by_health_number(duplicate_hn)

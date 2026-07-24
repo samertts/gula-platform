@@ -45,7 +45,7 @@ class NationalTask:
     @property
     def is_overdue(self) -> bool:
         if self.sla_due_at and self.status not in (
-            TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED
+            TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED,
         ):
             return datetime.now(UTC) > self.sla_due_at
         return False
@@ -53,7 +53,7 @@ class NationalTask:
     @property
     def sla_status(self) -> TaskSLAStatus:
         if not self.sla_due_at or self.status in (
-            TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED
+            TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED,
         ):
             return TaskSLAStatus.ON_TRACK
         remaining = (self.sla_due_at - datetime.now(UTC)).total_seconds()

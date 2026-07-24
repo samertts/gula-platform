@@ -26,6 +26,7 @@ NTE = "NTE"   # Notes/Comments
 @dataclass
 class HL7Segment:
     """Parsed HL7 segment."""
+
     segment_type: str
     fields: list[str] = field(default_factory=list)
     raw: str = ""
@@ -34,6 +35,7 @@ class HL7Segment:
 @dataclass
 class HL7Message:
     """Parsed HL7 message."""
+
     segments: list[HL7Segment] = field(default_factory=list)
     raw: str = ""
 
@@ -41,6 +43,7 @@ class HL7Message:
 @dataclass
 class HL7Result:
     """Canonical result parsed from HL7 ORU message."""
+
     specimen_id: str = ""
     patient_id: str = ""
     test_code: str = ""

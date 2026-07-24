@@ -105,7 +105,7 @@ class FHIRCatalog:
     def __init__(self):
         self._resources: dict[str, FHIRResourceEntry] = {}
         self._project_root: str = os.path.abspath(
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
         )
 
     def discover_fhir_resources(self) -> list[FHIRResourceEntry]:
@@ -146,7 +146,7 @@ class FHIRCatalog:
             security={
                 "cors": True,
                 "service": [
-                    {"coding": [{"system": "http://hl7.org/fhir/restful-security-service", "code": "Bearer"}]}
+                    {"coding": [{"system": "http://hl7.org/fhir/restful-security-service", "code": "Bearer"}]},
                 ],
                 "description": "JWT-based authentication with RBAC",
             },

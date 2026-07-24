@@ -61,7 +61,7 @@ class RecoveryEngine:
         self._batch_size = 100
 
     def register_handler(
-        self, event_name: str, handler: Callable
+        self, event_name: str, handler: Callable,
     ) -> None:
         if event_name not in self._recovery_handlers:
             self._recovery_handlers[event_name] = []

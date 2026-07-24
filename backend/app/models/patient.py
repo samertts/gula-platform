@@ -32,7 +32,7 @@ class Patient(Base):
     family_id_hash = Column(String(255), nullable=True, index=True)
     # Guardian — links a minor to their parent/guardian patient record.
     guardian_id = Column(
-        Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True
+        Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True,
     )
     full_name = Column(String(200), nullable=False)
     phone = Column(String(20), nullable=False, index=True)

@@ -106,7 +106,7 @@ def get_citizen(
             "master_admin",
             "ministry_admin",
             "province_admin",
-        )
+        ),
     ),
     db: Session = Depends(get_db),
 ) -> CitizenResponse:
@@ -146,7 +146,7 @@ def manual_merge(
         require_role(
             "master_admin",
             "ministry_admin",
-        )
+        ),
     ),
     db: Session = Depends(get_db),
 ) -> MergeResponse:
@@ -188,7 +188,7 @@ def list_pending_review(
             "master_admin",
             "ministry_admin",
             "province_admin",
-        )
+        ),
     ),
     db: Session = Depends(get_db),
 ) -> PendingReviewPage:
@@ -215,7 +215,7 @@ def list_pending_review(
                 match_score=float(claim.match_score) if claim.match_score is not None else None,
                 match_features=claim.match_features or {},
                 created_at=claim.created_at,
-            )
+            ),
         )
     return PendingReviewPage(total=total, items=items)
 
@@ -232,7 +232,7 @@ def decide_pending_review(
             "master_admin",
             "ministry_admin",
             "province_admin",
-        )
+        ),
     ),
     db: Session = Depends(get_db),
 ):
@@ -248,7 +248,7 @@ def decide_pending_review(
         raise HTTPException(status_code=404, detail="claim not found")
     if claim.match_method != "pending_review":
         raise HTTPException(
-            status_code=409, detail=f"claim is not pending (method={claim.match_method})"
+            status_code=409, detail=f"claim is not pending (method={claim.match_method})",
         )
 
     if decision.decision == "confirm":

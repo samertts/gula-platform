@@ -44,7 +44,7 @@ def get_current_user(
     payload = decode_token(raw_token)
     if payload is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token",
         )
 
     # Reject revoked tokens (logout, forced expiry)
@@ -52,19 +52,19 @@ def get_current_user(
     if jti and is_token_blacklisted(jti):
         logger.warning("Token revoked jti=%s user_id=%s", jti, payload.get("user_id"))
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked",
         )
 
     user_id = payload.get("user_id")
     if user_id is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload",
         )
 
     user = db.query(LabUser).filter(LabUser.id == user_id, LabUser.is_active).first()
     if user is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive",
         )
 
     # ── perm_version check ────────────────────────────────────────────────────
@@ -101,8 +101,7 @@ def get_current_user(
 
 
 def require_permission(permission: str):
-    """
-    FastAPI dependency factory: require a specific permission.
+    """FastAPI dependency factory: require a specific permission.
 
     Permissions are derived from the user's role at request time — no extra
     DB query needed (O(1) dict lookup in rbac.ROLE_PERMISSIONS).
@@ -152,7 +151,7 @@ def require_service_account(
         account = validate_api_key(db, raw_token)
         if account is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired API key"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired API key",
             )
         return account
 

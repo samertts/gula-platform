@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,21 +26,21 @@ class FederationService:
         self,
         provider_id: str,
         name_en: str,
-        name_ar: Optional[str],
+        name_ar: str | None,
         provider_type: str,
         issuer_url: str,
-        authorization_endpoint: Optional[str] = None,
-        token_endpoint: Optional[str] = None,
-        jwks_uri: Optional[str] = None,
-        userinfo_endpoint: Optional[str] = None,
-        client_id: Optional[str] = None,
-        client_secret_encrypted: Optional[str] = None,
-        scopes: Optional[list[str]] = None,
-        redirect_uris: Optional[list[str]] = None,
-        certificate: Optional[str] = None,
-        signature_algorithm: Optional[str] = None,
-        trust_anchor_id: Optional[str] = None,
-        metadata_url: Optional[str] = None,
+        authorization_endpoint: str | None = None,
+        token_endpoint: str | None = None,
+        jwks_uri: str | None = None,
+        userinfo_endpoint: str | None = None,
+        client_id: str | None = None,
+        client_secret_encrypted: str | None = None,
+        scopes: list[str] | None = None,
+        redirect_uris: list[str] | None = None,
+        certificate: str | None = None,
+        signature_algorithm: str | None = None,
+        trust_anchor_id: str | None = None,
+        metadata_url: str | None = None,
     ) -> FederatedProvider:
         provider = FederatedProvider(
             uuid=str(uuid.uuid4()),
@@ -68,7 +68,7 @@ class FederationService:
         await self.session.flush()
         return provider
 
-    async def get_provider(self, provider_id: str) -> Optional[FederatedProvider]:
+    async def get_provider(self, provider_id: str) -> FederatedProvider | None:
         stmt = select(FederatedProvider).where(
             FederatedProvider.provider_id == provider_id,
             FederatedProvider.is_active.is_(True),
@@ -80,7 +80,7 @@ class FederationService:
         self,
         provider_id: str,
         **kwargs: Any,
-    ) -> Optional[FederatedProvider]:
+    ) -> FederatedProvider | None:
         provider = await self.get_provider(provider_id)
         if not provider:
             return None
@@ -92,7 +92,7 @@ class FederationService:
 
     async def list_providers(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
     ) -> list[FederatedProvider]:
         stmt = select(FederatedProvider).where(FederatedProvider.is_active.is_(True))
         if status:
@@ -105,8 +105,8 @@ class FederationService:
         person_id: str,
         provider_id: str,
         external_subject_id: str,
-        external_attributes: Optional[dict[str, Any]] = None,
-        identity_id: Optional[str] = None,
+        external_attributes: dict[str, Any] | None = None,
+        identity_id: str | None = None,
     ) -> FederatedIdentity:
         existing = await self.find_by_external_id(provider_id, external_subject_id)
         if existing:
@@ -134,7 +134,7 @@ class FederationService:
         await self.session.flush()
         return identity
 
-    async def unlink_identity(self, fed_id: str, reason: str) -> Optional[FederatedIdentity]:
+    async def unlink_identity(self, fed_id: str, reason: str) -> FederatedIdentity | None:
         stmt = select(FederatedIdentity).where(
             FederatedIdentity.fed_id == fed_id,
             FederatedIdentity.is_active.is_(True),
@@ -154,7 +154,7 @@ class FederationService:
         self,
         provider_id: str,
         external_subject_id: str,
-    ) -> Optional[FederatedIdentity]:
+    ) -> FederatedIdentity | None:
         stmt = select(FederatedIdentity).where(
             FederatedIdentity.provider_id == provider_id,
             FederatedIdentity.external_subject_id == external_subject_id,
@@ -176,7 +176,7 @@ class FederationService:
         provider_id: str,
         fed_identity_id: str,
         tokens: dict[str, Any],
-        attributes: Optional[dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> FederatedSession:
         session_id_val = f"fed_sess_{uuid.uuid4().hex[:16]}"
         fed_session = FederatedSession(
@@ -199,7 +199,7 @@ class FederationService:
         await self.session.flush()
         return fed_session
 
-    async def terminate_session(self, session_id: str) -> Optional[FederatedSession]:
+    async def terminate_session(self, session_id: str) -> FederatedSession | None:
         stmt = select(FederatedSession).where(
             FederatedSession.session_id == session_id,
             FederatedSession.is_active.is_(True),
@@ -224,10 +224,10 @@ class CrossOrgTrustService:
         source_org_id: str,
         target_org_id: str,
         trust_level: str,
-        agreement: Optional[dict[str, Any]] = None,
+        agreement: dict[str, Any] | None = None,
         trust_type: str = "bilateral",
-        established_by: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
+        established_by: str | None = None,
+        expires_at: datetime | None = None,
     ) -> CrossOrganizationTrust:
         trust = CrossOrganizationTrust(
             uuid=str(uuid.uuid4()),
@@ -258,7 +258,7 @@ class CrossOrgTrustService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def suspend_trust(self, trust_id: str) -> Optional[CrossOrganizationTrust]:
+    async def suspend_trust(self, trust_id: str) -> CrossOrganizationTrust | None:
         stmt = select(CrossOrganizationTrust).where(
             CrossOrganizationTrust.trust_id == trust_id,
             CrossOrganizationTrust.is_active.is_(True),
@@ -271,7 +271,7 @@ class CrossOrgTrustService:
         await self.session.flush()
         return trust
 
-    async def terminate_trust(self, trust_id: str) -> Optional[CrossOrganizationTrust]:
+    async def terminate_trust(self, trust_id: str) -> CrossOrganizationTrust | None:
         stmt = select(CrossOrganizationTrust).where(
             CrossOrganizationTrust.trust_id == trust_id,
             CrossOrganizationTrust.is_active.is_(True),
@@ -296,12 +296,12 @@ class FederationAgreementService:
         name: str,
         parties: list[str],
         agreement_type: str,
-        scope: Optional[dict[str, Any]] = None,
-        terms: Optional[dict[str, Any]] = None,
-        security_requirements: Optional[dict[str, Any]] = None,
-        effective_date: Optional[datetime] = None,
-        expiry_date: Optional[datetime] = None,
-        governing_law: Optional[str] = None,
+        scope: dict[str, Any] | None = None,
+        terms: dict[str, Any] | None = None,
+        security_requirements: dict[str, Any] | None = None,
+        effective_date: datetime | None = None,
+        expiry_date: datetime | None = None,
+        governing_law: str | None = None,
     ) -> FederationAgreement:
         agreement = FederationAgreement(
             uuid=str(uuid.uuid4()),
@@ -326,7 +326,7 @@ class FederationAgreementService:
         self,
         agreement_id: str,
         signed_by: list[dict[str, Any]],
-    ) -> Optional[FederationAgreement]:
+    ) -> FederationAgreement | None:
         stmt = select(FederationAgreement).where(
             FederationAgreement.agreement_id == agreement_id,
         )
@@ -352,7 +352,7 @@ class FederationAgreementService:
             if a.parties and org_id in a.parties
         ]
 
-    async def get_agreement(self, agreement_id: str) -> Optional[FederationAgreement]:
+    async def get_agreement(self, agreement_id: str) -> FederationAgreement | None:
         stmt = select(FederationAgreement).where(
             FederationAgreement.agreement_id == agreement_id,
         )
@@ -361,8 +361,8 @@ class FederationAgreementService:
 
     async def list_agreements(
         self,
-        status: Optional[str] = None,
-        agreement_type: Optional[str] = None,
+        status: str | None = None,
+        agreement_type: str | None = None,
     ) -> list[FederationAgreement]:
         stmt = select(FederationAgreement)
         if status:

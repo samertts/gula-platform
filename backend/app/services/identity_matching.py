@@ -44,7 +44,7 @@ _ARABIC_LETTER_MAP = {
 # Arabic tashkeel (diacritics) range + tatweel, removed entirely.
 _ARABIC_DIACRITICS = re.compile(
     r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC"
-    r"\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]"
+    r"\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]",
 )
 
 _MULTI_WHITESPACE = re.compile(r"\s+")
@@ -122,7 +122,7 @@ def generate_health_id(national_id: str) -> str:
         from ..config import NID_HMAC_KEY  # type: ignore
 
         digest = hmac.new(
-            NID_HMAC_KEY.encode("utf-8"), cleaned.encode("utf-8"), hashlib.sha256
+            NID_HMAC_KEY.encode("utf-8"), cleaned.encode("utf-8"), hashlib.sha256,
         ).hexdigest()
     except Exception:
         digest = hashlib.sha256(cleaned.encode("utf-8")).hexdigest()
@@ -242,7 +242,7 @@ def calculate_match_score(citizen1: Any, citizen2: Any) -> float:
 
     dob = _dob_score(_get(citizen1, "birth_date"), _get(citizen2, "birth_date"))
     mother = _equal_score(
-        _get(citizen1, "mother_name"), _get(citizen2, "mother_name"), normalize=True
+        _get(citizen1, "mother_name"), _get(citizen2, "mother_name"), normalize=True,
     )
     gov = _equal_score(_get(citizen1, "governorate"), _get(citizen2, "governorate"), normalize=True)
 
@@ -306,7 +306,7 @@ def find_duplicates(db: Session, citizen_data: Any, *, limit: int = 20) -> list[
             from sqlalchemy import extract
 
             candidates_q = candidates_q.filter(
-                extract("year", Patient.birth_date) == birth_date.year
+                extract("year", Patient.birth_date) == birth_date.year,
             )
         except Exception:
             pass

@@ -1,5 +1,4 @@
-"""
-Clinical Engine — GULA Platform  v2.1
+"""Clinical Engine — GULA Platform  v2.1
 =======================================
 Central orchestrator for all clinical decision logic.
 
@@ -73,6 +72,7 @@ def _resolve_severity(sources: list[tuple[str, str]]) -> tuple[str, str]:
 
     Returns:
         (winning_severity, winning_engine_name)
+
     """
     if not sources:
         return SEVERITY_UNKNOWN, "none"
@@ -152,7 +152,7 @@ def _safe_guidance(test: str) -> str:
 
 
 def _safe_outbreak(order_results: list[dict], test_code: str) -> dict:
-    """epidemiology — population outbreak signal."""
+    """Epidemiology — population outbreak signal."""
     try:
         from .epidemiology import detect_outbreak
 
@@ -196,6 +196,7 @@ def evaluate_result(
     Returns:
         Full audit-trail dict including engine_version, severity, conflict
         resolution details, and per-engine outputs.
+
     """
     pctx = patient_context or {}
 

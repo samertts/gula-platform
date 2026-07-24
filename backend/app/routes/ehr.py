@@ -108,7 +108,7 @@ def update_clinical_note(
         raise HTTPException(status_code=404, detail="Clinical note not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_clinical_note(
-        db, note_id, body.model_dump(exclude_none=True)
+        db, note_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -344,7 +344,7 @@ def update_medication_statement(
         raise HTTPException(status_code=404, detail="Medication statement not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_medication_statement(
-        db, statement_id, body.model_dump(exclude_none=True)
+        db, statement_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -466,7 +466,7 @@ def update_medication_request(
         raise HTTPException(status_code=404, detail="Medication request not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_medication_request(
-        db, request_id, body.model_dump(exclude_none=True)
+        db, request_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -581,7 +581,7 @@ def update_medication_dispense(
         raise HTTPException(status_code=404, detail="Medication dispense not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_medication_dispense(
-        db, dispense_id, body.model_dump(exclude_none=True)
+        db, dispense_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -660,7 +660,7 @@ def create_medication_administration(
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
     record = ehr_service.create_medication_administration(
-        db, body.model_dump(exclude_none=True)
+        db, body.model_dump(exclude_none=True),
     )
     db.commit()
     return record.to_dict()
@@ -697,7 +697,7 @@ def update_medication_administration(
         raise HTTPException(status_code=404, detail="Medication administration not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_medication_administration(
-        db, admin_id, body.model_dump(exclude_none=True)
+        db, admin_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -734,7 +734,7 @@ def list_patient_medication_administrations(
 ):
     _get_patient(db, patient_id, current_user.lab_id)
     records = ehr_service.list_medication_administrations_by_patient(
-        db, patient_id, skip, limit
+        db, patient_id, skip, limit,
     )
     return [r.to_dict() for r in records]
 
@@ -922,7 +922,7 @@ def update_care_plan_goal(
     if cp:
         _get_patient(db, cp.patient_id, current_user.lab_id)
     updated = ehr_service.update_care_plan_goal(
-        db, goal_id, body.model_dump(exclude_none=True)
+        db, goal_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -1008,7 +1008,7 @@ def update_care_plan_activity(
     if cp:
         _get_patient(db, cp.patient_id, current_user.lab_id)
     updated = ehr_service.update_care_plan_activity(
-        db, activity_id, body.model_dump(exclude_none=True)
+        db, activity_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -1112,7 +1112,7 @@ def update_problem_list_item(
         raise HTTPException(status_code=404, detail="Problem list item not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_problem_list_item(
-        db, item_id, body.model_dump(exclude_none=True)
+        db, item_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -1466,7 +1466,7 @@ def update_family_history(
         raise HTTPException(status_code=404, detail="Family history record not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_family_history_record(
-        db, record_id, body.model_dump(exclude_none=True)
+        db, record_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -1592,7 +1592,7 @@ def update_social_history(
         raise HTTPException(status_code=404, detail="Social history record not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_social_history_record(
-        db, record_id, body.model_dump(exclude_none=True)
+        db, record_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -1711,7 +1711,7 @@ def update_risk_factor(
         raise HTTPException(status_code=404, detail="Risk factor record not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_risk_factor_record(
-        db, record_id, body.model_dump(exclude_none=True)
+        db, record_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -1840,7 +1840,7 @@ def update_immunization(
         raise HTTPException(status_code=404, detail="Immunization record not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_immunization_record(
-        db, record_id, body.model_dump(exclude_none=True)
+        db, record_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()
@@ -1965,7 +1965,7 @@ def update_attachment(
         raise HTTPException(status_code=404, detail="Attachment not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     updated = ehr_service.update_clinical_attachment(
-        db, attachment_id, body.model_dump(exclude_none=True)
+        db, attachment_id, body.model_dump(exclude_none=True),
     )
     db.commit()
     return updated.to_dict()

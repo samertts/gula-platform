@@ -28,10 +28,10 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                             {
                                 "system": "http://terminology.hl7.org/CodeSystem/restful-security-service",
                                 "code": "SMART-on-FHIR",
-                            }
+                            },
                         ],
                         "text": "OAuth2 / JWT Bearer Token (SMART-on-FHIR compatible)",
-                    }
+                    },
                 ],
                 "description": "All FHIR endpoints require JWT Bearer authentication. Tenant isolation enforced via lab_id claims.",
             },
@@ -174,7 +174,7 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                 },
             ],
-        }
+        },
     ],
 }
 

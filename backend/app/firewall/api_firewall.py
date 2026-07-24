@@ -1,5 +1,4 @@
-"""
-API Firewall — GULA Platform
+"""API Firewall — GULA Platform
 =============================
 Redis-backed IP blocklist with fail-closed guarantee, TTL-aware local
 fallback, and bounded eviction to prevent memory growth.
@@ -86,6 +85,7 @@ def block(ip: str, ttl: int = _DEFAULT_TTL, reason: str = "unspecified") -> None
         ttl:    Block duration in seconds. 0 = permanent in Redis (still
                 expires locally after MAX_LOCAL_SECONDS).
         reason: Human-readable reason stored in Redis and logged.
+
     """
     # Local store first — always succeeds
     with _local_lock:

@@ -14,7 +14,7 @@ class RepositorySpec:
     has_version_lock: bool = True
     has_audit: bool = True
     methods: list[str] = field(
-        default_factory=lambda: ["get", "list", "create", "update", "delete", "count"]
+        default_factory=lambda: ["get", "list", "create", "update", "delete", "count"],
     )
     interface: bool = True
     impl: bool = True

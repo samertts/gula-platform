@@ -102,7 +102,7 @@ _ALLOWED_STAFF_ROLES = frozenset(
         "doctor",  # طبيب مشرف — reviews and authorises results
         "receptionist",  # موظف استقبال — registers patients and orders
         "staff",  # generic staff member
-    }
+    },
 )
 
 
@@ -159,7 +159,7 @@ class LabRegisterRequest(BaseModel):
 
 @router.post("/register", status_code=201)
 def register_lab(
-    data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)
+    data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db),
 ):
     rate_limit_auth(request)
 
@@ -168,7 +168,7 @@ def register_lab(
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     if data.password.isdigit() or data.password.isalpha():
         raise HTTPException(
-            status_code=400, detail="Password must contain both letters and numbers"
+            status_code=400, detail="Password must contain both letters and numbers",
         )
     if len(data.password) > 128:
         raise HTTPException(status_code=400, detail="Password too long")
@@ -176,7 +176,7 @@ def register_lab(
     existing = db.query(LabUser).filter(LabUser.email == data.email).first()
     if existing:
         raise HTTPException(
-            status_code=409, detail="Registration failed. Please use a different email."
+            status_code=409, detail="Registration failed. Please use a different email.",
         )
 
     # Labs start INACTIVE — they must be approved by a platform admin before use.
@@ -297,7 +297,7 @@ def register_citizen(
     existing_phone = db.query(User).filter(User.phone == data.phone).first()
     if existing_phone:
         raise HTTPException(
-            status_code=409, detail="Registration failed. Please check your details."
+            status_code=409, detail="Registration failed. Please check your details.",
         )
 
     # Check for duplicate email if provided
@@ -305,7 +305,7 @@ def register_citizen(
         existing_email = db.query(User).filter(User.email == data.email).first()
         if existing_email:
             raise HTTPException(
-                status_code=409, detail="Registration failed. Please check your details."
+                status_code=409, detail="Registration failed. Please check your details.",
             )
 
     # Hash NID using HMAC-SHA256 for privacy — use the same key as the rest of the app
@@ -315,14 +315,14 @@ def register_citizen(
         import hmac
 
         nid_hash = hmac.new(
-            NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256
+            NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256,
         ).hexdigest()
 
         # Check for duplicate NID
         existing_nid = db.query(User).filter(User.national_id_hash == nid_hash).first()
         if existing_nid:
             raise HTTPException(
-                status_code=409, detail="Registration failed. Please check your details."
+                status_code=409, detail="Registration failed. Please check your details.",
             )
 
     citizen = User(
@@ -342,7 +342,7 @@ def register_citizen(
         # DB UNIQUE constraints catch concurrent duplicate registrations (TOCTOU).
         db.rollback()
         raise HTTPException(
-            status_code=409, detail="Registration failed. Please check your details."
+            status_code=409, detail="Registration failed. Please check your details.",
         ) from None
 
     # Citizen-first: canonical national identity exists before any lab visit.
@@ -605,7 +605,7 @@ def register_doctor(
         import hmac
 
         nid_hash = hmac.new(
-            NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256
+            NID_HMAC_KEY.encode(), data.national_id.encode(), hashlib.sha256,
         ).hexdigest()
         if db.query(User).filter(User.national_id_hash == nid_hash).first():
             raise HTTPException(

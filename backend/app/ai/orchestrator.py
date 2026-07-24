@@ -126,7 +126,7 @@ class AIOrchestrator:
         }
 
     async def _handle_agent(
-        self, query: str, lab_id: int | None, user_id: int | None, session_id: str | None
+        self, query: str, lab_id: int | None, user_id: int | None, session_id: str | None,
     ) -> dict[str, Any]:
         if not session_id:
             session_id = str(uuid.uuid4())

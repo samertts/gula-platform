@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Dict
 
 
 @dataclass
@@ -25,7 +24,7 @@ class BootstrapConfig:
     bootstrap_language: str
     bootstrap_timezone: str
     master_admin_nid: str
-    extra: Dict[str, str] = field(default_factory=dict)
+    extra: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_env(cls) -> BootstrapConfig:

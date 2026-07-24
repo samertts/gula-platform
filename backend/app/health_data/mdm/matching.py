@@ -157,8 +157,7 @@ class FuzzyMatcher(Matcher):
         s1, s2 = s1.lower(), s2.lower()
         len_s1, len_s2 = len(s1), len(s2)
         max_dist = max(len_s1, len_s2) // 2 - 1
-        if max_dist < 0:
-            max_dist = 0
+        max_dist = max(max_dist, 0)
 
         s1_matches = [False] * len_s1
         s2_matches = [False] * len_s2

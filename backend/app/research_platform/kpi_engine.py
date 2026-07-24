@@ -117,13 +117,12 @@ class KpiCalculator:
                         result.status = "below_target"
                     else:
                         result.status = "near_target"
+                elif result.value <= kpi.target:
+                    result.status = "on_target"
+                elif kpi.threshold_warning and result.value > kpi.threshold_warning:
+                    result.status = "above_target"
                 else:
-                    if result.value <= kpi.target:
-                        result.status = "on_target"
-                    elif kpi.threshold_warning and result.value > kpi.threshold_warning:
-                        result.status = "above_target"
-                    else:
-                        result.status = "near_target"
+                    result.status = "near_target"
         except Exception as exc:
             logger.warning("KPI %s calculation failed: %s", kpi.code, exc)
             result.status = "error"

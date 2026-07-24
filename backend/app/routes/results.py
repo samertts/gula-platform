@@ -272,7 +272,7 @@ def get_patient_history_by_id_route(
 
 @router.get("/history/{phone}")
 def get_patient_history_route(
-    phone: str, request: Request, name: str | None = None, db: Session = Depends(get_db)
+    phone: str, request: Request, name: str | None = None, db: Session = Depends(get_db),
 ):
     """Get patient test history by phone number (public, rate limited).
     Requires 'name' query param matching full patient name as verification.
@@ -302,8 +302,7 @@ def analyze_results(
     request: Request,
     current_user: LabUser = Depends(get_current_user),
 ):
-    """
-    Analyze a batch of results for multi-test clinical patterns.
+    """Analyze a batch of results for multi-test clinical patterns.
     Returns detected patterns (sepsis, DKA, renal failure, etc.)
     and a flag summary. Does NOT diagnose — flags for physician review.
     """
@@ -339,8 +338,7 @@ def analyze_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Run clinical intelligence analysis on an existing order's results.
+    """Run clinical intelligence analysis on an existing order's results.
     Useful for post-entry review.
     """
     from ..services.clinical_intelligence import analyze_results as _analyze

@@ -105,7 +105,7 @@ async def create_job(
                         job_id=job.id,
                         depends_on_job_id=dep.get("depends_on_job_id", ""),
                         dependency_type=DependencyType(dep.get("dependency_type", "success")),
-                    )
+                    ),
                 )
 
         return {

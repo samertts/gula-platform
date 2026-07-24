@@ -64,7 +64,7 @@ class EdgeDevice(Base):
     capabilities = Column(JSON, nullable=True)
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
     registered_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
     )
     revoked_at = Column(DateTime(timezone=True), nullable=True)
     quarantined_at = Column(DateTime(timezone=True), nullable=True)
@@ -113,7 +113,7 @@ class EdgeTask(Base):
     result = Column(JSON, nullable=True)
     error = Column(Text, nullable=True)
     submitted_by_user_id = Column(
-        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True,
     )
 
 
@@ -203,7 +203,7 @@ class EdgePolicy(Base):
     kill_switch = Column(Boolean, nullable=False, default=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_by_user_id = Column(
-        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True,
     )
 
 

@@ -288,7 +288,7 @@ class BloodBankService:
         total_donors = self.db.query(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True)).count()
         active_donors = self.db.query(BloodDonorModel).filter_by(status="active").count()
         donations_today = self.db.query(BloodDonationModel).filter(
-            BloodDonationModel.created_at >= datetime.now(UTC).replace(hour=0, minute=0, second=0)
+            BloodDonationModel.created_at >= datetime.now(UTC).replace(hour=0, minute=0, second=0),
         ).count()
         total_donations = self.db.query(BloodDonationModel).count()
         total_units = self.db.query(BloodUnitModel).filter_by(status="available").count()

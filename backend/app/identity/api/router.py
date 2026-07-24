@@ -1,16 +1,17 @@
 from fastapi import APIRouter
 
-from . import persons, accounts, auth, sessions, devices
-from app.identity.governance import routes as governance_routes
-from app.identity.trust import routes as trust_routes
-from app.identity.lifecycle import routes as lifecycle_routes
-from app.identity.federation import routes as federation_routes
-from app.identity.certificates import routes as certificates_routes
-from app.identity.workflows import routes as workflows_routes
-from app.identity.notifications import routes as notifications_routes
 from app.identity.adaptive_auth import routes as adaptive_auth_routes
 from app.identity.admin import routes as admin_routes
+from app.identity.certificates import routes as certificates_routes
 from app.identity.compliance import routes as compliance_routes
+from app.identity.federation import routes as federation_routes
+from app.identity.governance import routes as governance_routes
+from app.identity.lifecycle import routes as lifecycle_routes
+from app.identity.notifications import routes as notifications_routes
+from app.identity.trust import routes as trust_routes
+from app.identity.workflows import routes as workflows_routes
+
+from . import accounts, auth, devices, persons, sessions
 
 router = APIRouter(prefix="/niam", tags=["NIAM"])
 

@@ -74,7 +74,7 @@ if not DATABASE_URL:
     # Dev-only fallback: use local postgres without hardcoded password
     DATABASE_URL = "postgresql://postgres@localhost:5432/gula"
     logger.warning(
-        "DATABASE_URL not set — using local dev default. Set DATABASE_URL in .env for production."
+        "DATABASE_URL not set — using local dev default. Set DATABASE_URL in .env for production.",
     )
 
 # ─── Weak-secret detection helper ────────────────────────────────────────────
@@ -132,7 +132,7 @@ if not REFRESH_TOKEN_SECRET:
     # Dev fallback: generate an independent random key
     REFRESH_TOKEN_SECRET = secrets.token_urlsafe(64)
     logger.warning(
-        "REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production."
+        "REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production.",
     )
 
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
@@ -190,7 +190,7 @@ REDIS_URL = os.getenv("REDIS_URL", "")
 if not REDIS_URL:
     logger.warning(
         "REDIS_URL not set — using in-memory store (not shared across workers). "
-        "Set REDIS_URL for full rate-limiting and cross-process session invalidation."
+        "Set REDIS_URL for full rate-limiting and cross-process session invalidation.",
     )
 
 # ─── Redis Sentinel / Cluster (HA mode) ──────────────────────────────────────

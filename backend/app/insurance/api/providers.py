@@ -141,7 +141,7 @@ def list_providers(
         q = q.filter(
             InsuranceProvider.name.ilike(like)
             | InsuranceProvider.name_ar.ilike(like)
-            | InsuranceProvider.code.ilike(like)
+            | InsuranceProvider.code.ilike(like),
         )
     if insurance_type:
         q = q.filter(InsuranceProvider.insurance_type == insurance_type)

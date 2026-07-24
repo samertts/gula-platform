@@ -1,5 +1,4 @@
-"""
-GULA Platform — Subscription & Tier Models
+"""GULA Platform — Subscription & Tier Models
 ===========================================
 Multi-tier SaaS model with 3 orthogonal dimensions:
 
@@ -22,8 +21,7 @@ from ..database import Base
 
 
 class LabSubscription(Base):
-    """
-    Active subscription for a lab — the authoritative source for
+    """Active subscription for a lab — the authoritative source for
     tier, deployment mode and security level.
 
     One subscription per lab (UNIQUE on lab_id).
@@ -33,7 +31,7 @@ class LabSubscription(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     lab_id = Column(
-        Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+        Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, unique=True, index=True,
     )
 
     # ── Dimension 1: Subscription Tier ──────────────────────────────────────
@@ -76,8 +74,7 @@ class LabSubscription(Base):
 
 
 class UpgradeRequest(Base):
-    """
-    Demand-driven upgrade requests.
+    """Demand-driven upgrade requests.
     Citizens can request that a lab be upgraded to a higher tier.
     A weighted score drives upgrade recommendations to platform admins.
     """
@@ -87,7 +84,7 @@ class UpgradeRequest(Base):
     id = Column(Integer, primary_key=True, index=True)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
     requester_id = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )  # citizen who requested
 
     # What they're asking for
@@ -97,7 +94,7 @@ class UpgradeRequest(Base):
 
     reason = Column(Text, nullable=True)  # free-text reason from citizen
     status = Column(
-        String(20), default="pending", index=True
+        String(20), default="pending", index=True,
     )  # pending | approved | rejected | fulfilled
     weight = Column(Float, default=1.0)  # weighted demand contribution (1.0 = verified patient)
 
@@ -114,8 +111,7 @@ class UpgradeRequest(Base):
 
 
 class UpgradeDemandScore(Base):
-    """
-    Aggregated demand score per lab — updated whenever an UpgradeRequest is created.
+    """Aggregated demand score per lab — updated whenever an UpgradeRequest is created.
     Weighted formula:
         score = Σ(request.weight) for pending + approved requests
         normalised by: unique verified requesters
@@ -126,7 +122,7 @@ class UpgradeDemandScore(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     lab_id = Column(
-        Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+        Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, unique=True, index=True,
     )
     raw_score = Column(Float, default=0.0)
     unique_requesters = Column(Integer, default=0)
@@ -138,8 +134,7 @@ class UpgradeDemandScore(Base):
 
 
 class FeatureFlag(Base):
-    """
-    Feature flags for granular feature control per lab.
+    """Feature flags for granular feature control per lab.
     Overrides the tier defaults — allows per-lab customisation without
     changing the billing tier.
 
@@ -147,6 +142,7 @@ class FeatureFlag(Base):
       - enable AI for a specific starter lab during a trial
       - disable batch export for a compromised lab
       - enable government reporting for a single clinic
+
     """
 
     __tablename__ = "feature_flags"

@@ -17,7 +17,7 @@ class SQLAlchemyWorkflow_engineRepository(Workflow_engineRepository):
     async def list(self, skip: int = 0, limit: int = 100) -> list[Workflow_engine]:
         async with self._session_factory() as session:
             result = await session.execute(
-                select(Workflow_engine).offset(skip).limit(limit)
+                select(Workflow_engine).offset(skip).limit(limit),
             )
             return list(result.scalars().all())
 

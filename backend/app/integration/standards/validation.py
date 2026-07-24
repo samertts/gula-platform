@@ -83,7 +83,7 @@ class ValidationService:
         if not email:
             result.add_error("Email is required")
             return result
-        if "@" not in email or "." not in email.split("@")[-1]:
+        if "@" not in email or "." not in email.rsplit("@", maxsplit=1)[-1]:
             result.add_error("Invalid email format")
         return result
 

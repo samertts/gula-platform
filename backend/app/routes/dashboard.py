@@ -63,7 +63,7 @@ def dashboard(
         db.query(
             func.count(Patient.id).label("total_patients"),
             func.count(case((Patient.created_at >= today_start, Patient.id))).label(
-                "patients_today"
+                "patients_today",
             ),
             func.count(case((Patient.created_at >= week_start, Patient.id))).label("patients_week"),
         )
@@ -75,7 +75,7 @@ def dashboard(
         db.query(
             func.count(LabOrder.id).label("total_orders"),
             func.count(case((LabOrder.created_at >= today_start, LabOrder.id))).label(
-                "orders_today"
+                "orders_today",
             ),
             func.count(case((LabOrder.created_at >= week_start, LabOrder.id))).label("orders_week"),
         )
@@ -88,10 +88,10 @@ def dashboard(
             func.count(LabResult.id).label("total_results"),
             func.count(case((LabResult.flag == "critical", LabResult.id))).label("critical_count"),
             func.count(case((LabResult.created_at >= today_start, LabResult.id))).label(
-                "tests_today"
+                "tests_today",
             ),
             func.count(case((LabResult.created_at >= week_start, LabResult.id))).label(
-                "tests_week"
+                "tests_week",
             ),
             func.count(
                 case(
@@ -101,8 +101,8 @@ def dashboard(
                             LabResult.created_at >= week_start,
                         ),
                         LabResult.id,
-                    )
-                )
+                    ),
+                ),
             ).label("abnormal_week"),
         )
         .join(LabOrder)
@@ -139,7 +139,7 @@ def dashboard(
                 "flag": r.flag,
                 "date": r.created_at.isoformat() if r.created_at else None,
                 "token": r.token,
-            }
+            },
         )
 
     # Recent orders with result count - eagerly load patient
@@ -161,7 +161,7 @@ def dashboard(
                 "status": o.status,
                 "test_count": len(o.results) if o.results else 0,
                 "date": o.created_at.isoformat() if o.created_at else None,
-            }
+            },
         )
 
     greet = _arabic_greeting(_iraq_hour())

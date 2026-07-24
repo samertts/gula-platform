@@ -176,8 +176,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
 @router.post("/logout")
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
-    """
-    Logout with two-layer revocation:
+    """Logout with two-layer revocation:
     1. Redis JTI blacklist — fast, rejects this specific token within milliseconds
     2. DB perm_version bump — survives Redis restart; invalidates ALL sessions for this user
     """

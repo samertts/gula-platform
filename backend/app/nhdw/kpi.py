@@ -29,8 +29,8 @@ def bed_occupancy_rate(db: Session, lab_id: int, department_id: int | None = Non
 def average_length_of_stay(db: Session, lab_id: int, department_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
     q = db.query(
         func.avg(
-            func.extract("epoch", Discharge.discharge_date - Admission.admission_date) / 86400.0
-        )
+            func.extract("epoch", Discharge.discharge_date - Admission.admission_date) / 86400.0,
+        ),
     ).join(Admission, Discharge.admission_id == Admission.id).filter(
         Admission.lab_id == lab_id,
         ~Admission.is_deleted,

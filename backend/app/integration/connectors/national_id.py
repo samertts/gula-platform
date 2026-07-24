@@ -157,7 +157,7 @@ class NationalIDConnector(BaseConnector):
             return {"success": False, "error": "national_id required"}
         try:
             resp = await self._client.get(
-                urljoin(self._base_url, f"/api/national-id/{national_id}/civil-status")
+                urljoin(self._base_url, f"/api/national-id/{national_id}/civil-status"),
             )
             if resp.is_success:
                 result = resp.json()
@@ -179,7 +179,7 @@ class NationalIDConnector(BaseConnector):
             return {"success": False, "error": "national_id required"}
         try:
             resp = await self._client.get(
-                urljoin(self._base_url, f"/api/national-id/{national_id}")
+                urljoin(self._base_url, f"/api/national-id/{national_id}"),
             )
             if resp.is_success:
                 result = resp.json()

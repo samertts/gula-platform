@@ -1,5 +1,4 @@
-"""
-Epidemiology Service — GULA Platform
+"""Epidemiology Service — GULA Platform
 ======================================
 Outbreak detection with two complementary algorithms:
 
@@ -65,6 +64,7 @@ def detect_outbreak(
           z_score         — float | None
           method          — "z_score" | "ratio"
           message         — human-readable English summary
+
     """
     if not results:
         return {

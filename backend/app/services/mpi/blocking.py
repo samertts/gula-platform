@@ -16,6 +16,7 @@ Examples:
 Complement: the blocking index in models.py is composite
 (name_blocking_key, birth_year, gender) so candidates are pre-filtered
 by three signals at once.
+
 """
 
 import re

@@ -45,7 +45,7 @@ def assert_worker_runtime(reason: str) -> None:
     if not IS_WORKER_RUNTIME:
         raise RuntimeIsolationError(
             f"{reason} — only allowed from RUNTIME_MODE=worker "
-            f"(current RUNTIME_MODE={RUNTIME_MODE!r})"
+            f"(current RUNTIME_MODE={RUNTIME_MODE!r})",
         )
 
 
@@ -89,7 +89,7 @@ def install_edge_access_guard(engine) -> None:
         raise RuntimeIsolationError(
             f"Access to {offender} is forbidden outside the worker runtime "
             f"(current RUNTIME_MODE={RUNTIME_MODE!r}). Move the call site "
-            "into a worker job or relay the data through an API-safe view."
+            "into a worker job or relay the data through an API-safe view.",
         )
 
     engine._gula_edge_guard_installed = True

@@ -63,7 +63,7 @@ class EasyOcrProvider(OcrProviderBase):
         ]
 
     async def ocr_image(
-        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english
+        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         if not self._initialized:
             await self.initialize()
@@ -103,6 +103,6 @@ class EasyOcrProvider(OcrProviderBase):
         return page
 
     async def ocr_image_path(
-        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english
+        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         return await self.ocr_image(image_path.read_bytes(), language)

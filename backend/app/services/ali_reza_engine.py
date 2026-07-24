@@ -1,5 +1,4 @@
-"""
-Ali Reza Analysis Engine — GULA Platform
+"""Ali Reza Analysis Engine — GULA Platform
 ==========================================
 Context-aware single-test flag interpreter.
 
@@ -150,6 +149,7 @@ def analyze(
         dict with keys:
           - ``message``  (str)  — Arabic clinical hint
           - ``severity`` (str)  — NORMAL | WARNING | CRITICAL
+
     """
     if value is None:
         return {"message": _DEFAULT_MSG, "severity": _DEFAULT_SEVERITY}

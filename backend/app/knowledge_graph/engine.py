@@ -25,7 +25,7 @@ _EVENT_PATTERN = re.compile(r"class\s+(\w+Event)\b")
 _TABLENAME_PATTERN = re.compile(r'__tablename__\s*=\s*["\']([^"\']+)["\']')
 
 PROJECT_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
 )
 BACKEND_APP = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app")
 
@@ -51,7 +51,7 @@ def _get_or_create_node(
     version: str = "1.0.0",
 ) -> KnowledgeNode:
     existing = db.query(KnowledgeNode).filter(
-        KnowledgeNode.qualified_name == qualified_name
+        KnowledgeNode.qualified_name == qualified_name,
     ).first()
     if existing:
         existing.name = name
@@ -78,7 +78,7 @@ def _get_or_create_node(
 
 def _get_node_by_qualified_name(db: Session, qualified_name: str) -> KnowledgeNode | None:
     return db.query(KnowledgeNode).filter(
-        KnowledgeNode.qualified_name == qualified_name
+        KnowledgeNode.qualified_name == qualified_name,
     ).first()
 
 
@@ -175,7 +175,7 @@ class _ASTScanner:
                         base
                         for base in node.bases
                         if isinstance(base, ast.Name) and base.id == "Base"
-                    )
+                    ),
                 )
                 class_type = NodeType.MODEL if is_model else NodeType.CLASS
 
@@ -548,7 +548,7 @@ class KnowledgeGraphEngine:
                 type_filter = [et.value for et in edge_types] if edge_types else None
 
                 for edge in db.query(KnowledgeEdge).filter(
-                    KnowledgeEdge.source_node_id == current.id
+                    KnowledgeEdge.source_node_id == current.id,
                 ).all():
                     if type_filter and edge.edge_type not in type_filter:
                         continue
@@ -575,7 +575,7 @@ class KnowledgeGraphEngine:
                         queue.append((target, depth + 1))
 
                 for edge in db.query(KnowledgeEdge).filter(
-                    KnowledgeEdge.target_node_id == current.id
+                    KnowledgeEdge.target_node_id == current.id,
                 ).all():
                     if type_filter and edge.edge_type not in type_filter:
                         continue
@@ -624,7 +624,7 @@ class KnowledgeGraphEngine:
             while queue and not found:
                 current = queue.popleft()
                 for edge in db.query(KnowledgeEdge).filter(
-                    KnowledgeEdge.source_node_id == current.id
+                    KnowledgeEdge.source_node_id == current.id,
                 ).all():
                     nid = edge.target_node_id
                     if nid not in parent:
@@ -637,7 +637,7 @@ class KnowledgeGraphEngine:
                             queue.append(neighbor)
                 if not found:
                     for edge in db.query(KnowledgeEdge).filter(
-                        KnowledgeEdge.target_node_id == current.id
+                        KnowledgeEdge.target_node_id == current.id,
                     ).all():
                         nid = edge.source_node_id
                         if nid not in parent:
@@ -688,7 +688,7 @@ class KnowledgeGraphEngine:
             q = q.filter(
                 KnowledgeNode.name.ilike(like)
                 | KnowledgeNode.qualified_name.ilike(like)
-                | KnowledgeNode.description.ilike(like)
+                | KnowledgeNode.description.ilike(like),
             )
             if node_types:
                 type_values = [nt.value for nt in node_types]
@@ -801,7 +801,7 @@ class KnowledgeGraphEngine:
                     FROM knowledge_nodes
                     GROUP BY node_type
                     ORDER BY cnt DESC
-                """)
+                """),
             ).fetchall()
 
             edge_type_distribution = db.execute(
@@ -810,11 +810,11 @@ class KnowledgeGraphEngine:
                     FROM knowledge_edges
                     GROUP BY edge_type
                     ORDER BY cnt DESC
-                """)
+                """),
             ).fetchall()
 
             latest_snap = db.query(KnowledgeGraphSnapshot).order_by(
-                KnowledgeGraphSnapshot.created_at.desc()
+                KnowledgeGraphSnapshot.created_at.desc(),
             ).first()
 
             return {

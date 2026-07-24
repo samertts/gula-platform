@@ -59,7 +59,7 @@ class EventDrivenValidator:
                             line=node.lineno,
                             pattern="IMMUT",
                             message=f"Event '{node.name}' has mutable default fields — events should be immutable",
-                        )
+                        ),
                     )
 
     def _check_event_naming(self, file: Path, tree: ast.AST) -> None:
@@ -90,7 +90,7 @@ class EventDrivenValidator:
                                     pattern="NAME",
                                     message=f"Event '{name}' should use past-tense naming (e.g., {name}Created)",
                                     severity="info",
-                                )
+                                ),
                             )
 
     def _check_event_handler_structure(self, file: Path, tree: ast.AST) -> None:
@@ -107,7 +107,7 @@ class EventDrivenValidator:
                             line=node.lineno,
                             pattern="HNDL",
                             message=f"Event handler '{node.name}' should implement a 'handle' method",
-                        )
+                        ),
                     )
 
     def _check_event_bus(self, file: Path, tree: ast.AST) -> None:
@@ -131,7 +131,7 @@ class EventDrivenValidator:
                                 line=node.lineno,
                                 pattern="BUS",
                                 message=f"Event bus '{node.name}' should implement a publish method",
-                            )
+                            ),
                         )
                     if not has_subscribe:
                         self.issues.append(
@@ -140,7 +140,7 @@ class EventDrivenValidator:
                                 line=node.lineno,
                                 pattern="BUS",
                                 message=f"Event bus '{node.name}' should implement a subscribe method",
-                            )
+                            ),
                         )
 
     def _check_outbox_pattern(self, file: Path, tree: ast.AST) -> None:

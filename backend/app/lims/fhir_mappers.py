@@ -52,7 +52,7 @@ def specimen_to_fhir(specimen) -> dict:
         "identifier": [{"system": "urn:gula:lims:specimen", "value": specimen.barcode}],
         "status": _map_specimen_status(specimen.status),
         "type": _fhir_codeable_concept(
-            [_fhir_coding("http://gula.iq/CodeSystem/specimen-type", specimen.specimen_type)]
+            [_fhir_coding("http://gula.iq/CodeSystem/specimen-type", specimen.specimen_type)],
         ),
         "collection": {},
         "receivedTime": specimen.received_at.isoformat() if specimen.received_at else None,
@@ -62,11 +62,11 @@ def specimen_to_fhir(specimen) -> dict:
         resource["collection"]["collectedDateTime"] = specimen.collection_time.isoformat()
     if specimen.collected_by:
         resource["collection"]["collector"] = _fhir_reference(
-            f"Practitioner/{specimen.collected_by}"
+            f"Practitioner/{specimen.collected_by}",
         )
     if specimen.collection_site:
         resource["collection"]["bodySite"] = _fhir_codeable_concept(
-            [_fhir_coding("http://snomed.info/sct", specimen.collection_site)]
+            [_fhir_coding("http://snomed.info/sct", specimen.collection_site)],
         )
     if specimen.volume_ml:
         resource["collection"]["quantity"] = _fhir_quantity(specimen.volume_ml, "mL")
@@ -74,8 +74,8 @@ def specimen_to_fhir(specimen) -> dict:
     if specimen.container_type:
         resource["container"] = [{
             "type": _fhir_codeable_concept(
-                [_fhir_coding("http://gula.iq/CodeSystem/container-type", specimen.container_type)]
-            )
+                [_fhir_coding("http://gula.iq/CodeSystem/container-type", specimen.container_type)],
+            ),
         }]
 
     if specimen.storage_id:
@@ -112,7 +112,7 @@ def result_to_fhir(result) -> dict:
         "id": result.fhir_id or f"lims-obs-{result.id}",
         "status": _map_result_status(result.validation_status),
         "code": _fhir_codeable_concept(
-            [_fhir_coding("http://loinc.org", result.loinc_code or result.test_code, result.test_name)]
+            [_fhir_coding("http://loinc.org", result.loinc_code or result.test_code, result.test_name)],
         ),
         "subject": _fhir_reference(f"Patient/{result.specimen.order.patient_id}" if hasattr(result, "specimen") and hasattr(result.specimen, "order") else "unknown"),
         "specimen": _fhir_reference(f"Specimen/lims-spec-{result.specimen_id}"),
@@ -180,7 +180,7 @@ def report_to_fhir_diagnostic(report, results: list | None = None) -> dict:
         "id": report.fhir_id or f"lims-dr-{report.id}",
         "status": _map_report_status(report.status),
         "code": _fhir_codeable_concept(
-            [_fhir_coding("http://gula.iq/CodeSystem/lab-report", report.report_number)]
+            [_fhir_coding("http://gula.iq/CodeSystem/lab-report", report.report_number)],
         ),
         "issued": report.generated_at.isoformat() if report.generated_at else None,
         "result": [],
@@ -219,7 +219,7 @@ def order_to_fhir_service_request(order) -> dict:
         "status": "active",
         "intent": "order",
         "code": _fhir_codeable_concept(
-            [_fhir_coding("http://gula.iq/CodeSystem/accession-number", order.accession_number)]
+            [_fhir_coding("http://gula.iq/CodeSystem/accession-number", order.accession_number)],
         ),
         "subject": _fhir_reference(f"Patient/{order.order_id}"),
     }

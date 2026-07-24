@@ -1,5 +1,4 @@
-"""
-Audit logging — use services/audit_service.py directly.
+"""Audit logging — use services/audit_service.py directly.
 
 This module is kept for import compatibility only.
 """

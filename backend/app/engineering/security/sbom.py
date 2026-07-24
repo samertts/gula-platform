@@ -80,7 +80,7 @@ class DependencyAuditor:
                         "current": pkg.get("version"),
                         "latest": pkg.get("latest_version"),
                         "type": "outdated",
-                    }
+                    },
                 )
         except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
             pass

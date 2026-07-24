@@ -139,7 +139,7 @@ class AIGovernanceService:
         return event
 
     def approve_ai_output(
-        self, audit_event_id: int, reviewed_by: str, approved: bool
+        self, audit_event_id: int, reviewed_by: str, approved: bool,
     ) -> AIAuditEvent | None:
         event = self.db.query(AIAuditEvent).filter(AIAuditEvent.id == audit_event_id).first()
         if not event:
@@ -217,7 +217,7 @@ class AIGovernanceService:
         )
 
     def evaluate_guardrails(
-        self, prompt: str, guardrail_type: AIGuardrailType | None = None
+        self, prompt: str, guardrail_type: AIGuardrailType | None = None,
     ) -> list[dict[str, Any]]:
         q = self.db.query(AIGuardrail).filter(AIGuardrail.is_active.is_(True))
         if guardrail_type:

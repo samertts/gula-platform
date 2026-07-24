@@ -140,7 +140,7 @@ class CommandCenterService:
 
     def list_after_action_reports(self, skip: int = 0, limit: int = 100) -> list[AfterActionReport]:
         query = self.db.query(AfterActionReportModel).filter(
-            AfterActionReportModel.is_deleted.isnot(True)
+            AfterActionReportModel.is_deleted.isnot(True),
         ).order_by(AfterActionReportModel.completed_at.desc()).offset(skip).limit(limit)
         return [self._after_action_from_model(m) for m in query.all()]
 

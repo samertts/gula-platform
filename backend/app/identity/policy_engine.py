@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Optional
-
-from app._compat import UTC
+from typing import Any
 
 
 @dataclass
@@ -13,8 +10,8 @@ class PolicyContext:
     subject_type: str
     action: str
     resource_type: str
-    resource_id: Optional[str] = None
-    organization_id: Optional[str] = None
+    resource_id: str | None = None
+    organization_id: str | None = None
     environment: dict[str, Any] = field(default_factory=dict)
 
 
@@ -27,6 +24,6 @@ class PolicyEngine:
         return "allow"
 
     async def filter_resources(
-        self, resources: list[Any], context: PolicyContext
+        self, resources: list[Any], context: PolicyContext,
     ) -> list[Any]:
         return resources

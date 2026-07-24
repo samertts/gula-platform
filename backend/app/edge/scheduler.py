@@ -122,7 +122,7 @@ def submit_task(
             severity="info",
             actor_user_id=submitted_by_user_id,
             details={"task_uid": task.task_uid, "kind": kind, "priority": priority},
-        )
+        ),
     )
     return task
 
@@ -131,7 +131,7 @@ def submit_task(
 
 
 def _device_matches_task(
-    device: EdgeDevice, task: EdgeTask, pol: policy_mod.ResolvedPolicy
+    device: EdgeDevice, task: EdgeTask, pol: policy_mod.ResolvedPolicy,
 ) -> bool:
     if not device.is_eligible():
         return False
@@ -153,7 +153,7 @@ def _device_concurrency(db: Session, device: EdgeDevice) -> int:
     return (
         db.query(EdgeTask)
         .filter(
-            EdgeTask.device_id == device.device_id, EdgeTask.status.in_(("dispatched", "running"))
+            EdgeTask.device_id == device.device_id, EdgeTask.status.in_(("dispatched", "running")),
         )
         .count()
     )
@@ -230,7 +230,7 @@ def complete_task(
             event_type="task_completed",
             severity="info",
             details={"task_uid": task.task_uid, "duration_ms": _duration_ms(task)},
-        )
+        ),
     )
 
 
@@ -256,7 +256,7 @@ def fail_task(db: Session, task: EdgeTask, *, error: str) -> None:
                 "max_attempts": task.max_attempts,
                 "error": error[:200],
             },
-        )
+        ),
     )
 
 
@@ -274,7 +274,7 @@ def cancel_task(db: Session, task: EdgeTask, *, reason: str, actor_user_id: int 
             severity="info",
             actor_user_id=actor_user_id,
             details={"task_uid": task.task_uid, "reason": reason},
-        )
+        ),
     )
 
 

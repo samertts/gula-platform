@@ -129,7 +129,7 @@ class AppointmentTracking:
         return False
 
     def get_appointments(
-        self, citizen_id: str, status: str | None = None
+        self, citizen_id: str, status: str | None = None,
     ) -> list[dict[str, Any]]:
         appointments = self._appointments.get(citizen_id, [])
         if status:

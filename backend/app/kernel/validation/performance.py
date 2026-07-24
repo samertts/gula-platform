@@ -23,6 +23,6 @@ class PerformanceValidator:
                     "type": "slow_component_access",
                     "component": "service_registry",
                     "duration_ms": round(elapsed, 2),
-                }
+                },
             )
         return issues

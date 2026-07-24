@@ -34,18 +34,18 @@ class RedactionResult:
 class PromptInjectionProtector:
     def __init__(self) -> None:
         self._patterns: list[tuple[re.Pattern, str]] = [
-            (re.compile(r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|directions)", re.I), "instruction_override"),
-            (re.compile(r"(system|main|base)\s+prompt", re.I), "system_prompt_extraction"),
-            (re.compile(r"forget\s+(all\s+)?(previous|prior|past)", re.I), "memory_manipulation"),
-            (re.compile(r"you\s+are\s+(not|now|instead)", re.I), "role_manipulation"),
-            (re.compile(r"admin(isrator)?\s*(access|bypass|override)", re.I), "privilege_escalation"),
-            (re.compile(r"reveal\s+(your\s+)?(instructions|prompt|system|rules)", re.I), "instruction_reveal"),
-            (re.compile(r"output\s+(raw|original|unmodified|unfiltered)", re.I), "filter_bypass"),
-            (re.compile(r"simulate\s+(jailbreak|bypass|override)", re.I), "jailbreak_attempt"),
-            (re.compile(r"do\s+(not\s+)?(follow|obey|adhere)", re.I), "instruction_refusal"),
-            (re.compile(r"<[^>]*script[^>]*>", re.I), "xss_attempt"),
-            (re.compile(r"DROP\s+(TABLE|DATABASE|INDEX)", re.I), "sql_injection"),
-            (re.compile(r"(api[_-]?key|secret[_-]?key|password|token)\s*[:=]\s*\S+", re.I), "credential_leak"),
+            (re.compile(r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|directions)", re.IGNORECASE), "instruction_override"),
+            (re.compile(r"(system|main|base)\s+prompt", re.IGNORECASE), "system_prompt_extraction"),
+            (re.compile(r"forget\s+(all\s+)?(previous|prior|past)", re.IGNORECASE), "memory_manipulation"),
+            (re.compile(r"you\s+are\s+(not|now|instead)", re.IGNORECASE), "role_manipulation"),
+            (re.compile(r"admin(isrator)?\s*(access|bypass|override)", re.IGNORECASE), "privilege_escalation"),
+            (re.compile(r"reveal\s+(your\s+)?(instructions|prompt|system|rules)", re.IGNORECASE), "instruction_reveal"),
+            (re.compile(r"output\s+(raw|original|unmodified|unfiltered)", re.IGNORECASE), "filter_bypass"),
+            (re.compile(r"simulate\s+(jailbreak|bypass|override)", re.IGNORECASE), "jailbreak_attempt"),
+            (re.compile(r"do\s+(not\s+)?(follow|obey|adhere)", re.IGNORECASE), "instruction_refusal"),
+            (re.compile(r"<[^>]*script[^>]*>", re.IGNORECASE), "xss_attempt"),
+            (re.compile(r"DROP\s+(TABLE|DATABASE|INDEX)", re.IGNORECASE), "sql_injection"),
+            (re.compile(r"(api[_-]?key|secret[_-]?key|password|token)\s*[:=]\s*\S+", re.IGNORECASE), "credential_leak"),
         ]
 
     def analyze(self, text: str) -> InjectionResult:

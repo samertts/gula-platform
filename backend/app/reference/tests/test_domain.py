@@ -174,7 +174,7 @@ class TestOrderProcessingService:
                 patient_id="p-1",
                 name="علي أحمد",
                 lab_id="lab-1",
-            )
+            ),
         )
 
     async def test_validate_valid_order(self) -> None:
@@ -246,7 +246,7 @@ class TestResultValidationService:
                 patient_id="p-1",
                 test_type="CBC",
                 lab_id="lab-1",
-            )
+            ),
         )
 
     async def test_validate_valid_result(self) -> None:
@@ -274,7 +274,7 @@ class TestResultValidationService:
         result = LabResultDomain(
             order_id="o-1",
             analyte="WBC",
-            value=Decimal("-1"),
+            value=Decimal(-1),
             unit="x10^9/L",
         )
         with pytest.raises(InvalidOrderError):

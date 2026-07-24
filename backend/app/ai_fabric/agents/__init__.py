@@ -1,5 +1,4 @@
-"""
-AI Fabric Agents — Specialized AI agents for the GULA platform.
+"""AI Fabric Agents — Specialized AI agents for the GULA platform.
 
 Each agent wraps a domain-specific capability set:
   - ClinicalAgent        — Clinical decision support

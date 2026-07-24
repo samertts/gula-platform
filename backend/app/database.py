@@ -75,7 +75,7 @@ class _SlidingWindow:
         cutoff = mono_now - self._max_age
         with self._lock:
             payload = json.dumps(
-                [(ts + offset, etype) for ts, etype in self._events if ts >= cutoff]
+                [(ts + offset, etype) for ts, etype in self._events if ts >= cutoff],
             )
         try:
             redis_client.set(key, payload, ex=self._max_age + 60)
@@ -316,8 +316,7 @@ def check_db_connection() -> bool:
 
 
 def check_db_connection_detail() -> tuple[str, str]:
-    """
-    Detailed connectivity check — returns (status, message).
+    """Detailed connectivity check — returns (status, message).
 
     status values:
       "ok"          — connected and query succeeded

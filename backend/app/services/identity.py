@@ -16,7 +16,7 @@ ARABIC_NORMALIZE = {
 
 # Common Arabic diacritics to remove
 ARABIC_DIACRITICS = re.compile(
-    r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]"
+    r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]",
 )
 
 # English transliteration variants
@@ -154,8 +154,7 @@ def jaro_similarity(s1: str, s2: str) -> float:
         return 0.0
 
     match_distance = max(len1, len2) // 2 - 1
-    if match_distance < 0:
-        match_distance = 0
+    match_distance = max(match_distance, 0)
 
     s1_matches = [False] * len1
     s2_matches = [False] * len2

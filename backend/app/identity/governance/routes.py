@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,14 +26,14 @@ router = APIRouter(prefix="/niam/governance", tags=["NIAM Governance"])
 async def create_authority(
     authority_id: str,
     name_en: str,
-    name_ar: Optional[str] = None,
+    name_ar: str | None = None,
     authority_type: str = "identity_authority",
     jurisdiction: str = "national",
-    parent_authority_id: Optional[str] = None,
-    contact_email: Optional[str] = None,
-    established_date: Optional[datetime] = None,
-    accredited_by: Optional[str] = None,
-    accreditation_expires: Optional[datetime] = None,
+    parent_authority_id: str | None = None,
+    contact_email: str | None = None,
+    established_date: datetime | None = None,
+    accredited_by: str | None = None,
+    accreditation_expires: datetime | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
@@ -59,7 +59,7 @@ async def create_authority(
 
 @router.get("/authorities")
 async def list_authorities(
-    authority_type: Optional[str] = None,
+    authority_type: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
@@ -121,14 +121,14 @@ async def activate_authority(
 async def create_council(
     council_id: str,
     name_en: str,
-    name_ar: Optional[str] = None,
+    name_ar: str | None = None,
     council_type: str = "governance",
-    authority_id: Optional[str] = None,
-    chairperson_id: Optional[str] = None,
-    members: Optional[list[Any]] = None,
-    meeting_frequency: Optional[str] = None,
-    last_meeting: Optional[datetime] = None,
-    next_meeting: Optional[datetime] = None,
+    authority_id: str | None = None,
+    chairperson_id: str | None = None,
+    members: list[Any] | None = None,
+    meeting_frequency: str | None = None,
+    last_meeting: datetime | None = None,
+    next_meeting: datetime | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
@@ -154,7 +154,7 @@ async def create_council(
 
 @router.get("/councils")
 async def list_councils(
-    authority_id: Optional[str] = None,
+    authority_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
@@ -191,13 +191,13 @@ async def get_council(
 async def create_review_board(
     board_id: str,
     name_en: str,
-    name_ar: Optional[str] = None,
-    board_type: Optional[str] = None,
-    authority_id: Optional[str] = None,
-    chairperson_id: Optional[str] = None,
-    members: Optional[list[Any]] = None,
+    name_ar: str | None = None,
+    board_type: str | None = None,
+    authority_id: str | None = None,
+    chairperson_id: str | None = None,
+    members: list[Any] | None = None,
     quorum_size: int = 3,
-    meeting_schedule: Optional[dict[str, Any]] = None,
+    meeting_schedule: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
@@ -299,8 +299,8 @@ async def submit_appeal(
     appellant_person_id: str,
     identity_id: str,
     appeal_type: str = "suspension",
-    reason: Optional[str] = None,
-    supporting_documents: Optional[list[Any]] = None,
+    reason: str | None = None,
+    supporting_documents: list[Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = AppealService(db)
@@ -321,8 +321,8 @@ async def submit_appeal(
 
 @router.get("/appeals")
 async def list_appeals(
-    status: Optional[str] = None,
-    person_id: Optional[str] = None,
+    status: str | None = None,
+    person_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = AppealService(db)
@@ -358,7 +358,7 @@ async def decide_appeal(
     appeal_id: str,
     decision: str,
     decided_by: str,
-    notes: Optional[str] = None,
+    notes: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = AppealService(db)
@@ -377,8 +377,8 @@ async def suspend_identity(
     identity_id: str,
     reason: str,
     severity: str = "medium",
-    suspended_by: Optional[str] = None,
-    duration_hours: Optional[int] = None,
+    suspended_by: str | None = None,
+    duration_hours: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = SuspensionService(db)
@@ -402,7 +402,7 @@ async def suspend_identity(
 async def lift_suspension(
     suspension_id: str,
     lifted_by: str,
-    reason: Optional[str] = None,
+    reason: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = SuspensionService(db)
@@ -461,7 +461,7 @@ async def register_identity(
     person_id: str,
     identity_id: str,
     registry_type: str = "citizen",
-    registered_by: Optional[str] = None,
+    registered_by: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = RegistryService(db)
@@ -495,15 +495,15 @@ async def get_registration(
 async def certify_identity(
     certification_id: str,
     person_id: str,
-    organization_id: Optional[str] = None,
-    certifying_authority_id: Optional[str] = None,
-    certification_type: Optional[str] = None,
-    certification_number: Optional[str] = None,
-    issue_date: Optional[datetime] = None,
-    expiry_date: Optional[datetime] = None,
-    verified_by: Optional[str] = None,
-    verification_method: Optional[str] = None,
-    digital_signature: Optional[str] = None,
+    organization_id: str | None = None,
+    certifying_authority_id: str | None = None,
+    certification_type: str | None = None,
+    certification_number: str | None = None,
+    issue_date: datetime | None = None,
+    expiry_date: datetime | None = None,
+    verified_by: str | None = None,
+    verification_method: str | None = None,
+    digital_signature: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = RegistryService(db)

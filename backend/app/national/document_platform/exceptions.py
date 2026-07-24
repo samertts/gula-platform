@@ -59,7 +59,7 @@ class DocumentStateTransitionError(NationalDomainError):
         self.current_status = current_status
         self.target_status = target_status
         super().__init__(
-            f"Invalid state transition for document {document_id}: {current_status} -> {target_status}"
+            f"Invalid state transition for document {document_id}: {current_status} -> {target_status}",
         )
 
 

@@ -135,7 +135,7 @@ async def update_ambulance_location(
 ) -> dict[str, Any]:
     try:
         return _ambulance_to_dict(service.update_ambulance_location(
-            ambulance_id, body.get("lat", 0.0), body.get("lng", 0.0)
+            ambulance_id, body.get("lat", 0.0), body.get("lng", 0.0),
         ))
     except AmbulanceNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
@@ -149,7 +149,7 @@ async def update_ambulance_status(
 ) -> dict[str, Any]:
     try:
         return _ambulance_to_dict(service.update_ambulance_status(
-            ambulance_id, body.get("status", ""), body.get("reason", "")
+            ambulance_id, body.get("status", ""), body.get("reason", ""),
         ))
     except AmbulanceNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e

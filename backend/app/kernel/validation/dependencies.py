@@ -25,6 +25,6 @@ class DependencyValidator:
                                     "type": "missing_dependency",
                                     "service": service_name,
                                     "dependency": dep,
-                                }
+                                },
                             )
         return issues

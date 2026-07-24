@@ -1,5 +1,4 @@
-"""
-Iraqi Health Insurance Gateway — Law No.22 of 2020
+"""Iraqi Health Insurance Gateway — Law No.22 of 2020
 ====================================================
 Trust level: NON_CRITICAL — insurance status affects billing, not clinical decisions.
 
@@ -125,8 +124,7 @@ def get_insurance_gateway() -> InsuranceGateway:
 
 
 def check_insurance(insurance_id: str) -> ExternalDataResult:
-    """
-    Check insurance status for a given ID.
+    """Check insurance status for a given ID.
 
     Returns ExternalDataResult. Callers must check ``requires_verification``
     before using the result in billing logic.

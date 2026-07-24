@@ -27,7 +27,7 @@ class PerformanceBenchmark:
                 [
                     "python",
                     "-c",
-                    f"import importlib; importlib.import_module('{module_path.split(':')[0]}')",
+                    f"import importlib; importlib.import_module('{module_path.split(':', maxsplit=1)[0]}')",
                 ],
                 capture_output=True,
                 text=True,

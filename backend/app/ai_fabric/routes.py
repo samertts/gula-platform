@@ -102,7 +102,7 @@ async def clinical_analyze(results: list[dict[str, Any]]):
         "recommendations": [
             {"type": r.type, "severity": r.severity, "title": r.title, "description": r.description, "action": r.action}
             for r in recommendations
-        ]
+        ],
     }
 
 
@@ -119,7 +119,7 @@ async def drug_interaction(medications: list[dict[str, Any]]):
         "interactions": [
             {"drug_a": i.drug_a, "drug_b": i.drug_b, "severity": i.severity, "description": i.description}
             for i in interactions
-        ]
+        ],
     }
 
 
@@ -130,7 +130,7 @@ async def lab_delta_check(patient_results: list[dict[str, Any]]):
         "results": [
             {"test": r.test_name, "delta_pct": r.delta_pct, "significant": r.significant, "flag": r.flag}
             for r in results
-        ]
+        ],
     }
 
 
@@ -141,7 +141,7 @@ async def lab_critical_detector(results: list[dict[str, Any]]):
         "criticals": [
             {"test": c.test_name, "value": c.value, "direction": c.direction, "severity": c.severity}
             for c in criticals
-        ]
+        ],
     }
 
 
@@ -180,7 +180,7 @@ async def ph_alerts(min_level: str = "warning"):
 @router.post("/public-health/outbreak-detect")
 async def ph_outbreak_detect(disease: str, region: str, cases: list[dict[str, Any]]):
     alert = sdk.outbreak.detect_cluster(disease, region, cases)
-    return alert if alert else {"detected": False}
+    return alert or {"detected": False}
 
 
 @router.post("/governance/prompt/register")

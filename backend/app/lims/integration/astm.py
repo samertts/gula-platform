@@ -28,6 +28,7 @@ FRAME_MANUFACTURER = "M"
 @dataclass
 class ASTMRecord:
     """Parsed ASTM record."""
+
     record_type: str
     fields: list[str] = field(default_factory=list)
     raw: str = ""
@@ -36,6 +37,7 @@ class ASTMRecord:
 @dataclass
 class ASTMResult:
     """Canonical result parsed from ASTM message."""
+
     specimen_id: str = ""
     test_code: str = ""
     test_name: str = ""
@@ -116,7 +118,7 @@ def serialize_astm_result(result: ASTMResult) -> str:
         lines.append(
             f"R|1|{result.instrument_result_id}|{result.test_code}|"
             f"{result.test_name}|{result.value}|{result.unit}|"
-            f"{result.ref_range}|{result.flag}"
+            f"{result.ref_range}|{result.flag}",
         )
     lines.append("L|1|N")
     return "\r".join(lines)

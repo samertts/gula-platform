@@ -156,7 +156,7 @@ class VectorStore:
         db = next(get_db())
         try:
             query = db.query(
-                text("id, content_type, content_id, text, metadata")
+                text("id, content_type, content_id, text, metadata"),
             ).select_from(text("ai_embeddings"))
             if lab_id or self.lab_id:
                 query = query.where(text("lab_id = :lab"))

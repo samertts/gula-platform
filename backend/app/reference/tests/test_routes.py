@@ -222,7 +222,7 @@ class TestPatientRoutes:
         mock_patient_service: MagicMock,
     ) -> None:
         mock_patient_service.create_patient.side_effect = DuplicatePatientError(
-            "name", "علي أحمد"
+            "name", "علي أحمد",
         )
         app = _make_app_with_overrides(patient_service=mock_patient_service)
 
@@ -244,7 +244,7 @@ class TestPatientRoutes:
         mock_patient_service: MagicMock,
     ) -> None:
         mock_patient_service.create_patient.side_effect = InvalidPatientDataError(
-            "اسم المريض قصير جدًا"
+            "اسم المريض قصير جدًا",
         )
         app = _make_app_with_overrides(patient_service=mock_patient_service)
 
@@ -316,7 +316,7 @@ class TestOrderRoutes:
         mock_order_service: MagicMock,
     ) -> None:
         mock_order_service.create_order.side_effect = InvalidOrderError(
-            "الحقول المطلوبة مفقودة"
+            "الحقول المطلوبة مفقودة",
         )
         app = _make_app_with_overrides(order_service=mock_order_service)
 
@@ -400,7 +400,7 @@ class TestResultRoutes:
         mock_result_service: MagicMock,
     ) -> None:
         mock_result_service.submit_result.side_effect = CriticalResultError(
-            "Potassium", "7.0", "mmol/L"
+            "Potassium", "7.0", "mmol/L",
         )
         app = _make_app_with_overrides(result_service=mock_result_service)
 

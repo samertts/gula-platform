@@ -69,7 +69,7 @@ class EnterpriseAudit:
         )
 
     def log_deployment(
-        self, component: str, version: str, user_id: int | None = None, details: dict | None = None
+        self, component: str, version: str, user_id: int | None = None, details: dict | None = None,
     ) -> dict[str, Any]:
         return self.log(
             action=ControlAuditAction.DEPLOYMENT,
@@ -80,7 +80,7 @@ class EnterpriseAudit:
         )
 
     def log_config_change(
-        self, key: str, user_id: int | None = None, details: dict | None = None
+        self, key: str, user_id: int | None = None, details: dict | None = None,
     ) -> dict[str, Any]:
         return self.log(
             action=ControlAuditAction.CONFIG_CHANGE,
@@ -91,7 +91,7 @@ class EnterpriseAudit:
         )
 
     def log_policy_change(
-        self, policy_name: str, user_id: int | None = None, details: dict | None = None
+        self, policy_name: str, user_id: int | None = None, details: dict | None = None,
     ) -> dict[str, Any]:
         return self.log(
             action=ControlAuditAction.POLICY_CHANGE,
@@ -102,7 +102,7 @@ class EnterpriseAudit:
         )
 
     def log_decision(
-        self, decision: str, user_id: int | None = None, details: dict | None = None
+        self, decision: str, user_id: int | None = None, details: dict | None = None,
     ) -> dict[str, Any]:
         return self.log(
             action=ControlAuditAction.DECISION,
@@ -113,7 +113,7 @@ class EnterpriseAudit:
         )
 
     def log_incident(
-        self, incident_id: str, user_id: int | None = None, details: dict | None = None
+        self, incident_id: str, user_id: int | None = None, details: dict | None = None,
     ) -> dict[str, Any]:
         return self.log(
             action=ControlAuditAction.INCIDENT,

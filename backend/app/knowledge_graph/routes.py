@@ -74,7 +74,7 @@ def add_node(
             source_path=body.source_path,
             tags=body.tags,
             version=body.version,
-        )
+        ),
     )
     return {
         "id": node.id,
@@ -104,7 +104,7 @@ def add_edge(
             edge_type=edge_type,
             metadata=body.metadata,
             weight=body.weight,
-        )
+        ),
     )
     if edge is None:
         raise HTTPException(
@@ -162,7 +162,7 @@ def get_neighbors(
 
     import asyncio
     neighbors = asyncio.run(
-        kg_engine.get_neighbors(qualified_name, edge_types=parsed_types, max_depth=depth)
+        kg_engine.get_neighbors(qualified_name, edge_types=parsed_types, max_depth=depth),
     )
     return {"qualified_name": qualified_name, "depth": depth, "neighbors": neighbors}
 

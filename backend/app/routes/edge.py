@@ -326,7 +326,7 @@ def _resolve_agent_device(
 
 
 @router.post(
-    "/devices/register", response_model=RegisterDeviceResponse, status_code=status.HTTP_201_CREATED
+    "/devices/register", response_model=RegisterDeviceResponse, status_code=status.HTTP_201_CREATED,
 )
 def register_device_endpoint(
     body: RegisterDeviceRequest,
@@ -645,7 +645,7 @@ def update_lab_policy(
             severity="info",
             actor_user_id=user.id,
             details=fields,
-        )
+        ),
     )
     db.commit()
     p = policy_mod.get_policy(db, user.lab_id)

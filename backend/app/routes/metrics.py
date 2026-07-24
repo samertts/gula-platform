@@ -88,8 +88,8 @@ def _order_stats(db: Session, lab_id: int | None) -> dict:
                 (
                     (LabOrder.status == "validated") & (func.date(LabOrder.validated_at) == today),
                     LabOrder.id,
-                )
-            )
+                ),
+            ),
         ).label("validated_today"),
         func.count(case((LabOrder.status == "pending", LabOrder.id))).label("pending"),
     )

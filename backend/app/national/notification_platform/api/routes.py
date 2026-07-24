@@ -215,7 +215,7 @@ async def send_batch(
                 scheduled_at=scheduled_at,
                 correlation_id=req.correlation_id,
                 metadata=req.metadata,
-            )
+            ),
         )
 
     batch = await service.send_batch(

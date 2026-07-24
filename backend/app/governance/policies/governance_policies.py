@@ -92,7 +92,7 @@ class GovernancePolicyEngine:
         )
 
     def require_elevated_approval(
-        self, action: GovernanceAction, user_role: str | None = None
+        self, action: GovernanceAction, user_role: str | None = None,
     ) -> bool:
         policy = self._policies.get(action)
         if not policy:

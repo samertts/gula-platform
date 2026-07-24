@@ -156,7 +156,7 @@ class CronExpression:
         if len(parts) != 5:
             raise ValueError(
                 f"Invalid cron expression {self.expression!r}: "
-                f"expected 5 fields, got {len(parts)}"
+                f"expected 5 fields, got {len(parts)}",
             )
         for part in parts:
             if not part or not part.strip():

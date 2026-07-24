@@ -74,7 +74,7 @@ class CleanArchitectureValidator:
                     line=line,
                     message=f"Layer violation: '{layer}' importing from '{imported_layer}' ({imported})",
                     severity="error",
-                )
+                ),
             )
 
     def _detect_import_layer(self, module: str) -> str | None:

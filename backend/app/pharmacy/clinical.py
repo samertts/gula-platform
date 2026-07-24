@@ -25,7 +25,7 @@ class DrugInteractionEngine:
         self.lab_id = lab_id
 
     def check_interaction(
-        self, drug_a_code: str, drug_b_code: str
+        self, drug_a_code: str, drug_b_code: str,
     ) -> DrugInteractionRule | None:
         q = self.db.query(DrugInteractionRule).filter(
             or_(
@@ -57,7 +57,7 @@ class DrugInteractionEngine:
         return interactions
 
     def check_patient_medications(
-        self, active_drug_codes: list[str], new_drug_code: str
+        self, active_drug_codes: list[str], new_drug_code: str,
     ) -> list[dict[str, Any]]:
         return self.check_multiple_drugs([*active_drug_codes, new_drug_code])
 
@@ -353,7 +353,7 @@ class PolypharmacyChecker:
 
         if result["is_polypharmacy"]:
             result["recommendations"].append(
-                "Patient is on 5 or more medications — review for deprescribing opportunities"
+                "Patient is on 5 or more medications — review for deprescribing opportunities",
             )
 
         interactions = self.interaction_engine.check_multiple_drugs(active_drug_codes)
@@ -362,7 +362,7 @@ class PolypharmacyChecker:
         severe_count = sum(1 for i in interactions if i.get("severity") in ("contraindicated", "major"))
         if severe_count > 0:
             result["recommendations"].append(
-                f"Found {severe_count} severe or contraindicated interaction(s) — urgent clinical review required"
+                f"Found {severe_count} severe or contraindicated interaction(s) — urgent clinical review required",
             )
 
         return result

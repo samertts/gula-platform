@@ -279,7 +279,7 @@ class ComplianceService:
         collected_by: int | None = None,
     ) -> ComplianceEvidence:
         evidence_id = hashlib.sha256(
-            f"{evidence_type}:{source}:{int(time.time())}".encode()
+            f"{evidence_type}:{source}:{int(time.time())}".encode(),
         ).hexdigest()[:32]
         evidence_hash = hashlib.sha256(evidence_data.encode()).hexdigest()
 

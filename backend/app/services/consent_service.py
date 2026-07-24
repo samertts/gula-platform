@@ -49,7 +49,7 @@ ALLOWED_SCOPES: frozenset[str] = frozenset(
         "read:orders",
         "read:citizen",
         "read:prescriptions",
-    }
+    },
 )
 
 # Hard cap: consent cannot be granted for longer than this window.

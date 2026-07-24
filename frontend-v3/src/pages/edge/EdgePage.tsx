@@ -9,7 +9,7 @@ import {
   PageHeader, LoadingSpinner, ErrorDisplay, EmptyState,
 } from "@/components/shared/PageComponents";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { EdgeDevice, EdgeTask } from "@/types/backend";
+import type { EdgeDevice, EdgeTask } from "@/types";
 import { Server, Terminal, Radio, Activity, Shield, ShieldOff } from "lucide-react";
 
 const deviceStatusVariant: Record<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {

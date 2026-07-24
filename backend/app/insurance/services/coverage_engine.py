@@ -27,6 +27,7 @@ from app.insurance.domain.models import (
 @dataclass
 class CoverageResult:
     """Result of a coverage determination for a specific service."""
+
     coverage_id: int
     policy_id: int
     patient_id: int
@@ -36,17 +37,17 @@ class CoverageResult:
     is_covered: bool
     coverage_percentage: float = 0.0
     copay_percentage: float = 0.0
-    copay_amount: Decimal = Decimal("0")
+    copay_amount: Decimal = Decimal(0)
     deductible_applies: bool = True
-    deductible_remaining: Decimal = Decimal("0")
-    deductible_amount: Decimal = Decimal("0")
-    max_out_of_pocket_remaining: Decimal = Decimal("0")
-    max_out_of_pocket_total: Decimal = Decimal("0")
-    benefit_remaining: Decimal = Decimal("0")
-    benefit_total: Decimal = Decimal("0")
-    estimated_allowed: Decimal = Decimal("0")
-    estimated_patient_responsibility: Decimal = Decimal("0")
-    estimated_insurance_payment: Decimal = Decimal("0")
+    deductible_remaining: Decimal = Decimal(0)
+    deductible_amount: Decimal = Decimal(0)
+    max_out_of_pocket_remaining: Decimal = Decimal(0)
+    max_out_of_pocket_total: Decimal = Decimal(0)
+    benefit_remaining: Decimal = Decimal(0)
+    benefit_total: Decimal = Decimal(0)
+    estimated_allowed: Decimal = Decimal(0)
+    estimated_patient_responsibility: Decimal = Decimal(0)
+    estimated_insurance_payment: Decimal = Decimal(0)
     requires_pre_auth: bool = False
     requires_referral: bool = False
     pre_existing_wait: bool = False
@@ -59,6 +60,7 @@ class CoverageResult:
 @dataclass
 class CoverageRequest:
     """Request to check coverage for a service."""
+
     patient_id: int
     coverage_id: int
     service_code: str
@@ -151,26 +153,26 @@ class CoverageEngine:
         copay_pct = benefit.copay_percentage or coverage.copay_percentage or policy.copay_percentage or 0.0
         deduct_applies = benefit.deductible_applies if benefit.deductible_applies is not None else True
 
-        deductible_remaining_val = coverage.deductible_remaining or Decimal("0")
-        coverage.deductible_total or Decimal("0")
-        oop_remaining_val = coverage.max_out_of_pocket_remaining or Decimal("0")
-        oop_total_val = coverage.max_out_of_pocket_total or Decimal("0")
-        benefit_remaining_val = coverage.benefit_remaining or Decimal("0")
-        benefit_total_val = coverage.benefit_total or Decimal("0")
+        deductible_remaining_val = coverage.deductible_remaining or Decimal(0)
+        coverage.deductible_total or Decimal(0)
+        oop_remaining_val = coverage.max_out_of_pocket_remaining or Decimal(0)
+        oop_total_val = coverage.max_out_of_pocket_total or Decimal(0)
+        benefit_remaining_val = coverage.benefit_remaining or Decimal(0)
+        benefit_total_val = coverage.benefit_total or Decimal(0)
 
-        deductible_amount = Decimal("0")
+        deductible_amount = Decimal(0)
         if deduct_applies and deductible_remaining_val > 0:
             deductible_amount = min(total_allowed, deductible_remaining_val)
             total_allowed_after_deductible = total_allowed - deductible_amount
         else:
             total_allowed_after_deductible = total_allowed
 
-        copay_amount = Decimal("0")
+        copay_amount = Decimal(0)
         if copay_pct > 0:
-            copay_amount = (total_allowed_after_deductible * Decimal(str(copay_pct))) / Decimal("100")
+            copay_amount = (total_allowed_after_deductible * Decimal(str(copay_pct))) / Decimal(100)
 
         coverage_pct = benefit.coverage_percentage or 100.0
-        insurance_payment = (total_allowed_after_deductible - copay_amount) * Decimal(str(coverage_pct)) / Decimal("100")
+        insurance_payment = (total_allowed_after_deductible - copay_amount) * Decimal(str(coverage_pct)) / Decimal(100)
         patient_responsibility = (total_allowed_after_deductible - insurance_payment) + copay_amount + deductible_amount
 
         copay_amount_val = min(copay_amount, total_allowed_after_deductible)

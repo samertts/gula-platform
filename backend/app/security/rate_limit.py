@@ -1,5 +1,4 @@
-"""
-Rate limiter for GULA Platform.
+"""Rate limiter for GULA Platform.
 
 Uses Redis (via the shared `cache` singleton) when available — shared across
 all uvicorn workers so the effective limit is exactly what's configured.
@@ -117,7 +116,7 @@ def _check(
     if count > max_requests:
         # Significant abuse → dynamic IP block
         if key.startswith(("ip:", "public:", "auth:")) and count > max_requests * 5:
-            client_ip = get_client_ip(request) if request else key.split(":")[-1]
+            client_ip = get_client_ip(request) if request else key.rsplit(":", maxsplit=1)[-1]
             block_dur = int(os.getenv("RATE_LIMIT_BLOCK_DURATION_SECONDS", "3600"))
             cache.set(f"block:{client_ip}", "1", ex=block_dur)
             logger.warning("IP %s blocked for %ds (rate limit ×5)", client_ip, block_dur)

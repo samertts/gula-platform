@@ -1,4 +1,3 @@
-from typing import Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,10 +13,10 @@ router = APIRouter(prefix="/accounts", tags=["NIAM Accounts"])
 async def create_account(
     identity_id: str,
     account_type: str = "human",
-    email: Optional[str] = None,
-    phone: Optional[str] = None,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
+    email: str | None = None,
+    phone: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = AccountService(db)

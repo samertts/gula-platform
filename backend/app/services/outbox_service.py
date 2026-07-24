@@ -55,8 +55,7 @@ def emit_to_outbox(
     aggregate_type: str | None = None,
     aggregate_id: int | None = None,
 ) -> OutboxEvent:
-    """
-    Persist an outbox event in the same DB transaction as the business operation.
+    """Persist an outbox event in the same DB transaction as the business operation.
 
     DO NOT commit inside this function — let the caller's transaction handle it.
     This is what makes the Outbox Pattern work: if the outer transaction rolls
@@ -80,15 +79,13 @@ def emit_to_outbox(
 
 
 class OutboxWorker:
-    """
-    Background worker that processes pending outbox events.
+    """Background worker that processes pending outbox events.
     Dispatches to the in-process EventBus; any subscriber receives the payload.
     """
 
     @staticmethod
     def run_once(db: Session) -> dict[str, int]:
-        """
-        Process one batch of pending/retriable events.
+        """Process one batch of pending/retriable events.
 
         Returns a summary: {"processed": N, "failed": N, "skipped": N}
         """
@@ -161,8 +158,7 @@ class OutboxWorker:
 
     @staticmethod
     async def background_loop() -> None:
-        """
-        Asyncio task: poll outbox every _POLL_SECS seconds.
+        """Asyncio task: poll outbox every _POLL_SECS seconds.
         Launched from FastAPI lifespan startup.
 
         Also runs automatic dead-event cleanup once every 24 hours so that
@@ -183,7 +179,7 @@ class OutboxWorker:
                 logger.error(
                     "[OUTBOX] outbox_events table does not exist — "
                     "alembic upgrade head must run before starting the outbox worker. "
-                    "Worker will not start."
+                    "Worker will not start.",
                 )
                 return
         except Exception as exc:
@@ -229,8 +225,7 @@ class OutboxWorker:
 
 
 def purge_old_events(db: Session, days: int = 30) -> int:
-    """
-    Delete done/failed outbox events older than `days` days.
+    """Delete done/failed outbox events older than `days` days.
     Safe to run periodically from a maintenance CRON job.
     Returns the number of rows deleted.
     """

@@ -78,19 +78,19 @@ class OcrProvider(ABC):
 
     @abstractmethod
     async def ocr_image(
-        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english
+        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         ...
 
     @abstractmethod
     async def ocr_image_path(
-        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english
+        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         ...
 
     @abstractmethod
     async def ocr_batch(
-        self, images: list[bytes | Path], language: OcrLanguage = OcrLanguage.arabic_english
+        self, images: list[bytes | Path], language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> list[DocumentPage]:
         ...
 
@@ -180,13 +180,13 @@ class DocumentParser(ABC):
 class DocumentClassifier(ABC):
     @abstractmethod
     async def classify(
-        self, text: str, pages: list[DocumentPage] | None = None
+        self, text: str, pages: list[DocumentPage] | None = None,
     ) -> ClassificationResult:
         ...
 
     @abstractmethod
     async def classify_batch(
-        self, documents: list[tuple[str, list[DocumentPage] | None]]
+        self, documents: list[tuple[str, list[DocumentPage] | None]],
     ) -> list[ClassificationResult]:
         ...
 
@@ -202,19 +202,19 @@ class DocumentClassifier(ABC):
 class EntityExtractor(ABC):
     @abstractmethod
     async def extract(
-        self, text: str, category: DocumentCategory | None = None
+        self, text: str, category: DocumentCategory | None = None,
     ) -> tuple[list[ExtractedEntity], list[ExtractedField], list[ExtractedTable]]:
         ...
 
     @abstractmethod
     async def extract_from_pages(
-        self, pages: list[DocumentPage], category: DocumentCategory | None = None
+        self, pages: list[DocumentPage], category: DocumentCategory | None = None,
     ) -> tuple[list[ExtractedEntity], list[ExtractedField], list[ExtractedTable]]:
         ...
 
     @abstractmethod
     async def extract_entities_of_type(
-        self, text: str, entity_types: list[EntityType]
+        self, text: str, entity_types: list[EntityType],
     ) -> list[ExtractedEntity]:
         ...
 
@@ -222,7 +222,7 @@ class EntityExtractor(ABC):
 class FhirMapper(ABC):
     @abstractmethod
     async def to_document_reference(
-        self, document: ScannedDocument, ocr_result: OcrResult
+        self, document: ScannedDocument, ocr_result: OcrResult,
     ) -> dict[str, Any]:
         ...
 
@@ -240,19 +240,19 @@ class FhirMapper(ABC):
 
     @abstractmethod
     async def to_observation(
-        self, entities: list[ExtractedEntity], fields: list[ExtractedField]
+        self, entities: list[ExtractedEntity], fields: list[ExtractedField],
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def to_diagnostic_report(
-        self, entities: list[ExtractedEntity], fields: list[ExtractedField]
+        self, entities: list[ExtractedEntity], fields: list[ExtractedField],
     ) -> dict[str, Any] | None:
         ...
 
     @abstractmethod
     async def to_medication_request(
-        self, entities: list[ExtractedEntity]
+        self, entities: list[ExtractedEntity],
     ) -> dict[str, Any] | None:
         ...
 
@@ -286,13 +286,13 @@ class FhirMapper(ABC):
 class KnowledgeExtractor(ABC):
     @abstractmethod
     async def extract_concepts(
-        self, text: str, entities: list[ExtractedEntity]
+        self, text: str, entities: list[ExtractedEntity],
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def build_knowledge_graph(
-        self, concepts: list[dict[str, Any]]
+        self, concepts: list[dict[str, Any]],
     ) -> dict[str, Any]:
         ...
 
@@ -302,13 +302,13 @@ class KnowledgeExtractor(ABC):
 
     @abstractmethod
     async def build_semantic_index(
-        self, text: str, document_id: UUID
+        self, text: str, document_id: UUID,
     ) -> dict[str, Any]:
         ...
 
     @abstractmethod
     async def extract_clinical_timeline(
-        self, entities: list[ExtractedEntity]
+        self, entities: list[ExtractedEntity],
     ) -> list[dict[str, Any]]:
         ...
 
@@ -316,25 +316,25 @@ class KnowledgeExtractor(ABC):
 class SearchIndexer(ABC):
     @abstractmethod
     async def index_document(
-        self, document: ScannedDocument, text: str, entities: list[ExtractedEntity]
+        self, document: ScannedDocument, text: str, entities: list[ExtractedEntity],
     ) -> str:
         ...
 
     @abstractmethod
     async def search(
-        self, query: str, filters: dict[str, Any] | None = None, limit: int = 50
+        self, query: str, filters: dict[str, Any] | None = None, limit: int = 50,
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def hybrid_search(
-        self, query: str, query_vector: list[float] | None = None, limit: int = 50
+        self, query: str, query_vector: list[float] | None = None, limit: int = 50,
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def semantic_search(
-        self, query: str, limit: int = 50
+        self, query: str, limit: int = 50,
     ) -> list[dict[str, Any]]:
         ...
 
@@ -388,13 +388,13 @@ class MedicalParser(ABC):
 class AuditService(ABC):
     @abstractmethod
     async def log_event(
-        self, event_type: str, document_id: UUID, details: dict[str, Any]
+        self, event_type: str, document_id: UUID, details: dict[str, Any],
     ) -> None:
         ...
 
     @abstractmethod
     async def get_document_history(
-        self, document_id: UUID
+        self, document_id: UUID,
     ) -> list[dict[str, Any]]:
         ...
 
@@ -436,13 +436,13 @@ class EncryptionService(ABC):
 
     @abstractmethod
     async def generate_watermark(
-        self, document_id: UUID, tenant_id: UUID
+        self, document_id: UUID, tenant_id: UUID,
     ) -> bytes:
         ...
 
     @abstractmethod
     async def verify_digital_signature(
-        self, data: bytes, signature: bytes, certificate: bytes | None = None
+        self, data: bytes, signature: bytes, certificate: bytes | None = None,
     ) -> bool:
         ...
 
@@ -466,19 +466,19 @@ class AiIntegrationService(ABC):
 
     @abstractmethod
     async def find_duplicates(
-        self, text: str, document_id: UUID
+        self, text: str, document_id: UUID,
     ) -> list[tuple[UUID, float]]:
         ...
 
     @abstractmethod
     async def generate_medical_insights(
-        self, entities: list[ExtractedEntity], fields: list[ExtractedField]
+        self, entities: list[ExtractedEntity], fields: list[ExtractedField],
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def rag_query(
-        self, query: str, document_ids: list[UUID] | None = None
+        self, query: str, document_ids: list[UUID] | None = None,
     ) -> str:
         ...
 
@@ -498,7 +498,7 @@ class ProviderBenchmark(ABC):
 
     @abstractmethod
     async def record_result(
-        self, engine: OcrEngine, metrics: dict[str, float]
+        self, engine: OcrEngine, metrics: dict[str, float],
     ) -> None:
         ...
 
@@ -550,13 +550,13 @@ class PipelineEventPublisher(ABC):
 class DocumentIngestionService(ABC):
     @abstractmethod
     async def ingest(
-        self, data: bytes, filename: str, mime_type: str, metadata: dict[str, Any] | None = None
+        self, data: bytes, filename: str, mime_type: str, metadata: dict[str, Any] | None = None,
     ) -> ScannedDocument:
         ...
 
     @abstractmethod
     async def ingest_batch(
-        self, files: list[tuple[bytes, str, str]]
+        self, files: list[tuple[bytes, str, str]],
     ) -> list[ScannedDocument]:
         ...
 
@@ -566,7 +566,7 @@ class DocumentIngestionService(ABC):
 
     @abstractmethod
     async def ingest_from_fhir(
-        self, document_reference: dict[str, Any]
+        self, document_reference: dict[str, Any],
     ) -> ScannedDocument:
         ...
 
@@ -601,7 +601,7 @@ class OcrPipelineService(ABC):
 class DocumentClassifierService(ABC):
     @abstractmethod
     async def classify_document(
-        self, document: ScannedDocument, ocr_result: OcrResult
+        self, document: ScannedDocument, ocr_result: OcrResult,
     ) -> ClassificationResult:
         ...
 
@@ -613,13 +613,13 @@ class DocumentClassifierService(ABC):
 class EntityExtractionService(ABC):
     @abstractmethod
     async def extract_from_document(
-        self, document: ScannedDocument, ocr_result: OcrResult
+        self, document: ScannedDocument, ocr_result: OcrResult,
     ) -> tuple[list[ExtractedEntity], list[ExtractedField], list[ExtractedTable]]:
         ...
 
     @abstractmethod
     async def extract_from_text(
-        self, text: str, category: DocumentCategory | None = None
+        self, text: str, category: DocumentCategory | None = None,
     ) -> tuple[list[ExtractedEntity], list[ExtractedField], list[ExtractedTable]]:
         ...
 
@@ -662,7 +662,7 @@ class KnowledgePipelineService(ABC):
 class SearchService(ABC):
     @abstractmethod
     async def index_document(
-        self, document: ScannedDocument, text: str, entities: list[ExtractedEntity]
+        self, document: ScannedDocument, text: str, entities: list[ExtractedEntity],
     ) -> None:
         ...
 
@@ -752,7 +752,7 @@ class LayoutDetector(ABC):
 class GovernmentRecordsService(ABC):
     @abstractmethod
     async def register_government_document(
-        self, document_id: UUID, gov_record: GovernmentDocument
+        self, document_id: UUID, gov_record: GovernmentDocument,
     ) -> GovernmentDocument:
         ...
 
@@ -762,7 +762,7 @@ class GovernmentRecordsService(ABC):
 
     @abstractmethod
     async def search_government_documents(
-        self, query: str, filters: dict[str, Any] | None = None
+        self, query: str, filters: dict[str, Any] | None = None,
     ) -> list[GovernmentDocument]:
         ...
 
@@ -782,13 +782,13 @@ class GovernmentRecordsService(ABC):
 class CollaborationService(ABC):
     @abstractmethod
     async def assign_reviewer(
-        self, document_id: UUID, reviewer_id: str, role: CollaborationRole = CollaborationRole.reviewer
+        self, document_id: UUID, reviewer_id: str, role: CollaborationRole = CollaborationRole.reviewer,
     ) -> DocumentReview:
         ...
 
     @abstractmethod
     async def submit_review(
-        self, review_id: UUID, decision: ReviewDecision, comments: str, changes: list[str] | None = None
+        self, review_id: UUID, decision: ReviewDecision, comments: str, changes: list[str] | None = None,
     ) -> DocumentReview:
         ...
 
@@ -798,7 +798,7 @@ class CollaborationService(ABC):
 
     @abstractmethod
     async def add_annotation(
-        self, document_id: UUID, annotation: DocumentAnnotation
+        self, document_id: UUID, annotation: DocumentAnnotation,
     ) -> DocumentAnnotation:
         ...
 
@@ -854,7 +854,7 @@ class GovernanceService(ABC):
 
     @abstractmethod
     async def get_governance_events(
-        self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None
+        self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None,
     ) -> list[GovernanceEvent]:
         ...
 
@@ -866,13 +866,13 @@ class GovernanceService(ABC):
 class NationalArchiveService(ABC):
     @abstractmethod
     async def archive_document(
-        self, document_id: UUID, policy: RetentionPolicy = RetentionPolicy.standard_7y
+        self, document_id: UUID, policy: RetentionPolicy = RetentionPolicy.standard_7y,
     ) -> DigitalPreservationRecord:
         ...
 
     @abstractmethod
     async def preserve_document(
-        self, document_id: UUID, standard: DigitalPreservationStandard = DigitalPreservationStandard.oais
+        self, document_id: UUID, standard: DigitalPreservationStandard = DigitalPreservationStandard.oais,
     ) -> DigitalPreservationRecord:
         ...
 
@@ -908,7 +908,7 @@ class KnowledgeGraphService(ABC):
 
     @abstractmethod
     async def find_related_documents(
-        self, document_id: UUID, max_depth: int = 3
+        self, document_id: UUID, max_depth: int = 3,
     ) -> list[dict[str, Any]]:
         ...
 
@@ -940,7 +940,7 @@ class SemanticSearchService(ABC):
 
     @abstractmethod
     async def hybrid_search(
-        self, query_text: str, query_vector: list[float] | None = None
+        self, query_text: str, query_vector: list[float] | None = None,
     ) -> list[SemanticSearchResult]:
         ...
 
@@ -968,7 +968,7 @@ class SemanticSearchService(ABC):
 class WebhookService(ABC):
     @abstractmethod
     async def register_webhook(
-        self, url: str, events: list[EventChannel], secret: str | None = None
+        self, url: str, events: list[EventChannel], secret: str | None = None,
     ) -> dict[str, Any]:
         ...
 
@@ -1004,7 +1004,7 @@ class EventBusService(ABC):
 
     @abstractmethod
     async def get_event_history(
-        self, document_id: UUID | None = None, channel: EventChannel | None = None
+        self, document_id: UUID | None = None, channel: EventChannel | None = None,
     ) -> list[DocumentEvent]:
         ...
 
@@ -1059,7 +1059,7 @@ class DocumentLifecycleService(ABC):
     @abstractmethod
     async def record_event(
         self, document_id: UUID, event_type: str, actor: str, reason: str = "",
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> DocumentLifecycleRecord:
         ...
 
@@ -1075,19 +1075,19 @@ class DocumentLifecycleService(ABC):
 class AccessControlService(ABC):
     @abstractmethod
     async def check_access(
-        self, document_id: UUID, user_id: str, permission: str
+        self, document_id: UUID, user_id: str, permission: str,
     ) -> bool:
         ...
 
     @abstractmethod
     async def grant_access(
-        self, document_id: UUID, user_id: str, role: CollaborationRole
+        self, document_id: UUID, user_id: str, role: CollaborationRole,
     ) -> None:
         ...
 
     @abstractmethod
     async def revoke_access(
-        self, document_id: UUID, user_id: str
+        self, document_id: UUID, user_id: str,
     ) -> None:
         ...
 
@@ -1097,13 +1097,13 @@ class AccessControlService(ABC):
 
     @abstractmethod
     async def get_documents_for_user(
-        self, user_id: str, permission: str = "viewer"
+        self, user_id: str, permission: str = "viewer",
     ) -> list[UUID]:
         ...
 
     @abstractmethod
     async def delegate_access(
-        self, document_id: UUID, from_user: str, to_user: str, expiry: datetime | None = None
+        self, document_id: UUID, from_user: str, to_user: str, expiry: datetime | None = None,
     ) -> None:
         ...
 
@@ -1111,31 +1111,31 @@ class AccessControlService(ABC):
 class PatientIntelligenceService(ABC):
     @abstractmethod
     async def get_patient_dossier(
-        self, patient_id: UUID
+        self, patient_id: UUID,
     ) -> dict[str, Any]:
         ...
 
     @abstractmethod
     async def get_patient_timeline(
-        self, patient_id: UUID
+        self, patient_id: UUID,
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def get_patient_diagnoses(
-        self, patient_id: UUID
+        self, patient_id: UUID,
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def get_patient_medications(
-        self, patient_id: UUID
+        self, patient_id: UUID,
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def detect_health_risks(
-        self, patient_id: UUID
+        self, patient_id: UUID,
     ) -> list[dict[str, Any]]:
         ...
 
@@ -1143,25 +1143,25 @@ class PatientIntelligenceService(ABC):
 class ClinicalDecisionSupportService(ABC):
     @abstractmethod
     async def evaluate_guidelines(
-        self, patient_data: dict[str, Any]
+        self, patient_data: dict[str, Any],
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def check_drug_interactions(
-        self, medications: list[str]
+        self, medications: list[str],
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def suggest_diagnoses(
-        self, symptoms: list[str], patient_data: dict[str, Any]
+        self, symptoms: list[str], patient_data: dict[str, Any],
     ) -> list[dict[str, Any]]:
         ...
 
     @abstractmethod
     async def alert_critical_values(
-        self, lab_results: list[dict[str, Any]]
+        self, lab_results: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         ...
 
@@ -1169,37 +1169,37 @@ class ClinicalDecisionSupportService(ABC):
 class RagAiService(ABC):
     @abstractmethod
     async def ask_document(
-        self, document_id: UUID, question: str
+        self, document_id: UUID, question: str,
     ) -> str:
         ...
 
     @abstractmethod
     async def ask_corpus(
-        self, query: str, category_filter: list[DocumentCategory] | None = None
+        self, query: str, category_filter: list[DocumentCategory] | None = None,
     ) -> str:
         ...
 
     @abstractmethod
     async def generate_summary(
-        self, document_id: UUID, max_length: int = 500
+        self, document_id: UUID, max_length: int = 500,
     ) -> str:
         ...
 
     @abstractmethod
     async def generate_patient_summary(
-        self, patient_id: UUID
+        self, patient_id: UUID,
     ) -> str:
         ...
 
     @abstractmethod
     async def generate_report(
-        self, template: str, data: dict[str, Any]
+        self, template: str, data: dict[str, Any],
     ) -> str:
         ...
 
     @abstractmethod
     async def answer_question(
-        self, context: str, question: str, domain: str = "medical"
+        self, context: str, question: str, domain: str = "medical",
     ) -> str:
         ...
 
@@ -1207,37 +1207,37 @@ class RagAiService(ABC):
 class FhirApiService(ABC):
     @abstractmethod
     async def search_resource(
-        self, resource_type: str, params: dict[str, Any]
+        self, resource_type: str, params: dict[str, Any],
     ) -> dict[str, Any]:
         ...
 
     @abstractmethod
     async def get_resource(
-        self, resource_type: str, resource_id: str
+        self, resource_type: str, resource_id: str,
     ) -> dict[str, Any]:
         ...
 
     @abstractmethod
     async def create_resource(
-        self, resource_type: str, resource: dict[str, Any]
+        self, resource_type: str, resource: dict[str, Any],
     ) -> dict[str, Any]:
         ...
 
     @abstractmethod
     async def update_resource(
-        self, resource_type: str, resource_id: str, resource: dict[str, Any]
+        self, resource_type: str, resource_id: str, resource: dict[str, Any],
     ) -> dict[str, Any]:
         ...
 
     @abstractmethod
     async def delete_resource(
-        self, resource_type: str, resource_id: str
+        self, resource_type: str, resource_id: str,
     ) -> None:
         ...
 
     @abstractmethod
     async def batch_operation(
-        self, operations: list[dict[str, Any]]
+        self, operations: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         ...
 

@@ -42,7 +42,7 @@ class DataAccessAuditTrail:
         self._entries.append(entry)
         chain_entry = self._build_chain_entry(entry)
         current_hash = hashlib.sha256(
-            f"{self._previous_hash}{chain_entry}".encode()
+            f"{self._previous_hash}{chain_entry}".encode(),
         ).hexdigest()
         self._hash_chain.append(current_hash)
         self._previous_hash = current_hash

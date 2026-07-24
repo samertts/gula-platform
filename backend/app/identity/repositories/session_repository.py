@@ -1,10 +1,8 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import select, update
 
 from app._compat import UTC
-
 from app.identity.models.session import UserSession
 from app.identity.repositories.base import IdentityRepositoryBase
 
@@ -13,7 +11,7 @@ class SessionRepository(IdentityRepositoryBase[UserSession]):
 
     model_class = UserSession
 
-    async def find_by_token_jti(self, jti: str) -> Optional[UserSession]:
+    async def find_by_token_jti(self, jti: str) -> UserSession | None:
         stmt = select(self.model_class).where(
             self.model_class.token_jti == jti,
             self.model_class.is_active.is_(True),

@@ -450,7 +450,7 @@ class CriticalCareService:
         total_beds = self.db.query(ICUBedModel).filter(ICUBedModel.is_active.is_(True)).count()
         occupied_beds = self.db.query(ICUBedModel).filter(ICUBedModel.is_active.is_(True), ICUBedModel.is_occupied.is_(True)).count()
         active_patients = self.db.query(ICUAdmissionModel).filter(
-            ICUAdmissionModel.status.in_(["stable", "improving", "deteriorating", "critical"])
+            ICUAdmissionModel.status.in_(["stable", "improving", "deteriorating", "critical"]),
         ).count()
         ventilated = self.db.query(VentilatorSettingModel).count()
         active_alerts = self.db.query(CriticalAlertModel).filter(CriticalAlertModel.is_active.is_(True)).count()

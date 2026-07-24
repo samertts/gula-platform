@@ -2,19 +2,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
-
 from app.identity.governance.models import (
     DigitalIdentityCouncil,
     IdentityAppeal,
     IdentityAuthority,
     IdentityCertificationRegistry,
-    IdentityRestoration,
     IdentityReviewBoard,
     IdentitySuspension,
     NationalIdentityRegistry,
@@ -37,14 +35,14 @@ class GovernanceService:
         self,
         authority_id: str,
         name_en: str,
-        name_ar: Optional[str] = None,
+        name_ar: str | None = None,
         authority_type: str = "identity_authority",
         jurisdiction: str = "national",
-        parent_authority_id: Optional[str] = None,
-        contact_email: Optional[str] = None,
-        established_date: Optional[datetime] = None,
-        accredited_by: Optional[str] = None,
-        accreditation_expires: Optional[datetime] = None,
+        parent_authority_id: str | None = None,
+        contact_email: str | None = None,
+        established_date: datetime | None = None,
+        accredited_by: str | None = None,
+        accreditation_expires: datetime | None = None,
     ) -> IdentityAuthority:
         authority = IdentityAuthority(
             uuid=str(uuid.uuid4()),
@@ -65,7 +63,7 @@ class GovernanceService:
         await self.session.flush()
         return authority
 
-    async def get_authority(self, authority_id: str) -> Optional[IdentityAuthority]:
+    async def get_authority(self, authority_id: str) -> IdentityAuthority | None:
         stmt = select(IdentityAuthority).where(
             IdentityAuthority.authority_id == authority_id,
             IdentityAuthority.is_active.is_(True),
@@ -75,7 +73,7 @@ class GovernanceService:
 
     async def list_authorities(
         self,
-        authority_type: Optional[str] = None,
+        authority_type: str | None = None,
     ) -> list[IdentityAuthority]:
         stmt = select(IdentityAuthority).where(
             IdentityAuthority.is_active.is_(True),
@@ -86,7 +84,7 @@ class GovernanceService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def suspend_authority(self, authority_id: str) -> Optional[IdentityAuthority]:
+    async def suspend_authority(self, authority_id: str) -> IdentityAuthority | None:
         stmt = select(IdentityAuthority).where(
             IdentityAuthority.authority_id == authority_id,
             IdentityAuthority.is_active.is_(True),
@@ -100,7 +98,7 @@ class GovernanceService:
             await self.session.flush()
         return authority
 
-    async def activate_authority(self, authority_id: str) -> Optional[IdentityAuthority]:
+    async def activate_authority(self, authority_id: str) -> IdentityAuthority | None:
         stmt = select(IdentityAuthority).where(
             IdentityAuthority.authority_id == authority_id,
         )
@@ -119,14 +117,14 @@ class GovernanceService:
         self,
         council_id: str,
         name_en: str,
-        name_ar: Optional[str] = None,
+        name_ar: str | None = None,
         council_type: str = "governance",
-        authority_id: Optional[str] = None,
-        chairperson_id: Optional[str] = None,
-        members: Optional[list[Any]] = None,
-        meeting_frequency: Optional[str] = None,
-        last_meeting: Optional[datetime] = None,
-        next_meeting: Optional[datetime] = None,
+        authority_id: str | None = None,
+        chairperson_id: str | None = None,
+        members: list[Any] | None = None,
+        meeting_frequency: str | None = None,
+        last_meeting: datetime | None = None,
+        next_meeting: datetime | None = None,
     ) -> DigitalIdentityCouncil:
         council = DigitalIdentityCouncil(
             uuid=str(uuid.uuid4()),
@@ -147,7 +145,7 @@ class GovernanceService:
         await self.session.flush()
         return council
 
-    async def get_council(self, council_id: str) -> Optional[DigitalIdentityCouncil]:
+    async def get_council(self, council_id: str) -> DigitalIdentityCouncil | None:
         stmt = select(DigitalIdentityCouncil).where(
             DigitalIdentityCouncil.council_id == council_id,
             DigitalIdentityCouncil.is_active.is_(True),
@@ -157,7 +155,7 @@ class GovernanceService:
 
     async def list_councils(
         self,
-        authority_id: Optional[str] = None,
+        authority_id: str | None = None,
     ) -> list[DigitalIdentityCouncil]:
         stmt = select(DigitalIdentityCouncil).where(
             DigitalIdentityCouncil.is_active.is_(True),
@@ -174,13 +172,13 @@ class GovernanceService:
         self,
         board_id: str,
         name_en: str,
-        name_ar: Optional[str] = None,
-        board_type: Optional[str] = None,
-        authority_id: Optional[str] = None,
-        chairperson_id: Optional[str] = None,
-        members: Optional[list[Any]] = None,
+        name_ar: str | None = None,
+        board_type: str | None = None,
+        authority_id: str | None = None,
+        chairperson_id: str | None = None,
+        members: list[Any] | None = None,
         quorum_size: int = 3,
-        meeting_schedule: Optional[dict[str, Any]] = None,
+        meeting_schedule: dict[str, Any] | None = None,
     ) -> IdentityReviewBoard:
         board = IdentityReviewBoard(
             uuid=str(uuid.uuid4()),
@@ -201,7 +199,7 @@ class GovernanceService:
         await self.session.flush()
         return board
 
-    async def get_review_board(self, board_id: str) -> Optional[IdentityReviewBoard]:
+    async def get_review_board(self, board_id: str) -> IdentityReviewBoard | None:
         stmt = select(IdentityReviewBoard).where(
             IdentityReviewBoard.board_id == board_id,
             IdentityReviewBoard.is_active.is_(True),
@@ -239,8 +237,8 @@ class PolicyApprovalService:
         workflow_id: str,
         reviewer: str,
         decision: str,
-        comments: Optional[str] = None,
-    ) -> Optional[PolicyApprovalWorkflow]:
+        comments: str | None = None,
+    ) -> PolicyApprovalWorkflow | None:
         stmt = select(PolicyApprovalWorkflow).where(
             PolicyApprovalWorkflow.workflow_id == workflow_id,
             PolicyApprovalWorkflow.is_active.is_(True),
@@ -270,7 +268,7 @@ class PolicyApprovalService:
         self,
         workflow_id: str,
         approved_by: str,
-    ) -> Optional[PolicyApprovalWorkflow]:
+    ) -> PolicyApprovalWorkflow | None:
         stmt = select(PolicyApprovalWorkflow).where(
             PolicyApprovalWorkflow.workflow_id == workflow_id,
             PolicyApprovalWorkflow.is_active.is_(True),
@@ -291,7 +289,7 @@ class PolicyApprovalService:
         workflow_id: str,
         rejected_by: str,
         reason: str,
-    ) -> Optional[PolicyApprovalWorkflow]:
+    ) -> PolicyApprovalWorkflow | None:
         stmt = select(PolicyApprovalWorkflow).where(
             PolicyApprovalWorkflow.workflow_id == workflow_id,
             PolicyApprovalWorkflow.is_active.is_(True),
@@ -311,7 +309,7 @@ class PolicyApprovalService:
     async def deploy_policy(
         self,
         workflow_id: str,
-    ) -> Optional[PolicyApprovalWorkflow]:
+    ) -> PolicyApprovalWorkflow | None:
         stmt = select(PolicyApprovalWorkflow).where(
             PolicyApprovalWorkflow.workflow_id == workflow_id,
             PolicyApprovalWorkflow.is_active.is_(True),
@@ -354,8 +352,8 @@ class AppealService:
         appellant_person_id: str,
         identity_id: str,
         appeal_type: str = "suspension",
-        reason: Optional[str] = None,
-        supporting_documents: Optional[list[Any]] = None,
+        reason: str | None = None,
+        supporting_documents: list[Any] | None = None,
     ) -> IdentityAppeal:
         appeal = IdentityAppeal(
             uuid=str(uuid.uuid4()),
@@ -376,7 +374,7 @@ class AppealService:
         self,
         appeal_id: str,
         council_id: str,
-    ) -> Optional[IdentityAppeal]:
+    ) -> IdentityAppeal | None:
         stmt = select(IdentityAppeal).where(
             IdentityAppeal.appeal_id == appeal_id,
             IdentityAppeal.is_active.is_(True),
@@ -397,8 +395,8 @@ class AppealService:
         appeal_id: str,
         decision: str,
         decided_by: str,
-        notes: Optional[str] = None,
-    ) -> Optional[IdentityAppeal]:
+        notes: str | None = None,
+    ) -> IdentityAppeal | None:
         stmt = select(IdentityAppeal).where(
             IdentityAppeal.appeal_id == appeal_id,
             IdentityAppeal.is_active.is_(True),
@@ -420,7 +418,7 @@ class AppealService:
         self,
         appeal_id: str,
         reason: str,
-    ) -> Optional[IdentityAppeal]:
+    ) -> IdentityAppeal | None:
         stmt = select(IdentityAppeal).where(
             IdentityAppeal.appeal_id == appeal_id,
             IdentityAppeal.is_active.is_(True),
@@ -437,8 +435,8 @@ class AppealService:
 
     async def get_appeals(
         self,
-        status: Optional[str] = None,
-        person_id: Optional[str] = None,
+        status: str | None = None,
+        person_id: str | None = None,
     ) -> list[IdentityAppeal]:
         stmt = select(IdentityAppeal).where(
             IdentityAppeal.is_active.is_(True),
@@ -463,8 +461,8 @@ class SuspensionService:
         identity_id: str,
         reason: str,
         severity: str = "medium",
-        suspended_by: Optional[str] = None,
-        duration_hours: Optional[int] = None,
+        suspended_by: str | None = None,
+        duration_hours: int | None = None,
     ) -> IdentitySuspension:
         now = _now()
         expires_at = None
@@ -493,8 +491,8 @@ class SuspensionService:
         self,
         suspension_id: str,
         lifted_by: str,
-        reason: Optional[str] = None,
-    ) -> Optional[IdentitySuspension]:
+        reason: str | None = None,
+    ) -> IdentitySuspension | None:
         stmt = select(IdentitySuspension).where(
             IdentitySuspension.suspension_id == suspension_id,
             IdentitySuspension.is_active.is_(True),
@@ -562,7 +560,7 @@ class RegistryService:
         person_id: str,
         identity_id: str,
         registry_type: str = "citizen",
-        registered_by: Optional[str] = None,
+        registered_by: str | None = None,
     ) -> NationalIdentityRegistry:
         registration = NationalIdentityRegistry(
             uuid=str(uuid.uuid4()),
@@ -584,7 +582,7 @@ class RegistryService:
         self,
         registry_id: str,
         verified_by: str,
-    ) -> Optional[NationalIdentityRegistry]:
+    ) -> NationalIdentityRegistry | None:
         stmt = select(NationalIdentityRegistry).where(
             NationalIdentityRegistry.registry_id == registry_id,
             NationalIdentityRegistry.is_active.is_(True),
@@ -605,15 +603,15 @@ class RegistryService:
         self,
         certification_id: str,
         person_id: str,
-        organization_id: Optional[str] = None,
-        certifying_authority_id: Optional[str] = None,
-        certification_type: Optional[str] = None,
-        certification_number: Optional[str] = None,
-        issue_date: Optional[datetime] = None,
-        expiry_date: Optional[datetime] = None,
-        verified_by: Optional[str] = None,
-        verification_method: Optional[str] = None,
-        digital_signature: Optional[str] = None,
+        organization_id: str | None = None,
+        certifying_authority_id: str | None = None,
+        certification_type: str | None = None,
+        certification_number: str | None = None,
+        issue_date: datetime | None = None,
+        expiry_date: datetime | None = None,
+        verified_by: str | None = None,
+        verification_method: str | None = None,
+        digital_signature: str | None = None,
     ) -> IdentityCertificationRegistry:
         cert = IdentityCertificationRegistry(
             uuid=str(uuid.uuid4()),
@@ -638,7 +636,7 @@ class RegistryService:
     async def get_registration(
         self,
         person_id: str,
-    ) -> Optional[NationalIdentityRegistry]:
+    ) -> NationalIdentityRegistry | None:
         stmt = select(NationalIdentityRegistry).where(
             NationalIdentityRegistry.person_id == person_id,
             NationalIdentityRegistry.is_active.is_(True),
@@ -649,7 +647,7 @@ class RegistryService:
     async def get_certification(
         self,
         person_id: str,
-    ) -> Optional[IdentityCertificationRegistry]:
+    ) -> IdentityCertificationRegistry | None:
         stmt = select(IdentityCertificationRegistry).where(
             IdentityCertificationRegistry.person_id == person_id,
             IdentityCertificationRegistry.is_active.is_(True),
@@ -661,7 +659,7 @@ class RegistryService:
         self,
         certification_id: str,
         reason: str,
-    ) -> Optional[IdentityCertificationRegistry]:
+    ) -> IdentityCertificationRegistry | None:
         stmt = select(IdentityCertificationRegistry).where(
             IdentityCertificationRegistry.certification_id == certification_id,
             IdentityCertificationRegistry.is_active.is_(True),

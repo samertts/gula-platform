@@ -26,7 +26,7 @@ class HttpConnector:
             ConnectorType.GRAPHQL,
         ):
             raise ValueError(
-                f"HttpConnector does not support type {spec.connector_type.name}"
+                f"HttpConnector does not support type {spec.connector_type.name}",
             )
         self.spec = spec
         self._client: httpx.AsyncClient | None = None
@@ -34,7 +34,7 @@ class HttpConnector:
             max(
                 (ep.timeout for ep in spec.endpoints),
                 default=30.0,
-            )
+            ),
         )
 
     async def connect(self) -> bool:
@@ -108,7 +108,7 @@ class HttpConnector:
         try:
             start = time.monotonic()
             response = await self._client.get(
-                self.spec.config.get("health_url", self.spec.endpoints[0].url)
+                self.spec.config.get("health_url", self.spec.endpoints[0].url),
             )
             latency = (time.monotonic() - start) * 1000
             self.spec.health = ConnectorHealth(
@@ -125,7 +125,7 @@ class HttpConnector:
         return self.spec.health
 
     def _resolve_endpoint(
-        self, name: str | None
+        self, name: str | None,
     ) -> ConnectorEndpoint:
         if name:
             for ep in self.spec.endpoints:

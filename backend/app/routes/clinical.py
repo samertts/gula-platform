@@ -118,7 +118,7 @@ def search_terminology_codes(
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.search_codes(
-        db, query=q, system=system, status=status, skip=skip, limit=limit
+        db, query=q, system=system, status=status, skip=skip, limit=limit,
     )
     return {"items": [c.to_dict() for c in items], "total": total, "skip": skip, "limit": limit}
 
@@ -265,7 +265,7 @@ def search_icd10(
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.search_icd10(
-        db, query=q, chapter=chapter, skip=skip, limit=limit
+        db, query=q, chapter=chapter, skip=skip, limit=limit,
     )
     return {"items": [c.to_dict() for c in items], "total": total}
 
@@ -280,7 +280,7 @@ def search_loinc(
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.search_loinc(
-        db, query=q, class_name=class_name, skip=skip, limit=limit
+        db, query=q, class_name=class_name, skip=skip, limit=limit,
     )
     return {"items": [c.to_dict() for c in items], "total": total}
 
@@ -308,7 +308,7 @@ def fhir_expand_value_set(
     vs_filters = [ValueSet.is_deleted.is_(False)]
     if url:
         vs_filters.append(
-            (ValueSet.oid == url) | (ValueSet.name == url)
+            (ValueSet.oid == url) | (ValueSet.name == url),
         )
     value_set = db.query(ValueSet).filter(*vs_filters).first()
     if not value_set:
@@ -495,7 +495,7 @@ def list_guidelines(
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.list_guidelines(
-        db, status=status, specialty=specialty, skip=skip, limit=limit
+        db, status=status, specialty=specialty, skip=skip, limit=limit,
     )
     return {"items": [g.to_dict() for g in items], "total": total}
 
@@ -530,7 +530,7 @@ def update_guideline(
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.update_guideline(
-        db, guideline_id, data.model_dump(exclude_none=True)
+        db, guideline_id, data.model_dump(exclude_none=True),
     )
     if not obj:
         raise HTTPException(status_code=404, detail="Guideline not found")
@@ -547,7 +547,7 @@ def list_protocols(
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.list_protocols(
-        db, status=status, department=department, skip=skip, limit=limit
+        db, status=status, department=department, skip=skip, limit=limit,
     )
     return {"items": [p.to_dict() for p in items], "total": total}
 
@@ -582,7 +582,7 @@ def update_protocol(
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.update_protocol(
-        db, protocol_id, data.model_dump(exclude_none=True)
+        db, protocol_id, data.model_dump(exclude_none=True),
     )
     if not obj:
         raise HTTPException(status_code=404, detail="Protocol not found")
@@ -599,7 +599,7 @@ def list_pathways(
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.list_pathways(
-        db, status=status, condition=condition, skip=skip, limit=limit
+        db, status=status, condition=condition, skip=skip, limit=limit,
     )
     return {"items": [p.to_dict() for p in items], "total": total}
 
@@ -634,7 +634,7 @@ def update_pathway(
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.update_pathway(
-        db, pathway_id, data.model_dump(exclude_none=True)
+        db, pathway_id, data.model_dump(exclude_none=True),
     )
     if not obj:
         raise HTTPException(status_code=404, detail="Pathway not found")
@@ -664,7 +664,7 @@ def list_standing_orders(
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.list_standing_orders(
-        db, department=department, active_only=active_only, skip=skip, limit=limit
+        db, department=department, active_only=active_only, skip=skip, limit=limit,
     )
     return {"items": [s.to_dict() for s in items], "total": total}
 
@@ -689,7 +689,7 @@ def list_recommendations(
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.get_recommendations(
-        db, guideline_id=guideline_id, evidence_level=evidence_level, skip=skip, limit=limit
+        db, guideline_id=guideline_id, evidence_level=evidence_level, skip=skip, limit=limit,
     )
     return {"items": [r.to_dict() for r in items], "total": total}
 
@@ -750,7 +750,7 @@ def get_order_set_recommendations(
     db: Session = Depends(get_db),
 ):
     results = CDSService.get_order_set_recommendations(
-        db, condition=data.condition, department=data.department
+        db, condition=data.condition, department=data.department,
     )
     return {"recommendations": results, "count": len(results)}
 
@@ -762,7 +762,7 @@ def check_contraindications(
     db: Session = Depends(get_db),
 ):
     results = CDSService.check_contraindications(
-        db, subject_code=data.subject_code, subject_system=data.subject_system
+        db, subject_code=data.subject_code, subject_system=data.subject_system,
     )
     return {"contraindications": results, "count": len(results)}
 
@@ -789,7 +789,7 @@ def check_drug_interactions(
     db: Session = Depends(get_db),
 ):
     results = CDSService.check_drug_interactions(
-        db, medications=data.medications
+        db, medications=data.medications,
     )
     return {"interactions": results, "count": len(results)}
 
@@ -846,7 +846,7 @@ def get_patient_reminders(
     db: Session = Depends(get_db),
 ):
     items, total = CDSService.get_patient_reminders(
-        db, patient_id=patient_id, skip=skip, limit=limit
+        db, patient_id=patient_id, skip=skip, limit=limit,
     )
     return {"items": [a.to_dict() for a in items], "total": total}
 
@@ -858,7 +858,7 @@ def check_care_bundle_compliance(
     db: Session = Depends(get_db),
 ):
     result = CDSService.check_care_bundle_compliance(
-        db, bundle_id=data.bundle_id, completed_elements=data.completed_elements
+        db, bundle_id=data.bundle_id, completed_elements=data.completed_elements,
     )
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
@@ -1056,7 +1056,7 @@ def create_compliance_check(
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_compliance_check(
-        db, data.model_dump(exclude_none=True), checked_by=current_user.id
+        db, data.model_dump(exclude_none=True), checked_by=current_user.id,
     )
     return obj.to_dict()
 
@@ -1071,7 +1071,7 @@ def list_compliance_checks(
     db: Session = Depends(get_db),
 ):
     items, total = QualityService.get_compliance_checks(
-        db, standard=standard, department=department, skip=skip, limit=limit
+        db, standard=standard, department=department, skip=skip, limit=limit,
     )
     return {"items": [c.to_dict() for c in items], "total": total}
 
@@ -1086,7 +1086,7 @@ def list_benchmarks(
     db: Session = Depends(get_db),
 ):
     items, total = QualityService.get_benchmarks(
-        db, indicator_id=indicator_id, year=year, skip=skip, limit=limit
+        db, indicator_id=indicator_id, year=year, skip=skip, limit=limit,
     )
     return {"items": [b.to_dict() for b in items], "total": total}
 
@@ -1098,7 +1098,7 @@ def create_mortality_review(
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_mortality_review(
-        db, data.model_dump(exclude_none=True), reviewer=current_user.id
+        db, data.model_dump(exclude_none=True), reviewer=current_user.id,
     )
     return obj.to_dict()
 
@@ -1110,7 +1110,7 @@ def create_incident_report(
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_incident_report(
-        db, data.model_dump(exclude_none=True), reporter_id=current_user.id
+        db, data.model_dump(exclude_none=True), reporter_id=current_user.id,
     )
     return obj.to_dict()
 
@@ -1122,7 +1122,7 @@ def create_safety_event(
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_safety_event(
-        db, data.model_dump(exclude_none=True), reported_by=current_user.id
+        db, data.model_dump(exclude_none=True), reported_by=current_user.id,
     )
     return obj.to_dict()
 
@@ -1182,7 +1182,7 @@ def list_registries(
     db: Session = Depends(get_db),
 ):
     items, total = ResearchService.list_registries(
-        db, registry_type=registry_type, skip=skip, limit=limit
+        db, registry_type=registry_type, skip=skip, limit=limit,
     )
     return {
         "items": [r.to_dict() if hasattr(r, "to_dict") else {"id": r.id, "name": r.name} for r in items],
@@ -1221,7 +1221,7 @@ def export_deidentified_dataset(
     db: Session = Depends(get_db),
 ):
     return ResearchService.export_deidentified_dataset(
-        db, cohort_id=cohort_id, registry_id=registry_id
+        db, cohort_id=cohort_id, registry_id=registry_id,
     )
 
 

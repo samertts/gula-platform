@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -109,7 +109,7 @@ async def request_employee(
     request_type: str,
     requesting_org_id: str,
     requested_by: str,
-    person_id: Optional[str] = None,
+    person_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = WorkforceService(db)
@@ -148,7 +148,7 @@ async def validate_workforce_license(
 @router.post("/workforce/{request_id}/check-conflicts")
 async def check_workforce_conflicts(
     request_id: str,
-    conflict_report: Optional[dict[str, Any]] = None,
+    conflict_report: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = WorkforceService(db)
@@ -218,11 +218,11 @@ async def create_government_appointment(
     organization_id: str,
     hr_reference: str,
     appointment_type: str,
-    position: Optional[str] = None,
-    grade: Optional[str] = None,
-    salary_scale: Optional[str] = None,
-    department: Optional[str] = None,
-    start_date: Optional[datetime] = None,
+    position: str | None = None,
+    grade: str | None = None,
+    salary_scale: str | None = None,
+    department: str | None = None,
+    start_date: datetime | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = GovernmentHRService(db)
@@ -285,7 +285,7 @@ async def activate_government_account(
 @router.post("/government/appointments/{appointment_id}/assign-permissions")
 async def assign_government_permissions(
     appointment_id: str,
-    permissions: Optional[dict[str, Any]] = None,
+    permissions: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = GovernmentHRService(db)
@@ -298,7 +298,7 @@ async def promote_government_employee(
     appointment_id: str,
     new_position: str,
     new_grade: str,
-    promoted_by: Optional[str] = None,
+    promoted_by: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = GovernmentHRService(db)
@@ -314,9 +314,9 @@ async def promote_government_employee(
 @router.post("/government/appointments/{appointment_id}/transfer")
 async def transfer_government_employee(
     appointment_id: str,
-    new_org_id: Optional[str] = None,
-    new_dept: Optional[str] = None,
-    transferred_by: Optional[str] = None,
+    new_org_id: str | None = None,
+    new_dept: str | None = None,
+    transferred_by: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = GovernmentHRService(db)
@@ -346,7 +346,7 @@ async def retire_government_employee(
 @router.post("/citizen/register")
 async def register_citizen(
     person_id: str,
-    citizen_id: Optional[str] = None,
+    citizen_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = CitizenService(db)
@@ -432,8 +432,8 @@ async def link_citizen_family(
 async def record_citizen_consent(
     citizen_id: str,
     consent_type: str,
-    granted_to: Optional[str] = None,
-    scope: Optional[dict[str, Any]] = None,
+    granted_to: str | None = None,
+    scope: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     svc = CitizenService(db)

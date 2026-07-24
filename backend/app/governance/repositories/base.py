@@ -42,7 +42,7 @@ class GovernanceRepository(Generic[T]):
             if current is not None and current != expected_version:
                 raise OptimisticLockError(
                     f"{self._model.__name__} id={getattr(entity, 'id', '?')} "
-                    f"version {current} != expected {expected_version}"
+                    f"version {current} != expected {expected_version}",
                 )
             entity.version = current + 1 if current is not None else 1
         self._write_audit("update", str(getattr(entity, "id", "")))

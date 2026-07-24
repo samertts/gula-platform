@@ -174,7 +174,7 @@ class DefaultIngestionService(DocumentIngestionService):
                 page_count=page_count,
                 storage_path=storage_path,
                 checksum=checksum,
-            )
+            ),
         )
 
         await self._audit.log_event(
@@ -187,7 +187,7 @@ class DefaultIngestionService(DocumentIngestionService):
         return saved
 
     async def ingest_batch(
-        self, files: list[tuple[bytes, str, str]]
+        self, files: list[tuple[bytes, str, str]],
     ) -> list[ScannedDocument]:
         results = []
         for data, filename, mime_type in files:
@@ -199,7 +199,7 @@ class DefaultIngestionService(DocumentIngestionService):
         return results
 
     async def ingest_from_uri(
-        self, uri: str, metadata: dict[str, Any] | None = None
+        self, uri: str, metadata: dict[str, Any] | None = None,
     ) -> ScannedDocument:
         import httpx
 
@@ -213,7 +213,7 @@ class DefaultIngestionService(DocumentIngestionService):
         return await self.ingest(data, filename, content_type, metadata)
 
     async def ingest_from_fhir(
-        self, document_reference: dict[str, Any]
+        self, document_reference: dict[str, Any],
     ) -> ScannedDocument:
         attachment = document_reference.get("content", [{}])[0].get("attachment", {})
         url = attachment.get("url", "")
@@ -325,7 +325,7 @@ class DefaultOcrPipelineService(OcrPipelineService):
                 processing_time_ms=elapsed_ms,
                 page_count=len(pages),
                 text_length=len(full_text),
-            )
+            ),
         )
 
         await self._audit.log_event(
@@ -400,17 +400,17 @@ class DefaultClassifierService(DocumentClassifierService):
         self._audit = audit
 
     async def classify_document(
-        self, document: ScannedDocument, ocr_result: OcrResult
+        self, document: ScannedDocument, ocr_result: OcrResult,
     ) -> ClassificationResult:
         try:
             result = await self._classifier.classify(
-                ocr_result.full_text, ocr_result.pages
+                ocr_result.full_text, ocr_result.pages,
             )
         except Exception as exc:
             await self._events.publish(
                 DocumentClassificationFailed(
-                    document_id=document.id, error_message=str(exc)
-                )
+                    document_id=document.id, error_message=str(exc),
+                ),
             )
             raise ClassificationError(f"Classification failed: {exc}") from exc
 
@@ -422,7 +422,7 @@ class DefaultClassifierService(DocumentClassifierService):
                 category=result.category,
                 confidence=result.confidence_score,
                 method=result.method,
-            )
+            ),
         )
 
         await self._audit.log_event(
@@ -467,11 +467,11 @@ class DefaultEntityExtractionService(EntityExtractionService):
         self._audit = audit
 
     async def extract_from_document(
-        self, document: ScannedDocument, ocr_result: OcrResult
+        self, document: ScannedDocument, ocr_result: OcrResult,
     ) -> tuple[list[ExtractedEntity], list[ExtractedField], list[ExtractedTable]]:
         try:
             entities, fields, tables = await self._extractor.extract(
-                ocr_result.full_text
+                ocr_result.full_text,
             )
         except Exception as exc:
             raise EntityExtractionError(f"Entity extraction failed: {exc}") from exc
@@ -484,8 +484,8 @@ class DefaultEntityExtractionService(EntityExtractionService):
                         if isinstance(value, str):
                             fields.append(
                                 ExtractedField(
-                                    name=key, value=value, confidence=0.8
-                                )
+                                    name=key, value=value, confidence=0.8,
+                                ),
                             )
             except Exception:
                 pass
@@ -508,7 +508,7 @@ class DefaultEntityExtractionService(EntityExtractionService):
         return entities, fields, tables
 
     async def extract_from_text(
-        self, text: str, category: DocumentCategory | None = None
+        self, text: str, category: DocumentCategory | None = None,
     ) -> tuple[list[ExtractedEntity], list[ExtractedField], list[ExtractedTable]]:
         return await self._extractor.extract(text, category)
 
@@ -533,7 +533,7 @@ class DefaultFhirMappingService(FhirMappingService):
     ) -> dict[str, Any]:
         try:
             result = await self._mapper.map_all(
-                entities, fields, document, ocr_result
+                entities, fields, document, ocr_result,
             )
         except Exception as exc:
             raise FhirMappingError(f"FHIR mapping failed: {exc}") from exc
@@ -582,15 +582,15 @@ class DefaultKnowledgePipelineService(KnowledgePipelineService):
     ) -> dict[str, Any]:
         try:
             concepts = await self._extractor.extract_concepts(
-                ocr_result.full_text, entities
+                ocr_result.full_text, entities,
             )
             kg = await self._extractor.build_knowledge_graph(concepts)
             embeddings = await self._extractor.generate_embeddings(
-                ocr_result.full_text
+                ocr_result.full_text,
             )
 
             idx_entry = await self._indexer.index_document(
-                document, ocr_result.full_text, entities
+                document, ocr_result.full_text, entities,
             )
 
             timeline = await self._extractor.extract_clinical_timeline(entities)
@@ -623,10 +623,10 @@ class DefaultKnowledgePipelineService(KnowledgePipelineService):
         return await self._indexer.search(query)
 
     async def get_patient_timeline(
-        self, patient_id: UUID
+        self, patient_id: UUID,
     ) -> list[dict[str, Any]]:
         return await self._indexer.search(
-            "", filters={"patient_id": str(patient_id)}
+            "", filters={"patient_id": str(patient_id)},
         )
 
 
@@ -635,7 +635,7 @@ class DefaultSearchService(SearchService):
         self._indexer = indexer
 
     async def index_document(
-        self, document: ScannedDocument, text: str, entities: list[ExtractedEntity]
+        self, document: ScannedDocument, text: str, entities: list[ExtractedEntity],
     ) -> None:
         try:
             await self._indexer.index_document(document, text, entities)
@@ -643,7 +643,7 @@ class DefaultSearchService(SearchService):
             raise IndexingError(f"Search indexing failed: {exc}") from exc
 
     async def search(
-        self, query: str, filters: dict[str, Any] | None = None
+        self, query: str, filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         try:
             return await self._indexer.search(query, filters)
@@ -765,7 +765,7 @@ class DocumentIntelligenceOrchestrator:
             result.classification = classification.category
 
             entities, fields, tables = await self._entity_extractor.extract_from_document(
-                doc, ocr_result
+                doc, ocr_result,
             )
             pipeline.entities = entities
             pipeline.fields = fields
@@ -782,7 +782,7 @@ class DocumentIntelligenceOrchestrator:
 
             kg_result = await self._knowledge.process(doc, ocr_result, entities)
             pipeline.knowledge_graph_entries = kg_result.get("knowledge_graph", {}).get(
-                "nodes", []
+                "nodes", [],
             )
             pipeline.vector_embeddings = kg_result.get("embeddings", [])
             pipeline.phases_completed.append(ProcessingPhase.knowledge_extraction)
@@ -790,7 +790,7 @@ class DocumentIntelligenceOrchestrator:
             result.embeddings = kg_result.get("embeddings", [])
 
             await self._search.index_document(
-                doc, ocr_result.full_text, entities
+                doc, ocr_result.full_text, entities,
             )
             pipeline.phases_completed.append(ProcessingPhase.search_indexing)
 
@@ -828,7 +828,7 @@ class DocumentIntelligenceOrchestrator:
                         phase=phase,
                         error_message=str(exc),
                         processing_time_ms=(time.perf_counter() - t_start) * 1000,
-                    )
+                    ),
                 )
 
         except Exception as exc:
@@ -860,7 +860,7 @@ class DocumentIntelligenceOrchestrator:
                     total_processing_time_ms=pipeline.total_processing_time_ms,
                     entity_count=len(pipeline.entities),
                     fhir_resource_count=len(pipeline.fhir_resources),
-                )
+                ),
             )
 
         await self._pipeline_repo.save(pipeline)

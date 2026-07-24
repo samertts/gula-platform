@@ -1,5 +1,4 @@
-"""
-AI Guardrails — GULA Platform
+"""AI Guardrails — GULA Platform
 ==============================
 Enforces the fundamental rule of clinical AI safety:
 
@@ -46,8 +45,7 @@ logger = logging.getLogger("gula.ai.guardrails")
 
 
 class AIOperationType(StrEnum):
-    """
-    Every AI action must be classified before it can be submitted for approval.
+    """Every AI action must be classified before it can be submitted for approval.
 
     DISPLAY_ONLY  — shown to the user, never stored or acted upon.
     ENRICHMENT    — adds non-critical context (e.g., translate, summarize).
@@ -88,8 +86,7 @@ _SUGGESTABLE: set[str] = {
 
 
 class AIGuardrailViolation(RuntimeError):
-    """
-    Raised when AI attempts a blocked operation.
+    """Raised when AI attempts a blocked operation.
     This must never be silently caught — it indicates a design violation.
     """
 
@@ -103,8 +100,7 @@ AIGuardrailViolationError = AIGuardrailViolation
 
 @dataclass(frozen=True)
 class AISuggestion:
-    """
-    An immutable record of what an AI model proposed.
+    """An immutable record of what an AI model proposed.
 
     This object is always in UNTRUSTED state until a human approves it.
     It CANNOT be executed directly — it must go through ApprovalStore.submit().
@@ -126,7 +122,7 @@ class AISuggestion:
         if self.operation in _ABSOLUTELY_BLOCKED:
             raise AIGuardrailViolation(
                 f"AI attempted blocked operation: '{self.operation}'. "
-                "This operation can only be performed by authenticated human users."
+                "This operation can only be performed by authenticated human users.",
             )
         if self.confidence < 0.0 or self.confidence > 1.0:
             raise ValueError(f"confidence must be 0.0–1.0, got {self.confidence}")
@@ -142,8 +138,7 @@ def ai_suggest(
     entity_type: str = "",
     entity_id: int | None = None,
 ) -> AISuggestion:
-    """
-    Create an AI suggestion. This is the ONLY way to produce an AISuggestion.
+    """Create an AI suggestion. This is the ONLY way to produce an AISuggestion.
 
     Raises AIGuardrailViolation if the operation is absolutely blocked.
     """
