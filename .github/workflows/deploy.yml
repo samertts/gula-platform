@@ -64,6 +64,30 @@ jobs:
             StrictHostKeyChecking accept-new
           SSHEOF
           chmod 600 ~/.ssh/config
+      - name: Verify container image signature
+        env:
+          COSIGN_PUBLIC_KEY: ${{ secrets.COSIGN_PUBLIC_KEY }}
+          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if [ -z "$COSIGN_PUBLIC_KEY" ]; then
+            echo "COSIGN_PUBLIC_KEY not set — skipping image signature verification"
+            exit 0
+          fi
+          which cosign >/dev/null 2>&1 || \
+            curl -sL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+            -o /tmp/cosign && chmod +x /tmp/cosign && sudo mv /tmp/cosign /usr/local/bin/
+          echo "$COSIGN_PUBLIC_KEY" > /tmp/cosign.pub
+          images=("backend" "frontend" "gateway")
+          for img in "${images[@]}"; do
+            image_ref="$IMAGE_PREFIX/$img:$IMAGE_TAG"
+            if cosign verify --key /tmp/cosign.pub "$image_ref" >/dev/null 2>&1; then
+              echo "Signature verified for $image_ref"
+            else
+              echo "WARNING: No valid signature found for $image_ref"
+            fi
+          done
+          rm -f /tmp/cosign.pub
       - name: Cleanup SSH agent
         if: always()
         run: |
