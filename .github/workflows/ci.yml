@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.14"
+  PYTHON_VERSION: "3.12"
   NODE_VERSION: "24"
   POSTGRES_VERSION: "17-alpine"
   REDIS_VERSION: "7-alpine"
@@ -217,8 +217,8 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio factory_boy
-      - name: Run tests
+          pip install pytest pytest-asyncio factory_boy pytest-cov
+      - name: Run tests with coverage
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
           REDIS_URL: redis://localhost:6379/0
@@ -229,7 +229,14 @@ jobs:
           DEVICE_HMAC_KEY: test-device-hmac-key-for-ci-1234
         run: |
           cd backend
-          python -m pytest tests/ -v --timeout=60 -x 2>&1
+          python -m pytest tests/ -v --timeout=60 --cov=app --cov-report=xml --cov-report=term-missing --maxfail=5 2>&1
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/coverage.xml
+          retention-days: 14
 
   security-scan:
     name: Security Scan

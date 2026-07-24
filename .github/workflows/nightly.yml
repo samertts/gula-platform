@@ -84,9 +84,9 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: nightly-secret-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
           REFRESH_TOKEN_SECRET: nightly-refresh-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
-          NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
-          DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          NID_HMAC_KEY: ${{ secrets.NID_HMAC_KEY }}
+          DEVICE_HMAC_KEY: ${{ secrets.DEVICE_HMAC_KEY }}
           ENV: test
           RUNTIME_MODE: test
           FEATURE_BACKGROUND_TASKS: "false"

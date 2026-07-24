@@ -8,9 +8,6 @@ from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-
 from app.governance.base import GovernanceBase
 from app.governance.enums import (
     AIGuardrailType,
@@ -35,12 +32,25 @@ from app.governance.enums import (
     SecurityPolicyCategory,
     ThreatSeverity,
 )
-from app.governance.models.hierarchy import (
-    ActingAppointment,
-    Delegation,
-    EmergencyAdministration,
-    GovernanceNode,
-    GovernanceRole,
+from app.governance.models.ai import (
+    AIAuditEvent,
+    AIGuardrail,
+    AIModelValidationRecord,
+    AIRiskClassification,
+    LLMGovernancePolicy,
+    PromptPolicy,
+)
+from app.governance.models.clinical import (
+    ApprovalPolicy,
+    ClinicalPolicy,
+    ConsultationPolicy,
+    CriticalResultPolicy,
+    DeltaCheckPolicy,
+    MedicalGuideline,
+    NationalProtocol,
+    ReferenceRangePolicy,
+    RepeatTestingPolicy,
+    WestgardPolicy,
 )
 from app.governance.models.health_number import (
     HealthCardLifecycle,
@@ -48,16 +58,18 @@ from app.governance.models.health_number import (
     HealthNumberRecord,
     MergedIdentityRecord,
 )
-from app.governance.models.workforce import (
-    AttendanceRecord,
-    BoardCertification,
-    CompetencyAssessment,
-    HealthcareWorker,
-    ProductivityRecord,
-    ProfessionalLicense,
-    RotationRecord,
-    TrainingRecord,
-    WorkerPrivilege,
+from app.governance.models.hierarchy import (
+    ActingAppointment,
+    Delegation,
+    EmergencyAdministration,
+    GovernanceNode,
+    GovernanceRole,
+)
+from app.governance.models.interoperability import (
+    CanonicalMapping,
+    InteropProtocol,
+    MasterDataAgreement,
+    TerminologyMapping,
 )
 from app.governance.models.laboratory import (
     AnalyzerRegistry,
@@ -72,18 +84,6 @@ from app.governance.models.laboratory import (
     QCModRecord,
     ReagentInventory,
 )
-from app.governance.models.clinical import (
-    ApprovalPolicy,
-    ClinicalPolicy,
-    ConsultationPolicy,
-    CriticalResultPolicy,
-    DeltaCheckPolicy,
-    MedicalGuideline,
-    NationalProtocol,
-    ReferenceRangePolicy,
-    RepeatTestingPolicy,
-    WestgardPolicy,
-)
 from app.governance.models.security import (
     BreakGlassPolicy,
     DataClassification,
@@ -94,19 +94,16 @@ from app.governance.models.security import (
     SecurityPolicy,
     ThreatIntelligenceEvent,
 )
-from app.governance.models.interoperability import (
-    CanonicalMapping,
-    InteropProtocol,
-    MasterDataAgreement,
-    TerminologyMapping,
-)
-from app.governance.models.ai import (
-    AIAuditEvent,
-    AIGuardrail,
-    AIModelValidationRecord,
-    AIRiskClassification,
-    LLMGovernancePolicy,
-    PromptPolicy,
+from app.governance.models.workforce import (
+    AttendanceRecord,
+    BoardCertification,
+    CompetencyAssessment,
+    HealthcareWorker,
+    ProductivityRecord,
+    ProfessionalLicense,
+    RotationRecord,
+    TrainingRecord,
+    WorkerPrivilege,
 )
 from app.governance.policies.governance_policies import (
     GovernanceAction,
@@ -114,17 +111,21 @@ from app.governance.policies.governance_policies import (
     GovernanceRiskLevel,
     governance_policy_engine,
 )
-from app.governance.services.hierarchy_service import GovernanceHierarchyService
-from app.governance.services.health_number_service import HealthNumberGovernanceService
-from app.governance.services.connector_service import CitizenRegistryConnectorService, ConnectorAdapter
-from app.governance.services.workforce_service import WorkforceGovernanceService
-from app.governance.services.laboratory_service import LaboratoryGovernanceService
-from app.governance.services.clinical_governance_service import ClinicalGovernanceService
-from app.governance.services.analytics_service import NationalAnalyticsService
-from app.governance.services.security_governance_service import SecurityGovernanceService
-from app.governance.services.interoperability_service import InteroperabilityGovernanceService
 from app.governance.services.ai_governance_service import AIGovernanceService
-
+from app.governance.services.analytics_service import NationalAnalyticsService
+from app.governance.services.clinical_governance_service import ClinicalGovernanceService
+from app.governance.services.connector_service import (
+    CitizenRegistryConnectorService,
+    ConnectorAdapter,
+)
+from app.governance.services.health_number_service import HealthNumberGovernanceService
+from app.governance.services.hierarchy_service import GovernanceHierarchyService
+from app.governance.services.interoperability_service import InteroperabilityGovernanceService
+from app.governance.services.laboratory_service import LaboratoryGovernanceService
+from app.governance.services.security_governance_service import SecurityGovernanceService
+from app.governance.services.workforce_service import WorkforceGovernanceService
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -313,7 +314,7 @@ class TestConnectorService:
 
     def test_custom_adapter(self, db_session: Session):
         svc = CitizenRegistryConnectorService(db_session)
-        from app.governance.services.connector_service import ConnectorAdapter, ConnectorResponse
+        from app.governance.services.connector_service import ConnectorResponse
         class CustomAdapter(ConnectorAdapter):
             def __init__(self):
                 super().__init__(ConnectorType.NATIONAL_ID)

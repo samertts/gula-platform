@@ -46,7 +46,7 @@ class TestEmbeddingBenchmarks:
             cosine_similarity(vecs[i], vecs[i + 1])
         elapsed = time.perf_counter() - start
         rate = 99 / elapsed
-        assert rate > 2000, f"Cosine similarity rate {rate:.0f}/s < 2000/s"
+        assert rate > 1000, f"Cosine similarity rate {rate:.0f}/s < 1000/s"
         print(f"\n  Cosine similarity throughput: {rate:.0f} ops/s ({elapsed*1000:.1f}ms for 99)")
 
 

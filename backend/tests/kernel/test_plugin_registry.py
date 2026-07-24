@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel.plugin.dependencies import PluginDependencyResolver
 from app.kernel.plugin.registry import PluginRegistry
 from app.kernel.types import PluginDescriptor

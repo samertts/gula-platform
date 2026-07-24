@@ -3,15 +3,15 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel import Kernel, KernelConfig
-from app.kernel.integration import get_kernel, get_kernel_health, is_kernel_ready
+from app.kernel.integration import get_kernel, get_kernel_health, init_kernel, is_kernel_ready
 
 
 class TestObservabilityHealth:
     def test_kernel_health_returns_expected_keys(self):
         config = KernelConfig(environment="test")
-        kernel = Kernel(config=config)
+        init_kernel(config=config)
+        kernel = get_kernel()
         asyncio.run(kernel.boot())
         asyncio.run(kernel.start())
         health = asyncio.run(get_kernel_health())
@@ -19,13 +19,16 @@ class TestObservabilityHealth:
         asyncio.run(kernel.stop())
 
     def test_is_ready_after_boot(self):
-        Kernel.reset_instance()
+        from app.kernel.integration import _kernel_instance as ki
+        import app.kernel.integration as kintegration
+        kintegration._kernel_instance = None
         config = KernelConfig(environment="test")
-        kernel = Kernel(config=config)
+        kernel = init_kernel(config=config)
         asyncio.run(kernel.boot())
         asyncio.run(kernel.start())
-        Kernel._instance = kernel
+        assert is_kernel_ready()
         asyncio.run(kernel.stop())
+        assert not is_kernel_ready()
 
     def test_kernel_state_reflects_lifecycle(self):
         kernel = Kernel()

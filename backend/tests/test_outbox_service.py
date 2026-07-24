@@ -32,8 +32,8 @@ os.environ.setdefault("REDIS_URL", "")
 import pytest
 from app.core.events import EventBus
 from app.database import Base
-from app.national.base import NationalBase
 from app.models.outbox import MAX_ATTEMPTS, OutboxEvent
+from app.national.base import NationalBase
 from app.services.outbox_service import OutboxWorker, emit_to_outbox, purge_old_events
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -45,9 +45,9 @@ def db():
     import app.models.lab
     import app.models.lab_user
     import app.models.outbox
-    from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
+    from app.services.mpi.models import Citizen, IdentityClaim
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
-    import app.national.domain  # noqa: F401
+    import app.national.domain
     NationalBase.metadata.create_all(engine)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)

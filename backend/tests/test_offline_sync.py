@@ -2,8 +2,8 @@
 
 from app.services.offline_sync_service import (
     ConflictResolution,
-    OfflineSyncEngine,
     EncryptedSyncStore,
+    OfflineSyncEngine,
     SyncOperation,
 )
 

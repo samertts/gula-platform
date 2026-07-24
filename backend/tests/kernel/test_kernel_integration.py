@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel import Kernel, KernelConfig, KernelState
 
 pytestmark = [pytest.mark.kernel, pytest.mark.integration]

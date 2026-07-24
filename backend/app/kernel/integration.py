@@ -37,11 +37,12 @@ def get_kernel_config() -> KernelConfig:
     )
 
 
-def init_kernel() -> Kernel:
+def init_kernel(config: KernelConfig | None = None) -> Kernel:
     global _kernel_instance
     if _kernel_instance is not None:
         return _kernel_instance
-    config = get_kernel_config()
+    if config is None:
+        config = get_kernel_config()
     _kernel_instance = Kernel(config=config)
     return _kernel_instance
 

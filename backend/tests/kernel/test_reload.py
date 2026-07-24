@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel.config.registry import ConfigurationRegistry
 from app.kernel.config.reload import RuntimeReloader
 

@@ -760,7 +760,7 @@ class {qry_cap}Query:
             for p in spec.permissions
         )
         desc_items = ",\n        ".join(
-            f'        "{cap.lower()}:{p.lower()}": "{p.replace('_', ' ').title()}"'
+            f'        "{cap.lower()}:{p.lower()}": "{p.replace("_", " ").title()}"'
             for p in spec.permissions
         )
         self._write(

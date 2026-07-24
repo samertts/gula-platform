@@ -639,6 +639,7 @@ class TestStatsAPI:
     def test_lab_isolation(self, make_lab, make_lab_user):
         """Stats must be scoped to the requesting lab."""
         from app.models.patient import Patient
+
         from tests.conftest import auth_headers
 
         # Create a patient in a different lab

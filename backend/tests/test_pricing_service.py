@@ -4,7 +4,13 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-
+from app.financial.models import (
+    FinInvoiceItem,
+    FinPayable,
+    FinPricingRule,
+    FinProvider,
+    FinSubscription,
+)
 from app.financial.pricing import (
     MINIMUM_BILL,
     VOLUME_DISCOUNT_THRESHOLD,
@@ -21,8 +27,6 @@ from app.financial.services import (
     PricingService,
     ReceivableService,
 )
-from app.financial.models import FinInvoiceItem, FinPayable, FinPricingRule, FinProvider, FinSubscription
-
 
 # ── Pricing Module (pricing.py) ───────────────────────────────────────
 
@@ -186,7 +190,7 @@ class TestInvoiceServiceEdgeCases:
         assert result["status"] == "issued"
 
     def test_list_invoices_status_filter(self, db):
-        from datetime import timedelta, date
+        from datetime import date, timedelta
         p = _create_provider(db, lab_id=1)
         s = _create_subscription(db, provider_id=p.id)
         InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal("10000.00"))

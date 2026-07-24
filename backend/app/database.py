@@ -226,7 +226,7 @@ else:
 def set_pg_session_config(dbapi_conn, connection_record):
     try:
         cursor = dbapi_conn.cursor()
-        cursor.execute(f"SET statement_timeout = '{_STMT_TIMEOUT}'")
+        cursor.execute("SET statement_timeout = %s", (_STMT_TIMEOUT,))
         cursor.execute("SET work_mem = '16MB'")  # Limit sort/hash memory per query
         cursor.execute("SET idle_in_transaction_session_timeout = '60s'")
         cursor.close()

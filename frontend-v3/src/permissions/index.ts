@@ -1,3 +1,5 @@
+import type { UserRole, Permission } from '@/types';
+
 export const ROLE_LEVELS: Record<string, number> = {
   master_admin: 100,
   ministry_admin: 90,
@@ -12,7 +14,7 @@ export const ROLE_LEVELS: Record<string, number> = {
   citizen: 10,
 };
 
-export const ROLE_PERMISSIONS: Record<string, string[]> = {
+export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   master_admin: [
     "patients:read", "patients:write", "patients:delete",
     "orders:read", "orders:write",
@@ -41,11 +43,12 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "platform:manage_users",
   ],
   lab_admin: [
-    "patients:read", "patients:write",
+    "patients:read", "patients:write", "patients:delete",
     "orders:read", "orders:write",
     "results:read", "results:write",
     "staff:manage", "lab:read", "lab:manage",
     "dashboard:read", "audit:read",
+    "platform:manage_users",
   ],
   doctor: [
     "patients:read", "orders:read", "results:read", "dashboard:read",
@@ -70,11 +73,15 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
 };
 
 export function hasPermission(role: string, permission: string): boolean {
-  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+  return ROLE_PERMISSIONS[role]?.includes(permission as Permission) ?? false;
 }
 
 export function hasAnyPermission(role: string, permissions: string[]): boolean {
   return permissions.some((p) => hasPermission(role, p));
+}
+
+export function hasAllPermissions(role: string, permissions: string[]): boolean {
+  return permissions.every((p) => hasPermission(role, p));
 }
 
 export function canManageRole(actorRole: string, targetRole: string): boolean {
@@ -90,6 +97,10 @@ export function getRoleLevel(role: string): number {
 
 export function isPlatformRole(role: string): boolean {
   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+}
+
+export function getVisiblePermissions(role: string): Permission[] {
+  return ROLE_PERMISSIONS[role] ?? [];
 }
 
 export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[] }[]> = {

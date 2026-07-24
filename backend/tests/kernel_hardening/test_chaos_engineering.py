@@ -4,7 +4,6 @@ import asyncio
 import contextlib
 
 import pytest
-
 from app.kernel import Kernel
 from app.kernel.background.scheduler import Scheduler
 from app.kernel.background.task_queue import Task, TaskQueue

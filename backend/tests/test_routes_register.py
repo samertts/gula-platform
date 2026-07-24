@@ -114,7 +114,7 @@ class TestLabRegistration:
         "lab_name": "Mesopotamia Medical Lab",
         "admin_name": "Ahmed Hassan",
         "email": "ahmed@meso.lab",
-        "password": "Secure123",
+        "password": "Secure@Pass123!",
         "city": "Baghdad",
         "lab_type": "private",
     }
@@ -186,7 +186,7 @@ class TestLabRegistration:
     def test_password_not_stored_in_plain_text(self, client, db):
         client.post("/register", json=self._VALID)
         user = db.query(LabUser).filter(LabUser.email == "ahmed@meso.lab").first()
-        assert user.password_hash != "Secure123"
+        assert user.password_hash != "Secure@Pass123!"
         assert len(user.password_hash) > 30
 
 
@@ -196,7 +196,7 @@ class TestStaffRegistration:
     _STAFF = {
         "name": "Fatima Zahra",
         "email": "fatima@lab.com",
-        "password": "Staff123",
+        "password": "Staff@Pass123!",
         "role": "technician",
     }
 
@@ -206,7 +206,7 @@ class TestStaffRegistration:
         db.flush()
         admin = LabUser(
             lab_id=lab.id, name="Admin", email="admin@lab.com",
-            password_hash=hash_password("Admin123"), role="admin", is_active=True,
+            password_hash=hash_password("Admin@Pass123"), role="admin", is_active=True,
         )
         db.add(admin)
         db.flush()
@@ -290,7 +290,7 @@ class TestDoctorRegistration:
         "full_name": "Dr. Omar Khalid",
         "email": "omar@clinic.iq",
         "phone": "+9647701234567",
-        "password": "Doctor123",
+        "password": "Doctor@123!Secure",
         "license_number": "IQ-MED-2024-001",
         "specialty": "Internal Medicine",
     }
@@ -343,4 +343,4 @@ class TestDoctorRegistration:
         client.post("/register/doctor", json=self._DOCTOR)
         doctor = db.query(User).filter(User.email == "omar@clinic.iq").first()
         assert doctor is not None
-        assert doctor.password_hash != "Doctor123"
+        assert doctor.password_hash != "Doctor@123!Secure"

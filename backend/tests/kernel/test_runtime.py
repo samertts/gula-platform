@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel import Kernel, KernelConfig, KernelState
 from app.kernel.exceptions import ServiceNotFoundError
 from app.kernel.runtime.di_container import DIContainer

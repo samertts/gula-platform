@@ -47,7 +47,7 @@ indent-style = "space"
 line-ending = "lf"
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
 warn_unused_configs = true
@@ -101,3 +101,4 @@ exclude_lines = [
     "if __name__ == .__main__.:", "raise AssertionError",
     "raise NotImplementedError", "if 0:", "if False:", "if TYPE_CHECKING:",
 ]
+fail_under = 25

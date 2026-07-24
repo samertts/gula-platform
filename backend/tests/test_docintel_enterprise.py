@@ -7,23 +7,44 @@ import uuid
 from pathlib import Path
 
 import pytest
-
-from app.document_intelligence.distributed.task_queue import Task, TaskQueue, TaskPriority, TaskStatus
+from app.document_intelligence.backup_dr import BackupEntry, BackupScheduler, BackupService
 from app.document_intelligence.distributed.batch_processor import BatchProcessor
-from app.document_intelligence.distributed.worker_pool import WorkerPool
 from app.document_intelligence.distributed.partition_manager import PartitionManager
-from app.document_intelligence.multitenancy import Tenant, TenantContext, TenantManager, QuotaManager
-from app.document_intelligence.backup_dr import BackupService, BackupScheduler, BackupEntry
-from app.document_intelligence.observability import (
-    MetricsCollector, Tracer, HealthChecker, StructuredLogger, AlertManager, get_metrics,
+from app.document_intelligence.distributed.task_queue import (
+    Task,
+    TaskPriority,
+    TaskQueue,
+    TaskStatus,
 )
-from app.document_intelligence.security import (
-    InputValidator, RateLimiter, AuditLogger, IntegrityChecker, EncryptionService,
+from app.document_intelligence.distributed.worker_pool import WorkerPool
+from app.document_intelligence.multitenancy import (
+    QuotaManager,
+    Tenant,
+    TenantContext,
+    TenantManager,
+)
+from app.document_intelligence.observability import (
+    AlertManager,
+    HealthChecker,
+    MetricsCollector,
+    StructuredLogger,
+    Tracer,
+    get_metrics,
 )
 from app.document_intelligence.performance import (
-    LRUCache, AsyncMemoizer, ConnectionPool, BatchAggregator, ProcessingTimeTracker,
+    AsyncMemoizer,
+    BatchAggregator,
+    ConnectionPool,
+    LRUCache,
+    ProcessingTimeTracker,
 )
-
+from app.document_intelligence.security import (
+    AuditLogger,
+    EncryptionService,
+    InputValidator,
+    IntegrityChecker,
+    RateLimiter,
+)
 
 # ═══════════════════════════════════════════════════════════════════
 # DISTRIBUTED TASK QUEUE TESTS
@@ -62,7 +83,7 @@ class TestTaskQueue:
 
         async def handler(task: Task):
             results.append(task.payload.get("priority"))
-            return None
+            return
 
         queue.register_handler("prio", handler)
         await queue.start()

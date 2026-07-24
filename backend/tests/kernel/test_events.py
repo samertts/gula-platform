@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel.event_bus.dead_letter_queue import DeadLetterEntry
 from app.kernel.event_bus.events import Event
 from app.kernel.event_bus.inbox import InboxMessage

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from tests.conftest import auth_headers
 
 
@@ -145,7 +146,7 @@ class TestTenantIsolation:
         user1 = make_lab_user(lab_id=lab1.id)
         user2 = make_lab_user(lab_id=lab2.id)
         headers2 = auth_headers(user2.id, lab2.id)
-        resp = client.get(f"/fhir/Patient/nonexistent", headers=headers2)
+        resp = client.get("/fhir/Patient/nonexistent", headers=headers2)
         assert resp.status_code == 404
 
 

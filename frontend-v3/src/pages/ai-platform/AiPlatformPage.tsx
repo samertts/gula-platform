@@ -132,8 +132,8 @@ function SearchRagTab() {
     try {
       const res = await aiPlatformApi.search({ query: searchQuery });
       setSearchData(res);
-    } catch (err: any) {
-      setSearchError(err?.message || "حدث خطأ في البحث");
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : "حدث خطأ في البحث");
     } finally {
       setSearchLoading(false);
     }
@@ -147,8 +147,8 @@ function SearchRagTab() {
     try {
       const res = await aiPlatformApi.ragQuery({ query: ragQuery });
       setRagResponse(res);
-    } catch (err: any) {
-      setRagError(err?.message || "حدث خطأ في الاستعلام");
+    } catch (err) {
+      setRagError(err instanceof Error ? err.message : "حدث خطأ في الاستعلام");
     } finally {
       setRagLoading(false);
     }
@@ -242,8 +242,8 @@ function KnowledgeGraphTab() {
     try {
       const res = await aiPlatformApi.knowledgeGraphSearch({ query: nodeQuery });
       setNodeResults(res);
-    } catch (err: any) {
-      setNodeError(err?.message || "حدث خطأ في البحث");
+    } catch (err) {
+      setNodeError(err instanceof Error ? err.message : "حدث خطأ في البحث");
     } finally {
       setNodeLoading(false);
     }
@@ -331,8 +331,8 @@ function AgentToolsTab() {
       }
       const res = await aiPlatformApi.agentExecute(payload);
       setExecResult(res);
-    } catch (err: any) {
-      setExecError(err?.message || "حدث خطأ في التنفيذ");
+    } catch (err) {
+      setExecError(err instanceof Error ? err.message : "حدث خطأ في التنفيذ");
     } finally {
       setExecLoading(false);
     }
@@ -353,17 +353,13 @@ function AgentToolsTab() {
                 <EmptyState icon={Bot} title="لا توجد أدوات" description="لم يتم العثور على أدوات وكلاء" />
               ) : (
                 <div className="grid gap-3">
-                  {(Array.isArray(tools.data) ? tools.data : (tools.data as any)?.tools ?? []).map((tool: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between border-b pb-3 last:border-0">
-                      <div>
-                        <p className="font-medium">{tool.name || tool.tool_name || tool.id || `أداة ${idx + 1}`}</p>
-                        <p className="text-sm text-muted-foreground">{tool.description || tool.desc || ""}</p>
-                      </div>
-                      <Badge variant={tool.enabled || tool.active ? "success" : "secondary"}>
-                        {tool.enabled || tool.active ? "مفعل" : "غير مفعل"}
-                      </Badge>
-                    </div>
-                  ))}
+                  {(Array.isArray(tools.data) ? tools.data : ((tools.data as Record<string, unknown>)?.tools as unknown[]) ?? []).map((t: unknown, idx: number) => {
+                    const tool = t as Record<string, unknown>;
+                    const name = (tool.name as string) || (tool.tool_name as string) || (tool.id as string) || `أداة ${idx + 1}`;
+                    const desc = (tool.description as string) || (tool.desc as string) || "";
+                    const active = !!(tool.enabled || tool.active);
+                    return <div key={idx} className="flex items-center justify-between border-b pb-3 last:border-0"><div><p className="font-medium">{name}</p><p className="text-sm text-muted-foreground">{desc}</p></div><Badge variant={active ? "success" : "secondary"}>{active ? "مفعل" : "غير مفعل"}</Badge></div>;
+                  })}
                 </div>
               )}
             </div>
@@ -422,11 +418,11 @@ function SessionsTab() {
     setSessionError(null);
     try {
       const res = await aiPlatformApi.createSession();
-      const newId = (res as any)?.session_id || (res as any)?.id || (res as any)?.sessionId;
+      const newId = (res as Record<string, unknown>)?.session_id as string || (res as Record<string, unknown>)?.id as string || (res as Record<string, unknown>)?.sessionId as string;
       setSessionId(newId);
       setMessages([]);
-    } catch (err: any) {
-      setSessionError(err?.message || "حدث خطأ في إنشاء الجلسة");
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : "حدث خطأ في إنشاء الجلسة");
     } finally {
       setCreating(false);
     }
@@ -442,10 +438,10 @@ function SessionsTab() {
     setMessage("");
     try {
       const res = await aiPlatformApi.sessionMessage({ session_id: sessionId, message: msg });
-      const reply = (res as any)?.response || (res as any)?.reply || (res as any)?.message || JSON.stringify(res);
+      const reply = (res as Record<string, unknown>)?.response || (res as Record<string, unknown>)?.reply || (res as Record<string, unknown>)?.message || JSON.stringify(res);
       setMessages((prev) => [...prev, { role: "assistant", content: typeof reply === "string" ? reply : JSON.stringify(reply) }]);
-    } catch (err: any) {
-      setSessionError(err?.message || "حدث خطأ في إرسال الرسالة");
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : "حدث خطأ في إرسال الرسالة");
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setSending(false);

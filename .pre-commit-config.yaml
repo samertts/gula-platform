@@ -21,6 +21,12 @@ repos:
         args: ["--maxkb=512"]
       - id: detect-private-key
 
+  # Secret scanning (mirrors CI secret-scanning.yml)
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
+    hooks:
+      - id: gitleaks
+
   # Python: syntax + undefined-name gate (mirror of CI syntax-gate)
   - repo: https://github.com/pycqa/flake8
     rev: 7.1.1

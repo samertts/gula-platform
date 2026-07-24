@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel import Kernel, KernelState
 from app.kernel.background.job_retry import JobRetry
 from app.kernel.background.scheduler import Scheduler

@@ -9,16 +9,17 @@ Gaps closed:
 Migration is idempotent (uses IF NOT EXISTS / manual existence checks).
 """
 
-from typing import Sequence, Union
+from typing import Union
+from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
 
 
 revision: str = "20260720_0001"
-down_revision: Union[str, None] = "20260719_0001"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260719_0001"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 INDEXES = [

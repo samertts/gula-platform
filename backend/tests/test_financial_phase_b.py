@@ -6,8 +6,14 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
-from app.financial.models import FinInvoice, FinPayment, FinPricingRule, FinProvider, FinSubscription, FinTransaction
+from app.financial.models import (
+    FinInvoice,
+    FinPayment,
+    FinPricingRule,
+    FinProvider,
+    FinSubscription,
+    FinTransaction,
+)
 
 
 @pytest.fixture(autouse=True)

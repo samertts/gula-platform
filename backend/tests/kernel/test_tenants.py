@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel.tenant.config import TenantConfiguration
 from app.kernel.tenant.isolation import TenantIsolation
 from app.kernel.tenant.quotas import TenantQuotaManager

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel.plugin.marketplace import MarketplacePlugin, PluginMarketplaceInterface
 
 

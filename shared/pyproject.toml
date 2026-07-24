@@ -41,7 +41,7 @@ show-fixes = true
 select = ["E", "F", "I", "UP", "B", "SIM", "C4", "N", "RUF", "T20"]
 ignore = ["E501", "B008", "N818"]
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 warn_unused_configs = true
 warn_return_any = true

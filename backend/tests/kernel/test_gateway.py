@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel import Kernel
 from app.kernel.gateway.discovery import ServiceDiscovery, ServiceEndpoint
 from app.kernel.gateway.health_routing import HealthRouter

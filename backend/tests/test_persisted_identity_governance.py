@@ -3,19 +3,22 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app._compat import UTC
 from app.governance.base import GovernanceBase
 from app.governance.models.health_number import HealthNumberAudit, MergedIdentityRecord
-from app.governance.models.identity import GovernanceBreakGlassAccess, GovernanceIdentityRecord, MergeProposal
+from app.governance.models.identity import (
+    GovernanceBreakGlassAccess,
+    GovernanceIdentityRecord,
+    MergeProposal,
+)
 from app.governance.services.identity_persistence_service import (
     PersistedBreakGlassService,
     PersistedIdentityGovernanceService,
     PersistedIdentityMergeEngine,
 )
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 @pytest.fixture()

@@ -4,7 +4,6 @@ import asyncio
 import time
 
 import pytest
-
 from app.kernel import Kernel
 from app.kernel.background.distributed_locks import DistributedLockManager
 from app.kernel.background.priority_queue import PriorityQueue, PriorityTask

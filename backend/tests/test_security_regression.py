@@ -50,8 +50,8 @@ from app.security.auth import (
     hash_password,
     verify_password,
 )
-from joserfc import jwt as jose_jwt
 from joserfc import jwk
+from joserfc import jwt as jose_jwt
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:

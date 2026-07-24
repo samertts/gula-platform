@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel.config.registry import ConfigurationRegistry
 from app.kernel.config.validation import ConfigurationValidator
 

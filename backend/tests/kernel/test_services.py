@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel import Kernel
 from app.kernel.exceptions import ServiceNotFoundError
 from app.kernel.runtime.service_registry import ServiceRegistry

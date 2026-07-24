@@ -5,7 +5,6 @@ import gc
 import weakref
 
 import pytest
-
 from app.kernel import Kernel
 from app.kernel.event_bus.bus import EventBus
 from app.kernel.event_bus.events import Event

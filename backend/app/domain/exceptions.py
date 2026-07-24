@@ -30,8 +30,22 @@ class NotFoundError(ServiceError):
         super().__init__(message, status_code=404)
 
 
+class ForbiddenError(ServiceError):
+    """Raised when the user lacks permission for the operation."""
+
+    def __init__(self, message: str = "Forbidden"):
+        super().__init__(message, status_code=403)
+
+
 class ConflictError(ServiceError):
     """Raised when a conflict prevents the operation."""
 
     def __init__(self, message: str = "Conflict"):
         super().__init__(message, status_code=409)
+
+
+class ValidationError(ServiceError):
+    """Raised when a business rule validation fails."""
+
+    def __init__(self, message: str = "Validation error"):
+        super().__init__(message, status_code=400)

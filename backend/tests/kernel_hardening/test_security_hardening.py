@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel import Kernel
 from app.kernel.plugin.permissions import PluginPermissionManager
 from app.kernel.plugin.registry import PluginRegistry

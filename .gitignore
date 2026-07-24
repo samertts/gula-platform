@@ -53,3 +53,9 @@ wheels
 openapi.json
 *.pyc
 __pycache__/
+
+# Security audit artifacts
+trivy_*.json
+codeql_*.md
+enterprise_security_*.md
+security_root_causes.md

@@ -1,22 +1,21 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.reference.master_reference_data import (
     MasterReferenceDataService,
     ReferenceDataType,
     ReferenceEntry,
 )
-from app.services.reference.universal_identifier import (
-    IdentifierType,
-    UniversalIdentifierService,
-)
 from app.services.reference.national_lab_catalog import (
     LabTestDefinition,
+    LOINCMapping,
     NationalLaboratoryCatalog,
     PanelDefinition,
     SpecimenTypeDef,
-    LOINCMapping,
+)
+from app.services.reference.universal_identifier import (
+    IdentifierType,
+    UniversalIdentifierService,
 )
 
 

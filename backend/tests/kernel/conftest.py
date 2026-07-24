@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel import Kernel, KernelConfig
 from app.kernel.event_bus.bus import EventBus
 from app.kernel.event_bus.events import Event

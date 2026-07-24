@@ -18,16 +18,14 @@ Covers:
 from __future__ import annotations
 
 import os
-
-import pytest
 from unittest.mock import patch
 
+import pytest
+from app.models.authorization import Permission, Role, RolePermission
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
+from app.models.organization import Facility, Organization
 from app.models.subscription import LabSubscription
-from app.models.organization import Organization, Facility
-from app.models.authorization import Permission, Role, RolePermission
-
 
 # ── Test env vars (applied before any bootstrap code runs) ────────────────────
 
@@ -67,7 +65,13 @@ class TestModuleStructure:
     """Verify the bootstrap module structure compiles and is importable."""
 
     def test_bootstrap_package_imports(self):
-        from app.core.bootstrap import BootstrapContext, ensure_master_admin, run_bootstrap, validate_bootstrap, BOOTSTRAP_SEQUENCE
+        from app.core.bootstrap import (
+            BOOTSTRAP_SEQUENCE,
+            BootstrapContext,
+            ensure_master_admin,
+            run_bootstrap,
+            validate_bootstrap,
+        )
         assert BootstrapContext is not None
         assert callable(ensure_master_admin)
         assert callable(run_bootstrap)
@@ -178,7 +182,7 @@ class TestRolesAndPermissions:
         assert role is not None and int(role.level) >= 100
 
     def test_permissions_seeded(self, db):
-        from app.core.bootstrap.permissions import seed_permissions, define_permissions
+        from app.core.bootstrap.permissions import define_permissions, seed_permissions
         count = seed_permissions(db=db)
         perms = define_permissions()
         assert count > 0
@@ -197,8 +201,8 @@ class TestRolesAndPermissions:
             assert domain in domains
 
     def test_role_permission_links_exist(self, db):
-        from app.core.bootstrap.roles import seed_roles
         from app.core.bootstrap.permissions import seed_permissions
+        from app.core.bootstrap.roles import seed_roles
         seed_permissions(db=db)
         seed_roles(db=db)
         assert db.query(RolePermission).count() > 0
@@ -225,17 +229,17 @@ class TestNationalHierarchy:
         assert db.query(Organization).filter(Organization.org_type == "ministry").count() == 1
 
     def test_directorates_seeded(self, db):
-        from app.core.bootstrap.ministry import seed_ministry_of_health
         from app.core.bootstrap.directorates import seed_health_directorates
+        from app.core.bootstrap.ministry import seed_ministry_of_health
         seed_ministry_of_health(db=db)
         count = seed_health_directorates(db=db)
         assert count > 0
         assert db.query(Organization).filter(Organization.org_type == "directorate").count() > 0
 
     def test_platform_facilities_seeded(self, db):
-        from app.core.bootstrap.organizations import seed_organizations
         from app.core.bootstrap.facilities import seed_platform_facilities
         from app.core.bootstrap.models import OrganizationDef
+        from app.core.bootstrap.organizations import seed_organizations
         seed_organizations([
             OrganizationDef(org_id="pf-org", name_en="Org", name_ar="منظمة", org_type="organization"),
             OrganizationDef(org_id="pf-dir", name_en="Dir", name_ar="مديرية", org_type="directorate", parent_org_id="pf-org"),
@@ -243,8 +247,8 @@ class TestNationalHierarchy:
         assert seed_platform_facilities(db=db) > 0
 
     def test_departments_seeded(self, db):
-        from app.core.bootstrap.master_admin import _ensure_master_admin
         from app.core.bootstrap.departments import seed_departments
+        from app.core.bootstrap.master_admin import _ensure_master_admin
         _ensure_master_admin(db)
         db.commit()
         count = seed_departments(db=db)

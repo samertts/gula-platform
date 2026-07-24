@@ -25,7 +25,7 @@ from app.ai.approval import ApprovalStatus, ApprovalStore, approval_store
 from app.ai.guardrails import _ABSOLUTELY_BLOCKED, AIGuardrailViolation, ai_suggest
 from app.ai.healthcare_cds import cds
 from app.ai.knowledge_graph import knowledge_graph
-from app.ai.observability import get_metrics, reset_metrics, track_request, track_latency
+from app.ai.observability import get_metrics, reset_metrics, track_latency, track_request
 from app.ai.rag_pipeline import rag
 from app.ai.sandbox import AISandbox
 from app.ai.security import sanitize_response, scan_input, scan_pii
@@ -215,7 +215,7 @@ class TestObservabilityIntegration:
         assert metrics["latency_ms"]["avg"] == 150.0
 
     def test_rag_and_vector_metrics(self):
-        from app.ai.observability import track_rag, track_vector_search, track_agent
+        from app.ai.observability import track_agent, track_rag, track_vector_search
         track_rag()
         track_vector_search()
         track_agent()
@@ -229,7 +229,6 @@ class TestRAGWithSecurity:
     """RAG pipeline output is sanitized before returning."""
 
     def test_rag_citation_extraction(self):
-        from app.ai.vector_store import VectorSearchResult
 
         docs = [
             VectorSearchResult(id=1, content_type="knowledge", content_id=1, text="Normal glucose range is 3.9-6.1 mmol/L", score=0.95, source="clinical_guide"),
@@ -239,7 +238,6 @@ class TestRAGWithSecurity:
         assert citations[0]["source"] == "clinical_guide"
 
     def test_rag_vector_to_cds_flow(self):
-        from app.ai.vector_store import VectorSearchResult
 
         knowledge_graph.initialize(force=True)
         kg_nodes = knowledge_graph.search_nodes("glucose")

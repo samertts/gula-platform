@@ -5,28 +5,27 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app._compat import UTC
 from app.identity.base import IdentityBaseEntity
 from app.identity.governance.models import (
-    IdentityAuthority,
     DigitalIdentityCouncil,
-    PolicyApprovalWorkflow,
     IdentityAppeal,
-    IdentitySuspension,
-    IdentityRestoration,
-    NationalIdentityRegistry,
+    IdentityAuthority,
     IdentityCertificationRegistry,
+    IdentityRestoration,
     IdentityReviewBoard,
+    IdentitySuspension,
+    NationalIdentityRegistry,
+    PolicyApprovalWorkflow,
 )
 from app.identity.governance.services import (
+    AppealService,
     GovernanceService,
     PolicyApprovalService,
-    AppealService,
-    SuspensionService,
     RegistryService,
+    SuspensionService,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture

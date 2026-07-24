@@ -54,29 +54,29 @@ for _mod in [
         pass
 
 # ClinicalBase models
-import app.clinical.terminology.models  # noqa: F401, E402
-import app.clinical.cds.models  # noqa: F401, E402
-import app.clinical.knowledge.models  # noqa: F401, E402
-import app.clinical.quality.models  # noqa: F401, E402
+import app.clinical.terminology.models  # noqa: E402
+import app.clinical.cds.models  # noqa: E402
+import app.clinical.knowledge.models  # noqa: E402
+import app.clinical.quality.models  # noqa: E402
 
 # HealthDataBase models
-import app.health_data.canonical.models  # noqa: F401, E402
-import app.health_data.mdm.models  # noqa: F401, E402
-import app.health_data.ods.models  # noqa: F401, E402
-import app.health_data.warehouse.models  # noqa: F401, E402
+import app.health_data.canonical.models  # noqa: E402
+import app.health_data.mdm.models  # noqa: E402
+import app.health_data.ods.models  # noqa: E402
+import app.health_data.warehouse.models  # noqa: E402
 
 # TrustBase models
-from app.trust import models as _trust_models  # noqa: F401, E402
+from app.trust import models as _trust_models  # noqa: E402
 
 # GovernanceBase models
-import app.governance.models  # noqa: F401, E402
+import app.governance.models  # noqa: E402
 
 # CareContinuumBase models
-import app.care_continuum.models  # noqa: F401, E402
+import app.care_continuum.models  # noqa: E402
 
 # IdentityBase models (NIAM — National Identity & Access Management)
 from app.identity.base import IdentityBase
-import app.identity.models  # noqa: F401, E402
+import app.identity.models  # noqa: E402
 
 # ── Alembic Config object ─────────────────────────────────────────────────────
 config = context.config

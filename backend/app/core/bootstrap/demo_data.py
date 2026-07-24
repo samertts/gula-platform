@@ -26,21 +26,21 @@ def _deterministic_uuid(seed: str) -> UUID:
 
 
 DEMO_PATIENTS: list[dict] = [
-    {"name": "Ahmed Hassan Ali", "phone": "07700000001", "gender": "male", "age": 45},
-    {"name": "Fatima Ibrahim Said", "phone": "07700000002", "gender": "female", "age": 32},
-    {"name": "Mohammed Jassim Kadhim", "phone": "07700000003", "gender": "male", "age": 28},
-    {"name": "Zainab Amer Salman", "phone": "07700000004", "gender": "female", "age": 55},
-    {"name": "Ali Hussein Nasser", "phone": "07700000005", "gender": "male", "age": 60},
-    {"name": "Noora Khalid Mahmood", "phone": "07700000006", "gender": "female", "age": 24},
-    {"name": "Hassan Karim Rashid", "phone": "07700000007", "gender": "male", "age": 38},
-    {"name": "Layla Saadoun Fadhil", "phone": "07700000008", "gender": "female", "age": 42},
-    {"name": "Omar Younis Ibrahim", "phone": "07700000009", "gender": "male", "age": 19},
-    {"name": "Sara Murtadha Abdul", "phone": "07700000010", "gender": "female", "age": 35},
-    {"name": "Khalid Salim Noori", "phone": "07700000011", "gender": "male", "age": 50},
-    {"name": "Aisha Tariq Hamid", "phone": "07700000012", "gender": "female", "age": 29},
-    {"name": "Yasser Qasim Abdul", "phone": "07700000013", "gender": "male", "age": 33},
-    {"name": "Mariam Falah Hassan", "phone": "07700000014", "gender": "female", "age": 67},
-    {"name": "Rami Adel Shakir", "phone": "07700000015", "gender": "male", "age": 41},
+    {"full_name": "Ahmed Hassan Ali", "phone": "07700000001", "gender": "male", "age": 45},
+    {"full_name": "Fatima Ibrahim Said", "phone": "07700000002", "gender": "female", "age": 32},
+    {"full_name": "Mohammed Jassim Kadhim", "phone": "07700000003", "gender": "male", "age": 28},
+    {"full_name": "Zainab Amer Salman", "phone": "07700000004", "gender": "female", "age": 55},
+    {"full_name": "Ali Hussein Nasser", "phone": "07700000005", "gender": "male", "age": 60},
+    {"full_name": "Noora Khalid Mahmood", "phone": "07700000006", "gender": "female", "age": 24},
+    {"full_name": "Hassan Karim Rashid", "phone": "07700000007", "gender": "male", "age": 38},
+    {"full_name": "Layla Saadoun Fadhil", "phone": "07700000008", "gender": "female", "age": 42},
+    {"full_name": "Omar Younis Ibrahim", "phone": "07700000009", "gender": "male", "age": 19},
+    {"full_name": "Sara Murtadha Abdul", "phone": "07700000010", "gender": "female", "age": 35},
+    {"full_name": "Khalid Salim Noori", "phone": "07700000011", "gender": "male", "age": 50},
+    {"full_name": "Aisha Tariq Hamid", "phone": "07700000012", "gender": "female", "age": 29},
+    {"full_name": "Yasser Qasim Abdul", "phone": "07700000013", "gender": "male", "age": 33},
+    {"full_name": "Mariam Falah Hassan", "phone": "07700000014", "gender": "female", "age": 67},
+    {"full_name": "Rami Adel Shakir", "phone": "07700000015", "gender": "male", "age": 41},
 ]
 
 DEMO_TECHNICIANS: list[dict] = [
@@ -99,7 +99,7 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
         for pd in DEMO_PATIENTS:
             patient = Patient(
                 lab_id=lab.id,
-                name=pd["name"],
+                full_name=pd["full_name"],
                 phone=pd["phone"],
                 gender=pd["gender"],
                 age=pd["age"],

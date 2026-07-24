@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel.runtime.lifecycle import LifecycleComponent, LifecycleManager
 from app.kernel.runtime.shutdown import ShutdownHandler, ShutdownManager
 from app.kernel.runtime.startup import StartupManager, StartupTask

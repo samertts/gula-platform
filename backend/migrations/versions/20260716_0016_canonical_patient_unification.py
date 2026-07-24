@@ -18,7 +18,7 @@ from alembic import op
 from sqlalchemy import inspect
 
 revision: str = "20260716_0016"
-down_revision: Union[str, None] = "20260716_0015"
+down_revision: str | None = "20260716_0015"
 
 
 def _table_exists(table: str) -> bool:

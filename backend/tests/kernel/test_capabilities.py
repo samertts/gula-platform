@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel.runtime.capability_registry import CapabilityRegistry
 from app.kernel.types import CapabilityDescriptor
 

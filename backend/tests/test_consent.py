@@ -32,9 +32,9 @@ from app.database import Base
 from app.models.audit_log import AuditLog
 from app.models.consent import Consent
 from app.models.lab_user import LabUser
-from app.services.mpi.models import Citizen, IdentityClaim
 from app.security.consent_dep import require_consent
 from app.services import consent_service
+from app.services.mpi.models import Citizen, IdentityClaim
 from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

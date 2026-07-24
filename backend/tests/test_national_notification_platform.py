@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
-
 from app._compat import UTC
 from app.national.notification_platform.application.service import NotificationPlatformService
 from app.national.notification_platform.domain.entities import (
@@ -39,7 +38,6 @@ from app.national.notification_platform.exceptions import (
 )
 
 
-
 def _now() -> datetime:
     return datetime.now(UTC)
 
@@ -66,9 +64,7 @@ class InMemoryNotificationRepo(NotificationRepository):
     async def list(self, skip: int = 0, limit: int = 100, **filters: Any) -> list[Notification]:
         items = list(self._store.values())
         for k, v in filters.items():
-            if hasattr(v, "value"):
-                items = [i for i in items if getattr(i, k, None) == v]
-            elif v is not None:
+            if hasattr(v, "value") or v is not None:
                 items = [i for i in items if getattr(i, k, None) == v]
         return items[skip:skip + limit]
 

@@ -5,7 +5,6 @@ import os
 import tempfile
 
 import pytest
-
 from app.kernel.module.compatibility import ModuleVersionCompatibility
 from app.kernel.module.discovery import ModuleDiscovery
 from app.kernel.module.metadata import ModuleMetadataParser

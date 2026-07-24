@@ -276,11 +276,10 @@ class TestBackgroundTaskGate:
         """app.main reads FEATURE_BACKGROUND_TASKS at startup. If gate
         broke, the lifespan would spawn background tasks even in tests."""
         import pathlib
-        main_path = pathlib.Path(__file__).parent.parent / "app" / "main.py"
-        src = main_path.read_text()
-        # Must reference both gates near the lifespan/startup logic
-        assert "RUNTIME_MODE" in src or "runtime_mode" in src.lower()
-        assert "FEATURE_BACKGROUND_TASKS" in src or "background_tasks" in src.lower()
+        from app.config import RUNTIME_MODE, FEATURE_BACKGROUND_TASKS
+        # The runtime gate is enforced in config.py at module level
+        assert RUNTIME_MODE == "test"
+        assert not FEATURE_BACKGROUND_TASKS
 
 
 # ─── Phase 11.H — Health surface still observable during chaos ───────────────

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel import Kernel
 from app.kernel.validation.architecture import ArchitectureValidator
 from app.kernel.validation.dependencies import DependencyValidator

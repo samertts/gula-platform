@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.kernel.features.capabilities import CapabilityFlagManager
 from app.kernel.features.experimental import ExperimentalFeatureManager
 from app.kernel.features.flags import FeatureFlag, FeatureFlagManager

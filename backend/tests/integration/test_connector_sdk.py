@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.integration.connector.registry import ConnectorRegistry
 from app.integration.connector.sdk import ConnectorSDK
 from app.integration.connector.spec import (

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.ai_fabric.evaluation import (
     AIEvaluationHarness,
     ClinicalEvalSuite,

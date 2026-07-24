@@ -293,7 +293,6 @@ class TestAIOrchestrator:
     def test_orchestration_task(self):
         from app.ai.orchestrator import OrchestrationTask
 
-        import time
 
         t = OrchestrationTask(id="1", type="chat", query="hello", started_at=time.time())
         assert t.status == "pending"

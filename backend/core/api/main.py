@@ -6,8 +6,8 @@ import psycopg2
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from joserfc import jwt as jose_jwt
 from joserfc import jwk
+from joserfc import jwt as jose_jwt
 from passlib.hash import bcrypt
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas

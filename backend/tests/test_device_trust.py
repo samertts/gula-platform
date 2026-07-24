@@ -1,10 +1,10 @@
 """Tests for the Device Trust Service."""
 
 from app.services.device_trust_service import (
-    DeviceTrustService,
     DeviceFingerprint,
-    TrustLevel,
     DevicePlatform,
+    DeviceTrustService,
+    TrustLevel,
     compute_device_fingerprint,
 )
 

@@ -4,7 +4,6 @@ import asyncio
 import time
 
 import pytest
-
 from app.kernel import Kernel, KernelConfig
 from app.kernel.background.scheduler import Scheduler
 from app.kernel.config.registry import ConfigurationRegistry
