@@ -1,0 +1,318 @@
+{
+  "assessment": {
+    "platform": "GULA Platform",
+    "version": "2.5.0",
+    "date": "2026-07-24",
+    "classifier": "CONFIDENTIAL - Healthcare PHI",
+    "assessor": "Principal Application Security Engineer (Automated)"
+  },
+  "overall_score": {
+    "score": 452,
+    "max_score": 1000,
+    "grade": "D - Needs Improvement"
+  },
+  "tool_scans": {
+    "bandit": {
+      "status": "completed",
+      "findings": 200,
+      "severities": {
+        "LOW": 197,
+        "MEDIUM": 3,
+        "HIGH": 0
+      }
+    },
+    "trivy": {
+      "status": "completed",
+      "vulnerabilities": {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 3
+      },
+      "secrets": 0,
+      "misconfigurations": {
+        "CRITICAL": 30,
+        "HIGH": 55,
+        "MEDIUM": 30
+      }
+    }
+  },
+  "finding_summary": {
+    "critical": 12,
+    "high": 34,
+    "medium": 28,
+    "low": 47,
+    "informational": 18,
+    "total": 139
+  },
+  "critical_findings": [
+    {
+      "id": "C-01",
+      "title": "Hardcoded Production Secrets in .env",
+      "severity": "CRITICAL",
+      "file": ".env",
+      "status": "open"
+    },
+    {
+      "id": "C-02",
+      "title": "Kubernetes ConfigMap Stores Sensitive Data",
+      "severity": "CRITICAL",
+      "file": "k8s/base/configmap.yaml",
+      "status": "open"
+    },
+    {
+      "id": "C-03",
+      "title": "Terraform ALB Using Plain HTTP",
+      "severity": "CRITICAL",
+      "file": "terraform/modules/alb/main.tf",
+      "status": "open"
+    },
+    {
+      "id": "C-04",
+      "title": "Unrestricted Egress in Security Groups",
+      "severity": "CRITICAL",
+      "file": "terraform/modules/networking/main.tf",
+      "status": "open"
+    },
+    {
+      "id": "C-05",
+      "title": "Hardcoded Test Secrets Matching Production Patterns",
+      "severity": "CRITICAL",
+      "file": "backend/tests/test_*.py",
+      "status": "open"
+    },
+    {
+      "id": "C-06",
+      "title": "CSP Allows unsafe-inline and unsafe-eval",
+      "severity": "CRITICAL",
+      "file": "nginx.conf, backend/app/middleware.py",
+      "status": "open"
+    },
+    {
+      "id": "C-07",
+      "title": "No MFA Enforcement for Privileged Users",
+      "severity": "CRITICAL",
+      "file": "backend/app/security/mfa_service.py",
+      "status": "open"
+    },
+    {
+      "id": "C-08",
+      "title": "No Database Encryption at Rest",
+      "severity": "CRITICAL",
+      "file": "docker-compose.yml, k8s/base/postgres/statefulset.yaml",
+      "status": "open"
+    },
+    {
+      "id": "C-09",
+      "title": "Supabase Keys in Environment",
+      "severity": "CRITICAL",
+      "file": "backend/app/config.py",
+      "status": "open"
+    },
+    {
+      "id": "C-10",
+      "title": "Unnecessary mysql2 npm Dependency",
+      "severity": "CRITICAL",
+      "file": "package.json",
+      "status": "open"
+    },
+    {
+      "id": "C-11",
+      "title": "Kubernetes Pods Run as Root",
+      "severity": "CRITICAL",
+      "file": "k8s/**/deployment.yaml",
+      "status": "open"
+    },
+    {
+      "id": "C-12",
+      "title": "No Container Image Signing",
+      "severity": "CRITICAL",
+      "file": ".github/workflows/*.yml",
+      "status": "open"
+    }
+  ],
+  "high_findings": [
+    {
+      "id": "H-01",
+      "title": "No Password Complexity Policy",
+      "severity": "HIGH",
+      "file": "backend/app/routes/login.py"
+    },
+    {
+      "id": "H-02",
+      "title": "No Account Lockout After Failed Attempts",
+      "severity": "HIGH",
+      "file": "backend/app/security/auth.py"
+    },
+    {
+      "id": "H-03",
+      "title": "No Authorization Policy at API Gateway",
+      "severity": "HIGH",
+      "file": "backend/gateway/api_gateway.py"
+    },
+    {
+      "id": "H-04",
+      "title": "No SAST Scanning in CI/CD",
+      "severity": "HIGH",
+      "file": ".github/workflows/ci.yml"
+    },
+    {
+      "id": "H-05",
+      "title": "No Container Image Scanning",
+      "severity": "HIGH",
+      "file": ".github/workflows/ci.yml"
+    },
+    {
+      "id": "H-06",
+      "title": "No Secret Scanning in CI/CD",
+      "severity": "HIGH",
+      "file": ".github/workflows/ci.yml"
+    },
+    {
+      "id": "H-07",
+      "title": "No IaC Scanning in CI/CD",
+      "severity": "HIGH",
+      "file": ".github/workflows/ci.yml"
+    },
+    {
+      "id": "H-08",
+      "title": "Fernet Key Not Rotatable",
+      "severity": "HIGH",
+      "file": "backend/app/security/encryption.py"
+    },
+    {
+      "id": "H-09",
+      "title": "No Key Management System",
+      "severity": "HIGH",
+      "file": "backend/app/config.py"
+    },
+    {
+      "id": "H-10",
+      "title": "NID_HMAC_KEY Cannot Be Rotated",
+      "severity": "HIGH",
+      "file": "backend/app/config.py"
+    },
+    {
+      "id": "H-11",
+      "title": "No Read-Only Root Filesystem (K8s)",
+      "severity": "HIGH",
+      "file": "k8s/**/*.yaml"
+    },
+    {
+      "id": "H-12",
+      "title": "No Seccomp Profiles (K8s)",
+      "severity": "HIGH",
+      "file": "k8s/**/*.yaml"
+    },
+    {
+      "id": "H-13",
+      "title": "No Capability Dropping (K8s)",
+      "severity": "HIGH",
+      "file": "k8s/**/*.yaml"
+    },
+    {
+      "id": "H-14",
+      "title": "S3 Public Access Not Blocked",
+      "severity": "HIGH",
+      "file": "terraform/modules/storage/main.tf"
+    },
+    {
+      "id": "H-15",
+      "title": "Public IP on Subnets",
+      "severity": "HIGH",
+      "file": "terraform/modules/networking/main.tf"
+    },
+    {
+      "id": "H-16",
+      "title": "No SBOM Generation in CI/CD",
+      "severity": "HIGH",
+      "file": ".github/workflows/*.yml"
+    },
+    {
+      "id": "H-17",
+      "title": "No Dependency Pinning",
+      "severity": "HIGH",
+      "file": "backend/requirements.txt"
+    },
+    {
+      "id": "H-18",
+      "title": "Third-Party Docker Images Not Pinned by Digest",
+      "severity": "HIGH",
+      "file": "docker-compose.yml"
+    },
+    {
+      "id": "H-19",
+      "title": "Firebase Configuration Exposed in Repository",
+      "severity": "HIGH",
+      "file": "frontend-v2/firebase-applet-config.json"
+    },
+    {
+      "id": "H-20",
+      "title": "Weak Pipeline Permissions in CI/CD",
+      "severity": "HIGH",
+      "file": ".github/workflows/*.yml"
+    }
+  ],
+  "compliance": {
+    "owasp_top10_2021": {
+      "A01_BrokenAccessControl": "PARTIAL",
+      "A02_CryptographicFailures": "PARTIAL",
+      "A03_Injection": "MOSTLY_MITIGATED",
+      "A04_InsecureDesign": "NEEDS_IMPROVEMENT",
+      "A05_SecurityMisconfiguration": "NEEDS_IMPROVEMENT",
+      "A06_VulnerableComponents": "PARTIAL",
+      "A07_AuthenticationFailures": "PARTIAL",
+      "A08_IntegrityFailures": "NOT_IMPLEMENTED",
+      "A09_LoggingFailures": "PARTIAL",
+      "A10_SSRF": "PARTIAL"
+    },
+    "owasp_asvs_level3_percentage": 45,
+    "nist_csf_20_percentage": 25,
+    "iso27001_readiness_percentage": 30,
+    "cis_controls_v8_percentage": 28
+  },
+  "healthcare_compliance": {
+    "iso27799": {
+      "patient_confidentiality": "PARTIAL",
+      "health_record_integrity": "PARTIAL",
+      "access_control": "GOOD",
+      "patient_privacy": "GOOD",
+      "data_sharing": "PARTIAL"
+    },
+    "fhir_security": {
+      "fhir_api": true,
+      "consent_enforcement": true,
+      "purpose_of_use": true,
+      "break_glass": true,
+      "audit_logging": true,
+      "tls_enabled": true
+    }
+  },
+  "recommendations": {
+    "critical_count": 8,
+    "high_count": 12,
+    "medium_count": 11,
+    "low_count": 9
+  },
+  "generated_reports": [
+    "executive-summary.md",
+    "security-score.md",
+    "security-architecture.md",
+    "owasp-top10.md",
+    "owasp-asvs.md",
+    "nist-csf.md",
+    "iso27001.md",
+    "dependency-report.md",
+    "secret-report.md",
+    "cryptography-report.md",
+    "authentication-report.md",
+    "authorization-report.md",
+    "api-security-report.md",
+    "container-security-report.md",
+    "ci-cd-security-report.md",
+    "infrastructure-report.md",
+    "supply-chain-report.md",
+    "recommendations.md",
+    "roadmap.md",
+    "critical-findings.md"
+  ]
+}
