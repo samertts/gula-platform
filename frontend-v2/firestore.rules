@@ -88,13 +88,35 @@ service cloud.firestore {
     }
 
     match /patients/{patientId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.citizenId ||
+        resource.data.assignedLabId == getUserData(request.auth.uid).labId ||
+        isMasterAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.citizenId ||
+        resource.data.assignedLabId == getUserData(request.auth.uid).labId ||
+        isMasterAdmin()
+      );
+      allow delete: if isMasterAdmin();
     }
 
     match /lab_results/{resultId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.patientId ||
+        resource.data.labId == getUserData(request.auth.uid).labId ||
+        isMasterAdmin()
+      );
+      allow create: if isSignedIn() && (
+        resource.data.labId == getUserData(request.auth.uid).labId ||
+        isMasterAdmin()
+      );
+      allow update: if isSignedIn() && (
+        resource.data.labId == getUserData(request.auth.uid).labId ||
+        isMasterAdmin()
+      );
+      allow delete: if isMasterAdmin();
     }
   }
 }

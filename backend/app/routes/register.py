@@ -20,6 +20,21 @@ from ..services.mpi.blocking import blocking_key, phone_last10
 from ..services.mpi.models import Citizen
 
 
+def _validate_password(password: str) -> None:
+    if len(password) < 12:
+        raise HTTPException(status_code=400, detail="Password must be at least 12 characters")
+    if len(password) > 128:
+        raise HTTPException(status_code=400, detail="Password too long")
+    if not re.search(r"[A-Z]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter")
+    if not re.search(r"[0-9]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one digit")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one special character")
+
+
 def _mint_citizen_from_self_registration(
     db: Session,
     *,
@@ -163,15 +178,7 @@ def register_lab(
 ):
     rate_limit_auth(request)
 
-    # Password strength validation
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-    if data.password.isdigit() or data.password.isalpha():
-        raise HTTPException(
-            status_code=400, detail="Password must contain both letters and numbers",
-        )
-    if len(data.password) > 128:
-        raise HTTPException(status_code=400, detail="Password too long")
+    _validate_password(data.password)
 
     existing = db.query(LabUser).filter(LabUser.email == data.email).first()
     if existing:
@@ -287,11 +294,7 @@ def register_citizen(
 ):
     rate_limit_auth(request)
 
-    # Password validation
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-    if len(data.password) > 128:
-        raise HTTPException(status_code=400, detail="Password too long")
+    _validate_password(data.password)
 
     # Check for duplicate phone
     existing_phone = db.query(User).filter(User.phone == data.phone).first()
@@ -434,11 +437,7 @@ def register_staff(
             },
         )
 
-    # Password strength
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-    if len(data.password) > 128:
-        raise HTTPException(status_code=400, detail="Password too long")
+    _validate_password(data.password)
 
     if db.query(LabUser).filter(LabUser.email == data.email).first():
         raise HTTPException(
@@ -556,10 +555,7 @@ def register_doctor(
     """
     rate_limit_auth(request)
 
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-    if len(data.password) > 128:
-        raise HTTPException(status_code=400, detail="Password too long")
+    _validate_password(data.password)
 
     # Duplicate email check
     if db.query(User).filter(User.email == data.email).first():

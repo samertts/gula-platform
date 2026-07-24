@@ -90,6 +90,27 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         db.commit()
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    # ── Enforce MFA for privileged roles ─────────────────────────────────────
+    PRIVILEGED_ROLES = {"master_admin", "ministry_admin", "province_admin"}
+    if user.role in PRIVILEGED_ROLES:
+        from ..security.mfa_service import MFAService
+        mfa = MFAService(db)
+        if not mfa.has_mfa_enabled(user.id):
+            log_action(
+                db,
+                action="login_denied_mfa_required",
+                resource_type="auth",
+                user_id=user.id,
+                user_role=user.role,
+                details="Login denied: MFA required for privileged role",
+                ip_address=client_ip,
+            )
+            db.commit()
+            raise HTTPException(
+                status_code=403,
+                detail="MFA enrollment required for privileged accounts. Please set up MFA before logging in.",
+            )
+
     # ── Lab-user: check lab is still active ───────────────────────────────────
     lab = None
     if lab_user:
