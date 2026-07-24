@@ -284,7 +284,7 @@ jobs:
           docker build -t gula-backend:nightly ./backend
 
       - name: Run Trivy scan
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@b44c78ccb9cc27ad34ca1432d23e745cf7728c34  # v0.30.0 - pinned by digest
         with:
           image-ref: gula-backend:nightly
           format: table

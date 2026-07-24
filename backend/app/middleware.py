@@ -111,7 +111,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "default-src 'self'; script-src 'self'; style-src 'self'; "
             "img-src 'self' data: blob:; connect-src 'self' https://gula-platform.org; "
             "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         )

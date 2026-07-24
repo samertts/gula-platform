@@ -101,13 +101,20 @@ def authorize(
     if "code" not in response_types:
         raise HTTPException(status_code=400, detail="Invalid response_type")
 
-    if redirect_uri and client.redirect_uris:
+    if redirect_uri:
+        if not client.redirect_uris:
+            raise HTTPException(status_code=400, detail="Client has no registered redirect URIs")
         allowed = json.loads(client.redirect_uris)
         if redirect_uri not in allowed:
             raise HTTPException(status_code=400, detail="Invalid redirect_uri")
+    elif client.redirect_uris:
+        allowed = json.loads(client.redirect_uris)
+        redirect_uri = allowed[0]
 
-    if code_challenge and code_challenge_method and code_challenge_method not in ("S256", "plain"):
-        raise HTTPException(status_code=400, detail="Invalid code_challenge_method")
+    if not code_challenge or not code_challenge_method:
+        raise HTTPException(status_code=400, detail="PKCE is required (code_challenge and code_challenge_method)")
+    if code_challenge_method not in ("S256",):
+        raise HTTPException(status_code=400, detail="Invalid code_challenge_method, only S256 is supported")
 
     auth_code = generate_auth_code()
     token = OAuth2Token(
