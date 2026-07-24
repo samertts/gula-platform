@@ -125,6 +125,30 @@ export function Sidebar() {
         {!collapsed && <hr className="my-3" />}
         <div className="space-y-1">
           <p className={cn("px-3 text-xs font-semibold text-muted-foreground", collapsed && "sr-only")}>
+            السريرية
+          </p>
+          {renderItems(NAV_ITEMS.clinical)}
+        </div>
+
+        {!collapsed && <hr className="my-3" />}
+        <div className="space-y-1">
+          <p className={cn("px-3 text-xs font-semibold text-muted-foreground", collapsed && "sr-only")}>
+            الوطنية
+          </p>
+          {renderItems(NAV_ITEMS.national)}
+        </div>
+
+        {!collapsed && <hr className="my-3" />}
+        <div className="space-y-1">
+          <p className={cn("px-3 text-xs font-semibold text-muted-foreground", collapsed && "sr-only")}>
+            الأنظمة
+          </p>
+          {renderItems(NAV_ITEMS.systems)}
+        </div>
+
+        {!collapsed && <hr className="my-3" />}
+        <div className="space-y-1">
+          <p className={cn("px-3 text-xs font-semibold text-muted-foreground", collapsed && "sr-only")}>
             الإعدادات
           </p>
           {renderItems(NAV_ITEMS.settings)}
