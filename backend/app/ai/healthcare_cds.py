@@ -79,7 +79,7 @@ class ClinicalDecisionSupport:
         kg_results = knowledge_graph.search_nodes(test_name, node_type="lab_test", limit=5)
         conditions: list[str] = []
         for node in kg_results:
-            neighbors = knowledge_graph.get_neighbors(node.id, relationship="indicates")
+            neighbors = knowledge_graph.get_neighbors(node.id, relationship_type="indicates")
             for neighbor, _rel, _weight in neighbors:
                 if neighbor.node_type == "condition":
                     conditions.append(neighbor.label)

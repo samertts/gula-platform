@@ -131,7 +131,7 @@ class TestKnowledgeGraph:
             assert isinstance(w, float)
 
     def test_get_neighbors_by_relationship(self):
-        neighbors = self.kg.get_neighbors(2, relationship="indicates")
+        neighbors = self.kg.get_neighbors(2, relationship_type="indicates")
         for n, rel, w in neighbors:
             assert rel == "indicates"
 

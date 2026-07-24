@@ -122,7 +122,7 @@ class TestKnowledgeGraphToCDSIntegration:
         knowledge_graph.initialize(force=True)
         nodes = knowledge_graph.search_nodes("hemoglobin", node_type="lab_test")
         assert len(nodes) >= 1
-        neighbors = knowledge_graph.get_neighbors(nodes[0].id, relationship="indicates")
+        neighbors = knowledge_graph.get_neighbors(nodes[0].id, relationship_type="indicates")
         labels = [n.label for n, _, _ in neighbors]
         assert "Anemia" in labels
 
