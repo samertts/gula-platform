@@ -181,7 +181,7 @@ def kg_info(current_user=Depends(get_current_user)):
         "node_count": len(knowledge_graph.nodes),
         "edge_count": len(knowledge_graph.edges),
         "node_types": list({n.node_type for n in knowledge_graph.nodes.values()}),
-        "relationship_types": list({e.relationship for e in knowledge_graph.edges}),
+        "relationship_types": list({e.relationship_type for e in knowledge_graph.edges}),
     }
 
 

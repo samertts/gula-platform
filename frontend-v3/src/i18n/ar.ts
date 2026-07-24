@@ -182,6 +182,18 @@ const ar = {
     lightMode: "الوضع الفاتح",
     language: "اللغة",
   },
+  dashboard: {
+    title: "لوحة التحكم",
+    subtitle: "نظرة عامة على أداء المختبر",
+    totalPatients: "إجمالي المرضى",
+    todayOrders: "الطلبات اليوم",
+    todayResults: "النتائج اليوم",
+    criticalAlerts: "التنبيهات الحرجة",
+    recentOrders: "الطلبات الأخيرة",
+    recentActivity: "النشاط الحديث",
+    recentOrdersPlaceholder: "سيتم عرض الطلبات الأخيرة هنا",
+    recentActivityPlaceholder: "سيتم عرض النشاط الحديث هنا",
+  },
   validation: {
     required: "هذا الحقل مطلوب",
     email: "البريد الإلكتروني غير صحيح",

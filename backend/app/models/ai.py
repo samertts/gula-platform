@@ -102,7 +102,7 @@ class AIKnowledgeEdge(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     source_id = Column(Integer, ForeignKey("ai_knowledge_nodes.id"), nullable=False, index=True)
     target_id = Column(Integer, ForeignKey("ai_knowledge_nodes.id"), nullable=False, index=True)
-    relationship = Column(String(128), nullable=False, index=True)
+    relationship_type = Column(String(128), nullable=False, index=True)
     weight = Column(Float, nullable=False, default=1.0)
     properties = Column(JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))

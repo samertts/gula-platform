@@ -59,8 +59,8 @@ class KnowledgeGraph:
         for edge_spec in _BUILTIN_EDGES:
             e = KnowledgeEdge(**edge_spec)
             self.edges.append(e)
-            self._adj.setdefault(e.source_id, []).append((e.target_id, e.relationship, e.weight))
-            self._adj.setdefault(e.target_id, []).append((e.source_id, e.relationship, e.weight))
+            self._adj.setdefault(e.source_id, []).append((e.target_id, e.relationship_type, e.weight))
+            self._adj.setdefault(e.target_id, []).append((e.source_id, e.relationship_type, e.weight))
 
     def search_nodes(self, query: str, node_type: str | None = None, limit: int = 20) -> list[KnowledgeNode]:
         q = query.lower().strip()

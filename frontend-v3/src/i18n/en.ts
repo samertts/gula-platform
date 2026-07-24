@@ -182,6 +182,18 @@ const en = {
     lightMode: "Light Mode",
     language: "Language",
   },
+  dashboard: {
+    title: "Dashboard",
+    subtitle: "Laboratory performance overview",
+    totalPatients: "Total Patients",
+    todayOrders: "Today's Orders",
+    todayResults: "Today's Results",
+    criticalAlerts: "Critical Alerts",
+    recentOrders: "Recent Orders",
+    recentActivity: "Recent Activity",
+    recentOrdersPlaceholder: "Recent orders will appear here",
+    recentActivityPlaceholder: "Recent activity will appear here",
+  },
   validation: {
     required: "This field is required",
     email: "Invalid email address",

@@ -54,7 +54,6 @@ __all__ = [
     "AIInteraction",
     "AIRetrievalRef",
     "AIUnresolvedQuestion",
-    "Appointment",
     "AuditLog",
     "AuthorizationAudit",
     "Base",

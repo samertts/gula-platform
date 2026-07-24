@@ -159,7 +159,7 @@ class TestKnowledgeGraph:
 
     def test_create_edge(self):
         edge = self.kg.create_edge(1, 2, "related_to", weight=0.5)
-        assert edge.relationship == "related_to"
+        assert edge.relationship_type == "related_to"
         assert edge.weight == 0.5
 
 
