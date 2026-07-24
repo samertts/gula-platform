@@ -74,10 +74,10 @@
 |---------|-----------|--------|------------|-------|
 | 3.12 | ✅ | ✅ | ✅ | Minimum per `pyproject.toml` (`requires-python = ">=3.12"`) |
 | 3.13 | ✅ | ✅ | ⚠️ | Tested in staging |
-| 3.14 | ✅ | ✅ | ✅ | Docker runtime image (`python:3.14-slim` in `backend/Dockerfile`) |
+| 3.14 | ✅ | ✅ | ✅ | Docker runtime image (`python:3.12-slim` in `backend/Dockerfile`) |
 | 3.11 | ❌ | ❌ | ❌ | Below minimum; code uses 3.12+ features |
 
-**Sources:** `backend/pyproject.toml:9` (`requires-python = ">=3.12"`), `backend/Dockerfile:8,20` (`python:3.14-slim`), `backend/app/config.py` (runtime)
+**Sources:** `backend/pyproject.toml:9` (`requires-python = ">=3.12"`), `backend/Dockerfile:8,20` (`python:3.12-slim`), `backend/app/config.py` (runtime)
 
 ## 6. Docker
 

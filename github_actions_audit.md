@@ -70,9 +70,9 @@
 
 ### 8. Version inconsistencies across workflows
 
-- `ci.yml` uses Python 3.14, Node 24
+- `ci.yml` uses Python 3.12, Node 24
 - `formatting.yml` uses Python 3.12, Node 22
-- `foundation-gate.yml` uses Python 3.14
+- `foundation-gate.yml` uses Python 3.12
 - Should use a consistent version matrix or env variables
 
 ### 9. frontend-pwa.yml — Missing `frontend-v3` path triggers

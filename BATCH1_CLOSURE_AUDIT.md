@@ -195,7 +195,7 @@ N/A — Batch 1 added infrastructure and enforcement, not performance optimizati
 | All backend tests | 67 | 0 | 0 | 67 |
 | Data Preservation Gate | 5 | 4 | 0 | 0 |
 
-All blocked tests are caused by a **pre-existing** `shared/` module import incompatibility with Python 3.10. This does not affect CI (which uses Python 3.14).
+All blocked tests are caused by a **pre-existing** `shared/` module import incompatibility with Python 3.10. This does not affect CI (which uses Python 3.12).
 
 ---
 
@@ -334,7 +334,7 @@ All blocked tests are caused by a **pre-existing** `shared/` module import incom
 
 | ID | Severity | Description | Evidence | Root Cause | Assigned Batch |
 |----|----------|-------------|----------|------------|----------------|
-| R1 | **Low** | Gate script uses `datetime.UTC` (Python 3.11+) — local dev on Python 3.10 fails to import | `python3 scripts/data_preservation_gate.py` raises `ImportError: cannot import name 'UTC'` | Script targets Python 3.14 (CI version); Python 3.10 compat not tested | **Batch 2** |
+| R1 | **Low** | Gate script uses `datetime.UTC` (Python 3.11+) — local dev on Python 3.10 fails to import | `python3 scripts/data_preservation_gate.py` raises `ImportError: cannot import name 'UTC'` | Script targets Python 3.12 (CI version); Python 3.10 compat not tested | **Batch 2** |
 | R2 | **Low** | 2 ruff warnings on gate script: PIE810 (startswith tuple), T201 (print found) | `ruff check scripts/data_preservation_gate.py` reports 2 warnings | Script prioritizes readability over style nits; `print()` is intentional for CLI output | **Batch 2** |
 | R3 | **Medium** | Soft delete not implemented across 25 business models | `data_preservation_gate --ci` reports WARNING for 25 models | Pre-existing — Batch 1 only documents the requirement (Rule 10) | **Batch 2** |
 | R4 | **Low** | 3 unused imports detected and auto-fixed by ruff | `ruff check` reports F401 (unused-import) x3 | Import cleanup needed in gate script | **Batch 2** |

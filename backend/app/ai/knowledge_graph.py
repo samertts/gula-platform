@@ -26,7 +26,7 @@ class KnowledgeNode:
 class KnowledgeEdge:
     source_id: int
     target_id: int
-    relationship: str
+    relationship_type: str
     weight: float = 1.0
     properties: dict[str, Any] = field(default_factory=dict)
 
@@ -110,12 +110,12 @@ class KnowledgeGraph:
         return None
 
     def get_neighbors(
-        self, node_id: int, relationship: str | None = None, max_depth: int = 1, limit: int = 50,
+        self, node_id: int, relationship_type: str | None = None, max_depth: int = 1, limit: int = 50,
     ) -> list[tuple[KnowledgeNode, str, float]]:
         if max_depth == 1:
             neighbors: list[tuple[KnowledgeNode, str, float]] = []
             for target_id, rel, weight in self._adj.get(node_id, []):
-                if relationship and rel != relationship:
+                if relationship_type and rel != relationship_type:
                     continue
                 target = self.nodes.get(target_id)
                 if target:
@@ -187,17 +187,17 @@ class KnowledgeGraph:
         return node
 
     def create_edge(
-        self, source_id: int, target_id: int, relationship: str,
+        self, source_id: int, target_id: int, relationship_type: str,
         weight: float = 1.0, properties: dict[str, Any] | None = None,
     ) -> KnowledgeEdge:
         edge = KnowledgeEdge(
             source_id=source_id, target_id=target_id,
-            relationship=relationship, weight=weight,
+            relationship_type=relationship_type, weight=weight,
             properties=properties or {},
         )
         self.edges.append(edge)
-        self._adj.setdefault(source_id, []).append((target_id, relationship, weight))
-        self._adj.setdefault(target_id, []).append((source_id, relationship, weight))
+        self._adj.setdefault(source_id, []).append((target_id, relationship_type, weight))
+        self._adj.setdefault(target_id, []).append((source_id, relationship_type, weight))
         return edge
 
 
@@ -260,68 +260,68 @@ _BUILTIN_NODES = [
 ]
 
 _BUILTIN_EDGES = [
-    {"source_id": 1, "target_id": 2, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 1, "target_id": 3, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 1, "target_id": 4, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 42, "target_id": 5, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 42, "target_id": 7, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 42, "target_id": 8, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 42, "target_id": 9, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 42, "target_id": 10, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 43, "target_id": 42, "relationship": "extends", "weight": 1.0},
-    {"source_id": 44, "target_id": 17, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 44, "target_id": 18, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 44, "target_id": 19, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 44, "target_id": 20, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 45, "target_id": 14, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 45, "target_id": 15, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 45, "target_id": 21, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 45, "target_id": 22, "relationship": "includes_test", "weight": 1.0},
-    {"source_id": 2, "target_id": 23, "relationship": "indicates", "weight": 0.8},
-    {"source_id": 5, "target_id": 24, "relationship": "indicates", "weight": 0.9},
-    {"source_id": 6, "target_id": 24, "relationship": "monitors", "weight": 0.9},
-    {"source_id": 7, "target_id": 25, "relationship": "indicates", "weight": 0.8},
-    {"source_id": 8, "target_id": 25, "relationship": "indicates", "weight": 0.7},
-    {"source_id": 10, "target_id": 26, "relationship": "indicates", "weight": 0.9},
-    {"source_id": 9, "target_id": 27, "relationship": "indicates", "weight": 0.9},
-    {"source_id": 12, "target_id": 28, "relationship": "indicates", "weight": 0.95},
-    {"source_id": 14, "target_id": 29, "relationship": "indicates", "weight": 0.7},
-    {"source_id": 15, "target_id": 29, "relationship": "indicates", "weight": 0.7},
-    {"source_id": 16, "target_id": 30, "relationship": "indicates", "weight": 0.6},
-    {"source_id": 16, "target_id": 31, "relationship": "indicates", "weight": 0.6},
-    {"source_id": 19, "target_id": 32, "relationship": "indicates", "weight": 0.7},
-    {"source_id": 20, "target_id": 32, "relationship": "indicates", "weight": 0.6},
-    {"source_id": 24, "target_id": 33, "relationship": "treated_by", "weight": 0.9},
-    {"source_id": 24, "target_id": 34, "relationship": "treated_by", "weight": 0.8},
-    {"source_id": 13, "target_id": 35, "relationship": "monitored_by", "weight": 0.9},
-    {"source_id": 30, "target_id": 36, "relationship": "treated_by", "weight": 0.9},
-    {"source_id": 32, "target_id": 37, "relationship": "treated_by", "weight": 0.8},
-    {"source_id": 2, "target_id": 38, "relationship": "uses_specimen", "weight": 1.0},
-    {"source_id": 3, "target_id": 38, "relationship": "uses_specimen", "weight": 1.0},
-    {"source_id": 4, "target_id": 38, "relationship": "uses_specimen", "weight": 1.0},
-    {"source_id": 5, "target_id": 38, "relationship": "uses_specimen", "weight": 1.0},
-    {"source_id": 5, "target_id": 39, "relationship": "uses_specimen", "weight": 0.5},
-    {"source_id": 7, "target_id": 38, "relationship": "uses_specimen", "weight": 1.0},
-    {"source_id": 40, "target_id": 7, "relationship": "alternative_for", "weight": 0.5},
-    {"source_id": 2, "target_id": 47, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 3, "target_id": 47, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 4, "target_id": 47, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 5, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 7, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 10, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 9, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 42, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 43, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 44, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 45, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 46, "target_id": 48, "relationship": "performed_by", "weight": 1.0},
-    {"source_id": 42, "target_id": 46, "relationship": "differs_from", "weight": 0.3},
-    {"source_id": 32, "target_id": 28, "relationship": "risk_factor_for", "weight": 0.5},
-    {"source_id": 24, "target_id": 25, "relationship": "risk_factor_for", "weight": 0.4},
-    {"source_id": 24, "target_id": 28, "relationship": "risk_factor_for", "weight": 0.3},
-    {"source_id": 32, "target_id": 28, "relationship": "risk_factor_for", "weight": 0.4},
-    {"source_id": 25, "target_id": 26, "relationship": "complication_of", "weight": 0.5},
-    {"source_id": 29, "target_id": 21, "relationship": "associated_with", "weight": 0.6},
+    {"source_id": 1, "target_id": 2, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 1, "target_id": 3, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 1, "target_id": 4, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 42, "target_id": 5, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 42, "target_id": 7, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 42, "target_id": 8, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 42, "target_id": 9, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 42, "target_id": 10, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 43, "target_id": 42, "relationship_type": "extends", "weight": 1.0},
+    {"source_id": 44, "target_id": 17, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 44, "target_id": 18, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 44, "target_id": 19, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 44, "target_id": 20, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 45, "target_id": 14, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 45, "target_id": 15, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 45, "target_id": 21, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 45, "target_id": 22, "relationship_type": "includes_test", "weight": 1.0},
+    {"source_id": 2, "target_id": 23, "relationship_type": "indicates", "weight": 0.8},
+    {"source_id": 5, "target_id": 24, "relationship_type": "indicates", "weight": 0.9},
+    {"source_id": 6, "target_id": 24, "relationship_type": "monitors", "weight": 0.9},
+    {"source_id": 7, "target_id": 25, "relationship_type": "indicates", "weight": 0.8},
+    {"source_id": 8, "target_id": 25, "relationship_type": "indicates", "weight": 0.7},
+    {"source_id": 10, "target_id": 26, "relationship_type": "indicates", "weight": 0.9},
+    {"source_id": 9, "target_id": 27, "relationship_type": "indicates", "weight": 0.9},
+    {"source_id": 12, "target_id": 28, "relationship_type": "indicates", "weight": 0.95},
+    {"source_id": 14, "target_id": 29, "relationship_type": "indicates", "weight": 0.7},
+    {"source_id": 15, "target_id": 29, "relationship_type": "indicates", "weight": 0.7},
+    {"source_id": 16, "target_id": 30, "relationship_type": "indicates", "weight": 0.6},
+    {"source_id": 16, "target_id": 31, "relationship_type": "indicates", "weight": 0.6},
+    {"source_id": 19, "target_id": 32, "relationship_type": "indicates", "weight": 0.7},
+    {"source_id": 20, "target_id": 32, "relationship_type": "indicates", "weight": 0.6},
+    {"source_id": 24, "target_id": 33, "relationship_type": "treated_by", "weight": 0.9},
+    {"source_id": 24, "target_id": 34, "relationship_type": "treated_by", "weight": 0.8},
+    {"source_id": 13, "target_id": 35, "relationship_type": "monitored_by", "weight": 0.9},
+    {"source_id": 30, "target_id": 36, "relationship_type": "treated_by", "weight": 0.9},
+    {"source_id": 32, "target_id": 37, "relationship_type": "treated_by", "weight": 0.8},
+    {"source_id": 2, "target_id": 38, "relationship_type": "uses_specimen", "weight": 1.0},
+    {"source_id": 3, "target_id": 38, "relationship_type": "uses_specimen", "weight": 1.0},
+    {"source_id": 4, "target_id": 38, "relationship_type": "uses_specimen", "weight": 1.0},
+    {"source_id": 5, "target_id": 38, "relationship_type": "uses_specimen", "weight": 1.0},
+    {"source_id": 5, "target_id": 39, "relationship_type": "uses_specimen", "weight": 0.5},
+    {"source_id": 7, "target_id": 38, "relationship_type": "uses_specimen", "weight": 1.0},
+    {"source_id": 40, "target_id": 7, "relationship_type": "alternative_for", "weight": 0.5},
+    {"source_id": 2, "target_id": 47, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 3, "target_id": 47, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 4, "target_id": 47, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 5, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 7, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 10, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 9, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 42, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 43, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 44, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 45, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 46, "target_id": 48, "relationship_type": "performed_by", "weight": 1.0},
+    {"source_id": 42, "target_id": 46, "relationship_type": "differs_from", "weight": 0.3},
+    {"source_id": 32, "target_id": 28, "relationship_type": "risk_factor_for", "weight": 0.5},
+    {"source_id": 24, "target_id": 25, "relationship_type": "risk_factor_for", "weight": 0.4},
+    {"source_id": 24, "target_id": 28, "relationship_type": "risk_factor_for", "weight": 0.3},
+    {"source_id": 32, "target_id": 28, "relationship_type": "risk_factor_for", "weight": 0.4},
+    {"source_id": 25, "target_id": 26, "relationship_type": "complication_of", "weight": 0.5},
+    {"source_id": 29, "target_id": 21, "relationship_type": "associated_with", "weight": 0.6},
 ]
 
 knowledge_graph = KnowledgeGraph()

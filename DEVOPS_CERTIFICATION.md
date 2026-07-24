@@ -19,9 +19,9 @@
 
 | Dockerfile | Base Image | Stages |
 |-----------|-----------|--------|
-| `backend/Dockerfile` | python:3.14-slim | 2 (multi-stage) |
+| `backend/Dockerfile` | python:3.12-slim | 2 (multi-stage) |
 | `Dockerfile` (root) | node:24-alpine | 2 (multi-stage) |
-| 12 service Dockerfiles | python:3.14-slim | 1 (single-stage) |
+| 12 service Dockerfiles | python:3.12-slim | 1 (single-stage) |
 | **Total** | **14 Dockerfiles** | |
 
 ## Docker Compose

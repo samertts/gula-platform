@@ -120,7 +120,7 @@ class ClinicalDecisionSupport:
             if alert.test_name:
                 nodes = knowledge_graph.search_nodes(alert.test_name, node_type="lab_test", limit=3)
                 for node in nodes:
-                    neighbors = knowledge_graph.get_neighbors(node.id, relationship="indicates")
+                    neighbors = knowledge_graph.get_neighbors(node.id, relationship_type="indicates")
                     for neighbor, _rel, _weight in neighbors:
                         if neighbor.node_type == "condition":
                             condition_map[neighbor.label] = condition_map.get(neighbor.label, 0) + 1

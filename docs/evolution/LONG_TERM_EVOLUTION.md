@@ -108,7 +108,7 @@
 - Clinical AI: critical value detection, result validation (cloud inference)
 
 ### Technology Upgrades
-- Python 3.14
+- Python 3.12
 - Kafka for event bus (alongside Redis Streams)
 - ClickHouse for analytics (stats service)
 - K8s production pilot (non-critical services)
