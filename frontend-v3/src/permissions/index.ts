@@ -1,4 +1,4 @@
-import type { UserRole, Permission } from '@/types';
+import type { Permission } from '@/types';
 
 export const ROLE_LEVELS: Record<string, number> = {
   master_admin: 100,
