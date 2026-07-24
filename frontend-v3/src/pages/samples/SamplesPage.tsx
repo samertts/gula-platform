@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { samplesApi } from "@/api/endpoints";
 import { Card, CardContent, Badge, DataTable, Input } from "@/components/ui";
@@ -17,6 +18,7 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
 };
 
 export function SamplesPage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
   const { data, isLoading } = useQuery({
@@ -25,24 +27,24 @@ export function SamplesPage() {
   });
 
   const columns: ColumnDef<Sample>[] = [
-    { accessorKey: "barcode", header: "الباركود" },
-    { accessorKey: "patient_name", header: "اسم المريض" },
-    { accessorKey: "sample_type", header: "نوع العينة" },
+    { accessorKey: "barcode", header: t("sample.barcode") },
+    { accessorKey: "patient_name", header: t("order.patientName") },
+    { accessorKey: "sample_type", header: t("sample.sampleType") },
     {
       accessorKey: "status",
-      header: "الحالة",
+      header: t("sample.status"),
       cell: ({ row }) => (
         <Badge variant={statusVariant[row.original.status] || "secondary"}>
           {row.original.status}
         </Badge>
       ),
     },
-    { accessorKey: "notes", header: "ملاحظات" },
+    { accessorKey: "notes", header: t("sample.notes") },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="العينات" description="إدارة عينات الفحوصات المخبرية" />
+      <PageHeader title={t("sample.title")} description={t("sample.subtitle")} />
       <Card>
         <CardContent className="pt-6">
           <DataTable
@@ -52,7 +54,7 @@ export function SamplesPage() {
             toolbar={
               <div className="relative">
                 <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="بحث عن عينة..." value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9 w-80" />
+                <Input placeholder={t("sample.search")} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9 w-80" />
               </div>
             }
           />

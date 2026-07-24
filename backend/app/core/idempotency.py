@@ -173,9 +173,9 @@ def purge_expired_keys(db: Session) -> int:
     """Delete idempotency keys older than _KEY_TTL_HOURS.
     Call from a maintenance CRON or startup task.
     """
-    from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-    cutoff = datetime.utcnow() - timedelta(hours=_KEY_TTL_HOURS)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_KEY_TTL_HOURS)
     result = db.execute(
         text("""
             DELETE FROM idempotency_keys

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -25,7 +25,7 @@ class ContractVersion(BaseModel):
     description: str = Field(default="", description="Human-readable description")
     status: ContractStatus = Field(default=ContractStatus.stable)
     format: ContractFormat
-    generated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source: str = Field(default="gula-platform", description="Source system identifier")
 
 
