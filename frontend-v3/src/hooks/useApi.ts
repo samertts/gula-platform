@@ -15,7 +15,7 @@ import type { LoginRequest } from "@/types/api";
 import type {
   Patient, LabOrder, Sample, Lab, CriticalAlert, QualityControl, LabResult,
   DashboardData, StatsSummary, TrendData, HealthStatus, DeepHealth,
-  SubscriptionTier, SubscriptionInfo, User, AuditLog, AIProviderStatus,
+  SubscriptionTier, SubscriptionInfo, User, AuditLog, AIProviderStatus, SecurityStatus,
 } from "@/types";
 
 // ── Auth ──
@@ -272,7 +272,7 @@ export function useMfaDevices(opts?: UseQueryOptions<Record<string, unknown>>) {
 }
 
 // ── Security ──
-export function useSecurityStatus(opts?: UseQueryOptions<Record<string, unknown>>) {
+export function useSecurityStatus(opts?: UseQueryOptions<SecurityStatus>) {
   return useQuery({ queryKey: queryKeys.security.status, queryFn: () => securityApi.status(), ...opts });
 }
 
