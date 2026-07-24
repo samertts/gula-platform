@@ -50,20 +50,24 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
+          eval "$(ssh-agent -s)"
+          printf '%s\n' "$SSH_KEY" | ssh-add -
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           cat > ~/.ssh/config << SSHEOF
           Host gula-server
             HostName $SERVER_HOST
-            User ${{ secrets.SERVER_USER }}
-            IdentityFile ~/.ssh/id_ed25519
+            User $SERVER_USER
             StrictHostKeyChecking accept-new
           SSHEOF
           chmod 600 ~/.ssh/config
+      - name: Cleanup SSH agent
+        if: always()
+        run: |
+          ssh-agent -k || true
 
       - name: Deploy to server
         env:
@@ -107,10 +111,20 @@ jobs:
 
             PREVIOUS_COMMIT="\$(git rev-parse HEAD)"
 
-            # Sync to latest main
+            # Verify we can fast-forward before destructive operations
             git fetch origin main
-            git reset --hard origin/main
-            git clean -fd -e .env
+            BEHIND="\$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)"
+            if [ "\$BEHIND" -gt 10 ]; then
+              log "WARNING: Local branch is \$BEHIND commits behind. Manual intervention required."
+              log "Proceeding with merge instead of reset."
+              git merge --ff-only origin/main || {
+                log "Fast-forward failed. Rolling back."
+                exit 1
+              }
+            else
+              git reset --hard origin/main
+              git clean -fd -e .env
+            fi
 
             # Restore .env
             if [ -f /tmp/.env.gula.backup ]; then

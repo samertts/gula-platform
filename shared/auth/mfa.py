@@ -28,8 +28,9 @@ def generate_backup_codes(count: int = 8) -> list[str]:
 
 
 def verify_backup_code(code: str, stored_hashes: list[str]) -> str | None:
+    computed = hashlib.sha256(code.encode()).hexdigest()
     for stored in stored_hashes:
-        if hashlib.sha256(code.encode()).hexdigest() == stored:
+        if hmac.compare_digest(computed, stored):
             return stored
     return None
 
