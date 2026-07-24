@@ -97,7 +97,7 @@ class {mod}RepositoryImpl({mod}RepositoryInterface):
             else ""
         )
         soft_del_body = (
-            "\n        entity.deleted_at = datetime.utcnow()"
+            "\n        entity.deleted_at = datetime.now(timezone.utc)"
             if spec.has_soft_delete
             else "\n        self.session.delete(entity)"
         )

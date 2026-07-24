@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -162,7 +162,7 @@ class CHANGELOGAutomator:
             else:
                 sections["other"].append(line)
 
-        now = datetime.utcnow().strftime("%Y-%m-%d")
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         lines = ["# Changelog\n", f"## [{now}]\n"]
 
         section_map = [
@@ -228,7 +228,7 @@ class ReleaseNotesAutomator:
 
         note = ReleaseNote(
             version=version,
-            date=datetime.utcnow().strftime("%Y-%m-%d"),
+            date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         )
 
         for e in entries:
