@@ -55,7 +55,7 @@ def discover_endpoints() -> dict[str, BackendModule]:
 
     for root, dirs, files in os.walk(BACKEND_DIR):
         for fname in files:
-            if not fname.endswith(".py") or not fname == "routes.py":
+            if not fname.endswith(".py") or fname != "routes.py":
                 continue
             fpath = Path(root) / fname
             rel = fpath.relative_to(BACKEND_DIR)
@@ -75,21 +75,22 @@ def discover_endpoints() -> dict[str, BackendModule]:
                 tags = [t.strip().strip("\"'") for t in raw.split(",")]
 
             endpoints: list[Endpoint] = []
-            func_name = ""
+            current_method = ""
+            current_path = ""
 
             for line in content.splitlines():
                 rm = route_pattern.search(line)
                 if rm:
-                    method, route_path = rm.groups()
-                    full_path = prefix + route_path
+                    current_method, route_path = rm.groups()
+                    current_path = prefix + route_path
                 fm = func_pattern.search(line)
-                if fm:
+                if fm and current_method:
                     func_name = fm.group(1)
                     if func_name.startswith("_"):
                         continue
                     endpoints.append(Endpoint(
-                        method=method.upper(),
-                        path=full_path,
+                        method=current_method.upper(),
+                        path=current_path,
                         function=func_name,
                         module=mod_name,
                         tags=tags,
