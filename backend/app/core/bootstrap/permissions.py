@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -9,26 +8,26 @@ from app.database import SessionLocal
 from app.models.authorization import Permission
 
 from .models import (
-    PermissionDef,
-    MASTER_ADMIN_ROLE,
-    MINISTRY_ADMIN_ROLE,
-    ORGANIZATION_ADMIN_ROLE,
+    API_CLIENT_ROLE,
+    AUDITOR_ROLE,
+    CASHIER_ROLE,
     DIRECTORATE_ADMIN_ROLE,
+    DOCTOR_ROLE,
     HOSPITAL_ADMIN_ROLE,
-    PHC_ADMIN_ROLE,
     LAB_MANAGER_ROLE,
     LAB_SUPERVISOR_ROLE,
-    TECHNICIAN_ROLE,
-    PATHOLOGIST_ROLE,
-    DOCTOR_ROLE,
+    MASTER_ADMIN_ROLE,
+    MINISTRY_ADMIN_ROLE,
     NURSE_ROLE,
-    RECEPTIONIST_ROLE,
-    CASHIER_ROLE,
-    AUDITOR_ROLE,
-    QUALITY_MANAGER_ROLE,
-    SECURITY_OFFICER_ROLE,
-    API_CLIENT_ROLE,
+    ORGANIZATION_ADMIN_ROLE,
+    PATHOLOGIST_ROLE,
     PATIENT_ROLE,
+    PHC_ADMIN_ROLE,
+    QUALITY_MANAGER_ROLE,
+    RECEPTIONIST_ROLE,
+    SECURITY_OFFICER_ROLE,
+    TECHNICIAN_ROLE,
+    PermissionDef,
 )
 
 logger = logging.getLogger("gula.bootstrap.permissions")
@@ -68,7 +67,7 @@ def _perm(
     mfa: bool = False,
     justification: bool = False,
     audited: bool = True,
-    roles: List[str] | None = None,
+    roles: list[str] | None = None,
 ) -> PermissionDef:
     return PermissionDef(
         permission_id=pid,
@@ -87,7 +86,7 @@ def _perm(
     )
 
 
-def define_permissions() -> List[PermissionDef]:
+def define_permissions() -> list[PermissionDef]:
     MA = MASTER_ADMIN_ROLE
     MNA = MINISTRY_ADMIN_ROLE
     OA = ORGANIZATION_ADMIN_ROLE
@@ -236,7 +235,7 @@ def seed_permissions(db: Session | None = None) -> int:
         perms = define_permissions()
         for pdef in perms:
             existing = db.query(Permission).filter(
-                Permission.permission_id == pdef.permission_id
+                Permission.permission_id == pdef.permission_id,
             ).first()
             if existing:
                 continue

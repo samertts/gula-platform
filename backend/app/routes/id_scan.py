@@ -50,7 +50,7 @@ def preprocess_image(image_bytes: bytes):
 
         # Apply adaptive threshold for better text contrast
         thresh = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2,
         )
 
         # Denoise
@@ -156,7 +156,7 @@ async def scan_national_id(
     allowed_types = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
     if not image.content_type or image.content_type not in allowed_types:
         raise HTTPException(
-            status_code=400, detail="Please upload a valid image file (JPEG, PNG, WebP, BMP)"
+            status_code=400, detail="Please upload a valid image file (JPEG, PNG, WebP, BMP)",
         )
 
     # Read image (max 2MB - ID card photos shouldn't be larger)

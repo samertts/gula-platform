@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 
-from .models import ImpossibleTravelEvent, RiskEvent, RiskPolicy, SessionPolicy
+from .models import ImpossibleTravelEvent, RiskPolicy, SessionPolicy
 from .services import AdaptiveAuthService, SessionGovernanceService
 
 router = APIRouter(prefix="/niam/adaptive-auth", tags=["NIAM Adaptive Auth"])
@@ -19,7 +18,7 @@ async def evaluate_risk(
     account_id: str,
     ip_address: str,
     user_agent: str = "",
-    location: Optional[dict[str, Any]] = None,
+    location: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = AdaptiveAuthService(db)
@@ -98,8 +97,8 @@ async def create_risk_policy(
     risk_threshold_high: int,
     risk_threshold_critical: int,
     actions: dict[str, Any],
-    description: Optional[str] = None,
-    scope: Optional[dict[str, Any]] = None,
+    description: str | None = None,
+    scope: dict[str, Any] | None = None,
     enabled: bool = True,
     db: AsyncSession = Depends(get_db),
 ):
@@ -172,14 +171,14 @@ async def create_session_policy(
     max_sessions: int = 1,
     allow_concurrent: bool = False,
     require_mfa: bool = False,
-    session_timeout_minutes: Optional[int] = None,
-    inactivity_timeout_minutes: Optional[int] = None,
+    session_timeout_minutes: int | None = None,
+    inactivity_timeout_minutes: int | None = None,
     notify_previous_device: bool = True,
     terminate_previous_on_new_login: bool = True,
     enforce_geo_restriction: bool = False,
-    allowed_geo: Optional[dict[str, Any]] = None,
+    allowed_geo: dict[str, Any] | None = None,
     enforce_ip_restriction: bool = False,
-    allowed_ips: Optional[dict[str, Any]] = None,
+    allowed_ips: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = SessionGovernanceService(db)

@@ -1,4 +1,4 @@
-import type { UserRole, Permission } from '@/types/backend';
+import type { UserRole, Permission } from '@/types';
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   master_admin: [

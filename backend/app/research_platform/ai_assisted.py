@@ -101,7 +101,7 @@ class LiteratureAssistant:
             {
                 "citation": f"Author, A. A. ({datetime.now(UTC).year}). {topic}. Journal of Research.",
                 "style": style,
-            }
+            },
         ]
 
 

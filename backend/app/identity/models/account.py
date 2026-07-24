@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 
-from app._compat import UTC, StrEnum
+from app._compat import StrEnum
 from app.identity.base import IdentityBaseEntity
 
 

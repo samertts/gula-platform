@@ -7,6 +7,7 @@ from datetime import datetime
 @dataclass
 class FileStoredEvent:
     """FileStored event for storage_service capability."""
+
     event_id: str = ""
     occurred_at: datetime = field(default_factory=datetime.utcnow)
     data: dict = field(default_factory=dict)

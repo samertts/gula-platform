@@ -1,5 +1,4 @@
-"""
-Lab Device Gateway — GULA Platform
+"""Lab Device Gateway — GULA Platform
 =====================================
 Interface layer for laboratory analyzers (HL7 / ASTM / LIS integration).
 
@@ -50,7 +49,7 @@ _NONCE_PREFIX = "dgw:nonce:"
 if not _DEVICE_HMAC_KEY:
     logger.warning(
         "[DEVICE_GATEWAY] DEVICE_HMAC_KEY not set — HMAC & replay protection disabled. "
-        "Set this key in production."
+        "Set this key in production.",
     )
 
 
@@ -69,7 +68,7 @@ class DeviceAuthError(PermissionError):
 
 
 def _compute_signature(
-    device_id: str, sample_id: str, test: str, value: float, timestamp: int
+    device_id: str, sample_id: str, test: str, value: float, timestamp: int,
 ) -> str:
     msg = f"{device_id}:{sample_id}:{test}:{value}:{timestamp}".encode()
     return hmac.new(_DEVICE_HMAC_KEY.encode(), msg, hashlib.sha256).hexdigest()
@@ -141,6 +140,7 @@ def receive_device_result(
     Raises:
         DeviceAuthError:  Authentication or replay check failure.
         DeviceInputError: Type/range validation failure.
+
     """
     # ── 1. Input validation ────────────────────────────────────────────────────
     if not sample_id or not isinstance(sample_id, str):
@@ -163,7 +163,7 @@ def receive_device_result(
         raise DeviceInputError(f"value must be numeric, got: {value!r}") from None
     if not (_MIN_VALUE <= numeric_value <= _MAX_VALUE):
         raise DeviceInputError(
-            f"value {numeric_value} is outside allowed range [{_MIN_VALUE}, {_MAX_VALUE}]"
+            f"value {numeric_value} is outside allowed range [{_MIN_VALUE}, {_MAX_VALUE}]",
         )
 
     # ── 2. Authentication + replay protection (only when key is configured) ────
@@ -182,7 +182,7 @@ def receive_device_result(
         age = abs(server_now - timestamp)
         if age > _REPLAY_WINDOW:
             raise DeviceAuthError(
-                f"Message timestamp is {age}s old — outside replay window ({_REPLAY_WINDOW}s)"
+                f"Message timestamp is {age}s old — outside replay window ({_REPLAY_WINDOW}s)",
             )
 
         # HMAC signature verification

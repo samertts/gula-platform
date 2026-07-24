@@ -66,7 +66,7 @@ async def _resilient_loop(coro_factory, name: str) -> None:
             raise
         except Exception as exc:
             logger.error(
-                "Loop [%s] crashed: %s — restarting in %.0fs", name, exc, delay, exc_info=True
+                "Loop [%s] crashed: %s — restarting in %.0fs", name, exc, delay, exc_info=True,
             )
             await asyncio.sleep(delay)
             delay = min(delay * 2, _RESTART_MAX_DELAY_S)

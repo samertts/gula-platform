@@ -1,5 +1,4 @@
-"""
-External API Clinical-Grade Safe Layer — GULA Platform
+"""External API Clinical-Grade Safe Layer — GULA Platform
 =======================================================
 
 Every external API call passes through this base class, which enforces:
@@ -54,8 +53,7 @@ logger = logging.getLogger("gula.external_api")
 
 
 class DataTrustLevel(StrEnum):
-    """
-    Classifies what a piece of external data may influence.
+    """Classifies what a piece of external data may influence.
 
     ENRICHMENT   — UI decoration only (city name, weather, icons).
                    Safe to use and display. Never drives logic.
@@ -77,8 +75,7 @@ class DataTrustLevel(StrEnum):
 
 @dataclass
 class ExternalDataResult:
-    """
-    Every response from an external gateway is wrapped in this object.
+    """Every response from an external gateway is wrapped in this object.
     Callers must inspect ``trust_level`` and ``requires_verification``
     before using the data in any decision.
     """
@@ -131,8 +128,7 @@ class FieldRule:
 
 
 def validate_schema(data: Any, rules: list[FieldRule], context: str = "") -> None:
-    """
-    Strict schema validator.  Raises ValidationError on the first violation.
+    """Strict schema validator.  Raises ValidationError on the first violation.
     Used by gateways to reject unexpected external shapes before they touch logic.
     """
     if not isinstance(data, dict):
@@ -149,24 +145,24 @@ def validate_schema(data: Any, rules: list[FieldRule], context: str = "") -> Non
         if not isinstance(value, rule.type):
             raise ValidationError(
                 f"[{context}] field '{rule.name}': expected {rule.type.__name__}, "
-                f"got {type(value).__name__}"
+                f"got {type(value).__name__}",
             )
 
         if rule.allowed is not None and value not in rule.allowed:
             raise ValidationError(
-                f"[{context}] field '{rule.name}': value {value!r} not in allowed set"
+                f"[{context}] field '{rule.name}': value {value!r} not in allowed set",
             )
 
         if rule.min_value is not None and isinstance(value, (int, float)):
             if value < rule.min_value:
                 raise ValidationError(
-                    f"[{context}] field '{rule.name}': {value} < min {rule.min_value}"
+                    f"[{context}] field '{rule.name}': {value} < min {rule.min_value}",
                 )
 
         if rule.max_value is not None and isinstance(value, (int, float)):
             if value > rule.max_value:
                 raise ValidationError(
-                    f"[{context}] field '{rule.name}': {value} > max {rule.max_value}"
+                    f"[{context}] field '{rule.name}': {value} > max {rule.max_value}",
                 )
 
 
@@ -258,8 +254,7 @@ class ExternalGatewayError(Exception):
 
 
 class ClinicalDataViolation(RuntimeError):
-    """
-    Raised when external data marked CRITICAL is about to enter core logic.
+    """Raised when external data marked CRITICAL is about to enter core logic.
     This exception should NEVER be caught silently — it is a design violation.
     """
 
@@ -268,8 +263,7 @@ class ClinicalDataViolation(RuntimeError):
 
 
 class ExternalGateway:
-    """
-    Clinical-grade base class for all external API integrations.
+    """Clinical-grade base class for all external API integrations.
 
     Subclasses must:
       - Set ``name`` and ``trust_level``
@@ -316,15 +310,14 @@ class ExternalGateway:
     # ── Clinical Guard ────────────────────────────────────────────────────────
 
     def _enforce_clinical_guard(self) -> None:
-        """
-        Hard block: CRITICAL data cannot come from external sources.
+        """Hard block: CRITICAL data cannot come from external sources.
         If a gateway is misconfigured with trust_level=CRITICAL, this fires.
         """
         if self.trust_level == DataTrustLevel.CRITICAL:
             raise ClinicalDataViolation(
                 f"Gateway '{self.name}' is classified CRITICAL. "
                 "External APIs must not supply clinical data. "
-                "Use internal validated sources only."
+                "Use internal validated sources only.",
             )
 
     # ── Cache helpers ─────────────────────────────────────────────────────────
@@ -379,8 +372,7 @@ class ExternalGateway:
     # ── Validation hook ───────────────────────────────────────────────────────
 
     def _validate_response(self, response: Any) -> None:
-        """
-        Override to apply strict schema + range checks via validate_schema().
+        """Override to apply strict schema + range checks via validate_schema().
         Raise ValidationError to reject the response.
         Default: only checks that the response is not None.
         """
@@ -411,8 +403,7 @@ class ExternalGateway:
         internal_data: Any,
         **call_kwargs: Any,
     ) -> ExternalDataResult:
-        """
-        Shadow mode: execute the external call, log the result for comparison,
+        """Shadow mode: execute the external call, log the result for comparison,
         but always return ``internal_data`` unchanged.
 
         Use this when you want to validate that the external API matches
@@ -454,8 +445,7 @@ class ExternalGateway:
         fallback: Any | None = None,
         **call_kwargs: Any,
     ) -> ExternalDataResult:
-        """
-        Clinical-grade safe call wrapper.
+        """Clinical-grade safe call wrapper.
 
         Flow:
           clinical_guard → rate_limiter → circuit_breaker → cache →
@@ -555,7 +545,7 @@ class ExternalGateway:
     ) -> ExternalDataResult:
         if fallback is None:
             raise ExternalGatewayError(
-                f"[{self.name}] service unavailable and no fallback provided"
+                f"[{self.name}] service unavailable and no fallback provided",
             )
         return ExternalDataResult(
             data=fallback,

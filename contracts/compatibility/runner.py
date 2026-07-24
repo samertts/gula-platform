@@ -28,7 +28,7 @@ os.environ["FEATURE_BACKGROUND_TASKS"] = "false"
 os.environ["ENV"] = "test"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["SECRET_KEY"] = "test-secret-key-" + "x" * 40
-os.environ["ENCRYPTION_KEY"] = "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
+os.environ["ENCRYPTION_KEY"] = "dGVzdC1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcw=="
 os.environ["NID_HMAC_KEY"] = "a" * 64
 os.environ["REDIS_URL"] = ""
 

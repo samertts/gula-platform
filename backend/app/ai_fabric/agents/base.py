@@ -31,7 +31,7 @@ class AgentMemory:
         if len(self.short_term) >= self.max_short_term:
             oldest = next(iter(self.short_term))
             self.long_term.setdefault("_archived", []).append(
-                {"key": oldest, "value": self.short_term[oldest], "at": time.time()}
+                {"key": oldest, "value": self.short_term[oldest], "at": time.time()},
             )
             del self.short_term[oldest]
         self.short_term[key] = value

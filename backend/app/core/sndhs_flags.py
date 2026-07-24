@@ -1,5 +1,4 @@
-"""
-SNDHS-lite Phase 1 — environment-controlled feature flags.
+"""SNDHS-lite Phase 1 — environment-controlled feature flags.
 
 These flags are intentionally separate from the per-tenant feature
 matrix in ``backend/app/core/feature_flags.py`` (which is per-lab,
@@ -127,7 +126,8 @@ def reset_national_id_override() -> None:
 
 def require_visits():
     """FastAPI dependency. Returns None when ENABLE_VISITS is on,
-    raises 503 otherwise. Use as ``Depends(require_visits)``."""
+    raises 503 otherwise. Use as ``Depends(require_visits)``.
+    """
     from fastapi import HTTPException, status
 
     def _dep() -> None:
@@ -164,7 +164,8 @@ def require_national_id():
 
 def status_snapshot() -> dict[str, bool]:
     """Return the currently-effective values, useful for ``/health/status``
-    and ``/admin/sndhs/flags``."""
+    and ``/admin/sndhs/flags``.
+    """
     return {
         "visits_enabled": visits_enabled(),
         "national_id_enabled": national_id_enabled(),

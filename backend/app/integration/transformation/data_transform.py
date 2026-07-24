@@ -68,13 +68,12 @@ class DataTransformer:
                         current = current[base][idx]
                     else:
                         current[base][idx] = value
+                elif i == len(parts) - 1:
+                    current[part] = value
                 else:
-                    if i == len(parts) - 1:
-                        current[part] = value
-                    else:
-                        if part not in current:
-                            current[part] = {}
-                        current = current[part]
+                    if part not in current:
+                        current[part] = {}
+                    current = current[part]
         return result
 
     @staticmethod

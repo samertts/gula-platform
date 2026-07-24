@@ -20,7 +20,7 @@ class NationalAnalyticsService:
         self.db = db
 
     def citizen_statistics(
-        self, governorate: str | None = None, node_id: int | None = None
+        self, governorate: str | None = None, node_id: int | None = None,
     ) -> dict[str, Any]:
         return {
             "scope": "citizen_statistics",
@@ -31,7 +31,7 @@ class NationalAnalyticsService:
         }
 
     def disease_statistics(
-        self, icd10_code: str | None = None, period_start: date | None = None, period_end: date | None = None
+        self, icd10_code: str | None = None, period_start: date | None = None, period_end: date | None = None,
     ) -> dict[str, Any]:
         return {
             "scope": "disease_statistics",
@@ -52,7 +52,7 @@ class NationalAnalyticsService:
 
         total_labs = self.db.query(LaboratoryRegistry).count()
         active_labs = self.db.query(LaboratoryRegistry).filter(
-            LaboratoryRegistry.is_active.is_(True)
+            LaboratoryRegistry.is_active.is_(True),
         ).count()
 
         return {
@@ -92,7 +92,7 @@ class NationalAnalyticsService:
         }
 
     def turnaround_time_statistics(
-        self, lab_id: int | None = None, period: ProductivityPeriod = ProductivityPeriod.DAILY
+        self, lab_id: int | None = None, period: ProductivityPeriod = ProductivityPeriod.DAILY,
     ) -> dict[str, Any]:
         q = self.db.query(
             func.avg(ProductivityRecord.tat_average_minutes).label("avg_tat"),
@@ -101,7 +101,7 @@ class NationalAnalyticsService:
         ).filter(ProductivityRecord.period == period)
         if lab_id:
             q = q.join(HealthcareWorker).filter(
-                HealthcareWorker.organization_node_id == lab_id
+                HealthcareWorker.organization_node_id == lab_id,
             )
         result = q.first()
         return {
@@ -141,12 +141,12 @@ class NationalAnalyticsService:
 
     def governorate_dashboard(self, governorate: str) -> dict[str, Any]:
         labs = self.db.query(LaboratoryRegistry).filter(
-            LaboratoryRegistry.governorate == governorate
+            LaboratoryRegistry.governorate == governorate,
         ).count()
         workers = self.db.query(HealthcareWorker).join(
-            GovernanceNode, HealthcareWorker.organization_node_id == GovernanceNode.id
+            GovernanceNode, HealthcareWorker.organization_node_id == GovernanceNode.id,
         ).filter(
-            GovernanceNode.governorate == governorate
+            GovernanceNode.governorate == governorate,
         ).count()
         return {
             "governorate": governorate,

@@ -99,7 +99,7 @@ async def get_all_metrics():
                 "details": r.details,
             }
             for r in results
-        ]
+        ],
     }
 
 
@@ -171,7 +171,7 @@ async def list_dimensions():
                 "description": _dimension_description(dim),
             }
             for dim in CertificationDimension
-        ]
+        ],
     }
 
 

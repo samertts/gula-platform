@@ -3,9 +3,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta
 from math import asin, cos, radians, sin, sqrt
-from typing import Any, Optional
+from typing import Any
 
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
@@ -57,7 +57,7 @@ class AdaptiveAuthService:
         account_id: str,
         ip_address: str,
         user_agent: str,
-        location: Optional[dict[str, Any]] = None,
+        location: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         score = 0
         factors: list[dict[str, Any]] = []
@@ -95,8 +95,8 @@ class AdaptiveAuthService:
         self,
         account_id: str,
         ip_address: str,
-        location: Optional[dict[str, Any]] = None,
-    ) -> Optional[dict[str, Any]]:
+        location: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         stmt = (
             select(RiskEvent)
             .where(
@@ -184,8 +184,8 @@ class AdaptiveAuthService:
         }
 
     async def check_credential_stuffing(
-        self, account_id: str, ip_address: str
-    ) -> Optional[int]:
+        self, account_id: str, ip_address: str,
+    ) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=5)
         stmt = (
             select(func.count(RiskEvent.id))
@@ -211,7 +211,7 @@ class AdaptiveAuthService:
             return 40
         return None
 
-    async def check_password_spray(self, ip_address: str) -> Optional[int]:
+    async def check_password_spray(self, ip_address: str) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=10)
         stmt = (
             select(func.count(func.distinct(RiskEvent.account_id)))
@@ -236,7 +236,7 @@ class AdaptiveAuthService:
             return 50
         return None
 
-    async def check_brute_force(self, account_id: str) -> Optional[int]:
+    async def check_brute_force(self, account_id: str) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=2)
         stmt = (
             select(func.count(RiskEvent.id))
@@ -264,7 +264,7 @@ class AdaptiveAuthService:
         self,
         account_id: str,
         ip_address: str,
-        location: Optional[dict[str, Any]] = None,
+        location: dict[str, Any] | None = None,
     ) -> bool:
         if not location or not location.get("city"):
             return False
@@ -298,7 +298,7 @@ class AdaptiveAuthService:
         return True
 
     async def detect_new_device(
-        self, account_id: str, device_fingerprint: str
+        self, account_id: str, device_fingerprint: str,
     ) -> bool:
         stmt = (
             select(RiskEvent)
@@ -328,17 +328,17 @@ class AdaptiveAuthService:
         event_type: str,
         severity: str,
         risk_score: int,
-        details: Optional[dict[str, Any]] = None,
-        account_id: Optional[str] = None,
-        person_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        location_city: Optional[str] = None,
-        location_country: Optional[str] = None,
-        location_lat: Optional[str] = None,
-        location_lng: Optional[str] = None,
-        mitigation_action: Optional[str] = None,
+        details: dict[str, Any] | None = None,
+        account_id: str | None = None,
+        person_id: str | None = None,
+        session_id: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        location_city: str | None = None,
+        location_country: str | None = None,
+        location_lat: str | None = None,
+        location_lng: str | None = None,
+        mitigation_action: str | None = None,
     ) -> RiskEvent:
         if event_type not in _EVENT_TYPES:
             event_type = "anomalous_behavior"
@@ -371,7 +371,7 @@ class AdaptiveAuthService:
         return entity
 
     async def apply_mitigation(
-        self, risk_score: int, account_id: str
+        self, risk_score: int, account_id: str,
     ) -> dict[str, Any]:
         stmt = (
             select(RiskPolicy)
@@ -419,7 +419,7 @@ class AdaptiveAuthService:
         return {"action": action, "reason": "low_risk", "policy_id": policy.policy_id}
 
     async def create_mfa_challenge(
-        self, account_id: str, mfa_type: str = "totp"
+        self, account_id: str, mfa_type: str = "totp",
     ) -> AdaptiveMFASession:
         challenge_code = str(uuid.uuid4()).replace("-", "")[:12]
         expires_at = datetime.now(UTC) + timedelta(minutes=5)
@@ -443,7 +443,7 @@ class AdaptiveAuthService:
         return entity
 
     async def verify_mfa(
-        self, mfa_id: str, challenge_response: str
+        self, mfa_id: str, challenge_response: str,
     ) -> dict[str, Any]:
         stmt = (
             select(AdaptiveMFASession)
@@ -488,7 +488,7 @@ class AdaptiveAuthService:
         return {"verified": False, "reason": "invalid_challenge", "remaining_attempts": remaining}
 
     async def get_risk_history(
-        self, account_id: str, limit: int = 50
+        self, account_id: str, limit: int = 50,
     ) -> list[RiskEvent]:
         stmt = (
             select(RiskEvent)
@@ -508,7 +508,7 @@ class SessionGovernanceService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_session_policy(self, account_type: str) -> Optional[SessionPolicy]:
+    async def get_session_policy(self, account_type: str) -> SessionPolicy | None:
         stmt = (
             select(SessionPolicy)
             .where(
@@ -522,7 +522,7 @@ class SessionGovernanceService:
         return result.scalar_one_or_none()
 
     async def enforce_session_policy(
-        self, account_id: str, account_type: str
+        self, account_id: str, account_type: str,
     ) -> dict[str, Any]:
         policy = await self.get_session_policy(account_type)
         if not policy:
@@ -533,7 +533,7 @@ class SessionGovernanceService:
         if not policy.allow_concurrent and active_count >= policy.max_sessions:
             if policy.terminate_previous_on_new_login:
                 await self.terminate_previous_sessions(
-                    account_id, current_session_id=None, notify=policy.notify_previous_device
+                    account_id, current_session_id=None, notify=policy.notify_previous_device,
                 )
                 return {
                     "enforced": True,
@@ -559,7 +559,7 @@ class SessionGovernanceService:
     async def terminate_previous_sessions(
         self,
         account_id: str,
-        current_session_id: Optional[str] = None,
+        current_session_id: str | None = None,
         notify: bool = True,
     ) -> int:
         from app.identity.models import UserSession
@@ -593,7 +593,7 @@ class SessionGovernanceService:
         return count
 
     async def notify_previous_device(
-        self, account_id: str, session_id: Optional[str] = None
+        self, account_id: str, session_id: str | None = None,
     ) -> dict[str, Any]:
         return {
             "notification_sent": True,
@@ -611,14 +611,14 @@ class SessionGovernanceService:
         max_sessions: int = 1,
         allow_concurrent: bool = False,
         require_mfa: bool = False,
-        session_timeout_minutes: Optional[int] = None,
-        inactivity_timeout_minutes: Optional[int] = None,
+        session_timeout_minutes: int | None = None,
+        inactivity_timeout_minutes: int | None = None,
         notify_previous_device: bool = True,
         terminate_previous_on_new_login: bool = True,
         enforce_geo_restriction: bool = False,
-        allowed_geo: Optional[dict] = None,
+        allowed_geo: dict | None = None,
         enforce_ip_restriction: bool = False,
-        allowed_ips: Optional[dict] = None,
+        allowed_ips: dict | None = None,
     ) -> SessionPolicy:
         entity = SessionPolicy(
             uuid=str(uuid.uuid4()),
@@ -643,8 +643,8 @@ class SessionGovernanceService:
         return entity
 
     async def update_session_policy(
-        self, policy_id: str, **kwargs: Any
-    ) -> Optional[SessionPolicy]:
+        self, policy_id: str, **kwargs: Any,
+    ) -> SessionPolicy | None:
         stmt = select(SessionPolicy).where(
             SessionPolicy.policy_id == policy_id,
             SessionPolicy.is_active.is_(True),
@@ -666,7 +666,7 @@ class SessionGovernanceService:
         expired_count = 0
 
         policies_result = await self.session.execute(
-            select(SessionPolicy).where(SessionPolicy.is_active.is_(True))
+            select(SessionPolicy).where(SessionPolicy.is_active.is_(True)),
         )
         policies = list(policies_result.scalars().all())
 

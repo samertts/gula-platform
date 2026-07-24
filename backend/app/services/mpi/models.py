@@ -80,7 +80,7 @@ class Citizen(Base):
 
     # Lifecycle
     merged_into_id = Column(
-        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True
+        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True,
     )
     status = Column(String(20), nullable=False, default="active")
     version = Column(Integer, nullable=False, default=1)
@@ -131,7 +131,7 @@ class IdentityClaim(Base):
     citizen_id = Column(BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
     local_patient_id = Column(
-        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False,
     )
 
     match_method = Column(String(20), nullable=False)
@@ -140,7 +140,7 @@ class IdentityClaim(Base):
     match_features = Column(JSON, nullable=True)  # per-feature contributions for audit
 
     claimed_by_user_id = Column(
-        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True,
     )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
@@ -167,10 +167,10 @@ class MergeAudit(Base):
     # 'auto_merge' | 'manual_merge' | 'split' | 'reassign' | 'create'
 
     primary_citizen_id = Column(
-        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False
+        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False,
     )
     secondary_citizen_id = Column(
-        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True
+        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True,
     )
 
     match_score = Column(Numeric(4, 3), nullable=True)
@@ -178,7 +178,7 @@ class MergeAudit(Base):
     decision_reason = Column(String(500), nullable=True)
 
     decided_by_user_id = Column(
-        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True,
     )
     occurred_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 

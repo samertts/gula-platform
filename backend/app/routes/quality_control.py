@@ -35,7 +35,8 @@ class QCBatchSubmit(BaseModel):
 
 def evaluate_westgard(measured: float, expected: float, sd: float) -> dict:
     """Apply Westgard multi-rules for QC evaluation (single-rule only).
-    Returns status (pass/warning/fail) and violation type."""
+    Returns status (pass/warning/fail) and violation type.
+    """
     if sd is None or sd <= 0:
         deviation_pct = abs(measured - expected) / expected * 100 if expected != 0 else 0
         if deviation_pct > 15:
@@ -67,7 +68,8 @@ def evaluate_westgard_full(
     lot_number: str | None = None,
 ) -> dict:
     """Apply ALL Westgard multi-rules using historical QC data.
-    Rules: 1-3s, 1-2s, 2-2s, R-4s, 4-1s, 10-x."""
+    Rules: 1-3s, 1-2s, 2-2s, R-4s, 4-1s, 10-x.
+    """
     if sd is None or sd <= 0:
         return evaluate_westgard(measured, expected, sd)
 
@@ -307,7 +309,7 @@ def qc_summary(
                 else "review"
                 if pass_rate >= 80
                 else "critical",
-            }
+            },
         )
 
     return {

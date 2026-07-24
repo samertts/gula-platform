@@ -7,6 +7,7 @@ from datetime import datetime
 @dataclass
 class ReportExportedEvent:
     """ReportExported event for reporting_service capability."""
+
     event_id: str = ""
     occurred_at: datetime = field(default_factory=datetime.utcnow)
     data: dict = field(default_factory=dict)

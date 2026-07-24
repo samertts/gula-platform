@@ -302,7 +302,7 @@ class WorkforceGovernanceService:
             record.lab_rank = other_lab + 1
 
     def get_productivity(
-        self, worker_id: int, period: ProductivityPeriod | None = None, limit: int = 12
+        self, worker_id: int, period: ProductivityPeriod | None = None, limit: int = 12,
     ) -> list[ProductivityRecord]:
         q = (
             self.db.query(ProductivityRecord)
@@ -313,7 +313,7 @@ class WorkforceGovernanceService:
         return q.order_by(ProductivityRecord.period_start.desc()).limit(limit).all()
 
     def get_national_ranking(
-        self, period: ProductivityPeriod, period_start: date, period_end: date, limit: int = 100
+        self, period: ProductivityPeriod, period_start: date, period_end: date, limit: int = 100,
     ) -> list[ProductivityRecord]:
         return (
             self.db.query(ProductivityRecord)
@@ -336,7 +336,7 @@ class WorkforceGovernanceService:
             ProfessionalLicense.status == LicenseStatus.ACTIVE,
         ).count()
         trainings = self.db.query(TrainingRecord).filter(
-            TrainingRecord.worker_id == worker_id, TrainingRecord.completed.is_(True)
+            TrainingRecord.worker_id == worker_id, TrainingRecord.completed.is_(True),
         ).count()
         latest_productivity = (
             self.db.query(ProductivityRecord)

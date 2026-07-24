@@ -4,9 +4,8 @@ import hashlib
 import json
 import uuid
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
@@ -18,7 +17,7 @@ class AuditService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def _get_last_entry_hash(self) -> Optional[str]:
+    async def _get_last_entry_hash(self) -> str | None:
         stmt = (
             select(IdentityAuditEntry.entry_hash)
             .where(IdentityAuditEntry.entry_hash.isnot(None))
@@ -33,13 +32,13 @@ class AuditService:
         entry_id: str,
         uuid_str: str,
         action: str,
-        actor_id: Optional[str],
-        target_type: Optional[str],
-        target_id: Optional[str],
+        actor_id: str | None,
+        target_type: str | None,
+        target_id: str | None,
         occurred_at: str,
         outcome: str,
-        previous_hash: Optional[str],
-        organization_id: Optional[str] = None,
+        previous_hash: str | None,
+        organization_id: str | None = None,
     ) -> str:
         content = {
             "id": entry_id,
@@ -59,19 +58,19 @@ class AuditService:
     async def record(
         self,
         action: AuditAction,
-        actor_id: Optional[str] = None,
-        actor_type: Optional[str] = None,
-        target_type: Optional[str] = None,
-        target_id: Optional[str] = None,
-        changes: Optional[dict] = None,
-        metadata: Optional[dict] = None,
-        context: Optional[dict] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        session_id: Optional[str] = None,
-        organization_id: Optional[str] = None,
+        actor_id: str | None = None,
+        actor_type: str | None = None,
+        target_type: str | None = None,
+        target_id: str | None = None,
+        changes: dict | None = None,
+        metadata: dict | None = None,
+        context: dict | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        session_id: str | None = None,
+        organization_id: str | None = None,
         outcome: str = "success",
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ) -> IdentityAuditEntry:
         entry_id = str(uuid.uuid4()).replace("-", "").upper()[:26]
         uuid_str = str(uuid.uuid4())
@@ -118,11 +117,11 @@ class AuditService:
     async def record_event(
         self,
         action: str,
-        actor_id: Optional[str] = None,
-        target_type: Optional[str] = None,
-        target_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
-        organization_id: Optional[str] = None,
+        actor_id: str | None = None,
+        target_type: str | None = None,
+        target_id: str | None = None,
+        metadata: dict | None = None,
+        organization_id: str | None = None,
         outcome: str = "success",
     ) -> IdentityAuditEntry:
         entry_id = str(uuid.uuid4()).replace("-", "").upper()[:26]

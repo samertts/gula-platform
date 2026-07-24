@@ -32,7 +32,7 @@ class VersionedConfiguration:
                 version=self._current_version,
                 config=dict(config),
                 comment=comment,
-            )
+            ),
         )
         return self._current_version
 

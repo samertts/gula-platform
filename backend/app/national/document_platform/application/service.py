@@ -159,7 +159,7 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
             raise DocumentStateTransitionError(
-                document_id, document.status.value, "update"
+                document_id, document.status.value, "update",
             )
 
         changes: dict[str, Any] = {}
@@ -203,7 +203,7 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
             raise DocumentStateTransitionError(
-                document_id, document.status.value, "create_version"
+                document_id, document.status.value, "create_version",
             )
 
         existing_versions = await self.version_repository.list(document_id, limit=1000)
@@ -254,7 +254,7 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
             raise DocumentStateTransitionError(
-                document_id, document.status.value, "sign"
+                document_id, document.status.value, "sign",
             )
 
         existing_signatures = await self.signature_repository.list(document_id, limit=1000)
@@ -465,7 +465,7 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
             raise DocumentStateTransitionError(
-                document_id, document.status.value, "add_attachment"
+                document_id, document.status.value, "add_attachment",
             )
 
         attachment = DocumentAttachment(
@@ -496,7 +496,7 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status == DocumentStatus.ARCHIVED:
             raise DocumentStateTransitionError(
-                document_id, document.status.value, DocumentStatus.ARCHIVED.value
+                document_id, document.status.value, DocumentStatus.ARCHIVED.value,
             )
 
         document.status = DocumentStatus.ARCHIVED
@@ -520,7 +520,7 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status == DocumentStatus.DELETED:
             raise DocumentStateTransitionError(
-                document_id, document.status.value, DocumentStatus.DELETED.value
+                document_id, document.status.value, DocumentStatus.DELETED.value,
             )
 
         document.status = DocumentStatus.DELETED
@@ -608,7 +608,7 @@ class DocumentPlatformService:
                 "timestamp": document.created_at.isoformat() if document.created_at else "",
                 "by": document.created_by,
                 "details": {"filename": document.filename, "category": document.category.value},
-            }
+            },
         ]
 
         for v in versions:

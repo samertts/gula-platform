@@ -130,7 +130,7 @@ class PaymentConnector(BaseConnector):
             return {"success": False, "error": "transaction_id required"}
         try:
             resp = await self._client.get(
-                urljoin(self._base_url, f"/api/payments/{transaction_id}/verify")
+                urljoin(self._base_url, f"/api/payments/{transaction_id}/verify"),
             )
             if resp.is_success:
                 return {"success": True, "verification": resp.json()}

@@ -1,5 +1,4 @@
-"""
-Session management helpers for GULA Platform.
+"""Session management helpers for GULA Platform.
 
 bump_perm_version() is the single authoritative place that:
   1. Increments perm_version in the database.
@@ -41,8 +40,7 @@ def bump_perm_version(
     actor_role: str | None = None,
     reason: str = "permission_change",
 ) -> int:
-    """
-    Increment user.perm_version, sync to Redis, and write an audit log.
+    """Increment user.perm_version, sync to Redis, and write an audit log.
 
     Returns the new perm_version value.
     """
@@ -77,8 +75,7 @@ def bump_perm_version(
 
 
 def warm_perm_version(user: LabUser) -> None:
-    """
-    Write the current perm_version to Redis if not already there.
+    """Write the current perm_version to Redis if not already there.
     Called on login so the fast path in get_current_user always hits Redis.
     """
     key = perm_ver_key(user.id)
@@ -88,8 +85,7 @@ def warm_perm_version(user: LabUser) -> None:
 
 
 def get_perm_version(user_id: int, db_version: int) -> int:
-    """
-    Return the authoritative perm_version for a user.
+    """Return the authoritative perm_version for a user.
     Reads from Redis (fast); falls back to the DB value passed in.
     """
     cached = cache.get(perm_ver_key(user_id))

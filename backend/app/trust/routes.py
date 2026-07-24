@@ -72,7 +72,7 @@ def create_consent(
         purpose = ConsentPurpose(request.purpose)
         categories = [DataCategory(c) for c in request.data_categories]
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid purpose or category: {e}") from e
+        raise HTTPException(status_code=400, detail="Invalid request") from e
 
     record = service.create_consent(
         patient_id=request.patient_id,
@@ -107,7 +107,7 @@ def verify_consent(
         purpose_enum = ConsentPurpose(purpose)
         category_enum = DataCategory(data_category) if data_category else None
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid purpose or category: {e}") from e
+        raise HTTPException(status_code=400, detail="Invalid request") from e
 
     lab_id = current_user.get("lab_id", 0)
     granted = service.verify_consent(patient_id, lab_id, purpose_enum, category_enum)
@@ -181,7 +181,7 @@ def get_sovereignty_rules(
                 "data_residency": r.data_residency,
             }
             for r in rules
-        ]
+        ],
     }
 
 
@@ -196,7 +196,7 @@ def validate_cross_border(
     try:
         category = DataCategory(data_category)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid data category: {e}") from e
+        raise HTTPException(status_code=400, detail="Invalid request") from e
     allowed = service.validate_cross_border(category, destination)
     return {"allowed": allowed, "data_category": data_category, "destination": destination}
 

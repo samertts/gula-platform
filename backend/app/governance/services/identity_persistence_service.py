@@ -68,7 +68,7 @@ class PersistedIdentityGovernanceService:
                     "issuing_authority": "Iraq Ministry of Interior",
                     "issuing_country": "IQ",
                     "verification_status": "unverified",
-                }
+                },
             },
             history_json=[{
                 "action": "citizen_registered",
@@ -125,7 +125,7 @@ class PersistedIdentityGovernanceService:
                 "issuing_authority": country_of_origin,
                 "issuing_country": country_of_origin,
                 "verification_status": "unverified",
-            }
+            },
         }
         if visa_number:
             documents["visa"] = {
@@ -176,7 +176,7 @@ class PersistedIdentityGovernanceService:
             raise ValueError(f"Identity not found: {health_number}")
         if expected_version is not None and record.version != expected_version:
             raise OptimisticLockError(
-                f"GovernanceIdentityRecord {record.id} version {record.version} != expected {expected_version}"
+                f"GovernanceIdentityRecord {record.id} version {record.version} != expected {expected_version}",
             )
         docs = record.documents_json or {}
         docs[doc_type] = {
@@ -201,7 +201,7 @@ class PersistedIdentityGovernanceService:
             raise ValueError(f"Identity not found: {health_number}")
         if expected_version is not None and record.version != expected_version:
             raise OptimisticLockError(
-                f"GovernanceIdentityRecord {record.id} version {record.version} != expected {expected_version}"
+                f"GovernanceIdentityRecord {record.id} version {record.version} != expected {expected_version}",
             )
         docs = record.documents_json or {}
         if doc_type not in docs:

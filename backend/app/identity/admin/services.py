@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,7 +55,7 @@ class EnterprisePortalService:
         await self.session.flush()
         return portal
 
-    async def get_portal(self, portal_id: str) -> Optional[EnterprisePortal]:
+    async def get_portal(self, portal_id: str) -> EnterprisePortal | None:
         stmt = select(EnterprisePortal).where(
             EnterprisePortal.portal_id == portal_id,
             EnterprisePortal.is_active.is_(True),
@@ -234,7 +234,7 @@ class EnterprisePortalService:
         await self.session.flush()
         return sub
 
-    async def get_subscription(self, org_id: str) -> Optional[PortalSubscription]:
+    async def get_subscription(self, org_id: str) -> PortalSubscription | None:
         stmt = (
             select(PortalSubscription)
             .where(
@@ -245,7 +245,7 @@ class EnterprisePortalService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def update_subscription(self, sub_id: str, **kwargs: Any) -> Optional[PortalSubscription]:
+    async def update_subscription(self, sub_id: str, **kwargs: Any) -> PortalSubscription | None:
         stmt = select(PortalSubscription).where(
             PortalSubscription.sub_id == sub_id,
             PortalSubscription.is_active.is_(True),

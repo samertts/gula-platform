@@ -19,7 +19,7 @@ class WebSocketConnector:
     def __init__(self, spec: ConnectorSpec):
         if spec.connector_type != ConnectorType.WEBSOCKET:
             raise ValueError(
-                f"WebSocketConnector requires type WEBSOCKET, got {spec.connector_type.name}"
+                f"WebSocketConnector requires type WEBSOCKET, got {spec.connector_type.name}",
             )
         self.spec = spec
         self._ws = None

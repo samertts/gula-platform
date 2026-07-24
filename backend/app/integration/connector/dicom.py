@@ -16,7 +16,7 @@ class DICOMConnector:
     def __init__(self, spec: ConnectorSpec):
         if spec.connector_type != ConnectorType.DICOM:
             raise ValueError(
-                f"DICOMConnector requires type DICOM, got {spec.connector_type.name}"
+                f"DICOMConnector requires type DICOM, got {spec.connector_type.name}",
             )
         self.spec = spec
         self._connected = False

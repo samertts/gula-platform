@@ -73,7 +73,7 @@ def _encounter_ref(encounter_id: str | None) -> dict | None:
 
 
 def _codeable_concept(
-    code: str | None, display: str | None, system: str | None = None
+    code: str | None, display: str | None, system: str | None = None,
 ) -> dict | None:
     if not code and not display:
         return None
@@ -131,7 +131,7 @@ def fhir_read_patient(
                     "line": [patient.address_line] if patient.address_line else [],
                     "city": patient.district or "",
                     "state": patient.governorate or "",
-                }
+                },
             ]
             if any([patient.address_line, patient.governorate])
             else []
@@ -160,7 +160,7 @@ def fhir_read_encounter(
     if not encounter:
         raise HTTPException(status_code=404, detail="Encounter not found")
     ehr_service.get_national_patient_or_404(
-        db, encounter.patient_id, current_user.lab_id
+        db, encounter.patient_id, current_user.lab_id,
     )
     return {
         "resourceType": "Encounter",
@@ -175,7 +175,7 @@ def fhir_read_encounter(
             [
                 {
                     "individual": _practitioner_ref(encounter.practitioner_id),
-                }
+                },
             ]
             if encounter.practitioner_id
             else []
@@ -195,8 +195,8 @@ def fhir_read_encounter(
                     "condition": {
                         "reference": f"Condition?encounter={encounter_id}",
                         "display": encounter.diagnosis_description,
-                    }
-                }
+                    },
+                },
             ]
             if encounter.diagnosis_description
             else []
@@ -243,7 +243,7 @@ def _condition_to_fhir_condition(rec: ConditionRecord) -> dict:
         "resourceType": "Condition",
         "id": rec.id,
         "clinicalStatus": _codeable_concept(
-            rec.clinical_status, rec.clinical_status, "http://terminology.hl7.org/CodeSystem/condition-clinical"
+            rec.clinical_status, rec.clinical_status, "http://terminology.hl7.org/CodeSystem/condition-clinical",
         ),
         "verificationStatus": _codeable_concept(
             rec.verification_status,
@@ -378,7 +378,7 @@ def _lab_result_to_observation(result: LabResult, order: LabOrder) -> dict:
         obs["referenceRange"] = [ref]
     if result.flag:
         obs["interpretation"] = [
-            _codeable_concept(result.flag, result.flag, "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation")
+            _codeable_concept(result.flag, result.flag, "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"),
         ]
     obs["meta"] = {
         "versionId": "1",
@@ -422,7 +422,7 @@ def fhir_search_observation(
                 {
                     "resource": _lab_result_to_observation(r, order),
                     "fullUrl": f"Observation/{r.id}",
-                }
+                },
             )
     bundle["entry"] = entries
     bundle["total"] = len(entries)
@@ -452,7 +452,7 @@ def _medication_request_to_fhir(rec: MedicationRequest) -> dict:
         "status": rec.status.value if hasattr(rec.status, "value") else rec.status,
         "intent": rec.intent,
         "medicationCodeableConcept": _codeable_concept(
-            rec.medication_code, rec.medication_name, rec.medication_code_system
+            rec.medication_code, rec.medication_name, rec.medication_code_system,
         )
         or {"text": rec.medication_name},
         "subject": _patient_ref(rec.patient_id),
@@ -470,13 +470,13 @@ def _medication_request_to_fhir(rec: MedicationRequest) -> dict:
                                 "doseQuantity": {
                                     "value": rec.quantity,
                                     "unit": rec.quantity_unit or "",
-                                }
-                            }
+                                },
+                            },
                         ]
                         if rec.quantity
                         else []
                     ),
-                }
+                },
             ]
             if rec.dosage_instruction
             else []
@@ -547,7 +547,7 @@ def _medication_statement_to_fhir(rec: MedicationStatement) -> dict:
         "id": rec.id,
         "status": rec.status or "unknown",
         "medicationCodeableConcept": _codeable_concept(
-            rec.medication_code, rec.medication_name, rec.medication_code_system
+            rec.medication_code, rec.medication_name, rec.medication_code_system,
         )
         or {"text": rec.medication_name},
         "subject": _patient_ref(rec.patient_id),
@@ -566,13 +566,13 @@ def _medication_statement_to_fhir(rec: MedicationStatement) -> dict:
                                 "doseQuantity": {
                                     "value": rec.strength_value,
                                     "unit": rec.strength_unit or "",
-                                }
-                            }
+                                },
+                            },
                         ]
                         if rec.strength_value
                         else []
                     ),
-                }
+                },
             ]
             if rec.dosage_text
             else []
@@ -632,7 +632,7 @@ def _care_plan_to_fhir(db: Session, rec: CarePlan) -> dict:
                         "start": _fmt_fhir_date(a.scheduled_start),
                         "end": _fmt_fhir_date(a.scheduled_end),
                     },
-                }
+                },
             }
             for a in ehr_service.get_care_plan_activities(db, plan_id=rec.id)
         ],
@@ -758,7 +758,7 @@ def _allergy_to_fhir(rec: AllergyIntolerance) -> dict:
                 {
                     "manifestation": [{"text": rec.reaction}],
                     "severity": rec.severity.value if hasattr(rec.severity, "value") else rec.severity,
-                }
+                },
             ]
             if rec.reaction
             else []
@@ -819,7 +819,7 @@ def _immunization_to_fhir(rec: ImmunizationRecord) -> dict:
         "id": rec.id,
         "status": rec.status or "completed",
         "vaccineCode": _codeable_concept(
-            rec.vaccine_code, rec.vaccine_name, rec.vaccine_code_system
+            rec.vaccine_code, rec.vaccine_name, rec.vaccine_code_system,
         )
         or {"text": rec.vaccine_name},
         "patient": _patient_ref(rec.patient_id),
@@ -844,7 +844,7 @@ def _immunization_to_fhir(rec: ImmunizationRecord) -> dict:
                 {
                     "function": _codeable_concept("AP", "Administering Provider"),
                     "actor": _practitioner_ref(rec.administrator_id),
-                }
+                },
             ]
             if rec.administrator_id
             else []
@@ -854,7 +854,7 @@ def _immunization_to_fhir(rec: ImmunizationRecord) -> dict:
                 {
                     "doseNumberPositiveInt": rec.dose_number,
                     "seriesDosesPositiveInt": rec.total_doses,
-                }
+                },
             ]
             if rec.dose_number
             else []
@@ -928,8 +928,8 @@ def _attachment_to_document_reference(rec: ClinicalAttachment) -> dict:
                     "size": rec.file_size_bytes,
                     "hash": rec.content_hash,
                     "title": rec.file_name,
-                }
-            }
+                },
+            },
         ],
         "context": {
             "period": {
@@ -1012,7 +1012,7 @@ def _clinical_note_to_composition(rec: ClinicalNote) -> dict:
                     "mode": "legal",
                     "time": _fmt_fhir_datetime(rec.signed_at),
                     "party": _practitioner_ref(rec.signed_by),
-                }
+                },
             ]
             if rec.is_signed
             else []
@@ -1028,7 +1028,7 @@ def _clinical_note_to_composition(rec: ClinicalNote) -> dict:
                     "status": "additional",
                     "div": f'<div xmlns="http://www.w3.org/1999/xhtml">{section_text}</div>',
                 },
-            }
+            },
         ],
         "meta": {
             "versionId": str(rec.version),

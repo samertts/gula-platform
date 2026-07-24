@@ -77,7 +77,7 @@ class EMSService:
         return self._incident_from_model(model)
 
     def list_incidents(
-        self, status: str | None = None, category: str | None = None, skip: int = 0, limit: int = 100
+        self, status: str | None = None, category: str | None = None, skip: int = 0, limit: int = 100,
     ) -> list[EmergencyIncident]:
         query = self.db.query(EmergencyIncidentModel).filter(EmergencyIncidentModel.is_deleted.isnot(True))
         if status:
@@ -322,15 +322,15 @@ class EMSService:
 
     def get_dashboard_stats(self) -> dict[str, Any]:
         active_incidents = self.db.query(EmergencyIncidentModel).filter(
-            EmergencyIncidentModel.status.in_(["pending", "dispatched", "en_route", "on_scene", "transporting"])
+            EmergencyIncidentModel.status.in_(["pending", "dispatched", "en_route", "on_scene", "transporting"]),
         ).count()
         available_ambulances = self.db.query(AmbulanceModel).filter_by(status="available", vehicle_status="active").count()
         on_duty_crew = self.db.query(AmbulanceCrewModel).filter_by(is_available=True, is_active=True).count()
         total_disasters = self.db.query(DisasterEventModel).filter(
-            DisasterEventModel.phase.in_(["response", "recovery"])
+            DisasterEventModel.phase.in_(["response", "recovery"]),
         ).count()
         total_today = self.db.query(EmergencyIncidentModel).filter(
-            EmergencyIncidentModel.created_at >= datetime.now(UTC).replace(hour=0, minute=0, second=0)
+            EmergencyIncidentModel.created_at >= datetime.now(UTC).replace(hour=0, minute=0, second=0),
         ).count()
         return {
             "active_incidents": active_incidents,

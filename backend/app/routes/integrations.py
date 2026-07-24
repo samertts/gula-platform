@@ -115,7 +115,7 @@ def integrations_probe(
     try:
         result = _PROBES[name]()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"probe failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail="Probe failed") from exc
 
     # Result is ExternalDataResult — reduce to safe dict
     return {

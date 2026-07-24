@@ -110,7 +110,7 @@ class KnowledgeGraph:
         return None
 
     def get_neighbors(
-        self, node_id: int, relationship: str | None = None, max_depth: int = 1, limit: int = 50
+        self, node_id: int, relationship: str | None = None, max_depth: int = 1, limit: int = 50,
     ) -> list[tuple[KnowledgeNode, str, float]]:
         if max_depth == 1:
             neighbors: list[tuple[KnowledgeNode, str, float]] = []

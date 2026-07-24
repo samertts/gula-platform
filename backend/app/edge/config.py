@@ -78,7 +78,7 @@ ALLOWED_TASK_KINDS: frozenset[str] = frozenset(
         # Diagnostics
         "diag.ping",
         "diag.benchmark",
-    }
+    },
 )
 
 

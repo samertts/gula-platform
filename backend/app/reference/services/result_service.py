@@ -70,7 +70,7 @@ class ResultService:
         for result in results:
             try:
                 validated = await self._validation.validate_result(
-                    result, self._order_repo
+                    result, self._order_repo,
                 )
                 self._validation.flag_critical(validated)
                 saved_result = await self._repository.save(validated)
@@ -80,7 +80,7 @@ class ResultService:
                             analyte=validated.analyte,
                             value=f"{validated.value}",
                             unit=validated.unit,
-                        )
+                        ),
                     )
                 saved.append(saved_result)
             except CriticalResultError as e:

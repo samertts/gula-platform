@@ -352,10 +352,34 @@ resource "aws_security_group" "app" {
   }
 
   egress {
-    description = "All outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "Database traffic"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = var.vpc_cidr != null ? [var.vpc_cidr] : []
+  }
+
+  egress {
+    description = "Cache traffic"
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = var.vpc_cidr != null ? [var.vpc_cidr] : []
+  }
+
+  egress {
+    description = "RabbitMQ traffic"
+    from_port   = 5672
+    to_port     = 5672
+    protocol    = "tcp"
+    cidr_blocks = var.vpc_cidr != null ? [var.vpc_cidr] : []
+  }
+
+  egress {
+    description = "HTTPS to internet"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 

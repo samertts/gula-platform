@@ -1,5 +1,4 @@
-"""
-Audit logging service — canonical shared.audit with backend-specific extensions.
+"""Audit logging service — canonical shared.audit with backend-specific extensions.
 
 Hash-chained audit log for tamper detection (ISO 27001 A.8.15).
 Each entry's chain_hash = SHA-256(previous_chain_hash + this_record_data).
@@ -89,7 +88,7 @@ def _compute_chain_hash(prev_hash: str, entry: AuditLog) -> str:
 
 def _get_last_chain_hash(db: Session) -> str:
     result = db.execute(
-        text("SELECT chain_hash FROM audit_logs ORDER BY id DESC LIMIT 1")
+        text("SELECT chain_hash FROM audit_logs ORDER BY id DESC LIMIT 1"),
     ).fetchone()
     if result and result[0]:
         return result[0]
@@ -117,7 +116,7 @@ def get_latest_anchor() -> dict | None:
         all_lines: list[str] = []
         for f_path in files:
             with open(f_path, encoding="utf-8") as f:
-                chunk = [line.strip() for line in f.readlines() if line.strip()]
+                chunk = [line.strip() for line in f if line.strip()]
             all_lines = chunk + all_lines
 
         if not all_lines:
@@ -176,7 +175,8 @@ def log_action(
     ip_address: str | None = None,
 ):
     """Log an action to the tamper-evident audit trail. Delegates chain hash
-    computation to shared.audit while maintaining backend anchor files."""
+    computation to shared.audit while maintaining backend anchor files.
+    """
     entry = AuditLog(
         user_id=user_id,
         user_role=user_role,
@@ -220,7 +220,7 @@ def verify_audit_chain(db: Session, limit: int = 1000) -> dict:
                     "created_at": entry.created_at.isoformat() if entry.created_at else None,
                     "stored_hash": entry.chain_hash,
                     "expected_hash": expected,
-                }
+                },
             )
         prev_hash = entry.chain_hash
 

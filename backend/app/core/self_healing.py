@@ -247,7 +247,7 @@ class SystemHealth:
         elif redis_open:
             # DB alive but Redis down → cache unavailable → L1 (writes still pass)
             self.enter_degraded_mode(
-                "Redis circuit open — cache unavailable", DegradationLevel.L1_CACHE_HEAVY
+                "Redis circuit open — cache unavailable", DegradationLevel.L1_CACHE_HEAVY,
             )
         else:
             # All circuits closed — this means the RecoveryWorker confirmed that
@@ -317,7 +317,7 @@ _ALWAYS_ALLOWED: frozenset[str] = frozenset(
         "/health",
         "/health/ready",
         "/health/live",
-    }
+    },
 )
 
 # Paths allowed even in L3_CRITICAL_ONLY — the minimum viable platform surface
@@ -331,7 +331,7 @@ _CRITICAL_PATHS: frozenset[str] = frozenset(
         "/auth/refresh",
         "/admin/kill-switch/deactivate",  # operator must always be able to recover
         "/metrics/prom",  # Prometheus scraping must continue
-    }
+    },
 )
 
 # HTTP methods that are safe in L2 read-only mode

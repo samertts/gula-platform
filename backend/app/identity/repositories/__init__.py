@@ -1,19 +1,19 @@
-from .person_repository import PersonRepository
+from .account_repository import AccountRepository
+from .assignment_repository import AssignmentRepository
+from .device_repository import DeviceRepository
+from .employment_repository import EmploymentRepository
 from .identity_repository import IdentityRepository
 from .organization_repository import OrganizationRepository
-from .account_repository import AccountRepository
-from .employment_repository import EmploymentRepository
-from .assignment_repository import AssignmentRepository
+from .person_repository import PersonRepository
 from .session_repository import SessionRepository
-from .device_repository import DeviceRepository
 
 __all__ = [
-    "PersonRepository",
+    "AccountRepository",
+    "AssignmentRepository",
+    "DeviceRepository",
+    "EmploymentRepository",
     "IdentityRepository",
     "OrganizationRepository",
-    "AccountRepository",
-    "EmploymentRepository",
-    "AssignmentRepository",
+    "PersonRepository",
     "SessionRepository",
-    "DeviceRepository",
 ]

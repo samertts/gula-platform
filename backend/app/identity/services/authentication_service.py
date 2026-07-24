@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +11,7 @@ from app.identity.models.session import UserSession
 from app.identity.repositories.account_repository import AccountRepository
 from app.identity.repositories.session_repository import SessionRepository
 from app.identity.services.account_service import AccountService
+
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
@@ -28,12 +28,12 @@ class AuthenticationService:
         self,
         login: str,
         password: str,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        device_id: Optional[str] = None,
-        location_city: Optional[str] = None,
-        location_country: Optional[str] = None,
-    ) -> Optional[dict]:
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_id: str | None = None,
+        location_city: str | None = None,
+        location_country: str | None = None,
+    ) -> dict | None:
         account = await self.account_service.authenticate(login, password)
         if not account:
             return None
@@ -51,27 +51,27 @@ class AuthenticationService:
     async def _create_session(
         self,
         account: Account,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        device_id: Optional[str] = None,
-        location_city: Optional[str] = None,
-        location_country: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_id: str | None = None,
+        location_city: str | None = None,
+        location_country: str | None = None,
     ) -> dict:
         access_jti = str(uuid.uuid4())
         refresh_jti = str(uuid.uuid4())
 
-        from app.security.auth import create_token, create_refresh_token
+        from app.security.auth import create_refresh_token, create_token
 
         access_token = create_token(
             {
                 "jti": access_jti,
                 "account_uuid": account.uuid,
                 "identity_id": account.identity_id,
-            }
+            },
         )
 
         refresh_token = create_refresh_token(
-            {"jti": refresh_jti, "account_uuid": account.uuid}
+            {"jti": refresh_jti, "account_uuid": account.uuid},
         )
 
         session = UserSession(
@@ -103,7 +103,7 @@ class AuthenticationService:
             "account_uuid": account.uuid,
         }
 
-    async def refresh_session(self, refresh_token_jti: str) -> Optional[dict]:
+    async def refresh_session(self, refresh_token_jti: str) -> dict | None:
         session = await self.session_repo.find_by_token_jti(refresh_token_jti)
         if not session or not session.is_active or session.expires_at < datetime.now(UTC):
             return None

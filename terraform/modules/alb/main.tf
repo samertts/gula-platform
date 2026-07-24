@@ -30,11 +30,19 @@ resource "aws_security_group" "this" {
   }
 
   egress {
-    description = "All traffic to VPC"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "HTTPS to internet"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Traffic to target group"
+    from_port   = var.target_group_port
+    to_port     = var.target_group_port
+    protocol    = "tcp"
+    cidr_blocks = var.vpc_cidr_blocks
   }
 
   tags = merge(var.tags, {

@@ -107,7 +107,7 @@ FHIR_PROFILES = {
                     "type": [{"code": "Extension"}],
                     "definition": "Tenant lab ID for multi-tenant isolation",
                 },
-            ]
+            ],
         },
     },
     "Observation": {
@@ -213,7 +213,7 @@ FHIR_PROFILES = {
                     "type": [{"code": "Extension"}],
                     "definition": "Version of clinical engine that evaluated this result",
                 },
-            ]
+            ],
         },
     },
     "DiagnosticReport": {
@@ -269,7 +269,7 @@ FHIR_PROFILES = {
                     "type": [{"code": "Extension"}],
                     "definition": "Internal lab order ID",
                 },
-            ]
+            ],
         },
     },
     "ServiceRequest": {
@@ -322,7 +322,7 @@ FHIR_PROFILES = {
                     "path": "ServiceRequest.quantityQuantity",
                     "definition": "Number of samples or tests requested",
                 },
-            ]
+            ],
         },
     },
     "Organization": {
@@ -368,7 +368,7 @@ FHIR_PROFILES = {
                     "path": "Organization.type",
                     "definition": "prov | dept | govt | insurance | edu | other",
                 },
-            ]
+            ],
         },
     },
     "Location": {
@@ -404,7 +404,7 @@ FHIR_PROFILES = {
                     "path": "Location.physicalType",
                     "definition": "si | bu | wi | ro | area | bd | ve | ho | ca | rd",
                 },
-            ]
+            ],
         },
     },
     "Practitioner": {
@@ -463,7 +463,7 @@ FHIR_PROFILES = {
                     "type": [{"code": "Extension"}],
                     "definition": "Tenant lab ID",
                 },
-            ]
+            ],
         },
     },
     "Encounter": {
@@ -520,7 +520,7 @@ FHIR_PROFILES = {
                     "path": "Encounter.diagnosis",
                     "definition": "Clinical diagnoses associated with this encounter",
                 },
-            ]
+            ],
         },
     },
     "Specimen": {
@@ -577,7 +577,7 @@ FHIR_PROFILES = {
                     "path": "Specimen.note",
                     "definition": "Rejection reason or processing notes",
                 },
-            ]
+            ],
         },
     },
 }
@@ -635,9 +635,9 @@ def get_capability_statement() -> dict:
                                 {
                                     "system": "http://terminology.hl7.org/CodeSystem/restful-security-service",
                                     "code": "Bearer",
-                                }
-                            ]
-                        }
+                                },
+                            ],
+                        },
                     ],
                 },
                 "resource": [
@@ -753,6 +753,6 @@ def get_capability_statement() -> dict:
                         ],
                     },
                 ],
-            }
+            },
         ],
     }

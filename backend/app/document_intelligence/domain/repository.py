@@ -73,7 +73,7 @@ class DocumentRepository(ABC):
 
     @abstractmethod
     async def update_status(
-        self, document_id: UUID, status: DocumentStatus, error: str = ""
+        self, document_id: UUID, status: DocumentStatus, error: str = "",
     ) -> None:
         ...
 
@@ -83,13 +83,13 @@ class DocumentRepository(ABC):
 
     @abstractmethod
     async def find_duplicates(
-        self, checksum: str, tenant_id: UUID | None = None
+        self, checksum: str, tenant_id: UUID | None = None,
     ) -> list[ScannedDocument]:
         ...
 
     @abstractmethod
     async def get_pending_processing(
-        self, limit: int = 50, priority: ProcessingPriority | None = None
+        self, limit: int = 50, priority: ProcessingPriority | None = None,
     ) -> list[ScannedDocument]:
         ...
 
@@ -111,7 +111,7 @@ class OcrResultRepository(ABC):
 class EntityRepository(ABC):
     @abstractmethod
     async def save_many(
-        self, document_id: UUID, entities: list[ExtractedEntity]
+        self, document_id: UUID, entities: list[ExtractedEntity],
     ) -> list[ExtractedEntity]:
         ...
 
@@ -121,7 +121,7 @@ class EntityRepository(ABC):
 
     @abstractmethod
     async def search_by_value(
-        self, value: str, tenant_id: UUID | None = None, limit: int = 50
+        self, value: str, tenant_id: UUID | None = None, limit: int = 50,
     ) -> list[ExtractedEntity]:
         ...
 
@@ -129,7 +129,7 @@ class EntityRepository(ABC):
 class FieldRepository(ABC):
     @abstractmethod
     async def save_many(
-        self, document_id: UUID, fields: list[ExtractedField]
+        self, document_id: UUID, fields: list[ExtractedField],
     ) -> list[ExtractedField]:
         ...
 
@@ -141,7 +141,7 @@ class FieldRepository(ABC):
 class TableRepository(ABC):
     @abstractmethod
     async def save_many(
-        self, document_id: UUID, tables: list[ExtractedTable]
+        self, document_id: UUID, tables: list[ExtractedTable],
     ) -> list[ExtractedTable]:
         ...
 
@@ -193,7 +193,7 @@ class GovernmentDocumentRepository(ABC):
 
     @abstractmethod
     async def search(
-        self, query: str, filters: dict[str, Any] | None = None, limit: int = 50
+        self, query: str, filters: dict[str, Any] | None = None, limit: int = 50,
     ) -> list[GovernmentDocument]:
         ...
 
@@ -281,7 +281,7 @@ class GovernanceEventRepository(ABC):
 
     @abstractmethod
     async def list(
-        self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None
+        self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None,
     ) -> list[GovernanceEvent]:
         ...
 
@@ -293,7 +293,7 @@ class DocumentEventRepository(ABC):
 
     @abstractmethod
     async def list(
-        self, document_id: UUID | None = None, channel: EventChannel | None = None
+        self, document_id: UUID | None = None, channel: EventChannel | None = None,
     ) -> list[DocumentEvent]:
         ...
 
@@ -319,7 +319,7 @@ class GraphEdgeRepository(ABC):
 
     @abstractmethod
     async def find_related(
-        self, document_id: UUID, max_depth: int = 3
+        self, document_id: UUID, max_depth: int = 3,
     ) -> list[dict[str, Any]]:
         ...
 
@@ -349,7 +349,7 @@ class AccessControlRepository(ABC):
 class WebhookRepository(ABC):
     @abstractmethod
     async def register(
-        self, url: str, events: list[EventChannel], secret: str | None = None
+        self, url: str, events: list[EventChannel], secret: str | None = None,
     ) -> dict[str, Any]:
         ...
 
@@ -383,7 +383,7 @@ class RetentionRepository(ABC):
 class DocumentVersionRepository(ABC):
     @abstractmethod
     async def save_version(
-        self, document_id: UUID, version: int, storage_path: str, checksum: str, created_by: str
+        self, document_id: UUID, version: int, storage_path: str, checksum: str, created_by: str,
     ) -> None:
         ...
 

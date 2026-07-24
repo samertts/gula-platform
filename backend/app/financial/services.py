@@ -68,7 +68,7 @@ class BillingService:
                 db=db,
                 lab_id=provider.lab_id,
                 subscription_id=sub.id,
-                amount=sub.amount or Decimal("0"),
+                amount=sub.amount or Decimal(0),
                 currency=sub.currency or "IQD",
                 due_date=billing_date + timedelta(days=30),
                 notes=f"Monthly billing — {sub.plan} plan",
@@ -86,7 +86,7 @@ class InvoiceService:
         db: Session,
         lab_id: int,
         subscription_id: int | None = None,
-        amount: Decimal = Decimal("0"),
+        amount: Decimal = Decimal(0),
         currency: str = "IQD",
         due_date: date | None = None,
         notes: str | None = None,
@@ -163,7 +163,7 @@ class InvoiceService:
             "invoice_number": invoice.invoice_number,
             "status": invoice.status,
             "amount": invoice.amount,
-            "paid_amount": invoice.paid_amount or Decimal("0"),
+            "paid_amount": invoice.paid_amount or Decimal(0),
             "currency": invoice.currency,
             "due_date": invoice.due_date,
             "issued_at": invoice.issued_at,
@@ -173,7 +173,7 @@ class InvoiceService:
 
     @staticmethod
     def list_invoices(
-        db: Session, lab_id: int, status: str | None = None, limit: int = 50, offset: int = 0
+        db: Session, lab_id: int, status: str | None = None, limit: int = 50, offset: int = 0,
     ) -> list[dict[str, Any]]:
         q = db.query(FinInvoice).filter(FinInvoice.lab_id == lab_id)
         if status:
@@ -186,7 +186,7 @@ class InvoiceService:
                 "invoice_number": inv.invoice_number,
                 "status": inv.status,
                 "amount": inv.amount,
-                "paid_amount": inv.paid_amount or Decimal("0"),
+                "paid_amount": inv.paid_amount or Decimal(0),
                 "currency": inv.currency,
                 "due_date": inv.due_date,
                 "issued_at": inv.issued_at,
@@ -237,7 +237,7 @@ class PaymentService:
         )
         db.add(payment)
 
-        invoice.paid_amount = (invoice.paid_amount or Decimal("0")) + amount
+        invoice.paid_amount = (invoice.paid_amount or Decimal(0)) + amount
         if invoice.paid_amount >= invoice.amount:
             invoice.status = "paid"
             invoice.paid_at = now
@@ -282,7 +282,7 @@ class PaymentService:
 
     @staticmethod
     def list_payments(
-        db: Session, lab_id: int, limit: int = 50, offset: int = 0
+        db: Session, lab_id: int, limit: int = 50, offset: int = 0,
     ) -> list[dict[str, Any]]:
         q = (
             db.query(FinPayment)
@@ -322,7 +322,7 @@ class ReceivableService:
         today = date.today()
         result = []
         for inv in invoices:
-            outstanding = inv.amount - (inv.paid_amount or Decimal("0"))
+            outstanding = inv.amount - (inv.paid_amount or Decimal(0))
             due = inv.due_date or today
             aging_days = (today - due).days if due < today else 0
             result.append({
@@ -348,9 +348,9 @@ class ReceivableService:
             .all()
         )
         today = date.today()
-        buckets = {"0-30": Decimal("0"), "31-60": Decimal("0"), "61-90": Decimal("0"), "90+": Decimal("0")}
+        buckets = {"0-30": Decimal(0), "31-60": Decimal(0), "61-90": Decimal(0), "90+": Decimal(0)}
         for inv in invoices:
-            outstanding = inv.amount - (inv.paid_amount or Decimal("0"))
+            outstanding = inv.amount - (inv.paid_amount or Decimal(0))
             due = inv.due_date or today
             days = (today - due).days if due < today else 0
             if days <= 30:
@@ -408,7 +408,7 @@ class PricingService:
             )
             .first()
         )
-        base_price = rule.base_price if rule else Decimal("10000")
+        base_price = rule.base_price if rule else Decimal(10000)
         accredited = False
         if quality_score is not None:
             accredited = quality_score >= 0.8
@@ -488,8 +488,8 @@ class FinancialReportService:
             .all()
         )
 
-        total_invoiced = sum((inv.amount or Decimal("0")) for inv in invoices)
-        total_collected = sum((p.amount or Decimal("0")) for p in payments)
+        total_invoiced = sum((inv.amount or Decimal(0)) for inv in invoices)
+        total_collected = sum((p.amount or Decimal(0)) for p in payments)
         total_outstanding = total_invoiced - total_collected
         breakdown: list[dict[str, Any]] = [{"period": f"{date_from} - {date_to}", "invoiced": total_invoiced, "collected": total_collected}]
 

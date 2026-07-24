@@ -68,10 +68,10 @@ class PatientLink(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     patient_id = Column(
-        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False,
     )
     canonical_id = Column(
-        BigInteger, ForeignKey("canonical_patients.id", ondelete="CASCADE"), nullable=False
+        BigInteger, ForeignKey("canonical_patients.id", ondelete="CASCADE"), nullable=False,
     )
     linkage_method = Column(String(30), nullable=False)
     confidence = Column(Float, nullable=True)
@@ -91,10 +91,10 @@ class CitizenLink(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     citizen_id = Column(
-        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False
+        BigInteger, ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False,
     )
     canonical_id = Column(
-        BigInteger, ForeignKey("canonical_patients.id", ondelete="CASCADE"), nullable=False
+        BigInteger, ForeignKey("canonical_patients.id", ondelete="CASCADE"), nullable=False,
     )
     linkage_method = Column(String(30), nullable=False)
     confidence = Column(Float, nullable=True)

@@ -76,7 +76,7 @@ class TesseractProvider(OcrProviderBase):
         ]
 
     async def ocr_image(
-        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english
+        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         if not self._initialized:
             await self.initialize()
@@ -138,7 +138,7 @@ class TesseractProvider(OcrProviderBase):
         return page
 
     async def ocr_image_path(
-        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english
+        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         data = image_path.read_bytes()
         return await self.ocr_image(data, language)

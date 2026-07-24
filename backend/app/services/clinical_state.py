@@ -1,5 +1,4 @@
-"""
-Clinical State Engine — GULA Platform
+"""Clinical State Engine — GULA Platform
 =======================================
 Patient clinical state machine with hard-stop enforcement rules.
 
@@ -156,7 +155,7 @@ def _check_emergency_rules(vals: dict[str, float]) -> list[dict]:
                         "id": rule["id"],
                         "description": rule["description"],
                         "description_ar": rule["description_ar"],
-                    }
+                    },
                 )
         except Exception:
             pass
@@ -222,6 +221,7 @@ def compute_patient_state(
 
     Returns:
         ClinicalStateResult with state, hard-stops, required actions, etc.
+
     """
     overall_sev: str = order_evaluation.get("overall_severity", "NORMAL")
     vals = _values_map(order_evaluation)

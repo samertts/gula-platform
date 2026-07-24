@@ -1,5 +1,4 @@
-"""
-Telegram Notification Gateway — GULA Platform
+"""Telegram Notification Gateway — GULA Platform
 ==============================================
 Delegates to canonical shared.notifications for message sending.
 Maintains the TelegramGateway wrapper for circuit-broken external calls.

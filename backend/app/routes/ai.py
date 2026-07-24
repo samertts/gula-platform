@@ -1,5 +1,4 @@
-"""
-AI Suggestion & Approval Routes — GULA Platform
+"""AI Suggestion & Approval Routes — GULA Platform
 ================================================
 Human-in-the-loop approval workflow for AI suggestions.
 
@@ -119,8 +118,7 @@ def create_suggestion(
     body: SuggestRequest,
     current_user=Depends(get_current_user),
 ):
-    """
-    Create an AI suggestion. DISPLAY_ONLY suggestions are immediately usable.
+    """Create an AI suggestion. DISPLAY_ONLY suggestions are immediately usable.
     SUGGESTION type requires human approval before execution.
     """
     try:
@@ -134,7 +132,7 @@ def create_suggestion(
             entity_id=body.entity_id,
         )
     except AIGuardrailViolationError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=403, detail="Access denied") from exc
 
     approval = approval_store.submit(suggestion)
     return {
@@ -184,7 +182,7 @@ def approve_suggestion(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Approval not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid request") from exc
 
     return {
         "approval_id": approval.id,
@@ -210,7 +208,7 @@ def reject_suggestion(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Approval not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid request") from exc
 
     return {
         "approval_id": approval.id,
@@ -225,8 +223,7 @@ def execute_suggestion(
     approval_id: str,
     current_user=Depends(get_current_user),
 ):
-    """
-    Execute an approved suggestion inside the sandbox.
+    """Execute an approved suggestion inside the sandbox.
     Output is always display-only — never mutates clinical state.
     """
     _require_doctor(current_user)
@@ -242,7 +239,7 @@ def execute_suggestion(
     try:
         result = AISandbox.execute(approval)
     except AIGuardrailViolationError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=403, detail="Access denied") from exc
 
     return {
         "approval_id": result.approval_id,
@@ -260,8 +257,7 @@ def analyze_order(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Run clinical pattern analysis on all results in an order.
+    """Run clinical pattern analysis on all results in an order.
     Creates an AI suggestion with the detected patterns.
     The suggestion is DISPLAY_ONLY — it does not change the order state.
 
@@ -310,7 +306,7 @@ def analyze_order(
             entity_id=order_id,
         )
     except AIGuardrailViolationError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise HTTPException(status_code=403, detail="Access denied") from exc
 
     approval = approval_store.submit(suggestion)
 
@@ -349,8 +345,7 @@ def list_operations():
 
 @router.get("/providers", summary="حالة مزودي الذكاء الاصطناعي")
 async def list_ai_providers():
-    """
-    Return which AI providers are configured and their reachability status.
+    """Return which AI providers are configured and their reachability status.
     Useful for operators to verify the fallback chain before going live.
     """
     statuses = []
@@ -376,7 +371,7 @@ async def list_ai_providers():
             "base_url": _OLLAMA_BASE_URL,
             "available_models": ollama_models,
             "cost": "free (local)",
-        }
+        },
     )
 
     # Gemini — via google_ai gateway (SDK when available, HTTP fallback)
@@ -385,7 +380,7 @@ async def list_ai_providers():
         {
             **_gemini_info,
             "reachable": None,  # not probed (expensive to test)
-        }
+        },
     )
 
     # Groq
@@ -397,7 +392,7 @@ async def list_ai_providers():
             "reachable": None,
             "model": "llama-3.1-8b-instant",
             "cost": "free tier (30 req/min)",
-        }
+        },
     )
 
     active = next(
@@ -600,8 +595,7 @@ def _compute_confidence(
     patient_context: dict | None,
     provider_used: str,
 ) -> dict:
-    """
-    Score 0.0–1.0 based on data completeness and result complexity.
+    """Score 0.0–1.0 based on data completeness and result complexity.
     Returns {"score": float, "level": "high"|"medium"|"low"}.
     """
     score = 1.0
@@ -645,7 +639,7 @@ def _action_guidance(overall_sev: str) -> dict:
 
 
 def _emit_critical_alert(
-    db: Session, order_id: int, critical_tests: list[str], token_prefix: str
+    db: Session, order_id: int, critical_tests: list[str], token_prefix: str,
 ) -> None:
     """Write a critical-result alert to audit_logs. Non-fatal."""
     try:
@@ -664,7 +658,7 @@ def _emit_critical_alert(
                     },
                     ensure_ascii=False,
                 ),
-            )
+            ),
         )
         db.commit()
     except Exception as exc:
@@ -687,7 +681,7 @@ def _build_interpret_prompt(
             ctx_lines.append(f"عمر المريض: {patient_context['age']} سنة")
         if patient_context.get("gender"):
             ctx_lines.append(
-                "الجنس: " + ("ذكر" if str(patient_context["gender"]).upper() == "M" else "أنثى")
+                "الجنس: " + ("ذكر" if str(patient_context["gender"]).upper() == "M" else "أنثى"),
             )
     context_block = ("سياق المريض:\n" + "\n".join(ctx_lines) + "\n\n") if ctx_lines else ""
 
@@ -702,7 +696,7 @@ def _build_interpret_prompt(
             else unit
         )
         result_lines.append(
-            f"[{r['severity']}] {r.get('test_name', '')}: {val} {unit} — {range_str}"
+            f"[{r['severity']}] {r.get('test_name', '')}: {val} {unit} — {range_str}",
         )
 
     critical_rule = (
@@ -731,8 +725,7 @@ def _build_interpret_prompt(
 
 
 async def _call_ollama_clinical(prompt: str) -> str:
-    """
-    Call local Ollama server for clinical interpretation.
+    """Call local Ollama server for clinical interpretation.
     Uses /api/chat endpoint for better instruction-following than /api/generate.
     Raises httpx.HTTPError or RuntimeError on failure so the caller can fall back.
     """
@@ -774,8 +767,7 @@ async def _call_groq_llama(prompt: str) -> str:
 
 
 async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
-    """
-    Try providers in priority order.  Returns (text, provider_name).
+    """Try providers in priority order.  Returns (text, provider_name).
 
     Priority: Ollama (local/free, no limits) → Gemini (free tier) → Groq (free tier).
     Ollama is always attempted first when OLLAMA_BASE_URL is set (default).
@@ -810,8 +802,7 @@ def list_critical_alerts(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Return recent critical-result alerts for the current lab.
+    """Return recent critical-result alerts for the current lab.
     Doctor+ only.  Sourced from audit_logs (action=critical_result_alert).
     """
     _require_doctor(current_user)
@@ -839,7 +830,7 @@ def list_critical_alerts(
                 "critical_tests": details.get("critical_tests", []),
                 "token_prefix": details.get("token_prefix", ""),
                 "created_at": row.created_at.isoformat() if row.created_at else None,
-            }
+            },
         )
     return {"count": len(items), "alerts": items}
 
@@ -854,8 +845,7 @@ def list_critical_alerts(
     tags=["AI Public"],
 )
 async def interpret_result_public(token: str) -> JSONResponse:
-    """
-    Plain-Arabic AI explanation for lab results identified by *token*.
+    """Plain-Arabic AI explanation for lab results identified by *token*.
     Public endpoint — no login required.
     Responses are cached 120 s per token to prevent cost explosion.
     """
@@ -923,7 +913,7 @@ async def interpret_result_public(token: str) -> JSONResponse:
 
     loop = asyncio.get_event_loop()
     order_id, results_data, patient_context = await loop.run_in_executor(
-        None, _load_results_from_db
+        None, _load_results_from_db,
     )
 
     if order_id is None:
@@ -1007,7 +997,7 @@ _CHAT_RATE_LIMIT = int(os.getenv("GEMINI_CHAT_RATE_LIMIT", "30"))  # req per 60s
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     context: str | None = Field(
-        default=None, max_length=500, description="Optional page context (e.g. 'orders page')"
+        default=None, max_length=500, description="Optional page context (e.g. 'orders page')",
     )
 
 
@@ -1025,8 +1015,7 @@ async def ai_chat(
     body: ChatRequest,
     current_user=Depends(get_current_user),
 ):
-    """
-    Send a message to the GULA AI assistant (powered by Gemini 2.0 Flash).
+    """Send a message to the GULA AI assistant (powered by Gemini 2.0 Flash).
 
     Responses are display-only and never mutate clinical data.
     Rate-limited to GEMINI_CHAT_RATE_LIMIT requests per 60 s per user.

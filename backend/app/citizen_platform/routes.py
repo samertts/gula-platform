@@ -26,7 +26,7 @@ async def get_dashboard(
     try:
         return await sdk.get_citizen_overview(citizen_id)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/profile/{citizen_id}")
@@ -37,7 +37,7 @@ async def get_profile(
     try:
         return await sdk.get_profile(citizen_id)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/health-summary/{citizen_id}")
@@ -48,7 +48,7 @@ async def get_health_summary(
     try:
         return await sdk.get_health_summary(citizen_id)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/appointments/{citizen_id}")
@@ -63,11 +63,11 @@ async def list_appointments(
 ):
     try:
         appointments = await sdk.appointments.list_appointments(
-            citizen_id, status=status, date_from=date_from, date_to=date_to, skip=skip, limit=limit
+            citizen_id, status=status, date_from=date_from, date_to=date_to, skip=skip, limit=limit,
         )
         return {"appointments": [a.__dict__ for a in appointments], "total": len(appointments)}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.post("/appointments/{citizen_id}")
@@ -88,7 +88,7 @@ async def book_appointment(
         )
         return appointment.__dict__
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/medications/{citizen_id}")
@@ -97,7 +97,7 @@ async def list_medications(citizen_id: str, sdk: Any = Depends(_get_sdk)):
         medications = sdk.medications.get_active_medications(citizen_id)
         return {"medications": [m.__dict__ for m in medications]}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/lab-results/{citizen_id}")
@@ -111,11 +111,11 @@ async def list_lab_results(
 ):
     try:
         results = sdk.laboratory.get_results(
-            citizen_id, lab_id=lab_id, status=status, skip=skip, limit=limit
+            citizen_id, lab_id=lab_id, status=status, skip=skip, limit=limit,
         )
         return {"results": [r.__dict__ for r in results], "total": len(results)}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/radiology/{citizen_id}")
@@ -130,7 +130,7 @@ async def list_radiology_studies(
         studies = sdk.radiology.get_studies(citizen_id, status=status, skip=skip, limit=limit)
         return {"studies": [s.__dict__ for s in studies], "total": len(studies)}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/family/{citizen_id}")
@@ -139,7 +139,7 @@ async def get_family(citizen_id: str, sdk: Any = Depends(_get_sdk)):
         members = sdk.family.get_family_members(citizen_id)
         return {"members": [m.__dict__ for m in members]}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/vaccinations/{citizen_id}")
@@ -148,7 +148,7 @@ async def get_vaccinations(citizen_id: str, sdk: Any = Depends(_get_sdk)):
         records = sdk.preventive.get_vaccination_history(citizen_id)
         return {"vaccinations": [r.__dict__ for r in records]}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/notifications/{citizen_id}")
@@ -162,7 +162,7 @@ async def get_notifications(
 ):
     try:
         notifications = sdk.notifications.get_notifications(
-            citizen_id, unread_only=unread_only, skip=skip, limit=limit
+            citizen_id, unread_only=unread_only, skip=skip, limit=limit,
         )
         return {
             "notifications": [
@@ -182,7 +182,7 @@ async def get_notifications(
             "unread_count": sdk.notifications.get_unread_count(citizen_id),
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/certificates/{citizen_id}")
@@ -198,7 +198,7 @@ async def get_certificates(
         certs = sdk.certificates.get_certificates(citizen_id, certificate_type=ct, status=status)
         return {"certificates": [c.__dict__ for c in certs]}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/emergency-contacts/{citizen_id}")
@@ -207,7 +207,7 @@ async def get_emergency_contacts(citizen_id: str, sdk: Any = Depends(_get_sdk)):
         contacts = sdk.emergency.get_contacts(citizen_id)
         return {"contacts": [c.__dict__ for c in contacts]}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/screening/{citizen_id}")
@@ -218,7 +218,7 @@ async def get_screening_status(citizen_id: str, sdk: Any = Depends(_get_sdk)):
         overdue = [s.__dict__ for s in sdk.preventive.get_overdue_screenings(citizen_id)]
         return {**summary, "due": due, "overdue": overdue}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/consents/{citizen_id}")
@@ -227,7 +227,7 @@ async def get_consents(citizen_id: str, sdk: Any = Depends(_get_sdk)):
         consents = sdk.privacy.get_active_consents(citizen_id)
         return {"consents": [c.__dict__ for c in consents]}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/mobile-config/{citizen_id}")
@@ -235,7 +235,7 @@ async def get_mobile_config(citizen_id: str, sdk: Any = Depends(_get_sdk)):
     try:
         return sdk.get_app_config(citizen_id)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/adherence/{citizen_id}")
@@ -243,4 +243,4 @@ async def get_adherence(citizen_id: str, sdk: Any = Depends(_get_sdk)):
     try:
         return sdk.medications.get_adherence_summary(citizen_id)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc

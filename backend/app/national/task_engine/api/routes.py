@@ -129,7 +129,7 @@ async def get_task(task_id: str, current_user: Any = Depends(get_current_user)):
 
 @router.put("/{task_id}")
 async def update_task(
-    task_id: str, data: dict, current_user: Any = Depends(get_current_user)
+    task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     task = await svc.update_task(task_id, data)
@@ -143,16 +143,16 @@ async def delete_task(task_id: str, current_user: Any = Depends(get_current_user
         await svc.delete_task(task_id)
         return {"success": True}
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e)) from e
+        raise HTTPException(status_code=409, detail="Resource conflict") from e
 
 
 @router.post("/{task_id}/assign")
 async def assign_task(
-    task_id: str, data: dict, current_user: Any = Depends(get_current_user)
+    task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     result = await svc.assign_task(
-        task_id, data["assignee_id"], data.get("assigned_by")
+        task_id, data["assignee_id"], data.get("assigned_by"),
     )
     return {"success": True, "status": result.status.value}
 
@@ -161,14 +161,14 @@ async def assign_task(
 async def start_task(task_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
     result = await svc.start_task(
-        task_id, current_user.id if hasattr(current_user, "id") else None
+        task_id, current_user.id if hasattr(current_user, "id") else None,
     )
     return {"success": True, "status": result.status.value}
 
 
 @router.post("/{task_id}/complete")
 async def complete_task(
-    task_id: str, data: dict | None = None, current_user: Any = Depends(get_current_user)
+    task_id: str, data: dict | None = None, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     result = await svc.complete_task(task_id, data.get("result") if data else None)
@@ -177,7 +177,7 @@ async def complete_task(
 
 @router.post("/{task_id}/fail")
 async def fail_task(
-    task_id: str, data: dict, current_user: Any = Depends(get_current_user)
+    task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     result = await svc.fail_task(task_id, data.get("error", "unknown error"))
@@ -186,7 +186,7 @@ async def fail_task(
 
 @router.post("/{task_id}/cancel")
 async def cancel_task(
-    task_id: str, data: dict | None = None, current_user: Any = Depends(get_current_user)
+    task_id: str, data: dict | None = None, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     result = await svc.cancel_task(task_id, (data or {}).get("reason"))
@@ -195,18 +195,18 @@ async def cancel_task(
 
 @router.post("/{task_id}/escalate")
 async def escalate_task(
-    task_id: str, data: dict, current_user: Any = Depends(get_current_user)
+    task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     result = await svc.escalate_task(
-        task_id, data.get("reason", ""), data.get("escalated_to")
+        task_id, data.get("reason", ""), data.get("escalated_to"),
     )
     return {"success": True, "status": result.status.value}
 
 
 @router.post("/{task_id}/delegate")
 async def delegate_task(
-    task_id: str, data: dict, current_user: Any = Depends(get_current_user)
+    task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     result = await svc.delegate_task(task_id, data["to_user"], data.get("reason"))
@@ -229,7 +229,7 @@ async def resume_task(task_id: str, current_user: Any = Depends(get_current_user
 
 @router.post("/{task_id}/comments")
 async def add_comment(
-    task_id: str, data: dict, current_user: Any = Depends(get_current_user)
+    task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     comment = await svc.add_comment(
@@ -276,7 +276,7 @@ async def create_queue(data: dict, current_user: Any = Depends(get_current_user)
 
 @router.put("/queues/{queue_id}")
 async def update_queue(
-    queue_id: str, data: dict, current_user: Any = Depends(get_current_user)
+    queue_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     await svc.update_queue(queue_id, data)
@@ -307,7 +307,7 @@ async def create_sla(data: dict, current_user: Any = Depends(get_current_user)):
 
 @router.put("/sla-definitions/{sla_id}")
 async def update_sla(
-    sla_id: str, data: dict, current_user: Any = Depends(get_current_user)
+    sla_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     await svc.update_sla(sla_id, data)

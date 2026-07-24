@@ -105,7 +105,7 @@ async def create_citizen(
         citizen = await service.register_citizen(data.model_dump())
         return CitizenResponse.from_orm(citizen)
     except DuplicateHealthNumberError as e:
-        raise HTTPException(status_code=409, detail=str(e)) from e
+        raise HTTPException(status_code=409, detail="Resource already exists") from e
 
 
 @router.get("/{citizen_id}", response_model=CitizenResponse)
@@ -118,7 +118,7 @@ async def get_citizen(
         citizen = await service.get_citizen(citizen_id)
         return CitizenResponse.from_orm(citizen)
     except CitizenNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="Resource not found") from e
 
 
 @router.put("/{citizen_id}", response_model=CitizenResponse)
@@ -132,7 +132,7 @@ async def update_citizen(
         citizen = await service.update_citizen(citizen_id, data.model_dump(exclude_none=True))
         return CitizenResponse.from_orm(citizen)
     except CitizenNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="Resource not found") from e
 
 
 @router.get("/search/{query}", response_model=list[CitizenResponse])

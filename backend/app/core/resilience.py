@@ -61,6 +61,7 @@ def retry(
         @retry(max_attempts=3, exceptions=(IOError, TimeoutError))
         def fetch_nid(nid: str) -> dict:
             return requests.get(f"{NID_API}/lookup/{nid}").json()
+
     """
 
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:
@@ -121,6 +122,7 @@ def retry_async(
                 r = await c.post(INSURANCE_URL, json=payload)
                 r.raise_for_status()
                 return r.json()
+
     """
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -170,6 +172,7 @@ def safe_call(fn: Callable[..., T], *args, default: T | None = None, **kwargs) -
 
     Example:
         citizen_ulid = safe_call(mint_citizen, db, full_name=name, default=None)
+
     """
     try:
         return fn(*args, **kwargs)
@@ -199,6 +202,7 @@ def call_with_timeout(fn: Callable[..., T], *args, timeout: float = 5.0, **kwarg
 
     Example:
         result = call_with_timeout(fetch_residency_data, nid, timeout=3.0)
+
     """
     import concurrent.futures
 
@@ -240,7 +244,7 @@ class Bulkhead:
         with self._lock:
             if self._count >= self._max:
                 raise Bulkhead.BulkheadFullError(
-                    f"Bulkhead '{self._name}' full ({self._count}/{self._max} slots used)"
+                    f"Bulkhead '{self._name}' full ({self._count}/{self._max} slots used)",
                 )
             self._count += 1
         return self
@@ -253,7 +257,7 @@ class Bulkhead:
         with self._lock:
             if self._count >= self._max:
                 raise Bulkhead.BulkheadFullError(
-                    f"Bulkhead '{self._name}' full ({self._count}/{self._max} slots used)"
+                    f"Bulkhead '{self._name}' full ({self._count}/{self._max} slots used)",
                 )
             self._count += 1
         return self

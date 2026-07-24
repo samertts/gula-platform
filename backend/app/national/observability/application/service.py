@@ -647,14 +647,14 @@ class ObservabilityService:
                                                     {"key": k, "value": {"stringValue": v}}
                                                     for k, v in metric.tags.items()
                                                 ],
-                                            }
+                                            },
                                         ],
                                     },
-                                }
+                                },
                             ],
-                        }
+                        },
                     ],
-                }
+                },
             ],
         }
 

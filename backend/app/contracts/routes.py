@@ -74,7 +74,7 @@ async def get_schema(module: str):
 async def get_fhir_profiles_endpoint():
     profiles = get_fhir_profiles()
     return JSONResponse(
-        content={"resourceType": "Bundle", "type": "collection", "entry": [{"resource": p} for p in profiles]}
+        content={"resourceType": "Bundle", "type": "collection", "entry": [{"resource": p} for p in profiles]},
     )
 
 
@@ -170,8 +170,8 @@ async def export_contracts(export: ContractExport):
                 "files": exported_files,
                 "count": len(exported_files),
                 "generated_at": _generator._generated_at,
-            }
+            },
         )
     except Exception as exc:
         logger.exception("Contract export failed")
-        raise HTTPException(status_code=500, detail=f"Export failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Export failed") from exc

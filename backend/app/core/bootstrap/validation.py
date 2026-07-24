@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 from sqlalchemy.orm import Session
 
@@ -23,7 +22,7 @@ class ValidationReport:
     passed: int = 0
     failed: int = 0
     warnings: int = 0
-    checks: List[Dict] = field(default_factory=list)
+    checks: list[dict] = field(default_factory=list)
 
     @property
     def total(self) -> int:

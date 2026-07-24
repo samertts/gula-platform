@@ -39,7 +39,7 @@ class CitizenOfflineService:
         self._synced_actions: dict[str, list[OfflineAction]] = {}
 
     def queue_action(
-        self, citizen_id: str, action_type: str, payload: dict[str, Any]
+        self, citizen_id: str, action_type: str, payload: dict[str, Any],
     ) -> OfflineAction:
         action = OfflineAction(
             id=f"off_{citizen_id}_{datetime.now(UTC).timestamp()}",
@@ -136,7 +136,7 @@ class OfflineSyncEngine:
         return self._platform_sync.pull_changes(since=since)
 
     def resolve_conflict(
-        self, local: SyncChange, remote: SyncChange
+        self, local: SyncChange, remote: SyncChange,
     ) -> SyncChange:
         return self._platform_sync.resolve_conflicts(local, remote)
 

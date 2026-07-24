@@ -164,7 +164,7 @@ class AgentRuntime:
         self._running_tasks: dict[str, asyncio.Task] = {}
 
     async def execute_tool(
-        self, tool_name: str, context: AgentContext, **kwargs
+        self, tool_name: str, context: AgentContext, **kwargs,
     ) -> AgentResult:
         start = time.monotonic()
         tool = _tool_registry.get(tool_name)
@@ -195,7 +195,7 @@ class AgentRuntime:
             return AgentResult(agent_name=tool_name, success=False, output=None, duration_ms=(time.monotonic() - start) * 1000, error=str(exc))
 
     async def execute_plan(
-        self, plan: list[dict[str, Any]], context: AgentContext
+        self, plan: list[dict[str, Any]], context: AgentContext,
     ) -> list[AgentResult]:
         results = []
         for step in plan:
@@ -211,7 +211,7 @@ class AgentRuntime:
         return results
 
     async def run_session(
-        self, session_id: str, task: str, lab_id: int | None = None, user_id: int | None = None
+        self, session_id: str, task: str, lab_id: int | None = None, user_id: int | None = None,
     ) -> list[AgentResult]:
         conv = await memory_store.get_session(session_id)
         if conv is None:

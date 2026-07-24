@@ -168,7 +168,7 @@ async def transform_data(
     try:
         return _transformation_engine.transform(source_data, source_format, target_format)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid request") from exc
 
 
 @router.get("/schemas")
@@ -227,7 +227,7 @@ async def get_partner(partner_id: str, db: Session = Depends(get_db)) -> dict:
         partner = manager.get_partner(partner_id)
         return partner.to_dict()
     except PartnerNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail="Resource not found") from exc
 
 
 @router.put("/partners/{partner_id}")
@@ -238,7 +238,7 @@ async def update_partner(partner_id: str, data: dict = Body(...), db: Session = 
         partner = manager.update_partner(partner_id, data)
         return partner.to_dict()
     except PartnerNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail="Resource not found") from exc
 
 
 @router.post("/partners/{partner_id}/credentials")
@@ -253,7 +253,7 @@ async def issue_credential(partner_id: str, data: dict = Body(...), db: Session 
         )
         return {"api_key": api_key, "partner_id": partner_id, "type": "api_key"}
     except PartnerNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail="Resource not found") from exc
 
 
 @router.post("/partners/{partner_id}/certificates")
@@ -264,7 +264,7 @@ async def register_certificate(partner_id: str, data: dict = Body(...), db: Sess
         cert = cert_mgr.register_certificate(partner_id, data)
         return cert.to_dict()
     except PartnerNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail="Resource not found") from exc
 
 
 @router.get("/partners/{partner_id}/audit")

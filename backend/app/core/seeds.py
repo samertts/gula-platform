@@ -73,7 +73,7 @@ def ensure_master_admin() -> None:
                 if not plaintext:
                     logger.error(
                         "Bootstrap SKIPPED: GULA_ADMIN_PASSWORD not set. "
-                        "Set it in .env and restart."
+                        "Set it in .env and restart.",
                     )
                     return
                 password_hash = hash_password(plaintext)

@@ -162,7 +162,7 @@ class RiskBasedAuthService:
         return len(attempts)
 
     def _is_known_location(
-        self, current: dict[str, Any], previous: list[dict[str, Any]]
+        self, current: dict[str, Any], previous: list[dict[str, Any]],
     ) -> bool:
         for prev in previous:
             if prev.get("country") == current.get("country"):
@@ -204,7 +204,7 @@ class RiskBasedAuthService:
         return False
 
     def _classify_risk(
-        self, risk_score: float, factors: list[str], context: AuthContext
+        self, risk_score: float, factors: list[str], context: AuthContext,
     ) -> AuthDecision:
         if self._impossible_travel_check(context):
             return AuthDecision(

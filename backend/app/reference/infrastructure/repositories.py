@@ -251,7 +251,7 @@ class SQLOrderRepository(OrderRepository):
         """)
         total_row = (
             await self._session.execute(
-                count_stmt, {"patient_id": patient_id}
+                count_stmt, {"patient_id": patient_id},
             )
         ).mappings().one()
         total = total_row["total"]
@@ -382,7 +382,7 @@ class SQLResultRepository(ResultRepository):
         """)
         total_row = (
             await self._session.execute(
-                count_stmt, {"lab_id": lab_id}
+                count_stmt, {"lab_id": lab_id},
             )
         ).mappings().one()
         total = total_row["total"]

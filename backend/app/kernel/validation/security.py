@@ -22,6 +22,6 @@ class SecurityValidator:
                             "type": "missing_permissions",
                             "plugin": plugin.name,
                             "severity": "warning",
-                        }
+                        },
                     )
         return issues

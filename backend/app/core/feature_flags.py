@@ -1,5 +1,4 @@
-"""
-GULA Platform — Feature Flags & Tier Enforcement
+"""GULA Platform — Feature Flags & Tier Enforcement
 =================================================
 Server-side only. Never rely on frontend feature visibility.
 
@@ -55,7 +54,7 @@ _TIER_FEATURES: dict[str, frozenset[str]] = {
             "notifications",
             "audit_log",
             "mobile_access",
-        }
+        },
     ),
     "growth": frozenset(
         {
@@ -77,7 +76,7 @@ _TIER_FEATURES: dict[str, frozenset[str]] = {
             "insurance_integration",
             "national_id_lookup",
             "device_results",
-        }
+        },
     ),
     "enterprise": frozenset(
         {
@@ -109,7 +108,7 @@ _TIER_FEATURES: dict[str, frozenset[str]] = {
             "sla_guarantee",
             "white_label",
             "priority_support",
-        }
+        },
     ),
 }
 
@@ -118,7 +117,7 @@ _DEPLOYMENT_EXTRAS: dict[str, frozenset[str]] = {
     "single": frozenset(),
     "multi_branch": frozenset({"multi_branch", "cross_branch_reports"}),
     "government": frozenset(
-        {"government_reporting", "compliance_dashboard", "ministry_integration"}
+        {"government_reporting", "compliance_dashboard", "ministry_integration"},
     ),
 }
 
@@ -127,7 +126,7 @@ _SECURITY_EXTRAS: dict[str, frozenset[str]] = {
     "standard": frozenset(),
     "high_security": frozenset({"two_factor_required", "audit_chain", "session_timeout_short"}),
     "air_gapped": frozenset(
-        {"two_factor_required", "audit_chain", "session_timeout_short", "air_gapped_mode"}
+        {"two_factor_required", "audit_chain", "session_timeout_short", "air_gapped_mode"},
     ),
 }
 
@@ -142,7 +141,7 @@ _AIR_GAPPED_BLOCKED: frozenset[str] = frozenset(
         "national_id_lookup",
         "ministry_integration",
         "notifications",  # external push notifications
-    }
+    },
 )
 
 # Tier ordering for upgrade validation
@@ -153,10 +152,9 @@ _VALID_SECURITY = frozenset({"standard", "high_security", "air_gapped"})
 
 
 def get_tier_features(
-    tier: str, deployment_mode: str = "single", security_level: str = "standard"
+    tier: str, deployment_mode: str = "single", security_level: str = "standard",
 ) -> frozenset[str]:
-    """
-    Return the full feature set for a given (tier, deployment_mode, security_level) combo.
+    """Return the full feature set for a given (tier, deployment_mode, security_level) combo.
     Applies deployment and security overrides on top of tier base.
     Air-gapped mode blocks external-API features regardless of tier.
     """
@@ -174,8 +172,7 @@ def get_tier_features(
 
 
 def resolve_lab_features(lab_id: int, db) -> frozenset[str]:
-    """
-    Load a lab's effective feature set from DB, applying:
+    """Load a lab's effective feature set from DB, applying:
       1. Tier base features
       2. Deployment / security overrides
       3. Per-lab FeatureFlag overrides (can add OR remove features)
@@ -221,8 +218,7 @@ def resolve_lab_features(lab_id: int, db) -> frozenset[str]:
 
 
 def require_feature(feature: str, lab_id: int, db):
-    """
-    Raise HTTP 403 if the lab does not have access to `feature`.
+    """Raise HTTP 403 if the lab does not have access to `feature`.
     Import this in route handlers for server-side enforcement.
 
     Usage:
@@ -256,8 +252,7 @@ def can_lab_access(feature: str, lab_id: int, db) -> bool:
 
 
 def get_lab_subscription_info(lab_id: int, db) -> dict:
-    """
-    Return subscription summary for a lab — used in dashboard and API responses.
+    """Return subscription summary for a lab — used in dashboard and API responses.
     """
     from ..models.subscription import LabSubscription
 
@@ -301,8 +296,7 @@ def get_lab_subscription_info(lab_id: int, db) -> dict:
 
 
 def is_upgrade_valid(current_tier: str, target_tier: str) -> bool:
-    """
-    Return True only if target_tier is strictly higher than current_tier.
+    """Return True only if target_tier is strictly higher than current_tier.
     Downgrades must go through admin approval flow (data implications).
     """
     return (

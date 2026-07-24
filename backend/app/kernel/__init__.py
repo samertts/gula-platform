@@ -1,5 +1,4 @@
-"""
-GULA Platform Kernel — Permanent Runtime Foundation
+"""GULA Platform Kernel — Permanent Runtime Foundation
 ====================================================
 
 The Kernel is the mandatory runtime foundation for every future platform

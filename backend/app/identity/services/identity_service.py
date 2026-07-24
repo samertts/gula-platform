@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,9 +19,9 @@ class IdentityService:
         self,
         person_id: str,
         identity_type: IdentityType,
-        issued_by_organization: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
-        notes: Optional[str] = None,
+        issued_by_organization: str | None = None,
+        expires_at: datetime | None = None,
+        notes: str | None = None,
     ) -> IdentityRecord:
         identity = IdentityRecord(
             id=...,
@@ -38,7 +37,7 @@ class IdentityService:
         )
         return await self.repo.create(identity)
 
-    async def get_identity(self, identity_id: str) -> Optional[IdentityRecord]:
+    async def get_identity(self, identity_id: str) -> IdentityRecord | None:
         return await self.repo.get_by_id(identity_id)
 
     async def verify_identity(
@@ -46,7 +45,7 @@ class IdentityService:
         identity_id: str,
         verified_by: str,
         verification_method: str,
-    ) -> Optional[IdentityRecord]:
+    ) -> IdentityRecord | None:
         identity = await self.repo.get_by_id(identity_id)
         if not identity:
             return None

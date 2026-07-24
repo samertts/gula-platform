@@ -48,7 +48,7 @@ async def kernel_capabilities(_user=Depends(get_current_user)):
                 "version": c.version,
                 "enabled": c.enabled,
                 "description": c.description,
-            }
+            },
         )
     return {"capabilities": caps, "count": len(caps)}
 
@@ -128,7 +128,7 @@ async def kernel_dead_letter_queue(_user=Depends(get_current_user)):
     entries = []
     for entry in eb.dead_letter_queue.list_all():
         entries.append(
-            {"event_id": entry.event.id, "event_name": entry.event.name, "reason": entry.reason}
+            {"event_id": entry.event.id, "event_name": entry.event.name, "reason": entry.reason},
         )
     return {"entries": entries, "count": len(entries)}
 
@@ -144,7 +144,7 @@ async def kernel_tenants(_user=Depends(get_current_user)):
     tenants = []
     for t in tr.list_tenants():
         tenants.append(
-            {"id": t.id, "name": t.name, "slug": t.slug, "plan": t.plan, "active": t.active}
+            {"id": t.id, "name": t.name, "slug": t.slug, "plan": t.plan, "active": t.active},
         )
     return {"tenants": tenants, "count": len(tenants)}
 

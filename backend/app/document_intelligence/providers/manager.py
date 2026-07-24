@@ -67,7 +67,7 @@ class OcrProviderManager:
                 logger.warning("Provider shutdown error: %s — %s", engine, exc)
 
     async def get_best_provider(
-        self, language: OcrLanguage = OcrLanguage.arabic_english
+        self, language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> OcrProvider:
         available = []
         for engine, provider in self._providers.items():
@@ -109,13 +109,13 @@ class OcrProviderManager:
         return {
             "results": results,
             "best_provider": str(
-                (await self.get_best_provider()).engine_type
+                (await self.get_best_provider()).engine_type,
             ),
             "timestamp": time.time(),
         }
 
     async def auto_select(
-        self, language: OcrLanguage = OcrLanguage.arabic_english
+        self, language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> OcrProvider:
         try:
             return await self.get_best_provider(language)

@@ -173,7 +173,7 @@ def update_sample(
         if data.status == "rejected":
             if not data.rejection_reason or not data.rejection_reason.strip():
                 raise HTTPException(
-                    status_code=400, detail="Rejection reason required when rejecting a sample"
+                    status_code=400, detail="Rejection reason required when rejecting a sample",
                 )
         sample.status = data.status
 

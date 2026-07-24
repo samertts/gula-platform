@@ -143,7 +143,7 @@ class NationalWorkflowApproval(BaseEntity, NationalBase):
     status = Column(String(50), default="pending", nullable=False)
     comments = Column(Text, nullable=True)
     assigned_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
     )
     responded_at = Column(DateTime(timezone=True), nullable=True)
 

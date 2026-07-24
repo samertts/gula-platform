@@ -200,9 +200,8 @@ class CredentialManager:
             expected = self._hash_api_key(credential_value)
             if credential.credential_value != expected:
                 return False
-        else:
-            if credential.credential_value != credential_value:
-                return False
+        elif credential.credential_value != credential_value:
+            return False
         credential.last_used_at = datetime.now(UTC)
         self._db.commit()
         return True

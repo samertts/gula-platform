@@ -1,5 +1,4 @@
-"""
-Redis client for GULA Platform.
+"""Redis client for GULA Platform.
 Provides a thin wrapper with automatic fallback to an in-memory store
 when Redis is not configured or unreachable — so the app works in dev
 without Redis and in production with it.
@@ -73,8 +72,7 @@ class _MemoryStore:
 
 
 class _RedisWrapper:
-    """
-    Thin wrapper around redis-py that exposes set/get/delete/incr/ping.
+    """Thin wrapper around redis-py that exposes set/get/delete/incr/ping.
     Constructed lazily so import doesn't fail if redis-py is not installed.
     """
 
@@ -84,7 +82,7 @@ class _RedisWrapper:
         self._client = _redis.from_url(url, decode_responses=True, socket_timeout=1)
         # Verify connection at startup
         self._client.ping()
-        logger.info("Redis connected: %s", url.split("@")[-1])
+        logger.info("Redis connected: %s", url.rsplit("@", maxsplit=1)[-1])
 
     def set(self, key: str, value, ex: int | None = None) -> None:
         self._client.set(key, value, ex=ex)
@@ -129,7 +127,7 @@ def _build_cache():
         if IS_PRODUCTION:
             logger.critical(
                 "[GULA CRITICAL] REDIS_URL is not set in production. "
-                "Falling back to in-memory store (degraded mode)."
+                "Falling back to in-memory store (degraded mode).",
             )
         logger.info("REDIS_URL not set — using in-memory store (not shared across workers)")
     return _MemoryStore()

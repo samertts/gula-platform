@@ -115,7 +115,7 @@ class LISConnector(BaseConnector):
             return {"success": False, "error": "order_id required"}
         try:
             resp = await self._client.get(
-                urljoin(self._base_url, f"/api/orders/{order_id}/results")
+                urljoin(self._base_url, f"/api/orders/{order_id}/results"),
             )
             if resp.is_success:
                 return {"success": True, "result": resp.json()}
@@ -169,7 +169,7 @@ class LISConnector(BaseConnector):
             raise RuntimeError("LIS connector not connected")
         try:
             resp = await self._client.get(
-                urljoin(self._base_url, "/api/instruments")
+                urljoin(self._base_url, "/api/instruments"),
             )
             if resp.is_success:
                 instruments = resp.json()

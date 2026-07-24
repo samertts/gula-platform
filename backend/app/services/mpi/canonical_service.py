@@ -114,10 +114,10 @@ def merge_canonicals(
         raise NotFoundError("source canonical not found")
 
     db.query(PatientLink).filter(PatientLink.canonical_id == source_id).update(
-        {"canonical_id": target_id}
+        {"canonical_id": target_id},
     )
     db.query(CitizenLink).filter(CitizenLink.canonical_id == source_id).update(
-        {"canonical_id": target_id}
+        {"canonical_id": target_id},
     )
 
     source.lab_id = None

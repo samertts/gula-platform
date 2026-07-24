@@ -65,11 +65,11 @@ def auto_validate_result(
     )
     if lab_id:
         range_query = range_query.filter(
-            (ReferenceRangeDef.lab_id == lab_id) | (ReferenceRangeDef.lab_id.is_(None))
+            (ReferenceRangeDef.lab_id == lab_id) | (ReferenceRangeDef.lab_id.is_(None)),
         )
     if patient_gender:
         range_query = range_query.filter(
-            (ReferenceRangeDef.gender == patient_gender) | (ReferenceRangeDef.gender.is_(None))
+            (ReferenceRangeDef.gender == patient_gender) | (ReferenceRangeDef.gender.is_(None)),
         )
     if patient_age_days is not None:
         range_query = range_query.filter(
@@ -79,7 +79,7 @@ def auto_validate_result(
             ) & (
                 (ReferenceRangeDef.age_max_days.is_(None)) |
                 (ReferenceRangeDef.age_max_days >= patient_age_days)
-            )
+            ),
         )
 
     ref_range = range_query.order_by(

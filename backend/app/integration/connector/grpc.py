@@ -16,7 +16,7 @@ class GrpcConnector:
     def __init__(self, spec: ConnectorSpec):
         if spec.connector_type != ConnectorType.GRPC:
             raise ValueError(
-                f"GrpcConnector requires type GRPC, got {spec.connector_type.name}"
+                f"GrpcConnector requires type GRPC, got {spec.connector_type.name}",
             )
         self.spec = spec
         self._channel = None

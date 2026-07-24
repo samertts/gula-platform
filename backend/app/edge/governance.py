@@ -88,7 +88,7 @@ def register_model(
             severity="info",
             actor_user_id=actor_user_id,
             details={"model_uid": uid, "size_mb": size_mb},
-        )
+        ),
     )
     return model
 
@@ -118,7 +118,7 @@ def set_model_status(
             severity="info",
             actor_user_id=actor_user_id,
             details={"model_uid": model_uid, "status": status, "rollout_pct": model.rollout_pct},
-        )
+        ),
     )
     return model
 
@@ -153,7 +153,7 @@ def assign_model(
             severity="info",
             actor_user_id=actor_user_id,
             details={"model_uid": model_uid},
-        )
+        ),
     )
     return a
 
@@ -186,7 +186,7 @@ def pick_models_for(db: Session, device: EdgeDevice) -> list[dict]:
                 EdgeModelAssignment.lab_id == device.lab_id,
                 EdgeModelAssignment.lab_id.is_(None),
                 EdgeModelAssignment.device_id == device.device_id,
-            )
+            ),
         )
         .all()
     )
@@ -217,6 +217,6 @@ def pick_models_for(db: Session, device: EdgeDevice) -> list[dict]:
                 "size_mb": m.size_mb,
                 "sha256": m.sha256,
                 "source_url": m.source_url,
-            }
+            },
         )
     return out

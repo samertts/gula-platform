@@ -7,6 +7,7 @@ from datetime import datetime
 @dataclass
 class Export_reportCommand:
     """export_report command for reporting_service capability."""
+
     command_id: str = ""
     timestamp: datetime = field(default_factory=datetime.utcnow)
     data: dict = field(default_factory=dict)

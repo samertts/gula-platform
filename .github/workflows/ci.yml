@@ -139,7 +139,7 @@ jobs:
           cur = conn.cursor()
           required = ['labs', 'lab_users', 'patients', 'lab_orders', 'lab_results']
           for table in required:
-              cur.execute(f\"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='{table}')\")
+              cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name=%s)", (table,))
               exists = cur.fetchone()[0]
               assert exists, f'Missing table: {table}'
               print(f'Table {table}: OK')
@@ -162,14 +162,24 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Ruff check
-        run: ruff check backend/app/ --select=E9,F --statistics || true
+        run: ruff check backend/app/ --select=E9,F --statistics
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - name: Install Node deps
-        run: npm install || true
-      - name: ESLint
-        run: npm run lint 2>/dev/null || echo "No lint script configured"
+          cache: 'npm'
+          cache-dependency-path: frontend-v3/package-lock.json
+      - name: Install Node deps (frontend-v3)
+        run: npm ci
+        working-directory: frontend-v3
+      - name: ESLint (frontend-v3)
+        run: npm run lint
+        working-directory: frontend-v3
+      - name: TypeScript check (frontend-v3)
+        run: npx tsc --noEmit
+        working-directory: frontend-v3
+      - name: Build (frontend-v3)
+        run: npm run build
+        working-directory: frontend-v3
 
   test:
     name: Backend Tests
@@ -219,7 +229,7 @@ jobs:
           DEVICE_HMAC_KEY: test-device-hmac-key-for-ci-1234
         run: |
           cd backend
-          python -m pytest tests/ -v --timeout=60 -x 2>&1 | head -200
+          python -m pytest tests/ -v --timeout=60 -x 2>&1
 
   security-scan:
     name: Security Scan
@@ -234,12 +244,10 @@ jobs:
       - name: Install safety
         run: pip install safety
       - name: Safety check
-        continue-on-error: true
         run: |
           cd backend
-          safety check -r requirements.txt --full-report || echo "Safety found issues"
+          safety check -r requirements.txt --full-report
       - name: Bandit check
-        continue-on-error: true
         run: |
           pip install bandit
-          bandit -ll -ii -r backend/app/ -f txt || echo "Bandit found issues"
+          bandit -ll -ii -r backend/app/ -f txt

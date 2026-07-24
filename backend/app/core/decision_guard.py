@@ -1,5 +1,4 @@
-"""
-GULA Platform — Decision Guard
+"""GULA Platform — Decision Guard
 ================================
 Enforcement layer that wraps every autonomous action.
 
@@ -33,13 +32,12 @@ class PolicyViolation(Exception):
         self.decision = decision
         super().__init__(
             f"PolicyViolation: {decision.action.value} blocked — {decision.reason} "
-            f"(risk={decision.risk.value}, env={decision.env})"
+            f"(risk={decision.risk.value}, env={decision.env})",
         )
 
 
 def guard(action: ActionType, context: dict | None = None) -> PolicyDecision:
-    """
-    Enforce policy for an autonomous action.
+    """Enforce policy for an autonomous action.
     Raises PolicyViolation if blocked.
     Returns the PolicyDecision if allowed.
     """
@@ -50,8 +48,7 @@ def guard(action: ActionType, context: dict | None = None) -> PolicyDecision:
 
 
 def check(action: ActionType, context: dict | None = None) -> bool:
-    """
-    Check policy without raising. Returns True if allowed, False if blocked.
+    """Check policy without raising. Returns True if allowed, False if blocked.
     All evaluations are still logged.
     """
     return evaluate_policy(action, context).allowed

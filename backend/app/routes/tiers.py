@@ -1,5 +1,4 @@
-"""
-GULA Platform — Subscription Tier Management API
+"""GULA Platform — Subscription Tier Management API
 =================================================
 Endpoints:
   GET  /tiers                       — list all available tiers and features
@@ -48,8 +47,7 @@ router = APIRouter(tags=["subscription"])
 
 @router.get("/tiers", summary="List available tiers and feature matrix")
 def list_tiers():
-    """
-    Public endpoint — returns the full tier matrix so the frontend can render
+    """Public endpoint — returns the full tier matrix so the frontend can render
     the pricing/feature comparison table without an auth token.
     """
     tiers = []
@@ -72,7 +70,7 @@ def list_tiers():
                 "monthly_price_usd": {"starter": 0, "growth": 49, "enterprise": 199}[tier],
                 "limits": limits,
                 "features": features,
-            }
+            },
         )
     return {"tiers": tiers}
 
@@ -112,7 +110,7 @@ class UpgradeRequestBody(BaseModel):
     def validate_deployment(cls, v):
         if v and v not in _VALID_DEPLOYMENTS:
             raise ValueError(
-                f"Invalid deployment_mode. Must be one of: {', '.join(sorted(_VALID_DEPLOYMENTS))}"
+                f"Invalid deployment_mode. Must be one of: {', '.join(sorted(_VALID_DEPLOYMENTS))}",
             )
         return v
 
@@ -121,7 +119,7 @@ class UpgradeRequestBody(BaseModel):
     def validate_security(cls, v):
         if v and v not in _VALID_SECURITY:
             raise ValueError(
-                f"Invalid security_level. Must be one of: {', '.join(sorted(_VALID_SECURITY))}"
+                f"Invalid security_level. Must be one of: {', '.join(sorted(_VALID_SECURITY))}",
             )
         return v
 
@@ -133,8 +131,7 @@ def request_upgrade(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Lab admin submits an upgrade request.
+    """Lab admin submits an upgrade request.
     The request is queued for platform admin approval.
     """
     if current_user.role not in ("admin", "lab_admin", "master_admin"):
@@ -207,7 +204,7 @@ class DemandSignalBody(BaseModel):
 
 
 @router.post(
-    "/tiers/upgrade-demand", status_code=201, summary="Citizen signals demand for lab upgrade"
+    "/tiers/upgrade-demand", status_code=201, summary="Citizen signals demand for lab upgrade",
 )
 def submit_upgrade_demand(
     body: DemandSignalBody,
@@ -215,8 +212,7 @@ def submit_upgrade_demand(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Verified citizens can signal demand for a lab to upgrade.
+    """Verified citizens can signal demand for a lab to upgrade.
     Weight = 1.0 for verified citizens (is_verified=True), 0.3 for unverified.
     Rate-limited: 1 request per lab per user per 30 days.
     """
@@ -312,7 +308,7 @@ def list_upgrade_demands(
                 "weighted_score": round(s.weighted_score, 2),
                 "unique_requesters": s.unique_requesters,
                 "last_request_at": s.last_request_at.isoformat() if s.last_request_at else None,
-            }
+            },
         )
     return {"demands": result}
 
@@ -402,7 +398,7 @@ def set_lab_tier(
             "reviewed_by": current_user.id,
             "reviewed_at": datetime.now(UTC),
             "review_note": f"Tier set to {body.tier} by platform admin",
-        }
+        },
     )
 
     log_action(
@@ -444,8 +440,7 @@ def set_feature_flag(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Platform admin: enable or disable a specific feature for a lab,
+    """Platform admin: enable or disable a specific feature for a lab,
     overriding tier defaults. Optionally set an expiry date for trials.
     """
     if current_user.role not in ("master_admin", "ministry_admin"):
@@ -539,8 +534,7 @@ def list_feature_flags(
 
 
 def _update_demand_score(lab_id: int, db: Session) -> None:
-    """
-    Recalculate UpgradeDemandScore after a new request.
+    """Recalculate UpgradeDemandScore after a new request.
     Formula: weighted_score = raw_score × log2(unique_requesters + 2)
     This rewards breadth (many different users) over depth (same user spamming).
     """

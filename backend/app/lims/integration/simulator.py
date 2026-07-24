@@ -128,7 +128,7 @@ def generate_hl7_message(
             flag = "L"
 
         segments.append(
-            f"OBX|1|NM|{tc}^{name}||{value}|{unit}|{ref_range}|{flag}|||F"
+            f"OBX|1|NM|{tc}^{name}||{value}|{unit}|{ref_range}|{flag}|||F",
         )
 
     segments.append(f"OBR|2|{specimen_barcode}")

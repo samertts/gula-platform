@@ -16,7 +16,7 @@ class GraphQLConnector(HttpConnector):
     def __init__(self, spec: ConnectorSpec):
         if spec.connector_type != ConnectorType.GRAPHQL:
             raise ValueError(
-                f"GraphQLConnector requires type GRAPHQL, got {spec.connector_type.name}"
+                f"GraphQLConnector requires type GRAPHQL, got {spec.connector_type.name}",
             )
         super().__init__(spec)
 

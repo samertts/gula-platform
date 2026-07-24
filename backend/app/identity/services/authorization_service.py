@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.identity.models.policy import IdentityPolicy
 from app.identity.repositories.assignment_repository import AssignmentRepository
 from app.identity.repositories.organization_repository import OrganizationRepository
 
@@ -20,7 +17,7 @@ class AuthorizationService:
         self,
         person_id: str,
         permission: str,
-        organization_id: Optional[str] = None,
+        organization_id: str | None = None,
     ) -> bool:
         assignments = await self.assignment_repo.find_by_person_id(person_id)
         for assignment in assignments:
@@ -34,7 +31,7 @@ class AuthorizationService:
         self,
         assignment,
         permission: str,
-        organization_id: Optional[str] = None,
+        organization_id: str | None = None,
     ) -> bool:
         return True
 

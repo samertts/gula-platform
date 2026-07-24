@@ -64,7 +64,7 @@ class FamilyRegistryService:
                     full_name="",
                     relationship="self",
                     is_dependent=False,
-                )
+                ),
             ],
         )
         self._families[record.id] = record
@@ -113,7 +113,7 @@ class FamilyRegistryService:
         return family
 
     def link_guardian(
-        self, guardian_hn: str, dependent_hn: str
+        self, guardian_hn: str, dependent_hn: str,
     ) -> None:
         guardian = self._identity._get_by_health_number(guardian_hn)
         dependent = self._identity._get_by_health_number(dependent_hn)
@@ -139,7 +139,7 @@ class FamilyRegistryService:
         logger.info("Guardian linked: %s -> %s", guardian_hn, dependent_hn)
 
     def get_family_by_member(
-        self, health_number: str
+        self, health_number: str,
     ) -> FamilyRecord | None:
         family_id = self._member_index.get(health_number)
         if family_id:
@@ -153,7 +153,7 @@ class FamilyRegistryService:
         return family
 
     def list_dependents(
-        self, health_number: str
+        self, health_number: str,
     ) -> list[FamilyMember]:
         family = self.get_family_by_member(health_number)
         if not family:
@@ -164,7 +164,7 @@ class FamilyRegistryService:
         ]
 
     def list_guardians(
-        self, health_number: str
+        self, health_number: str,
     ) -> list[FamilyMember]:
         family = self.get_family_by_member(health_number)
         if not family:

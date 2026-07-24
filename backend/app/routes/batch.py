@@ -95,7 +95,7 @@ def create_batch_orders(
                 "patient_id": order_data.patient_id,
                 "results_count": len(order_data.results),
                 "critical_count": len(order_critical) if order_critical else 0,
-            }
+            },
         )
         if order_critical:
             all_critical_alerts.extend(order_critical)
@@ -115,5 +115,5 @@ def create_batch_orders(
             "errors": len(errors),
         },
         "critical_alert": total_critical > 0,
-        "critical_alerts": all_critical_alerts if all_critical_alerts else None,
+        "critical_alerts": all_critical_alerts or None,
     }

@@ -93,7 +93,7 @@ class DefaultEncryptionService(EncryptionService):
         return b""
 
     async def verify_digital_signature(
-        self, data: bytes, signature: bytes, certificate: bytes | None = None
+        self, data: bytes, signature: bytes, certificate: bytes | None = None,
     ) -> bool:
         return False
 
@@ -376,7 +376,7 @@ class DefaultDocumentClassifier(DocumentClassifier):
         }
 
     async def classify(
-        self, text: str, pages: list[Any] | None = None
+        self, text: str, pages: list[Any] | None = None,
     ) -> Any:
         from ..domain.entities import ClassificationResult
         from ..domain.enums import ClassificationConfidence, DocumentCategory
@@ -442,7 +442,7 @@ class DefaultDocumentClassifier(DocumentClassifier):
         )
 
     async def classify_batch(
-        self, documents: list[tuple[str, list | None]]
+        self, documents: list[tuple[str, list | None]],
     ) -> list[Any]:
         return [await self.classify(text) for text, _ in documents]
 
@@ -467,7 +467,7 @@ class DefaultEntityExtractor(EntityExtractor):
         }
 
     async def extract(
-        self, text: str, category: Any | None = None
+        self, text: str, category: Any | None = None,
     ) -> tuple[list, list, list]:
         import re
 
@@ -496,7 +496,7 @@ class DefaultEntityExtractor(EntityExtractor):
                             source_text=text[
                                 max(0, match.start() - 30) : match.end() + 30
                             ],
-                        )
+                        ),
                     )
 
         lab_test_patterns = [
@@ -518,19 +518,19 @@ class DefaultEntityExtractor(EntityExtractor):
                         confidence=0.85,
                         normalized_value=match.group(2),
                         original_text=match.group(0),
-                    )
+                    ),
                 )
 
         return entities, fields, tables
 
     async def extract_from_pages(
-        self, pages: list, category: Any | None = None
+        self, pages: list, category: Any | None = None,
     ) -> tuple[list, list, list]:
         full_text = "\n\n".join(p.text for p in pages if hasattr(p, "text") and p.text)
         return await self.extract(full_text, category)
 
     async def extract_entities_of_type(
-        self, text: str, entity_types: list
+        self, text: str, entity_types: list,
     ) -> list:
         all_entities, _, _ = await self.extract(text)
         return [e for e in all_entities if e.entity_type in entity_types]
@@ -551,7 +551,7 @@ class DefaultFhirMapper(FhirMapper):
                     "size": document.size_bytes,
                     "title": document.filename,
                     "creation": document.created_at.isoformat(),
-                }
+                },
             }],
             "context": {
                 "period": {"start": document.created_at.isoformat()},

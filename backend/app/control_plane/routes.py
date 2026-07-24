@@ -176,7 +176,7 @@ async def create_policy(data: dict[str, Any], user=Depends(_user)):
             enabled=data.get("enabled", True),
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid request") from e
     sdk.policies.register(policy)
     return {"status": "created", "name": policy.name, "domain": policy.domain.value}
 

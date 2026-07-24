@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +15,7 @@ class SessionService:
     def __init__(self, session: AsyncSession) -> None:
         self.repo = SessionRepository(session)
 
-    async def get_session(self, session_id: str) -> Optional[UserSession]:
+    async def get_session(self, session_id: str) -> UserSession | None:
         return await self.repo.get_by_id(session_id)
 
     async def get_active_sessions(self, account_id: str) -> list[UserSession]:

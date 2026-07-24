@@ -55,7 +55,7 @@ async def get_device(
     try:
         return _device_to_dict(service.get_device(device_id))
     except DeviceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.put("/devices/{device_id}/status")
@@ -67,7 +67,7 @@ async def update_device_status(
     try:
         return _device_to_dict(service.update_device_status(device_id, body.get("status", ""), body.get("reason", "")))
     except DeviceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.get("/devices/due/pm")
@@ -116,7 +116,7 @@ async def get_work_order(
     try:
         return _work_order_to_dict(service.get_work_order(wo_id))
     except WorkOrderNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 @router.post("/work-orders/{wo_id}/complete")
@@ -128,7 +128,7 @@ async def complete_work_order(
     try:
         return _work_order_to_dict(service.complete_work_order(wo_id, body))
     except WorkOrderNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
 # ---- Calibrations ----

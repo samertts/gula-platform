@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import type { UserRole } from "@/types/backend";
+import type { UserRole } from "@/types";
 import type { ReactNode } from "react";
 
 interface RoleGuardProps {

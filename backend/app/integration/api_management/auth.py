@@ -40,8 +40,7 @@ class APIAuth:
     def validate_token(self, token: str) -> bool:
         if not token:
             return False
-        if token.startswith("Bearer "):
-            token = token[7:]
+        token = token.removeprefix("Bearer ")
         api_key = self._api_keys.get(token)
         if not api_key:
             return False

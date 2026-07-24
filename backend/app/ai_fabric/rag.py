@@ -426,7 +426,7 @@ class RAGEngine:
             "latency_ms": round(elapsed, 2),
             "document_count": len(documents),
             "citation_coverage": self._citation_engine.score_coverage(
-                citations, len(citations), len(documents)
+                citations, len(citations), len(documents),
             ),
         }
 

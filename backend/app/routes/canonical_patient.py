@@ -210,7 +210,7 @@ def search_canonical(
                 CanonicalPatient.phone.ilike(like),
                 CanonicalPatient.national_id_hash.ilike(like),
                 CanonicalPatient.health_id.ilike(like),
-            )
+            ),
         )
 
     if province:

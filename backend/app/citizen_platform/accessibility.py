@@ -30,7 +30,7 @@ class AccessibilityService:
         self._preferences: dict[str, AccessibilityPreference] = {}
 
     def set_preferences(
-        self, citizen_id: str, prefs: AccessibilityPreference
+        self, citizen_id: str, prefs: AccessibilityPreference,
     ) -> AccessibilityPreference:
         self._preferences[citizen_id] = prefs
         return prefs
@@ -42,7 +42,7 @@ class AccessibilityService:
         )
 
     def update_preference(
-        self, citizen_id: str, key: str, value: Any
+        self, citizen_id: str, key: str, value: Any,
     ) -> AccessibilityPreference | None:
         prefs = self._preferences.get(citizen_id)
         if not prefs:
@@ -52,7 +52,7 @@ class AccessibilityService:
         return prefs
 
     def apply_accessibility_transform(
-        self, citizen_id: str, content: dict[str, Any]
+        self, citizen_id: str, content: dict[str, Any],
     ) -> dict[str, Any]:
         prefs = self.get_preferences(citizen_id)
         transformed = dict(content)
@@ -123,6 +123,6 @@ class LocalizationService:
         locale = locale or self.get_locale()
         if locale == "ar":
             return str(int(number)).translate(
-                str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩")
+                str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩"),
             )
         return str(number)

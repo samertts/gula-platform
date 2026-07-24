@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
@@ -23,17 +22,17 @@ class DeviceService:
         self,
         person_id: str,
         device_fingerprint: str,
-        device_name: Optional[str] = None,
-        device_type: Optional[str] = None,
-        manufacturer: Optional[str] = None,
-        model: Optional[str] = None,
-        os: Optional[str] = None,
-        os_version: Optional[str] = None,
-        browser: Optional[str] = None,
-        browser_version: Optional[str] = None,
-        public_key: Optional[str] = None,
-        account_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        device_name: str | None = None,
+        device_type: str | None = None,
+        manufacturer: str | None = None,
+        model: str | None = None,
+        os: str | None = None,
+        os_version: str | None = None,
+        browser: str | None = None,
+        browser_version: str | None = None,
+        public_key: str | None = None,
+        account_id: str | None = None,
+        ip_address: str | None = None,
     ) -> Device:
         existing = await self.repo.find_by_fingerprint(device_fingerprint)
         if existing:
@@ -68,7 +67,7 @@ class DeviceService:
         )
         return await self.repo.create(device)
 
-    async def trust_device(self, device_id: str) -> Optional[Device]:
+    async def trust_device(self, device_id: str) -> Device | None:
         device = await self.repo.get_by_id(device_id)
         if not device:
             return None
@@ -85,7 +84,7 @@ class DeviceService:
         await self.repo.session.flush()
         return True
 
-    async def attest_device(self, device_id: str, attestation_data: str) -> Optional[MachineIdentity]:
+    async def attest_device(self, device_id: str, attestation_data: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
         result = await self._session.execute(stmt)
         machine = result.scalar_one_or_none()
@@ -97,7 +96,7 @@ class DeviceService:
         await self._session.flush()
         return machine
 
-    async def report_health(self, device_id: str, health_status: str) -> Optional[MachineIdentity]:
+    async def report_health(self, device_id: str, health_status: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
         result = await self._session.execute(stmt)
         machine = result.scalar_one_or_none()
@@ -108,7 +107,7 @@ class DeviceService:
         await self._session.flush()
         return machine
 
-    async def calculate_risk_score(self, device_id: str) -> Optional[int]:
+    async def calculate_risk_score(self, device_id: str) -> int | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
         result = await self._session.execute(stmt)
         machine = result.scalar_one_or_none()
@@ -147,7 +146,7 @@ class DeviceService:
         await self._session.flush()
         return score
 
-    async def mark_compromised(self, device_id: str) -> Optional[MachineIdentity]:
+    async def mark_compromised(self, device_id: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
         result = await self._session.execute(stmt)
         machine = result.scalar_one_or_none()
@@ -160,7 +159,7 @@ class DeviceService:
         await self._session.flush()
         return machine
 
-    async def transfer_device(self, device_id: str, new_person_id: str) -> Optional[MachineIdentity]:
+    async def transfer_device(self, device_id: str, new_person_id: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
         result = await self._session.execute(stmt)
         machine = result.scalar_one_or_none()
@@ -171,7 +170,7 @@ class DeviceService:
         await self._session.flush()
         return machine
 
-    async def report_lost(self, device_id: str) -> Optional[MachineIdentity]:
+    async def report_lost(self, device_id: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
         result = await self._session.execute(stmt)
         machine = result.scalar_one_or_none()

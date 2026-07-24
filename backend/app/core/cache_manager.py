@@ -1,5 +1,4 @@
-"""
-Multi-Level Cache Manager — GULA Platform
+"""Multi-Level Cache Manager — GULA Platform
 ===========================================
 Implements L1 (in-memory) + L2 (Redis) + L3 (PostgreSQL/loader) cache-aside strategy.
 
@@ -180,7 +179,7 @@ class CacheManager:
             self._ttl_overrides[domain] = ttl
 
     def _resolve_ttl(self, key: str, fallback_l2: int | None = None) -> tuple[int, int]:
-        domain = key.split(":")[0] if ":" in key else ""
+        domain = key.split(":", maxsplit=1)[0] if ":" in key else ""
         if domain == "gula" and key.count(":") >= 2:
             domain = key.split(":")[1]
         override = self._ttl_overrides.get(domain)
@@ -515,6 +514,7 @@ def cached(
 
     @cached(ttl=600, key_fn=lambda lab_id, status: f"gula:lab:{lab_id}:orders:{status}")
     async def get_orders(lab_id: int, status: str) -> list: ...
+
     """
 
     def decorator(func):

@@ -72,7 +72,7 @@ class TerminologyService:
                 or_(
                     TerminologyCode.code.ilike(f"%{query}%"),
                     TerminologyCode.display.ilike(f"%{query}%"),
-                )
+                ),
             )
         if system:
             filters.append(TerminologyCode.system == system)
@@ -105,7 +105,7 @@ class TerminologyService:
 
     @staticmethod
     def update_code(
-        db: Session, code_id: str, data: dict[str, Any]
+        db: Session, code_id: str, data: dict[str, Any],
     ) -> TerminologyCode | None:
         obj = db.query(TerminologyCode).filter(
             TerminologyCode.id == code_id,
@@ -249,7 +249,7 @@ class TerminologyService:
                     ICD10Code.code.ilike(f"%{query}%"),
                     ICD10Code.short_description.ilike(f"%{query}%"),
                     ICD10Code.long_description.ilike(f"%{query}%"),
-                )
+                ),
             )
         if chapter:
             filters.append(ICD10Code.chapter == chapter)
@@ -280,7 +280,7 @@ class TerminologyService:
                     LOINCCode.component.ilike(f"%{query}%"),
                     LOINCCode.long_common_name.ilike(f"%{query}%"),
                     LOINCCode.short_name.ilike(f"%{query}%"),
-                )
+                ),
             )
         if class_name:
             filters.append(LOINCCode.class_name == class_name)
@@ -309,7 +309,7 @@ class TerminologyService:
                     SNOMEDCTCode.concept_id.ilike(f"%{query}%"),
                     SNOMEDCTCode.fully_specified_name.ilike(f"%{query}%"),
                     SNOMEDCTCode.preferred_term.ilike(f"%{query}%"),
-                )
+                ),
             )
         total = db.query(SNOMEDCTCode).filter(*filters).count()
         items = (
@@ -371,7 +371,7 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def update_guideline(
-        db: Session, guideline_id: str, data: dict[str, Any]
+        db: Session, guideline_id: str, data: dict[str, Any],
     ) -> ClinicalGuideline | None:
         obj = db.query(ClinicalGuideline).filter(
             ClinicalGuideline.id == guideline_id,
@@ -428,7 +428,7 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def update_protocol(
-        db: Session, protocol_id: str, data: dict[str, Any]
+        db: Session, protocol_id: str, data: dict[str, Any],
     ) -> ClinicalProtocol | None:
         obj = db.query(ClinicalProtocol).filter(
             ClinicalProtocol.id == protocol_id,
@@ -485,7 +485,7 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def update_pathway(
-        db: Session, pathway_id: str, data: dict[str, Any]
+        db: Session, pathway_id: str, data: dict[str, Any],
     ) -> ClinicalPathway | None:
         obj = db.query(ClinicalPathway).filter(
             ClinicalPathway.id == pathway_id,
@@ -746,7 +746,7 @@ class CDSService:
 
     @staticmethod
     def acknowledge_alert(
-        db: Session, alert_id: str, user_id: str
+        db: Session, alert_id: str, user_id: str,
     ) -> ClinicalAlert | None:
         obj = db.query(ClinicalAlert).filter(
             ClinicalAlert.id == alert_id,
@@ -871,12 +871,12 @@ class QualityService:
         obj = IndicatorMeasurement(**data)
         if obj.denominator_value and obj.denominator_value > 0:
             obj.percentage = round(
-                (obj.numerator_value / obj.denominator_value) * 100, 2
+                (obj.numerator_value / obj.denominator_value) * 100, 2,
             )
         db.add(obj)
 
         indicator = db.query(QualityIndicator).filter(
-            QualityIndicator.id == obj.indicator_id
+            QualityIndicator.id == obj.indicator_id,
         ).first()
         if indicator and indicator.target_value is not None:
             if obj.percentage is not None:
@@ -924,7 +924,7 @@ class QualityService:
 
     @staticmethod
     def create_audit_record(
-        db: Session, data: dict[str, Any], audited_by: str
+        db: Session, data: dict[str, Any], audited_by: str,
     ) -> ClinicalAuditRecord:
         data["audited_by"] = audited_by
         obj = ClinicalAuditRecord(**data)
@@ -935,7 +935,7 @@ class QualityService:
 
     @staticmethod
     def create_compliance_check(
-        db: Session, data: dict[str, Any], checked_by: str
+        db: Session, data: dict[str, Any], checked_by: str,
     ) -> ComplianceCheck:
         data["checked_by"] = checked_by
         obj = ComplianceCheck(**data)
@@ -996,7 +996,7 @@ class QualityService:
 
     @staticmethod
     def create_mortality_review(
-        db: Session, data: dict[str, Any], reviewer: str
+        db: Session, data: dict[str, Any], reviewer: str,
     ) -> MortalityReview:
         data["reviewer"] = reviewer
         obj = MortalityReview(**data)
@@ -1007,7 +1007,7 @@ class QualityService:
 
     @staticmethod
     def create_incident_report(
-        db: Session, data: dict[str, Any], reporter_id: str
+        db: Session, data: dict[str, Any], reporter_id: str,
     ) -> IncidentReport:
         data["reporter_id"] = reporter_id
         obj = IncidentReport(**data)
@@ -1018,7 +1018,7 @@ class QualityService:
 
     @staticmethod
     def create_safety_event(
-        db: Session, data: dict[str, Any], reported_by: str
+        db: Session, data: dict[str, Any], reported_by: str,
     ) -> PatientSafetyEvent:
         data["reported_by"] = reported_by
         obj = PatientSafetyEvent(**data)
@@ -1102,7 +1102,7 @@ class ResearchService:
 
     @staticmethod
     def create_registry(
-        db: Session, data: dict[str, Any]
+        db: Session, data: dict[str, Any],
     ) -> dict[str, Any]:
         from app.clinical.research import models as research_models
 
@@ -1155,7 +1155,7 @@ class ResearchService:
 
     @staticmethod
     def create_cohort(
-        db: Session, data: dict[str, Any]
+        db: Session, data: dict[str, Any],
     ) -> dict[str, Any]:
         from app.clinical.research import models as research_models
 

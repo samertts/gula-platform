@@ -1,5 +1,4 @@
-"""
-National AI & Intelligence Fabric (NAIF) — GULA Platform
+"""National AI & Intelligence Fabric (NAIF) — GULA Platform
 =========================================================
 Unified AI layer for the entire GULA ecosystem.
 

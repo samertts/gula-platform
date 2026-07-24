@@ -10,19 +10,6 @@ export type UserRole =
   | 'technician'
   | 'citizen';
 
-export const ROLE_LEVELS: Record<UserRole, number> = {
-  master_admin: 100,
-  ministry_admin: 90,
-  province_admin: 80,
-  admin: 50,
-  lab_admin: 50,
-  doctor: 40,
-  staff: 20,
-  lab_staff: 20,
-  technician: 20,
-  citizen: 10,
-};
-
 export type Permission =
   | 'patients:read'
   | 'patients:write'
@@ -41,31 +28,6 @@ export type Permission =
   | 'platform:view_stats'
   | 'system:admin';
 
-export interface JwtPayload {
-  user_id: number;
-  lab_id: number;
-  role: UserRole;
-  perm_ver: number;
-  type: 'access' | 'refresh';
-  jti: string;
-  exp: number;
-  iat: number;
-}
-
-export interface Lab {
-  id: number;
-  name: string;
-  license_number?: string;
-  lab_type?: string;
-  director_name?: string;
-  website?: string;
-  city?: string;
-  address?: string;
-  phone?: string;
-  is_active: boolean;
-  created_at: string;
-}
-
 export interface LabUser {
   id: number;
   lab_id: number;
@@ -79,116 +41,11 @@ export interface LabUser {
   created_at: string;
 }
 
-export interface Patient {
-  id: number;
-  lab_id: number;
-  health_id?: string;
-  national_id_hash?: string;
-  family_id_hash?: string;
-  guardian_id?: number;
-  full_name: string;
-  phone: string;
-  birth_date?: string;
-  gender?: string;
-  email?: string;
-  created_at: string;
-}
-
 export type OrderStatus = 'pending' | 'completed' | 'validated' | 'cancelled';
 export type SampleStatus = 'collected' | 'received' | 'processing' | 'analyzed' | 'rejected';
 export type SampleType = 'blood' | 'urine' | 'stool' | 'swab' | 'serum' | 'plasma' | 'csf' | 'sputum' | 'other';
 export type ResultFlag = 'normal' | 'H' | 'L' | 'critical';
 export type QCStatus = 'pass' | 'warning' | 'fail';
-
-export interface LabOrder {
-  id: number;
-  patient_id: number;
-  lab_id: number;
-  doctor_name?: string;
-  doctor_user_id?: number;
-  status: OrderStatus;
-  validated_by?: number;
-  validated_at?: string;
-  locked_at?: string;
-  version: number;
-  created_at: string;
-  patient?: Patient;
-  results?: LabResult[];
-  samples?: Sample[];
-}
-
-export interface LabResult {
-  id: number;
-  order_id: number;
-  test_type_id?: number;
-  test_name: string;
-  value?: number;
-  value_text?: string;
-  unit?: string;
-  normal_range_low?: number;
-  normal_range_high?: number;
-  flag?: ResultFlag;
-  token: string;
-  expires_at: string;
-  created_at: string;
-  version: number;
-}
-
-export interface Sample {
-  id: number;
-  order_id: number;
-  barcode: string;
-  sample_type: string;
-  collection_time: string;
-  collected_by?: string;
-  status: SampleStatus;
-  rejection_reason?: string;
-  notes?: string;
-  storage_location?: string;
-  created_at: string;
-}
-
-export interface TestType {
-  id: number;
-  code: string;
-  name: string;
-  name_ar?: string;
-  category?: string;
-  unit?: string;
-  normal_low?: number;
-  normal_high?: number;
-}
-
-export interface QualityControl {
-  id: number;
-  lab_id: number;
-  test_code: string;
-  instrument_name?: string;
-  lot_number?: string;
-  level: string;
-  expected_value: number;
-  measured_value: number;
-  sd?: number;
-  unit?: string;
-  status: QCStatus;
-  violation?: string;
-  notes?: string;
-  performed_by?: string;
-  created_at: string;
-}
-
-export interface AuditLog {
-  id: number;
-  user_id?: number;
-  user_role?: string;
-  action: string;
-  resource_type: string;
-  resource_id?: number;
-  details?: string;
-  ip_address?: string;
-  created_at: string;
-  chain_hash?: string;
-}
 
 export interface Organization {
   id: number;
@@ -253,20 +110,6 @@ export interface UpgradeRequest {
   created_at: string;
 }
 
-export interface CriticalAlert {
-  id: number;
-  lab_id: number;
-  order_id: number;
-  result_id: number;
-  test_name: string;
-  value: string;
-  flag: string;
-  acknowledged: boolean;
-  acknowledged_by?: number;
-  acknowledged_at?: string;
-  created_at: string;
-}
-
 export interface EdgeDevice {
   id: number;
   device_id: string;
@@ -301,26 +144,6 @@ export interface Claim {
   currency: string;
   external_ref?: string;
   created_at: string;
-}
-
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  skip: number;
-  limit: number;
-}
-
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  user: LabUser;
-  lab: Lab;
 }
 
 export interface RefreshRequest {
@@ -364,41 +187,6 @@ export interface CreateResultRequest {
   value?: number;
   value_text?: string;
   unit?: string;
-}
-
-export interface DashboardStats {
-  orders_today: number;
-  results_today: number;
-  patients_today: number;
-  pending_orders: number;
-  critical_alerts: number;
-  recent_activity: AuditLog[];
-}
-
-export interface StatsTrend {
-  date: string;
-  orders: number;
-  results: number;
-  patients: number;
-}
-
-export interface StatsSummary {
-  total_orders: number;
-  total_patients: number;
-  total_results: number;
-  today_orders: number;
-  today_results: number;
-  today_patients: number;
-  this_week_orders: number;
-  this_month_orders: number;
-  avg_turnaround_hours?: number;
-}
-
-export interface TurnaroundTime {
-  test_code: string;
-  test_name: string;
-  avg_minutes: number;
-  count: number;
 }
 
 export interface QCSubmission {
@@ -496,13 +284,6 @@ export interface EHRImmunization {
   administered_date: string;
   administered_by?: string;
   lot_number?: string;
-}
-
-export interface PatientCard {
-  patient: Patient;
-  card_token: string;
-  qr_data: string;
-  issued_at: string;
 }
 
 export interface ClinicalOrder {

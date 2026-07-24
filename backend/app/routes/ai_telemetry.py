@@ -212,7 +212,7 @@ def log_interaction(
     # Intent is free-form for forward compatibility but we warn on unknowns.
     if payload.intent and payload.intent not in INTENT_VALUES:
         logger.info(
-            "ai.dataset.intent.unknown intent=%s lab_id=%s", payload.intent, current_user.lab_id
+            "ai.dataset.intent.unknown intent=%s lab_id=%s", payload.intent, current_user.lab_id,
         )
 
     if payload.risk_level is not None and payload.risk_level not in RISK_LEVEL_SET:
@@ -310,7 +310,7 @@ def log_interaction(
                 similarity=r.similarity,
                 rank=r.rank,
                 created_at=now,
-            )
+            ),
         )
 
     db.commit()
@@ -351,7 +351,7 @@ def append_retrieval_refs(
     )
     if interaction is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"}
+            status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"},
         )
 
     now = _now()
@@ -367,7 +367,7 @@ def append_retrieval_refs(
                 similarity=r.similarity,
                 rank=r.rank,
                 created_at=now,
-            )
+            ),
         )
     db.commit()
     return {"appended": len(refs)}
@@ -402,7 +402,7 @@ def submit_feedback(
     )
     if interaction is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"}
+            status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"},
         )
 
     fb = AIFeedback(
@@ -444,7 +444,7 @@ def log_unresolved(
         )
         if exists is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"}
+                status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"},
             )
 
     q = AIUnresolvedQuestion(
@@ -493,7 +493,7 @@ def dataset_summary(
         db.query(AIFeedback.signal, func.count(AIFeedback.id))
         .filter(AIFeedback.lab_id == lab_id)
         .group_by(AIFeedback.signal)
-        .all()
+        .all(),
     )
 
     # Directive §8 + §14 — surface safety + hallucination posture.
@@ -502,7 +502,7 @@ def dataset_summary(
         db.query(AIInteraction.risk_level, func.count(AIInteraction.id))
         .filter(AIInteraction.lab_id == lab_id, AIInteraction.risk_level.isnot(None))
         .group_by(AIInteraction.risk_level)
-        .all()
+        .all(),
     )
     escalation_count = (
         db.query(func.count(AIInteraction.id))

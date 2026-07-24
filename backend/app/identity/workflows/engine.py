@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
@@ -23,12 +23,12 @@ class WorkflowEngine:
         name: str,
         workflow_type: str,
         steps: list[dict[str, Any]],
-        description: Optional[str] = None,
+        description: str | None = None,
         version: str = "1.0",
-        timeout_hours: Optional[int] = None,
-        escalation_step: Optional[str] = None,
-        retry_policy: Optional[dict[str, Any]] = None,
-        notification_triggers: Optional[dict[str, Any]] = None,
+        timeout_hours: int | None = None,
+        escalation_step: str | None = None,
+        retry_policy: dict[str, Any] | None = None,
+        notification_triggers: dict[str, Any] | None = None,
     ) -> WorkflowDefinition:
         definition = WorkflowDefinition(
             id=...,
@@ -50,14 +50,14 @@ class WorkflowEngine:
         await self.session.flush()
         return definition
 
-    async def get_definition(self, def_id: str) -> Optional[WorkflowDefinition]:
+    async def get_definition(self, def_id: str) -> WorkflowDefinition | None:
         stmt = select(WorkflowDefinition).where(
             WorkflowDefinition.def_id == def_id,
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def activate_definition(self, def_id: str) -> Optional[WorkflowDefinition]:
+    async def activate_definition(self, def_id: str) -> WorkflowDefinition | None:
         stmt = select(WorkflowDefinition).where(
             WorkflowDefinition.def_id == def_id,
         )
@@ -76,8 +76,8 @@ class WorkflowEngine:
         trigger_type: str,
         trigger_id: str,
         initiator_id: str,
-        context: Optional[dict[str, Any]] = None,
-    ) -> Optional[WorkflowInstance]:
+        context: dict[str, Any] | None = None,
+    ) -> WorkflowInstance | None:
         definition = await self.get_definition(def_id)
         if not definition or definition.status != "active":
             return None
@@ -112,7 +112,7 @@ class WorkflowEngine:
         await self.session.flush()
         return instance
 
-    async def get_instance(self, instance_id: str) -> Optional[WorkflowInstance]:
+    async def get_instance(self, instance_id: str) -> WorkflowInstance | None:
         stmt = select(WorkflowInstance).where(
             WorkflowInstance.instance_id == instance_id,
         )
@@ -124,8 +124,8 @@ class WorkflowEngine:
         instance_id: str,
         approver_id: str,
         decision: str,
-        comments: Optional[str] = None,
-    ) -> Optional[WorkflowApproval]:
+        comments: str | None = None,
+    ) -> WorkflowApproval | None:
         instance = await self.get_instance(instance_id)
         if not instance:
             return None
@@ -159,7 +159,7 @@ class WorkflowEngine:
         self,
         instance_id: str,
         reason: str,
-    ) -> Optional[WorkflowInstance]:
+    ) -> WorkflowInstance | None:
         instance = await self.get_instance(instance_id)
         if not instance:
             return None
@@ -170,7 +170,7 @@ class WorkflowEngine:
         await self.session.flush()
         return instance
 
-    async def advance_step(self, instance_id: str) -> Optional[WorkflowInstance]:
+    async def advance_step(self, instance_id: str) -> WorkflowInstance | None:
         instance = await self.get_instance(instance_id)
         if not instance:
             return None

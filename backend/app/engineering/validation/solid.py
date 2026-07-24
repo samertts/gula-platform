@@ -50,7 +50,7 @@ class SOLIDValidator:
                     principle="SRP",
                     message=f"Class '{cls.name}' has {len(methods)} methods — consider splitting",
                     severity="warning",
-                )
+                ),
             )
 
     def _check_open_closed(self, file: Path, cls: ast.ClassDef) -> None:
@@ -71,7 +71,7 @@ class SOLIDValidator:
                                         principle="OCP",
                                         message=f"Type check in '{cls.name}.{node.name}' — violates Open/Closed",
                                         severity="warning",
-                                    )
+                                    ),
                                 )
 
     def _check_liskov(self, file: Path, cls: ast.ClassDef) -> None:
@@ -88,7 +88,7 @@ class SOLIDValidator:
                             principle="LSP",
                             message=f"'{cls.name}.{node.name}' raises NotImplementedError — may violate Liskov",
                             severity="info",
-                        )
+                        ),
                     )
 
     def _check_interface_segregation(self, file: Path, cls: ast.ClassDef) -> None:
@@ -113,5 +113,5 @@ class SOLIDValidator:
                                     principle="DIP",
                                     message=f"Direct DB dependency in '{cls.name}.{node.name}' — inject abstraction",
                                     severity="warning",
-                                )
+                                ),
                             )

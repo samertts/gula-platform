@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,11 +40,11 @@ class TrustFrameworkService:
         name_en: str,
         name_ar: str,
         version: str,
-        effective_date: Optional[datetime] = None,
-        supersedes_framework_id: Optional[str] = None,
-        authority_id: Optional[str] = None,
-        scope: Optional[dict] = None,
-        assurance_policies: Optional[dict] = None,
+        effective_date: datetime | None = None,
+        supersedes_framework_id: str | None = None,
+        authority_id: str | None = None,
+        scope: dict | None = None,
+        assurance_policies: dict | None = None,
     ) -> TrustFramework:
         entity = TrustFramework(
             uuid=str(uuid.uuid4()),
@@ -64,7 +64,7 @@ class TrustFrameworkService:
         await self.session.flush()
         return entity
 
-    async def get_framework(self, framework_id: str) -> Optional[TrustFramework]:
+    async def get_framework(self, framework_id: str) -> TrustFramework | None:
         stmt = select(TrustFramework).where(
             TrustFramework.framework_id == framework_id,
             TrustFramework.is_active.is_(True),
@@ -72,7 +72,7 @@ class TrustFrameworkService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def activate_framework(self, framework_id: str) -> Optional[TrustFramework]:
+    async def activate_framework(self, framework_id: str) -> TrustFramework | None:
         entity = await self.get_framework(framework_id)
         if not entity:
             return None
@@ -81,8 +81,8 @@ class TrustFrameworkService:
         return entity
 
     async def supersede_framework(
-        self, framework_id: str, superseded_by_id: str
-    ) -> Optional[TrustFramework]:
+        self, framework_id: str, superseded_by_id: str,
+    ) -> TrustFramework | None:
         entity = await self.get_framework(framework_id)
         if not entity:
             return None
@@ -92,7 +92,7 @@ class TrustFrameworkService:
         return entity
 
     async def list_frameworks(
-        self, skip: int = 0, limit: int = 100
+        self, skip: int = 0, limit: int = 100,
     ) -> list[TrustFramework]:
         stmt = (
             select(TrustFramework)
@@ -104,8 +104,8 @@ class TrustFrameworkService:
         return list(result.scalars().all())
 
     async def update_framework(
-        self, framework_id: str, **kwargs: Any
-    ) -> Optional[TrustFramework]:
+        self, framework_id: str, **kwargs: Any,
+    ) -> TrustFramework | None:
         entity = await self.get_framework(framework_id)
         if not entity:
             return None
@@ -128,8 +128,8 @@ class AssuranceService:
         ial: str = IAL1,
         aal: str = AAL1,
         fal: str = FAL1,
-        assessed_by: Optional[str] = None,
-        evidence: Optional[dict] = None,
+        assessed_by: str | None = None,
+        evidence: dict | None = None,
     ) -> IdentityAssuranceProfile:
         overall = self._calculate_overall(ial, aal, fal)
         entity = IdentityAssuranceProfile(
@@ -169,7 +169,7 @@ class AssuranceService:
             return IAL2
         return IAL1
 
-    async def get_profile(self, profile_id: str) -> Optional[IdentityAssuranceProfile]:
+    async def get_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
         stmt = select(IdentityAssuranceProfile).where(
             IdentityAssuranceProfile.uuid == profile_id,
             IdentityAssuranceProfile.is_active.is_(True),
@@ -178,7 +178,7 @@ class AssuranceService:
         return result.scalar_one_or_none()
 
     async def get_profiles_for_identity(
-        self, identity_id: str
+        self, identity_id: str,
     ) -> list[IdentityAssuranceProfile]:
         stmt = (
             select(IdentityAssuranceProfile)
@@ -191,7 +191,7 @@ class AssuranceService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def revoke_profile(self, profile_id: str) -> Optional[IdentityAssuranceProfile]:
+    async def revoke_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
         entity = await self.get_profile(profile_id)
         if not entity:
             return None
@@ -200,7 +200,7 @@ class AssuranceService:
         return entity
 
     async def list_profiles(
-        self, skip: int = 0, limit: int = 100
+        self, skip: int = 0, limit: int = 100,
     ) -> list[IdentityAssuranceProfile]:
         stmt = (
             select(IdentityAssuranceProfile)
@@ -222,13 +222,13 @@ class TrustAnchorService:
         anchor_id: str,
         name: str,
         anchor_type: str,
-        public_key_hash: Optional[str] = None,
-        certificate_chain: Optional[str] = None,
-        issuer: Optional[str] = None,
-        subject: Optional[str] = None,
-        valid_from: Optional[datetime] = None,
-        valid_to: Optional[datetime] = None,
-        signed_by: Optional[str] = None,
+        public_key_hash: str | None = None,
+        certificate_chain: str | None = None,
+        issuer: str | None = None,
+        subject: str | None = None,
+        valid_from: datetime | None = None,
+        valid_to: datetime | None = None,
+        signed_by: str | None = None,
     ) -> TrustAnchor:
         entity = TrustAnchor(
             uuid=str(uuid.uuid4()),
@@ -249,7 +249,7 @@ class TrustAnchorService:
         await self.session.flush()
         return entity
 
-    async def get_anchor(self, anchor_id: str) -> Optional[TrustAnchor]:
+    async def get_anchor(self, anchor_id: str) -> TrustAnchor | None:
         stmt = select(TrustAnchor).where(
             TrustAnchor.anchor_id == anchor_id,
             TrustAnchor.is_active.is_(True),
@@ -258,8 +258,8 @@ class TrustAnchorService:
         return result.scalar_one_or_none()
 
     async def revoke_anchor(
-        self, anchor_id: str, reason: str
-    ) -> Optional[TrustAnchor]:
+        self, anchor_id: str, reason: str,
+    ) -> TrustAnchor | None:
         entity = await self.get_anchor(anchor_id)
         if not entity:
             return None
@@ -270,7 +270,7 @@ class TrustAnchorService:
         return entity
 
     async def list_anchors(
-        self, skip: int = 0, limit: int = 100
+        self, skip: int = 0, limit: int = 100,
     ) -> list[TrustAnchor]:
         stmt = (
             select(TrustAnchor)
@@ -310,11 +310,11 @@ class FederationTrustService:
         target_org_id: str,
         trust_type: str = "direct",
         trust_level: str = "limited",
-        scope: Optional[dict] = None,
-        agreement_id: Optional[str] = None,
-        established_at: Optional[datetime] = None,
-        expires_at: Optional[datetime] = None,
-        terms: Optional[dict] = None,
+        scope: dict | None = None,
+        agreement_id: str | None = None,
+        established_at: datetime | None = None,
+        expires_at: datetime | None = None,
+        terms: dict | None = None,
     ) -> FederationTrust:
         entity = FederationTrust(
             uuid=str(uuid.uuid4()),
@@ -335,7 +335,7 @@ class FederationTrustService:
         await self.session.flush()
         return entity
 
-    async def get_trust(self, trust_id: str) -> Optional[FederationTrust]:
+    async def get_trust(self, trust_id: str) -> FederationTrust | None:
         stmt = select(FederationTrust).where(
             FederationTrust.trust_id == trust_id,
             FederationTrust.is_active.is_(True),
@@ -343,7 +343,7 @@ class FederationTrustService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def suspend_trust(self, trust_id: str) -> Optional[FederationTrust]:
+    async def suspend_trust(self, trust_id: str) -> FederationTrust | None:
         entity = await self.get_trust(trust_id)
         if not entity:
             return None
@@ -351,7 +351,7 @@ class FederationTrustService:
         await self.session.flush()
         return entity
 
-    async def terminate_trust(self, trust_id: str) -> Optional[FederationTrust]:
+    async def terminate_trust(self, trust_id: str) -> FederationTrust | None:
         entity = await self.get_trust(trust_id)
         if not entity:
             return None
@@ -373,7 +373,7 @@ class FederationTrustService:
         return list(result.scalars().all())
 
     async def list_all(
-        self, skip: int = 0, limit: int = 100
+        self, skip: int = 0, limit: int = 100,
     ) -> list[FederationTrust]:
         stmt = (
             select(FederationTrust)
@@ -397,9 +397,9 @@ class IdentityProofingService:
         identity_id: str,
         proofing_level: str = IAL1,
         method: str = "remote",
-        evidence_type: Optional[dict] = None,
-        evidence_documents: Optional[dict] = None,
-        authority_id: Optional[str] = None,
+        evidence_type: dict | None = None,
+        evidence_documents: dict | None = None,
+        authority_id: str | None = None,
     ) -> IdentityProofing:
         entity = IdentityProofing(
             uuid=str(uuid.uuid4()),
@@ -419,8 +419,8 @@ class IdentityProofingService:
         return entity
 
     async def verify_proofing(
-        self, proofing_id: str, verified_by: str
-    ) -> Optional[IdentityProofing]:
+        self, proofing_id: str, verified_by: str,
+    ) -> IdentityProofing | None:
         entity = await self.get_proofing(proofing_id)
         if not entity:
             return None
@@ -432,8 +432,8 @@ class IdentityProofingService:
         return entity
 
     async def reject_proofing(
-        self, proofing_id: str, reason: str
-    ) -> Optional[IdentityProofing]:
+        self, proofing_id: str, reason: str,
+    ) -> IdentityProofing | None:
         entity = await self.get_proofing(proofing_id)
         if not entity:
             return None
@@ -442,7 +442,7 @@ class IdentityProofingService:
         await self.session.flush()
         return entity
 
-    async def get_proofing(self, proofing_id: str) -> Optional[IdentityProofing]:
+    async def get_proofing(self, proofing_id: str) -> IdentityProofing | None:
         stmt = select(IdentityProofing).where(
             IdentityProofing.proofing_id == proofing_id,
             IdentityProofing.is_active.is_(True),
@@ -451,7 +451,7 @@ class IdentityProofingService:
         return result.scalar_one_or_none()
 
     async def list_for_person(
-        self, person_id: str
+        self, person_id: str,
     ) -> list[IdentityProofing]:
         stmt = (
             select(IdentityProofing)
@@ -465,7 +465,7 @@ class IdentityProofingService:
         return list(result.scalars().all())
 
     async def list_all(
-        self, skip: int = 0, limit: int = 100
+        self, skip: int = 0, limit: int = 100,
     ) -> list[IdentityProofing]:
         stmt = (
             select(IdentityProofing)
@@ -487,13 +487,13 @@ class TrustEvaluationService:
         evaluation_id: str,
         target_type: str,
         target_id: str,
-        evaluated_by: Optional[str] = None,
-        assurance_score: Optional[int] = None,
-        confidence_score: Optional[int] = None,
-        risk_score: Optional[int] = None,
-        evaluation_method: Optional[str] = None,
-        findings: Optional[dict] = None,
-        recommendations: Optional[dict] = None,
+        evaluated_by: str | None = None,
+        assurance_score: int | None = None,
+        confidence_score: int | None = None,
+        risk_score: int | None = None,
+        evaluation_method: str | None = None,
+        findings: dict | None = None,
+        recommendations: dict | None = None,
     ) -> TrustEvaluation:
         entity = TrustEvaluation(
             uuid=str(uuid.uuid4()),
@@ -515,7 +515,7 @@ class TrustEvaluationService:
         await self.session.flush()
         return entity
 
-    async def get_evaluation(self, evaluation_id: str) -> Optional[TrustEvaluation]:
+    async def get_evaluation(self, evaluation_id: str) -> TrustEvaluation | None:
         stmt = select(TrustEvaluation).where(
             TrustEvaluation.evaluation_id == evaluation_id,
             TrustEvaluation.is_active.is_(True),
@@ -524,7 +524,7 @@ class TrustEvaluationService:
         return result.scalar_one_or_none()
 
     async def list_for_target(
-        self, target_type: str, target_id: str
+        self, target_type: str, target_id: str,
     ) -> list[TrustEvaluation]:
         stmt = (
             select(TrustEvaluation)
@@ -539,7 +539,7 @@ class TrustEvaluationService:
         return list(result.scalars().all())
 
     async def list_all(
-        self, skip: int = 0, limit: int = 100
+        self, skip: int = 0, limit: int = 100,
     ) -> list[TrustEvaluation]:
         stmt = (
             select(TrustEvaluation)

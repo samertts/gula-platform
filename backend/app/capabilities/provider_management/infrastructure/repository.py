@@ -19,7 +19,7 @@ class SQLAlchemyProvider_managementRepository(Provider_managementRepository):
     async def list(self, skip: int = 0, limit: int = 100) -> list[Provider_management]:
         async with self._session_factory() as session:
             result = await session.execute(
-                select(Provider_management).offset(skip).limit(limit)
+                select(Provider_management).offset(skip).limit(limit),
             )
             return list(result.scalars().all())
 

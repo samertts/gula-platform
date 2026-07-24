@@ -25,7 +25,7 @@ class CloudStorageConnector(BaseConnector):
         if self._provider not in SUPPORTED_PROVIDERS:
             raise ValueError(
                 f"Unsupported cloud storage provider: {self._provider}. "
-                f"Supported: {', '.join(sorted(SUPPORTED_PROVIDERS))}"
+                f"Supported: {', '.join(sorted(SUPPORTED_PROVIDERS))}",
             )
         self._endpoint = self.config.get("endpoint", "")
         self._region = self.config.get("region", "us-east-1")

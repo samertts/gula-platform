@@ -72,14 +72,12 @@ def generate_token_id() -> str:
 
 
 def verify_pkce(code_verifier: str, code_challenge: str, method: str) -> bool:
-    if method == "S256":
-        computed = urlsafe_b64encode(
-            hashlib.sha256(code_verifier.encode("ascii")).digest()
-        ).rstrip(b"=").decode()
-        return computed == code_challenge
-    if method == "plain":
-        return code_verifier == code_challenge
-    return False
+    if method != "S256":
+        return False
+    computed = urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode("ascii")).digest(),
+    ).rstrip(b"=").decode()
+    return computed == code_challenge
 
 
 def create_id_token(
@@ -169,7 +167,7 @@ def get_jwks() -> list[dict[str, Any]]:
     logger.warning(
         "JWKS endpoint called with symmetric HMAC signing — "
         "no asymmetric public keys are available. "
-        "Clients expecting RSA/EC keys will receive an empty set."
+        "Clients expecting RSA/EC keys will receive an empty set.",
     )
     return []
 
@@ -189,5 +187,5 @@ def build_openid_config() -> dict[str, Any]:
         "id_token_signing_alg_values_supported": ["HS256"],
         "scopes_supported": ["openid", "profile", "email", "read", "write"],
         "claims_supported": ["sub", "iss", "aud", "exp", "iat"],
-        "code_challenge_methods_supported": ["S256", "plain"],
+        "code_challenge_methods_supported": ["S256"],
     }

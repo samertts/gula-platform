@@ -198,7 +198,7 @@ def build_full_history(
                     }
                     for r in results_by_order.get(o.id, [])
                 ],
-            }
+            },
         )
 
     completed_or_validated = sum(1 for o in orders if o.status in ("completed", "validated"))

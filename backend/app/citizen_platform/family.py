@@ -147,7 +147,7 @@ class ConsentManager:
         return False
 
     def check_consent(
-        self, citizen_id: str, granted_to: str, scope: str
+        self, citizen_id: str, granted_to: str, scope: str,
     ) -> bool:
         consents = self._consents.get(citizen_id, [])
         return any(

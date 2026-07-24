@@ -33,7 +33,7 @@ class InvoiceResponse(BaseModel):
     status: str
     amount: Decimal
     currency: str
-    paid_amount: Decimal = Decimal("0")
+    paid_amount: Decimal = Decimal(0)
     due_date: date | None = None
     issued_at: datetime | None = None
     paid_at: datetime | None = None

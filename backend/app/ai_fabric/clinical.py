@@ -104,7 +104,7 @@ class ClinicalDecisionSupport:
                 "applicable": True,
                 "recommendations": ["Follow standard protocol"],
                 "evidence_level": "B",
-            }
+            },
         ]
 
 

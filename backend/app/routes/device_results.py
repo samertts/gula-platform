@@ -84,7 +84,7 @@ def receive_device_results(
             and item.normal_range_high is not None
         ):
             flag = get_flag(
-                item.value, item.normal_range_low, item.normal_range_high, test_name=item.test_name
+                item.value, item.normal_range_low, item.normal_range_high, test_name=item.test_name,
             )
 
         import secrets

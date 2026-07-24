@@ -23,6 +23,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string;
+  access_token?: string;
   refresh_token: string;
   token_type: string;
   user: UserInfo;

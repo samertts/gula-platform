@@ -1,5 +1,4 @@
-"""
-Government Compliance Endpoints - GULA Platform
+"""Government Compliance Endpoints - GULA Platform
 نقاط التوافق الحكومي - منصة غولا
 
 Designed for Iraqi Ministry of Health and National Data Center (NIC) testing.
@@ -48,8 +47,7 @@ _COMPLIANCE_ROLES = {"admin", "master_admin", "province_admin", "lab_admin"}
 
 @router.get("/info", summary="System information for government audit")
 def system_info(current_user: LabUser = Depends(get_current_user)):
-    """
-    Returns comprehensive system information for government compliance verification.
+    """Returns comprehensive system information for government compliance verification.
     المعلومات الكاملة للنظام للتحقق من الامتثال الحكومي.
 
     For use by:
@@ -144,13 +142,11 @@ def audit_summary(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns audit log statistics for compliance reporting.
+    """Returns audit log statistics for compliance reporting.
     ملخص سجل التدقيق لتقارير الامتثال.
 
     Provides counts of actions by type for the current lab.
     """
-
     # Count audit actions for this lab's users
     lab_user_ids = [
         u.id for u in db.query(LabUser.id).filter(LabUser.lab_id == current_user.lab_id).all()
@@ -186,8 +182,7 @@ def get_fhir_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns patient data in HL7 FHIR R4 Patient resource format.
+    """Returns patient data in HL7 FHIR R4 Patient resource format.
     بيانات المريض بتنسيق HL7 FHIR R4.
 
     Useful for interoperability with Ministry of Health systems.
@@ -221,13 +216,13 @@ def get_fhir_patient(
                 "use": "official",
                 "system": "https://gula-platform.org/fhir/patient-id",
                 "value": patient.health_id,
-            }
+            },
         ],
         "name": [
             {
                 "use": "official",
                 "text": patient.full_name,
-            }
+            },
         ],
         "telecom": [],
         "gender": _fhir_gender(patient.gender),
@@ -243,7 +238,7 @@ def get_fhir_patient(
                 "system": "phone",
                 "value": patient.phone,
                 "use": "mobile",
-            }
+            },
         )
 
     if patient.email:
@@ -251,7 +246,7 @@ def get_fhir_patient(
             {
                 "system": "email",
                 "value": patient.email,
-            }
+            },
         )
 
     return fhir_patient
@@ -263,8 +258,7 @@ def get_fhir_observations(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns lab results in HL7 FHIR R4 Observation bundle format.
+    """Returns lab results in HL7 FHIR R4 Observation bundle format.
     نتائج المختبر بتنسيق HL7 FHIR R4 Observation bundle.
     """
     order = (
@@ -302,9 +296,9 @@ def get_fhir_observations(
                             "system": "http://terminology.hl7.org/CodeSystem/observation-category",
                             "code": "laboratory",
                             "display": "Laboratory",
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             "code": {
                 "text": r.test_name,
@@ -322,9 +316,9 @@ def get_fhir_observations(
                         {
                             "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
                             "code": _fhir_interpretation(r.flag),
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ]
             if r.flag
             else None,
@@ -344,7 +338,7 @@ def get_fhir_observations(
                 {
                     "low": {"value": r.normal_range_low, "unit": r.unit or ""},
                     "high": {"value": r.normal_range_high, "unit": r.unit or ""},
-                }
+                },
             ]
 
         observations.append(obs)
@@ -363,8 +357,7 @@ def get_fhir_diagnostic_report(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns lab order as HL7 FHIR R4 DiagnosticReport resource.
+    """Returns lab order as HL7 FHIR R4 DiagnosticReport resource.
     تقرير التشخيص بتنسيق HL7 FHIR R4.
 
     DiagnosticReport is the primary FHIR resource for lab results — it wraps
@@ -418,7 +411,7 @@ def get_fhir_diagnostic_report(
             {
                 "system": "https://gula-platform.org/fhir/order-id",
                 "value": str(order_id),
-            }
+            },
         ],
         "status": report_status,
         "category": [
@@ -428,9 +421,9 @@ def get_fhir_diagnostic_report(
                         "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
                         "code": "LAB",
                         "display": "Laboratory",
-                    }
-                ]
-            }
+                    },
+                ],
+            },
         ],
         "code": {
             "coding": [
@@ -438,7 +431,7 @@ def get_fhir_diagnostic_report(
                     "system": "http://loinc.org",
                     "code": "11502-2",
                     "display": "Laboratory report",
-                }
+                },
             ],
             "text": "Laboratory Report",
         },
@@ -452,7 +445,7 @@ def get_fhir_diagnostic_report(
             {
                 "reference": f"Organization/{order.lab_id}",
                 "display": lab.name if lab else None,
-            }
+            },
         ],
         "result": observations_refs,
         "conclusion": _build_conclusion(results),
@@ -463,7 +456,7 @@ def get_fhir_diagnostic_report(
             {
                 "reference": f"ServiceRequest/{order_id}",
                 "display": f"Order by Dr. {order.doctor_name}",
-            }
+            },
         ]
 
     return report
@@ -475,8 +468,7 @@ def get_fhir_service_request(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns lab order as HL7 FHIR R4 ServiceRequest resource.
+    """Returns lab order as HL7 FHIR R4 ServiceRequest resource.
     طلب الخدمة بتنسيق HL7 FHIR R4.
 
     ServiceRequest represents the original test order from a clinician.
@@ -514,7 +506,7 @@ def get_fhir_service_request(
             {
                 "system": "https://gula-platform.org/fhir/service-request-id",
                 "value": str(order_id),
-            }
+            },
         ],
         "status": "completed" if order.status == "completed" else "active",
         "intent": "original-order",
@@ -525,9 +517,9 @@ def get_fhir_service_request(
                         "system": "http://snomed.info/sct",
                         "code": "108252007",
                         "display": "Laboratory procedure",
-                    }
-                ]
-            }
+                    },
+                ],
+            },
         ],
         "code": {
             "coding": [
@@ -535,7 +527,7 @@ def get_fhir_service_request(
                     "system": "http://loinc.org",
                     "code": "11502-2",
                     "display": "Laboratory report",
-                }
+                },
             ],
             "text": "Laboratory Tests",
         },
@@ -561,8 +553,7 @@ def get_dhis2_aggregate(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns aggregate lab statistics in DHIS2-compatible format.
+    """Returns aggregate lab statistics in DHIS2-compatible format.
     إحصائيات المختبر التجميعية بتنسيق DHIS2.
 
     DHIS2 (District Health Information Software 2) is used by Iraq's Ministry
@@ -573,7 +564,6 @@ def get_dhis2_aggregate(
     Data exported: total tests by type, result flag distribution, monthly counts.
     No patient PII is included in this response.
     """
-
     from sqlalchemy import text
 
     # Aggregate test counts by type (no patient data)
@@ -632,7 +622,7 @@ def get_dhis2_aggregate(
                     "value": str((row.abnormal_high or 0) + (row.abnormal_low or 0)),
                     "comment": f"Abnormal {row.test_name} results",
                 },
-            ]
+            ],
         )
 
     return {
@@ -680,8 +670,7 @@ def audit_integrity(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Verifies the cryptographic hash chain of audit log records.
+    """Verifies the cryptographic hash chain of audit log records.
     التحقق من سلامة سلسلة تجزئة سجل التدقيق.
 
     Each audit log entry contains SHA-256(prev_hash + record_data).
@@ -712,8 +701,7 @@ def security_report(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Returns a structured security posture report for government and ISO 27001 auditors.
+    """Returns a structured security posture report for government and ISO 27001 auditors.
     تقرير وضع الأمان للمراجعين الحكوميين ومراجعي ISO 27001.
 
     Covers: authentication, encryption, access control, audit, compliance, patching.
@@ -734,7 +722,7 @@ def security_report(
         SELECT COUNT(*) FROM audit_logs
         WHERE action = 'login_failed'
           AND created_at >= NOW() - INTERVAL '24 hours'
-    """)
+    """),
         ).scalar()
         or 0
     )
@@ -825,8 +813,7 @@ def security_report(
 
 @router.get("/time-sync", summary="Server time and NTP synchronization status")
 def time_sync_status():
-    """
-    Returns server time and NTP synchronization status.
+    """Returns server time and NTP synchronization status.
     حالة تزامن وقت الخادم مع بروتوكول NTP.
 
     Audit log integrity depends on accurate timestamps.
@@ -935,8 +922,7 @@ def system_status(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Comprehensive system status for government and compliance dashboards.
+    """Comprehensive system status for government and compliance dashboards.
     حالة النظام الشاملة للوحات التحكم الحكومية وامتثال ISO 27001.
 
     Covers: database, cache, audit integrity, time sync, security, API stats.
@@ -983,8 +969,8 @@ def system_status(
         db.execute(
             sql_text(
                 "SELECT COUNT(*) FROM audit_logs "
-                "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours'"
-            )
+                "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours'",
+            ),
         ).scalar()
         or 0
     )
@@ -1018,7 +1004,7 @@ def system_status(
             if line.strip().startswith("Offset:"):
                 ntp_offset_str = line.strip().split(":", 1)[1].strip()
                 m = _re.match(
-                    r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)", ntp_offset_str.replace("µs", "us")
+                    r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)", ntp_offset_str.replace("µs", "us"),
                 )
                 if m:
                     v, u = float(m.group(1)), m.group(2)
@@ -1174,7 +1160,7 @@ def _read_restore_test() -> dict | None:
             # Canonical payload: compact JSON with sorted keys (matches shell output)
             payload = json.dumps(data, separators=(",", ":"), ensure_ascii=False, sort_keys=False)
             expected = _hmac.new(
-                hmac_key.encode("utf-8"), payload.encode("utf-8"), _hashlib.sha256
+                hmac_key.encode("utf-8"), payload.encode("utf-8"), _hashlib.sha256,
             ).hexdigest()
             data["signature_valid"] = _hmac.compare_digest(expected, stored_sig)
             if not data["signature_valid"]:

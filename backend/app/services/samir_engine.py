@@ -1,5 +1,4 @@
-"""
-Samir Contextual Help Engine — GULA Platform
+"""Samir Contextual Help Engine — GULA Platform
 =============================================
 Returns Arabic page-context tips for the in-app guide.
 
@@ -30,6 +29,7 @@ def samir(page: str) -> str:
 
     Returns:
         Arabic help string.  Returns a generic greeting for unknown pages.
+
     """
     if not page or not isinstance(page, str):
         return _DEFAULT

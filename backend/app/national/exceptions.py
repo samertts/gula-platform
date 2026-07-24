@@ -140,7 +140,7 @@ class OfflineSyncConflictError(NationalDomainError):
         self.remote_version = remote_version
         super().__init__(
             f"Offline sync conflict: {entity} {entity_id} "
-            f"local v{local_version} != remote v{remote_version}"
+            f"local v{local_version} != remote v{remote_version}",
         )
 
 

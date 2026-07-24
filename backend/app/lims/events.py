@@ -14,6 +14,7 @@ from typing import Any
 @dataclass
 class LIMSEvent:
     """Base LIMS event with standard envelope fields."""
+
     event_type: str = ""
     aggregate_id: str = ""
     aggregate_type: str = ""

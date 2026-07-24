@@ -38,7 +38,7 @@ class IntrusionDetector:
 
             if len(times) > self._max:
                 logger.warning(
-                    "IP %s blocked: %d attempts in %ds", ip, len(times), self._window
+                    "IP %s blocked: %d attempts in %ds", ip, len(times), self._window,
                 )
                 return "blocked"
         return "ok"

@@ -86,6 +86,6 @@ def get_clinical_benchmarks(
     db: Session = Depends(get_db),
 ):
     items, total = QualityService.get_benchmarks(
-        db, indicator_id=indicator_id, year=year, skip=skip, limit=limit
+        db, indicator_id=indicator_id, year=year, skip=skip, limit=limit,
     )
     return {"items": [b.to_dict() for b in items], "total": total, "skip": skip, "limit": limit}

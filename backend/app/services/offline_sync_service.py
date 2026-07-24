@@ -227,7 +227,7 @@ class OfflineSyncEngine:
                 continue
             if not self._has_causal_relationship(existing.vector_clock, incoming.vector_clock):
                 conflict_id = hashlib.sha256(
-                    f"{existing.operation_id}:{incoming.operation_id}".encode()
+                    f"{existing.operation_id}:{incoming.operation_id}".encode(),
                 ).hexdigest()[:16]
                 return ConflictRecord(
                     conflict_id=conflict_id,

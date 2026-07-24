@@ -1,5 +1,4 @@
-"""
-GULA Statistics & Trends API
+"""GULA Statistics & Trends API
 ==============================
 Provides time-series analytics for lab performance monitoring.
 All queries are scoped to the requesting lab's tenant (lab_id isolation).
@@ -135,7 +134,7 @@ def daily_trends(
         ]
     except Exception:
         logger.debug(
-            "daily_trends: raw SQL unsupported on this DB dialect — returning empty series"
+            "daily_trends: raw SQL unsupported on this DB dialect — returning empty series",
         )
         series = []
 
@@ -170,7 +169,7 @@ def test_frequency(
             func.avg(LabResult.value).label("avg_value"),
             func.count(case((LabResult.flag == "critical", LabResult.id))).label("critical_count"),
             func.count(case((LabResult.flag.in_(["H", "L", "critical"]), LabResult.id))).label(
-                "abnormal_count"
+                "abnormal_count",
             ),
         )
         .join(LabOrder)
@@ -288,7 +287,7 @@ def patient_growth(
         total_new = sum(r[1] for r in rows)
     except Exception:
         logger.debug(
-            "patient_growth: raw SQL unsupported on this DB dialect — returning empty series"
+            "patient_growth: raw SQL unsupported on this DB dialect — returning empty series",
         )
         series = []
         total_new = 0

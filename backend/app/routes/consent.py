@@ -41,7 +41,7 @@ router = APIRouter(prefix="/consent", tags=["consent"])
 class GrantRequest(BaseModel):
     gpid: str = Field(..., min_length=26, max_length=26, description="Subject citizen_ulid")
     grantee_id: str = Field(
-        ..., min_length=3, max_length=64, description="Actor being authorized (e.g. 'user:42')"
+        ..., min_length=3, max_length=64, description="Actor being authorized (e.g. 'user:42')",
     )
     scope: str = Field(..., min_length=3, max_length=64)
     expires_in_hours: int = Field(..., ge=1, le=MAX_CONSENT_HOURS)
@@ -121,7 +121,7 @@ def grant(
             ip_address=request.client.host if request.client else None,
         )
     except ConsentError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid request") from e
 
     db.commit()
     return GrantResponse(
