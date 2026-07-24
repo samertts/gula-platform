@@ -23,6 +23,8 @@ import type {
   AIInterpretation,
   AIChatResponse,
   AIProviderStatus,
+  HealthStatus,
+  DeepHealth,
 } from "@/types";
 
 // ── Auth ──
@@ -378,10 +380,10 @@ export const statsApi = {
 
 // ── Metrics & Health ──
 export const healthApi = {
-  health: () => api.get<Record<string, unknown>>("/health").then((r) => r.data),
-  ready: () => api.get<Record<string, unknown>>("/health/ready").then((r) => r.data),
-  deep: () => api.get<Record<string, unknown>>("/health/deep").then((r) => r.data),
-  status: () => api.get<Record<string, unknown>>("/health/status").then((r) => r.data),
+  health: () => api.get<HealthStatus>("/health").then((r) => r.data),
+  ready: () => api.get<HealthStatus>("/health/ready").then((r) => r.data),
+  deep: () => api.get<DeepHealth>("/health/deep").then((r) => r.data),
+  status: () => api.get<HealthStatus>("/health/status").then((r) => r.data),
 };
 
 export const metricsApi = {
