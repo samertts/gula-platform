@@ -42,6 +42,7 @@ class Patient(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     lab = relationship("Lab", back_populates="patients")
+    canonical_links = relationship("PatientLink", back_populates="patient", lazy="dynamic")
     orders = relationship("LabOrder", back_populates="patient", cascade="all, delete-orphan")
     # Guardian relationship — a patient can have many dependents (children)
     guardian = relationship(

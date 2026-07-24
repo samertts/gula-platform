@@ -11,7 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
 )
-from sqlalchemy.orm import backref, relationship
+from sqlalchemy.orm import relationship
 
 from app._compat import UTC
 
@@ -77,7 +77,7 @@ class PatientLink(Base):
     confidence = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    patient = relationship("Patient", backref=backref("canonical_links", lazy="dynamic"))
+    patient = relationship("Patient", back_populates="canonical_links")
     canonical = relationship("CanonicalPatient", back_populates="patient_links")
 
 
@@ -100,5 +100,5 @@ class CitizenLink(Base):
     confidence = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    citizen = relationship("Citizen", backref=backref("canonical_links", lazy="dynamic"))
+    citizen = relationship("Citizen", back_populates="canonical_links")
     canonical = relationship("CanonicalPatient", back_populates="citizen_links")

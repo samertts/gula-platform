@@ -95,6 +95,7 @@ class Citizen(Base):
     # Self-reference for merge chain (reads must follow to the survivor)
     merged_into = relationship("Citizen", remote_side=[id], foreign_keys=[merged_into_id])
     claims = relationship("IdentityClaim", back_populates="citizen", lazy="dynamic")
+    canonical_links = relationship("CitizenLink", back_populates="citizen", lazy="dynamic")
 
     def canonical(self) -> Citizen:
         """Follow merged_into chain to the surviving citizen.
