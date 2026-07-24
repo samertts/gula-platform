@@ -6,7 +6,8 @@ export const ROLE_LEVELS: Record<string, number> = {
   lab_admin: 50,
   doctor: 40,
   technician: 20,
-  staff: 20,
+   staff: 20,
+  lab_staff: 20,
   receptionist: 25,
   citizen: 10,
 };
@@ -39,6 +40,13 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "dashboard:read", "audit:read",
     "platform:manage_users",
   ],
+  lab_admin: [
+    "patients:read", "patients:write",
+    "orders:read", "orders:write",
+    "results:read", "results:write",
+    "staff:manage", "lab:read", "lab:manage",
+    "dashboard:read", "audit:read",
+  ],
   doctor: [
     "patients:read", "orders:read", "results:read", "dashboard:read",
   ],
@@ -49,6 +57,11 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   staff: [
     "patients:read", "patients:write",
+    "orders:read", "orders:write",
+    "results:read", "results:write",
+    "lab:read", "dashboard:read",
+  ],
+  lab_staff: [
     "orders:read", "orders:write",
     "results:read", "results:write",
     "lab:read", "dashboard:read",

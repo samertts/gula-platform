@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
 
 export const TEST_CREDENTIALS = {
   email: "admin@test.com",
