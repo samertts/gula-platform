@@ -32,4 +32,4 @@ class Sample(Base):
     storage_location = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    order = relationship("LabOrder", backref="samples")
+    order = relationship("LabOrder", back_populates="samples")

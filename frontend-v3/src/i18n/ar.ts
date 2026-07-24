@@ -32,6 +32,7 @@ const ar = {
   },
   auth: {
     login: "تسجيل الدخول",
+    loginDescription: "أدخل بيانات الاعتماد الخاصة بك للوصول إلى النظام",
     register: "تسجيل جديد",
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
@@ -47,6 +48,7 @@ const ar = {
   },
   patient: {
     title: "المرضى",
+    subtitle: "إدارة سجلات المرضى",
     newPatient: "مريض جديد",
     fullName: "الاسم الكامل",
     phone: "رقم الهاتف",

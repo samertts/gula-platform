@@ -26,4 +26,4 @@ class Tenant(Base):
     settings = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    organizations = relationship("Organization", backref="tenant")
+    organizations = relationship("Organization", back_populates="tenant")

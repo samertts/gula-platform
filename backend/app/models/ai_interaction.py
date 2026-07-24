@@ -83,13 +83,13 @@ class AIInteraction(Base):
 
     retrieval_refs = relationship(
         "AIRetrievalRef",
-        backref="interaction",
+        back_populates="interaction",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
     feedback = relationship(
         "AIFeedback",
-        backref="interaction",
+        back_populates="interaction",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
@@ -110,6 +110,8 @@ class AIRetrievalRef(Base):
     rank = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
 
+    interaction = relationship("AIInteraction", back_populates="retrieval_refs")
+
 
 class AIFeedback(Base):
     __tablename__ = "ai_feedback"
@@ -123,6 +125,8 @@ class AIFeedback(Base):
     signal = Column(String(32), nullable=False, index=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
+
+    interaction = relationship("AIInteraction", back_populates="feedback")
 
 
 class AIUnresolvedQuestion(Base):

@@ -28,6 +28,10 @@ class Organization(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
+    tenant = relationship("Tenant", back_populates="organizations")
+    users = relationship("User", back_populates="organization")
+    facilities = relationship("Facility", back_populates="organization")
+
 
 class Facility(Base):
     __tablename__ = "facilities"
@@ -44,4 +48,4 @@ class Facility(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    organization = relationship("Organization", backref="facilities")
+    organization = relationship("Organization", back_populates="facilities")

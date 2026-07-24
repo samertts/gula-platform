@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from app._compat import UTC, StrEnum
 
@@ -108,6 +109,8 @@ class RoleAssignment(Base):
     is_delegated = Column(Boolean, default=False)
     delegation_id = Column(Integer, ForeignKey("delegations.id", ondelete="SET NULL"), nullable=True)
     status = Column(String(20), default="active")
+
+    user = relationship("User", back_populates="role_assignments", foreign_keys=[user_id])
 
 
 class RoleGroup(Base):

@@ -49,4 +49,5 @@ class LabOrder(Base):
 
     patient = relationship("Patient", back_populates="orders")
     lab = relationship("Lab", back_populates="orders")
+    samples = relationship("Sample", back_populates="order", cascade="all, delete-orphan")
     results = relationship("LabResult", back_populates="order", cascade="all, delete-orphan")

@@ -36,6 +36,6 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     last_login = Column(DateTime(timezone=True), nullable=True)
 
-    lab = relationship("Lab", backref="staff_users")
-    organization = relationship("Organization", backref="users", foreign_keys=[organization_id])
-    role_assignments = relationship("RoleAssignment", backref="user", foreign_keys="RoleAssignment.user_id")
+    lab = relationship("Lab", back_populates="staff_users")
+    organization = relationship("Organization", back_populates="users", foreign_keys=[organization_id])
+    role_assignments = relationship("RoleAssignment", back_populates="user", foreign_keys="RoleAssignment.user_id")

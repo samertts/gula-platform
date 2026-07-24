@@ -32,6 +32,7 @@ const en = {
   },
   auth: {
     login: "Login",
+    loginDescription: "Enter your credentials to access the system",
     register: "Register",
     email: "Email",
     password: "Password",
@@ -47,6 +48,7 @@ const en = {
   },
   patient: {
     title: "Patients",
+    subtitle: "Manage patient records",
     newPatient: "New Patient",
     fullName: "Full Name",
     phone: "Phone Number",

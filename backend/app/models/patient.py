@@ -2,7 +2,7 @@ from datetime import date as date_type
 from datetime import datetime
 
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, String
-from sqlalchemy.orm import backref, relationship
+from sqlalchemy.orm import relationship
 
 from app._compat import UTC, StrEnum
 
@@ -44,10 +44,16 @@ class Patient(Base):
     lab = relationship("Lab", back_populates="patients")
     orders = relationship("LabOrder", back_populates="patient", cascade="all, delete-orphan")
     # Guardian relationship — a patient can have many dependents (children)
+    guardian = relationship(
+        "Patient",
+        foreign_keys=[guardian_id],
+        remote_side=[id],
+        back_populates="dependents",
+    )
     dependents = relationship(
         "Patient",
         foreign_keys=[guardian_id],
-        backref=backref("guardian", remote_side=[id]),
+        back_populates="guardian",
         lazy="dynamic",
     )
 

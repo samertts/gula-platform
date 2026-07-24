@@ -25,6 +25,7 @@ class Lab(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     users = relationship("LabUser", back_populates="lab", cascade="all, delete-orphan")
+    staff_users = relationship("User", back_populates="lab")
     patients = relationship("Patient", back_populates="lab", cascade="all, delete-orphan")
     orders = relationship("LabOrder", back_populates="lab", cascade="all, delete-orphan")
     subscription = relationship(

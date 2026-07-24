@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button } from "@/components/ui";
 import { FlaskConical } from "lucide-react";
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -21,7 +23,7 @@ export function LoginPage() {
       navigate("/dashboard");
     } catch (err: unknown) {
       const errorDetail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(errorDetail || "فشل تسجيل الدخول");
+      setError(errorDetail || t("auth.invalidCredentials"));
     } finally {
       setLoading(false);
     }
@@ -33,8 +35,8 @@ export function LoginPage() {
         <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <FlaskConical className="h-6 w-6 text-primary" />
         </div>
-        <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
-        <CardDescription>أدخل بيانات الاعتماد الخاصة بك للوصول إلى النظام</CardDescription>
+        <CardTitle className="text-2xl">{t("auth.login")}</CardTitle>
+        <CardDescription>{t("auth.loginDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -45,7 +47,7 @@ export function LoginPage() {
           )}
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="email">
-              البريد الإلكتروني
+              {t("auth.email")}
             </label>
             <Input
               id="email"
@@ -58,7 +60,7 @@ export function LoginPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="password">
-              كلمة المرور
+              {t("auth.password")}
             </label>
             <Input
               id="password"
@@ -70,7 +72,7 @@ export function LoginPage() {
             />
           </div>
           <Button type="submit" className="w-full" loading={loading}>
-            تسجيل الدخول
+            {t("auth.login")}
           </Button>
         </form>
       </CardContent>
