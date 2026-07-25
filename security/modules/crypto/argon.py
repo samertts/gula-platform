@@ -103,13 +103,7 @@ class Argon2idHasher(Hasher):
         )
 
     def _bcrypt_hash(self, data: bytes, salt: bytes | None = None) -> bytes:
-        if salt:
-            encoded_salt = salt.hex()[:22]
-        else:
-            encoded_salt = None
-
         hashed = bcrypt.using(
             rounds=12,
-            salt=encoded_salt.encode() if encoded_salt else None,
         ).hash(data.decode("utf-8", errors="replace"))
         return hashed.encode("utf-8")

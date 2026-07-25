@@ -1,4 +1,4 @@
-GSF Module Registry.
+"""GSF Module Registry.
 
 This package contains all GSF security modules (GSF-001 through GSF-020).
 Modules are organized by security domain and follow a consistent interface

@@ -1,4 +1,4 @@
-GSF-002: Secrets Module — Encrypted secret storage.
+"""GSF-002: Secrets Module — Encrypted secret storage.
 
 Manages secure storage and retrieval of secrets (API keys, database credentials,
 certificates) with support for multiple backends including HashiCorp Vault,

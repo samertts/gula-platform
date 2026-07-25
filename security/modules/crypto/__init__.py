@@ -1,4 +1,4 @@
-GSF-003: Crypto Module — Cryptographic operations.
+"""GSF-003: Crypto Module — Cryptographic operations.
 
 Provides all cryptographic primitives for the GULA platform including
 AEAD encryption, digital signatures, key derivation, key wrapping,
