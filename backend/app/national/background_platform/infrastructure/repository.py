@@ -29,7 +29,6 @@ from app.national.background_platform.infrastructure.models import (
 
 
 class SQLAlchemyJobRepository(JobRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -70,10 +69,14 @@ class SQLAlchemyJobRepository(JobRepository):
         return model.to_domain()
 
     async def get(self, job_id: str) -> JobDefinition | None:
-        model = self.db.query(NationalJob).filter(
-            NationalJob.id == job_id,
-            ~NationalJob.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalJob)
+            .filter(
+                NationalJob.id == job_id,
+                ~NationalJob.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -92,10 +95,14 @@ class SQLAlchemyJobRepository(JobRepository):
         return [m.to_domain() for m in models]
 
     async def delete(self, job_id: str, soft: bool = True) -> None:
-        model = self.db.query(NationalJob).filter(
-            NationalJob.id == job_id,
-            ~NationalJob.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalJob)
+            .filter(
+                NationalJob.id == job_id,
+                ~NationalJob.is_deleted,
+            )
+            .first()
+        )
         if model:
             if soft:
                 model.is_deleted = True
@@ -110,10 +117,17 @@ class SQLAlchemyJobRepository(JobRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[JobDefinition]:
-        models = self.db.query(NationalJob).filter(
-            NationalJob.status == status,
-            ~NationalJob.is_deleted,
-        ).order_by(NationalJob.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalJob)
+            .filter(
+                NationalJob.status == status,
+                ~NationalJob.is_deleted,
+            )
+            .order_by(NationalJob.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_by_category(
@@ -122,10 +136,17 @@ class SQLAlchemyJobRepository(JobRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[JobDefinition]:
-        models = self.db.query(NationalJob).filter(
-            NationalJob.category == category,
-            ~NationalJob.is_deleted,
-        ).order_by(NationalJob.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalJob)
+            .filter(
+                NationalJob.category == category,
+                ~NationalJob.is_deleted,
+            )
+            .order_by(NationalJob.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_by_priority(
@@ -134,10 +155,17 @@ class SQLAlchemyJobRepository(JobRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[JobDefinition]:
-        models = self.db.query(NationalJob).filter(
-            NationalJob.priority == priority,
-            ~NationalJob.is_deleted,
-        ).order_by(NationalJob.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalJob)
+            .filter(
+                NationalJob.priority == priority,
+                ~NationalJob.is_deleted,
+            )
+            .order_by(NationalJob.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_due(
@@ -147,26 +175,38 @@ class SQLAlchemyJobRepository(JobRepository):
         limit: int = 100,
     ) -> list[JobDefinition]:
         before or datetime.now(UTC)
-        models = self.db.query(NationalJob).filter(
-            NationalJob.status == JobStatus.PENDING,
-            ~NationalJob.is_deleted,
-        ).order_by(NationalJob.created_at.asc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalJob)
+            .filter(
+                NationalJob.status == JobStatus.PENDING,
+                ~NationalJob.is_deleted,
+            )
+            .order_by(NationalJob.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def count_by_status(self, status: JobStatus) -> int:
-        return self.db.query(NationalJob).filter(
-            NationalJob.status == status,
-            ~NationalJob.is_deleted,
-        ).count()
+        return (
+            self.db.query(NationalJob)
+            .filter(
+                NationalJob.status == status,
+                ~NationalJob.is_deleted,
+            )
+            .count()
+        )
 
 
 class SQLAlchemyJobScheduleRepository(JobScheduleRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, schedule: JobSchedule) -> JobSchedule:
-        model = self.db.query(NationalJobSchedule).filter(NationalJobSchedule.id == schedule.id).first()
+        model = (
+            self.db.query(NationalJobSchedule).filter(NationalJobSchedule.id == schedule.id).first()
+        )
         if model:
             model.job_id = schedule.job_id
             model.schedule_type = schedule.schedule_type
@@ -198,10 +238,14 @@ class SQLAlchemyJobScheduleRepository(JobScheduleRepository):
         return model.to_domain()
 
     async def get(self, schedule_id: str) -> JobSchedule | None:
-        model = self.db.query(NationalJobSchedule).filter(
-            NationalJobSchedule.id == schedule_id,
-            ~NationalJobSchedule.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalJobSchedule)
+            .filter(
+                NationalJobSchedule.id == schedule_id,
+                ~NationalJobSchedule.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -216,13 +260,19 @@ class SQLAlchemyJobScheduleRepository(JobScheduleRepository):
         for key, value in filters.items():
             if hasattr(NationalJobSchedule, key) and value is not None:
                 query = query.filter(getattr(NationalJobSchedule, key) == value)
-        models = query.order_by(NationalJobSchedule.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            query.order_by(NationalJobSchedule.created_at.desc()).offset(skip).limit(limit).all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, schedule_id: str) -> None:
-        model = self.db.query(NationalJobSchedule).filter(
-            NationalJobSchedule.id == schedule_id,
-        ).first()
+        model = (
+            self.db.query(NationalJobSchedule)
+            .filter(
+                NationalJobSchedule.id == schedule_id,
+            )
+            .first()
+        )
         if model:
             model.is_deleted = True
             model.deleted_at = datetime.now(UTC)
@@ -235,12 +285,19 @@ class SQLAlchemyJobScheduleRepository(JobScheduleRepository):
         limit: int = 100,
     ) -> list[JobSchedule]:
         cutoff = before or datetime.now(UTC)
-        models = self.db.query(NationalJobSchedule).filter(
-            NationalJobSchedule.enabled,
-            ~NationalJobSchedule.is_deleted,
-            NationalJobSchedule.next_run_at <= cutoff,
-            (NationalJobSchedule.end_at is None) | (NationalJobSchedule.end_at > cutoff),
-        ).order_by(NationalJobSchedule.next_run_at.asc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalJobSchedule)
+            .filter(
+                NationalJobSchedule.enabled,
+                ~NationalJobSchedule.is_deleted,
+                NationalJobSchedule.next_run_at <= cutoff,
+                (NationalJobSchedule.end_at is None) | (NationalJobSchedule.end_at > cutoff),
+            )
+            .order_by(NationalJobSchedule.next_run_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_by_job_id(
@@ -249,20 +306,30 @@ class SQLAlchemyJobScheduleRepository(JobScheduleRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[JobSchedule]:
-        models = self.db.query(NationalJobSchedule).filter(
-            NationalJobSchedule.job_id == job_id,
-            ~NationalJobSchedule.is_deleted,
-        ).order_by(NationalJobSchedule.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalJobSchedule)
+            .filter(
+                NationalJobSchedule.job_id == job_id,
+                ~NationalJobSchedule.is_deleted,
+            )
+            .order_by(NationalJobSchedule.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
 
 class SQLAlchemyJobExecutionRepository(JobExecutionRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, execution: JobExecution) -> JobExecution:
-        model = self.db.query(NationalJobExecution).filter(NationalJobExecution.id == execution.id).first()
+        model = (
+            self.db.query(NationalJobExecution)
+            .filter(NationalJobExecution.id == execution.id)
+            .first()
+        )
         if model:
             model.job_id = execution.job_id
             model.scheduled_start = execution.scheduled_start
@@ -294,9 +361,13 @@ class SQLAlchemyJobExecutionRepository(JobExecutionRepository):
         return model.to_domain()
 
     async def get(self, execution_id: str) -> JobExecution | None:
-        model = self.db.query(NationalJobExecution).filter(
-            NationalJobExecution.id == execution_id,
-        ).first()
+        model = (
+            self.db.query(NationalJobExecution)
+            .filter(
+                NationalJobExecution.id == execution_id,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -311,7 +382,9 @@ class SQLAlchemyJobExecutionRepository(JobExecutionRepository):
         for key, value in filters.items():
             if hasattr(NationalJobExecution, key) and value is not None:
                 query = query.filter(getattr(NationalJobExecution, key) == value)
-        models = query.order_by(NationalJobExecution.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            query.order_by(NationalJobExecution.created_at.desc()).offset(skip).limit(limit).all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_by_job_id(
@@ -320,9 +393,16 @@ class SQLAlchemyJobExecutionRepository(JobExecutionRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[JobExecution]:
-        models = self.db.query(NationalJobExecution).filter(
-            NationalJobExecution.job_id == job_id,
-        ).order_by(NationalJobExecution.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalJobExecution)
+            .filter(
+                NationalJobExecution.job_id == job_id,
+            )
+            .order_by(NationalJobExecution.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_recent(
@@ -338,17 +418,27 @@ class SQLAlchemyJobExecutionRepository(JobExecutionRepository):
 
     async def get_stats(self) -> dict[str, Any]:
         total = self.db.query(func.count(NationalJobExecution.id)).scalar() or 0
-        avg_duration = self.db.query(
-            func.avg(NationalJobExecution.duration_ms),
-        ).filter(
-            NationalJobExecution.status == JobStatus.COMPLETED,
-        ).scalar() or 0.0
+        avg_duration = (
+            self.db.query(
+                func.avg(NationalJobExecution.duration_ms),
+            )
+            .filter(
+                NationalJobExecution.status == JobStatus.COMPLETED,
+            )
+            .scalar()
+            or 0.0
+        )
 
         by_status = {}
         for status in JobStatus:
-            count = self.db.query(func.count(NationalJobExecution.id)).filter(
-                NationalJobExecution.status == status,
-            ).scalar() or 0
+            count = (
+                self.db.query(func.count(NationalJobExecution.id))
+                .filter(
+                    NationalJobExecution.status == status,
+                )
+                .scalar()
+                or 0
+            )
             if count > 0:
                 by_status[status.value] = count
 
@@ -360,14 +450,17 @@ class SQLAlchemyJobExecutionRepository(JobExecutionRepository):
 
 
 class SQLAlchemyJobDependencyRepository(JobDependencyRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, dependency: JobDependency) -> JobDependency:
-        model = self.db.query(NationalJobDependency).filter(
-            NationalJobDependency.id == dependency.id,
-        ).first()
+        model = (
+            self.db.query(NationalJobDependency)
+            .filter(
+                NationalJobDependency.id == dependency.id,
+            )
+            .first()
+        )
         if model:
             model.job_id = dependency.job_id
             model.depends_on_job_id = dependency.depends_on_job_id
@@ -385,9 +478,13 @@ class SQLAlchemyJobDependencyRepository(JobDependencyRepository):
         return model.to_domain()
 
     async def get(self, dependency_id: str) -> JobDependency | None:
-        model = self.db.query(NationalJobDependency).filter(
-            NationalJobDependency.id == dependency_id,
-        ).first()
+        model = (
+            self.db.query(NationalJobDependency)
+            .filter(
+                NationalJobDependency.id == dependency_id,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -406,9 +503,13 @@ class SQLAlchemyJobDependencyRepository(JobDependencyRepository):
         return [m.to_domain() for m in models]
 
     async def delete(self, dependency_id: str) -> None:
-        model = self.db.query(NationalJobDependency).filter(
-            NationalJobDependency.id == dependency_id,
-        ).first()
+        model = (
+            self.db.query(NationalJobDependency)
+            .filter(
+                NationalJobDependency.id == dependency_id,
+            )
+            .first()
+        )
         if model:
             self.db.delete(model)
             self.db.commit()
@@ -417,16 +518,24 @@ class SQLAlchemyJobDependencyRepository(JobDependencyRepository):
         self,
         job_id: str,
     ) -> list[JobDependency]:
-        models = self.db.query(NationalJobDependency).filter(
-            NationalJobDependency.job_id == job_id,
-        ).all()
+        models = (
+            self.db.query(NationalJobDependency)
+            .filter(
+                NationalJobDependency.job_id == job_id,
+            )
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_dependents(
         self,
         depends_on_job_id: str,
     ) -> list[JobDependency]:
-        models = self.db.query(NationalJobDependency).filter(
-            NationalJobDependency.depends_on_job_id == depends_on_job_id,
-        ).all()
+        models = (
+            self.db.query(NationalJobDependency)
+            .filter(
+                NationalJobDependency.depends_on_job_id == depends_on_job_id,
+            )
+            .all()
+        )
         return [m.to_domain() for m in models]

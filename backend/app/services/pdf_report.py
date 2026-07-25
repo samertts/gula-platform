@@ -193,7 +193,11 @@ def generate_result_pdf(data: dict, result_url: str) -> bytes:
         alignment=TA_CENTER,
     )
     s_arabic = style(
-        "GulaArabic", fontName=_ARABIC_FONT, fontSize=9, alignment=TA_RIGHT, rightIndent=0,
+        "GulaArabic",
+        fontName=_ARABIC_FONT,
+        fontSize=9,
+        alignment=TA_RIGHT,
+        rightIndent=0,
     )
     s_section = style(
         "GulaSection",

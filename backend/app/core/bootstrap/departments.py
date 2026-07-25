@@ -47,10 +47,14 @@ def seed_departments(db: Session | None = None) -> int:
 
         for lab in labs:
             for dept in STANDARD_DEPARTMENTS:
-                existing = db.query(Department).filter(
-                    Department.lab_id == lab.id,
-                    Department.code == dept["code"],
-                ).first()
+                existing = (
+                    db.query(Department)
+                    .filter(
+                        Department.lab_id == lab.id,
+                        Department.code == dept["code"],
+                    )
+                    .first()
+                )
                 if existing:
                     continue
                 dep = Department(

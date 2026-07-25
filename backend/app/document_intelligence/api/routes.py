@@ -42,11 +42,13 @@ router = APIRouter(
 
 def _get_orchestrator() -> DocumentIntelligenceOrchestrator:
     from app.document_intelligence import get_orchestrator
+
     return get_orchestrator()
 
 
 def _get_document_repo() -> DocumentRepository:
     from app.document_intelligence import get_document_repo
+
     return get_document_repo()
 
 
@@ -64,6 +66,7 @@ async def ingest_document(
     meta = {}
     if metadata:
         import json
+
         with contextlib.suppress(json.JSONDecodeError):
             meta = json.loads(metadata)
     if patient_id:
@@ -112,7 +115,9 @@ async def ingest_batch(
     inputs: list[tuple[bytes, str, str]] = []
     for file in files:
         data = await file.read()
-        inputs.append((data, file.filename or "untitled", file.content_type or "application/octet-stream"))
+        inputs.append(
+            (data, file.filename or "untitled", file.content_type or "application/octet-stream"),
+        )
 
     results = await orchestrator.process_batch(inputs, language)
 
@@ -153,7 +158,9 @@ async def get_document(
         "processing": {
             "success": result.success,
             "error": result.error,
-            "phases_completed": [str(p) for p in (result.pipeline.phases_completed if result.pipeline else [])],
+            "phases_completed": [
+                str(p) for p in (result.pipeline.phases_completed if result.pipeline else [])
+            ],
             "total_time_ms": result.pipeline.total_processing_time_ms if result.pipeline else 0,
         },
         "classification": str(result.classification) if result.classification else None,
@@ -185,6 +192,7 @@ async def list_documents(
 ):
     cat = DocumentCategory(category) if category else None
     from ..domain.enums import DocumentStatus
+
     st = DocumentStatus(status) if status else None
 
     docs, total = await repo.list(
@@ -240,17 +248,20 @@ async def search_documents(
 @router.get("/ocr/providers", summary="List available OCR providers")
 async def list_ocr_providers():
     from app.document_intelligence import get_provider_manager
+
     manager = get_provider_manager()
     providers = []
     for engine, provider in manager.get_all().items():
         status = await provider.check_health()
-        providers.append({
-            "engine": str(engine),
-            "name": provider.display_name,
-            "version": provider.version,
-            "status": str(status),
-            "requires_gpu": provider.requires_gpu,
-        })
+        providers.append(
+            {
+                "engine": str(engine),
+                "name": provider.display_name,
+                "version": provider.version,
+                "status": str(status),
+                "requires_gpu": provider.requires_gpu,
+            },
+        )
     return {
         "providers": providers,
         "default": str(manager.default_engine),
@@ -261,6 +272,7 @@ async def list_ocr_providers():
 @router.post("/ocr/benchmark", summary="Benchmark OCR providers")
 async def benchmark_ocr_providers():
     from app.document_intelligence import get_provider_manager
+
     manager = get_provider_manager()
     return await manager.benchmark_all()
 
@@ -295,6 +307,7 @@ async def auto_remediate(
 @router.get("/status", summary="Platform health status")
 async def platform_status():
     from app.document_intelligence import get_provider_manager
+
     manager = get_provider_manager()
     provider_status = {}
     for engine, provider in manager.get_all().items():
@@ -311,11 +324,21 @@ async def platform_status():
         "version": "2.0.0",
         "mode": "offline",
         "features": [
-            "ocr", "classification", "entity_extraction", "fhir_mapping",
-            "knowledge_graph", "semantic_search", "government_records",
-            "digital_preservation", "governance", "collaboration",
-            "webhooks", "observability", "lifecycle_management",
-            "access_control", "retention_management",
+            "ocr",
+            "classification",
+            "entity_extraction",
+            "fhir_mapping",
+            "knowledge_graph",
+            "semantic_search",
+            "government_records",
+            "digital_preservation",
+            "governance",
+            "collaboration",
+            "webhooks",
+            "observability",
+            "lifecycle_management",
+            "access_control",
+            "retention_management",
         ],
     }
 
@@ -382,6 +405,7 @@ async def track_order_lifecycle(
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
     return await orchestrator.track_order_lifecycle(document_id)
+
 
 router.include_router(gov_router)
 
@@ -458,6 +482,7 @@ async def create_session(
     session = await orchestrator.create_session(document_id)
     return {"message": "Session created", "session_id": str(session.id)}
 
+
 router.include_router(collab_router)
 
 
@@ -482,6 +507,7 @@ async def create_policy(
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
     import json
+
     policy = GovernancePolicy(
         name=name,
         description=description,
@@ -511,7 +537,9 @@ async def delete_policy(
     return {"message": "Policy deleted"}
 
 
-@gov_router2.post("/evaluate/{document_id}", summary="Evaluate document against governance policies")
+@gov_router2.post(
+    "/evaluate/{document_id}", summary="Evaluate document against governance policies",
+)
 async def evaluate_document(
     document_id: UUID,
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
@@ -527,6 +555,7 @@ async def get_governance_events(
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
     return await orchestrator.get_governance_events(document_id, severity)
+
 
 router.include_router(gov_router2)
 
@@ -564,7 +593,9 @@ async def get_preservation_record(
         "standard": str(record.standard),
         "preservation_format": record.preservation_format,
         "checksum_method": str(record.checksum_method),
-        "next_integrity_check": record.next_integrity_check.isoformat() if record.next_integrity_check else None,
+        "next_integrity_check": record.next_integrity_check.isoformat()
+        if record.next_integrity_check
+        else None,
     }
 
 
@@ -592,6 +623,7 @@ async def purge_expired(
 ):
     purged = await orchestrator.purge_expired()
     return {"message": f"{len(purged)} documents purged", "purged_ids": [str(d) for d in purged]}
+
 
 router.include_router(archive_router)
 
@@ -638,6 +670,7 @@ async def rebuild_knowledge_graph(
     await orchestrator.rebuild_graph()
     return {"message": "Knowledge graph rebuild initiated"}
 
+
 router.include_router(kg_router)
 
 
@@ -669,6 +702,7 @@ async def unregister_webhook(
 ):
     await orchestrator.unregister_webhook(webhook_id)
     return {"message": "Webhook unregistered"}
+
 
 router.include_router(webhook_router)
 
@@ -709,6 +743,7 @@ async def get_throughput(
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
     return await orchestrator.get_throughput_metrics()
+
 
 router.include_router(obs_router)
 
@@ -753,6 +788,7 @@ async def check_access(
     has_access = await orchestrator.check_access(document_id, user_id, "viewer")
     return {"document_id": str(document_id), "user_id": user_id, "has_access": has_access}
 
+
 router.include_router(access_router)
 
 
@@ -795,6 +831,7 @@ async def suggest_queries(
     suggestions = await orchestrator.suggest_queries(partial_query)
     return {"suggestions": suggestions}
 
+
 router.include_router(semantic_router)
 
 
@@ -822,5 +859,6 @@ async def get_expiring(
     orchestrator: DocumentIntelligenceOrchestrator = Depends(_get_orchestrator),
 ):
     return await orchestrator.get_expiring_documents(days)
+
 
 router.include_router(lifecycle_router)

@@ -210,13 +210,17 @@ class RulesRuntime:
             for cond in rule.conditions:
                 field_value = ctx.get(cond.field)
                 match = self._evaluate_condition(field_value, cond.operator, cond.value)
-                evaluated.append({
-                    "field": cond.field,
-                    "operator": cond.operator.value if hasattr(cond.operator, "value") else str(cond.operator),
-                    "expected": cond.value,
-                    "actual": field_value,
-                    "match": match,
-                })
+                evaluated.append(
+                    {
+                        "field": cond.field,
+                        "operator": cond.operator.value
+                        if hasattr(cond.operator, "value")
+                        else str(cond.operator),
+                        "expected": cond.value,
+                        "actual": field_value,
+                        "match": match,
+                    },
+                )
                 if not match:
                     all_match = False
 
@@ -279,7 +283,9 @@ class RulesRuntime:
         if op_str == "lte" or op_str == Operator.LESS_THAN_OR_EQUAL:
             return (field_value if field_value is not None else 0) <= expected
         if op_str == "in" or op_str == Operator.IN:
-            return field_value in (expected if isinstance(expected, (list, tuple, set)) else [expected])
+            return field_value in (
+                expected if isinstance(expected, (list, tuple, set)) else [expected]
+            )
         if op_str == "contains" or op_str == Operator.CONTAINS:
             return expected in (field_value or "")
         if op_str == "startswith":
@@ -288,6 +294,7 @@ class RulesRuntime:
             return str(field_value or "").endswith(str(expected))
         if op_str == "regex":
             import re
+
             return bool(re.search(str(expected), str(field_value or "")))
         return field_value == expected
 

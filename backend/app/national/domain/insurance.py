@@ -13,7 +13,12 @@ class Insurance(TenantAuditEntity):
     name_ar = Column(String(200), nullable=True)
     code = Column(String(50), nullable=False, unique=True, index=True)
 
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("national_organizations.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     phone = Column(String(20), nullable=True)
     email = Column(String(255), nullable=True)

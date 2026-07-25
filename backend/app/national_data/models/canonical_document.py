@@ -29,7 +29,9 @@ class CanonicalDocument(DataPlatformBase):
     mime_type: str | None
 
     @classmethod
-    def query_all(cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:
+    def query_all(
+        cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100
+    ) -> list[dict[str, Any]]:
         np_sub = db.query(NationalPatient).subquery()
 
         note_q = db.query(
@@ -47,7 +49,8 @@ class CanonicalDocument(DataPlatformBase):
             None.label("file_url"),
             None.label("mime_type"),
         ).outerjoin(
-            np_sub, np_sub.c.id == ClinicalNote.patient_id,
+            np_sub,
+            np_sub.c.id == ClinicalNote.patient_id,
         )
 
         attach_q = db.query(
@@ -65,7 +68,8 @@ class CanonicalDocument(DataPlatformBase):
             ClinicalAttachment.file_url,
             ClinicalAttachment.mime_type,
         ).outerjoin(
-            np_sub, np_sub.c.id == ClinicalAttachment.patient_id,
+            np_sub,
+            np_sub.c.id == ClinicalAttachment.patient_id,
         )
 
         union_q = note_q.union_all(attach_q).subquery()
@@ -75,5 +79,7 @@ class CanonicalDocument(DataPlatformBase):
         if lab_id is not None:
             query = query.filter(union_q.c.lab_id == lab_id)
 
-        rows = query.order_by(union_q.c.created_at.desc().nullslast()).offset(skip).limit(limit).all()
+        rows = (
+            query.order_by(union_q.c.created_at.desc().nullslast()).offset(skip).limit(limit).all()
+        )
         return [dict(row._mapping) for row in rows]

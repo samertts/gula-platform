@@ -27,16 +27,17 @@ Idempotency
 Revision ID : 20260505_0003
 Revises     : 20260505_0002
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
 
 
-revision      = "20260505_0003"
+revision = "20260505_0003"
 down_revision = "20260505_0002"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _table_exists(table: str) -> bool:
@@ -84,7 +85,7 @@ def upgrade() -> None:
 
     # Indexes — non-CONCURRENT here because the table is brand new and empty.
     op.create_index("ix_visits_patient_id", "visits", ["patient_id"])
-    op.create_index("ix_visits_status",     "visits", ["status"])
+    op.create_index("ix_visits_status", "visits", ["status"])
     op.create_index("ix_visits_created_at", "visits", ["created_at"])
 
 
@@ -92,6 +93,6 @@ def downgrade() -> None:
     if not _table_exists("visits"):
         return
     op.drop_index("ix_visits_created_at", table_name="visits")
-    op.drop_index("ix_visits_status",     table_name="visits")
+    op.drop_index("ix_visits_status", table_name="visits")
     op.drop_index("ix_visits_patient_id", table_name="visits")
     op.drop_table("visits")

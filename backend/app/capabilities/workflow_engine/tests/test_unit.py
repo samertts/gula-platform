@@ -7,6 +7,7 @@ class TestWorkflow_engineCapability:
     @pytest.fixture
     def capability(self):
         from app.capabilities.workflow_engine.capability import Workflow_engineCapability
+
         return Workflow_engineCapability()
 
     @pytest.mark.asyncio

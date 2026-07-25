@@ -5,11 +5,25 @@ from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
 from app.identity.base import IdentityBaseEntity
 
 ORG_TYPES = [
-    "ministry", "directorate", "government_hospital", "private_hospital",
-    "primary_healthcare_sector", "health_center", "government_laboratory",
-    "private_laboratory", "blood_bank", "forensic_medicine", "university",
-    "research_center", "insurance_company", "ngo", "supplier", "vendor",
-    "medical_company", "pharmacy", "external_authority",
+    "ministry",
+    "directorate",
+    "government_hospital",
+    "private_hospital",
+    "primary_healthcare_sector",
+    "health_center",
+    "government_laboratory",
+    "private_laboratory",
+    "blood_bank",
+    "forensic_medicine",
+    "university",
+    "research_center",
+    "insurance_company",
+    "ngo",
+    "supplier",
+    "vendor",
+    "medical_company",
+    "pharmacy",
+    "external_authority",
 ]
 
 
@@ -23,7 +37,12 @@ class NIAMOrganization(IdentityBaseEntity):
     name_ar = Column(String(300), nullable=False)
     org_type = Column(String(50), nullable=False, index=True)
 
-    parent_org_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    parent_org_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     license_number = Column(String(100), unique=True, nullable=True)
     accreditation = Column(String(200), nullable=True)

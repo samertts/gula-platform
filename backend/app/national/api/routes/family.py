@@ -111,10 +111,14 @@ async def remove_family_member(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    member = db.query(FamilyMember).filter(
-        FamilyMember.id == member_id,
-        FamilyMember.family_id == family_id,
-    ).first()
+    member = (
+        db.query(FamilyMember)
+        .filter(
+            FamilyMember.id == member_id,
+            FamilyMember.family_id == family_id,
+        )
+        .first()
+    )
     if not member:
         raise HTTPException(status_code=404, detail="Family member not found")
     db.delete(member)

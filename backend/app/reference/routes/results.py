@@ -138,9 +138,7 @@ def _result_to_response(
         "is_critical": result.is_critical,
         "flagged": result.flagged,
         "notes": result.notes,
-        "created_at": (
-            result.created_at.isoformat() if result.created_at else None
-        ),
+        "created_at": (result.created_at.isoformat() if result.created_at else None),
         "performed_by": result.performed_by,
     }
     if critical_warning:

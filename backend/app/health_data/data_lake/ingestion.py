@@ -69,11 +69,15 @@ class IngestionPipeline:
 
         partition_key = _build_partition_key(partition_by)
 
-        payload = json.dumps({"records": records, "ingested_at": datetime.now(UTC).isoformat()}, default=str)
+        payload = json.dumps(
+            {"records": records, "ingested_at": datetime.now(UTC).isoformat()}, default=str
+        )
         payload_bytes = payload.encode("utf-8")
         checksum = hashlib.sha256(payload_bytes).hexdigest()
 
-        file_path = f"{dataset_name}/{partition_key}/data_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}.json"
+        file_path = (
+            f"{dataset_name}/{partition_key}/data_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}.json"
+        )
         await self.storage.write(file_path, payload_bytes)
 
         partition = PartitionMetadata(
@@ -89,7 +93,11 @@ class IngestionPipeline:
 
         logger.info(
             "Ingested %d records into %s/%s (%d bytes) in %.1fms",
-            len(records), dataset_name, partition_key, len(payload_bytes), duration,
+            len(records),
+            dataset_name,
+            partition_key,
+            len(payload_bytes),
+            duration,
         )
 
         return IngestionResult(

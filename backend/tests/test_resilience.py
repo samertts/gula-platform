@@ -25,12 +25,14 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///test.db")
 
 # ===== 1. DATABASE RESILIENCE (mocked) =====
 
+
 class TestDatabaseResilience:
     """Test database layer handles failures gracefully."""
 
     def test_check_db_connection_returns_false_on_failure(self):
         """check_db_connection should return False, not crash, when DB is down."""
         from app.database import check_db_connection
+
         # Mock engine to simulate connection failure
         with patch("app.database.engine") as mock_engine:
             mock_conn = MagicMock()
@@ -43,6 +45,7 @@ class TestDatabaseResilience:
     def test_check_db_connection_returns_true_on_success(self):
         """check_db_connection returns True when DB is available."""
         from app.database import check_db_connection
+
         with patch("app.database.engine") as mock_engine:
             mock_conn = MagicMock()
             mock_conn.__enter__ = MagicMock(return_value=mock_conn)
@@ -54,6 +57,7 @@ class TestDatabaseResilience:
     def test_pool_status_returns_dict(self):
         """Pool status should return dict with expected keys."""
         from app.database import get_pool_status
+
         status = get_pool_status()
         assert isinstance(status, dict)
         assert "pool_size" in status
@@ -64,6 +68,7 @@ class TestDatabaseResilience:
     def test_db_session_generator_cleanup(self):
         """get_db generator should close cleanly on normal flow."""
         from app.database import get_db
+
         gen = get_db()
         db = next(gen)
         assert db is not None
@@ -74,6 +79,7 @@ class TestDatabaseResilience:
     def test_db_session_rollback_on_exception(self):
         """get_db should rollback on exception."""
         from app.database import get_db
+
         gen = get_db()
         db = next(gen)
         # Simulate error during request processing
@@ -83,12 +89,14 @@ class TestDatabaseResilience:
 
 # ===== 2. AUTHENTICATION FAILURE SCENARIOS =====
 
+
 class TestAuthResilience:
     """Test auth behavior under stress and attack."""
 
     def test_intrusion_detector_blocks_after_threshold(self):
         """IDS should block IP after max_attempts."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=5, window_seconds=60)
         for _ in range(5):
             assert detector.detect("192.168.1.100") == "ok"
@@ -97,6 +105,7 @@ class TestAuthResilience:
     def test_intrusion_detector_memory_safety(self):
         """Detector should not leak memory with many unique IPs."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=5, window_seconds=1)
         for i in range(500):
             detector.detect(f"10.0.{i // 256}.{i % 256}")
@@ -108,6 +117,7 @@ class TestAuthResilience:
     def test_intrusion_detector_reset(self):
         """Successful login should reset IP attempts."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=3, window_seconds=60)
         for _ in range(3):
             detector.detect("10.0.0.1")
@@ -118,6 +128,7 @@ class TestAuthResilience:
     def test_intrusion_detector_tracked_count(self):
         """tracked_count property should reflect actual state."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=5, window_seconds=60)
         assert detector.tracked_count == 0
         detector.detect("1.1.1.1")
@@ -130,6 +141,7 @@ class TestAuthResilience:
     def test_rate_limiter_blocks_after_limit(self):
         """Rate limiter should enforce limits."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         for _ in range(10):
             assert limiter.check("test:ip_block", max_requests=10, window_seconds=60)
@@ -138,10 +150,13 @@ class TestAuthResilience:
     def test_rate_limiter_concurrent_access(self):
         """Rate limiter should handle concurrent requests safely."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         results = []
+
         def check():
             results.append(limiter.check("concurrent:test2", max_requests=100, window_seconds=60))
+
         threads = [threading.Thread(target=check) for _ in range(50)]
         for t in threads:
             t.start()
@@ -153,6 +168,7 @@ class TestAuthResilience:
     def test_rate_limiter_different_keys_independent(self):
         """Different rate limit keys should be independent."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         # Exhaust key A
         for _ in range(5):
@@ -163,6 +179,7 @@ class TestAuthResilience:
 
 
 # ===== 3. DATA INTEGRITY SCENARIOS =====
+
 
 class TestDataIntegrity:
     """Test data validation and corruption resistance."""
@@ -217,6 +234,7 @@ class TestDataIntegrity:
     def test_barcode_hex_format(self):
         """Barcode hex part should be valid uppercase hex."""
         import re
+
         for _ in range(100):
             b = f"SMP-{secrets.token_hex(6).upper()}"
             hex_part = b[4:]
@@ -225,26 +243,38 @@ class TestDataIntegrity:
 
 # ===== 4. CONFIGURATION SAFETY =====
 
+
 class TestConfigSafety:
     """Test configuration handles missing/invalid values safely."""
 
     def test_config_loads_in_development(self):
         """Config should load without crash in development mode."""
         from app.config import APP_NAME, APP_VERSION
+
         assert APP_VERSION
         assert APP_NAME
 
     def test_jwt_expire_hours_valid(self):
         """JWT expiration should be reasonable."""
         from app.config import JWT_EXPIRE_HOURS
+
         assert 1 <= JWT_EXPIRE_HOURS <= 24, f"JWT_EXPIRE_HOURS={JWT_EXPIRE_HOURS} is unreasonable"
 
     def test_config_has_required_fields(self):
         """Config module should expose all required settings."""
         from app import config
-        required = ["DATABASE_URL", "SECRET_KEY", "APP_NAME", "APP_VERSION",
-                     "JWT_ALGORITHM", "JWT_EXPIRE_HOURS", "ENCRYPTION_KEY",
-                     "RESULT_TOKEN_LENGTH", "RESULT_LINK_EXPIRE_DAYS"]
+
+        required = [
+            "DATABASE_URL",
+            "SECRET_KEY",
+            "APP_NAME",
+            "APP_VERSION",
+            "JWT_ALGORITHM",
+            "JWT_EXPIRE_HOURS",
+            "ENCRYPTION_KEY",
+            "RESULT_TOKEN_LENGTH",
+            "RESULT_LINK_EXPIRE_DAYS",
+        ]
         for attr in required:
             assert hasattr(config, attr), f"Missing config: {attr}"
 
@@ -252,6 +282,7 @@ class TestConfigSafety:
         """Production mode should refuse to start without secrets."""
         # This test verifies the safety behavior exists
         from app.config import ENV, IS_PRODUCTION
+
         # In CI, ENV may be "test" or "development" — both are non-production
         assert ENV in ("development", "test"), f"Expected non-production ENV, got {ENV!r}"
         assert IS_PRODUCTION is False
@@ -259,12 +290,14 @@ class TestConfigSafety:
 
 # ===== 5. CONCURRENT LOAD SIMULATION =====
 
+
 class TestConcurrentLoad:
     """Simulate concurrent access patterns."""
 
     def test_concurrent_dashboard_requests(self):
         """Simulate 20 concurrent dashboard requests."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         allowed = 0
         for i in range(20):
@@ -276,6 +309,7 @@ class TestConcurrentLoad:
     def test_burst_login_attempts(self):
         """Simulate brute force attack - should block quickly."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=5, window_seconds=300)
         attacker_ip = "203.0.113.66"
         blocked_at = None
@@ -289,6 +323,7 @@ class TestConcurrentLoad:
     def test_many_ips_rate_limiter(self):
         """Rate limiter should handle many unique IPs without issues."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         for i in range(200):
             result = limiter.check(f"mass:{i}", max_requests=10, window_seconds=60)
@@ -296,6 +331,7 @@ class TestConcurrentLoad:
 
 
 # ===== 6. GREETING LOGIC EDGE CASES =====
+
 
 class TestGreetingEdgeCases:
     """Test Arabic greeting logic at boundary hours (standalone implementation)."""
@@ -341,17 +377,18 @@ class TestGreetingEdgeCases:
 
     def test_greeting_boundary_transitions(self):
         """Test exact transition points."""
-        assert self._arabic_greeting(4) == "أهلاً"      # Night
+        assert self._arabic_greeting(4) == "أهلاً"  # Night
         assert self._arabic_greeting(5) == "صباح الخير"  # Morning starts
-        assert self._arabic_greeting(11) == "صباح الخير" # Last morning hour
+        assert self._arabic_greeting(11) == "صباح الخير"  # Last morning hour
         assert self._arabic_greeting(12) == "مساء الخير"  # Afternoon starts
         assert self._arabic_greeting(16) == "مساء الخير"  # Last afternoon hour
         assert self._arabic_greeting(17) == "مساء النور"  # Evening starts
         assert self._arabic_greeting(20) == "مساء النور"  # Last evening hour
-        assert self._arabic_greeting(21) == "أهلاً"      # Night starts
+        assert self._arabic_greeting(21) == "أهلاً"  # Night starts
 
 
 # ===== 7. MODEL INDEX VERIFICATION (via SQLAlchemy Column inspection) =====
+
 
 class TestModelIndexes:
     """Verify critical indexes exist on model columns."""
@@ -359,6 +396,7 @@ class TestModelIndexes:
     def test_lab_order_indexes(self):
         """LabOrder should have indexes on status, lab_id, created_at."""
         from app.models.lab_order import LabOrder
+
         cols = LabOrder.__table__.columns
         assert cols["status"].index is True, "lab_orders.status missing index"
         assert cols["lab_id"].index is True, "lab_orders.lab_id missing index"
@@ -368,6 +406,7 @@ class TestModelIndexes:
     def test_lab_user_indexes(self):
         """LabUser should have indexes on email, is_active, role, lab_id."""
         from app.models.lab_user import LabUser
+
         cols = LabUser.__table__.columns
         assert cols["email"].index is True, "lab_users.email missing index"
         assert cols["is_active"].index is True, "lab_users.is_active missing index"
@@ -377,12 +416,14 @@ class TestModelIndexes:
     def test_lab_result_flag_index(self):
         """LabResult should have index on flag column."""
         from app.models.lab_result import LabResult
+
         cols = LabResult.__table__.columns
         assert cols["flag"].index is True, "lab_results.flag missing index"
 
     def test_audit_log_indexes(self):
         """AuditLog should have indexes on user_id, action, created_at."""
         from app.models.audit_log import AuditLog
+
         cols = AuditLog.__table__.columns
         assert cols["user_id"].index is True, "audit_logs.user_id missing index"
         assert cols["action"].index is True, "audit_logs.action missing index"
@@ -391,6 +432,7 @@ class TestModelIndexes:
     def test_sample_indexes(self):
         """Sample should have indexes on order_id, status, barcode."""
         from app.models.sample import Sample
+
         cols = Sample.__table__.columns
         assert cols["order_id"].index is True, "samples.order_id missing index"
         assert cols["status"].index is True, "samples.status missing index"
@@ -399,6 +441,7 @@ class TestModelIndexes:
     def test_quality_control_indexes(self):
         """QualityControl should have indexes on lab_id, test_code."""
         from app.models.quality_control import QualityControl
+
         cols = QualityControl.__table__.columns
         assert cols["lab_id"].index is True, "quality_controls.lab_id missing index"
         assert cols["test_code"].index is True, "quality_controls.test_code missing index"
@@ -406,11 +449,13 @@ class TestModelIndexes:
     def test_lab_is_active_index(self):
         """Lab should have index on is_active."""
         from app.models.lab import Lab
+
         cols = Lab.__table__.columns
         assert cols["is_active"].index is True, "labs.is_active missing index"
 
 
 # ===== 8. EDGE CASES & BOUNDARY CONDITIONS =====
+
 
 class TestEdgeCases:
     """Test boundary conditions and unusual inputs."""
@@ -471,6 +516,7 @@ class TestEdgeCases:
     def test_date_edge_cases(self):
         """Date handling shouldn't crash on edge cases."""
         from datetime import datetime, timezone
+
         # Far past
         dt = datetime(1900, 1, 1, tzinfo=UTC)
         assert dt.isoformat() is not None
@@ -484,4 +530,5 @@ class TestEdgeCases:
 
 if __name__ == "__main__":
     import pytest
+
     pytest.main([__file__, "-v"])

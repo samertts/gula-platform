@@ -40,7 +40,15 @@ class FHIRValidationEngine:
             result.errors.append("Patient.identifier must be a list")
 
     def _validate_encounter(self, resource: dict, result: FHIRValidationResult) -> None:
-        valid_statuses = {"planned", "in-progress", "onleave", "finished", "cancelled", "entered-in-error", "unknown"}
+        valid_statuses = {
+            "planned",
+            "in-progress",
+            "onleave",
+            "finished",
+            "cancelled",
+            "entered-in-error",
+            "unknown",
+        }
         status = resource.get("status", "")
         if status and status not in valid_statuses:
             result.errors.append(f"Invalid Encounter status: {status}")

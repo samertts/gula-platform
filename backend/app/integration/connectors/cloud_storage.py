@@ -50,7 +50,11 @@ class CloudStorageConnector(BaseConnector):
                 headers=headers,
             )
             self._connected = True
-            logger.info("Cloud storage connector connected: provider=%s bucket=%s", self._provider, self._bucket)
+            logger.info(
+                "Cloud storage connector connected: provider=%s bucket=%s",
+                self._provider,
+                self._bucket,
+            )
             return True
         except Exception as exc:
             logger.error("Cloud storage connector failed: %s", exc)
@@ -111,12 +115,24 @@ class CloudStorageConnector(BaseConnector):
             if self._endpoint:
                 base = self._endpoint.rstrip("/")
                 return f"{base}/{self._bucket}/{key}" if key else f"{base}/{self._bucket}"
-            return f"https://{self._bucket}.s3.{self._region}.amazonaws.com/{key}" if key else f"https://{self._bucket}.s3.{self._region}.amazonaws.com"
+            return (
+                f"https://{self._bucket}.s3.{self._region}.amazonaws.com/{key}"
+                if key
+                else f"https://{self._bucket}.s3.{self._region}.amazonaws.com"
+            )
         if self._provider == "azure_blob":
-            base = self._endpoint.rstrip("/") if self._endpoint else f"https://{self._container}.blob.core.windows.net"
+            base = (
+                self._endpoint.rstrip("/")
+                if self._endpoint
+                else f"https://{self._container}.blob.core.windows.net"
+            )
             return f"{base}/{self._bucket}/{key}" if key else f"{base}/{self._bucket}"
         if self._provider == "gcs":
-            return f"https://storage.googleapis.com/{self._bucket}/{key}" if key else f"https://storage.googleapis.com/storage/v1/b/{self._bucket}"
+            return (
+                f"https://storage.googleapis.com/{self._bucket}/{key}"
+                if key
+                else f"https://storage.googleapis.com/storage/v1/b/{self._bucket}"
+            )
         return ""
 
     async def _upload_file(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -149,7 +165,12 @@ class CloudStorageConnector(BaseConnector):
         try:
             resp = await self._client.get(url)
             if resp.is_success:
-                return {"success": True, "key": key, "content": resp.text, "size": len(resp.content)}
+                return {
+                    "success": True,
+                    "key": key,
+                    "content": resp.text,
+                    "size": len(resp.content),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Cloud storage download failed: %s", exc)

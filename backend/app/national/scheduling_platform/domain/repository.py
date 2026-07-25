@@ -17,7 +17,6 @@ from app.national.scheduling_platform.domain.enums import AppointmentStatus
 
 
 class AppointmentRepository(ABC):
-
     @abstractmethod
     async def save(self, appointment: Appointment) -> Appointment: ...
 
@@ -74,7 +73,6 @@ class AppointmentRepository(ABC):
 
 
 class ResourceRepository(ABC):
-
     @abstractmethod
     async def save(self, resource: Resource) -> Resource: ...
 
@@ -102,7 +100,6 @@ class ResourceRepository(ABC):
 
 
 class ScheduleRepository(ABC):
-
     @abstractmethod
     async def save(self, schedule: Schedule) -> Schedule: ...
 
@@ -137,7 +134,6 @@ class ScheduleRepository(ABC):
 
 
 class TimeSlotRepository(ABC):
-
     @abstractmethod
     async def save(self, slot: TimeSlot) -> TimeSlot: ...
 
@@ -174,7 +170,6 @@ class TimeSlotRepository(ABC):
 
 
 class WaitingListRepository(ABC):
-
     @abstractmethod
     async def save(self, entry: WaitingList) -> WaitingList: ...
 
@@ -207,7 +202,6 @@ class WaitingListRepository(ABC):
 
 
 class CalendarRepository(ABC):
-
     @abstractmethod
     async def save(self, calendar: Calendar) -> Calendar: ...
 
@@ -226,7 +220,6 @@ class CalendarRepository(ABC):
 
 
 class AppointmentReminderRepository(ABC):
-
     @abstractmethod
     async def save(self, reminder: AppointmentReminder) -> AppointmentReminder: ...
 

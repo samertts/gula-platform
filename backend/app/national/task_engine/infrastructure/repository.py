@@ -75,7 +75,9 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
                 return None
             return self._model_to_domain(model)
 
-    async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list[NationalTask]:
+    async def list(
+        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
+    ) -> list[NationalTask]:
         async with SessionLocal() as session:
             query = session.query(NationalTaskModel)
             if filters:
@@ -128,7 +130,8 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
         async with SessionLocal() as session:
             result = await session.execute(
                 session.query(
-                    NationalTaskModel.status, text("count(*) as cnt"),
+                    NationalTaskModel.status,
+                    text("count(*) as cnt"),
                 ).group_by(NationalTaskModel.status),
             )
             return {row[0]: row[1] for row in result}
@@ -162,6 +165,7 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
             TaskPriority,
             TaskStatus,
         )
+
         return NationalTask(
             id=model.id,
             title=model.title,
@@ -192,59 +196,82 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
 class SQLAlchemyTaskQueueRepository(TaskQueueRepository):
     async def save(self, queue: Any) -> Any:
         return queue
+
     async def get(self, queue_id: str) -> Any:
         return None
+
     async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
         return []
+
     async def delete(self, queue_id: str) -> bool:
         return True
+
 
 class SQLAlchemyTaskAssignmentRepository(TaskAssignmentRepository):
     async def save(self, assignment: Any) -> Any:
         return assignment
+
     async def get(self, assignment_id: str) -> Any:
         return None
+
     async def find_by_task(self, task_id: str) -> list:
         return []
+
     async def find_by_user(self, user_id: str) -> list:
         return []
+
     async def find_active(self, user_id: str) -> list:
         return []
+
 
 class SQLAlchemyTaskEscalationRepository(TaskEscalationRepository):
     async def save(self, escalation: Any) -> Any:
         return escalation
+
     async def get(self, escalation_id: str) -> Any:
         return None
+
     async def find_by_task(self, task_id: str) -> list:
         return []
+
     async def find_active(self) -> list:
         return []
+
 
 class SQLAlchemyTaskSLARepository(TaskSLARepository):
     async def save(self, sla: Any) -> Any:
         return sla
+
     async def get(self, sla_id: str) -> Any:
         return None
+
     async def find_by_task(self, task_id: str) -> Any:
         return None
+
     async def find_overdue(self) -> list:
         return []
+
 
 class SQLAlchemyTaskCommentRepository(TaskCommentRepository):
     async def save(self, comment: Any) -> Any:
         return comment
+
     async def get(self, comment_id: str) -> Any:
         return None
+
     async def find_by_task(self, task_id: str) -> list:
         return []
+
 
 class SQLAlchemyTaskAuditLogRepository(TaskAuditLogRepository):
     async def save(self, log: Any) -> Any:
         return log
+
     async def find_by_task(self, task_id: str) -> list:
         return []
+
     async def find_by_user(self, user_id: str) -> list:
         return []
+
     async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
         return []

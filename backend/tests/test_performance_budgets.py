@@ -22,6 +22,7 @@ time instead of at production-rollout time.
 
 Blast radius: zero. No production code modified.
 """
+
 from __future__ import annotations
 
 import os
@@ -86,21 +87,31 @@ def _count_queries(engine):
 @pytest.fixture()
 def lab_with_many_patients(db):
     """Lab with 20 patients & 20 orders & 40 results — enough to detect N+1."""
-    lab = Lab(name="Perf Lab", license_number="LIC-PERF",
-              lab_type="private", city="Baghdad", is_active=True)
+    lab = Lab(
+        name="Perf Lab",
+        license_number="LIC-PERF",
+        lab_type="private",
+        city="Baghdad",
+        is_active=True,
+    )
     db.add(lab)
     db.flush()
 
     admin = LabUser(
-        lab_id=lab.id, name="Admin", email="perf_admin@x.com",
-        password_hash=hash_password("Pa55word"), role="admin", is_active=True,
+        lab_id=lab.id,
+        name="Admin",
+        email="perf_admin@x.com",
+        password_hash=hash_password("Pa55word"),
+        role="admin",
+        is_active=True,
     )
     db.add(admin)
     db.flush()
 
     for i in range(20):
         p = Patient(
-            lab_id=lab.id, full_name=f"Patient {i:02d}",
+            lab_id=lab.id,
+            full_name=f"Patient {i:02d}",
             phone=f"077001{i:05d}",
             health_id=f"HID-PERF-{i:03d}",
         )
@@ -117,8 +128,11 @@ def lab_with_many_patients(db):
     for o in orders:
         for j in range(2):
             r = LabResult(
-                order_id=o.id, test_name=f"Test{j}",
-                value=10.0 + j, unit="mg/dL", flag="normal",
+                order_id=o.id,
+                test_name=f"Test{j}",
+                value=10.0 + j,
+                unit="mg/dL",
+                flag="normal",
             )
             db.add(r)
     db.commit()
@@ -132,15 +146,12 @@ def lab_with_many_patients(db):
 class TestQueryBudgets:
     """Listing endpoints must execute O(1) queries, not O(N)."""
 
-    def test_patients_listing_query_count_bounded(
-        self, client, db_engine, lab_with_many_patients
-    ):
+    def test_patients_listing_query_count_bounded(self, client, db_engine, lab_with_many_patients):
         admin = lab_with_many_patients["admin"]
         lab_id = lab_with_many_patients["lab"].id
 
         with _count_queries(db_engine) as q:
-            res = client.get("/patients?limit=20",
-                             headers=_hdr(admin.id, lab_id))
+            res = client.get("/patients?limit=20", headers=_hdr(admin.id, lab_id))
         assert res.status_code == 200
         assert res.json()["total"] == 20
         # Budget: list_patients should issue ~2 queries (count + select).
@@ -148,19 +159,15 @@ class TestQueryBudgets:
         # an N+1 leak — flag for review.
         assert len(q.queries) <= 10, (
             f"patients listing executed {len(q.queries)} queries for 20 rows — "
-            f"likely N+1 regression. Recent queries:\n  "
-            + "\n  ".join(q.queries[:5])
+            f"likely N+1 regression. Recent queries:\n  " + "\n  ".join(q.queries[:5])
         )
 
-    def test_orders_listing_query_count_bounded(
-        self, client, db_engine, lab_with_many_patients
-    ):
+    def test_orders_listing_query_count_bounded(self, client, db_engine, lab_with_many_patients):
         admin = lab_with_many_patients["admin"]
         lab_id = lab_with_many_patients["lab"].id
 
         with _count_queries(db_engine) as q:
-            res = client.get("/orders?limit=20",
-                             headers=_hdr(admin.id, lab_id))
+            res = client.get("/orders?limit=20", headers=_hdr(admin.id, lab_id))
         assert res.status_code == 200
         # Each order has 2 results → if results are NOT eager-loaded,
         # count would be ~20 lazy result loads on top of the listing.
@@ -197,29 +204,25 @@ class TestPaginationClamps:
         admin = lab_with_many_patients["admin"]
         lab_id = lab_with_many_patients["lab"].id
         # Exceeding the documented max → 422 Unprocessable
-        res = client.get("/patients?limit=10000",
-                         headers=_hdr(admin.id, lab_id))
+        res = client.get("/patients?limit=10000", headers=_hdr(admin.id, lab_id))
         assert res.status_code == 422
 
     def test_orders_limit_clamped_at_500(self, client, lab_with_many_patients):
         admin = lab_with_many_patients["admin"]
         lab_id = lab_with_many_patients["lab"].id
-        res = client.get("/orders?limit=10000",
-                         headers=_hdr(admin.id, lab_id))
+        res = client.get("/orders?limit=10000", headers=_hdr(admin.id, lab_id))
         assert res.status_code == 422
 
     def test_negative_skip_rejected(self, client, lab_with_many_patients):
         admin = lab_with_many_patients["admin"]
         lab_id = lab_with_many_patients["lab"].id
-        res = client.get("/patients?skip=-1",
-                         headers=_hdr(admin.id, lab_id))
+        res = client.get("/patients?skip=-1", headers=_hdr(admin.id, lab_id))
         assert res.status_code == 422
 
     def test_zero_limit_rejected(self, client, lab_with_many_patients):
         admin = lab_with_many_patients["admin"]
         lab_id = lab_with_many_patients["lab"].id
-        res = client.get("/patients?limit=0",
-                         headers=_hdr(admin.id, lab_id))
+        res = client.get("/patients?limit=0", headers=_hdr(admin.id, lab_id))
         assert res.status_code == 422
 
 
@@ -234,61 +237,65 @@ class TestHotPathIndexes:
     def test_patient_phone_indexed(self):
         """Phone-search hot path must be indexed (compliance.py uses startswith)."""
         from app.models.patient import Patient
+
         col = Patient.__table__.columns["phone"]
         # SQLAlchemy puts the column index status on .index OR via a Table
         # Index object. Accept either.
         is_indexed = bool(col.index) or any(
-            "phone" in [c.name for c in idx.columns]
-            for idx in Patient.__table__.indexes
+            "phone" in [c.name for c in idx.columns] for idx in Patient.__table__.indexes
         )
         assert is_indexed, "patients.phone must be indexed for startswith search"
 
     def test_patient_lab_id_indexed(self):
         """Tenant filtering hot path."""
         from app.models.patient import Patient
+
         col = Patient.__table__.columns["lab_id"]
         is_indexed = bool(col.index) or any(
-            "lab_id" in [c.name for c in idx.columns]
-            for idx in Patient.__table__.indexes
+            "lab_id" in [c.name for c in idx.columns] for idx in Patient.__table__.indexes
         )
         assert is_indexed, "patients.lab_id must be indexed for tenant filter"
 
     def test_lab_order_lab_id_indexed(self):
         from app.models.lab_order import LabOrder
+
         col = LabOrder.__table__.columns["lab_id"]
         is_indexed = bool(col.index) or any(
-            "lab_id" in [c.name for c in idx.columns]
-            for idx in LabOrder.__table__.indexes
+            "lab_id" in [c.name for c in idx.columns] for idx in LabOrder.__table__.indexes
         )
         assert is_indexed
 
     def test_lab_result_order_id_indexed(self):
         """LabResult joins lab_order through order_id; must be indexed."""
         from app.models.lab_result import LabResult
+
         col = LabResult.__table__.columns["order_id"]
         is_indexed = bool(col.index) or any(
-            "order_id" in [c.name for c in idx.columns]
-            for idx in LabResult.__table__.indexes
+            "order_id" in [c.name for c in idx.columns] for idx in LabResult.__table__.indexes
         )
         assert is_indexed
 
     def test_lab_result_token_hash_unique_indexed(self):
         """Public result links lookup by token_hash — must be unique+indexed."""
         from app.models.lab_result import LabResult
+
         col = LabResult.__table__.columns["token_hash"]
         # Unique columns are always indexed
-        assert col.unique or col.index or any(
-            "token_hash" in [c.name for c in idx.columns]
-            for idx in LabResult.__table__.indexes
+        assert (
+            col.unique
+            or col.index
+            or any(
+                "token_hash" in [c.name for c in idx.columns] for idx in LabResult.__table__.indexes
+            )
         )
 
     def test_audit_log_action_indexed(self):
         """audit_logs.action is queried by /compliance/security-report."""
         from app.models.audit_log import AuditLog
+
         col = AuditLog.__table__.columns["action"]
         assert col.index or any(
-            "action" in [c.name for c in idx.columns]
-            for idx in AuditLog.__table__.indexes
+            "action" in [c.name for c in idx.columns] for idx in AuditLog.__table__.indexes
         )
 
 
@@ -298,9 +305,7 @@ class TestHotPathIndexes:
 class TestPayloadSizes:
     """Spot-check that list responses don't return oversized rows."""
 
-    def test_patients_list_row_shape_is_lean(
-        self, client, lab_with_many_patients
-    ):
+    def test_patients_list_row_shape_is_lean(self, client, lab_with_many_patients):
         admin = lab_with_many_patients["admin"]
         lab_id = lab_with_many_patients["lab"].id
         body = client.get(
@@ -347,15 +352,18 @@ class TestTierLimitsAreCaps:
 
     def test_starter_max_patients_is_500(self):
         from app.core.feature_flags import get_tier_limits
+
         assert get_tier_limits("starter")["max_patients"] == 500
 
     def test_starter_max_orders_per_day_is_100(self):
         from app.core.feature_flags import get_tier_limits
+
         assert get_tier_limits("starter")["max_orders_per_day"] == 100
 
     def test_enterprise_max_orders_per_day_is_finite(self):
         """Even enterprise must have a finite cap to prevent runaway abuse."""
         from app.core.feature_flags import get_tier_limits
+
         cap = get_tier_limits("enterprise")["max_orders_per_day"]
         assert cap > 0
         assert cap < 10**9  # not unbounded

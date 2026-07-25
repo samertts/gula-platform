@@ -72,7 +72,9 @@ class TestRiskBasedAuth:
         decision = svc.evaluate(ctx)
         assert decision.risk_score >= 25
         assert decision.required_action in (
-            RequiredAction.STEP_UP_AUTH, RequiredAction.MFA_REQUIRED, RequiredAction.BLOCKED
+            RequiredAction.STEP_UP_AUTH,
+            RequiredAction.MFA_REQUIRED,
+            RequiredAction.BLOCKED,
         )
 
     def test_tor_detected(self):

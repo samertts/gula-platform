@@ -8,7 +8,12 @@ class IdentityResolution(AuditEntity):
 
     source_type = Column(String(50), nullable=False)
     source_id = Column(String(100), nullable=False)
-    target_citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    target_citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     target_patient_id = Column(String(26), nullable=True, index=True)
 
     method = Column(String(50), nullable=False)

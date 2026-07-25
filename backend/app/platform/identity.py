@@ -29,16 +29,13 @@ class IdentityVerificationResult:
 
 class IdentityProvider(ABC):
     @abstractmethod
-    def verify_token(self, token: str) -> IdentityVerificationResult:
-        ...
+    def verify_token(self, token: str) -> IdentityVerificationResult: ...
 
     @abstractmethod
-    def refresh_identity(self, identity: dict) -> str | None:
-        ...
+    def refresh_identity(self, identity: dict) -> str | None: ...
 
     @abstractmethod
-    def revoke_identity(self, identity_id: str) -> bool:
-        ...
+    def revoke_identity(self, identity_id: str) -> bool: ...
 
 
 class JWTIdentityProvider(IdentityProvider):
@@ -68,8 +65,12 @@ class JWTIdentityProvider(IdentityProvider):
             return False
 
 
-PlatformRegistry.register("identity", JWTIdentityProvider(), capabilities=[
-    {"name": "verify_token", "description": "Verify and decode a JWT access token"},
-    {"name": "refresh_identity", "description": "Issue a new refresh token"},
-    {"name": "revoke_identity", "description": "Revoke a token by JTI"},
-])
+PlatformRegistry.register(
+    "identity",
+    JWTIdentityProvider(),
+    capabilities=[
+        {"name": "verify_token", "description": "Verify and decode a JWT access token"},
+        {"name": "refresh_identity", "description": "Issue a new refresh token"},
+        {"name": "revoke_identity", "description": "Revoke a token by JTI"},
+    ],
+)

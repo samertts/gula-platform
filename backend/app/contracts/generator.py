@@ -37,8 +37,7 @@ class ContractGenerator:
                             continue
                         signature = {
                             "summary": (
-                                route.summary
-                                or route.description[:60] if route.description else ""
+                                route.summary or route.description[:60] if route.description else ""
                             ),
                             "description": route.description or "",
                             "operationId": route.name or f"{method_lower}_{path.replace('/', '_')}",
@@ -138,7 +137,6 @@ class ContractGenerator:
     def generate_json_schema(self, models: list[type] | None = None) -> dict:
         if models is None:
             models = []
-
 
         definitions: dict[str, Any] = {}
         for model in models:
@@ -372,6 +370,7 @@ class ContractGenerator:
 
         event_catalog_path = os.path.join(output_dir, "event-catalog.json")
         from .events import get_event_catalog
+
         self._write_json(get_event_catalog(), event_catalog_path)
         exported.append(event_catalog_path)
 

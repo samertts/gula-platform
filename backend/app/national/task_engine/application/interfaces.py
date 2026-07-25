@@ -7,14 +7,18 @@ from typing import Any
 
 class AssignmentEngine(ABC):
     @abstractmethod
-    async def assign(self, task: Any, candidates: list[str], context: dict | None = None) -> str | None: ...
+    async def assign(
+        self, task: Any, candidates: list[str], context: dict | None = None,
+    ) -> str | None: ...
 
 
 class RoundRobinAssigner(AssignmentEngine):
     def __init__(self) -> None:
         self._index: dict[str, int] = {}
 
-    async def assign(self, task: Any, candidates: list[str], context: dict | None = None) -> str | None:
+    async def assign(
+        self, task: Any, candidates: list[str], context: dict | None = None,
+    ) -> str | None:
         if not candidates:
             return None
         queue_id = task.queue_id or "default"
@@ -25,21 +29,27 @@ class RoundRobinAssigner(AssignmentEngine):
 
 
 class LeastBusyAssigner(AssignmentEngine):
-    async def assign(self, task: Any, candidates: list[str], context: dict | None = None) -> str | None:
+    async def assign(
+        self, task: Any, candidates: list[str], context: dict | None = None,
+    ) -> str | None:
         if not candidates:
             return None
         return candidates[0]
 
 
 class SkillBasedAssigner(AssignmentEngine):
-    async def assign(self, task: Any, candidates: list[str], context: dict | None = None) -> str | None:
+    async def assign(
+        self, task: Any, candidates: list[str], context: dict | None = None,
+    ) -> str | None:
         if not candidates:
             return None
         return candidates[0] if candidates else None
 
 
 class LoadBalancedAssigner(AssignmentEngine):
-    async def assign(self, task: Any, candidates: list[str], context: dict | None = None) -> str | None:
+    async def assign(
+        self, task: Any, candidates: list[str], context: dict | None = None,
+    ) -> str | None:
         if not candidates:
             return None
         return random.choice(candidates)
@@ -67,7 +77,8 @@ class SimpleKPIEngine(KPIEngine):
         avg_duration = 0.0
         durations = [
             (t.completed_at - t.started_at).total_seconds()
-            for t in tasks if t.completed_at and t.started_at
+            for t in tasks
+            if t.completed_at and t.started_at
         ]
         if durations:
             avg_duration = sum(durations) / len(durations)

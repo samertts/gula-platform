@@ -21,6 +21,7 @@ network partition. They exercise the documented degradation contract.
 
 Blast radius: zero. Each test restores degradation state in a finally.
 """
+
 from __future__ import annotations
 
 import os
@@ -63,31 +64,47 @@ def _restore_health():
 
 @pytest.fixture()
 def two_labs(db):
-    lab_a = Lab(name="Lab A", license_number="LIC-AAA",
-                lab_type="private", city="Baghdad", is_active=True)
-    lab_b = Lab(name="Lab B", license_number="LIC-BBB",
-                lab_type="private", city="Mosul", is_active=True)
+    lab_a = Lab(
+        name="Lab A", license_number="LIC-AAA", lab_type="private", city="Baghdad", is_active=True
+    )
+    lab_b = Lab(
+        name="Lab B", license_number="LIC-BBB", lab_type="private", city="Mosul", is_active=True
+    )
     db.add_all([lab_a, lab_b])
     db.flush()
 
     admin_a = LabUser(
-        lab_id=lab_a.id, name="A", email="aa@x.com",
-        password_hash=hash_password("Pa55word"), role="admin", is_active=True,
+        lab_id=lab_a.id,
+        name="A",
+        email="aa@x.com",
+        password_hash=hash_password("Pa55word"),
+        role="admin",
+        is_active=True,
     )
     admin_b = LabUser(
-        lab_id=lab_b.id, name="B", email="bb@x.com",
-        password_hash=hash_password("Pa55word"), role="admin", is_active=True,
+        lab_id=lab_b.id,
+        name="B",
+        email="bb@x.com",
+        password_hash=hash_password("Pa55word"),
+        role="admin",
+        is_active=True,
     )
     db.add_all([admin_a, admin_b])
     db.flush()
 
-    pat_b = Patient(lab_id=lab_b.id, full_name="Patient B",
-                    phone="07700000099", health_id="HID-CHAOS-B")
+    pat_b = Patient(
+        lab_id=lab_b.id, full_name="Patient B", phone="07700000099", health_id="HID-CHAOS-B"
+    )
     db.add(pat_b)
     db.commit()
 
-    return {"lab_a": lab_a, "lab_b": lab_b,
-            "admin_a": admin_a, "admin_b": admin_b, "patient_b": pat_b}
+    return {
+        "lab_a": lab_a,
+        "lab_b": lab_b,
+        "admin_a": admin_a,
+        "admin_b": admin_b,
+        "patient_b": pat_b,
+    }
 
 
 # ─── Phase 11.A — DB-outage degradation preserves tenant isolation ───────────
@@ -100,8 +117,7 @@ class TestTenantIsolationUnderDegradation:
 
     def test_l2_reads_still_enforce_tenant_isolation(self, client, two_labs):
         """L2 read-only mode allows GETs; cross-tenant GET must still 404."""
-        health.enter_degraded_mode("simulated DB slowness",
-                                   DegradationLevel.L2_READ_ONLY)
+        health.enter_degraded_mode("simulated DB slowness", DegradationLevel.L2_READ_ONLY)
 
         admin_a = two_labs["admin_a"]
         # Lab A admin tries to read Lab B's patient — must still 404
@@ -114,8 +130,7 @@ class TestTenantIsolationUnderDegradation:
 
     def test_l3_blocks_cross_tenant_writes(self, client, two_labs):
         """In L3, writes are blocked entirely — including cross-tenant."""
-        health.enter_degraded_mode("simulated total outage",
-                                   DegradationLevel.L3_CRITICAL_ONLY)
+        health.enter_degraded_mode("simulated total outage", DegradationLevel.L3_CRITICAL_ONLY)
 
         admin_a = two_labs["admin_a"]
         res = client.put(
@@ -136,12 +151,14 @@ class TestCacheFallbackUnderRedisOutage:
 
     def test_cache_module_loadable_without_redis(self):
         from app.security.redis_client import cache
+
         # Either an in-memory _MemoryStore or a real client
         assert cache is not None
 
     def test_cache_basic_set_get_works(self):
         """The cache must support set/get even without Redis."""
         from app.security.redis_client import cache
+
         # Try the documented interface
         if hasattr(cache, "_data"):
             # In-memory store
@@ -165,8 +182,12 @@ class TestAuditWriteFailureMode:
 
         before = db.query(AuditLog).count()
         audit_service.log_action(
-            db, action="test", resource_type="patient",
-            resource_id=1, user_id=1, user_role="admin",
+            db,
+            action="test",
+            resource_type="patient",
+            resource_id=1,
+            user_id=1,
+            user_role="admin",
         )
         db.commit()
         after = db.query(AuditLog).count()
@@ -237,6 +258,7 @@ class TestConcurrencyLimitClinicalExemption:
         appear in middleware.py — inside _CRITICAL_PATH_PREFIXES
         or _is_critical_write."""
         import pathlib
+
         base = pathlib.Path(__file__).parent.parent / "app"
         src = (base / "middleware.py").read_text()
 
@@ -248,8 +270,11 @@ class TestConcurrencyLimitClinicalExemption:
             )
 
         # Sanity: the exemption helper must reference 'critical'
-        assert "_is_critical_write" in src or "_CRITICAL_PATH_PREFIXES" in src or \
-               "Critical clinical writes" in src, (
+        assert (
+            "_is_critical_write" in src
+            or "_CRITICAL_PATH_PREFIXES" in src
+            or "Critical clinical writes" in src
+        ), (
             "Concurrency middleware no longer documents the clinical-exemption — "
             "the exempt-path knowledge is in CLAUDE.md only, not in code."
         )
@@ -265,10 +290,12 @@ class TestBackgroundTaskGate:
 
     def test_runtime_mode_is_test(self):
         from app.config import RUNTIME_MODE
+
         assert RUNTIME_MODE == "test"
 
     def test_background_tasks_disabled(self):
         import os as _os
+
         # The conftest sets this BEFORE import; still set in the env now
         assert _os.getenv("FEATURE_BACKGROUND_TASKS") == "false"
 
@@ -278,6 +305,7 @@ class TestBackgroundTaskGate:
         import pathlib
 
         from app.config import FEATURE_BACKGROUND_TASKS, RUNTIME_MODE
+
         # The runtime gate is enforced in config.py at module level
         assert RUNTIME_MODE == "test"
         assert not FEATURE_BACKGROUND_TASKS
@@ -291,8 +319,9 @@ class TestHealthSurfaceDuringChaos:
     trace headers even when degradation is at L3_CRITICAL_ONLY."""
 
     def test_health_responds_at_l3(self, client):
-        health.enter_degraded_mode("simulated total DB+Redis outage",
-                                   DegradationLevel.L3_CRITICAL_ONLY)
+        health.enter_degraded_mode(
+            "simulated total DB+Redis outage", DegradationLevel.L3_CRITICAL_ONLY
+        )
         res = client.get("/health")
         assert res.status_code == 200
         # Trace header still present
@@ -300,8 +329,7 @@ class TestHealthSurfaceDuringChaos:
 
     def test_health_status_responds_at_l3(self, client):
         """/health/status is in _CRITICAL_PATHS and explains the degradation."""
-        health.enter_degraded_mode("simulated total outage",
-                                   DegradationLevel.L3_CRITICAL_ONLY)
+        health.enter_degraded_mode("simulated total outage", DegradationLevel.L3_CRITICAL_ONLY)
         res = client.get("/health/status")
         # Either passes (in critical paths) or 503 — but always observable
         assert res.headers.get("X-Request-ID") is not None

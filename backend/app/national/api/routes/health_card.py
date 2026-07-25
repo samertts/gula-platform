@@ -51,6 +51,7 @@ class HealthCardResponse(BaseModel):
 
 def _generate_card_number(db: Session) -> str:
     import uuid
+
     return f"HC-{uuid.uuid4().hex[:12].upper()}"
 
 

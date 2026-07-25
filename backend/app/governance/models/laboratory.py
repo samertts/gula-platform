@@ -28,7 +28,9 @@ class LaboratoryRegistry(GovernanceBaseEntity):
     name_ar = Column(String(300), nullable=False)
     name_en = Column(String(300), nullable=True)
     lab_type = Column(Enum(LabType), nullable=False, index=True)
-    organization_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=True, index=True)
+    organization_node_id = Column(
+        Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=True, index=True
+    )
     license_number = Column(String(100), unique=True, nullable=True, index=True)
     director_name = Column(String(200), nullable=True)
     address = Column(String(500), nullable=True)
@@ -43,7 +45,11 @@ class LaboratoryRegistry(GovernanceBaseEntity):
     external_lab_id = Column(String(100), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class EquipmentRegistry(GovernanceBaseEntity):
@@ -58,7 +64,9 @@ class EquipmentRegistry(GovernanceBaseEntity):
     model = Column(String(200), nullable=True)
     serial_number = Column(String(200), nullable=True)
     category = Column(String(100), nullable=False, index=True)
-    status = Column(Enum(EquipmentStatus), nullable=False, default=EquipmentStatus.OPERATIONAL, index=True)
+    status = Column(
+        Enum(EquipmentStatus), nullable=False, default=EquipmentStatus.OPERATIONAL, index=True
+    )
     installation_date = Column(Date, nullable=True)
     last_maintenance_date = Column(Date, nullable=True)
     next_maintenance_date = Column(Date, nullable=True)
@@ -66,7 +74,11 @@ class EquipmentRegistry(GovernanceBaseEntity):
     location = Column(String(200), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class AnalyzerRegistry(GovernanceBaseEntity):
@@ -90,14 +102,20 @@ class AnalyzerRegistry(GovernanceBaseEntity):
     next_calibration_date = Column(Date, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class MaintenanceRecord(GovernanceBaseEntity):
     __tablename__ = "gov_maintenance_records"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    equipment_id = Column(Integer, ForeignKey("gov_equipment_registry.id"), nullable=False, index=True)
+    equipment_id = Column(
+        Integer, ForeignKey("gov_equipment_registry.id"), nullable=False, index=True
+    )
     maintenance_type = Column(String(50), nullable=False)
     description = Column(Text, nullable=True)
     performed_by = Column(String(200), nullable=True)
@@ -114,7 +132,9 @@ class CalibrationRecord(GovernanceBaseEntity):
     __tablename__ = "gov_calibration_records"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    analyzer_id = Column(Integer, ForeignKey("gov_analyzer_registry.id"), nullable=False, index=True)
+    analyzer_id = Column(
+        Integer, ForeignKey("gov_analyzer_registry.id"), nullable=False, index=True
+    )
     calibration_type = Column(String(100), nullable=False)
     performed_by = Column(String(200), nullable=True)
     performed_date = Column(Date, nullable=False)
@@ -188,7 +208,11 @@ class ReagentInventory(GovernanceBaseEntity):
     batch_number = Column(String(100), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class NationalTestDefinition(GovernanceBaseEntity):
@@ -211,7 +235,11 @@ class NationalTestDefinition(GovernanceBaseEntity):
     critical_high = Column(String(50), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class NationalPanelDefinition(GovernanceBaseEntity):
@@ -225,7 +253,11 @@ class NationalPanelDefinition(GovernanceBaseEntity):
     category = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class NationalReferenceLab(GovernanceBaseEntity):
@@ -241,4 +273,8 @@ class NationalReferenceLab(GovernanceBaseEntity):
     accredited_standards = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )

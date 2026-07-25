@@ -62,11 +62,7 @@ def _order_to_response(order: LabOrderDomain) -> dict:
         "status": order.status.value,
         "priority": order.priority.value,
         "notes": order.notes,
-        "created_at": (
-            order.created_at.isoformat() if order.created_at else None
-        ),
-        "updated_at": (
-            order.updated_at.isoformat() if order.updated_at else None
-        ),
+        "created_at": (order.created_at.isoformat() if order.created_at else None),
+        "updated_at": (order.updated_at.isoformat() if order.updated_at else None),
         "performed_by": order.performed_by,
     }

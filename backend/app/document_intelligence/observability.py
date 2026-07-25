@@ -118,11 +118,13 @@ class Tracer:
     def add_event(self, span_id: str, name: str, attributes: dict[str, Any] | None = None):
         span = self._spans.get(span_id)
         if span:
-            span.events.append({
-                "name": name,
-                "timestamp": time.time(),
-                "attributes": attributes or {},
-            })
+            span.events.append(
+                {
+                    "name": name,
+                    "timestamp": time.time(),
+                    "attributes": attributes or {},
+                },
+            )
 
     def get_span(self, span_id: str) -> Span | None:
         return self._spans.get(span_id)
@@ -139,20 +141,24 @@ class Tracer:
                     self.end_span(span.id, "error")
                     self.add_event(span.id, "error", {"error": str(e)})
                     raise
+
             return wrapper
+
         return decorator
 
     def get_trace(self, span_id: str) -> list[dict[str, Any]]:
         trace: list[dict[str, Any]] = []
         current = self._spans.get(span_id)
         while current:
-            trace.append({
-                "id": current.id,
-                "operation": current.operation,
-                "duration_ms": current.duration_ms,
-                "status": current.status,
-                "tags": current.tags,
-            })
+            trace.append(
+                {
+                    "id": current.id,
+                    "operation": current.operation,
+                    "duration_ms": current.duration_ms,
+                    "status": current.status,
+                    "tags": current.tags,
+                },
+            )
             if current.parent_id:
                 current = self._spans.get(current.parent_id)
             else:
@@ -252,13 +258,17 @@ class AlertManager:
         self._alerts: list[dict[str, Any]] = []
         self._handlers: list[Callable] = []
 
-    def add_rule(self, name: str, condition: Callable, severity: str = "warning", message: str = ""):
-        self._rules.append({
-            "name": name,
-            "condition": condition,
-            "severity": severity,
-            "message": message,
-        })
+    def add_rule(
+        self, name: str, condition: Callable, severity: str = "warning", message: str = "",
+    ):
+        self._rules.append(
+            {
+                "name": name,
+                "condition": condition,
+                "severity": severity,
+                "message": message,
+            },
+        )
 
     def add_handler(self, handler: Callable):
         self._handlers.append(handler)

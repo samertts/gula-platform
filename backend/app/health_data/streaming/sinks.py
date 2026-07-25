@@ -54,7 +54,13 @@ class ClickHouseSink(Sink):
         self._table = table
 
     async def write(self, records: list[dict[str, Any]]) -> int:
-        logger.info("ClickHouseSink: writing %d records to %s@%s:%d", len(records), self._table, self._host, self._port)
+        logger.info(
+            "ClickHouseSink: writing %d records to %s@%s:%d",
+            len(records),
+            self._table,
+            self._host,
+            self._port,
+        )
         return len(records)
 
     async def close(self) -> None:
@@ -71,7 +77,13 @@ class ObjectStoreSink(Sink):
 
         filename = f"{self._prefix}/batch_{int(time.time())}_{len(records)}.json"
         payload = json.dumps(records, default=str, ensure_ascii=False)
-        logger.info("ObjectStoreSink: writing %d records to %s/%s (%d bytes)", len(records), self._bucket, filename, len(payload))
+        logger.info(
+            "ObjectStoreSink: writing %d records to %s/%s (%d bytes)",
+            len(records),
+            self._bucket,
+            filename,
+            len(payload),
+        )
         return len(records)
 
     async def close(self) -> None:

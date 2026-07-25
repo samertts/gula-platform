@@ -17,7 +17,12 @@ class Family(TenantAuditEntity):
     ration_card_governorate = Column(String(100), nullable=True)
     ration_card_district = Column(String(100), nullable=True)
 
-    head_of_family_citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    head_of_family_citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     head_of_family_name = Column(String(200), nullable=True)
 
     governorate = Column(String(100), nullable=True)
@@ -41,8 +46,18 @@ class Family(TenantAuditEntity):
 class FamilyMember(TenantAuditEntity):
     __tablename__ = "national_family_members"
 
-    family_id = Column(String(26), ForeignKey("national_families.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
+    family_id = Column(
+        String(26),
+        ForeignKey("national_families.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     relationship = Column(SAEnum(FamilyRelationshipType), nullable=False)
     is_head_of_family = Column(Boolean, default=False)
 

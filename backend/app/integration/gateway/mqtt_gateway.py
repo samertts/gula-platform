@@ -25,6 +25,7 @@ class MQTTGateway(MessageGateway):
     async def connect(self) -> bool:
         try:
             import asyncio_mqtt as mqtt
+
             client_id = self.config.options.get("client_id", "gula-mqtt-gateway")
             self._client = mqtt.Client(
                 hostname=self.config.endpoint,
@@ -59,7 +60,11 @@ class MQTTGateway(MessageGateway):
             topic = message.destination or self.config.options.get("topic", "gula/default")
             qos = int(self.config.options.get("qos", 1))
             retain = bool(self.config.options.get("retain", False))
-            payload = json.dumps(message.payload) if not isinstance(message.payload, str) else message.payload
+            payload = (
+                json.dumps(message.payload)
+                if not isinstance(message.payload, str)
+                else message.payload
+            )
             if self._client:
                 await self._client.publish(topic=topic, payload=payload, qos=qos, retain=retain)
             lat = (time.monotonic() - start) * 1000

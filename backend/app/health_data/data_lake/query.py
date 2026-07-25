@@ -45,9 +45,11 @@ class DataLakeQuery:
 
         partitions = ds.partitions
         if partition_filter:
-            partitions = [p for p in partitions if all(
-                p.key.startswith(f"{k}={v}") for k, v in partition_filter.items()
-            )]
+            partitions = [
+                p
+                for p in partitions
+                if all(p.key.startswith(f"{k}={v}") for k, v in partition_filter.items())
+            ]
 
         all_records: list[dict] = []
         scan_bytes = 0
@@ -81,7 +83,7 @@ class DataLakeQuery:
             all_records = projected
 
         total = len(all_records)
-        page = all_records[offset:offset + limit]
+        page = all_records[offset : offset + limit]
 
         rows = []
         col_names = columns or (list(all_records[0].keys()) if all_records else [])

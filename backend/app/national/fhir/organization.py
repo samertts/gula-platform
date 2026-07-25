@@ -16,12 +16,14 @@ class FHIROrganizationMapper:
             "identifier": [{"system": "https://gula.health/identifier/org", "value": org.id}],
             "name": org.name,
             "telecom": cls._build_telecom(org),
-            "address": [{
-                "line": [org.address_line] if org.address_line else [],
-                "city": org.city or "",
-                "state": org.governorate or "",
-                "country": org.country or "IQ",
-            }],
+            "address": [
+                {
+                    "line": [org.address_line] if org.address_line else [],
+                    "city": org.city or "",
+                    "state": org.governorate or "",
+                    "country": org.country or "IQ",
+                },
+            ],
             "active": org.is_active,
         }
         if org.org_type:

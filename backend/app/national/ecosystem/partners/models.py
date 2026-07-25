@@ -39,7 +39,12 @@ class PartnerCredential(NationalBase):
     status = Column(String(20), nullable=False, default="active")
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
 
 class PartnerCertificate(BaseEntity):
@@ -66,7 +71,12 @@ class PartnerRateLimit(NationalBase):
     requests_per_day = Column(Integer, nullable=False, default=10000)
     concurrent_limit = Column(Integer, nullable=False, default=10)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
 
 class PartnerAuditLog(NationalBase):
@@ -80,7 +90,9 @@ class PartnerAuditLog(NationalBase):
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(500), nullable=True)
     status = Column(String(20), nullable=False, default="success")
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True,
+    )
 
 
 class PartnerAgreement(BaseEntity):

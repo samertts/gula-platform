@@ -33,7 +33,9 @@ class IdentityMergeEngine:
         self._merge_history: list[dict[str, Any]] = []
 
     def calculate_confidence(
-        self, primary_hn: str, duplicate_hn: str,
+        self,
+        primary_hn: str,
+        duplicate_hn: str,
     ) -> float:
         primary = self._identity._get_by_health_number(primary_hn)
         duplicate = self._identity._get_by_health_number(duplicate_hn)
@@ -48,13 +50,20 @@ class IdentityMergeEngine:
 
         if primary.full_name and duplicate.full_name:
             from difflib import SequenceMatcher
-            ratio = SequenceMatcher(None, primary.full_name.lower(), duplicate.full_name.lower()).ratio()
+
+            ratio = SequenceMatcher(
+                None, primary.full_name.lower(), duplicate.full_name.lower()
+            ).ratio()
             if ratio > 0.9:
                 score += 0.2
                 matched.append("name")
                 logger.debug("Name match (%.2f): +0.2", ratio)
 
-        if primary.date_of_birth and duplicate.date_of_birth and primary.date_of_birth == duplicate.date_of_birth:
+        if (
+            primary.date_of_birth
+            and duplicate.date_of_birth
+            and primary.date_of_birth == duplicate.date_of_birth
+        ):
             score += 0.15
             matched.append("date_of_birth")
             logger.debug("DOB match: +0.15")
@@ -108,31 +117,37 @@ class IdentityMergeEngine:
         duplicate.status = "merged"
         duplicate.metadata["merged_into"] = proposal.primary_hn
 
-        duplicate.add_history_entry({
-            "action": "identity_merged",
-            "merged_into": proposal.primary_hn,
-            "confidence": proposal.confidence_score,
-            "reviewed_by": reviewed_by,
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
-        primary.add_history_entry({
-            "action": "received_merged_identity",
-            "merged_from": proposal.duplicate_hn,
-            "confidence": proposal.confidence_score,
-        })
+        duplicate.add_history_entry(
+            {
+                "action": "identity_merged",
+                "merged_into": proposal.primary_hn,
+                "confidence": proposal.confidence_score,
+                "reviewed_by": reviewed_by,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
+        primary.add_history_entry(
+            {
+                "action": "received_merged_identity",
+                "merged_from": proposal.duplicate_hn,
+                "confidence": proposal.confidence_score,
+            }
+        )
 
         proposal.status = "approved"
         proposal.resolved_at = datetime.now(UTC)
         proposal.reviewed_by = reviewed_by
 
-        self._merge_history.append({
-            "primary_hn": proposal.primary_hn,
-            "duplicate_hn": proposal.duplicate_hn,
-            "confidence": proposal.confidence_score,
-            "action": "merged",
-            "reviewed_by": reviewed_by,
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
+        self._merge_history.append(
+            {
+                "primary_hn": proposal.primary_hn,
+                "duplicate_hn": proposal.duplicate_hn,
+                "confidence": proposal.confidence_score,
+                "action": "merged",
+                "reviewed_by": reviewed_by,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
         logger.info(
             "Identity merged: %s <- %s (reviewed by %s)",
@@ -151,14 +166,16 @@ class IdentityMergeEngine:
         proposal.resolved_at = datetime.now(UTC)
         proposal.notes = notes
 
-        self._merge_history.append({
-            "primary_hn": proposal.primary_hn,
-            "duplicate_hn": proposal.duplicate_hn,
-            "confidence": proposal.confidence_score,
-            "action": "rejected",
-            "notes": notes,
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
+        self._merge_history.append(
+            {
+                "primary_hn": proposal.primary_hn,
+                "duplicate_hn": proposal.duplicate_hn,
+                "confidence": proposal.confidence_score,
+                "action": "rejected",
+                "notes": notes,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
         logger.info("Merge rejected: %s <-> %s", proposal.primary_hn, proposal.duplicate_hn)
         return proposal

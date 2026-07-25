@@ -27,15 +27,16 @@ columns — those are removed by 0001/0003/0004 downgrades.
 Revision ID : 20260505_0006
 Revises     : 20260505_0005
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
 
-revision      = "20260505_0006"
+revision = "20260505_0006"
 down_revision = "20260505_0005"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _pg() -> bool:
@@ -46,10 +47,10 @@ def _index_exists(name: str, table: str) -> bool:
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         return name in {ix["name"] for ix in inspect(bind).get_indexes(table)}
-    row = bind.execute(text(
-        "SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() "
-        "AND indexname = :n"
-    ), {"n": name}).first()
+    row = bind.execute(
+        text("SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = :n"),
+        {"n": name},
+    ).first()
     return row is not None
 
 
@@ -57,11 +58,14 @@ def _constraint_exists(name: str, table: str) -> bool:
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         return False
-    row = bind.execute(text(
-        "SELECT 1 FROM pg_constraint c "
-        "JOIN pg_class t ON t.oid = c.conrelid "
-        "WHERE t.relname = :tab AND c.conname = :n"
-    ), {"tab": table, "n": name}).first()
+    row = bind.execute(
+        text(
+            "SELECT 1 FROM pg_constraint c "
+            "JOIN pg_class t ON t.oid = c.conrelid "
+            "WHERE t.relname = :tab AND c.conname = :n"
+        ),
+        {"tab": table, "n": name},
+    ).first()
     return row is not None
 
 
@@ -69,9 +73,9 @@ def _assert_pre_conditions() -> None:
     bind = op.get_bind()
 
     # 1. Every lab_orders row must have a visit_id.
-    nulls = bind.execute(text(
-        "SELECT count(*) FROM lab_orders WHERE visit_id IS NULL"
-    )).scalar() or 0
+    nulls = (
+        bind.execute(text("SELECT count(*) FROM lab_orders WHERE visit_id IS NULL")).scalar() or 0
+    )
     if nulls:
         raise RuntimeError(
             f"Phase-1 step F refuses to run: {nulls} lab_orders row(s) "
@@ -81,13 +85,18 @@ def _assert_pre_conditions() -> None:
         )
 
     # 2. No duplicate non-null national_id.
-    dup = bind.execute(text(
-        "SELECT count(*) FROM ("
-        "  SELECT national_id FROM patients "
-        "  WHERE national_id IS NOT NULL "
-        "  GROUP BY national_id HAVING count(*) > 1"
-        ") s"
-    )).scalar() or 0
+    dup = (
+        bind.execute(
+            text(
+                "SELECT count(*) FROM ("
+                "  SELECT national_id FROM patients "
+                "  WHERE national_id IS NOT NULL "
+                "  GROUP BY national_id HAVING count(*) > 1"
+                ") s"
+            )
+        ).scalar()
+        or 0
+    )
     if dup:
         raise RuntimeError(
             f"Phase-1 step F refuses to run: {dup} duplicate non-null "
@@ -102,34 +111,39 @@ def upgrade() -> None:
 
         # 1. FK: NOT VALID first (cheap), then VALIDATE outside any tx.
         if not _constraint_exists("fk_lab_orders_visit_id", "lab_orders"):
-            op.execute(text(
-                "ALTER TABLE lab_orders "
-                "ADD CONSTRAINT fk_lab_orders_visit_id "
-                "FOREIGN KEY (visit_id) REFERENCES visits(id) "
-                "ON DELETE SET NULL NOT VALID"
-            ))
+            op.execute(
+                text(
+                    "ALTER TABLE lab_orders "
+                    "ADD CONSTRAINT fk_lab_orders_visit_id "
+                    "FOREIGN KEY (visit_id) REFERENCES visits(id) "
+                    "ON DELETE SET NULL NOT VALID"
+                )
+            )
         # VALIDATE is online (only an ACCESS SHARE lock).
-        op.execute(text(
-            "ALTER TABLE lab_orders VALIDATE CONSTRAINT fk_lab_orders_visit_id"
-        ))
+        op.execute(text("ALTER TABLE lab_orders VALIDATE CONSTRAINT fk_lab_orders_visit_id"))
 
         # 2. Partial UNIQUE on patients.national_id WHERE NOT NULL.
         if not _index_exists("ux_patients_national_id_notnull", "patients"):
             with op.get_context().autocommit_block():
-                op.execute(text(
-                    "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "
-                    "ux_patients_national_id_notnull "
-                    "ON patients (national_id) "
-                    "WHERE national_id IS NOT NULL"
-                ))
+                op.execute(
+                    text(
+                        "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "
+                        "ux_patients_national_id_notnull "
+                        "ON patients (national_id) "
+                        "WHERE national_id IS NOT NULL"
+                    )
+                )
     else:
         # Non-PG dialects (sqlite test path).
         _assert_pre_conditions()
         if not _constraint_exists("fk_lab_orders_visit_id", "lab_orders"):
             with op.batch_alter_table("lab_orders") as bop:
                 bop.create_foreign_key(
-                    "fk_lab_orders_visit_id", "visits",
-                    ["visit_id"], ["id"], ondelete="SET NULL",
+                    "fk_lab_orders_visit_id",
+                    "visits",
+                    ["visit_id"],
+                    ["id"],
+                    ondelete="SET NULL",
                 )
         if not _index_exists("ux_patients_national_id_notnull", "patients"):
             op.create_index(
@@ -145,13 +159,13 @@ def downgrade() -> None:
     if _pg():
         if _index_exists("ux_patients_national_id_notnull", "patients"):
             with op.get_context().autocommit_block():
-                op.execute(text(
-                    "DROP INDEX CONCURRENTLY IF EXISTS ux_patients_national_id_notnull"
-                ))
+                op.execute(
+                    text("DROP INDEX CONCURRENTLY IF EXISTS ux_patients_national_id_notnull")
+                )
         if _constraint_exists("fk_lab_orders_visit_id", "lab_orders"):
-            op.execute(text(
-                "ALTER TABLE lab_orders DROP CONSTRAINT IF EXISTS fk_lab_orders_visit_id"
-            ))
+            op.execute(
+                text("ALTER TABLE lab_orders DROP CONSTRAINT IF EXISTS fk_lab_orders_visit_id")
+            )
     else:
         if _index_exists("ux_patients_national_id_notnull", "patients"):
             op.drop_index("ux_patients_national_id_notnull", table_name="patients")

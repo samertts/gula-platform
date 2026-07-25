@@ -156,7 +156,9 @@ async def get_observation(
 ):
     observation = service_get_observation(db, observation_id)
     if not observation:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}",
+        )
     return observation
 
 
@@ -168,11 +170,15 @@ async def update_observation(
     user=Depends(get_current_user),
 ):
     try:
-        observation = service_update_observation(db, observation_id, data.model_dump(exclude_none=True))
+        observation = service_update_observation(
+            db, observation_id, data.model_dump(exclude_none=True),
+        )
         db.commit()
         return observation
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}",
+        ) from e
 
 
 @router.delete("/{observation_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -185,7 +191,9 @@ async def delete_observation(
         service_delete_observation(db, observation_id)
         db.commit()
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}",
+        ) from e
 
 
 @router.get("/by-patient/{patient_id}", response_model=ObservationListResponse)

@@ -23,6 +23,7 @@ Covers (POST /register/doctor — doctor self-registration):
   - Duplicate license → 409
   - Missing license → 422
 """
+
 from __future__ import annotations
 
 import os
@@ -47,6 +48,7 @@ from sqlalchemy.pool import StaticPool
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="function")
 def db_engine():
     import app.models.audit_log
@@ -63,6 +65,7 @@ def db_engine():
     import app.models.subscription
     import app.models.user
     from app.services.mpi.models import Citizen, IdentityClaim
+
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -108,6 +111,7 @@ def _admin_token(user_id: int, lab_id: int) -> dict:
 
 
 # ── POST /register (lab registration) ────────────────────────────────────────
+
 
 class TestLabRegistration:
     _VALID = {
@@ -192,6 +196,7 @@ class TestLabRegistration:
 
 # ── POST /register/staff (staff addition by admin) ───────────────────────────
 
+
 class TestStaffRegistration:
     _STAFF = {
         "name": "Fatima Zahra",
@@ -205,8 +210,12 @@ class TestStaffRegistration:
         db.add(lab)
         db.flush()
         admin = LabUser(
-            lab_id=lab.id, name="Admin", email="admin@lab.com",
-            password_hash=hash_password("Admin@Pass123"), role="admin", is_active=True,
+            lab_id=lab.id,
+            name="Admin",
+            email="admin@lab.com",
+            password_hash=hash_password("Admin@Pass123"),
+            role="admin",
+            is_active=True,
         )
         db.add(admin)
         db.flush()
@@ -248,8 +257,12 @@ class TestStaffRegistration:
     def test_non_admin_cannot_add_staff(self, client, db):
         lab, _ = self._setup_active_lab(db)
         tech = LabUser(
-            lab_id=lab.id, name="Tech", email="tech@lab.com",
-            password_hash=hash_password("Tech1234"), role="technician", is_active=True,
+            lab_id=lab.id,
+            name="Tech",
+            email="tech@lab.com",
+            password_hash=hash_password("Tech1234"),
+            role="technician",
+            is_active=True,
         )
         db.add(tech)
         db.flush()
@@ -284,6 +297,7 @@ class TestStaffRegistration:
 
 
 # ── POST /register/doctor (doctor self-registration) ─────────────────────────
+
 
 class TestDoctorRegistration:
     _DOCTOR = {
@@ -340,6 +354,7 @@ class TestDoctorRegistration:
 
     def test_password_not_stored_in_plain_text(self, client, db):
         from app.models.user import User
+
         client.post("/register/doctor", json=self._DOCTOR)
         doctor = db.query(User).filter(User.email == "omar@clinic.iq").first()
         assert doctor is not None

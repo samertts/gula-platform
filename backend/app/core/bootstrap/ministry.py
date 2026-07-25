@@ -24,14 +24,19 @@ def seed_ministry_of_health(db: Session | None = None) -> bool:
         own_session = False
 
     try:
-        existing = db.query(Organization).filter(
-            Organization.org_id == MINISTRY_ORG_ID,
-        ).first()
+        existing = (
+            db.query(Organization)
+            .filter(
+                Organization.org_id == MINISTRY_ORG_ID,
+            )
+            .first()
+        )
         if existing:
             logger.info("Ministry of Health already exists (org_id=%s)", MINISTRY_ORG_ID)
             return True
 
         from .models import OrganizationDef
+
         moh = OrganizationDef(
             org_id=MINISTRY_ORG_ID,
             name_en=NATIONAL_ORG_NAME_EN,

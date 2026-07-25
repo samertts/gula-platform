@@ -95,7 +95,12 @@ FHIR_PROFILES = {
                     "sliceName": "guardian",
                     "min": 0,
                     "max": "1",
-                    "type": [{"code": "Extension", "profile": ["http://hl7.org/fhir/StructureDefinition/patient-guardian"]}],
+                    "type": [
+                        {
+                            "code": "Extension",
+                            "profile": ["http://hl7.org/fhir/StructureDefinition/patient-guardian"],
+                        },
+                    ],
                     "definition": "Guardian reference for minor patients",
                 },
                 {
@@ -142,7 +147,12 @@ FHIR_PROFILES = {
                     "id": "Observation.subject",
                     "path": "Observation.subject",
                     "min": 1,
-                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                    "type": [
+                        {
+                            "code": "Reference",
+                            "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"],
+                        },
+                    ],
                 },
                 {
                     "id": "Observation.effectiveDateTime",
@@ -242,12 +252,24 @@ FHIR_PROFILES = {
                     "id": "DiagnosticReport.subject",
                     "path": "DiagnosticReport.subject",
                     "min": 1,
-                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                    "type": [
+                        {
+                            "code": "Reference",
+                            "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"],
+                        },
+                    ],
                 },
                 {
                     "id": "DiagnosticReport.result",
                     "path": "DiagnosticReport.result",
-                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-observation"]}],
+                    "type": [
+                        {
+                            "code": "Reference",
+                            "targetProfile": [
+                                f"{BASE_FHIR_URL}/StructureDefinition/gula-observation",
+                            ],
+                        },
+                    ],
                     "definition": "References to individual lab observations",
                 },
                 {
@@ -304,7 +326,12 @@ FHIR_PROFILES = {
                     "id": "ServiceRequest.subject",
                     "path": "ServiceRequest.subject",
                     "min": 1,
-                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                    "type": [
+                        {
+                            "code": "Reference",
+                            "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"],
+                        },
+                    ],
                 },
                 {
                     "id": "ServiceRequest.requester",
@@ -396,7 +423,14 @@ FHIR_PROFILES = {
                 {
                     "id": "Location.managingOrganization",
                     "path": "Location.managingOrganization",
-                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-organization"]}],
+                    "type": [
+                        {
+                            "code": "Reference",
+                            "targetProfile": [
+                                f"{BASE_FHIR_URL}/StructureDefinition/gula-organization",
+                            ],
+                        },
+                    ],
                     "definition": "Parent laboratory organization",
                 },
                 {
@@ -492,7 +526,12 @@ FHIR_PROFILES = {
                     "id": "Encounter.subject",
                     "path": "Encounter.subject",
                     "min": 1,
-                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                    "type": [
+                        {
+                            "code": "Reference",
+                            "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"],
+                        },
+                    ],
                 },
                 {
                     "id": "Encounter.participant",
@@ -507,7 +546,14 @@ FHIR_PROFILES = {
                 {
                     "id": "Encounter.serviceProvider",
                     "path": "Encounter.serviceProvider",
-                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-organization"]}],
+                    "type": [
+                        {
+                            "code": "Reference",
+                            "targetProfile": [
+                                f"{BASE_FHIR_URL}/StructureDefinition/gula-organization",
+                            ],
+                        },
+                    ],
                     "definition": "Laboratory that provided the service",
                 },
                 {
@@ -555,7 +601,12 @@ FHIR_PROFILES = {
                     "id": "Specimen.subject",
                     "path": "Specimen.subject",
                     "min": 1,
-                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                    "type": [
+                        {
+                            "code": "Reference",
+                            "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"],
+                        },
+                    ],
                 },
                 {
                     "id": "Specimen.collection",
@@ -652,7 +703,11 @@ def get_capability_statement() -> dict:
                             {"code": "update"},
                         ],
                         "searchParam": [
-                            {"name": "identifier", "type": "token", "documentation": "Health ID or national ID"},
+                            {
+                                "name": "identifier",
+                                "type": "token",
+                                "documentation": "Health ID or national ID",
+                            },
                             {"name": "family", "type": "string"},
                             {"name": "given", "type": "string"},
                             {"name": "phone", "type": "token"},
@@ -662,7 +717,9 @@ def get_capability_statement() -> dict:
                     {
                         "type": "Observation",
                         "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-observation",
-                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-observation"],
+                        "supportedProfile": [
+                            f"{BASE_FHIR_URL}/StructureDefinition/gula-observation",
+                        ],
                         "interaction": [
                             {"code": "read"},
                             {"code": "search-type"},
@@ -678,7 +735,9 @@ def get_capability_statement() -> dict:
                     {
                         "type": "DiagnosticReport",
                         "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-diagnostic-report",
-                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-diagnostic-report"],
+                        "supportedProfile": [
+                            f"{BASE_FHIR_URL}/StructureDefinition/gula-diagnostic-report",
+                        ],
                         "interaction": [
                             {"code": "read"},
                             {"code": "search-type"},
@@ -693,7 +752,9 @@ def get_capability_statement() -> dict:
                     {
                         "type": "ServiceRequest",
                         "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-service-request",
-                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-service-request"],
+                        "supportedProfile": [
+                            f"{BASE_FHIR_URL}/StructureDefinition/gula-service-request",
+                        ],
                         "interaction": [
                             {"code": "read"},
                             {"code": "search-type"},
@@ -709,7 +770,9 @@ def get_capability_statement() -> dict:
                     {
                         "type": "Organization",
                         "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-organization",
-                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-organization"],
+                        "supportedProfile": [
+                            f"{BASE_FHIR_URL}/StructureDefinition/gula-organization",
+                        ],
                         "interaction": [
                             {"code": "read"},
                             {"code": "search-type"},
@@ -727,7 +790,9 @@ def get_capability_statement() -> dict:
                     {
                         "type": "Practitioner",
                         "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-practitioner",
-                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-practitioner"],
+                        "supportedProfile": [
+                            f"{BASE_FHIR_URL}/StructureDefinition/gula-practitioner",
+                        ],
                         "interaction": [
                             {"code": "read"},
                             {"code": "search-type"},

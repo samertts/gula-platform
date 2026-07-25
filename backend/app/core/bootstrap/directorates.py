@@ -42,16 +42,18 @@ def build_directorate_defs(parent_org_id: str = MINISTRY_ORG_ID) -> list[Organiz
     for gov in IRAQ_GOVERNORATES:
         gov_id = gov["id"]
         dir_id = f"dir-{gov_id}"
-        defs.append(OrganizationDef(
-            org_id=dir_id,
-            name_en=f"{gov['name_en']} Health Directorate",
-            name_ar=f"مديرية صحة {gov['name_ar']}",
-            org_type="directorate",
-            parent_org_id=parent_org_id,
-            governorate_id=gov_id,
-            directorate_id=None,
-            is_active=True,
-        ))
+        defs.append(
+            OrganizationDef(
+                org_id=dir_id,
+                name_en=f"{gov['name_en']} Health Directorate",
+                name_ar=f"مديرية صحة {gov['name_ar']}",
+                org_type="directorate",
+                parent_org_id=parent_org_id,
+                governorate_id=gov_id,
+                directorate_id=None,
+                is_active=True,
+            ),
+        )
     return defs
 
 
@@ -63,9 +65,13 @@ def seed_health_directorates(db: Session | None = None) -> int:
         own_session = False
 
     try:
-        moh = db.query(Organization).filter(
-            Organization.org_id == MINISTRY_ORG_ID,
-        ).first()
+        moh = (
+            db.query(Organization)
+            .filter(
+                Organization.org_id == MINISTRY_ORG_ID,
+            )
+            .first()
+        )
         if not moh:
             logger.error("Ministry of Health not found — seed ministry first")
             return 0

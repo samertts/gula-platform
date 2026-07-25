@@ -152,7 +152,9 @@ _VALID_SECURITY = frozenset({"standard", "high_security", "air_gapped"})
 
 
 def get_tier_features(
-    tier: str, deployment_mode: str = "single", security_level: str = "standard",
+    tier: str,
+    deployment_mode: str = "single",
+    security_level: str = "standard",
 ) -> frozenset[str]:
     """Return the full feature set for a given (tier, deployment_mode, security_level) combo.
     Applies deployment and security overrides on top of tier base.
@@ -252,8 +254,7 @@ def can_lab_access(feature: str, lab_id: int, db) -> bool:
 
 
 def get_lab_subscription_info(lab_id: int, db) -> dict:
-    """Return subscription summary for a lab — used in dashboard and API responses.
-    """
+    """Return subscription summary for a lab — used in dashboard and API responses."""
     from ..models.subscription import LabSubscription
 
     sub = (

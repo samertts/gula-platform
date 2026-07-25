@@ -53,7 +53,9 @@ async def edge_maintenance_loop(interval_s: int = 30) -> None:
 
             loop = asyncio.get_event_loop()
             n_stale, n_off, n_tele = await loop.run_in_executor(
-                None, _run_maintenance, sweep_counter,
+                None,
+                _run_maintenance,
+                sweep_counter,
             )
             if n_stale or n_off or n_tele:
                 logger.info(

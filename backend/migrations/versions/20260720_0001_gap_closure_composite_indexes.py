@@ -23,7 +23,11 @@ depends_on: str | Sequence[str] | None = None
 
 
 INDEXES = [
-    ("ix_quality_controls_lab_test_time", "quality_controls", ("lab_id", "test_code", "created_at")),
+    (
+        "ix_quality_controls_lab_test_time",
+        "quality_controls",
+        ("lab_id", "test_code", "created_at"),
+    ),
     ("ix_samples_order_status", "samples", ("order_id", "status")),
     ("ix_outbox_events_status_created", "outbox_events", ("status", "created_at")),
     ("ix_audit_logs_user_time", "audit_logs", ("user_id", "created_at")),

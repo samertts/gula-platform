@@ -45,8 +45,15 @@ def upgrade() -> None:
         op.create_table(
             "nhdw_admissions",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("admission_number", sa.String(30), nullable=False),
             sa.Column("admission_date", sa.DateTime(timezone=True), nullable=False),
             sa.Column("admission_type", sa.String(30), nullable=False),
@@ -85,9 +92,21 @@ def upgrade() -> None:
         op.create_table(
             "nhdw_discharges",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("discharge_date", sa.DateTime(timezone=True), nullable=False),
             sa.Column("discharge_type", sa.String(30), nullable=False),
             sa.Column("discharge_summary", sa.Text(), nullable=True),
@@ -119,9 +138,21 @@ def upgrade() -> None:
         op.create_table(
             "nhdw_transfers",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("from_ward", sa.String(100), nullable=True),
             sa.Column("from_bed", sa.String(20), nullable=True),
             sa.Column("to_ward", sa.String(100), nullable=False),
@@ -154,8 +185,15 @@ def upgrade() -> None:
         op.create_table(
             "nhdw_queue_entries",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("queue_type", sa.String(30), nullable=False),
             sa.Column("queue_number", sa.String(20), nullable=False),
             sa.Column("priority", sa.Integer(), default=0),
@@ -177,16 +215,29 @@ def upgrade() -> None:
         )
         op.create_index("ix_nhdw_queue_lab_id", "nhdw_queue_entries", ["lab_id"])
         op.create_index("ix_nhdw_queue_patient_id", "nhdw_queue_entries", ["patient_id"])
-        op.create_index("ix_nhdw_queue_lab_type_status", "nhdw_queue_entries", ["lab_id", "queue_type", "status"])
-        op.create_index("ix_nhdw_queue_number", "nhdw_queue_entries", ["queue_number", "lab_id"], unique=True)
+        op.create_index(
+            "ix_nhdw_queue_lab_type_status",
+            "nhdw_queue_entries",
+            ["lab_id", "queue_type", "status"],
+        )
+        op.create_index(
+            "ix_nhdw_queue_number", "nhdw_queue_entries", ["queue_number", "lab_id"], unique=True
+        )
 
     # ── Waiting List Entries ──────────────────────────────────────────────────
     if not _table_exists("nhdw_waiting_list_entries"):
         op.create_table(
             "nhdw_waiting_list_entries",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("waiting_list_type", sa.String(50), nullable=False),
             sa.Column("priority", sa.Integer(), default=0),
             sa.Column("status", sa.String(20), nullable=False, server_default="active"),
@@ -213,16 +264,30 @@ def upgrade() -> None:
         )
         op.create_index("ix_nhdw_waitlist_lab_id", "nhdw_waiting_list_entries", ["lab_id"])
         op.create_index("ix_nhdw_waitlist_patient_id", "nhdw_waiting_list_entries", ["patient_id"])
-        op.create_index("ix_nhdw_waitlist_lab_status", "nhdw_waiting_list_entries", ["lab_id", "status"])
+        op.create_index(
+            "ix_nhdw_waitlist_lab_status", "nhdw_waiting_list_entries", ["lab_id", "status"]
+        )
 
     # ── Clinical Tasks ────────────────────────────────────────────────────────
     if not _table_exists("nhdw_clinical_tasks"):
         op.create_table(
             "nhdw_clinical_tasks",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("assigned_to", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "assigned_to",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("task_type", sa.String(50), nullable=False),
             sa.Column("title", sa.String(300), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -231,7 +296,12 @@ def upgrade() -> None:
             sa.Column("due_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("completed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "completed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("cancelled_reason", sa.Text(), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -248,17 +318,35 @@ def upgrade() -> None:
         )
         op.create_index("ix_nhdw_clinical_tasks_lab_id", "nhdw_clinical_tasks", ["lab_id"])
         op.create_index("ix_nhdw_clinical_tasks_patient_id", "nhdw_clinical_tasks", ["patient_id"])
-        op.create_index("ix_nhdw_clinical_tasks_assigned_to", "nhdw_clinical_tasks", ["assigned_to"])
-        op.create_index("ix_nhdw_clinical_tasks_lab_status", "nhdw_clinical_tasks", ["lab_id", "status", "due_at"])
+        op.create_index(
+            "ix_nhdw_clinical_tasks_assigned_to", "nhdw_clinical_tasks", ["assigned_to"]
+        )
+        op.create_index(
+            "ix_nhdw_clinical_tasks_lab_status",
+            "nhdw_clinical_tasks",
+            ["lab_id", "status", "due_at"],
+        )
 
     # ── Ward Rounds ────────────────────────────────────────────────────────────
     if not _table_exists("nhdw_ward_rounds"):
         op.create_table(
             "nhdw_ward_rounds",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("ward", sa.String(100), nullable=True),
             sa.Column("round_type", sa.String(50), nullable=False),
             sa.Column("round_date", sa.DateTime(timezone=True), nullable=False),
@@ -291,9 +379,21 @@ def upgrade() -> None:
         op.create_table(
             "nhdw_care_plans",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("care_plan_type", sa.String(50), nullable=False),
             sa.Column("title", sa.String(300), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -305,7 +405,12 @@ def upgrade() -> None:
             sa.Column("status", sa.String(20), nullable=False, server_default="active"),
             sa.Column("outcome", sa.Text(), nullable=True),
             sa.Column("review_date", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("reviewed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "reviewed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
@@ -329,7 +434,9 @@ def upgrade() -> None:
         op.create_table(
             "nhdw_hospital_alerts",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("alert_type", sa.String(50), nullable=False),
             sa.Column("severity", sa.String(20), nullable=False, server_default="info"),
             sa.Column("title", sa.String(300), nullable=False),
@@ -339,7 +446,12 @@ def upgrade() -> None:
             sa.Column("department", sa.String(100), nullable=True),
             sa.Column("ward", sa.String(100), nullable=True),
             sa.Column("is_read", sa.Boolean(), default=False),
-            sa.Column("read_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "read_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("action_required", sa.Boolean(), default=False),
@@ -358,7 +470,9 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nhdw_alerts_lab_id", "nhdw_hospital_alerts", ["lab_id"])
-        op.create_index("ix_nhdw_alerts_lab_severity", "nhdw_hospital_alerts", ["lab_id", "severity"])
+        op.create_index(
+            "ix_nhdw_alerts_lab_severity", "nhdw_hospital_alerts", ["lab_id", "severity"]
+        )
         op.create_index("ix_nhdw_alerts_lab_unread", "nhdw_hospital_alerts", ["lab_id", "is_read"])
         op.create_index("ix_nhdw_alerts_expires_at", "nhdw_hospital_alerts", ["expires_at"])
 
@@ -367,9 +481,21 @@ def upgrade() -> None:
         op.create_table(
             "nhdw_hospital_messages",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("sender_id", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("recipient_id", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "sender_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "recipient_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("recipient_department", sa.String(100), nullable=True),
             sa.Column("subject", sa.String(300), nullable=False),
             sa.Column("body", sa.Text(), nullable=True),
@@ -378,8 +504,18 @@ def upgrade() -> None:
             sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("requires_acknowledgment", sa.Boolean(), default=False),
             sa.Column("acknowledged_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("acknowledged_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("parent_message_id", sa.Integer(), sa.ForeignKey("nhdw_hospital_messages.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "acknowledged_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "parent_message_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_hospital_messages.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("created_by", sa.Integer(), nullable=True),
             sa.Column("updated_by", sa.Integer(), nullable=True),
@@ -393,15 +529,24 @@ def upgrade() -> None:
         op.create_index("ix_nhdw_messages_lab_id", "nhdw_hospital_messages", ["lab_id"])
         op.create_index("ix_nhdw_messages_sender_id", "nhdw_hospital_messages", ["sender_id"])
         op.create_index("ix_nhdw_messages_recipient_id", "nhdw_hospital_messages", ["recipient_id"])
-        op.create_index("ix_nhdw_messages_unread", "nhdw_hospital_messages", ["recipient_id", "is_read"])
+        op.create_index(
+            "ix_nhdw_messages_unread", "nhdw_hospital_messages", ["recipient_id", "is_read"]
+        )
 
     # ── Telemedicine Sessions ─────────────────────────────────────────────────
     if not _table_exists("nhdw_telemedicine_sessions"):
         op.create_table(
             "nhdw_telemedicine_sessions",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("session_type", sa.String(50), nullable=False),
             sa.Column("status", sa.String(20), nullable=False, server_default="scheduled"),
             sa.Column("scheduled_at", sa.DateTime(timezone=True), nullable=False),
@@ -430,16 +575,24 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nhdw_telemedicine_lab_id", "nhdw_telemedicine_sessions", ["lab_id"])
-        op.create_index("ix_nhdw_telemedicine_patient_id", "nhdw_telemedicine_sessions", ["patient_id"])
-        op.create_index("ix_nhdw_telemedicine_scheduled_at", "nhdw_telemedicine_sessions", ["scheduled_at"])
-        op.create_index("ix_nhdw_telemedicine_lab_status", "nhdw_telemedicine_sessions", ["lab_id", "status"])
+        op.create_index(
+            "ix_nhdw_telemedicine_patient_id", "nhdw_telemedicine_sessions", ["patient_id"]
+        )
+        op.create_index(
+            "ix_nhdw_telemedicine_scheduled_at", "nhdw_telemedicine_sessions", ["scheduled_at"]
+        )
+        op.create_index(
+            "ix_nhdw_telemedicine_lab_status", "nhdw_telemedicine_sessions", ["lab_id", "status"]
+        )
 
     # ── Resource Schedules ────────────────────────────────────────────────────
     if not _table_exists("nhdw_resource_schedules"):
         op.create_table(
             "nhdw_resource_schedules",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("resource_type", sa.String(50), nullable=False),
             sa.Column("resource_name", sa.String(200), nullable=False),
             sa.Column("resource_id_ref", sa.Integer(), nullable=True),
@@ -447,8 +600,18 @@ def upgrade() -> None:
             sa.Column("start_time", sa.Time(), nullable=False),
             sa.Column("end_time", sa.Time(), nullable=False),
             sa.Column("status", sa.String(20), nullable=False, server_default="available"),
-            sa.Column("booked_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("booked_for_patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "booked_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "booked_for_patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("purpose", sa.String(300), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -462,16 +625,29 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nhdw_resource_sched_lab_id", "nhdw_resource_schedules", ["lab_id"])
-        op.create_index("ix_nhdw_resource_sched_date", "nhdw_resource_schedules", ["scheduled_date"])
-        op.create_index("ix_nhdw_resource_sched_lab_type_date", "nhdw_resource_schedules", ["lab_id", "resource_type", "scheduled_date"])
+        op.create_index(
+            "ix_nhdw_resource_sched_date", "nhdw_resource_schedules", ["scheduled_date"]
+        )
+        op.create_index(
+            "ix_nhdw_resource_sched_lab_type_date",
+            "nhdw_resource_schedules",
+            ["lab_id", "resource_type", "scheduled_date"],
+        )
 
     # ── Dashboard Configurations ──────────────────────────────────────────────
     if not _table_exists("nhdw_dashboard_configurations"):
         op.create_table(
             "nhdw_dashboard_configurations",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("user_id", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="CASCADE"),
+                nullable=True,
+            ),
             sa.Column("dashboard_name", sa.String(200), nullable=False),
             sa.Column("dashboard_type", sa.String(50), nullable=False),
             sa.Column("layout", JSON(), nullable=True),
@@ -492,19 +668,30 @@ def upgrade() -> None:
         )
         op.create_index("ix_nhdw_dash_config_lab_id", "nhdw_dashboard_configurations", ["lab_id"])
         op.create_index("ix_nhdw_dash_config_user_id", "nhdw_dashboard_configurations", ["user_id"])
-        op.create_index("ix_nhdw_dash_config_lab_type", "nhdw_dashboard_configurations", ["lab_id", "dashboard_type"])
+        op.create_index(
+            "ix_nhdw_dash_config_lab_type",
+            "nhdw_dashboard_configurations",
+            ["lab_id", "dashboard_type"],
+        )
 
     # ── Shift Reports ─────────────────────────────────────────────────────────
     if not _table_exists("nhdw_shift_reports"):
         op.create_table(
             "nhdw_shift_reports",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("shift_type", sa.String(50), nullable=False),
             sa.Column("shift_date", sa.Date(), nullable=False),
             sa.Column("start_time", sa.Time(), nullable=False),
             sa.Column("end_time", sa.Time(), nullable=True),
-            sa.Column("reported_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "reported_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("summary", sa.Text(), nullable=True),
             sa.Column("key_events", JSON(), nullable=True),
             sa.Column("patient_count", sa.Integer(), nullable=True),

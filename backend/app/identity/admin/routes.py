@@ -17,6 +17,7 @@ async def create_portal(
     db: AsyncSession = Depends(get_db),
 ):
     import json
+
     service = EnterprisePortalService(db)
     portal = await service.create_portal(
         org_id=org_id,

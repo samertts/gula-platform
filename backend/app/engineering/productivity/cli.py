@@ -91,8 +91,12 @@ def main() -> None:
 
     cap_list = cap_sub.add_parser("list", help="List all capabilities")
     cap_list.add_argument("--domain", default="", help="Filter by domain")
-    cap_list.add_argument("--status", default="", help="Filter by status (active, draft, deprecated, retired)")
-    cap_list.add_argument("--enabled-only", action="store_true", help="Show only enabled capabilities")
+    cap_list.add_argument(
+        "--status", default="", help="Filter by status (active, draft, deprecated, retired)"
+    )
+    cap_list.add_argument(
+        "--enabled-only", action="store_true", help="Show only enabled capabilities"
+    )
 
     cap_show = cap_sub.add_parser("show", help="Show capability details")
     cap_show.add_argument("name", help="Capability name")
@@ -107,7 +111,9 @@ def main() -> None:
     cap_impact.add_argument("name", help="Capability name")
 
     cap_graph = cap_sub.add_parser("graph", help="Show dependency graph")
-    cap_graph.add_argument("--format", default="text", choices=["text", "mermaid", "json"], help="Output format")
+    cap_graph.add_argument(
+        "--format", default="text", choices=["text", "mermaid", "json"], help="Output format"
+    )
 
     cap_sub.add_parser("summary", help="Show capability registry summary")
 
@@ -174,8 +180,16 @@ def _add_new_capability(sub: argparse._SubParsersAction) -> None:
     p.add_argument("name", help="Capability name")
     p.add_argument("--description", default="", help="Capability description")
     p.add_argument("--dir", default=".", help="Target directory")
-    p.add_argument("--domain", default="core", help="Domain (core, clinical, identity, financial, communication, infrastructure, observability, reporting, integration, platform)")
-    p.add_argument("--layer", default="application", help="Layer (domain, application, infrastructure, presentation)")
+    p.add_argument(
+        "--domain",
+        default="core",
+        help="Domain (core, clinical, identity, financial, communication, infrastructure, observability, reporting, integration, platform)",
+    )
+    p.add_argument(
+        "--layer",
+        default="application",
+        help="Layer (domain, application, infrastructure, presentation)",
+    )
     p.add_argument("--owner", default="platform-team", help="Capability owner")
     p.add_argument("--version", default="1.0.0", help="Initial semver")
     p.add_argument("--entities", nargs="*", default=[], help="Entities in format Name:type")
@@ -356,7 +370,9 @@ def _handle_new(args: argparse.Namespace) -> None:
 
     if args.new_type == "project":
         spec = ProjectSpec(
-            name=args.name, description=args.description, version=getattr(args, "version", "0.1.0"),
+            name=args.name,
+            description=args.description,
+            version=getattr(args, "version", "0.1.0"),
         )
         gen = ProjectGenerator(target_dir=target)
         result = gen.generate(spec=spec)
@@ -821,9 +837,20 @@ def _handle_capability(args: argparse.Namespace) -> None:
         if args.enabled_only:
             filtered = [c for c in filtered if c.enabled]
 
-        domain_order = ["identity_security", "clinical", "communication", "infrastructure",
-                         "reporting", "platform", "financial", "observability", "integration"]
-        filtered.sort(key=lambda c: (domain_order.index(c.domain) if c.domain in domain_order else 99, c.name))
+        domain_order = [
+            "identity_security",
+            "clinical",
+            "communication",
+            "infrastructure",
+            "reporting",
+            "platform",
+            "financial",
+            "observability",
+            "integration",
+        ]
+        filtered.sort(
+            key=lambda c: (domain_order.index(c.domain) if c.domain in domain_order else 99, c.name)
+        )
 
         print(f"\n  Capability Registry — {len(filtered)} capabilities")
         print(f"  {'=' * 70}")
@@ -925,6 +952,7 @@ def _handle_capability(args: argparse.Namespace) -> None:
             print("```")
         elif args.format == "json":
             import json
+
             graph = {}
             for cap in all_caps:
                 graph[cap.name] = {"dependencies": cap.dependencies, "domain": cap.domain}
@@ -971,12 +999,18 @@ def _handle_info() -> None:
     print("  From now on, GULA builds GULA.")
     print()
     print("  Commands:")
-    print("    gula new <type>       Scaffold projects, modules, plugins, platforms, capabilities, CRUD")
+    print(
+        "    gula new <type>       Scaffold projects, modules, plugins, platforms, capabilities, CRUD"
+    )
     print("    gula generate <type>  Generate code, tests, docs, CI/CD")
-    print("    gula validate <type>  Validate architecture quality (clean-arch, solid, ddd, cqrs, event-driven)")
+    print(
+        "    gula validate <type>  Validate architecture quality (clean-arch, solid, ddd, cqrs, event-driven)"
+    )
     print("    gula quality          Run quality gates (ruff, pytest, mypy, coverage, bandit)")
     print("    gula doctor           System diagnostics")
-    print("    gula capability       Manage capabilities (list, show, enable, disable, impact, graph, summary)")
+    print(
+        "    gula capability       Manage capabilities (list, show, enable, disable, impact, graph, summary)"
+    )
     print("    gula info             Show this info")
 
 

@@ -18,10 +18,16 @@ class MinorProtectionService:
         if not date_of_birth:
             return True
         today = date.today()
-        age = today.year - date_of_birth.year - ((today.month, today.day) < (date_of_birth.month, date_of_birth.day))
+        age = (
+            today.year
+            - date_of_birth.year
+            - ((today.month, today.day) < (date_of_birth.month, date_of_birth.day))
+        )
         return age < self.MINOR_AGE
 
-    def get_protection_level(self, date_of_birth: date, is_emancipated: bool = False) -> MinorProtectionLevel:
+    def get_protection_level(
+        self, date_of_birth: date, is_emancipated: bool = False,
+    ) -> MinorProtectionLevel:
         if is_emancipated:
             return MinorProtectionLevel.LIMITED
         if self.is_minor(date_of_birth):

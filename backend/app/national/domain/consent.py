@@ -14,8 +14,18 @@ class Consent(TenantAuditEntity):
     status = Column(SAEnum(ConsentStatus), nullable=False, default=ConsentStatus.ACTIVE)
     scope = Column(SAEnum(ConsentScope), nullable=False)
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     grantee_id = Column(String(26), nullable=False, index=True)
     grantee_type = Column(String(50), nullable=False)

@@ -146,7 +146,9 @@ class IdentityAuditEntry(IdentityBaseEntity):
     user_agent = Column(Text, nullable=True)
     session_id = Column(String(36), nullable=True)
 
-    occurred_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    occurred_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True
+    )
     organization_id = Column(String(36), nullable=True, index=True)
 
     entry_hash = Column(String(64), unique=True, nullable=True, index=True)

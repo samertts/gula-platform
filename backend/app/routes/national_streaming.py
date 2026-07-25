@@ -23,6 +23,7 @@ router = APIRouter(prefix="/national-data/streaming", tags=["national-data-strea
 
 # ── Pydantic Schemas ──────────────────────────────────────────────────────────
 
+
 class FHIRSubscriptionPayload(BaseModel):
     resource_type: str
     resource_id: str
@@ -67,6 +68,7 @@ class CDCChangeRecord(BaseModel):
 
 # ── FHIR Subscription Endpoint ────────────────────────────────────────────────
 
+
 @router.post("/fhir", summary="FHIR Subscription endpoint")
 def receive_fhir_subscription(
     payload: FHIRSubscriptionPayload,
@@ -103,12 +105,15 @@ def receive_fhir_subscription(
     db.commit()
     logger.info(
         "FHIR subscription event: %s resource=%s/%s",
-        payload.event_type, payload.resource_type, payload.resource_id,
+        payload.event_type,
+        payload.resource_type,
+        payload.resource_id,
     )
     return {"status": "received", "event_type": event_type}
 
 
 # ── HL7 Streaming Endpoint ───────────────────────────────────────────────────
+
 
 @router.post("/hl7", summary="HL7 message streaming endpoint")
 def receive_hl7_message(
@@ -152,12 +157,15 @@ def receive_hl7_message(
     db.commit()
     logger.info(
         "HL7 message: %s control_id=%s device=%s",
-        payload.message_type, payload.message_control_id, payload.source_device,
+        payload.message_type,
+        payload.message_control_id,
+        payload.source_device,
     )
     return {"status": "received", "event_type": event_type}
 
 
 # ── Event Streaming Endpoint ─────────────────────────────────────────────────
+
 
 @router.post("/events", summary="Event streaming endpoint")
 def receive_streaming_event(
@@ -196,6 +204,7 @@ def receive_streaming_event(
 
 # ── CDC Feed Endpoint ─────────────────────────────────────────────────────────
 
+
 @router.get("/cdc", summary="Change Data Capture feed")
 def get_cdc_feed(
     table_name: str | None = Query(None),
@@ -216,7 +225,9 @@ def get_cdc_feed(
             since_dt = datetime.fromisoformat(since)
             query = query.filter(StoredEvent.recorded_at >= since_dt)
         except ValueError as e:
-            raise HTTPException(status_code=400, detail="Invalid 'since' format. Use ISO 8601.") from e
+            raise HTTPException(
+                status_code=400, detail="Invalid 'since' format. Use ISO 8601."
+            ) from e
 
     events = query.order_by(StoredEvent.recorded_at.desc()).limit(limit).all()
 

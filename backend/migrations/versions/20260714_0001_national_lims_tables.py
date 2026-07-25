@@ -53,7 +53,9 @@ def upgrade() -> None:
         op.create_table(
             "lims_departments",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("code", sa.String(20), nullable=False),
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("name_ar", sa.String(200), nullable=True),
@@ -73,7 +75,9 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_lims_departments_lab_id", "lims_departments", ["lab_id"])
-        op.create_index("ix_lims_dept_lab_code", "lims_departments", ["lab_id", "code"], unique=True)
+        op.create_index(
+            "ix_lims_dept_lab_code", "lims_departments", ["lab_id", "code"], unique=True
+        )
         op.create_index("ix_lims_dept_not_deleted", "lims_departments", ["is_deleted", "lab_id"])
 
     # ── Sections ─────────────────────────────────────────────────────────────
@@ -81,7 +85,12 @@ def upgrade() -> None:
         op.create_table(
             "lims_sections",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("department_id", sa.Integer(), sa.ForeignKey("lims_departments.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "department_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_departments.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("code", sa.String(20), nullable=False),
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("name_ar", sa.String(200), nullable=True),
@@ -107,7 +116,12 @@ def upgrade() -> None:
         op.create_table(
             "lims_workstations",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("section_id", sa.Integer(), sa.ForeignKey("lims_sections.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "section_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_sections.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("code", sa.String(20), nullable=False),
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("workstation_type", sa.String(50), nullable=True),
@@ -155,7 +169,12 @@ def upgrade() -> None:
         op.create_table(
             "lims_instrument_models",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("manufacturer_id", sa.Integer(), sa.ForeignKey("lims_manufacturers.id", ondelete="RESTRICT"), nullable=False),
+            sa.Column(
+                "manufacturer_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_manufacturers.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
             sa.Column("model_code", sa.String(50), nullable=False),
             sa.Column("model_name", sa.String(200), nullable=False),
             sa.Column("category", sa.String(50), nullable=True),
@@ -177,16 +196,30 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("manufacturer_id", "model_code", name="uq_lims_model_mfr_code"),
         )
-        op.create_index("ix_lims_instrument_models_model_code", "lims_instrument_models", ["model_code"])
+        op.create_index(
+            "ix_lims_instrument_models_model_code", "lims_instrument_models", ["model_code"]
+        )
 
     # ── Instruments ──────────────────────────────────────────────────────────
     if not _table_exists("lims_instruments"):
         op.create_table(
             "lims_instruments",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("model_id", sa.Integer(), sa.ForeignKey("lims_instrument_models.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("workstation_id", sa.Integer(), sa.ForeignKey("lims_workstations.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "model_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_instrument_models.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "workstation_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_workstations.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("instrument_code", sa.String(50), nullable=False),
             sa.Column("serial_number", sa.String(200), nullable=True),
             sa.Column("asset_number", sa.String(100), nullable=True),
@@ -220,11 +253,21 @@ def upgrade() -> None:
         op.create_table(
             "lims_maintenance",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("instrument_id", sa.Integer(), sa.ForeignKey("lims_instruments.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "instrument_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_instruments.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("maintenance_type", sa.String(30), nullable=False),
             sa.Column("title", sa.String(200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
-            sa.Column("performed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "performed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("performed_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("next_due_at", sa.DateTime(timezone=True), nullable=True),
@@ -249,9 +292,19 @@ def upgrade() -> None:
         op.create_table(
             "lims_calibrations",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("instrument_id", sa.Integer(), sa.ForeignKey("lims_instruments.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "instrument_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_instruments.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("calibration_type", sa.String(30), nullable=False),
-            sa.Column("performed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "performed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("performed_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("next_due_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("calibrator_lot", sa.String(100), nullable=True),
@@ -269,19 +322,28 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_lims_calibrations_instrument_id", "lims_calibrations", ["instrument_id"])
+        op.create_index(
+            "ix_lims_calibrations_instrument_id", "lims_calibrations", ["instrument_id"]
+        )
 
     # ── QC Programs ──────────────────────────────────────────────────────────
     if not _table_exists("lims_qc_programs"):
         op.create_table(
             "lims_qc_programs",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("code", sa.String(50), nullable=False),
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("program_type", sa.String(20), nullable=False),
             sa.Column("test_code", sa.String(50), nullable=False),
-            sa.Column("instrument_id", sa.Integer(), sa.ForeignKey("lims_instruments.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "instrument_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_instruments.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("rule_set", sa.String(50), nullable=True),
             sa.Column("rules", JSON(), nullable=True),
             sa.Column("frequency", sa.String(20), nullable=True),
@@ -305,9 +367,21 @@ def upgrade() -> None:
         op.create_table(
             "lims_iqc",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("program_id", sa.Integer(), sa.ForeignKey("lims_qc_programs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("instrument_id", sa.Integer(), sa.ForeignKey("lims_instruments.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "program_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_qc_programs.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "instrument_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_instruments.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("test_code", sa.String(50), nullable=False),
             sa.Column("lot_number", sa.String(100), nullable=True),
             sa.Column("level", sa.String(20), nullable=False),
@@ -318,7 +392,12 @@ def upgrade() -> None:
             sa.Column("unit", sa.String(20), nullable=True),
             sa.Column("status", sa.String(20), default="in_control"),
             sa.Column("violation", sa.String(20), nullable=True),
-            sa.Column("performed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "performed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("performed_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -333,15 +412,24 @@ def upgrade() -> None:
         )
         op.create_index("ix_lims_iqc_lab_id", "lims_iqc", ["lab_id"])
         op.create_index("ix_lims_iqc_program_id", "lims_iqc", ["program_id"])
-        op.create_index("ix_lims_iqc_lab_test_date", "lims_iqc", ["lab_id", "test_code", "performed_at"])
+        op.create_index(
+            "ix_lims_iqc_lab_test_date", "lims_iqc", ["lab_id", "test_code", "performed_at"]
+        )
 
     # ── EQA ──────────────────────────────────────────────────────────────────
     if not _table_exists("lims_eqa"):
         op.create_table(
             "lims_eqa",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("program_id", sa.Integer(), sa.ForeignKey("lims_qc_programs.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "program_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_qc_programs.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("test_code", sa.String(50), nullable=False),
             sa.Column("scheme_name", sa.String(200), nullable=False),
             sa.Column("round_number", sa.String(50), nullable=False),
@@ -352,9 +440,19 @@ def upgrade() -> None:
             sa.Column("z_score", sa.Float(), nullable=True),
             sa.Column("deviation_percent", sa.Float(), nullable=True),
             sa.Column("result", sa.String(20), nullable=True),
-            sa.Column("submitted_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "submitted_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("submitted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("reviewed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "reviewed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("corrective_action", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -366,7 +464,9 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
-            sa.UniqueConstraint("lab_id", "scheme_name", "round_number", "test_code", name="uq_lims_eqa_round"),
+            sa.UniqueConstraint(
+                "lab_id", "scheme_name", "round_number", "test_code", name="uq_lims_eqa_round"
+            ),
         )
         op.create_index("ix_lims_eqa_lab_id", "lims_eqa", ["lab_id"])
         op.create_index("ix_lims_eqa_test_code", "lims_eqa", ["test_code"])
@@ -376,18 +476,30 @@ def upgrade() -> None:
         op.create_table(
             "lims_lots",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("lot_number", sa.String(100), nullable=False),
             sa.Column("item_type", sa.String(30), nullable=False),
             sa.Column("item_code", sa.String(50), nullable=True),
             sa.Column("item_name", sa.String(200), nullable=False),
-            sa.Column("manufacturer_id", sa.Integer(), sa.ForeignKey("lims_manufacturers.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "manufacturer_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_manufacturers.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("quantity", sa.Float(), nullable=True),
             sa.Column("unit", sa.String(20), nullable=True),
             sa.Column("received_at", sa.Date(), nullable=True),
             sa.Column("expiry_at", sa.Date(), nullable=True),
             sa.Column("opened_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("opened_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "opened_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("storage_condition", sa.String(200), nullable=True),
             sa.Column("certificate", sa.Text(), nullable=True),
             sa.Column("is_active", sa.Boolean(), default=True),
@@ -413,7 +525,9 @@ def upgrade() -> None:
         op.create_table(
             "lims_suppliers",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("code", sa.String(50), nullable=False),
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("name_ar", sa.String(200), nullable=True),
@@ -440,13 +554,30 @@ def upgrade() -> None:
         op.create_table(
             "lims_reagents",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("reagent_code", sa.String(50), nullable=False),
             sa.Column("reagent_name", sa.String(200), nullable=False),
             sa.Column("reagent_name_ar", sa.String(200), nullable=True),
-            sa.Column("lot_id", sa.Integer(), sa.ForeignKey("lims_lots.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("manufacturer_id", sa.Integer(), sa.ForeignKey("lims_manufacturers.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("supplier_id", sa.Integer(), sa.ForeignKey("lims_suppliers.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lot_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_lots.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "manufacturer_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_manufacturers.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "supplier_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_suppliers.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("category", sa.String(50), nullable=True),
             sa.Column("current_quantity", sa.Float(), nullable=False, default=0),
             sa.Column("unit", sa.String(20), nullable=False),
@@ -474,12 +605,24 @@ def upgrade() -> None:
         op.create_table(
             "lims_consumables",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("code", sa.String(50), nullable=False),
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("name_ar", sa.String(200), nullable=True),
-            sa.Column("lot_id", sa.Integer(), sa.ForeignKey("lims_lots.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("supplier_id", sa.Integer(), sa.ForeignKey("lims_suppliers.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lot_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_lots.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "supplier_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_suppliers.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("category", sa.String(50), nullable=True),
             sa.Column("current_quantity", sa.Integer(), nullable=False, default=0),
             sa.Column("unit", sa.String(20), nullable=False),
@@ -504,7 +647,9 @@ def upgrade() -> None:
         op.create_table(
             "lims_storage",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("code", sa.String(50), nullable=False),
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("name_ar", sa.String(200), nullable=True),
@@ -514,7 +659,12 @@ def upgrade() -> None:
             sa.Column("location", sa.String(200), nullable=True),
             sa.Column("capacity", sa.Integer(), nullable=True),
             sa.Column("is_active", sa.Boolean(), default=True),
-            sa.Column("parent_id", sa.Integer(), sa.ForeignKey("lims_storage.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "parent_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_storage.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("created_by", sa.Integer(), nullable=True),
             sa.Column("updated_by", sa.Integer(), nullable=True),
@@ -533,29 +683,53 @@ def upgrade() -> None:
         op.create_table(
             "lims_temperature_logs",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("storage_id", sa.Integer(), sa.ForeignKey("lims_storage.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "storage_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_storage.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("temperature", sa.Float(), nullable=False),
             sa.Column("unit", sa.String(10), default="celsius"),
             sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("recorded_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "recorded_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("is_breach", sa.Boolean(), default=False),
             sa.Column("breach_notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_lims_temp_storage_time", "lims_temperature_logs", ["storage_id", "recorded_at"])
+        op.create_index(
+            "ix_lims_temp_storage_time", "lims_temperature_logs", ["storage_id", "recorded_at"]
+        )
 
     # ── Equipment Logs ───────────────────────────────────────────────────────
     if not _table_exists("lims_equipment_logs"):
         op.create_table(
             "lims_equipment_logs",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("instrument_id", sa.Integer(), sa.ForeignKey("lims_instruments.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "instrument_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_instruments.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("event_type", sa.String(30), nullable=False),
             sa.Column("description", sa.String(500), nullable=True),
-            sa.Column("logged_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "logged_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("logged_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("metadata_json", JSON(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -563,7 +737,9 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_lims_eqlog_inst_time", "lims_equipment_logs", ["instrument_id", "logged_at"])
+        op.create_index(
+            "ix_lims_eqlog_inst_time", "lims_equipment_logs", ["instrument_id", "logged_at"]
+        )
 
     # ── Specimen Catalog ─────────────────────────────────────────────────────
     if not _table_exists("lims_specimen_catalog"):
@@ -613,9 +789,21 @@ def upgrade() -> None:
         op.create_table(
             "lims_specimens",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("order_id", sa.Integer(), sa.ForeignKey("lab_orders.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("parent_specimen_id", sa.Integer(), sa.ForeignKey("lims_specimens.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "order_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_orders.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "parent_specimen_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_specimens.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("barcode", sa.String(30), unique=True, nullable=False),
             sa.Column("qr_code", sa.Text(), nullable=True),
             sa.Column("specimen_type", sa.String(30), nullable=False),
@@ -623,31 +811,76 @@ def upgrade() -> None:
             sa.Column("volume_ml", sa.Float(), nullable=True),
             sa.Column("status", sa.String(20), nullable=False, default="ordered"),
             sa.Column("collection_time", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("collected_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "collected_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("collection_site", sa.String(200), nullable=True),
             sa.Column("collection_notes", sa.Text(), nullable=True),
             sa.Column("received_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("received_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "received_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("accepted_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "accepted_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("rejection_reason", sa.String(500), nullable=True),
             sa.Column("rejected_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("rejected_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("storage_id", sa.Integer(), sa.ForeignKey("lims_storage.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "rejected_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "storage_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_storage.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("storage_position", sa.String(50), nullable=True),
             sa.Column("analyzed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("verified_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "verified_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("validated_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("validated_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "validated_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("released_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("released_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "released_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("archived_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("disposed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("disposal_method", sa.String(100), nullable=True),
             sa.Column("clinical_info", sa.Text(), nullable=True),
             sa.Column("is_control", sa.Boolean(), default=False),
-            sa.Column("control_specimen_id", sa.Integer(), sa.ForeignKey("lims_specimens.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "control_specimen_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_specimens.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
             sa.Column("fhir_resource_type", sa.String(32), nullable=True),
@@ -671,8 +904,15 @@ def upgrade() -> None:
         op.create_table(
             "lims_transportation",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("specimen_id", sa.Integer(), sa.ForeignKey("lims_specimens.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "specimen_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_specimens.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("from_location", sa.String(200), nullable=False),
             sa.Column("to_location", sa.String(200), nullable=False),
             sa.Column("condition", sa.String(30), default="ambient"),
@@ -692,14 +932,21 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_lims_transportation_specimen_id", "lims_transportation", ["specimen_id"])
+        op.create_index(
+            "ix_lims_transportation_specimen_id", "lims_transportation", ["specimen_id"]
+        )
 
     # ── Chain of Custody ─────────────────────────────────────────────────────
     if not _table_exists("lims_chain_of_custody"):
         op.create_table(
             "lims_chain_of_custody",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("specimen_id", sa.Integer(), sa.ForeignKey("lims_specimens.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "specimen_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_specimens.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("event_type", sa.String(30), nullable=False),
             sa.Column("from_person", sa.String(200), nullable=True),
             sa.Column("to_person", sa.String(200), nullable=True),
@@ -714,31 +961,56 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_lims_coc_specimen", "lims_chain_of_custody", ["specimen_id", "timestamp"])
+        op.create_index(
+            "ix_lims_coc_specimen", "lims_chain_of_custody", ["specimen_id", "timestamp"]
+        )
 
     # ── Orders (LIMS extension) ──────────────────────────────────────────────
     if not _table_exists("lims_orders"):
         op.create_table(
             "lims_orders",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("order_id", sa.Integer(), sa.ForeignKey("lab_orders.id", ondelete="CASCADE"), unique=True, nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "order_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_orders.id", ondelete="CASCADE"),
+                unique=True,
+                nullable=False,
+            ),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("accession_number", sa.String(30), unique=True, nullable=False),
             sa.Column("priority", sa.String(20), default="routine"),
             sa.Column("order_status", sa.String(20), default="pending"),
-            sa.Column("ordered_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "ordered_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("ordered_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("requested_completion", sa.DateTime(timezone=True), nullable=True),
             sa.Column("clinical_note", sa.Text(), nullable=True),
             sa.Column("diagnosis_code", sa.String(20), nullable=True),
             sa.Column("icd_code", sa.String(20), nullable=True),
             sa.Column("is_referral", sa.Boolean(), default=False),
-            sa.Column("referring_lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "referring_lab_id",
+                sa.Integer(),
+                sa.ForeignKey("labs.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("referring_physician", sa.String(200), nullable=True),
             sa.Column("is_printed", sa.Boolean(), default=False),
             sa.Column("is_corrected", sa.Boolean(), default=False),
             sa.Column("correction_reason", sa.Text(), nullable=True),
-            sa.Column("original_order_id", sa.Integer(), sa.ForeignKey("lims_orders.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "original_order_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_orders.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
             sa.Column("fhir_resource_type", sa.String(32), nullable=True),
@@ -761,7 +1033,9 @@ def upgrade() -> None:
         op.create_table(
             "lims_panels",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("code", sa.String(50), nullable=False),
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("name_ar", sa.String(200), nullable=True),
@@ -770,7 +1044,12 @@ def upgrade() -> None:
             sa.Column("tat_target_minutes", sa.Integer(), nullable=True),
             sa.Column("is_active", sa.Boolean(), default=True),
             sa.Column("is_national_essential", sa.Boolean(), default=False),
-            sa.Column("department_id", sa.Integer(), sa.ForeignKey("lims_departments.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "department_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_departments.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
             sa.Column("fhir_resource_type", sa.String(32), nullable=True),
@@ -792,7 +1071,12 @@ def upgrade() -> None:
         op.create_table(
             "lims_panel_tests",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("panel_id", sa.Integer(), sa.ForeignKey("lims_panels.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "panel_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_panels.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("test_code", sa.String(50), nullable=False),
             sa.Column("display_order", sa.Integer(), default=0),
             sa.Column("is_required", sa.Boolean(), default=True),
@@ -808,9 +1092,21 @@ def upgrade() -> None:
         op.create_table(
             "lims_results",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("specimen_id", sa.Integer(), sa.ForeignKey("lims_specimens.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("order_id", sa.Integer(), sa.ForeignKey("lab_orders.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "specimen_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_specimens.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "order_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_orders.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("test_code", sa.String(50), nullable=False),
             sa.Column("test_name", sa.String(200), nullable=False),
             sa.Column("test_name_ar", sa.String(200), nullable=True),
@@ -828,7 +1124,12 @@ def upgrade() -> None:
             sa.Column("is_critical", sa.Boolean(), default=False),
             sa.Column("is_abnormal", sa.Boolean(), default=False),
             sa.Column("is_panic", sa.Boolean(), default=False),
-            sa.Column("instrument_id", sa.Integer(), sa.ForeignKey("lims_instruments.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "instrument_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_instruments.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("instrument_result_id", sa.String(100), nullable=True),
             sa.Column("qc_status", sa.String(20), nullable=True),
             sa.Column("delta_check_status", sa.String(20), nullable=True),
@@ -836,13 +1137,23 @@ def upgrade() -> None:
             sa.Column("validation_status", sa.String(20), default="pending"),
             sa.Column("auto_validated", sa.Boolean(), default=False),
             sa.Column("auto_validated_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("validated_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "validated_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("validated_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("validation_note", sa.Text(), nullable=True),
             sa.Column("loinc_code", sa.String(20), nullable=True),
             sa.Column("snomed_code", sa.String(20), nullable=True),
             sa.Column("performed_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("performed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "performed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("result_status", sa.String(20), default="final"),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
@@ -859,8 +1170,12 @@ def upgrade() -> None:
         op.create_index("ix_lims_results_lab_id", "lims_results", ["lab_id"])
         op.create_index("ix_lims_results_specimen_id", "lims_results", ["specimen_id"])
         op.create_index("ix_lims_result_lab_test", "lims_results", ["lab_id", "test_code"])
-        op.create_index("ix_lims_result_validation", "lims_results", ["lab_id", "validation_status"])
-        op.create_index("ix_lims_result_specimen", "lims_results", ["specimen_id", "test_code"], unique=True)
+        op.create_index(
+            "ix_lims_result_validation", "lims_results", ["lab_id", "validation_status"]
+        )
+        op.create_index(
+            "ix_lims_result_specimen", "lims_results", ["specimen_id", "test_code"], unique=True
+        )
         op.create_index("ix_lims_results_loinc_code", "lims_results", ["loinc_code"])
 
     # ── Reference Ranges ─────────────────────────────────────────────────────
@@ -869,8 +1184,15 @@ def upgrade() -> None:
             "lims_reference_ranges",
             sa.Column("id", sa.Integer(), nullable=False),
             sa.Column("test_code", sa.String(50), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=True),
-            sa.Column("instrument_id", sa.Integer(), sa.ForeignKey("lims_instruments.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=True
+            ),
+            sa.Column(
+                "instrument_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_instruments.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("method", sa.String(100), nullable=True),
             sa.Column("gender", sa.String(1), nullable=True),
             sa.Column("age_min_years", sa.Float(), nullable=True),
@@ -899,15 +1221,21 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_lims_refrange_lookup", "lims_reference_ranges", ["test_code", "lab_id", "gender"])
-        op.create_index("ix_lims_reference_ranges_test_code", "lims_reference_ranges", ["test_code"])
+        op.create_index(
+            "ix_lims_refrange_lookup", "lims_reference_ranges", ["test_code", "lab_id", "gender"]
+        )
+        op.create_index(
+            "ix_lims_reference_ranges_test_code", "lims_reference_ranges", ["test_code"]
+        )
 
     # ── Auto-Validation Rules ───────────────────────────────────────────────
     if not _table_exists("lims_auto_validation_rules"):
         op.create_table(
             "lims_auto_validation_rules",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("rule_name", sa.String(200), nullable=False),
             sa.Column("test_code", sa.String(50), nullable=False),
             sa.Column("rule_type", sa.String(30), nullable=False),
@@ -926,14 +1254,18 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_lims_autovalid_lab_id", "lims_auto_validation_rules", ["lab_id"])
-        op.create_index("ix_lims_autovalid_test", "lims_auto_validation_rules", ["test_code", "lab_id"])
+        op.create_index(
+            "ix_lims_autovalid_test", "lims_auto_validation_rules", ["test_code", "lab_id"]
+        )
 
     # ── Delta Check Rules ───────────────────────────────────────────────────
     if not _table_exists("lims_delta_check_rules"):
         op.create_table(
             "lims_delta_check_rules",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("test_code", sa.String(50), nullable=False),
             sa.Column("test_name", sa.String(200), nullable=False),
             sa.Column("delta_percent", sa.Float(), nullable=False),
@@ -960,9 +1292,19 @@ def upgrade() -> None:
         op.create_table(
             "lims_result_validations",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("result_id", sa.Integer(), sa.ForeignKey("lims_results.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "result_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_results.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("action", sa.String(30), nullable=False),
-            sa.Column("validated_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False),
+            sa.Column(
+                "validated_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=False,
+            ),
             sa.Column("validated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("is_electronic_signature", sa.Boolean(), default=False),
@@ -972,16 +1314,30 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_lims_result_validations_result_id", "lims_result_validations", ["result_id"])
+        op.create_index(
+            "ix_lims_result_validations_result_id", "lims_result_validations", ["result_id"]
+        )
 
     # ── Result Releases ──────────────────────────────────────────────────────
     if not _table_exists("lims_result_releases"):
         op.create_table(
             "lims_result_releases",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("order_id", sa.Integer(), sa.ForeignKey("lab_orders.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("released_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "order_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_orders.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "released_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=False,
+            ),
             sa.Column("released_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("release_channel", sa.String(20), nullable=True),
             sa.Column("is_patient_notified", sa.Boolean(), default=False),
@@ -999,8 +1355,15 @@ def upgrade() -> None:
         op.create_table(
             "lims_electronic_signatures",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("user_id", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("signature_type", sa.String(30), nullable=False),
             sa.Column("resource_type", sa.String(30), nullable=False),
             sa.Column("resource_id", sa.Integer(), nullable=False),
@@ -1016,31 +1379,62 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_lims_esignature_user", "lims_electronic_signatures", ["user_id"])
-        op.create_index("ix_lims_esignature_resource", "lims_electronic_signatures", ["resource_type", "resource_id"])
+        op.create_index(
+            "ix_lims_esignature_resource",
+            "lims_electronic_signatures",
+            ["resource_type", "resource_id"],
+        )
 
     # ── Reports ──────────────────────────────────────────────────────────────
     if not _table_exists("lims_reports"):
         op.create_table(
             "lims_reports",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("order_id", sa.Integer(), sa.ForeignKey("lab_orders.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "order_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_orders.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("report_number", sa.String(30), unique=True, nullable=False),
             sa.Column("status", sa.String(20), default="draft"),
             sa.Column("title", sa.String(300), nullable=True),
             sa.Column("title_ar", sa.String(300), nullable=True),
             sa.Column("report_format", sa.String(20), default="pdf"),
-            sa.Column("generated_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "generated_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("generated_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("finalized_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "finalized_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("finalized_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("corrected_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "corrected_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("corrected_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("correction_reason", sa.Text(), nullable=True),
             sa.Column("is_electronic", sa.Boolean(), default=True),
             sa.Column("is_printed", sa.Boolean(), default=False),
             sa.Column("printed_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("printed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "printed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("watermark", sa.String(200), nullable=True),
             sa.Column("locale", sa.String(10), default="ar"),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -1064,13 +1458,23 @@ def upgrade() -> None:
         op.create_table(
             "lims_report_attachments",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("report_id", sa.Integer(), sa.ForeignKey("lims_reports.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "report_id",
+                sa.Integer(),
+                sa.ForeignKey("lims_reports.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("file_name", sa.String(300), nullable=False),
             sa.Column("file_type", sa.String(100), nullable=True),
             sa.Column("file_size_bytes", sa.Integer(), nullable=True),
             sa.Column("storage_path", sa.String(500), nullable=True),
             sa.Column("is_watermarked", sa.Boolean(), default=False),
-            sa.Column("uploaded_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "uploaded_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("uploaded_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("version", sa.Integer(), default=1, nullable=False),
@@ -1079,7 +1483,9 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_lims_report_attachments_report_id", "lims_report_attachments", ["report_id"])
+        op.create_index(
+            "ix_lims_report_attachments_report_id", "lims_report_attachments", ["report_id"]
+        )
 
 
 def downgrade() -> None:

@@ -13,7 +13,6 @@ from app.identity.repositories.device_repository import DeviceRepository
 
 
 class DeviceService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.repo = DeviceRepository(session)
         self._session = session

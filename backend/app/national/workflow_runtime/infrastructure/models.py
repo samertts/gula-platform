@@ -40,7 +40,7 @@ class NationalWorkflowDefinition(BaseEntity, NationalBase):
         )
 
         steps = []
-        for s in (self.steps or []):
+        for s in self.steps or []:
             steps.append(WorkflowStepDefinition(**s))
         return WorkflowDefinition(
             id=self.id,
@@ -142,7 +142,9 @@ class NationalWorkflowApproval(BaseEntity, NationalBase):
     status = Column(String(50), default="pending", nullable=False)
     comments = Column(Text, nullable=True)
     assigned_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
     )
     responded_at = Column(DateTime(timezone=True), nullable=True)
 

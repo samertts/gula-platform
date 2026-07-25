@@ -11,7 +11,6 @@ from app.identity.repositories.session_repository import SessionRepository
 
 
 class SessionService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.repo = SessionRepository(session)
 
@@ -37,14 +36,13 @@ class SessionService:
     async def terminate_all(self, account_id: str, reason: str = "manual") -> None:
         await self.repo.terminate_all_for_account(account_id=account_id, reason=reason)
 
-    async def enforce_single_session(self, account_id: str, current_session_id: str) -> list[UserSession]:
-        stmt = (
-            select(self.repo.model_class)
-            .where(
-                self.repo.model_class.account_id == account_id,
-                self.repo.model_class.is_active.is_(True),
-                self.repo.model_class.id != current_session_id,
-            )
+    async def enforce_single_session(
+        self, account_id: str, current_session_id: str
+    ) -> list[UserSession]:
+        stmt = select(self.repo.model_class).where(
+            self.repo.model_class.account_id == account_id,
+            self.repo.model_class.is_active.is_(True),
+            self.repo.model_class.id != current_session_id,
         )
         result = await self.repo.session.execute(stmt)
         other_sessions = list(result.scalars().all())
@@ -81,12 +79,9 @@ class SessionService:
         return result.rowcount
 
     async def get_sessions_by_policy(self, policy_id: str) -> list[UserSession]:
-        stmt = (
-            select(self.repo.model_class)
-            .where(
-                self.repo.model_class.policy_id == policy_id,
-                self.repo.model_class.is_active.is_(True),
-            )
+        stmt = select(self.repo.model_class).where(
+            self.repo.model_class.policy_id == policy_id,
+            self.repo.model_class.is_active.is_(True),
         )
         result = await self.repo.session.execute(stmt)
         return list(result.scalars().all())

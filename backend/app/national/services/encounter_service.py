@@ -12,10 +12,14 @@ from app.national.exceptions import EncounterNotFoundError
 
 
 def get_encounter(db: Session, encounter_id: str) -> Encounter | None:
-    return db.query(Encounter).filter(
-        Encounter.id == encounter_id,
-        ~Encounter.is_deleted,
-    ).first()
+    return (
+        db.query(Encounter)
+        .filter(
+            Encounter.id == encounter_id,
+            ~Encounter.is_deleted,
+        )
+        .first()
+    )
 
 
 def get_encounters_by_patient(
@@ -24,12 +28,19 @@ def get_encounters_by_patient(
     skip: int = 0,
     limit: int = 50,
 ) -> list[Encounter]:
-    return db.query(Encounter).filter(
-        Encounter.patient_id == patient_id,
-        ~Encounter.is_deleted,
-    ).order_by(
-        Encounter.period_start.desc(),
-    ).offset(skip).limit(limit).all()
+    return (
+        db.query(Encounter)
+        .filter(
+            Encounter.patient_id == patient_id,
+            ~Encounter.is_deleted,
+        )
+        .order_by(
+            Encounter.period_start.desc(),
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def create_encounter(db: Session, data: dict[str, Any]) -> Encounter:
@@ -93,16 +104,23 @@ def get_active_encounters_by_patient(
     db: Session,
     patient_id: str,
 ) -> list[Encounter]:
-    return db.query(Encounter).filter(
-        Encounter.patient_id == patient_id,
-        ~Encounter.is_deleted,
-        Encounter.status.notin_([
-            EncounterStatus.COMPLETED,
-            EncounterStatus.CANCELLED,
-        ]),
-    ).order_by(
-        Encounter.period_start.desc(),
-    ).all()
+    return (
+        db.query(Encounter)
+        .filter(
+            Encounter.patient_id == patient_id,
+            ~Encounter.is_deleted,
+            Encounter.status.notin_(
+                [
+                    EncounterStatus.COMPLETED,
+                    EncounterStatus.CANCELLED,
+                ],
+            ),
+        )
+        .order_by(
+            Encounter.period_start.desc(),
+        )
+        .all()
+    )
 
 
 def search_encounters(
@@ -138,6 +156,11 @@ def search_encounters(
     if filters:
         query = query.filter(and_(*filters))
 
-    return query.order_by(
-        Encounter.period_start.desc(),
-    ).offset(skip).limit(limit).all()
+    return (
+        query.order_by(
+            Encounter.period_start.desc(),
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )

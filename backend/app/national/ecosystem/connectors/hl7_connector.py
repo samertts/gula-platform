@@ -80,7 +80,9 @@ class HL7Connector(BaseConnector):
             return self._build_result(False, error="empty message", status_code=400)
 
         if not message.startswith("MSH"):
-            return self._build_result(False, error="message must start with MSH segment", status_code=400)
+            return self._build_result(
+                False, error="message must start with MSH segment", status_code=400,
+            )
 
         return await self._send_raw(message)
 
@@ -132,31 +134,52 @@ class HL7Connector(BaseConnector):
 
                 if not ack:
                     self._record_failure("no ACK received", duration_ms)
-                    return self._build_result(False, error="no ACK received", duration_ms=duration_ms)
+                    return self._build_result(
+                        False, error="no ACK received", duration_ms=duration_ms,
+                    )
 
                 ack_text = ack.decode("utf-8", errors="replace")
                 ack_code = self._parse_ack_code(ack_text)
 
                 if ack_code == "AA":
                     self._record_success(duration_ms)
-                    return self._build_result(True, data={"ack": ack_text, "ack_code": ack_code}, duration_ms=duration_ms, status_code=200)
+                    return self._build_result(
+                        True,
+                        data={"ack": ack_text, "ack_code": ack_code},
+                        duration_ms=duration_ms,
+                        status_code=200,
+                    )
                 if ack_code == "AE":
                     self._record_failure(f"application error: {ack_text}", duration_ms)
-                    return self._build_result(False, data={"ack": ack_text, "ack_code": ack_code}, error="application error", duration_ms=duration_ms)
+                    return self._build_result(
+                        False,
+                        data={"ack": ack_text, "ack_code": ack_code},
+                        error="application error",
+                        duration_ms=duration_ms,
+                    )
                 if ack_code == "AR":
                     self._record_failure(f"rejected: {ack_text}", duration_ms)
-                    return self._build_result(False, data={"ack": ack_text, "ack_code": ack_code}, error="rejected", duration_ms=duration_ms)
+                    return self._build_result(
+                        False,
+                        data={"ack": ack_text, "ack_code": ack_code},
+                        error="rejected",
+                        duration_ms=duration_ms,
+                    )
                 self._record_success(duration_ms)
-                return self._build_result(True, data={"ack": ack_text, "ack_code": ack_code}, duration_ms=duration_ms)
+                return self._build_result(
+                    True, data={"ack": ack_text, "ack_code": ack_code}, duration_ms=duration_ms,
+                )
 
             except TimeoutError:
                 if attempt < self._config.retry_count:
-                    await asyncio.sleep(self._config.retry_delay_seconds * (2 ** attempt))
+                    await asyncio.sleep(self._config.retry_delay_seconds * (2**attempt))
                     await self.connect()
                     continue
                 duration_ms = int((time.monotonic() - start) * 1000)
                 self._record_failure("send timeout after retries", duration_ms)
-                return self._build_result(False, error="send timeout after retries", duration_ms=duration_ms)
+                return self._build_result(
+                    False, error="send timeout after retries", duration_ms=duration_ms,
+                )
             except BrokenPipeError:
                 if attempt < self._config.retry_count:
                     await self.connect()

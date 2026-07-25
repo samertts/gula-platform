@@ -30,7 +30,8 @@ class BootstrapConfig:
     def from_env(cls) -> BootstrapConfig:
         return cls(
             enable_bootstrap=os.getenv("ENABLE_BOOTSTRAP", "true").lower() == "true",
-            enable_national_bootstrap=os.getenv("ENABLE_NATIONAL_BOOTSTRAP", "true").lower() == "true",
+            enable_national_bootstrap=os.getenv("ENABLE_NATIONAL_BOOTSTRAP", "true").lower()
+            == "true",
             enable_demo_data=os.getenv("ENABLE_DEMO_DATA", "false").lower() == "true",
             admin_email=os.getenv("GULA_ADMIN_EMAIL", "admin@gula-platform.org"),
             admin_name=os.getenv("GULA_ADMIN_NAME", "GULA Platform Admin"),
@@ -38,11 +39,17 @@ class BootstrapConfig:
             admin_password_hash=os.getenv("GULA_ADMIN_PASSWORD_HASH", ""),
             ministry_admin_email=os.getenv("MINISTRY_ADMIN_EMAIL", "ministry@gula-platform.org"),
             ministry_admin_password=os.getenv("MINISTRY_ADMIN_PASSWORD", ""),
-            organization_admin_email=os.getenv("ORGANIZATION_ADMIN_EMAIL", "org-admin@gula-platform.org"),
-            directorate_admin_email=os.getenv("DIRECTORATE_ADMIN_EMAIL", "directorate-admin@gula-platform.org"),
+            organization_admin_email=os.getenv(
+                "ORGANIZATION_ADMIN_EMAIL", "org-admin@gula-platform.org",
+            ),
+            directorate_admin_email=os.getenv(
+                "DIRECTORATE_ADMIN_EMAIL", "directorate-admin@gula-platform.org",
+            ),
             lab_manager_email=os.getenv("LAB_MANAGER_EMAIL", "lab-manager@gula-platform.org"),
             auditor_email=os.getenv("AUDITOR_EMAIL", "auditor@gula-platform.org"),
-            security_officer_email=os.getenv("SECURITY_OFFICER_EMAIL", "security@gula-platform.org"),
+            security_officer_email=os.getenv(
+                "SECURITY_OFFICER_EMAIL", "security@gula-platform.org",
+            ),
             bootstrap_country=os.getenv("BOOTSTRAP_COUNTRY", "IQ"),
             bootstrap_language=os.getenv("BOOTSTRAP_LANGUAGE", "ar"),
             bootstrap_timezone=os.getenv("BOOTSTRAP_TIMEZONE", "Asia/Baghdad"),

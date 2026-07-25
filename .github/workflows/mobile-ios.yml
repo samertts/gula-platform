@@ -64,7 +64,7 @@ jobs:
         working-directory: mobile/ios
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Install SwiftLint
         run: |
@@ -75,7 +75,7 @@ jobs:
 
       - name: Upload SwiftLint report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: swiftlint-report
           path: mobile/ios/swiftlint-report.json
@@ -105,7 +105,7 @@ jobs:
         working-directory: mobile/ios
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
@@ -121,7 +121,7 @@ jobs:
             -derivedDataPath "$DERIVED_DATA_PATH"
 
       - name: Cache derived data
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ${{ env.DERIVED_DATA_PATH }}
           key: derived-data-${{ github.sha }}
@@ -143,7 +143,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: ios-test-results-${{ matrix.platform }}-${{ matrix.device }}
           path: mobile/ios/TestResults-*.xcresult
@@ -152,7 +152,7 @@ jobs:
 
       - name: Upload code coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: ios-code-coverage-${{ matrix.platform }}
           path: mobile/ios/build/reports/coverage/
@@ -169,7 +169,7 @@ jobs:
         working-directory: mobile/ios
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
@@ -187,7 +187,7 @@ jobs:
 
       - name: Upload UI test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: ios-ui-test-results
           path: mobile/ios/UITestResults.xcresult
@@ -204,7 +204,7 @@ jobs:
         working-directory: mobile/ios
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
@@ -245,7 +245,7 @@ jobs:
             -derivedDataPath "$DERIVED_DATA_PATH"
 
       - name: Cache derived data
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ${{ env.DERIVED_DATA_PATH }}
           key: derived-data-build-${{ github.sha }}
@@ -275,7 +275,7 @@ jobs:
             | xcpretty
 
       - name: Upload IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: gula-ios-release
           path: ${{ runner.temp }}/Gula.ipa/*
@@ -283,7 +283,7 @@ jobs:
           retention-days: 30
 
       - name: Upload dSYMs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: gula-ios-dsyms
           path: ${{ runner.temp }}/Gula.xcarchive/dSYMs/
@@ -301,7 +301,7 @@ jobs:
         working-directory: mobile/ios
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
@@ -325,7 +325,7 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
 
       - name: Download IPA artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: gula-ios-release
           path: ${{ runner.temp }}/Gula.ipa

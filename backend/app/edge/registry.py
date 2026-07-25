@@ -55,7 +55,8 @@ def register_device(
     current = (
         db.query(EdgeDevice)
         .filter(
-            EdgeDevice.lab_id == lab_id, EdgeDevice.status.in_(("active", "pending", "quarantined")),
+            EdgeDevice.lab_id == lab_id,
+            EdgeDevice.status.in_(("active", "pending", "quarantined")),
         )
         .count()
     )
@@ -199,7 +200,11 @@ def reinstate(db: Session, device: EdgeDevice, *, actor_user_id: int | None) -> 
 
 
 def kill_switch_set(
-    db: Session, device: EdgeDevice, on: bool, *, actor_user_id: int | None,
+    db: Session,
+    device: EdgeDevice,
+    on: bool,
+    *,
+    actor_user_id: int | None,
 ) -> None:
     device.kill_switched = on
     db.add(

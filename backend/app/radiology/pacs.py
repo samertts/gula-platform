@@ -79,10 +79,14 @@ class DICOMStorageService:
         return record
 
     def retrieve(self, sop_instance_uid: str) -> DICOMStorage | None:
-        return self.db.query(DICOMStorage).filter(
-            DICOMStorage.sop_instance_uid == sop_instance_uid,
-            ~DICOMStorage.is_deleted,
-        ).first()
+        return (
+            self.db.query(DICOMStorage)
+            .filter(
+                DICOMStorage.sop_instance_uid == sop_instance_uid,
+                ~DICOMStorage.is_deleted,
+            )
+            .first()
+        )
 
     def delete(self, sop_instance_uid: str) -> bool:
         record = self.retrieve(sop_instance_uid)
@@ -127,17 +131,26 @@ class DICOMStorageService:
     def count_by_tier(self) -> dict[str, int]:
         counts: dict[str, int] = {}
         for tier in ArchiveTier:
-            cnt = self.db.query(DICOMStorage).filter(
-                DICOMStorage.storage_tier == tier,
-                ~DICOMStorage.is_deleted,
-            ).count()
+            cnt = (
+                self.db.query(DICOMStorage)
+                .filter(
+                    DICOMStorage.storage_tier == tier,
+                    ~DICOMStorage.is_deleted,
+                )
+                .count()
+            )
             counts[tier.value] = cnt
         return counts
 
     def total_storage_size(self) -> int:
-        result = self.db.query(DICOMStorage).filter(
-            ~~DICOMStorage.is_deleted,
-        ).with_entities(DICOMStorage.file_size).all()
+        result = (
+            self.db.query(DICOMStorage)
+            .filter(
+                ~~DICOMStorage.is_deleted,
+            )
+            .with_entities(DICOMStorage.file_size)
+            .all()
+        )
         return sum(r[0] or 0 for r in result)
 
 
@@ -183,10 +196,14 @@ class DICOMStudyService:
         return study
 
     def get_study(self, study_instance_uid: str) -> DICOMStudy | None:
-        return self.db.query(DICOMStudy).filter(
-            DICOMStudy.study_instance_uid == study_instance_uid,
-            ~DICOMStudy.is_deleted,
-        ).first()
+        return (
+            self.db.query(DICOMStudy)
+            .filter(
+                DICOMStudy.study_instance_uid == study_instance_uid,
+                ~DICOMStudy.is_deleted,
+            )
+            .first()
+        )
 
     def search_studies(
         self,
@@ -215,7 +232,13 @@ class DICOMStudyService:
         q = q.order_by(DICOMStudy.study_date.desc())
         return q.offset(skip).limit(limit).all()
 
-    def update_study_counts(self, study_instance_uid: str, number_of_series: int | None = None, number_of_images: int | None = None, storage_size_bytes: int | None = None) -> DICOMStudy | None:
+    def update_study_counts(
+        self,
+        study_instance_uid: str,
+        number_of_series: int | None = None,
+        number_of_images: int | None = None,
+        storage_size_bytes: int | None = None,
+    ) -> DICOMStudy | None:
         study = self.get_study(study_instance_uid)
         if not study:
             return None
@@ -241,20 +264,28 @@ class ImageViewerService:
         self.stream_base_url = stream_base_url
 
     def get_streaming_url(self, sop_instance_uid: str) -> str | None:
-        storage = self.db.query(DICOMStorage).filter(
-            DICOMStorage.sop_instance_uid == sop_instance_uid,
-            ~DICOMStorage.is_deleted,
-        ).first()
+        storage = (
+            self.db.query(DICOMStorage)
+            .filter(
+                DICOMStorage.sop_instance_uid == sop_instance_uid,
+                ~DICOMStorage.is_deleted,
+            )
+            .first()
+        )
         if not storage:
             return None
         stream_path = f"/studies/{storage.study_instance_uid}/series/{storage.series_instance_uid}/instances/{sop_instance_uid}/stream"
         return urljoin(self.stream_base_url, stream_path)
 
     def get_thumbnail_url(self, sop_instance_uid: str, size: int = 256) -> str | None:
-        storage = self.db.query(DICOMStorage).filter(
-            DICOMStorage.sop_instance_uid == sop_instance_uid,
-            ~DICOMStorage.is_deleted,
-        ).first()
+        storage = (
+            self.db.query(DICOMStorage)
+            .filter(
+                DICOMStorage.sop_instance_uid == sop_instance_uid,
+                ~DICOMStorage.is_deleted,
+            )
+            .first()
+        )
         if not storage:
             return None
         thumb_path = f"/studies/{storage.study_instance_uid}/series/{storage.series_instance_uid}/instances/{sop_instance_uid}/thumbnail?size={size}"
@@ -264,7 +295,9 @@ class ImageViewerService:
         return urljoin(self.stream_base_url, f"/viewer?study={study_instance_uid}")
 
     def get_series_viewer_url(self, study_instance_uid: str, series_instance_uid: str) -> str:
-        return urljoin(self.stream_base_url, f"/viewer?study={study_instance_uid}&series={series_instance_uid}")
+        return urljoin(
+            self.stream_base_url, f"/viewer?study={study_instance_uid}&series={series_instance_uid}"
+        )
 
 
 # ==============================================================================
@@ -346,7 +379,11 @@ class ImageSharingService:
         return share
 
     def revoke_share(self, share_id: str) -> bool:
-        share = self.db.query(ImageShare).filter(ImageShare.id == share_id, not ImageShare.is_revoked).first()
+        share = (
+            self.db.query(ImageShare)
+            .filter(ImageShare.id == share_id, not ImageShare.is_revoked)
+            .first()
+        )
         if not share:
             return False
         share.is_revoked = True
@@ -354,10 +391,14 @@ class ImageSharingService:
         return True
 
     def access_share(self, share_id: str, access_code: str | None = None) -> str | None:
-        share = self.db.query(ImageShare).filter(
-            ImageShare.id == share_id,
-            not ImageShare.is_revoked,
-        ).first()
+        share = (
+            self.db.query(ImageShare)
+            .filter(
+                ImageShare.id == share_id,
+                not ImageShare.is_revoked,
+            )
+            .first()
+        )
         if not share:
             return None
         if share.expires_at and share.expires_at < datetime.now(UTC):
@@ -368,7 +409,9 @@ class ImageSharingService:
         self.db.commit()
         return share.study_uid
 
-    def list_shares(self, shared_by: str | None = None, shared_with: str | None = None) -> list[ImageShare]:
+    def list_shares(
+        self, shared_by: str | None = None, shared_with: str | None = None
+    ) -> list[ImageShare]:
         q = self.db.query(ImageShare).filter(not ImageShare.is_revoked)
         if shared_by:
             q = q.filter(ImageShare.shared_by == shared_by)
@@ -393,7 +436,12 @@ class ArchiveService:
         ArchiveTier.COLD: ArchiveTier.DEEP_ARCHIVE,
     }
 
-    def __init__(self, db: Session, storage_service: DICOMStorageService, compression_service: ImageCompressionService):
+    def __init__(
+        self,
+        db: Session,
+        storage_service: DICOMStorageService,
+        compression_service: ImageCompressionService,
+    ):
         self.db = db
         self.storage_service = storage_service
         self.compression_service = compression_service
@@ -411,26 +459,41 @@ class ArchiveService:
         logger.info("DICOM instance %s moved to tier %s", sop_instance_uid, target_tier.value)
         return record
 
-    def archive_old_studies(self, older_than_days: int = 365, target_tier: ArchiveTier = ArchiveTier.COLD) -> int:
+    def archive_old_studies(
+        self, older_than_days: int = 365, target_tier: ArchiveTier = ArchiveTier.COLD
+    ) -> int:
         cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
-        records = self.db.query(DICOMStorage).filter(
-            DICOMStorage.storage_date < cutoff,
-            DICOMStorage.storage_tier == ArchiveTier.HOT,
-            ~DICOMStorage.is_deleted,
-        ).all()
+        records = (
+            self.db.query(DICOMStorage)
+            .filter(
+                DICOMStorage.storage_date < cutoff,
+                DICOMStorage.storage_tier == ArchiveTier.HOT,
+                ~DICOMStorage.is_deleted,
+            )
+            .all()
+        )
         count = 0
         for rec in records:
             self.move_to_tier(rec.sop_instance_uid, target_tier)
             count += 1
-        logger.info("Archived %d studies older than %d days to %s", count, older_than_days, target_tier.value)
+        logger.info(
+            "Archived %d studies older than %d days to %s",
+            count,
+            older_than_days,
+            target_tier.value,
+        )
         return count
 
     def apply_retention_policy(self) -> int:
         deleted_count = 0
-        records = self.db.query(DICOMStorage).filter(
-            DICOMStorage.retention_days.isnot(None),
-            ~DICOMStorage.is_deleted,
-        ).all()
+        records = (
+            self.db.query(DICOMStorage)
+            .filter(
+                DICOMStorage.retention_days.isnot(None),
+                ~DICOMStorage.is_deleted,
+            )
+            .all()
+        )
         for rec in records:
             if rec.storage_date and rec.retention_days:
                 expiry = rec.storage_date + timedelta(days=rec.retention_days)
@@ -484,7 +547,9 @@ class DICOMQueryRetrieveService:
             logger.error("C-FIND studies error: %s", exc)
             return []
 
-    async def c_find_series(self, study_uid: str, params: dict[str, str] | None = None) -> list[dict[str, Any]]:
+    async def c_find_series(
+        self, study_uid: str, params: dict[str, str] | None = None
+    ) -> list[dict[str, Any]]:
         client = await self._get_client()
         try:
             resp = await client.get(
@@ -498,7 +563,9 @@ class DICOMQueryRetrieveService:
             logger.error("C-FIND series error: %s", exc)
             return []
 
-    async def c_find_instances(self, study_uid: str, series_uid: str, params: dict[str, str] | None = None) -> list[dict[str, Any]]:
+    async def c_find_instances(
+        self, study_uid: str, series_uid: str, params: dict[str, str] | None = None
+    ) -> list[dict[str, Any]]:
         client = await self._get_client()
         try:
             resp = await client.get(

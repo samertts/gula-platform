@@ -104,7 +104,11 @@ class RISConnector(BaseConnector):
                 urljoin(self._base_url, "/api/hl7/orm"),
                 json=order_payload,
             )
-            return {"success": resp.is_success, "status_code": resp.status_code, "response": resp.text}
+            return {
+                "success": resp.is_success,
+                "status_code": resp.status_code,
+                "response": resp.text,
+            }
         except Exception as exc:
             logger.error("RIS ORM failed: %s", exc)
             return {"success": False, "error": str(exc)}
@@ -123,7 +127,11 @@ class RISConnector(BaseConnector):
                 urljoin(self._base_url, "/api/hl7/oru"),
                 json=result_payload,
             )
-            return {"success": resp.is_success, "status_code": resp.status_code, "response": resp.text}
+            return {
+                "success": resp.is_success,
+                "status_code": resp.status_code,
+                "response": resp.text,
+            }
         except Exception as exc:
             logger.error("RIS ORU failed: %s", exc)
             return {"success": False, "error": str(exc)}

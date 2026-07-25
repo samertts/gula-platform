@@ -20,13 +20,43 @@ from app.care_continuum.enums import FollowUpStatus
 class PatientTask(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_patient_tasks"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    care_journey_id = Column(String(26), ForeignKey("cc_care_journeys.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    care_journey_id = Column(
+        String(26),
+        ForeignKey("cc_care_journeys.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    assigned_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    assigned_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
@@ -38,7 +68,9 @@ class PatientTask(CareContinuumTenantAuditEntity):
 
     due_date = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    completed_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    completed_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     completion_notes = Column(Text, nullable=True)
     outcome = Column(String(200), nullable=True)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
@@ -52,10 +84,14 @@ class PatientTask(CareContinuumTenantAuditEntity):
 
     is_patient_facing = Column(Boolean, default=True)
     requires_verification = Column(Boolean, default=False)
-    verified_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    verified_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     verified_at = Column(DateTime(timezone=True), nullable=True)
 
-    parent_task_id = Column(String(26), ForeignKey("cc_patient_tasks.id", ondelete="SET NULL"), nullable=True)
+    parent_task_id = Column(
+        String(26), ForeignKey("cc_patient_tasks.id", ondelete="SET NULL"), nullable=True,
+    )
     related_task_ids = Column(JSON, nullable=True)
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
@@ -73,12 +109,37 @@ class PatientTask(CareContinuumTenantAuditEntity):
 class EducationalMaterialAssignment(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_educational_material_assignments"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    task_id = Column(String(26), ForeignKey("cc_patient_tasks.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    task_id = Column(
+        String(26),
+        ForeignKey("cc_patient_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    assigned_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    assigned_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     material_title = Column(String(200), nullable=False)
     material_type = Column(String(100), nullable=False)
@@ -120,12 +181,37 @@ class EducationalMaterialAssignment(CareContinuumTenantAuditEntity):
 class SelfFollowUpTask(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_self_follow_up_tasks"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    parent_task_id = Column(String(26), ForeignKey("cc_patient_tasks.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    parent_task_id = Column(
+        String(26),
+        ForeignKey("cc_patient_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    created_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    created_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
@@ -155,7 +241,9 @@ class SelfFollowUpTask(CareContinuumTenantAuditEntity):
     recurrence_pattern = Column(String(100), nullable=True)
     recurrence_end_date = Column(Date, nullable=True)
 
-    verified_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    verified_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     verified_at = Column(DateTime(timezone=True), nullable=True)
     verification_notes = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)

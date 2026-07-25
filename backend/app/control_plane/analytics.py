@@ -57,8 +57,12 @@ class EnterpriseAnalytics:
         return {
             "category": "performance",
             "total_components": self._registry.count(),
-            "responsive": sum(1 for c in components_health.values() if c.get("status") in ("healthy", "active")),
-            "unreachable": sum(1 for c in components_health.values() if c.get("status") == "unreachable"),
+            "responsive": sum(
+                1 for c in components_health.values() if c.get("status") in ("healthy", "active")
+            ),
+            "unreachable": sum(
+                1 for c in components_health.values() if c.get("status") == "unreachable"
+            ),
             "timestamp": datetime.now(UTC).isoformat(),
         }
 
@@ -111,4 +115,5 @@ class EnterpriseAnalytics:
 
     async def _gather(self, *coros) -> tuple:
         import asyncio
+
         return await asyncio.gather(*coros)

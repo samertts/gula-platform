@@ -16,15 +16,25 @@ def _setup_db(db):
 
     lab = db.query(Lab).filter(Lab.id == 1).first()
     if not lab:
-        lab = Lab(id=1, name="Test Lab", license_number="LIC-0001", lab_type="private", city="Baghdad", is_active=True)
+        lab = Lab(
+            id=1,
+            name="Test Lab",
+            license_number="LIC-0001",
+            lab_type="private",
+            city="Baghdad",
+            is_active=True,
+        )
         db.add(lab)
         db.flush()
     user = db.query(LabUser).filter(LabUser.email == "test@mfa.gula").first()
     if not user:
         user = LabUser(
-            lab_id=lab.id, email="test@mfa.gula", name="Test User",
+            lab_id=lab.id,
+            email="test@mfa.gula",
+            name="Test User",
             password_hash=hash_password("password123"),
-            role="admin", is_active=True,
+            role="admin",
+            is_active=True,
         )
         db.add(user)
         db.commit()
@@ -87,30 +97,44 @@ def test_totp_setup_twice_updates_device(client, token):
 
 
 def test_list_devices_empty_before_setup(client, token):
-    resp = client.get("/mfa/devices", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    resp = client.get(
+        "/mfa/devices", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     assert resp.status_code == 200
     assert resp.json()["mfa_enabled"] is False
 
 
 def test_list_devices_after_totp_setup(client, token):
-    client.post("/mfa/totp/setup", json={}, headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
-    resp = client.get("/mfa/devices", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    client.post(
+        "/mfa/totp/setup", json={}, headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
+    resp = client.get(
+        "/mfa/devices", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     assert resp.status_code == 200
     assert resp.json()["mfa_enabled"] is True
     assert len(resp.json()["devices"]) >= 1
 
 
 def test_remove_device(client, token):
-    setup = client.post("/mfa/totp/setup", json={}, headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    setup = client.post(
+        "/mfa/totp/setup", json={}, headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     dev_id = setup.json()["device_id"]
-    resp = client.delete(f"/mfa/devices/{dev_id}", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    resp = client.delete(
+        f"/mfa/devices/{dev_id}", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     assert resp.status_code == 200
-    resp2 = client.get("/mfa/devices", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    resp2 = client.get(
+        "/mfa/devices", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     assert all(d["id"] != dev_id for d in resp2.json()["devices"])
 
 
 def test_remove_nonexistent_device_returns_404(client, token):
-    resp = client.delete("/mfa/devices/99999", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    resp = client.delete(
+        "/mfa/devices/99999", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     assert resp.status_code == 404
 
 
@@ -124,7 +148,9 @@ def test_mfa_status_no_device(client, token):
 
 
 def test_mfa_status_with_device(client, token):
-    client.post("/mfa/totp/setup", json={}, headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    client.post(
+        "/mfa/totp/setup", json={}, headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     resp = client.get("/mfa/status", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
     assert resp.status_code == 200
     assert resp.json()["mfa_enabled"] is True
@@ -232,9 +258,11 @@ def test_oauth2_jwks(client):
 def test_saml_metadata(client):
     resp = client.get("/auth/saml/metadata")
     assert resp.status_code == 200
-    assert "EntityDescriptor" in resp.text or resp.headers.get("content-type", "").startswith(
-        "application/xml"
-    ) or resp.headers.get("content-type", "").startswith("text/xml")
+    assert (
+        "EntityDescriptor" in resp.text
+        or resp.headers.get("content-type", "").startswith("application/xml")
+        or resp.headers.get("content-type", "").startswith("text/xml")
+    )
 
 
 # ── Service Accounts ──
@@ -243,7 +271,12 @@ def test_saml_metadata(client):
 def test_create_service_account(client, token):
     resp = client.post(
         "/service-accounts",
-        json={"name": "test-sa", "description": "Test", "roles": ["admin"], "scopes": ["patients:read"]},
+        json={
+            "name": "test-sa",
+            "description": "Test",
+            "roles": ["admin"],
+            "scopes": ["patients:read"],
+        },
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
     )
     assert resp.status_code == 200, resp.text
@@ -254,7 +287,9 @@ def test_create_service_account(client, token):
 
 
 def test_list_service_accounts(client, token):
-    resp = client.get("/service-accounts", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    resp = client.get(
+        "/service-accounts", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
@@ -262,11 +297,19 @@ def test_list_service_accounts(client, token):
 def test_rotate_api_key(client, token):
     create = client.post(
         "/service-accounts",
-        json={"name": "rotate-sa", "description": "Rotate Test", "roles": ["viewer"], "scopes": ["patients:read"]},
+        json={
+            "name": "rotate-sa",
+            "description": "Rotate Test",
+            "roles": ["viewer"],
+            "scopes": ["patients:read"],
+        },
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
     )
     sa_id = create.json()["id"]
-    resp = client.post(f"/service-accounts/{sa_id}/rotate", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    resp = client.post(
+        f"/service-accounts/{sa_id}/rotate",
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
     assert resp.status_code == 200, resp.text
     assert "api_key" in resp.json()
 
@@ -274,11 +317,18 @@ def test_rotate_api_key(client, token):
 def test_delete_service_account(client, token):
     create = client.post(
         "/service-accounts",
-        json={"name": "delete-sa", "description": "Delete Test", "roles": ["viewer"], "scopes": ["patients:read"]},
+        json={
+            "name": "delete-sa",
+            "description": "Delete Test",
+            "roles": ["viewer"],
+            "scopes": ["patients:read"],
+        },
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
     )
     sa_id = create.json()["id"]
-    resp = client.delete(f"/service-accounts/{sa_id}", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    resp = client.delete(
+        f"/service-accounts/{sa_id}", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)}
+    )
     assert resp.status_code == 200
 
 
@@ -311,7 +361,10 @@ def test_get_canonical_patient(client, token):
     )
     assert create.status_code == 201, create.text
     pid = create.json()["id"]
-    resp = client.get(f"/api/v1/canonical-patients/{pid}", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    resp = client.get(
+        f"/api/v1/canonical-patients/{pid}",
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
     assert resp.status_code == 200
     assert resp.json()["id"] == pid
 
@@ -361,7 +414,11 @@ def test_merge_canonical_patients(client, token):
 
 def test_mfa_endpoints_require_auth(client):
     for path in ["/mfa/status", "/mfa/devices", "/mfa/totp/setup", "/mfa/webauthn/register/begin"]:
-        resp = client.get(path) if path in ("/mfa/status", "/mfa/devices") else client.post(path, json={})
+        resp = (
+            client.get(path)
+            if path in ("/mfa/status", "/mfa/devices")
+            else client.post(path, json={})
+        )
         assert resp.status_code == 401, f"{path} returned {resp.status_code}"
 
 

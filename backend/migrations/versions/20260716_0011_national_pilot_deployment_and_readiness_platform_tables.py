@@ -48,7 +48,7 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
-            sa.Column("deleted_at", sa.DateTime(timezone=True))
+            sa.Column("deleted_at", sa.DateTime(timezone=True)),
         )
         op.create_index("ix_pilot_programs_lab_id", "pilot_programs", ["lab_id"])
         op.create_index("ix_pilot_programs_fhir_id", "pilot_programs", ["fhir_id"])
@@ -74,7 +74,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_pilot_facilities_fhir_id", "pilot_facilities", ["fhir_id"])
         op.create_index("ix_pilot_facilities_pilot_id", "pilot_facilities", ["pilot_id"])
@@ -98,10 +98,14 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_pilot_readiness_checklists_fhir_id", "pilot_readiness_checklists", ["fhir_id"])
-        op.create_index("ix_pilot_readiness_checklists_lab_id", "pilot_readiness_checklists", ["lab_id"])
+        op.create_index(
+            "ix_pilot_readiness_checklists_fhir_id", "pilot_readiness_checklists", ["fhir_id"]
+        )
+        op.create_index(
+            "ix_pilot_readiness_checklists_lab_id", "pilot_readiness_checklists", ["lab_id"]
+        )
 
     if not _table_exists("pilot_go_no_go_gates"):
         op.create_table(
@@ -123,7 +127,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_pilot_go_no_go_gates_lab_id", "pilot_go_no_go_gates", ["lab_id"])
         op.create_index("ix_pilot_go_no_go_gates_pilot_id", "pilot_go_no_go_gates", ["pilot_id"])
@@ -151,12 +155,17 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
-            sa.Column("deleted_at", sa.DateTime(timezone=True))
+            sa.Column("deleted_at", sa.DateTime(timezone=True)),
         )
-        op.create_index("ix_pilot_deployment_records_lab_id", "pilot_deployment_records", ["lab_id"])
-        op.create_index("ix_pilot_deployment_records_pilot_id", "pilot_deployment_records", ["pilot_id"])
-        op.create_index("ix_pilot_deployment_records_fhir_id", "pilot_deployment_records", ["fhir_id"])
-
+        op.create_index(
+            "ix_pilot_deployment_records_lab_id", "pilot_deployment_records", ["lab_id"]
+        )
+        op.create_index(
+            "ix_pilot_deployment_records_pilot_id", "pilot_deployment_records", ["pilot_id"]
+        )
+        op.create_index(
+            "ix_pilot_deployment_records_fhir_id", "pilot_deployment_records", ["fhir_id"]
+        )
 
 
 def downgrade() -> None:

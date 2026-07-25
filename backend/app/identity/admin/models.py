@@ -10,12 +10,19 @@ class EnterprisePortal(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     portal_id = Column(String(100), unique=True, nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name = Column(String(300), nullable=False)
     portal_type = Column(String(20), nullable=False, index=True)
     features = Column(JSON, nullable=True)
     status = Column(String(20), default="active", nullable=False)
-    created_by = Column(String(26), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(
+        String(26), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True
+    )
     activated_at = Column(DateTime(timezone=True), nullable=True)
     last_access_at = Column(DateTime(timezone=True), nullable=True)
     settings = Column(JSON, nullable=True)
@@ -27,14 +34,26 @@ class PortalBranch(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     branch_id = Column(String(100), unique=True, nullable=False, index=True)
-    portal_id = Column(String(26), ForeignKey("niam_admin_portals.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    portal_id = Column(
+        String(26),
+        ForeignKey("niam_admin_portals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name_en = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=False)
     address = Column(Text, nullable=True)
     phone = Column(String(30), nullable=True)
     email = Column(String(200), nullable=True)
-    manager_person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True)
+    manager_person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True
+    )
     status = Column(String(20), default="active", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -44,8 +63,18 @@ class PortalFacility(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     facility_id = Column(String(100), unique=True, nullable=False, index=True)
-    branch_id = Column(String(26), ForeignKey("niam_admin_branches.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    branch_id = Column(
+        String(26),
+        ForeignKey("niam_admin_branches.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name_en = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=False)
     facility_type = Column(String(50), nullable=False)
@@ -62,11 +91,18 @@ class PortalDepartment(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     dept_id = Column(String(100), unique=True, nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("niam_admin_facilities.id", ondelete="CASCADE"), nullable=False, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("niam_admin_facilities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name_en = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=False)
     dept_type = Column(String(50), nullable=True)
-    head_person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True)
+    head_person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True
+    )
     status = Column(String(20), default="active", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -76,7 +112,12 @@ class PortalSubscription(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     sub_id = Column(String(100), unique=True, nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     plan_type = Column(String(50), nullable=False)
     features = Column(JSON, nullable=True)
     user_limit = Column(Integer, nullable=True)
@@ -99,10 +140,22 @@ class PortalAuditLog(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     log_id = Column(String(100), unique=True, nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
-    portal_id = Column(String(26), ForeignKey("niam_admin_portals.id", ondelete="SET NULL"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    portal_id = Column(
+        String(26),
+        ForeignKey("niam_admin_portals.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     action = Column(String(100), nullable=False)
-    performed_by = Column(String(26), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True)
+    performed_by = Column(
+        String(26), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True
+    )
     target_type = Column(String(50), nullable=False)
     target_id = Column(String(100), nullable=True)
     details = Column(JSON, nullable=True)
@@ -118,7 +171,12 @@ class FHIRConnection(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     conn_id = Column(String(100), unique=True, nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name = Column(String(200), nullable=False)
     fhir_version = Column(String(10), nullable=False)
     base_url = Column(String(500), nullable=False)

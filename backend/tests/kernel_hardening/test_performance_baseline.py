@@ -62,7 +62,9 @@ class TestPerformanceBaseline:
     def test_di_lookup(self):
         container = DIContainer()
         desc = ServiceDescriptor(
-            name="svc", interface=None, implementation=dict,
+            name="svc",
+            interface=None,
+            implementation=dict,
             lifecycle=ServiceLifecycle.SINGLETON,
         )
         container.register(desc)

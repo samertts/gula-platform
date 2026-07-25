@@ -272,7 +272,10 @@ def get_patient_history_by_id_route(
 
 @router.get("/history/{phone}")
 def get_patient_history_route(
-    phone: str, request: Request, name: str | None = None, db: Session = Depends(get_db),
+    phone: str,
+    request: Request,
+    name: str | None = None,
+    db: Session = Depends(get_db),
 ):
     """Get patient test history by phone number (public, rate limited).
     Requires 'name' query param matching full patient name as verification.

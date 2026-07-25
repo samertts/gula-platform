@@ -84,5 +84,9 @@ class ABACEngine:
     def _evaluate_purpose(self, request: AccessRequest) -> ABACDecision:
         allowed_purposes = {"treatment", "payment", "operations", "emergency"}
         if request.purpose_of_use in allowed_purposes:
-            return ABACDecision(granted=True, reason=f"Purpose '{request.purpose_of_use}' authorized")
-        return ABACDecision(granted=False, reason=f"Purpose '{request.purpose_of_use}' not authorized")
+            return ABACDecision(
+                granted=True, reason=f"Purpose '{request.purpose_of_use}' authorized",
+            )
+        return ABACDecision(
+            granted=False, reason=f"Purpose '{request.purpose_of_use}' not authorized",
+        )

@@ -24,7 +24,9 @@ class SampleCreate(BaseModel):
     @classmethod
     def validate_sample_type(cls, v):
         if v not in sample_service.VALID_SAMPLE_TYPES:
-            raise ValueError(f"Invalid sample type. Must be one of: {', '.join(sample_service.VALID_SAMPLE_TYPES)}")
+            raise ValueError(
+                f"Invalid sample type. Must be one of: {', '.join(sample_service.VALID_SAMPLE_TYPES)}"
+            )
         return v
 
 
@@ -38,7 +40,9 @@ class SampleUpdate(BaseModel):
     @classmethod
     def validate_status(cls, v):
         if v is not None and v not in sample_service.VALID_STATUSES:
-            raise ValueError(f"Invalid status. Must be one of: {', '.join(sample_service.VALID_STATUSES)}")
+            raise ValueError(
+                f"Invalid status. Must be one of: {', '.join(sample_service.VALID_STATUSES)}"
+            )
         return v
 
 
@@ -50,9 +54,15 @@ def create_sample(
     db: Session = Depends(get_db),
 ):
     return sample_service.create_sample(
-        db, current_user.lab_id, data.order_id, data.sample_type,
-        data.collected_by, data.notes, data.storage_location,
-        current_user, get_client_ip(request),
+        db,
+        current_user.lab_id,
+        data.order_id,
+        data.sample_type,
+        data.collected_by,
+        data.notes,
+        data.storage_location,
+        current_user,
+        get_client_ip(request),
     )
 
 
@@ -85,7 +95,13 @@ def update_sample(
     db: Session = Depends(get_db),
 ):
     return sample_service.update_sample(
-        db, current_user.lab_id, barcode,
-        data.status, data.rejection_reason, data.notes,
-        data.storage_location, current_user, get_client_ip(request),
+        db,
+        current_user.lab_id,
+        barcode,
+        data.status,
+        data.rejection_reason,
+        data.notes,
+        data.storage_location,
+        current_user,
+        get_client_ip(request),
     )

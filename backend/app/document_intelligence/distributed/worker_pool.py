@@ -45,7 +45,8 @@ class WorkerPool:
         while self._running:
             try:
                 handler, args, kwargs = await asyncio.wait_for(
-                    self._task_queue.get(), timeout=1.0,
+                    self._task_queue.get(),
+                    timeout=1.0,
                 )
                 self._active_count += 1
                 try:

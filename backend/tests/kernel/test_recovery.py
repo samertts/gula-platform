@@ -49,6 +49,7 @@ class TestRecoveryEngine:
 
     def test_job_properties(self):
         from app.kernel.event_bus.recovery import RecoveryJob
+
         job = RecoveryJob()
         assert job.is_complete is False
         assert job.status == "pending"

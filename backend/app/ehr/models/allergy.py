@@ -1,4 +1,3 @@
-
 from sqlalchemy import JSON, Column, Date, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy import Enum as SAEnum
 
@@ -9,10 +8,30 @@ from app.ehr.enums import AllergySeverity, AllergyStatus
 class AllergyIntolerance(EHRBaseEntity):
     __tablename__ = "ehr_allergies"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     allergy_type = Column(String(50), nullable=True)
     category = Column(String(50), nullable=True)

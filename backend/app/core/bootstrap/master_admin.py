@@ -20,6 +20,7 @@ logger = logging.getLogger("gula.bootstrap.master_admin")
 
 def hash_nid(nid: str) -> str:
     from app.config import NID_HMAC_KEY
+
     key = NID_HMAC_KEY.encode()
     return _hmac.new(key, nid.strip().encode(), hashlib.sha256).hexdigest()
 

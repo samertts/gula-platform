@@ -86,8 +86,13 @@ class DigitalTwinEngine:
 
     def get_by_component_type(self, component_type: str) -> list[dict[str, Any]]:
         mapping = {
-            PlatformComponent.SERVICE: lambda: [{"name": k, "version": v.version, "status": v.status} for k, v in self._services.items()],
-            PlatformComponent.PROJECT: lambda: [{"name": k, "version": v.version} for k, v in self._applications.items()],
+            PlatformComponent.SERVICE: lambda: [
+                {"name": k, "version": v.version, "status": v.status}
+                for k, v in self._services.items()
+            ],
+            PlatformComponent.PROJECT: lambda: [
+                {"name": k, "version": v.version} for k, v in self._applications.items()
+            ],
         }
         converter = mapping.get(component_type)
         if converter:
@@ -101,7 +106,10 @@ class DigitalTwinEngine:
                 "containers": self._infra.containers,
                 "edge_devices": self._infra.edge_devices,
             },
-            "services": {k: {"version": v.version, "status": v.status, "dependencies": v.dependencies} for k, v in self._services.items()},
+            "services": {
+                k: {"version": v.version, "status": v.status, "dependencies": v.dependencies}
+                for k, v in self._services.items()
+            },
             "operations": {
                 "health_grade": self._operations.health_grade,
                 "active_alerts": self._operations.active_alerts,

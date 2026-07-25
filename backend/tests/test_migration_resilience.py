@@ -29,6 +29,7 @@ Blast radius: zero (regression tests only). The duplicate-revision finding
 is detected by the existing ``test_no_duplicate_revision_ids`` test, which
 is already failing — this file does not duplicate that detection.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -40,8 +41,11 @@ MIGRATIONS_DIR = pathlib.Path(__file__).parent.parent / "migrations" / "versions
 
 
 def _all_migration_paths() -> list[pathlib.Path]:
-    return sorted(p for p in MIGRATIONS_DIR.glob("*.py")
-                  if p.name != "__init__.py" and not p.name.startswith("_"))
+    return sorted(
+        p
+        for p in MIGRATIONS_DIR.glob("*.py")
+        if p.name != "__init__.py" and not p.name.startswith("_")
+    )
 
 
 # ─── Phase 6.A — server_default on new columns ───────────────────────────────
@@ -68,8 +72,7 @@ class TestNewColumnsAreSafe:
 
         assert not offenders, (
             "Migrations adding NOT NULL columns without server_default — "
-            "existing rows will fail to satisfy the constraint:\n\n"
-            + "\n\n".join(offenders)
+            "existing rows will fail to satisfy the constraint:\n\n" + "\n\n".join(offenders)
         )
 
 
@@ -121,17 +124,25 @@ class TestIdempotencyGuards:
         offenders = []
         for path in _all_migration_paths():
             src = path.read_text()
-            uses_pg = any(idiom in src for idiom in (
-                "postgresql.JSONB", "postgresql.UUID", "gen_random_uuid",
-                "::jsonb", "INTERVAL '",
-            ))
+            uses_pg = any(
+                idiom in src
+                for idiom in (
+                    "postgresql.JSONB",
+                    "postgresql.UUID",
+                    "gen_random_uuid",
+                    "::jsonb",
+                    "INTERVAL '",
+                )
+            )
             if not uses_pg:
                 continue
             has_dialect_check = (
                 "dialect.name" in src
                 or "_pg()" in src
                 or "if_pg" in src
-                or "postgresql" in src.split("def upgrade")[-1] if "def upgrade" in src else False
+                or "postgresql" in src.split("def upgrade")[-1]
+                if "def upgrade" in src
+                else False
             )
             if not has_dialect_check:
                 offenders.append(path.name)
@@ -208,10 +219,7 @@ class TestBootstrapLoadable:
             src = path.read_text()
             if "def upgrade(" not in src or "def downgrade(" not in src:
                 missing.append(path.name)
-        assert not missing, (
-            "Migrations missing upgrade()/downgrade():\n  "
-            + "\n  ".join(missing)
-        )
+        assert not missing, "Migrations missing upgrade()/downgrade():\n  " + "\n  ".join(missing)
 
 
 # ─── Phase 6.E — Schema-relevant runtime assumption: lab_results.lab_id ──────
@@ -228,6 +236,7 @@ class TestSchemaConsumerAlignment:
         """lab_results table has no lab_id column — any raw SQL referencing
         it will fail. Tracked finding: compliance.py:567 (DHIS2 endpoint)."""
         from app.models.lab_result import LabResult
+
         col_names = {c.name for c in LabResult.__table__.columns}
         assert "lab_id" not in col_names, (
             "If lab_results gained a lab_id column via migration, this test "
@@ -239,14 +248,12 @@ class TestSchemaConsumerAlignment:
         """compliance.py:567 has 'WHERE lab_id = :lab_id' against lab_results.
         We assert the bug is still there (so PRODUCTION_HARDENING.md remains
         accurate) — when fixed, this test should be inverted."""
-        compliance_path = (
-            pathlib.Path(__file__).parent.parent / "app" / "routes" / "compliance.py"
-        )
+        compliance_path = pathlib.Path(__file__).parent.parent / "app" / "routes" / "compliance.py"
         src = compliance_path.read_text()
         # The buggy substring
         idx = src.find("FROM lab_results")
         assert idx >= 0
-        snippet = src[idx:idx + 200]
+        snippet = src[idx : idx + 200]
         # Bug present today: 'WHERE lab_id' inside a `FROM lab_results` block
         assert "WHERE lab_id" in snippet, (
             "compliance.py DHIS2 query no longer references lab_results.lab_id — "

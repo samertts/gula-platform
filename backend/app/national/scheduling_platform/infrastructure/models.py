@@ -36,9 +36,13 @@ class NationalAppointment(BaseEntity):
     description = Column(Text, nullable=True, default="")
     start_at = Column(DateTime(timezone=True), nullable=True, index=True)
     end_at = Column(DateTime(timezone=True), nullable=True)
-    status = Column(SAEnum(AppointmentStatus), nullable=False, default=AppointmentStatus.PROPOSED, index=True)
+    status = Column(
+        SAEnum(AppointmentStatus), nullable=False, default=AppointmentStatus.PROPOSED, index=True,
+    )
     appointment_type = Column(String(100), nullable=True, default="")
-    recurrence_pattern = Column(SAEnum(RecurrencePattern), nullable=False, default=RecurrencePattern.NONE)
+    recurrence_pattern = Column(
+        SAEnum(RecurrencePattern), nullable=False, default=RecurrencePattern.NONE,
+    )
     recurrence_end = Column(DateTime(timezone=True), nullable=True)
     reminder_enabled = Column(Boolean, nullable=False, default=True)
     reminder_minutes_before = Column(Integer, nullable=False, default=60)
@@ -123,7 +127,12 @@ class NationalSchedule(BaseEntity):
     __tablename__ = "national_scheduling_schedules"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    resource_id = Column(String(26), ForeignKey("national_scheduling_resources.id", ondelete="CASCADE"), nullable=False, index=True)
+    resource_id = Column(
+        String(26),
+        ForeignKey("national_scheduling_resources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     date = Column(Date, nullable=True, index=True)
     start_time = Column(Time, nullable=True)
     end_time = Column(Time, nullable=True)
@@ -154,7 +163,12 @@ class NationalTimeSlot(BaseEntity):
     __tablename__ = "national_scheduling_time_slots"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    schedule_id = Column(String(26), ForeignKey("national_scheduling_schedules.id", ondelete="CASCADE"), nullable=False, index=True)
+    schedule_id = Column(
+        String(26),
+        ForeignKey("national_scheduling_schedules.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     start_at = Column(DateTime(timezone=True), nullable=True)
     end_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(SAEnum(SlotStatus), nullable=False, default=SlotStatus.AVAILABLE, index=True)
@@ -250,7 +264,12 @@ class NationalAppointmentReminder(BaseEntity):
     __tablename__ = "national_scheduling_appointment_reminders"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    appointment_id = Column(String(26), ForeignKey("national_scheduling_appointments.id", ondelete="CASCADE"), nullable=False, index=True)
+    appointment_id = Column(
+        String(26),
+        ForeignKey("national_scheduling_appointments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     channel = Column(String(50), nullable=False, default="email")
     sent_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(50), nullable=False, default="pending", index=True)

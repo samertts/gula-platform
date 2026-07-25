@@ -18,7 +18,6 @@ from app.national.observability.domain.enums import AlertSeverity, AlertStatus
 
 
 class MetricRepository(ABC):
-
     @abstractmethod
     async def save(self, metric: MetricPoint) -> MetricPoint: ...
 
@@ -45,7 +44,6 @@ class MetricRepository(ABC):
 
 
 class TraceSpanRepository(ABC):
-
     @abstractmethod
     async def save(self, span: TraceSpan) -> TraceSpan: ...
 
@@ -74,7 +72,6 @@ class TraceSpanRepository(ABC):
 
 
 class HealthCheckRepository(ABC):
-
     @abstractmethod
     async def save(self, check: HealthCheck) -> HealthCheck: ...
 
@@ -92,7 +89,6 @@ class HealthCheckRepository(ABC):
 
 
 class AlertRuleRepository(ABC):
-
     @abstractmethod
     async def save(self, rule: AlertRule) -> AlertRule: ...
 
@@ -114,7 +110,6 @@ class AlertRuleRepository(ABC):
 
 
 class AlertEventRepository(ABC):
-
     @abstractmethod
     async def save(self, event: AlertEvent) -> AlertEvent: ...
 
@@ -139,7 +134,6 @@ class AlertEventRepository(ABC):
 
 
 class DashboardRepository(ABC):
-
     @abstractmethod
     async def save(self, dashboard: Dashboard) -> Dashboard: ...
 
@@ -158,7 +152,6 @@ class DashboardRepository(ABC):
 
 
 class DashboardPanelRepository(ABC):
-
     @abstractmethod
     async def save(self, panel: DashboardPanel) -> DashboardPanel: ...
 
@@ -173,7 +166,6 @@ class DashboardPanelRepository(ABC):
 
 
 class ServiceGraphRepository(ABC):
-
     @abstractmethod
     async def save(self, graph: ServiceGraph) -> ServiceGraph: ...
 

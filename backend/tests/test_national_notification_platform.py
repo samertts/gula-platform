@@ -44,6 +44,7 @@ def _now() -> datetime:
 
 def _ulid() -> str:
     import uuid
+
     return str(uuid.uuid4()).replace("-", "").upper()[:26]
 
 
@@ -66,16 +67,24 @@ class InMemoryNotificationRepo(NotificationRepository):
         for k, v in filters.items():
             if hasattr(v, "value") or v is not None:
                 items = [i for i in items if getattr(i, k, None) == v]
-        return items[skip:skip + limit]
+        return items[skip : skip + limit]
 
-    async def find_by_status(self, status: NotificationStatus, skip: int = 0, limit: int = 100) -> list[Notification]:
-        return [n for n in self._store.values() if n.status == status][skip:skip + limit]
+    async def find_by_status(
+        self, status: NotificationStatus, skip: int = 0, limit: int = 100
+    ) -> list[Notification]:
+        return [n for n in self._store.values() if n.status == status][skip : skip + limit]
 
-    async def find_by_channel(self, channel: NotificationChannel, skip: int = 0, limit: int = 100) -> list[Notification]:
-        return [n for n in self._store.values() if n.channel == channel][skip:skip + limit]
+    async def find_by_channel(
+        self, channel: NotificationChannel, skip: int = 0, limit: int = 100
+    ) -> list[Notification]:
+        return [n for n in self._store.values() if n.channel == channel][skip : skip + limit]
 
-    async def find_by_user(self, user_id: str, skip: int = 0, limit: int = 100) -> list[Notification]:
-        return [n for n in self._store.values() if user_id in (n.recipients or [])][skip:skip + limit]
+    async def find_by_user(
+        self, user_id: str, skip: int = 0, limit: int = 100
+    ) -> list[Notification]:
+        return [n for n in self._store.values() if user_id in (n.recipients or [])][
+            skip : skip + limit
+        ]
 
     async def find_by_correlation_id(self, correlation_id: str) -> list[Notification]:
         return [n for n in self._store.values() if n.correlation_id == correlation_id]
@@ -86,7 +95,9 @@ class InMemoryNotificationRepo(NotificationRepository):
     async def count_by_channel(self, channel: NotificationChannel) -> int:
         return sum(1 for n in self._store.values() if n.channel == channel)
 
-    async def get_stats(self, from_date: datetime | None = None, to_date: datetime | None = None) -> dict[str, Any]:
+    async def get_stats(
+        self, from_date: datetime | None = None, to_date: datetime | None = None
+    ) -> dict[str, Any]:
         items = self._store.values()
         if from_date:
             items = [n for n in items if n.created_at >= from_date]
@@ -106,21 +117,29 @@ class InMemoryTemplateRepo(NotificationTemplateRepository):
     async def get(self, template_id: str) -> NotificationTemplate | None:
         return self._store.get(template_id)
 
-    async def list(self, skip: int = 0, limit: int = 100, **filters: Any) -> list[NotificationTemplate]:
+    async def list(
+        self, skip: int = 0, limit: int = 100, **filters: Any
+    ) -> list[NotificationTemplate]:
         items = list(self._store.values())
         for k, v in filters.items():
             if hasattr(v, "value"):
                 items = [i for i in items if getattr(i, k, None) == v]
-        return items[skip:skip + limit]
+        return items[skip : skip + limit]
 
-    async def find_by_channel(self, channel: NotificationChannel, skip: int = 0, limit: int = 100) -> list[NotificationTemplate]:
-        return [t for t in self._store.values() if t.channel == channel][skip:skip + limit]
+    async def find_by_channel(
+        self, channel: NotificationChannel, skip: int = 0, limit: int = 100
+    ) -> list[NotificationTemplate]:
+        return [t for t in self._store.values() if t.channel == channel][skip : skip + limit]
 
-    async def find_by_category(self, category: NotificationCategory, skip: int = 0, limit: int = 100) -> list[NotificationTemplate]:
-        return [t for t in self._store.values() if t.category == category][skip:skip + limit]
+    async def find_by_category(
+        self, category: NotificationCategory, skip: int = 0, limit: int = 100
+    ) -> list[NotificationTemplate]:
+        return [t for t in self._store.values() if t.category == category][skip : skip + limit]
 
-    async def find_by_language(self, language: str, skip: int = 0, limit: int = 100) -> list[NotificationTemplate]:
-        return [t for t in self._store.values() if t.language == language][skip:skip + limit]
+    async def find_by_language(
+        self, language: str, skip: int = 0, limit: int = 100
+    ) -> list[NotificationTemplate]:
+        return [t for t in self._store.values() if t.language == language][skip : skip + limit]
 
     async def delete(self, template_id: str) -> None:
         self._store.pop(template_id, None)
@@ -150,13 +169,17 @@ class InMemoryPreferenceRepo(NotificationPreferenceRepository):
         self._store[key] = preference
         return preference
 
-    async def get(self, user_id: str, channel: NotificationChannel) -> NotificationPreference | None:
+    async def get(
+        self, user_id: str, channel: NotificationChannel
+    ) -> NotificationPreference | None:
         return self._store.get(f"{user_id}:{channel.value}")
 
     async def find_by_user(self, user_id: str) -> list[NotificationPreference]:
         return [p for k, p in self._store.items() if k.startswith(f"{user_id}:")]
 
-    async def find_by_user_and_channel(self, user_id: str, channel: NotificationChannel) -> NotificationPreference | None:
+    async def find_by_user_and_channel(
+        self, user_id: str, channel: NotificationChannel
+    ) -> NotificationPreference | None:
         return self._store.get(f"{user_id}:{channel.value}")
 
 
@@ -171,8 +194,10 @@ class InMemoryBatchRepo(NotificationBatchRepository):
     async def get(self, batch_id: str) -> NotificationBatch | None:
         return self._store.get(batch_id)
 
-    async def find_by_status(self, status: NotificationStatus, skip: int = 0, limit: int = 100) -> list[NotificationBatch]:
-        return [b for b in self._store.values() if b.status == status][skip:skip + limit]
+    async def find_by_status(
+        self, status: NotificationStatus, skip: int = 0, limit: int = 100
+    ) -> list[NotificationBatch]:
+        return [b for b in self._store.values() if b.status == status][skip : skip + limit]
 
 
 @pytest.fixture()
@@ -212,10 +237,16 @@ class TestNotificationEntity:
 
     def test_create_full(self):
         n = Notification(
-            id="n1", channel=NotificationChannel.SMS, recipients=["+964700000000"],
-            subject="Test", body="Hello", priority=NotificationPriority.HIGH,
-            category=NotificationCategory.LAB_RESULT, status=NotificationStatus.SENT,
-            correlation_id="corr-1", created_by="user-1",
+            id="n1",
+            channel=NotificationChannel.SMS,
+            recipients=["+964700000000"],
+            subject="Test",
+            body="Hello",
+            priority=NotificationPriority.HIGH,
+            category=NotificationCategory.LAB_RESULT,
+            status=NotificationStatus.SENT,
+            correlation_id="corr-1",
+            created_by="user-1",
         )
         assert n.status == NotificationStatus.SENT
         assert n.priority == NotificationPriority.HIGH
@@ -237,16 +268,24 @@ class TestNotificationEntity:
 class TestNotificationTemplateEntity:
     def test_create(self):
         t = NotificationTemplate(
-            id="t1", name="Welcome", channel=NotificationChannel.EMAIL,
-            subject_template="Hello {{name}}", body_template="Welcome {{name}}!",
+            id="t1",
+            name="Welcome",
+            channel=NotificationChannel.EMAIL,
+            subject_template="Hello {{name}}",
+            body_template="Welcome {{name}}!",
         )
         assert t.version == 1
         assert t.template_engine == TemplateEngine.JINJA2
         assert t.language == "ar"
 
     def test_version_increments_on_update(self):
-        t = NotificationTemplate(id="t1", name="Test", channel=NotificationChannel.SMS,
-                                  subject_template="Hi", body_template="Body")
+        t = NotificationTemplate(
+            id="t1",
+            name="Test",
+            channel=NotificationChannel.SMS,
+            subject_template="Hi",
+            body_template="Body",
+        )
         t.version += 1
         assert t.version == 2
 
@@ -254,7 +293,8 @@ class TestNotificationTemplateEntity:
 class TestDeliveryReportEntity:
     def test_create(self):
         r = DeliveryReport(
-            id="r1", notification_id="n1",
+            id="r1",
+            notification_id="n1",
             status=DeliveryReportStatus.SENT_TO_PROVIDER,
         )
         assert r.attempt == 1
@@ -264,14 +304,18 @@ class TestDeliveryReportEntity:
 class TestNotificationPreferenceEntity:
     def test_create(self):
         p = NotificationPreference(
-            user_id="u1", channel=NotificationChannel.EMAIL, enabled=True,
+            user_id="u1",
+            channel=NotificationChannel.EMAIL,
+            enabled=True,
         )
         assert p.max_daily == 50
         assert p.enabled is True
 
     def test_opt_out_category(self):
         p = NotificationPreference(
-            user_id="u1", channel=NotificationChannel.SMS, enabled=True,
+            user_id="u1",
+            channel=NotificationChannel.SMS,
+            enabled=True,
             categories_opt_out=[NotificationCategory.PROMOTIONAL],
         )
         assert NotificationCategory.PROMOTIONAL in (p.categories_opt_out or [])
@@ -279,8 +323,9 @@ class TestNotificationPreferenceEntity:
 
 class TestNotificationBatchEntity:
     def test_create(self):
-        b = NotificationBatch(id="b1", batch_key="batch-1", notifications=["n1", "n2"],
-                               total_count=2)
+        b = NotificationBatch(
+            id="b1", batch_key="batch-1", notifications=["n1", "n2"], total_count=2
+        )
         assert b.total_count == 2
         assert b.status == NotificationStatus.PENDING
         assert b.success_count == 0
@@ -298,7 +343,8 @@ class TestSend:
         n = await svc.send(
             channel=NotificationChannel.EMAIL,
             recipients=["user@example.com"],
-            subject="Hello", body="World",
+            subject="Hello",
+            body="World",
         )
         assert n.id is not None
         assert n.channel == NotificationChannel.EMAIL
@@ -335,10 +381,15 @@ class TestSend:
 
     @pytest.mark.asyncio
     async def test_send_with_template(self, svc, repos):
-        template = await repos["template"].save(NotificationTemplate(
-            id=_ulid(), name="Test Template", channel=NotificationChannel.EMAIL,
-            subject_template="Hello {{name}}", body_template="Welcome {{name}}!",
-        ))
+        template = await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="Test Template",
+                channel=NotificationChannel.EMAIL,
+                subject_template="Hello {{name}}",
+                body_template="Welcome {{name}}!",
+            )
+        )
         n = await svc.send(
             channel=NotificationChannel.EMAIL,
             recipients=["user@example.com"],
@@ -419,8 +470,12 @@ class TestSendBatch:
     @pytest.mark.asyncio
     async def test_send_batch(self, svc):
         notifications = [
-            Notification(id=_ulid(), channel=NotificationChannel.EMAIL, recipients=["a@b.com"], subject="A"),
-            Notification(id=_ulid(), channel=NotificationChannel.SMS, recipients=["+964000"], body="B"),
+            Notification(
+                id=_ulid(), channel=NotificationChannel.EMAIL, recipients=["a@b.com"], subject="A"
+            ),
+            Notification(
+                id=_ulid(), channel=NotificationChannel.SMS, recipients=["+964000"], body="B"
+            ),
         ]
         batch = await svc.send_batch("batch-key", notifications)
         assert batch.batch_key == "batch-key"
@@ -441,31 +496,47 @@ class TestTemplates:
     @pytest.mark.asyncio
     async def test_create_template(self, svc):
         t = await svc.create_template(
-            name="Welcome Email", channel=NotificationChannel.EMAIL,
-            subject_template="Hello {{name}}", body_template="Welcome!",
+            name="Welcome Email",
+            channel=NotificationChannel.EMAIL,
+            subject_template="Hello {{name}}",
+            body_template="Welcome!",
         )
         assert t.id is not None
         assert t.name == "Welcome Email"
 
     @pytest.mark.asyncio
     async def test_render_jinja2(self, svc, repos):
-        t = await repos["template"].save(NotificationTemplate(
-            id=_ulid(), name="J", channel=NotificationChannel.EMAIL,
-            subject_template="Hi {{user}}", body_template="Body: {{msg}}",
-            template_engine=TemplateEngine.JINJA2,
-        ))
-        subject, body = await svc.render_template(t.id, NotificationChannel.EMAIL, {"user": "Ali", "msg": "Test"})
+        t = await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="J",
+                channel=NotificationChannel.EMAIL,
+                subject_template="Hi {{user}}",
+                body_template="Body: {{msg}}",
+                template_engine=TemplateEngine.JINJA2,
+            )
+        )
+        subject, body = await svc.render_template(
+            t.id, NotificationChannel.EMAIL, {"user": "Ali", "msg": "Test"}
+        )
         assert subject == "Hi Ali"
         assert body == "Body: Test"
 
     @pytest.mark.asyncio
     async def test_render_mustache(self, svc, repos):
-        t = await repos["template"].save(NotificationTemplate(
-            id=_ulid(), name="M", channel=NotificationChannel.EMAIL,
-            subject_template="Hi {{user}}", body_template="Body: {{msg}}",
-            template_engine=TemplateEngine.MUSTACHE,
-        ))
-        subject, body = await svc.render_template(t.id, NotificationChannel.EMAIL, {"user": "Ali", "msg": "Test"})
+        t = await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="M",
+                channel=NotificationChannel.EMAIL,
+                subject_template="Hi {{user}}",
+                body_template="Body: {{msg}}",
+                template_engine=TemplateEngine.MUSTACHE,
+            )
+        )
+        subject, body = await svc.render_template(
+            t.id, NotificationChannel.EMAIL, {"user": "Ali", "msg": "Test"}
+        )
         assert "Hi Ali" in subject
         assert "Body: Test" in body
 
@@ -476,28 +547,53 @@ class TestTemplates:
 
     @pytest.mark.asyncio
     async def test_render_invalid_template_raises(self, svc, repos):
-        t = await repos["template"].save(NotificationTemplate(
-            id=_ulid(), name="Bad", channel=NotificationChannel.EMAIL,
-            subject_template="{{ broken", body_template="x",
-            template_engine=TemplateEngine.JINJA2,
-        ))
+        t = await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="Bad",
+                channel=NotificationChannel.EMAIL,
+                subject_template="{{ broken",
+                body_template="x",
+                template_engine=TemplateEngine.JINJA2,
+            )
+        )
         with pytest.raises(TemplateRenderError):
             await svc.render_template(t.id, NotificationChannel.EMAIL, {})
 
     @pytest.mark.asyncio
     async def test_list_templates(self, svc, repos):
-        await repos["template"].save(NotificationTemplate(id=_ulid(), name="A", channel=NotificationChannel.EMAIL,
-                                                           subject_template="a", body_template="b"))
-        await repos["template"].save(NotificationTemplate(id=_ulid(), name="B", channel=NotificationChannel.SMS,
-                                                           subject_template="c", body_template="d"))
+        await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="A",
+                channel=NotificationChannel.EMAIL,
+                subject_template="a",
+                body_template="b",
+            )
+        )
+        await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="B",
+                channel=NotificationChannel.SMS,
+                subject_template="c",
+                body_template="d",
+            )
+        )
         all_t = await svc.list_templates()
         assert len(all_t) == 2
 
     @pytest.mark.asyncio
     async def test_get_template(self, svc, repos):
-        t = await repos["template"].save(NotificationTemplate(id=_ulid(), name="GetMe",
-                                                               channel=NotificationChannel.EMAIL,
-                                                               subject_template="s", body_template="b"))
+        t = await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="GetMe",
+                channel=NotificationChannel.EMAIL,
+                subject_template="s",
+                body_template="b",
+            )
+        )
         found = await svc.get_template(t.id)
         assert found.name == "GetMe"
 
@@ -508,8 +604,15 @@ class TestTemplates:
 
     @pytest.mark.asyncio
     async def test_update_template(self, svc, repos):
-        t = await repos["template"].save(NotificationTemplate(id=_ulid(), name="Old", channel=NotificationChannel.EMAIL,
-                                                               subject_template="s", body_template="b"))
+        t = await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="Old",
+                channel=NotificationChannel.EMAIL,
+                subject_template="s",
+                body_template="b",
+            )
+        )
         updated = await svc.update_template(t.id, name="New", subject_template="updated")
         assert updated.name == "New"
         assert updated.subject_template == "updated"
@@ -517,8 +620,15 @@ class TestTemplates:
 
     @pytest.mark.asyncio
     async def test_delete_template(self, svc, repos):
-        t = await repos["template"].save(NotificationTemplate(id=_ulid(), name="Del", channel=NotificationChannel.EMAIL,
-                                                               subject_template="s", body_template="b"))
+        t = await repos["template"].save(
+            NotificationTemplate(
+                id=_ulid(),
+                name="Del",
+                channel=NotificationChannel.EMAIL,
+                subject_template="s",
+                body_template="b",
+            )
+        )
         await svc.delete_template(t.id)
         with pytest.raises(TemplateNotFoundError):
             await svc.get_template(t.id)
@@ -528,8 +638,10 @@ class TestPreferences:
     @pytest.mark.asyncio
     async def test_update_preferences_create(self, svc):
         pref = await svc.update_preferences(
-            user_id="user-1", channel=NotificationChannel.EMAIL,
-            enabled=True, max_daily=20,
+            user_id="user-1",
+            channel=NotificationChannel.EMAIL,
+            enabled=True,
+            max_daily=20,
         )
         assert pref.user_id == "user-1"
         assert pref.channel == NotificationChannel.EMAIL
@@ -537,10 +649,14 @@ class TestPreferences:
 
     @pytest.mark.asyncio
     async def test_update_preferences_modify(self, svc):
-        await svc.update_preferences(user_id="user-1", channel=NotificationChannel.EMAIL, enabled=True)
+        await svc.update_preferences(
+            user_id="user-1", channel=NotificationChannel.EMAIL, enabled=True
+        )
         pref = await svc.update_preferences(
-            user_id="user-1", channel=NotificationChannel.EMAIL,
-            enabled=False, max_daily=10,
+            user_id="user-1",
+            channel=NotificationChannel.EMAIL,
+            enabled=False,
+            max_daily=10,
         )
         assert pref.enabled is False
         assert pref.max_daily == 10
@@ -555,8 +671,11 @@ class TestPreferences:
     @pytest.mark.asyncio
     async def test_quiet_hours_blocks_send(self, svc, repos):
         pref = NotificationPreference(
-            user_id="u-qh", channel=NotificationChannel.EMAIL,
-            enabled=True, quiet_hours_start="00:00", quiet_hours_end="23:59",
+            user_id="u-qh",
+            channel=NotificationChannel.EMAIL,
+            enabled=True,
+            quiet_hours_start="00:00",
+            quiet_hours_end="23:59",
         )
         await repos["preference"].save(pref)
         with pytest.raises(QuietHoursBlockedError):
@@ -569,39 +688,47 @@ class TestPreferences:
     @pytest.mark.asyncio
     async def test_opt_out_category(self, svc, repos):
         pref = NotificationPreference(
-            user_id="u-optout", channel=NotificationChannel.EMAIL,
-            enabled=True, categories_opt_out=[NotificationCategory.PROMOTIONAL],
+            user_id="u-optout",
+            channel=NotificationChannel.EMAIL,
+            enabled=True,
+            categories_opt_out=[NotificationCategory.PROMOTIONAL],
         )
         await repos["preference"].save(pref)
         with pytest.raises(ChannelNotAvailableError):
             await svc.send(
-                channel=NotificationChannel.EMAIL, recipients=["u-optout"],
+                channel=NotificationChannel.EMAIL,
+                recipients=["u-optout"],
                 category=NotificationCategory.PROMOTIONAL,
             )
 
     @pytest.mark.asyncio
     async def test_opt_in_required(self, svc, repos):
         pref = NotificationPreference(
-            user_id="u-optin", channel=NotificationChannel.SMS,
-            enabled=True, categories_opt_in=[NotificationCategory.ALERT],
+            user_id="u-optin",
+            channel=NotificationChannel.SMS,
+            enabled=True,
+            categories_opt_in=[NotificationCategory.ALERT],
         )
         await repos["preference"].save(pref)
         with pytest.raises(ChannelNotAvailableError):
             await svc.send(
-                channel=NotificationChannel.SMS, recipients=["u-optin"],
+                channel=NotificationChannel.SMS,
+                recipients=["u-optin"],
                 category=NotificationCategory.PROMOTIONAL,
             )
 
     @pytest.mark.asyncio
     async def test_disabled_channel_blocks(self, svc, repos):
         pref = NotificationPreference(
-            user_id="u-disabled", channel=NotificationChannel.PUSH,
+            user_id="u-disabled",
+            channel=NotificationChannel.PUSH,
             enabled=False,
         )
         await repos["preference"].save(pref)
         with pytest.raises(ChannelNotAvailableError):
             await svc.send(
-                channel=NotificationChannel.PUSH, recipients=["u-disabled"],
+                channel=NotificationChannel.PUSH,
+                recipients=["u-disabled"],
             )
 
 
@@ -622,8 +749,12 @@ class TestLifecycle:
     @pytest.mark.asyncio
     async def test_cancel_queued(self, svc):
         future = _now() + timedelta(days=1)
-        n = await svc.send(channel=NotificationChannel.EMAIL, recipients=["a@b.com"],
-                            subject="Cancel me", scheduled_at=future)
+        n = await svc.send(
+            channel=NotificationChannel.EMAIL,
+            recipients=["a@b.com"],
+            subject="Cancel me",
+            scheduled_at=future,
+        )
         assert n.status == NotificationStatus.QUEUED
         cancelled = await svc.cancel(n.id)
         assert cancelled.status == NotificationStatus.CANCELLED
@@ -631,8 +762,9 @@ class TestLifecycle:
     @pytest.mark.asyncio
     async def test_cancel_scheduled(self, svc):
         future = _now() + timedelta(days=1)
-        n = await svc.send(channel=NotificationChannel.EMAIL, recipients=["a@b.com"],
-                            scheduled_at=future)
+        n = await svc.send(
+            channel=NotificationChannel.EMAIL, recipients=["a@b.com"], scheduled_at=future
+        )
         assert n.status == NotificationStatus.QUEUED
         cancelled = await svc.cancel(n.id)
         assert cancelled.status == NotificationStatus.CANCELLED
@@ -676,8 +808,16 @@ class TestLifecycle:
 
     @pytest.mark.asyncio
     async def test_list_notifications_filtered(self, svc):
-        await svc.send(channel=NotificationChannel.EMAIL, recipients=["a@b.com"], category=NotificationCategory.ALERT)
-        await svc.send(channel=NotificationChannel.SMS, recipients=["+964000"], category=NotificationCategory.SYSTEM)
+        await svc.send(
+            channel=NotificationChannel.EMAIL,
+            recipients=["a@b.com"],
+            category=NotificationCategory.ALERT,
+        )
+        await svc.send(
+            channel=NotificationChannel.SMS,
+            recipients=["+964000"],
+            category=NotificationCategory.SYSTEM,
+        )
         alerts = await svc.list_notifications(category=NotificationCategory.ALERT)
         assert all(n.category == NotificationCategory.ALERT for n in alerts)
 
@@ -703,6 +843,3 @@ class TestStats:
         await svc.send(channel=NotificationChannel.EMAIL, recipients=["a@b.com"])
         stats = await svc.get_stats()
         assert stats["total"] >= 1
-
-
-

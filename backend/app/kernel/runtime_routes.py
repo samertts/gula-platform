@@ -28,9 +28,16 @@ def _get_component(name: str):
 async def runtime_health(_user=Depends(get_current_user)):
     kernel = _require_kernel()
     components = [
-        "ai_runtime", "rules_runtime", "policy_runtime", "resource_manager",
-        "runtime_governor", "runtime_observer", "reliability_engine",
-        "performance_optimizer", "digital_twin", "runtime_validator",
+        "ai_runtime",
+        "rules_runtime",
+        "policy_runtime",
+        "resource_manager",
+        "runtime_governor",
+        "runtime_observer",
+        "reliability_engine",
+        "performance_optimizer",
+        "digital_twin",
+        "runtime_validator",
     ]
     status = {}
     for name in components:
@@ -155,14 +162,16 @@ async def runtime_ai_models(_user=Depends(get_current_user)):
     ai = _get_component("ai_runtime")
     models = []
     for model in ai.registry.list_models():
-        models.append({
-            "name": model.name,
-            "version": model.version,
-            "provider": model.provider.value,
-            "model_id": model.model_id,
-            "description": model.description,
-            "loaded": ai.is_loaded(model.name),
-        })
+        models.append(
+            {
+                "name": model.name,
+                "version": model.version,
+                "provider": model.provider.value,
+                "model_id": model.model_id,
+                "description": model.description,
+                "loaded": ai.is_loaded(model.name),
+            },
+        )
     return {"models": models, "count": len(models)}
 
 
@@ -215,14 +224,16 @@ async def runtime_rules(_user=Depends(get_current_user)):
     rules_runtime = _get_component("rules_runtime")
     rulesets = []
     for rs in rules_runtime.list_rulesets():
-        rulesets.append({
-            "id": rs.id,
-            "name": rs.name,
-            "strategy": rs.strategy,
-            "rules_count": rs.count(),
-            "effective_rules": len(rs.effective_rules()),
-            "enabled": rs.enabled,
-        })
+        rulesets.append(
+            {
+                "id": rs.id,
+                "name": rs.name,
+                "strategy": rs.strategy,
+                "rules_count": rs.count(),
+                "effective_rules": len(rs.effective_rules()),
+                "enabled": rs.enabled,
+            },
+        )
     return {"rulesets": rulesets, "count": len(rulesets)}
 
 

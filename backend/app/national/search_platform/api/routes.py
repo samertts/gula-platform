@@ -55,7 +55,9 @@ async def search_post(
         )
         return _search_response_to_dict(response)
     except SearchExecutionError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error",
+        ) from e
 
 
 @router.get("/search")
@@ -82,7 +84,9 @@ async def search_get(
         )
         return _search_response_to_dict(response)
     except SearchExecutionError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error",
+        ) from e
 
 
 @router.post("/fhir/search")
@@ -99,7 +103,9 @@ async def fhir_search(
         )
         return _search_response_to_dict(response)
     except SearchExecutionError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error",
+        ) from e
 
 
 @router.get("/suggest")
@@ -186,7 +192,9 @@ async def get_saved_search(
         saved = await service.get_saved_search(search_id)
         return _saved_search_to_dict(saved)
     except SavedSearchNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.delete("/saved/{search_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -197,7 +205,9 @@ async def delete_saved_search(
     try:
         await service.delete_saved_search(search_id)
     except SavedSearchNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/index/rebuild")
@@ -210,7 +220,9 @@ async def rebuild_index(
             index_type=body.get("index_type"),
         )
     except IndexAdapterError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error",
+        ) from e
 
 
 @router.post("/index/document", status_code=status.HTTP_201_CREATED)
@@ -226,7 +238,9 @@ async def index_document(
         )
         return {"status": "indexed"}
     except IndexAdapterError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error",
+        ) from e
 
 
 @router.delete("/index/document/{index_type}/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -238,7 +252,9 @@ async def remove_from_index(
     try:
         await service.remove_from_index(index_type, document_id)
     except IndexAdapterError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error",
+        ) from e
 
 
 @router.get("/stats")
@@ -285,8 +301,7 @@ def _search_response_to_dict(response: Any) -> dict[str, Any]:
             for f in response.facets
         ],
         "suggestions": [
-            {"text": s.text, "score": s.score, "type": s.type}
-            for s in response.suggestions
+            {"text": s.text, "score": s.score, "type": s.type} for s in response.suggestions
         ],
         "took_ms": response.took_ms,
     }

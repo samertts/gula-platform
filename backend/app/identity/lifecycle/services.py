@@ -19,8 +19,9 @@ from app.identity.lifecycle.models import (
 
 
 class EnterpriseRegistrationService:
-
-    def start_registration(self, db: Session, org_id: str, submitted_by: str) -> EnterpriseRegistration:
+    def start_registration(
+        self, db: Session, org_id: str, submitted_by: str
+    ) -> EnterpriseRegistration:
         reg = EnterpriseRegistration(
             uuid=org_id,
             reg_id=org_id,
@@ -36,7 +37,9 @@ class EnterpriseRegistrationService:
         db.flush()
         return reg
 
-    def validate_license(self, db: Session, reg_id: str, license_document: str, validated_by: str) -> EnterpriseRegistration:
+    def validate_license(
+        self, db: Session, reg_id: str, license_document: str, validated_by: str
+    ) -> EnterpriseRegistration:
         reg = self._get_registration(db, reg_id)
         reg.license_document = license_document
         reg.license_validated_at = datetime.now(UTC)
@@ -49,7 +52,9 @@ class EnterpriseRegistrationService:
         db.flush()
         return reg
 
-    def submit_inspection(self, db: Session, reg_id: str, inspection_report: dict[str, Any], inspected_by: str) -> EnterpriseRegistration:
+    def submit_inspection(
+        self, db: Session, reg_id: str, inspection_report: dict[str, Any], inspected_by: str
+    ) -> EnterpriseRegistration:
         reg = self._get_registration(db, reg_id)
         reg.inspection_report = inspection_report
         reg.inspected_at = datetime.now(UTC)
@@ -62,7 +67,9 @@ class EnterpriseRegistrationService:
         db.flush()
         return reg
 
-    def assess_risk(self, db: Session, reg_id: str, risk_assessment: dict[str, Any], risk_score: int) -> EnterpriseRegistration:
+    def assess_risk(
+        self, db: Session, reg_id: str, risk_assessment: dict[str, Any], risk_score: int
+    ) -> EnterpriseRegistration:
         reg = self._get_registration(db, reg_id)
         reg.risk_assessment = risk_assessment
         reg.risk_score = risk_score
@@ -70,12 +77,16 @@ class EnterpriseRegistrationService:
         reg.status = "risk_assessed"
         reg.current_step = "approval"
         reg.is_active = True
-        self._complete_step(db, reg.id, "risk_assessment", performed_by=risk_assessment.get("assessed_by"))
+        self._complete_step(
+            db, reg.id, "risk_assessment", performed_by=risk_assessment.get("assessed_by")
+        )
         self._add_step(db, reg.id, "approval")
         db.flush()
         return reg
 
-    def approve_registration(self, db: Session, reg_id: str, approved_by: str) -> EnterpriseRegistration:
+    def approve_registration(
+        self, db: Session, reg_id: str, approved_by: str
+    ) -> EnterpriseRegistration:
         reg = self._get_registration(db, reg_id)
         reg.approved_by = approved_by
         reg.approved_at = datetime.now(UTC)
@@ -84,7 +95,13 @@ class EnterpriseRegistrationService:
         reg.current_step = "certificate_issued"
         reg.is_active = True
         self._complete_step(db, reg.id, "approval", performed_by=approved_by)
-        self._add_step(db, reg.id, "certificate_issued", performed_by=approved_by, output={"certificate_id": reg.certificate_id})
+        self._add_step(
+            db,
+            reg.id,
+            "certificate_issued",
+            performed_by=approved_by,
+            output={"certificate_id": reg.certificate_id},
+        )
         db.flush()
         return reg
 
@@ -98,22 +115,35 @@ class EnterpriseRegistrationService:
         return reg
 
     def get_registration_status(self, db: Session, org_id: str) -> EnterpriseRegistration | None:
-        return db.query(EnterpriseRegistration).filter(
-            EnterpriseRegistration.organization_id == org_id,
-            EnterpriseRegistration.is_active,
-        ).order_by(EnterpriseRegistration.created_at.desc()).first()
+        return (
+            db.query(EnterpriseRegistration)
+            .filter(
+                EnterpriseRegistration.organization_id == org_id,
+                EnterpriseRegistration.is_active,
+            )
+            .order_by(EnterpriseRegistration.created_at.desc())
+            .first()
+        )
 
     def _get_registration(self, db: Session, reg_id: str) -> EnterpriseRegistration:
-        reg = db.query(EnterpriseRegistration).filter(
-            EnterpriseRegistration.reg_id == reg_id,
-        ).first()
+        reg = (
+            db.query(EnterpriseRegistration)
+            .filter(
+                EnterpriseRegistration.reg_id == reg_id,
+            )
+            .first()
+        )
         if not reg:
             raise ValueError(f"EnterpriseRegistration not found: reg_id={reg_id}")
         return reg
 
     def _add_step(
-        self, db: Session, reg_pk: str, step_name: str,
-        performed_by: str | None = None, output: dict[str, Any] | None = None,
+        self,
+        db: Session,
+        reg_pk: str,
+        step_name: str,
+        performed_by: str | None = None,
+        output: dict[str, Any] | None = None,
     ) -> EnterpriseRegistrationStep:
         step = EnterpriseRegistrationStep(
             uuid=step_name,
@@ -130,13 +160,22 @@ class EnterpriseRegistrationService:
         return step
 
     def _complete_step(
-        self, db: Session, reg_pk: str, step_name: str,
-        performed_by: str | None = None, output: dict[str, Any] | None = None,
+        self,
+        db: Session,
+        reg_pk: str,
+        step_name: str,
+        performed_by: str | None = None,
+        output: dict[str, Any] | None = None,
     ) -> None:
-        step = db.query(EnterpriseRegistrationStep).filter(
-            EnterpriseRegistrationStep.reg_id == reg_pk,
-            EnterpriseRegistrationStep.step_name == step_name,
-        ).order_by(EnterpriseRegistrationStep.created_at.desc()).first()
+        step = (
+            db.query(EnterpriseRegistrationStep)
+            .filter(
+                EnterpriseRegistrationStep.reg_id == reg_pk,
+                EnterpriseRegistrationStep.step_name == step_name,
+            )
+            .order_by(EnterpriseRegistrationStep.created_at.desc())
+            .first()
+        )
         if step:
             step.status = "completed"
             step.completed_at = datetime.now(UTC)
@@ -146,10 +185,14 @@ class EnterpriseRegistrationService:
 
 
 class WorkforceService:
-
     def request_employee(
-        self, db: Session, request_id: str, request_type: str,
-        requesting_org_id: str, requested_by: str, person_id: str | None = None,
+        self,
+        db: Session,
+        request_id: str,
+        request_type: str,
+        requesting_org_id: str,
+        requested_by: str,
+        person_id: str | None = None,
     ) -> WorkforceRequest:
         req = WorkforceRequest(
             uuid=request_id,
@@ -165,21 +208,27 @@ class WorkforceService:
         db.flush()
         return req
 
-    def validate_national_id(self, db: Session, request_id: str, national_id_hash: str) -> WorkforceRequest:
+    def validate_national_id(
+        self, db: Session, request_id: str, national_id_hash: str
+    ) -> WorkforceRequest:
         req = self._get_request(db, request_id)
         req.national_id_hash = national_id_hash
         req.status = "national_id_validated"
         db.flush()
         return req
 
-    def validate_license(self, db: Session, request_id: str, license_number: str) -> WorkforceRequest:
+    def validate_license(
+        self, db: Session, request_id: str, license_number: str
+    ) -> WorkforceRequest:
         req = self._get_request(db, request_id)
         req.license_number = license_number
         req.status = "license_validated"
         db.flush()
         return req
 
-    def check_conflicts(self, db: Session, request_id: str, conflict_report: dict[str, Any] | None = None) -> WorkforceRequest:
+    def check_conflicts(
+        self, db: Session, request_id: str, conflict_report: dict[str, Any] | None = None
+    ) -> WorkforceRequest:
         req = self._get_request(db, request_id)
         req.conflict_report = conflict_report or {}
         req.status = "conflict_checked"
@@ -210,42 +259,66 @@ class WorkforceService:
         return req
 
     def get_request_status(self, db: Session, request_id: str) -> WorkforceRequest | None:
-        return db.query(WorkforceRequest).filter(
-            WorkforceRequest.request_id == request_id,
-        ).first()
+        return (
+            db.query(WorkforceRequest)
+            .filter(
+                WorkforceRequest.request_id == request_id,
+            )
+            .first()
+        )
 
     def preserve_history(self, db: Session, person_id: str) -> list[WorkforceRequest]:
-        requests = db.query(WorkforceRequest).filter(
-            WorkforceRequest.person_id == person_id,
-        ).all()
+        requests = (
+            db.query(WorkforceRequest)
+            .filter(
+                WorkforceRequest.person_id == person_id,
+            )
+            .all()
+        )
         for req in requests:
             req.historical_preserved = True
         db.flush()
         return requests
 
     def _get_request(self, db: Session, request_id: str) -> WorkforceRequest:
-        req = db.query(WorkforceRequest).filter(
-            WorkforceRequest.request_id == request_id,
-        ).first()
+        req = (
+            db.query(WorkforceRequest)
+            .filter(
+                WorkforceRequest.request_id == request_id,
+            )
+            .first()
+        )
         if not req:
             raise ValueError(f"WorkforceRequest not found: request_id={request_id}")
         return req
 
 
 class GovernmentHRService:
-
     def create_appointment(
-        self, db: Session, appointment_id: str, person_id: str,
-        organization_id: str, hr_reference: str, appointment_type: str,
-        position: str | None = None, grade: str | None = None,
-        salary_scale: str | None = None, department: str | None = None,
+        self,
+        db: Session,
+        appointment_id: str,
+        person_id: str,
+        organization_id: str,
+        hr_reference: str,
+        appointment_type: str,
+        position: str | None = None,
+        grade: str | None = None,
+        salary_scale: str | None = None,
+        department: str | None = None,
         start_date: datetime | None = None,
     ) -> GovernmentAppointment:
-        existing = db.query(GovernmentAppointment).filter(
-            GovernmentAppointment.hr_reference == hr_reference,
-        ).first()
+        existing = (
+            db.query(GovernmentAppointment)
+            .filter(
+                GovernmentAppointment.hr_reference == hr_reference,
+            )
+            .first()
+        )
         if existing:
-            raise ValueError(f"GovernmentAppointment with hr_reference={hr_reference} already exists")
+            raise ValueError(
+                f"GovernmentAppointment with hr_reference={hr_reference} already exists"
+            )
 
         appt = GovernmentAppointment(
             uuid=appointment_id,
@@ -266,7 +339,9 @@ class GovernmentHRService:
         db.flush()
         return appt
 
-    def approve_appointment(self, db: Session, appointment_id: str, approved_by: str) -> GovernmentAppointment:
+    def approve_appointment(
+        self, db: Session, appointment_id: str, approved_by: str
+    ) -> GovernmentAppointment:
         appt = self._get_appointment(db, appointment_id)
         appt.hr_approved_by = approved_by
         appt.hr_approved_at = datetime.now(UTC)
@@ -277,7 +352,9 @@ class GovernmentHRService:
     def create_identity(self, db: Session, appointment_id: str) -> GovernmentAppointment:
         appt = self._get_appointment(db, appointment_id)
         if appt.status not in ("hr_approved", "identity_created"):
-            raise ValueError(f"Cannot create identity: status is {appt.status}, expected hr_approved")
+            raise ValueError(
+                f"Cannot create identity: status is {appt.status}, expected hr_approved"
+            )
         appt.identity_created = True
         appt.status = "identity_created"
         db.flush()
@@ -301,7 +378,9 @@ class GovernmentHRService:
         db.flush()
         return appt
 
-    def assign_permissions(self, db: Session, appointment_id: str, permissions: dict[str, Any] | None = None) -> GovernmentAppointment:
+    def assign_permissions(
+        self, db: Session, appointment_id: str, permissions: dict[str, Any] | None = None
+    ) -> GovernmentAppointment:
         appt = self._get_appointment(db, appointment_id)
         if not appt.account_activated:
             raise ValueError("Cannot assign permissions before account is activated")
@@ -311,19 +390,25 @@ class GovernmentHRService:
         return appt
 
     def promote(
-        self, db: Session, appointment_id: str,
-        new_position: str, new_grade: str, promoted_by: str | None = None,
+        self,
+        db: Session,
+        appointment_id: str,
+        new_position: str,
+        new_grade: str,
+        promoted_by: str | None = None,
     ) -> GovernmentAppointment:
         appt = self._get_appointment(db, appointment_id)
         history = appt.promotion_history or []
-        history.append({
-            "from_position": appt.position,
-            "from_grade": appt.grade,
-            "to_position": new_position,
-            "to_grade": new_grade,
-            "promoted_by": promoted_by,
-            "promoted_at": datetime.now(UTC).isoformat(),
-        })
+        history.append(
+            {
+                "from_position": appt.position,
+                "from_grade": appt.grade,
+                "to_position": new_position,
+                "to_grade": new_grade,
+                "promoted_by": promoted_by,
+                "promoted_at": datetime.now(UTC).isoformat(),
+            }
+        )
         appt.promotion_history = history
         appt.position = new_position
         appt.grade = new_grade
@@ -332,20 +417,25 @@ class GovernmentHRService:
         return appt
 
     def transfer(
-        self, db: Session, appointment_id: str,
-        new_org_id: str | None = None, new_dept: str | None = None,
+        self,
+        db: Session,
+        appointment_id: str,
+        new_org_id: str | None = None,
+        new_dept: str | None = None,
         transferred_by: str | None = None,
     ) -> GovernmentAppointment:
         appt = self._get_appointment(db, appointment_id)
         history = appt.transfer_history or []
-        history.append({
-            "from_org": appt.organization_id,
-            "from_dept": appt.department,
-            "to_org": new_org_id,
-            "to_dept": new_dept,
-            "transferred_by": transferred_by,
-            "transferred_at": datetime.now(UTC).isoformat(),
-        })
+        history.append(
+            {
+                "from_org": appt.organization_id,
+                "from_dept": appt.department,
+                "to_org": new_org_id,
+                "to_dept": new_dept,
+                "transferred_by": transferred_by,
+                "transferred_at": datetime.now(UTC).isoformat(),
+            }
+        )
         appt.transfer_history = history
         if new_org_id:
             appt.organization_id = new_org_id
@@ -355,7 +445,9 @@ class GovernmentHRService:
         db.flush()
         return appt
 
-    def retire(self, db: Session, appointment_id: str, retirement_date: datetime) -> GovernmentAppointment:
+    def retire(
+        self, db: Session, appointment_id: str, retirement_date: datetime
+    ) -> GovernmentAppointment:
         appt = self._get_appointment(db, appointment_id)
         appt.end_date = retirement_date
         appt.status = "retired"
@@ -364,17 +456,22 @@ class GovernmentHRService:
         return appt
 
     def _get_appointment(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = db.query(GovernmentAppointment).filter(
-            GovernmentAppointment.appointment_id == appointment_id,
-        ).first()
+        appt = (
+            db.query(GovernmentAppointment)
+            .filter(
+                GovernmentAppointment.appointment_id == appointment_id,
+            )
+            .first()
+        )
         if not appt:
             raise ValueError(f"GovernmentAppointment not found: appointment_id={appointment_id}")
         return appt
 
 
 class CitizenService:
-
-    def register_citizen(self, db: Session, person_id: str, citizen_id: str | None = None) -> CitizenLifecycle:
+    def register_citizen(
+        self, db: Session, person_id: str, citizen_id: str | None = None
+    ) -> CitizenLifecycle:
         cid = citizen_id or person_id
         citizen = CitizenLifecycle(
             uuid=cid,
@@ -420,8 +517,11 @@ class CitizenService:
         return citizen
 
     def link_guardian(
-        self, db: Session, citizen_id: str,
-        guardian_person_id: str, relationship: str,
+        self,
+        db: Session,
+        citizen_id: str,
+        guardian_person_id: str,
+        relationship: str,
     ) -> GuardianAccount:
         citizen = self._get_citizen(db, citizen_id)
         guardian = GuardianAccount(
@@ -442,8 +542,11 @@ class CitizenService:
         return guardian
 
     def link_family_member(
-        self, db: Session, citizen_id: str,
-        relative_id: str, relationship: str,
+        self,
+        db: Session,
+        citizen_id: str,
+        relative_id: str,
+        relationship: str,
     ) -> FamilyLink:
         citizen = self._get_citizen(db, citizen_id)
         link = FamilyLink(
@@ -462,8 +565,11 @@ class CitizenService:
         return link
 
     def record_consent(
-        self, db: Session, citizen_id: str,
-        consent_type: str, granted_to: str | None = None,
+        self,
+        db: Session,
+        citizen_id: str,
+        consent_type: str,
+        granted_to: str | None = None,
         scope: dict[str, Any] | None = None,
     ) -> ConsentRecord:
         citizen = self._get_citizen(db, citizen_id)
@@ -492,8 +598,11 @@ class CitizenService:
         return citizen
 
     def record_death(
-        self, db: Session, citizen_id: str,
-        death_date: datetime, death_certificate_id: str,
+        self,
+        db: Session,
+        citizen_id: str,
+        death_date: datetime,
+        death_certificate_id: str,
     ) -> CitizenLifecycle:
         citizen = self._get_citizen(db, citizen_id)
         citizen.deceased_at = death_date
@@ -504,25 +613,37 @@ class CitizenService:
         return citizen
 
     def get_citizen_status(self, db: Session, person_id: str) -> CitizenLifecycle | None:
-        return db.query(CitizenLifecycle).filter(
-            CitizenLifecycle.person_id == person_id,
-        ).order_by(CitizenLifecycle.created_at.desc()).first()
+        return (
+            db.query(CitizenLifecycle)
+            .filter(
+                CitizenLifecycle.person_id == person_id,
+            )
+            .order_by(CitizenLifecycle.created_at.desc())
+            .first()
+        )
 
     def _get_citizen(self, db: Session, citizen_id: str) -> CitizenLifecycle:
-        citizen = db.query(CitizenLifecycle).filter(
-            CitizenLifecycle.citizen_id == citizen_id,
-        ).first()
+        citizen = (
+            db.query(CitizenLifecycle)
+            .filter(
+                CitizenLifecycle.citizen_id == citizen_id,
+            )
+            .first()
+        )
         if not citizen:
             raise ValueError(f"CitizenLifecycle not found: citizen_id={citizen_id}")
         return citizen
 
 
 class GuardianService:
-
     def create_guardianship(
-        self, db: Session, guardian_id: str,
-        guardian_person_id: str, dependent_person_id: str,
-        relationship: str, guardian_type: str,
+        self,
+        db: Session,
+        guardian_id: str,
+        guardian_person_id: str,
+        dependent_person_id: str,
+        relationship: str,
+        guardian_type: str,
     ) -> GuardianAccount:
         guardian = GuardianAccount(
             uuid=guardian_id,
@@ -548,19 +669,29 @@ class GuardianService:
         return guardian
 
     def get_dependents(self, db: Session, guardian_person_id: str) -> list[GuardianAccount]:
-        return db.query(GuardianAccount).filter(
-            GuardianAccount.guardian_person_id == guardian_person_id,
-            GuardianAccount.is_active,
-        ).all()
+        return (
+            db.query(GuardianAccount)
+            .filter(
+                GuardianAccount.guardian_person_id == guardian_person_id,
+                GuardianAccount.is_active,
+            )
+            .all()
+        )
 
     def get_guardians(self, db: Session, dependent_person_id: str) -> list[GuardianAccount]:
-        return db.query(GuardianAccount).filter(
-            GuardianAccount.dependent_person_id == dependent_person_id,
-            GuardianAccount.is_active,
-        ).all()
+        return (
+            db.query(GuardianAccount)
+            .filter(
+                GuardianAccount.dependent_person_id == dependent_person_id,
+                GuardianAccount.is_active,
+            )
+            .all()
+        )
 
     def delegate_access(
-        self, db: Session, guardian_id: str,
+        self,
+        db: Session,
+        guardian_id: str,
         access_permissions: dict[str, Any],
     ) -> GuardianAccount:
         guardian = self._get_guardian(db, guardian_id)
@@ -568,7 +699,9 @@ class GuardianService:
         db.flush()
         return guardian
 
-    def verify_guardianship(self, db: Session, guardian_id: str, verified_by: str) -> GuardianAccount:
+    def verify_guardianship(
+        self, db: Session, guardian_id: str, verified_by: str
+    ) -> GuardianAccount:
         guardian = self._get_guardian(db, guardian_id)
         guardian.verified_by = verified_by
         guardian.verified_at = datetime.now(UTC)
@@ -576,9 +709,13 @@ class GuardianService:
         return guardian
 
     def _get_guardian(self, db: Session, guardian_id: str) -> GuardianAccount:
-        guardian = db.query(GuardianAccount).filter(
-            GuardianAccount.guardian_id == guardian_id,
-        ).first()
+        guardian = (
+            db.query(GuardianAccount)
+            .filter(
+                GuardianAccount.guardian_id == guardian_id,
+            )
+            .first()
+        )
         if not guardian:
             raise ValueError(f"GuardianAccount not found: guardian_id={guardian_id}")
         return guardian

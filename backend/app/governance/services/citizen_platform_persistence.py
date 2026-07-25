@@ -138,27 +138,43 @@ class PersistedGuardianService:
         self._repo = GuardianRepository(db)
         self._db = db
 
-    def assign_guardian(self, citizen_id: str, guardian_citizen_id: str,
-                        guardian_type: str = "legal_guardian", relationship: str = "") -> dict[str, Any]:
+    def assign_guardian(
+        self,
+        citizen_id: str,
+        guardian_citizen_id: str,
+        guardian_type: str = "legal_guardian",
+        relationship: str = "",
+    ) -> dict[str, Any]:
         existing = self._repo.get_active(citizen_id)
         for g in existing:
             if g.guardian_id == guardian_citizen_id and g.is_active:
                 return {
-                    "id": g.id, "citizen_id": g.citizen_id,
-                    "guardian_id": g.guardian_id, "guardian_type": g.guardian_type,
-                    "relationship": g.relationship, "is_active": True,
+                    "id": g.id,
+                    "citizen_id": g.citizen_id,
+                    "guardian_id": g.guardian_id,
+                    "guardian_type": g.guardian_type,
+                    "relationship": g.relationship,
+                    "is_active": True,
                     "assigned_at": g.assigned_at.isoformat() if g.assigned_at else "",
                 }
         record = GuardianRecord(
-            id=str(uuid.uuid4()), citizen_id=citizen_id, guardian_id=guardian_citizen_id,
-            guardian_type=guardian_type, relationship=relationship, is_active=True, version=1,
+            id=str(uuid.uuid4()),
+            citizen_id=citizen_id,
+            guardian_id=guardian_citizen_id,
+            guardian_type=guardian_type,
+            relationship=relationship,
+            is_active=True,
+            version=1,
         )
         self._repo.add(record)
         self._db.commit()
         return {
-            "id": record.id, "citizen_id": record.citizen_id,
-            "guardian_id": record.guardian_id, "guardian_type": record.guardian_type,
-            "relationship": record.relationship, "is_active": True,
+            "id": record.id,
+            "citizen_id": record.citizen_id,
+            "guardian_id": record.guardian_id,
+            "guardian_type": record.guardian_type,
+            "relationship": record.relationship,
+            "is_active": True,
             "assigned_at": record.assigned_at.isoformat() if record.assigned_at else "",
         }
 
@@ -176,9 +192,15 @@ class PersistedGuardianService:
     def get_guardians(self, citizen_id: str) -> list[dict[str, Any]]:
         records = self._repo.get_active(citizen_id)
         return [
-            {"id": r.id, "citizen_id": r.citizen_id, "guardian_id": r.guardian_id,
-             "guardian_type": r.guardian_type, "relationship": r.relationship, "is_active": True,
-             "assigned_at": r.assigned_at.isoformat() if r.assigned_at else ""}
+            {
+                "id": r.id,
+                "citizen_id": r.citizen_id,
+                "guardian_id": r.guardian_id,
+                "guardian_type": r.guardian_type,
+                "relationship": r.relationship,
+                "is_active": True,
+                "assigned_at": r.assigned_at.isoformat() if r.assigned_at else "",
+            }
             for r in records
         ]
 
@@ -194,9 +216,12 @@ class PersistedFamilyAccountService:
     def get_family_members(self, citizen_id: str) -> list[dict[str, Any]]:
         return self._guardian_svc.get_guardians(citizen_id)
 
-    def add_family_member(self, citizen_id: str, member_citizen_id: str,
-                          relationship: str, **kwargs) -> dict[str, Any]:
-        return self._guardian_svc.assign_guardian(citizen_id, member_citizen_id, relationship=relationship)
+    def add_family_member(
+        self, citizen_id: str, member_citizen_id: str, relationship: str, **kwargs
+    ) -> dict[str, Any]:
+        return self._guardian_svc.assign_guardian(
+            citizen_id, member_citizen_id, relationship=relationship
+        )
 
     def remove_family_member(self, citizen_id: str, member_id: str) -> bool:
         return self._guardian_svc.remove_guardian(citizen_id, member_id)

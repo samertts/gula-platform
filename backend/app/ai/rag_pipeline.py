@@ -35,7 +35,6 @@ class RAGContext:
 
 
 class RAGPipeline:
-
     def __init__(self, vector_store_instance: VectorStore | None = None):
         self.vector_store = vector_store_instance or vector_store
         self._system_template = (
@@ -150,24 +149,30 @@ class RAGPipeline:
         return [doc for _, doc in scored[:top_k]]
 
     def _extract_citations(
-        self, response: str, documents: list[VectorSearchResult],
+        self,
+        response: str,
+        documents: list[VectorSearchResult],
     ) -> list[dict[str, Any]]:
         citations = []
         for doc in documents:
             source = doc.source or doc.content_type
             pattern = re.escape(f"[المصدر: {source}]")
             if re.search(pattern, response):
-                citations.append({
-                    "source": source,
-                    "content_type": doc.content_type,
-                    "content_id": doc.content_id,
-                    "score": doc.score,
-                    "text_preview": doc.text[:100],
-                })
+                citations.append(
+                    {
+                        "source": source,
+                        "content_type": doc.content_type,
+                        "content_id": doc.content_id,
+                        "score": doc.score,
+                        "text_preview": doc.text[:100],
+                    },
+                )
         return citations
 
     def _detect_hallucination(
-        self, response: str, documents: list[VectorSearchResult],
+        self,
+        response: str,
+        documents: list[VectorSearchResult],
     ) -> float:
         score = 0.0
         response_lower = response.lower()

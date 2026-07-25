@@ -36,21 +36,45 @@ class Newborn(TenantAuditEntity):
     birth_place_type = Column(String(50), nullable=True)
     delivery_method = Column(String(50), nullable=True)
 
-    mother_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
+    mother_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     mother_name = Column(String(200), nullable=True)
-    father_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    father_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    guardian_id = Column(String(26), ForeignKey("national_guardians.id", ondelete="RESTRICT"), nullable=True, index=True)
-    family_id = Column(String(26), ForeignKey("national_families.id", ondelete="RESTRICT"), nullable=True, index=True)
+    guardian_id = Column(
+        String(26),
+        ForeignKey("national_guardians.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    family_id = Column(
+        String(26),
+        ForeignKey("national_families.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    converted_to_citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="SET NULL"), nullable=True)
+    converted_to_citizen_id = Column(
+        String(26), ForeignKey("national_citizens.id", ondelete="SET NULL"), nullable=True,
+    )
     converted_at = Column(DateTime(timezone=True), nullable=True)
     is_converted = Column(Boolean, default=False)
 
     registered_by_hospital = Column(Boolean, default=True)
     registration_days_after_birth = Column(SmallInteger, nullable=True)
 
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True)
+    citizen_id = Column(
+        String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True,
+    )
     notes = Column(Text, nullable=True)
 
     __table_args__ = (

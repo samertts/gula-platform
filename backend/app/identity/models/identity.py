@@ -21,7 +21,9 @@ class IdentityRecord(IdentityBaseEntity):
     __tablename__ = "niam_identities"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     identity_type = Column(String(30), nullable=False, index=True)
     status = Column(String(20), default="active", nullable=False, index=True)
@@ -33,7 +35,9 @@ class IdentityRecord(IdentityBaseEntity):
     issued_at = Column(DateTime(timezone=True), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=True)
 
-    issued_by_organization = Column(String(26), ForeignKey("niam_organizations.id", ondelete="SET NULL"), nullable=True)
+    issued_by_organization = Column(
+        String(26), ForeignKey("niam_organizations.id", ondelete="SET NULL"), nullable=True
+    )
 
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)

@@ -35,7 +35,11 @@ class AIGuardrail(GovernanceBaseEntity):
     action_on_violation = Column(String(50), nullable=False, default="block")
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class LLMGovernancePolicy(GovernanceBaseEntity):
@@ -56,7 +60,11 @@ class LLMGovernancePolicy(GovernanceBaseEntity):
     audit_level = Column(String(20), default="full")
     is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class PromptPolicy(GovernanceBaseEntity):
@@ -73,7 +81,11 @@ class PromptPolicy(GovernanceBaseEntity):
     requires_sanitization = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class AIAuditEvent(GovernanceBaseEntity):
@@ -115,7 +127,11 @@ class AIRiskClassification(GovernanceBaseEntity):
     review_date = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class AIModelValidationRecord(GovernanceBaseEntity):

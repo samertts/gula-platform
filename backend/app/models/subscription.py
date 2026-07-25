@@ -31,7 +31,11 @@ class LabSubscription(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     lab_id = Column(
-        Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, unique=True, index=True,
+        Integer,
+        ForeignKey("labs.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
 
     # ── Dimension 1: Subscription Tier ──────────────────────────────────────
@@ -84,7 +88,9 @@ class UpgradeRequest(Base):
     id = Column(Integer, primary_key=True, index=True)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
     requester_id = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )  # citizen who requested
 
     # What they're asking for
@@ -94,7 +100,9 @@ class UpgradeRequest(Base):
 
     reason = Column(Text, nullable=True)  # free-text reason from citizen
     status = Column(
-        String(20), default="pending", index=True,
+        String(20),
+        default="pending",
+        index=True,
     )  # pending | approved | rejected | fulfilled
     weight = Column(Float, default=1.0)  # weighted demand contribution (1.0 = verified patient)
 
@@ -122,7 +130,11 @@ class UpgradeDemandScore(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     lab_id = Column(
-        Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, unique=True, index=True,
+        Integer,
+        ForeignKey("labs.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
     raw_score = Column(Float, default=0.0)
     unique_requesters = Column(Integer, default=0)

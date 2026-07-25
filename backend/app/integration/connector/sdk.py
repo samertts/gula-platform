@@ -35,7 +35,9 @@ class ConnectorSDK:
         self._artifacts: dict[str, SDKArtifact] = {}
 
     def generate_client(
-        self, connector_id: str, language: str = "python",
+        self,
+        connector_id: str,
+        language: str = "python",
     ) -> SDKArtifact:
         spec = self._registry.get(connector_id)
         if not spec:
@@ -58,12 +60,16 @@ class ConnectorSDK:
         )
         self._artifacts[existing_key] = artifact
         logger.info(
-            "SDK client generated for %s (%s)", spec.name, language,
+            "SDK client generated for %s (%s)",
+            spec.name,
+            language,
         )
         return artifact
 
     def get_artifact(
-        self, connector_id: str, language: str = "python",
+        self,
+        connector_id: str,
+        language: str = "python",
     ) -> SDKArtifact | None:
         return self._artifacts.get(f"{connector_id}:{language}")
 
@@ -110,7 +116,8 @@ class ConnectorSDK:
         return "".join(word.capitalize() for word in name.replace("-", "_").split("_"))
 
     def _extract_capabilities(
-        self, spec: ConnectorSpec,
+        self,
+        spec: ConnectorSpec,
     ) -> list[SDKCapability]:
         caps = []
         type_map = {
@@ -130,7 +137,9 @@ class ConnectorSDK:
         return caps
 
     def _resolve_dependencies(
-        self, spec: ConnectorSpec, language: str,
+        self,
+        spec: ConnectorSpec,
+        language: str,
     ) -> list[str]:
         deps = []
         if language == "python":

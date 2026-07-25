@@ -26,6 +26,7 @@ class GRPCGateway(MessageGateway):
     async def connect(self) -> bool:
         try:
             from grpc import aio
+
             self._channel = aio.insecure_channel(
                 self.config.endpoint,
                 options=[
@@ -58,9 +59,17 @@ class GRPCGateway(MessageGateway):
         try:
             service_name = message.destination or "default"
             method_name = message.headers.get("method", "invoke")
-            payload = message.payload if isinstance(message.payload, bytes) else json.dumps(message.payload).encode()
+            payload = (
+                message.payload
+                if isinstance(message.payload, bytes)
+                else json.dumps(message.payload).encode()
+            )
             headers = {k: v for k, v in message.headers.items() if k != "method"}
-            metadata = [("authorization", headers.get("Authorization", ""))] if headers.get("Authorization") else []
+            metadata = (
+                [("authorization", headers.get("Authorization", ""))]
+                if headers.get("Authorization")
+                else []
+            )
             metadata += [(k, v) for k, v in headers.items() if k != "Authorization"]
             response = await self._invoke_unary(service_name, method_name, payload, metadata)
             lat = (time.monotonic() - start) * 1000
@@ -80,7 +89,9 @@ class GRPCGateway(MessageGateway):
     async def transform(self, message: GatewayMessage) -> GatewayMessage:
         return message
 
-    async def _invoke_unary(self, service: str, method: str, payload: bytes, metadata: list) -> bytes:
+    async def _invoke_unary(
+        self, service: str, method: str, payload: bytes, metadata: list
+    ) -> bytes:
         return payload
 
 

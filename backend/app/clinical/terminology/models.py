@@ -31,7 +31,11 @@ class TerminologyCode(BaseEntity):
     code = Column(String(64), nullable=False, index=True)
     display = Column(String(512), nullable=False)
     system = Column(Enum(TerminologySystem), nullable=False)
-    version_id = Column(String(26), ForeignKey("clinical_terminology_versions.id", ondelete="SET NULL"), nullable=True)
+    version_id = Column(
+        String(26),
+        ForeignKey("clinical_terminology_versions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     parent_id = Column(String(26), ForeignKey("clinical_terminology_codes.id"), nullable=True)
     definition = Column(Text, nullable=True)
     is_leaf = Column(Boolean, default=True, nullable=False)
@@ -40,15 +44,21 @@ class TerminologyCode(BaseEntity):
 
     version = relationship("TerminologyVersion", back_populates="codes", foreign_keys=[version_id])
     parent = relationship("TerminologyCode", remote_side="TerminologyCode.id", backref="children")
-    mappings_source = relationship("TerminologyMapping", foreign_keys="TerminologyMapping.source_code_id", back_populates="source_code")
-    mappings_target = relationship("TerminologyMapping", foreign_keys="TerminologyMapping.target_code_id", back_populates="target_code")
+    mappings_source = relationship(
+        "TerminologyMapping",
+        foreign_keys="TerminologyMapping.source_code_id",
+        back_populates="source_code",
+    )
+    mappings_target = relationship(
+        "TerminologyMapping",
+        foreign_keys="TerminologyMapping.target_code_id",
+        back_populates="target_code",
+    )
 
 
 class TerminologyVersion(BaseEntity):
     __tablename__ = "clinical_terminology_versions"
-    __table_args__ = (
-        Index("ix_terminology_version_system_version", "system", "version"),
-    )
+    __table_args__ = (Index("ix_terminology_version_system_version", "system", "version"),)
 
     system = Column(Enum(TerminologySystem), nullable=False)
     version = Column(String(64), nullable=False)
@@ -58,7 +68,9 @@ class TerminologyVersion(BaseEntity):
     codes_count = Column(Integer, default=0, nullable=False)
     imported_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
-    codes = relationship("TerminologyCode", back_populates="version", foreign_keys="TerminologyCode.version_id")
+    codes = relationship(
+        "TerminologyCode", back_populates="version", foreign_keys="TerminologyCode.version_id",
+    )
 
 
 class TerminologyMapping(BaseEntity):
@@ -76,15 +88,17 @@ class TerminologyMapping(BaseEntity):
     mapping_priority = Column(Integer, default=0, nullable=False)
     evidence = Column(Text, nullable=True)
 
-    source_code = relationship("TerminologyCode", foreign_keys=[source_code_id], back_populates="mappings_source")
-    target_code = relationship("TerminologyCode", foreign_keys=[target_code_id], back_populates="mappings_target")
+    source_code = relationship(
+        "TerminologyCode", foreign_keys=[source_code_id], back_populates="mappings_source",
+    )
+    target_code = relationship(
+        "TerminologyCode", foreign_keys=[target_code_id], back_populates="mappings_target",
+    )
 
 
 class ValueSet(BaseEntity):
     __tablename__ = "clinical_value_sets"
-    __table_args__ = (
-        Index("ix_value_set_oid", "oid"),
-    )
+    __table_args__ = (Index("ix_value_set_oid", "oid"),)
 
     name = Column(String(256), nullable=False)
     oid = Column(String(64), nullable=True, unique=True)
@@ -98,16 +112,18 @@ class ValueSet(BaseEntity):
     effective_start = Column(Date, nullable=True)
     effective_end = Column(Date, nullable=True)
 
-    members = relationship("ValueSetMember", back_populates="value_set", cascade="all, delete-orphan")
+    members = relationship(
+        "ValueSetMember", back_populates="value_set", cascade="all, delete-orphan",
+    )
 
 
 class ValueSetMember(BaseEntity):
     __tablename__ = "clinical_value_set_members"
-    __table_args__ = (
-        Index("ix_value_set_member_vs_code", "value_set_id", "code_id"),
-    )
+    __table_args__ = (Index("ix_value_set_member_vs_code", "value_set_id", "code_id"),)
 
-    value_set_id = Column(String(26), ForeignKey("clinical_value_sets.id", ondelete="CASCADE"), nullable=False)
+    value_set_id = Column(
+        String(26), ForeignKey("clinical_value_sets.id", ondelete="CASCADE"), nullable=False,
+    )
     code_id = Column(String(26), ForeignKey("clinical_terminology_codes.id"), nullable=False)
     inclusion = Column(Boolean, default=True, nullable=False)
     order = Column(Integer, default=0, nullable=False)
@@ -118,9 +134,7 @@ class ValueSetMember(BaseEntity):
 
 class CodeSystem(BaseEntity):
     __tablename__ = "clinical_code_systems"
-    __table_args__ = (
-        Index("ix_code_system_name", "name"),
-    )
+    __table_args__ = (Index("ix_code_system_name", "name"),)
 
     name = Column(String(128), nullable=False)
     system = Column(Enum(TerminologySystem), nullable=False)
@@ -161,9 +175,7 @@ class ICD10Code(BaseEntity):
 
 class ICD11Code(BaseEntity):
     __tablename__ = "clinical_icd11_codes"
-    __table_args__ = (
-        Index("ix_icd11_chapter", "chapter"),
-    )
+    __table_args__ = (Index("ix_icd11_chapter", "chapter"),)
 
     code = Column(String(32), nullable=False, unique=True, index=True)
     title = Column(String(512), nullable=False)
@@ -180,9 +192,7 @@ class ICD11Code(BaseEntity):
 
 class SNOMEDCTCode(BaseEntity):
     __tablename__ = "clinical_snomed_ct_codes"
-    __table_args__ = (
-        Index("ix_snomed_concept_id", "concept_id"),
-    )
+    __table_args__ = (Index("ix_snomed_concept_id", "concept_id"),)
 
     concept_id = Column(String(64), nullable=False, unique=True, index=True)
     fully_specified_name = Column(String(512), nullable=False)
@@ -233,9 +243,7 @@ class UCUMCode(BaseEntity):
 
 class ATCCode(BaseEntity):
     __tablename__ = "clinical_atc_codes"
-    __table_args__ = (
-        Index("ix_atc_level", "level"),
-    )
+    __table_args__ = (Index("ix_atc_level", "level"),)
 
     code = Column(String(16), nullable=False, unique=True, index=True)
     name = Column(String(512), nullable=False)
@@ -262,9 +270,7 @@ class RxNormCode(BaseEntity):
 
 class CPTCode(BaseEntity):
     __tablename__ = "clinical_cpt_codes"
-    __table_args__ = (
-        Index("ix_cpt_category", "category"),
-    )
+    __table_args__ = (Index("ix_cpt_category", "category"),)
 
     code = Column(String(16), nullable=False, unique=True, index=True)
     short_description = Column(String(256), nullable=False)

@@ -75,7 +75,11 @@ class FileConnector(BaseConnector):
 
     async def send(self, data: Any) -> ConnectorResult:
         if not isinstance(data, dict):
-            return self._build_result(False, error="data must be a dict with 'content', 'filename', and 'format'", status_code=400)
+            return self._build_result(
+                False,
+                error="data must be a dict with 'content', 'filename', and 'format'",
+                status_code=400,
+            )
 
         content = data.get("content")
         filename = data.get("filename", f"output_{int(time.time())}")
@@ -86,7 +90,9 @@ class FileConnector(BaseConnector):
             return self._build_result(False, error="no output directory specified", status_code=400)
 
         if file_format not in self.SUPPORTED_FORMATS:
-            return self._build_result(False, error=f"unsupported format: {file_format}", status_code=400)
+            return self._build_result(
+                False, error=f"unsupported format: {file_format}", status_code=400,
+            )
 
         start = time.monotonic()
         try:
@@ -98,7 +104,9 @@ class FileConnector(BaseConnector):
 
             duration_ms = int((time.monotonic() - start) * 1000)
             self._record_success(duration_ms)
-            return self._build_result(True, data={"path": str(path), "size": len(serialized)}, duration_ms=duration_ms)
+            return self._build_result(
+                True, data={"path": str(path), "size": len(serialized)}, duration_ms=duration_ms,
+            )
 
         except Exception as exc:
             duration_ms = int((time.monotonic() - start) * 1000)
@@ -110,7 +118,9 @@ class FileConnector(BaseConnector):
             return self._build_result(False, error="no watch directory configured", status_code=400)
 
         if not self._watch_dir.exists():
-            return self._build_result(False, error=f"directory not found: {self._watch_dir}", status_code=404)
+            return self._build_result(
+                False, error=f"directory not found: {self._watch_dir}", status_code=404,
+            )
 
         start = time.monotonic()
         try:
@@ -118,17 +128,23 @@ class FileConnector(BaseConnector):
             for entry in self._watch_dir.iterdir():
                 if entry.is_file() and entry.suffix.lstrip(".") in self.SUPPORTED_FORMATS:
                     mod_time = entry.stat().st_mtime
-                    files.append({
-                        "name": entry.name,
-                        "path": str(entry),
-                        "size": entry.stat().st_size,
-                        "modified_at": mod_time,
-                        "format": entry.suffix.lstrip("."),
-                    })
+                    files.append(
+                        {
+                            "name": entry.name,
+                            "path": str(entry),
+                            "size": entry.stat().st_size,
+                            "modified_at": mod_time,
+                            "format": entry.suffix.lstrip("."),
+                        },
+                    )
 
             duration_ms = int((time.monotonic() - start) * 1000)
             self._record_success(duration_ms)
-            return self._build_result(True, data={"directory": str(self._watch_dir), "files": files, "count": len(files)}, duration_ms=duration_ms)
+            return self._build_result(
+                True,
+                data={"directory": str(self._watch_dir), "files": files, "count": len(files)},
+                duration_ms=duration_ms,
+            )
 
         except Exception as exc:
             duration_ms = int((time.monotonic() - start) * 1000)
@@ -140,7 +156,9 @@ class FileConnector(BaseConnector):
         try:
             path = Path(filepath)
             if not path.exists():
-                return self._build_result(False, error=f"file not found: {filepath}", status_code=404)
+                return self._build_result(
+                    False, error=f"file not found: {filepath}", status_code=404,
+                )
 
             fmt = file_format or path.suffix.lstrip(".")
             content = path.read_text(encoding="utf-8")
@@ -168,7 +186,10 @@ class FileConnector(BaseConnector):
                         mod_time = entry.stat().st_mtime
                         current_files[entry.name] = mod_time
 
-                        if entry.name not in self._known_files or self._known_files.get(entry.name) != mod_time:
+                        if (
+                            entry.name not in self._known_files
+                            or self._known_files.get(entry.name) != mod_time
+                        ):
                             result = await self.read_file(str(entry))
                             if result.success and self._callback:
                                 await self._callback(entry.name, result.data)
@@ -199,7 +220,9 @@ class FileConnector(BaseConnector):
         if fmt == "xml":
             if isinstance(data, dict):
                 root_name = data.get("_root", "root")
-                return ElementTree.tostring(self._dict_to_element(root_name, data), encoding="unicode")
+                return ElementTree.tostring(
+                    self._dict_to_element(root_name, data), encoding="unicode",
+                )
             return str(data)
         if fmt == "csv":
             if isinstance(data, list) and data:

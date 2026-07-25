@@ -21,12 +21,19 @@ class TestReadOperations:
         lab = make_lab()
         user = make_lab_user(lab_id=lab.id)
         headers = auth_headers(user.id, lab.id)
-        for rt, rid in (("Encounter", "nonexistent"), ("Condition", "nonexistent"),
-                        ("Observation", 99999999), ("MedicationRequest", "nonexistent"),
-                        ("MedicationStatement", "nonexistent"), ("CarePlan", "nonexistent"),
-                        ("Procedure", "nonexistent"), ("AllergyIntolerance", "nonexistent"),
-                        ("Immunization", "nonexistent"), ("DocumentReference", "nonexistent"),
-                        ("Composition", "nonexistent")):
+        for rt, rid in (
+            ("Encounter", "nonexistent"),
+            ("Condition", "nonexistent"),
+            ("Observation", 99999999),
+            ("MedicationRequest", "nonexistent"),
+            ("MedicationStatement", "nonexistent"),
+            ("CarePlan", "nonexistent"),
+            ("Procedure", "nonexistent"),
+            ("AllergyIntolerance", "nonexistent"),
+            ("Immunization", "nonexistent"),
+            ("DocumentReference", "nonexistent"),
+            ("Composition", "nonexistent"),
+        ):
             resp = client.get(f"/fhir/{rt}/{rid}", headers=headers)
             assert resp.status_code == 404, f"{rt} expected 404 got {resp.status_code}"
 
@@ -42,9 +49,16 @@ class TestSearchOperations:
         lab = make_lab()
         user = make_lab_user(lab_id=lab.id)
         headers = auth_headers(user.id, lab.id)
-        searchable = ("Condition", "Observation", "MedicationRequest",
-                      "AllergyIntolerance", "Immunization",
-                      "DocumentReference", "Composition", "Procedure")
+        searchable = (
+            "Condition",
+            "Observation",
+            "MedicationRequest",
+            "AllergyIntolerance",
+            "Immunization",
+            "DocumentReference",
+            "Composition",
+            "Procedure",
+        )
         for rt in searchable:
             resp = client.get(f"/fhir/{rt}", headers=headers)
             assert resp.status_code == 200, f"{rt} search expected 200 got {resp.status_code}"
@@ -76,7 +90,9 @@ class TestUpdateOperations:
         lab = make_lab()
         user = make_lab_user(lab_id=lab.id)
         headers = auth_headers(user.id, lab.id)
-        resp = client.put("/fhir/Condition/nonexistent", json={"resourceType": "Condition"}, headers=headers)
+        resp = client.put(
+            "/fhir/Condition/nonexistent", json={"resourceType": "Condition"}, headers=headers
+        )
         assert resp.status_code == 404
 
 
@@ -137,6 +153,7 @@ class TestBatchTransaction:
 class TestErrorHandling:
     """Verify appropriate HTTP error codes."""
 
+
 class TestTenantIsolation:
     """Verify labs cannot access each other's FHIR resources."""
 
@@ -148,6 +165,3 @@ class TestTenantIsolation:
         headers2 = auth_headers(user2.id, lab2.id)
         resp = client.get("/fhir/Patient/nonexistent", headers=headers2)
         assert resp.status_code == 404
-
-
-

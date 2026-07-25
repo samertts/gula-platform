@@ -94,6 +94,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     PRIVILEGED_ROLES = {"master_admin", "ministry_admin", "province_admin"}
     if user.role in PRIVILEGED_ROLES:
         from ..security.mfa_service import MFAService
+
         mfa = MFAService(db)
         if not mfa.has_mfa_enabled(user.id):
             log_action(

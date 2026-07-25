@@ -32,7 +32,12 @@ class WorkflowInstance(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     instance_id = Column(String(100), unique=True, nullable=False, index=True)
 
-    def_id = Column(String(100), ForeignKey("niam_wf_definitions.def_id", ondelete="RESTRICT"), nullable=False, index=True)
+    def_id = Column(
+        String(100),
+        ForeignKey("niam_wf_definitions.def_id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     trigger_type = Column(String(50), nullable=False)
     trigger_id = Column(String(100), nullable=False, index=True)
     initiator_id = Column(String(100), nullable=False)
@@ -57,7 +62,12 @@ class WorkflowApproval(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     approval_id = Column(String(100), unique=True, nullable=False, index=True)
 
-    instance_id = Column(String(100), ForeignKey("niam_wf_instances.instance_id", ondelete="CASCADE"), nullable=False, index=True)
+    instance_id = Column(
+        String(100),
+        ForeignKey("niam_wf_instances.instance_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     step_name = Column(String(100), nullable=False)
     approver_id = Column(String(100), nullable=False, index=True)
 
@@ -78,7 +88,12 @@ class WorkflowNotification(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     notification_id = Column(String(100), unique=True, nullable=False, index=True)
 
-    instance_id = Column(String(100), ForeignKey("niam_wf_instances.instance_id", ondelete="CASCADE"), nullable=False, index=True)
+    instance_id = Column(
+        String(100),
+        ForeignKey("niam_wf_instances.instance_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     recipient_id = Column(String(100), nullable=False, index=True)
     notification_type = Column(String(20), nullable=False)
     channel = Column(String(20), nullable=True)

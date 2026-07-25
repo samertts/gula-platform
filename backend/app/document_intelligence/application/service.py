@@ -187,7 +187,8 @@ class DefaultIngestionService(DocumentIngestionService):
         return saved
 
     async def ingest_batch(
-        self, files: list[tuple[bytes, str, str]],
+        self,
+        files: list[tuple[bytes, str, str]],
     ) -> list[ScannedDocument]:
         results = []
         for data, filename, mime_type in files:
@@ -199,7 +200,9 @@ class DefaultIngestionService(DocumentIngestionService):
         return results
 
     async def ingest_from_uri(
-        self, uri: str, metadata: dict[str, Any] | None = None,
+        self,
+        uri: str,
+        metadata: dict[str, Any] | None = None,
     ) -> ScannedDocument:
         import httpx
 
@@ -213,7 +216,8 @@ class DefaultIngestionService(DocumentIngestionService):
         return await self.ingest(data, filename, content_type, metadata)
 
     async def ingest_from_fhir(
-        self, document_reference: dict[str, Any],
+        self,
+        document_reference: dict[str, Any],
     ) -> ScannedDocument:
         attachment = document_reference.get("content", [{}])[0].get("attachment", {})
         url = attachment.get("url", "")
@@ -226,7 +230,9 @@ class DefaultIngestionService(DocumentIngestionService):
 
             data = base64.b64decode(data_encoded)
             content_type = attachment.get("contentType", "application/octet-stream")
-            filename = document_reference.get("id", "fhir_document") + "." + content_type.split("/")[-1]
+            filename = (
+                document_reference.get("id", "fhir_document") + "." + content_type.split("/")[-1]
+            )
             return await self.ingest(data, filename, content_type)
 
         raise IngestionError("FHIR DocumentReference has no downloadable content")
@@ -400,16 +406,20 @@ class DefaultClassifierService(DocumentClassifierService):
         self._audit = audit
 
     async def classify_document(
-        self, document: ScannedDocument, ocr_result: OcrResult,
+        self,
+        document: ScannedDocument,
+        ocr_result: OcrResult,
     ) -> ClassificationResult:
         try:
             result = await self._classifier.classify(
-                ocr_result.full_text, ocr_result.pages,
+                ocr_result.full_text,
+                ocr_result.pages,
             )
         except Exception as exc:
             await self._events.publish(
                 DocumentClassificationFailed(
-                    document_id=document.id, error_message=str(exc),
+                    document_id=document.id,
+                    error_message=str(exc),
                 ),
             )
             raise ClassificationError(f"Classification failed: {exc}") from exc
@@ -467,7 +477,9 @@ class DefaultEntityExtractionService(EntityExtractionService):
         self._audit = audit
 
     async def extract_from_document(
-        self, document: ScannedDocument, ocr_result: OcrResult,
+        self,
+        document: ScannedDocument,
+        ocr_result: OcrResult,
     ) -> tuple[list[ExtractedEntity], list[ExtractedField], list[ExtractedTable]]:
         try:
             entities, fields, tables = await self._extractor.extract(
@@ -484,7 +496,9 @@ class DefaultEntityExtractionService(EntityExtractionService):
                         if isinstance(value, str):
                             fields.append(
                                 ExtractedField(
-                                    name=key, value=value, confidence=0.8,
+                                    name=key,
+                                    value=value,
+                                    confidence=0.8,
                                 ),
                             )
             except Exception:
@@ -508,7 +522,9 @@ class DefaultEntityExtractionService(EntityExtractionService):
         return entities, fields, tables
 
     async def extract_from_text(
-        self, text: str, category: DocumentCategory | None = None,
+        self,
+        text: str,
+        category: DocumentCategory | None = None,
     ) -> tuple[list[ExtractedEntity], list[ExtractedField], list[ExtractedTable]]:
         return await self._extractor.extract(text, category)
 
@@ -533,7 +549,10 @@ class DefaultFhirMappingService(FhirMappingService):
     ) -> dict[str, Any]:
         try:
             result = await self._mapper.map_all(
-                entities, fields, document, ocr_result,
+                entities,
+                fields,
+                document,
+                ocr_result,
             )
         except Exception as exc:
             raise FhirMappingError(f"FHIR mapping failed: {exc}") from exc
@@ -582,7 +601,8 @@ class DefaultKnowledgePipelineService(KnowledgePipelineService):
     ) -> dict[str, Any]:
         try:
             concepts = await self._extractor.extract_concepts(
-                ocr_result.full_text, entities,
+                ocr_result.full_text,
+                entities,
             )
             kg = await self._extractor.build_knowledge_graph(concepts)
             embeddings = await self._extractor.generate_embeddings(
@@ -590,7 +610,9 @@ class DefaultKnowledgePipelineService(KnowledgePipelineService):
             )
 
             idx_entry = await self._indexer.index_document(
-                document, ocr_result.full_text, entities,
+                document,
+                ocr_result.full_text,
+                entities,
             )
 
             timeline = await self._extractor.extract_clinical_timeline(entities)
@@ -623,10 +645,12 @@ class DefaultKnowledgePipelineService(KnowledgePipelineService):
         return await self._indexer.search(query)
 
     async def get_patient_timeline(
-        self, patient_id: UUID,
+        self,
+        patient_id: UUID,
     ) -> list[dict[str, Any]]:
         return await self._indexer.search(
-            "", filters={"patient_id": str(patient_id)},
+            "",
+            filters={"patient_id": str(patient_id)},
         )
 
 
@@ -635,7 +659,10 @@ class DefaultSearchService(SearchService):
         self._indexer = indexer
 
     async def index_document(
-        self, document: ScannedDocument, text: str, entities: list[ExtractedEntity],
+        self,
+        document: ScannedDocument,
+        text: str,
+        entities: list[ExtractedEntity],
     ) -> None:
         try:
             await self._indexer.index_document(document, text, entities)
@@ -643,7 +670,9 @@ class DefaultSearchService(SearchService):
             raise IndexingError(f"Search indexing failed: {exc}") from exc
 
     async def search(
-        self, query: str, filters: dict[str, Any] | None = None,
+        self,
+        query: str,
+        filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         try:
             return await self._indexer.search(query, filters)
@@ -765,7 +794,8 @@ class DocumentIntelligenceOrchestrator:
             result.classification = classification.category
 
             entities, fields, tables = await self._entity_extractor.extract_from_document(
-                doc, ocr_result,
+                doc,
+                ocr_result,
             )
             pipeline.entities = entities
             pipeline.fields = fields
@@ -782,7 +812,8 @@ class DocumentIntelligenceOrchestrator:
 
             kg_result = await self._knowledge.process(doc, ocr_result, entities)
             pipeline.knowledge_graph_entries = kg_result.get("knowledge_graph", {}).get(
-                "nodes", [],
+                "nodes",
+                [],
             )
             pipeline.vector_embeddings = kg_result.get("embeddings", [])
             pipeline.phases_completed.append(ProcessingPhase.knowledge_extraction)
@@ -790,7 +821,9 @@ class DocumentIntelligenceOrchestrator:
             result.embeddings = kg_result.get("embeddings", [])
 
             await self._search.index_document(
-                doc, ocr_result.full_text, entities,
+                doc,
+                ocr_result.full_text,
+                entities,
             )
             pipeline.phases_completed.append(ProcessingPhase.search_indexing)
 
@@ -800,9 +833,15 @@ class DocumentIntelligenceOrchestrator:
             pipeline.success = True
             result.success = True
 
-        except (IngestionError, OcrProviderError, ClassificationError,
-                EntityExtractionError, FhirMappingError, KnowledgeExtractionError,
-                IndexingError) as exc:
+        except (
+            IngestionError,
+            OcrProviderError,
+            ClassificationError,
+            EntityExtractionError,
+            FhirMappingError,
+            KnowledgeExtractionError,
+            IndexingError,
+        ) as exc:
             pipeline.success = False
             pipeline.error_message = str(exc)
             result.success = False
@@ -921,15 +960,27 @@ class DocumentIntelligenceOrchestrator:
             "total_documents": sum(status_counts.values()),
             "by_status": {str(k): v for k, v in status_counts.items()},
             "pending_processing": sum(
-                v for k, v in status_counts.items()
-                if k in (DocumentStatus.pending_ingestion, DocumentStatus.ocr_pending,
-                         DocumentStatus.classification_pending, DocumentStatus.entity_extraction_pending,
-                         DocumentStatus.fhir_mapping_pending)
+                v
+                for k, v in status_counts.items()
+                if k
+                in (
+                    DocumentStatus.pending_ingestion,
+                    DocumentStatus.ocr_pending,
+                    DocumentStatus.classification_pending,
+                    DocumentStatus.entity_extraction_pending,
+                    DocumentStatus.fhir_mapping_pending,
+                )
             ),
             "failed": sum(
-                v for k, v in status_counts.items()
-                if k in (DocumentStatus.ocr_failed, DocumentStatus.classification_failed,
-                         DocumentStatus.entity_extraction_failed, DocumentStatus.fhir_mapping_failed)
+                v
+                for k, v in status_counts.items()
+                if k
+                in (
+                    DocumentStatus.ocr_failed,
+                    DocumentStatus.classification_failed,
+                    DocumentStatus.entity_extraction_failed,
+                    DocumentStatus.fhir_mapping_failed,
+                )
             ),
         }
 
@@ -962,12 +1013,19 @@ class DocumentIntelligenceOrchestrator:
         return await self._gov.track_order_lifecycle(document_id)
 
     # ── Collaboration ──
-    async def assign_reviewer(self, document_id: UUID, reviewer_id: str, role: CollaborationRole = CollaborationRole.reviewer) -> DocumentReview:
+    async def assign_reviewer(
+        self,
+        document_id: UUID,
+        reviewer_id: str,
+        role: CollaborationRole = CollaborationRole.reviewer,
+    ) -> DocumentReview:
         if self._collab is None:
             raise RuntimeError("CollaborationService not configured")
         return await self._collab.assign_reviewer(document_id, reviewer_id, role)
 
-    async def submit_review(self, review_id: UUID, decision: ReviewDecision, comments: str = "") -> DocumentReview:
+    async def submit_review(
+        self, review_id: UUID, decision: ReviewDecision, comments: str = "",
+    ) -> DocumentReview:
         if self._collab is None:
             raise RuntimeError("CollaborationService not configured")
         return await self._collab.submit_review(review_id, decision, comments)
@@ -1013,13 +1071,19 @@ class DocumentIntelligenceOrchestrator:
             raise RuntimeError("GovernanceService not configured")
         return await self._gov_.evaluate_document(document_id)
 
-    async def get_governance_events(self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None) -> list[GovernanceEvent]:
+    async def get_governance_events(
+        self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None,
+    ) -> list[GovernanceEvent]:
         if self._gov_ is None:
             raise RuntimeError("GovernanceService not configured")
         return await self._gov_.get_governance_events(document_id, severity)
 
     # ── Archive & Preservation ──
-    async def preserve_document(self, document_id: UUID, standard: DigitalPreservationStandard = DigitalPreservationStandard.oais) -> DigitalPreservationRecord:
+    async def preserve_document(
+        self,
+        document_id: UUID,
+        standard: DigitalPreservationStandard = DigitalPreservationStandard.oais,
+    ) -> DigitalPreservationRecord:
         if self._archive is None:
             raise RuntimeError("NationalArchiveService not configured")
         return await self._archive.preserve_document(document_id, standard)
@@ -1034,7 +1098,9 @@ class DocumentIntelligenceOrchestrator:
             raise RuntimeError("NationalArchiveService not configured")
         return await self._archive.check_integrity(document_id)
 
-    async def apply_retention(self, document_id: UUID, policy: RetentionPolicy = RetentionPolicy.standard_7y) -> None:
+    async def apply_retention(
+        self, document_id: UUID, policy: RetentionPolicy = RetentionPolicy.standard_7y,
+    ) -> None:
         if self._lifecycle is None:
             raise RuntimeError("DocumentLifecycleManager not configured")
         await self._lifecycle.apply_retention_policy(document_id)
@@ -1045,7 +1111,9 @@ class DocumentIntelligenceOrchestrator:
         return await self._archive.purge_expired()
 
     # ── Knowledge Graph ──
-    async def find_related_documents(self, document_id: UUID, max_depth: int = 3) -> list[dict[str, Any]]:
+    async def find_related_documents(
+        self, document_id: UUID, max_depth: int = 3,
+    ) -> list[dict[str, Any]]:
         if self._kg is None:
             raise RuntimeError("KnowledgeGraphService not configured")
         return await self._kg.find_related_documents(document_id, max_depth)
@@ -1066,7 +1134,9 @@ class DocumentIntelligenceOrchestrator:
         await self._kg.rebuild_graph()
 
     # ── Webhooks ──
-    async def register_webhook(self, url: str, events: list[EventChannel], secret: str | None = None) -> dict[str, Any]:
+    async def register_webhook(
+        self, url: str, events: list[EventChannel], secret: str | None = None,
+    ) -> dict[str, Any]:
         if self._webhook is None:
             raise RuntimeError("WebhookService not configured")
         return await self._webhook.register_webhook(url, events, secret)
@@ -1098,7 +1168,9 @@ class DocumentIntelligenceOrchestrator:
         return await self._obs.get_throughput_metrics()
 
     # ── Access Control ──
-    async def check_access(self, document_id: UUID, user_id: str, permission: str = "viewer") -> bool:
+    async def check_access(
+        self, document_id: UUID, user_id: str, permission: str = "viewer",
+    ) -> bool:
         if self._access is None:
             raise RuntimeError("AccessControlService not configured")
         return await self._access.check_access(document_id, user_id, permission)
@@ -1119,7 +1191,9 @@ class DocumentIntelligenceOrchestrator:
             raise RuntimeError("SemanticSearchService not configured")
         return await self._semantic.search(query)
 
-    async def similar_documents(self, document_id: UUID, limit: int = 10) -> list[SemanticSearchResult]:
+    async def similar_documents(
+        self, document_id: UUID, limit: int = 10,
+    ) -> list[SemanticSearchResult]:
         if self._semantic is None:
             raise RuntimeError("SemanticSearchService not configured")
         return await self._semantic.similar_documents(document_id, limit)

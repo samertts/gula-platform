@@ -61,6 +61,7 @@ class TestChaosDIContainer:
         with contextlib.suppress(Exception):
             container.clear_scope("nonexistent")
         from app.kernel.types import ServiceDescriptor, ServiceLifecycle
+
         desc = ServiceDescriptor(
             name="resilient",
             interface=None,
@@ -138,6 +139,7 @@ class TestChaosCircuitBreaker:
         cb.record_failure()
         assert cb.state == CircuitState.OPEN
         import time
+
         time.sleep(0.02)
         assert cb.can_proceed()
         cb.record_success()
@@ -154,10 +156,17 @@ class TestChaosCircuitBreaker:
 class TestChaosPlugin:
     def test_survives_circular_dependencies(self):
         from app.kernel.types import PluginDescriptor
+
         resolver = PluginDependencyResolver()
-        p1 = PluginDescriptor(name="a", version="1.0", path="/tmp", entry_point="P", dependencies=["b"])
-        p2 = PluginDescriptor(name="b", version="1.0", path="/tmp", entry_point="P", dependencies=["c"])
-        p3 = PluginDescriptor(name="c", version="1.0", path="/tmp", entry_point="P", dependencies=["a"])
+        p1 = PluginDescriptor(
+            name="a", version="1.0", path="/tmp", entry_point="P", dependencies=["b"]
+        )
+        p2 = PluginDescriptor(
+            name="b", version="1.0", path="/tmp", entry_point="P", dependencies=["c"]
+        )
+        p3 = PluginDescriptor(
+            name="c", version="1.0", path="/tmp", entry_point="P", dependencies=["a"]
+        )
         with pytest.raises(ValueError):
             resolver.resolve_order([p1, p2, p3])
 

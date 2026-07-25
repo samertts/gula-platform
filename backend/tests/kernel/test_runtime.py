@@ -119,6 +119,7 @@ class TestDescriptorDefaults:
 
     def test_capability_descriptor(self):
         from app.kernel.types import CapabilityDescriptor
+
         desc = CapabilityDescriptor(name="test", version="1.0", description="test")
         assert not desc.required
         assert desc.enabled

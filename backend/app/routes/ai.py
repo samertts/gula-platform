@@ -639,7 +639,10 @@ def _action_guidance(overall_sev: str) -> dict:
 
 
 def _emit_critical_alert(
-    db: Session, order_id: int, critical_tests: list[str], token_prefix: str,
+    db: Session,
+    order_id: int,
+    critical_tests: list[str],
+    token_prefix: str,
 ) -> None:
     """Write a critical-result alert to audit_logs. Non-fatal."""
     try:
@@ -913,7 +916,8 @@ async def interpret_result_public(token: str) -> JSONResponse:
 
     loop = asyncio.get_event_loop()
     order_id, results_data, patient_context = await loop.run_in_executor(
-        None, _load_results_from_db,
+        None,
+        _load_results_from_db,
     )
 
     if order_id is None:
@@ -997,7 +1001,9 @@ _CHAT_RATE_LIMIT = int(os.getenv("GEMINI_CHAT_RATE_LIMIT", "30"))  # req per 60s
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     context: str | None = Field(
-        default=None, max_length=500, description="Optional page context (e.g. 'orders page')",
+        default=None,
+        max_length=500,
+        description="Optional page context (e.g. 'orders page')",
     )
 
 

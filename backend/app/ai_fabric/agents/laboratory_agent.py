@@ -13,24 +13,30 @@ class LaboratoryAgent(AIAgent):
         super().__init__(agent_id=agent_id, name=name)
 
     def _register_default_tools(self) -> None:
-        self.register_tool(AgentTool(
-            name="delta_check",
-            description="Perform delta check on patient results",
-            fn=self._tool_delta_check,
-            parameters={"patient_id": "str", "test_name": "str", "new_value": "float"},
-        ))
-        self.register_tool(AgentTool(
-            name="qc_analysis",
-            description="Analyze quality control data",
-            fn=self._tool_qc_analysis,
-            parameters={"instrument": "str", "control_data": "list"},
-        ))
-        self.register_tool(AgentTool(
-            name="workload_forecast",
-            description="Predict laboratory workload and TAT",
-            fn=self._tool_workload_forecast,
-            parameters={"department": "str", "period": "str"},
-        ))
+        self.register_tool(
+            AgentTool(
+                name="delta_check",
+                description="Perform delta check on patient results",
+                fn=self._tool_delta_check,
+                parameters={"patient_id": "str", "test_name": "str", "new_value": "float"},
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="qc_analysis",
+                description="Analyze quality control data",
+                fn=self._tool_qc_analysis,
+                parameters={"instrument": "str", "control_data": "list"},
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="workload_forecast",
+                description="Predict laboratory workload and TAT",
+                fn=self._tool_workload_forecast,
+                parameters={"department": "str", "period": "str"},
+            ),
+        )
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ("laboratory", "lab", "qc", "delta", "workload")
@@ -54,7 +60,9 @@ class LaboratoryAgent(AIAgent):
         significant = False
         if previous_value and new_value:
             if previous_value != 0:
-                delta_pct = abs((float(new_value) - float(previous_value)) / float(previous_value)) * 100
+                delta_pct = (
+                    abs((float(new_value) - float(previous_value)) / float(previous_value)) * 100
+                )
             significant = delta_pct > 20.0
         return {
             "patient_id": patient_id,
@@ -75,7 +83,7 @@ class LaboratoryAgent(AIAgent):
             mean = sum(values) / len(values) if values else 0
             if len(values) > 1:
                 variance = sum((v - mean) ** 2 for v in values) / (len(values) - 1)
-                sd = variance ** 0.5
+                sd = variance**0.5
                 for v in values:
                     if abs(v - mean) > 3 * sd:
                         rules_violated.append(f"1:3s (value={v})")

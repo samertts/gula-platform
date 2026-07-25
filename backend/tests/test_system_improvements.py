@@ -8,6 +8,7 @@ Tests for system improvements:
 
 All tests use in-memory SQLite (via conftest fixtures) — no real DB needed.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -20,6 +21,7 @@ class TestInterpretationEngine:
 
     def setup_method(self):
         from app.services.interpretation import INTERPRETATIONS, get_flag, interpret_result
+
         self.interpret = interpret_result
         self.get_flag = get_flag
         self.INTERPRETATIONS = INTERPRETATIONS
@@ -313,6 +315,7 @@ class TestCriticalAlerts:
 
     def setup_method(self):
         from app.services.critical_alerts import CRITICAL_THRESHOLDS, check_critical
+
         self.check_critical = check_critical
         self.thresholds = CRITICAL_THRESHOLDS
 
@@ -405,6 +408,7 @@ class TestClinicalIntelligence:
 
     def setup_method(self):
         from app.services.clinical_intelligence import CLINICAL_PATTERNS, analyze_results
+
         self.analyze = analyze_results
         self.patterns = CLINICAL_PATTERNS
 
@@ -560,6 +564,7 @@ class TestStatsAPI:
     @pytest.fixture(autouse=True)
     def setup(self, client, make_lab, make_lab_user, db):
         from tests.conftest import auth_headers
+
         self.lab = make_lab(name="Stats Test Lab")
         self.user = make_lab_user(lab_id=self.lab.id, role="admin")
         self.headers = auth_headers(self.user.id, self.lab.id)
@@ -683,6 +688,7 @@ class TestMigrationIdempotency:
     def test_migration_metadata(self):
         """revision / down_revision must be correct without importing the module."""
         import re
+
         src = self._MIGRATION_FILE.read_text()
         rev_match = re.search(r'^revision\s*=\s*["\']([^"\']+)["\']', src, re.MULTILINE)
         down_match = re.search(r'^down_revision\s*=\s*["\']([^"\']+)["\']', src, re.MULTILINE)
@@ -700,6 +706,7 @@ class TestMigrationIdempotency:
     def test_migration_syntax(self):
         """Migration file must compile without syntax errors."""
         import py_compile
+
         py_compile.compile(str(self._MIGRATION_FILE), doraise=True)
 
     def test_migration_all_indexes_listed(self):

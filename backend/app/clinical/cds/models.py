@@ -34,7 +34,9 @@ class OrderSet(BaseEntity):
     is_emergency = Column(Boolean, default=False, nullable=False)
     priority = Column(Integer, default=0, nullable=False)
     required_justification = Column(Boolean, default=False, nullable=False)
-    guideline_id = Column(String(26), ForeignKey("clinical_guidelines.id", ondelete="SET NULL"), nullable=True)
+    guideline_id = Column(
+        String(26), ForeignKey("clinical_guidelines.id", ondelete="SET NULL"), nullable=True,
+    )
     effective_start = Column(Date, nullable=True)
     effective_end = Column(Date, nullable=True)
 
@@ -44,7 +46,9 @@ class OrderSet(BaseEntity):
 class OrderSetItem(BaseEntity):
     __tablename__ = "clinical_order_set_items"
 
-    order_set_id = Column(String(26), ForeignKey("clinical_order_sets.id", ondelete="CASCADE"), nullable=False)
+    order_set_id = Column(
+        String(26), ForeignKey("clinical_order_sets.id", ondelete="CASCADE"), nullable=False,
+    )
     item_type = Column(String(32), nullable=False)
     item_code = Column(String(64), nullable=True)
     item_display = Column(String(256), nullable=True)
@@ -60,9 +64,7 @@ class OrderSetItem(BaseEntity):
 
 class CareBundle(BaseEntity):
     __tablename__ = "clinical_care_bundles"
-    __table_args__ = (
-        Index("ix_care_bundle_condition", "condition"),
-    )
+    __table_args__ = (Index("ix_care_bundle_condition", "condition"),)
 
     name = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
@@ -73,15 +75,21 @@ class CareBundle(BaseEntity):
     compliance_threshold = Column(Integer, default=80, nullable=False)
     elements_summary = Column(Text, nullable=True)
     rationale = Column(Text, nullable=True)
-    guideline_id = Column(String(26), ForeignKey("clinical_guidelines.id", ondelete="SET NULL"), nullable=True)
+    guideline_id = Column(
+        String(26), ForeignKey("clinical_guidelines.id", ondelete="SET NULL"), nullable=True,
+    )
 
-    elements = relationship("CareBundleElement", back_populates="care_bundle", cascade="all, delete-orphan")
+    elements = relationship(
+        "CareBundleElement", back_populates="care_bundle", cascade="all, delete-orphan",
+    )
 
 
 class CareBundleElement(BaseEntity):
     __tablename__ = "clinical_care_bundle_elements"
 
-    care_bundle_id = Column(String(26), ForeignKey("clinical_care_bundles.id", ondelete="CASCADE"), nullable=False)
+    care_bundle_id = Column(
+        String(26), ForeignKey("clinical_care_bundles.id", ondelete="CASCADE"), nullable=False,
+    )
     element_code = Column(String(64), nullable=False)
     element_name = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
@@ -121,13 +129,17 @@ class ClinicalAlert(BaseEntity):
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     source_rule_id = Column(String(26), nullable=True)
 
-    actions = relationship("ClinicalAlertAction", back_populates="alert", cascade="all, delete-orphan")
+    actions = relationship(
+        "ClinicalAlertAction", back_populates="alert", cascade="all, delete-orphan",
+    )
 
 
 class ClinicalAlertAction(BaseEntity):
     __tablename__ = "clinical_alert_actions"
 
-    alert_id = Column(String(26), ForeignKey("clinical_alerts.id", ondelete="CASCADE"), nullable=False)
+    alert_id = Column(
+        String(26), ForeignKey("clinical_alerts.id", ondelete="CASCADE"), nullable=False,
+    )
     action = Column(String(32), nullable=False)
     description = Column(Text, nullable=True)
     parameters = Column(Text, nullable=True)
@@ -165,9 +177,7 @@ class Contraindication(BaseEntity):
 
 class DuplicateOrderRule(BaseEntity):
     __tablename__ = "clinical_duplicate_order_rules"
-    __table_args__ = (
-        Index("ix_duplicate_order_code", "order_code"),
-    )
+    __table_args__ = (Index("ix_duplicate_order_code", "order_code"),)
 
     order_code = Column(String(64), nullable=False, index=True)
     order_system = Column(String(32), nullable=True)
@@ -186,9 +196,7 @@ class DuplicateOrderRule(BaseEntity):
 
 class ReminderRule(BaseEntity):
     __tablename__ = "clinical_reminder_rules"
-    __table_args__ = (
-        Index("ix_reminder_rule_trigger", "trigger_event"),
-    )
+    __table_args__ = (Index("ix_reminder_rule_trigger", "trigger_event"),)
 
     name = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
@@ -227,7 +235,9 @@ class PreventiveRecommendation(BaseEntity):
     gender = Column(String(1), nullable=True)
     risk_factors = Column(Text, nullable=True)
     evidence_level = Column(Enum(EvidenceLevel), nullable=True)
-    guideline_id = Column(String(26), ForeignKey("clinical_guidelines.id", ondelete="SET NULL"), nullable=True)
+    guideline_id = Column(
+        String(26), ForeignKey("clinical_guidelines.id", ondelete="SET NULL"), nullable=True,
+    )
     is_active = Column(Boolean, default=True, nullable=False)
     effective_start = Column(Date, nullable=True)
     effective_end = Column(Date, nullable=True)

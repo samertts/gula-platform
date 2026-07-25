@@ -140,10 +140,14 @@ def check_coverage(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == data.coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == data.coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 
@@ -159,10 +163,14 @@ def check_eligibility(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == data.coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == data.coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 
@@ -209,10 +217,14 @@ def verify_coverage(
         q = q.join(InsurancePolicy).filter(InsurancePolicy.policy_number == policy_number)
 
     if provider_code:
-        q = q.join(InsurancePolicy).join(
-            InsuranceProvider,
-            InsurancePolicy.provider_id == InsuranceProvider.id,
-        ).filter(InsuranceProvider.code == provider_code)
+        q = (
+            q.join(InsurancePolicy)
+            .join(
+                InsuranceProvider,
+                InsurancePolicy.provider_id == InsuranceProvider.id,
+            )
+            .filter(InsuranceProvider.code == provider_code)
+        )
 
     coverages = q.all()
 
@@ -249,11 +261,15 @@ def list_active_coverages(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverages = db.query(Coverage).filter(
-        Coverage.lab_id == current_user.lab_id,
-        Coverage.patient_id == patient_id,
-        Coverage.status == CoverageStatus.ACTIVE,
-    ).all()
+    coverages = (
+        db.query(Coverage)
+        .filter(
+            Coverage.lab_id == current_user.lab_id,
+            Coverage.patient_id == patient_id,
+            Coverage.status == CoverageStatus.ACTIVE,
+        )
+        .all()
+    )
 
     return [
         {
@@ -279,11 +295,15 @@ def patient_benefits_summary(
 ):
     from app.insurance.domain.models import BenefitPackage
 
-    coverages = db.query(Coverage).filter(
-        Coverage.lab_id == current_user.lab_id,
-        Coverage.patient_id == patient_id,
-        Coverage.status == CoverageStatus.ACTIVE,
-    ).all()
+    coverages = (
+        db.query(Coverage)
+        .filter(
+            Coverage.lab_id == current_user.lab_id,
+            Coverage.patient_id == patient_id,
+            Coverage.status == CoverageStatus.ACTIVE,
+        )
+        .all()
+    )
 
     if not coverages:
         return {
@@ -294,48 +314,60 @@ def patient_benefits_summary(
 
     result_coverages = []
     for coverage in coverages:
-        policy = db.query(InsurancePolicy).filter(
-            InsurancePolicy.id == coverage.policy_id,
-        ).first()
+        policy = (
+            db.query(InsurancePolicy)
+            .filter(
+                InsurancePolicy.id == coverage.policy_id,
+            )
+            .first()
+        )
 
-        benefits = db.query(BenefitPackage).filter(
-            BenefitPackage.policy_id == coverage.policy_id,
-            BenefitPackage.is_active,
-        ).all()
+        benefits = (
+            db.query(BenefitPackage)
+            .filter(
+                BenefitPackage.policy_id == coverage.policy_id,
+                BenefitPackage.is_active,
+            )
+            .all()
+        )
 
-        result_coverages.append({
-            "coverage_id": coverage.id,
-            "policy_id": coverage.policy_id,
-            "policy_number": policy.policy_number if policy else None,
-            "status": coverage.status.value,
-            "start_date": coverage.start_date.isoformat(),
-            "end_date": coverage.end_date.isoformat() if coverage.end_date else None,
-            "deductible": {
-                "remaining": float(coverage.deductible_remaining or 0),
-                "total": float(coverage.deductible_total or 0),
-            },
-            "benefit": {
-                "remaining": float(coverage.benefit_remaining or 0),
-                "total": float(coverage.benefit_total or 0),
-            },
-            "max_out_of_pocket": {
-                "remaining": float(coverage.max_out_of_pocket_remaining or 0),
-                "total": float(coverage.max_out_of_pocket_total or 0),
-            },
-            "benefits": [
-                {
-                    "id": b.id,
-                    "name": b.name,
-                    "code": b.code,
-                    "service_category": b.service_category.value if b.service_category else None,
-                    "coverage_percentage": b.coverage_percentage,
-                    "copay_percentage": b.copay_percentage,
-                    "requires_pre_auth": b.requires_pre_auth,
-                    "requires_referral": b.requires_referral,
-                }
-                for b in benefits
-            ],
-        })
+        result_coverages.append(
+            {
+                "coverage_id": coverage.id,
+                "policy_id": coverage.policy_id,
+                "policy_number": policy.policy_number if policy else None,
+                "status": coverage.status.value,
+                "start_date": coverage.start_date.isoformat(),
+                "end_date": coverage.end_date.isoformat() if coverage.end_date else None,
+                "deductible": {
+                    "remaining": float(coverage.deductible_remaining or 0),
+                    "total": float(coverage.deductible_total or 0),
+                },
+                "benefit": {
+                    "remaining": float(coverage.benefit_remaining or 0),
+                    "total": float(coverage.benefit_total or 0),
+                },
+                "max_out_of_pocket": {
+                    "remaining": float(coverage.max_out_of_pocket_remaining or 0),
+                    "total": float(coverage.max_out_of_pocket_total or 0),
+                },
+                "benefits": [
+                    {
+                        "id": b.id,
+                        "name": b.name,
+                        "code": b.code,
+                        "service_category": b.service_category.value
+                        if b.service_category
+                        else None,
+                        "coverage_percentage": b.coverage_percentage,
+                        "copay_percentage": b.copay_percentage,
+                        "requires_pre_auth": b.requires_pre_auth,
+                        "requires_referral": b.requires_referral,
+                    }
+                    for b in benefits
+                ],
+            }
+        )
 
     return {
         "patient_id": patient_id,
@@ -351,10 +383,14 @@ def estimate_patient_responsibility(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == data.coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == data.coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 

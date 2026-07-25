@@ -27,6 +27,7 @@ router = APIRouter(prefix="/national-data", tags=["national-data"])
 
 # ── Pydantic Schemas ──────────────────────────────────────────────────────────
 
+
 class GoldenRecordCreate(BaseModel):
     patient_id: int | None = None
     national_patient_id: str | None = None
@@ -168,6 +169,7 @@ class ConsentDirectiveCreate(BaseModel):
 
 # ── Canonical Patient ─────────────────────────────────────────────────────────
 
+
 @router.get("/patients", summary="List canonical patient records")
 def list_canonical_patients(
     skip: int = Query(0, ge=0),
@@ -192,6 +194,7 @@ def get_canonical_patient(
 
 # ── Canonical Encounter ───────────────────────────────────────────────────────
 
+
 @router.get("/encounters", summary="List canonical encounter records")
 def list_canonical_encounters(
     skip: int = Query(0, ge=0),
@@ -208,7 +211,9 @@ def get_canonical_encounter(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    result = CanonicalEncounter.get_by_id(db=db, encounter_id=encounter_id, lab_id=current_user.lab_id)
+    result = CanonicalEncounter.get_by_id(
+        db=db, encounter_id=encounter_id, lab_id=current_user.lab_id
+    )
     if result is None:
         raise HTTPException(status_code=404, detail="Encounter not found")
     return result
@@ -234,6 +239,7 @@ def record_canonical_encounter(
 
 # ── Canonical Observation ─────────────────────────────────────────────────────
 
+
 @router.get("/observations", summary="List canonical observations")
 def list_canonical_observations(
     patient_id: int | None = Query(None),
@@ -243,7 +249,11 @@ def list_canonical_observations(
     db: Session = Depends(get_db),
 ):
     return CanonicalObservation.query_all(
-        db=db, lab_id=current_user.lab_id, patient_id=patient_id, skip=skip, limit=limit,
+        db=db,
+        lab_id=current_user.lab_id,
+        patient_id=patient_id,
+        skip=skip,
+        limit=limit,
     )
 
 
@@ -253,7 +263,9 @@ def get_canonical_observation(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    result = CanonicalObservation.get_by_id(db=db, observation_id=observation_id, lab_id=current_user.lab_id)
+    result = CanonicalObservation.get_by_id(
+        db=db, observation_id=observation_id, lab_id=current_user.lab_id
+    )
     if result is None:
         raise HTTPException(status_code=404, detail="Observation not found")
     return result
@@ -278,6 +290,7 @@ def record_canonical_observation(
 
 
 # ── Golden Records (MDM) ──────────────────────────────────────────────────────
+
 
 @router.get("/golden-records", summary="List golden records")
 def list_golden_records(
@@ -318,10 +331,14 @@ def resolve_golden_record(
     current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
-    record = db.query(GoldenRecord).filter(
-        GoldenRecord.id == golden_record_id,
-        ~GoldenRecord.is_deleted,
-    ).first()
+    record = (
+        db.query(GoldenRecord)
+        .filter(
+            GoldenRecord.id == golden_record_id,
+            ~GoldenRecord.is_deleted,
+        )
+        .first()
+    )
     if not record:
         raise HTTPException(status_code=404, detail="Golden record not found")
     record.is_active_golden = 1
@@ -331,6 +348,7 @@ def resolve_golden_record(
 
 
 # ── Duplicate Check ───────────────────────────────────────────────────────────
+
 
 @router.post("/duplicate-check", summary="Check for duplicate records")
 def check_duplicates(
@@ -359,6 +377,7 @@ def check_duplicates(
 
 # ── Merge Action ──────────────────────────────────────────────────────────────
 
+
 @router.post("/merge", summary="Perform merge action")
 def perform_merge(
     data: MergeActionRequest,
@@ -386,6 +405,7 @@ def perform_merge(
 
 
 # ── Event Store ───────────────────────────────────────────────────────────────
+
 
 @router.post("/events", summary="Record an event", status_code=201)
 def record_event(
@@ -439,6 +459,7 @@ def replay_events(
 
 # ── Data Catalog ──────────────────────────────────────────────────────────────
 
+
 @router.get("/data-catalog", summary="List data catalog entries")
 def list_data_catalog(
     entry_type: str | None = Query(None),
@@ -482,6 +503,7 @@ def create_data_catalog_entry(
 
 # ── Data Quality ──────────────────────────────────────────────────────────────
 
+
 @router.post("/data-quality-checks", summary="Record data quality check")
 def create_quality_check(
     data: QualityCheckCreate,
@@ -513,6 +535,7 @@ def create_quality_check(
 
 # ── Data Lineage ──────────────────────────────────────────────────────────────
 
+
 @router.get("/data-lineage", summary="Get data lineage")
 def get_data_lineage(
     entity_type: str = Query(...),
@@ -522,7 +545,10 @@ def get_data_lineage(
     db: Session = Depends(get_db),
 ):
     return DataPlatformService.get_lineage(
-        db=db, entity_type=entity_type, entity_id=entity_id, direction=direction,
+        db=db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        direction=direction,
     )
 
 
@@ -549,6 +575,7 @@ def record_data_lineage(
 
 
 # ── Retention Policies ────────────────────────────────────────────────────────
+
 
 @router.get("/retention-policies", summary="List retention policies")
 def list_retention_policies(
@@ -586,6 +613,7 @@ def create_retention_policy(
 
 
 # ── Consent Directives ────────────────────────────────────────────────────────
+
 
 @router.get("/consent-directives", summary="List consent directives")
 def list_consent_directives(
@@ -625,6 +653,7 @@ def create_consent_directive(
 
 
 # ── De-identification Jobs ────────────────────────────────────────────────────
+
 
 @router.post("/deidentification-jobs", summary="Create de-identification job", status_code=201)
 def create_deidentification_job(
@@ -674,6 +703,7 @@ def list_deidentification_jobs(
 
 
 # ── Feature Definitions ───────────────────────────────────────────────────────
+
 
 @router.get("/features", summary="List feature definitions")
 def list_features(
@@ -726,6 +756,7 @@ def create_feature(
 
 # ── Feature Values ────────────────────────────────────────────────────────────
 
+
 @router.post("/feature-values", summary="Store feature values", status_code=201)
 def store_feature_values(
     data: FeatureValueCreate,
@@ -775,6 +806,7 @@ def get_feature_values(
 
 
 # ── Training Datasets ─────────────────────────────────────────────────────────
+
 
 @router.get("/training-datasets", summary="List training datasets")
 def list_training_datasets(
@@ -828,6 +860,7 @@ def create_training_dataset(
 
 
 # ── Vector Embeddings ─────────────────────────────────────────────────────────
+
 
 @router.get("/vector-embeddings", summary="List vector embeddings for entity")
 def list_vector_embeddings(
@@ -885,6 +918,7 @@ def store_vector_embedding(
 
 
 # ── Helper serializers ────────────────────────────────────────────────────────
+
 
 def _golden_to_dict(r: GoldenRecord) -> dict:
     return {

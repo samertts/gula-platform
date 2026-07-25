@@ -34,10 +34,19 @@ class NotificationService:
         template_data: dict | None = None,
     ) -> NotificationResult:
         result = self._service.send(
-            channel=channel, to=to, subject=subject, body=body,
-            template_id=template_id, template_data=template_data,
+            channel=channel,
+            to=to,
+            subject=subject,
+            body=body,
+            template_id=template_id,
+            template_data=template_data,
         )
-        return NotificationResult(success=result.success, channel=result.channel, recipient=result.recipient, error=result.error)
+        return NotificationResult(
+            success=result.success,
+            channel=result.channel,
+            recipient=result.recipient,
+            error=result.error,
+        )
 
     def broadcast(
         self,
@@ -49,7 +58,14 @@ class NotificationService:
         results = []
         for to in recipients:
             result = self._service.send(channel=channel, to=to, subject=subject, body=body)
-            results.append(NotificationResult(success=result.success, channel=result.channel, recipient=result.recipient, error=result.error))
+            results.append(
+                NotificationResult(
+                    success=result.success,
+                    channel=result.channel,
+                    recipient=result.recipient,
+                    error=result.error,
+                )
+            )
         return results
 
     def schedule_notification(
@@ -61,11 +77,23 @@ class NotificationService:
         schedule_at: datetime | None = None,
     ) -> NotificationResult:
         result = self._service.send(channel=channel, to=to, subject=subject, body=body)
-        return NotificationResult(success=result.success, channel=result.channel, recipient=result.recipient, error=result.error)
+        return NotificationResult(
+            success=result.success,
+            channel=result.channel,
+            recipient=result.recipient,
+            error=result.error,
+        )
 
 
-PlatformRegistry.register("notifications", NotificationService(), capabilities=[
-    {"name": "send_notification", "description": "Send a single notification via a channel"},
-    {"name": "broadcast", "description": "Send the same notification to multiple recipients"},
-    {"name": "schedule_notification", "description": "Schedule a notification for later delivery"},
-])
+PlatformRegistry.register(
+    "notifications",
+    NotificationService(),
+    capabilities=[
+        {"name": "send_notification", "description": "Send a single notification via a channel"},
+        {"name": "broadcast", "description": "Send the same notification to multiple recipients"},
+        {
+            "name": "schedule_notification",
+            "description": "Schedule a notification for later delivery",
+        },
+    ],
+)

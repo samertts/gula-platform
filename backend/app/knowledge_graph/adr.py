@@ -21,9 +21,24 @@ _ADR_CONS_RE = re.compile(r"^##\s+Consequences\n+(.+?)(?=^##)", re.MULTILINE | r
 _ADR_ALT_RE = re.compile(r"^##\s+Alternatives Considered\n+(.+?)(?=^##)", re.MULTILINE | re.DOTALL)
 _DOMAIN_TAGS = {
     "architecture": ["architecture", "monolith", "microservice", "decomposition"],
-    "security": ["security", "auth", "encryption", "jwt", "rbac", "authentication", "authorization"],
+    "security": [
+        "security",
+        "auth",
+        "encryption",
+        "jwt",
+        "rbac",
+        "authentication",
+        "authorization",
+    ],
     "integration": ["integration", "api", "fhir", "hl7", "astm", "sndhs", "national", "device"],
-    "infrastructure": ["infrastructure", "deployment", "docker", "kubernetes", "database", "storage"],
+    "infrastructure": [
+        "infrastructure",
+        "deployment",
+        "docker",
+        "kubernetes",
+        "database",
+        "storage",
+    ],
     "data": ["data", "model", "schema", "migration", "pii", "phi", "patient", "audit"],
     "quality": ["quality", "testing", "ci", "lint", "observability", "monitoring"],
 }
@@ -142,7 +157,9 @@ class ADRManager:
         logger.info("ADR %s status updated to %s", adr_id, upper)
         return record
 
-    def link_adr(self, adr_id: str, related_adr_id: str, relationship: str = "RELATES_TO") -> ADRRecord | None:
+    def link_adr(
+        self, adr_id: str, related_adr_id: str, relationship: str = "RELATES_TO",
+    ) -> ADRRecord | None:
         record = self._adrs.get(adr_id)
         related = self._adrs.get(related_adr_id)
         if not record or not related:
@@ -273,7 +290,11 @@ class ADRManager:
         options = []
         if alt_match:
             alt_text = alt_match.group(1)
-            options = [line.strip().lstrip("- ") for line in alt_text.split("\n") if line.strip().startswith("- ")]
+            options = [
+                line.strip().lstrip("- ")
+                for line in alt_text.split("\n")
+                if line.strip().startswith("- ")
+            ]
 
         domain = _infer_domain(title, context)
 

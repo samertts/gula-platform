@@ -13,7 +13,6 @@ from .models import NotificationPreference, NotificationQueue, NotificationTempl
 
 
 class NotificationService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 

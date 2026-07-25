@@ -15,7 +15,11 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 
 @router.get("/health")
 async def platform_health() -> dict:
-    return {"status": "ok", "modules": PlatformRegistry.list_modules(), "module_count": len(PlatformRegistry.list_modules())}
+    return {
+        "status": "ok",
+        "modules": PlatformRegistry.list_modules(),
+        "module_count": len(PlatformRegistry.list_modules()),
+    }
 
 
 @router.get("/modules")

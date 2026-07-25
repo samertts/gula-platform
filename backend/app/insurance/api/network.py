@@ -153,18 +153,26 @@ def add_network_provider(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == data.provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == data.provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Insurance provider not found")
 
-    existing = db.query(NetworkProvider).filter(
-        NetworkProvider.lab_id == current_user.lab_id,
-        NetworkProvider.provider_id == data.provider_id,
-        NetworkProvider.facility_id == data.facility_id,
-    ).first()
+    existing = (
+        db.query(NetworkProvider)
+        .filter(
+            NetworkProvider.lab_id == current_user.lab_id,
+            NetworkProvider.provider_id == data.provider_id,
+            NetworkProvider.facility_id == data.facility_id,
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail="Provider already in network")
 
@@ -196,10 +204,14 @@ def update_network_provider(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    net_provider = db.query(NetworkProvider).filter(
-        NetworkProvider.id == network_provider_id,
-        NetworkProvider.lab_id == current_user.lab_id,
-    ).first()
+    net_provider = (
+        db.query(NetworkProvider)
+        .filter(
+            NetworkProvider.id == network_provider_id,
+            NetworkProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not net_provider:
         raise HTTPException(status_code=404, detail="Network provider not found")
 
@@ -229,10 +241,14 @@ def remove_from_network(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    net_provider = db.query(NetworkProvider).filter(
-        NetworkProvider.id == network_provider_id,
-        NetworkProvider.lab_id == current_user.lab_id,
-    ).first()
+    net_provider = (
+        db.query(NetworkProvider)
+        .filter(
+            NetworkProvider.id == network_provider_id,
+            NetworkProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not net_provider:
         raise HTTPException(status_code=404, detail="Network provider not found")
 
@@ -250,17 +266,23 @@ def remove_from_network(
     db.commit()
 
 
-@router.get("/providers/{network_provider_id}/services", response_model=list[NetworkServiceResponse])
+@router.get(
+    "/providers/{network_provider_id}/services", response_model=list[NetworkServiceResponse]
+)
 def list_network_services(
     network_provider_id: int,
     is_active: bool | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    net_provider = db.query(NetworkProvider).filter(
-        NetworkProvider.id == network_provider_id,
-        NetworkProvider.lab_id == current_user.lab_id,
-    ).first()
+    net_provider = (
+        db.query(NetworkProvider)
+        .filter(
+            NetworkProvider.id == network_provider_id,
+            NetworkProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not net_provider:
         raise HTTPException(status_code=404, detail="Network provider not found")
 
@@ -273,17 +295,25 @@ def list_network_services(
     return q.order_by(NetworkService.service_code).all()
 
 
-@router.post("/providers/{network_provider_id}/services", status_code=201, response_model=NetworkServiceResponse)
+@router.post(
+    "/providers/{network_provider_id}/services",
+    status_code=201,
+    response_model=NetworkServiceResponse,
+)
 def add_network_service(
     network_provider_id: int,
     data: NetworkServiceCreate,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    net_provider = db.query(NetworkProvider).filter(
-        NetworkProvider.id == network_provider_id,
-        NetworkProvider.lab_id == current_user.lab_id,
-    ).first()
+    net_provider = (
+        db.query(NetworkProvider)
+        .filter(
+            NetworkProvider.id == network_provider_id,
+            NetworkProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not net_provider:
         raise HTTPException(status_code=404, detail="Network provider not found")
 
@@ -309,17 +339,23 @@ def add_network_service(
     return service
 
 
-@router.get("/providers/{network_provider_id}/availability", response_model=list[AvailabilityResponse])
+@router.get(
+    "/providers/{network_provider_id}/availability", response_model=list[AvailabilityResponse]
+)
 def get_availability(
     network_provider_id: int,
     day_of_week: int | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    net_provider = db.query(NetworkProvider).filter(
-        NetworkProvider.id == network_provider_id,
-        NetworkProvider.lab_id == current_user.lab_id,
-    ).first()
+    net_provider = (
+        db.query(NetworkProvider)
+        .filter(
+            NetworkProvider.id == network_provider_id,
+            NetworkProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not net_provider:
         raise HTTPException(status_code=404, detail="Network provider not found")
 
@@ -332,22 +368,32 @@ def get_availability(
     return q.order_by(ProviderAvailability.day_of_week, ProviderAvailability.time_from).all()
 
 
-@router.post("/providers/{network_provider_id}/availability", status_code=201, response_model=AvailabilityResponse)
+@router.post(
+    "/providers/{network_provider_id}/availability",
+    status_code=201,
+    response_model=AvailabilityResponse,
+)
 def set_availability(
     network_provider_id: int,
     data: AvailabilityCreate,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    net_provider = db.query(NetworkProvider).filter(
-        NetworkProvider.id == network_provider_id,
-        NetworkProvider.lab_id == current_user.lab_id,
-    ).first()
+    net_provider = (
+        db.query(NetworkProvider)
+        .filter(
+            NetworkProvider.id == network_provider_id,
+            NetworkProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not net_provider:
         raise HTTPException(status_code=404, detail="Network provider not found")
 
     if data.day_of_week < 0 or data.day_of_week > 6:
-        raise HTTPException(status_code=400, detail="day_of_week must be 0 (Sunday) through 6 (Saturday)")
+        raise HTTPException(
+            status_code=400, detail="day_of_week must be 0 (Sunday) through 6 (Saturday)"
+        )
 
     slot = ProviderAvailability(
         lab_id=current_user.lab_id,
@@ -415,6 +461,7 @@ def geographic_coverage_check(
         q = q.filter(GeographicCoverage.service_type == service_type)
     if coverage_level:
         from app.insurance.domain.enums import CoverageLevel
+
         q = q.filter(GeographicCoverage.coverage_level == CoverageLevel(coverage_level))
 
     results = q.all()

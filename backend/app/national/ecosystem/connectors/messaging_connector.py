@@ -54,7 +54,9 @@ class MessagingConnector(BaseConnector):
 
     async def send(self, data: Any) -> ConnectorResult:
         if not isinstance(data, dict):
-            return self._build_result(False, error="data must be a dict with 'topic' and 'message'", status_code=400)
+            return self._build_result(
+                False, error="data must be a dict with 'topic' and 'message'", status_code=400,
+            )
 
         topic = data.get("topic", "")
         message = data.get("message", "")
@@ -72,7 +74,9 @@ class MessagingConnector(BaseConnector):
 
             if result:
                 self._record_success(duration_ms)
-                return self._build_result(True, data={"topic": topic, "qos": qos}, duration_ms=duration_ms)
+                return self._build_result(
+                    True, data={"topic": topic, "qos": qos}, duration_ms=duration_ms,
+                )
             self._record_failure("publish failed", duration_ms)
             return self._build_result(False, error="publish failed", duration_ms=duration_ms)
 
@@ -82,7 +86,9 @@ class MessagingConnector(BaseConnector):
             return self._build_result(False, error=str(exc), duration_ms=duration_ms)
 
     async def receive(self) -> ConnectorResult:
-        return self._build_result(False, error="use subscribe() for message consumption", status_code=400)
+        return self._build_result(
+            False, error="use subscribe() for message consumption", status_code=400,
+        )
 
     async def subscribe(self, topic: str, callback: Callable) -> None:
         if topic not in self._subscribed_topics:
@@ -96,11 +102,15 @@ class MessagingConnector(BaseConnector):
         if callback is None:
             del self._subscribed_topics[topic]
         else:
-            self._subscribed_topics[topic] = [c for c in self._subscribed_topics[topic] if c is not callback]
+            self._subscribed_topics[topic] = [
+                c for c in self._subscribed_topics[topic] if c is not callback
+            ]
             if not self._subscribed_topics[topic]:
                 del self._subscribed_topics[topic]
 
-    async def _publish(self, topic: str, payload: bytes, qos: int = 1, retain: bool = False) -> bool:
+    async def _publish(
+        self, topic: str, payload: bytes, qos: int = 1, retain: bool = False,
+    ) -> bool:
         protocol = self._config.protocol.value
         if protocol == "mqtt":
             return await self._publish_mqtt(topic, payload, qos, retain)
@@ -115,7 +125,9 @@ class MessagingConnector(BaseConnector):
         elif protocol == "amqp":
             await self._subscribe_amqp(topic)
 
-    async def _publish_mqtt(self, topic: str, payload: bytes, qos: int = 1, retain: bool = False) -> bool:
+    async def _publish_mqtt(
+        self, topic: str, payload: bytes, qos: int = 1, retain: bool = False,
+    ) -> bool:
         try:
             options = self._config.options or {}
             import paho.mqtt.client as mqtt
@@ -137,7 +149,9 @@ class MessagingConnector(BaseConnector):
                         ca_certs=ca_cert,
                         certfile=cert_file,
                         keyfile=key_file,
-                        cert_reqs=ssl.CERT_REQUIRED if tls_opts.get("verify", True) else ssl.CERT_NONE,
+                        cert_reqs=ssl.CERT_REQUIRED
+                        if tls_opts.get("verify", True)
+                        else ssl.CERT_NONE,
                     )
 
             client.connect(self._host(), options.get("port", 1883), keepalive=60)
@@ -202,7 +216,9 @@ class MessagingConnector(BaseConnector):
                 exchange_name = options.get("exchange", "")
                 exchange_type = options.get("exchange_type", "topic")
 
-                exchange = await channel.declare_exchange(exchange_name, aio_pika.ExchangeType(exchange_type), durable=True)
+                exchange = await channel.declare_exchange(
+                    exchange_name, aio_pika.ExchangeType(exchange_type), durable=True,
+                )
                 message = aio_pika.Message(
                     body=payload,
                     delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
@@ -241,9 +257,13 @@ class MessagingConnector(BaseConnector):
                 exchange_name = options.get("exchange", "")
                 exchange_type = options.get("exchange_type", "topic")
 
-                exchange = await channel.declare_exchange(exchange_name, aio_pika.ExchangeType(exchange_type), durable=True)
+                exchange = await channel.declare_exchange(
+                    exchange_name, aio_pika.ExchangeType(exchange_type), durable=True,
+                )
                 queue_name = options.get("queue", f"gula-queue-{int(time.time())}")
-                queue = await channel.declare_queue(queue_name, durable=options.get("durable", True))
+                queue = await channel.declare_queue(
+                    queue_name, durable=options.get("durable", True),
+                )
                 await queue.bind(exchange, routing_key=routing_key)
 
                 async with queue.iterator() as queue_iter:

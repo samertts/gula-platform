@@ -225,16 +225,24 @@ def link_role_permissions(db: Session) -> None:
     perms = define_permissions()
     linked = 0
     for pdef in perms:
-        perm_row = db.query(PermissionModel).filter(
-            PermissionModel.permission_id == pdef.permission_id,
-        ).first()
+        perm_row = (
+            db.query(PermissionModel)
+            .filter(
+                PermissionModel.permission_id == pdef.permission_id,
+            )
+            .first()
+        )
         if not perm_row:
             continue
         for role_id in pdef.default_roles:
-            existing = db.query(RolePermission).filter(
-                RolePermission.role_id == role_id,
-                RolePermission.permission_id == pdef.permission_id,
-            ).first()
+            existing = (
+                db.query(RolePermission)
+                .filter(
+                    RolePermission.role_id == role_id,
+                    RolePermission.permission_id == pdef.permission_id,
+                )
+                .first()
+            )
             if existing:
                 continue
             rp = RolePermission(

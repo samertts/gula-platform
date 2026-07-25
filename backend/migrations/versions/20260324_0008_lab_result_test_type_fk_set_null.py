@@ -16,17 +16,14 @@ Create Date : 2026-03-24
 from alembic import op
 from sqlalchemy import inspect
 
-revision      = "20260324_0008"
+revision = "20260324_0008"
 down_revision = "20260324_0007"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _fk_exists(table: str, name: str) -> bool:
-    return any(
-        fk["name"] == name
-        for fk in inspect(op.get_bind()).get_foreign_keys(table)
-    )
+    return any(fk["name"] == name for fk in inspect(op.get_bind()).get_foreign_keys(table))
 
 
 def _table_exists(table: str) -> bool:

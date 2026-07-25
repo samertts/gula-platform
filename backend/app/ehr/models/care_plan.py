@@ -1,4 +1,3 @@
-
 from sqlalchemy import JSON, Column, Date, ForeignKey, Index, Integer, String, Text
 from sqlalchemy import Enum as SAEnum
 
@@ -9,10 +8,30 @@ from app.ehr.enums import CarePlanStatus
 class CarePlan(EHRBaseEntity):
     __tablename__ = "ehr_care_plans"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     status = Column(SAEnum(CarePlanStatus), nullable=False, default=CarePlanStatus.DRAFT)
     intent = Column(String(50), nullable=False, default="plan")
@@ -43,7 +62,9 @@ class CarePlan(EHRBaseEntity):
 class CarePlanGoal(EHRBaseEntity):
     __tablename__ = "ehr_care_plan_goals"
 
-    care_plan_id = Column(String(26), ForeignKey("ehr_care_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    care_plan_id = Column(
+        String(26), ForeignKey("ehr_care_plans.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
 
     description = Column(String(500), nullable=False)
     description_ar = Column(String(500), nullable=True)
@@ -69,8 +90,15 @@ class CarePlanGoal(EHRBaseEntity):
 class CarePlanActivity(EHRBaseEntity):
     __tablename__ = "ehr_care_plan_activities"
 
-    care_plan_id = Column(String(26), ForeignKey("ehr_care_plans.id", ondelete="CASCADE"), nullable=False, index=True)
-    goal_id = Column(String(26), ForeignKey("ehr_care_plan_goals.id", ondelete="SET NULL"), nullable=True, index=True)
+    care_plan_id = Column(
+        String(26), ForeignKey("ehr_care_plans.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    goal_id = Column(
+        String(26),
+        ForeignKey("ehr_care_plan_goals.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     activity_code = Column(String(50), nullable=True)
     activity_code_system = Column(String(20), nullable=True)
@@ -84,7 +112,12 @@ class CarePlanActivity(EHRBaseEntity):
     actual_end = Column(Date, nullable=True)
 
     performer = Column(String(200), nullable=True)
-    performer_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    performer_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     location = Column(String(200), nullable=True)
 
     outcome = Column(String(500), nullable=True)

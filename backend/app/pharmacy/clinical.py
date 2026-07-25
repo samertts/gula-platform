@@ -25,7 +25,9 @@ class DrugInteractionEngine:
         self.lab_id = lab_id
 
     def check_interaction(
-        self, drug_a_code: str, drug_b_code: str,
+        self,
+        drug_a_code: str,
+        drug_b_code: str,
     ) -> DrugInteractionRule | None:
         q = self.db.query(DrugInteractionRule).filter(
             or_(
@@ -45,19 +47,23 @@ class DrugInteractionEngine:
             for j in range(i + 1, len(drug_codes)):
                 rule = self.check_interaction(drug_codes[i], drug_codes[j])
                 if rule:
-                    interactions.append({
-                        "drug_a": drug_codes[i],
-                        "drug_b": drug_codes[j],
-                        "severity": rule.severity.value,
-                        "mechanism": rule.mechanism,
-                        "description": rule.description,
-                        "recommendation": rule.recommendation,
-                        "evidence_level": rule.evidence_level,
-                    })
+                    interactions.append(
+                        {
+                            "drug_a": drug_codes[i],
+                            "drug_b": drug_codes[j],
+                            "severity": rule.severity.value,
+                            "mechanism": rule.mechanism,
+                            "description": rule.description,
+                            "recommendation": rule.recommendation,
+                            "evidence_level": rule.evidence_level,
+                        }
+                    )
         return interactions
 
     def check_patient_medications(
-        self, active_drug_codes: list[str], new_drug_code: str,
+        self,
+        active_drug_codes: list[str],
+        new_drug_code: str,
     ) -> list[dict[str, Any]]:
         return self.check_multiple_drugs([*active_drug_codes, new_drug_code])
 
@@ -94,7 +100,9 @@ class DrugInteractionEngine:
                 "color": "blue",
             },
         }
-        return classification.get(severity, {"level": -1, "label": "Unknown", "action": "Unknown", "color": "gray"})
+        return classification.get(
+            severity, {"level": -1, "label": "Unknown", "action": "Unknown", "color": "gray"}
+        )
 
 
 class ContraindicationEngine:
@@ -102,38 +110,48 @@ class ContraindicationEngine:
         self.db = db
         self.lab_id = lab_id
 
-    def check_drug_condition(self, drug_code: str, condition_code: str) -> list[ContraindicationRule]:
+    def check_drug_condition(
+        self, drug_code: str, condition_code: str
+    ) -> list[ContraindicationRule]:
         q = self.db.query(ContraindicationRule).filter(
             ContraindicationRule.drug_code == drug_code,
             ContraindicationRule.condition_code == condition_code,
         )
         return q.all()
 
-    def check_patient_conditions(self, drug_code: str, condition_codes: list[str]) -> list[dict[str, Any]]:
+    def check_patient_conditions(
+        self, drug_code: str, condition_codes: list[str]
+    ) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         for cond_code in condition_codes:
             rules = self.check_drug_condition(drug_code, cond_code)
             for rule in rules:
-                results.append({
-                    "drug_code": rule.drug_code,
-                    "condition_code": rule.condition_code,
-                    "severity": rule.severity.value,
-                    "description": rule.description,
-                    "recommendation": rule.recommendation,
-                })
+                results.append(
+                    {
+                        "drug_code": rule.drug_code,
+                        "condition_code": rule.condition_code,
+                        "severity": rule.severity.value,
+                        "description": rule.description,
+                        "recommendation": rule.recommendation,
+                    }
+                )
         return results
 
-    def check_pregnancy(self, drug_code: str, pregnancy_category: str | None = None) -> list[dict[str, Any]]:
+    def check_pregnancy(
+        self, drug_code: str, pregnancy_category: str | None = None
+    ) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         if pregnancy_category:
             if pregnancy_category.upper() in ("X", "D"):
-                results.append({
-                    "drug_code": drug_code,
-                    "risk": "high",
-                    "category": pregnancy_category,
-                    "description": f"Pregnancy category {pregnancy_category}: contraindicated or high risk",
-                    "recommendation": "Avoid use during pregnancy; consider alternative therapy",
-                })
+                results.append(
+                    {
+                        "drug_code": drug_code,
+                        "risk": "high",
+                        "category": pregnancy_category,
+                        "description": f"Pregnancy category {pregnancy_category}: contraindicated or high risk",
+                        "recommendation": "Avoid use during pregnancy; consider alternative therapy",
+                    }
+                )
         return results
 
     def check_breastfeeding(self, drug_code: str) -> list[ContraindicationRule]:
@@ -152,18 +170,22 @@ class AllergyEngine:
         )
         return q.first()
 
-    def check_patient_allergies(self, drug_code: str, patient_allergens: list[str]) -> list[dict[str, Any]]:
+    def check_patient_allergies(
+        self, drug_code: str, patient_allergens: list[str]
+    ) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         for allergen_code in patient_allergens:
             rule = self.check_drug_allergy(drug_code, allergen_code)
             if rule:
-                results.append({
-                    "allergen_code": rule.allergen_code,
-                    "drug_code": rule.drug_code,
-                    "severity": rule.severity.value,
-                    "reaction": rule.reaction,
-                    "recommendation": rule.recommendation,
-                })
+                results.append(
+                    {
+                        "allergen_code": rule.allergen_code,
+                        "drug_code": rule.drug_code,
+                        "severity": rule.severity.value,
+                        "reaction": rule.reaction,
+                        "recommendation": rule.recommendation,
+                    }
+                )
         return results
 
     def classify_severity(self, severity: InteractionSeverity) -> dict[str, Any]:
@@ -193,7 +215,9 @@ class AllergyEngine:
                 "color": "yellow",
             },
         }
-        return classification.get(severity, {"level": -1, "label": "Unknown", "action": "Unknown", "color": "gray"})
+        return classification.get(
+            severity, {"level": -1, "label": "Unknown", "action": "Unknown", "color": "gray"}
+        )
 
 
 class DoseEngine:
@@ -252,10 +276,12 @@ class DoseEngine:
             results.append(result)
 
         if not results:
-            results.append({
-                "drug_code": drug_code,
-                "note": "Standard dosing not found in guidelines for this combination",
-            })
+            results.append(
+                {
+                    "drug_code": drug_code,
+                    "note": "Standard dosing not found in guidelines for this combination",
+                }
+            )
 
         return results
 
@@ -279,10 +305,14 @@ class DoseEngine:
         egfr: float,
         weight_kg: float | None = None,
     ) -> dict[str, Any]:
-        guideline = self.db.query(DoseGuideline).filter(
-            DoseGuideline.drug_code == drug_code,
-            DoseGuideline.renal_adjustment.isnot(None),
-        ).first()
+        guideline = (
+            self.db.query(DoseGuideline)
+            .filter(
+                DoseGuideline.drug_code == drug_code,
+                DoseGuideline.renal_adjustment.isnot(None),
+            )
+            .first()
+        )
 
         result: dict[str, Any] = {
             "drug_code": drug_code,
@@ -304,7 +334,9 @@ class DoseEngine:
                 if egfr_min <= egfr <= egfr_max:
                     result["requires_adjustment"] = True
                     result["adjusted_dose"] = adj.get("dose", "See recommendation")
-                    result["recommendation"] = adj.get("recommendation", "Adjust dose per renal function")
+                    result["recommendation"] = adj.get(
+                        "recommendation", "Adjust dose per renal function"
+                    )
                     result["adjustment_detail"] = adj
                     break
 
@@ -327,7 +359,9 @@ class ClinicalGuidelineService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[ClinicalGuideline], int]:
-        q = self.db.query(ClinicalGuideline).filter(ClinicalGuideline.is_active, ~ClinicalGuideline.is_deleted)
+        q = self.db.query(ClinicalGuideline).filter(
+            ClinicalGuideline.is_active, ~ClinicalGuideline.is_deleted
+        )
         if drug_code:
             q = q.filter(ClinicalGuideline.drug_codes.contains([drug_code]))
         if condition_code:
@@ -359,7 +393,9 @@ class PolypharmacyChecker:
         interactions = self.interaction_engine.check_multiple_drugs(active_drug_codes)
         result["interactions"] = interactions
 
-        severe_count = sum(1 for i in interactions if i.get("severity") in ("contraindicated", "major"))
+        severe_count = sum(
+            1 for i in interactions if i.get("severity") in ("contraindicated", "major")
+        )
         if severe_count > 0:
             result["recommendations"].append(
                 f"Found {severe_count} severe or contraindicated interaction(s) — urgent clinical review required",

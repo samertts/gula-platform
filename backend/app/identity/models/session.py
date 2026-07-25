@@ -12,7 +12,9 @@ class UserSession(IdentityBaseEntity):
     __tablename__ = "niam_sessions"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    account_id = Column(String(26), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id = Column(
+        String(26), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     token_jti = Column(String(128), unique=True, nullable=False, index=True)
     refresh_token_jti = Column(String(128), unique=True, nullable=True, index=True)
@@ -22,7 +24,9 @@ class UserSession(IdentityBaseEntity):
 
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
-    device_id = Column(String(26), ForeignKey("niam_devices.id", ondelete="SET NULL"), nullable=True)
+    device_id = Column(
+        String(26), ForeignKey("niam_devices.id", ondelete="SET NULL"), nullable=True
+    )
 
     location_city = Column(String(100), nullable=True)
     location_country = Column(String(3), nullable=True)
@@ -30,7 +34,9 @@ class UserSession(IdentityBaseEntity):
     location_lng = Column(String(20), nullable=True)
 
     started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    last_activity_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    last_activity_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     expires_at = Column(DateTime(timezone=True), nullable=False)
 
     terminated_at = Column(DateTime(timezone=True), nullable=True)

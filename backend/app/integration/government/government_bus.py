@@ -51,7 +51,11 @@ class GovernmentBus(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -86,7 +90,11 @@ class GovernmentBus(BaseConnector):
         try:
             resp = await self._client.post(
                 urljoin(self._base_url, "/auth/token"),
-                json={"client_id": self._client_id, "client_secret": self._client_secret, "grant_type": "client_credentials"},
+                json={
+                    "client_id": self._client_id,
+                    "client_secret": self._client_secret,
+                    "grant_type": "client_credentials",
+                },
             )
             if resp.is_success:
                 result = resp.json()
@@ -171,7 +179,11 @@ class GovernmentBus(BaseConnector):
                 headers=self._headers(),
             )
             if resp.is_success:
-                return {"success": True, "request_id": resp.json().get("request_id", ""), "status": resp.json().get("status", "pending")}
+                return {
+                    "success": True,
+                    "request_id": resp.json().get("request_id", ""),
+                    "status": resp.json().get("status", "pending"),
+                }
             if resp.status_code == 401:
                 await self._authenticate()
                 return await self._request_service(data)

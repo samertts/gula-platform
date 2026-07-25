@@ -93,10 +93,18 @@ class RadiologyService:
         return order
 
     def get_order(self, order_id: str) -> RadiologyOrder | None:
-        return self.db.query(RadiologyOrder).filter(RadiologyOrder.id == order_id, ~RadiologyOrder.is_deleted).first()
+        return (
+            self.db.query(RadiologyOrder)
+            .filter(RadiologyOrder.id == order_id, ~RadiologyOrder.is_deleted)
+            .first()
+        )
 
     def get_order_by_number(self, order_number: str) -> RadiologyOrder | None:
-        return self.db.query(RadiologyOrder).filter(RadiologyOrder.order_number == order_number, ~RadiologyOrder.is_deleted).first()
+        return (
+            self.db.query(RadiologyOrder)
+            .filter(RadiologyOrder.order_number == order_number, ~RadiologyOrder.is_deleted)
+            .first()
+        )
 
     def search_orders(
         self,
@@ -175,7 +183,11 @@ class RadiologyService:
         return appointment
 
     def get_appointment(self, appointment_id: str) -> RadiologyAppointment | None:
-        return self.db.query(RadiologyAppointment).filter(RadiologyAppointment.id == appointment_id, ~RadiologyAppointment.is_deleted).first()
+        return (
+            self.db.query(RadiologyAppointment)
+            .filter(RadiologyAppointment.id == appointment_id, ~RadiologyAppointment.is_deleted)
+            .first()
+        )
 
     def list_appointments(
         self,
@@ -262,10 +274,18 @@ class RadiologyService:
         return exam
 
     def get_exam(self, exam_id: str) -> RadiologyExam | None:
-        return self.db.query(RadiologyExam).filter(RadiologyExam.id == exam_id, ~RadiologyExam.is_deleted).first()
+        return (
+            self.db.query(RadiologyExam)
+            .filter(RadiologyExam.id == exam_id, ~RadiologyExam.is_deleted)
+            .first()
+        )
 
     def get_exam_by_accession(self, accession_number: str) -> RadiologyExam | None:
-        return self.db.query(RadiologyExam).filter(RadiologyExam.accession_number == accession_number, ~RadiologyExam.is_deleted).first()
+        return (
+            self.db.query(RadiologyExam)
+            .filter(RadiologyExam.accession_number == accession_number, ~RadiologyExam.is_deleted)
+            .first()
+        )
 
     def list_exams(
         self,
@@ -307,7 +327,9 @@ class RadiologyService:
         self.db.refresh(exam)
         return exam
 
-    def update_exam_images(self, exam_id: str, images_count: int, series_count: int) -> RadiologyExam | None:
+    def update_exam_images(
+        self, exam_id: str, images_count: int, series_count: int
+    ) -> RadiologyExam | None:
         exam = self.get_exam(exam_id)
         if not exam:
             return None
@@ -435,10 +457,18 @@ class RadiologyService:
         return image
 
     def get_series_for_exam(self, exam_id: str) -> list[RadiologySeries]:
-        return self.db.query(RadiologySeries).filter(RadiologySeries.exam_id == exam_id, ~RadiologySeries.is_deleted).all()
+        return (
+            self.db.query(RadiologySeries)
+            .filter(RadiologySeries.exam_id == exam_id, ~RadiologySeries.is_deleted)
+            .all()
+        )
 
     def get_images_for_series(self, series_id: str) -> list[RadiologyImage]:
-        return self.db.query(RadiologyImage).filter(RadiologyImage.series_id == series_id, ~RadiologyImage.is_deleted).all()
+        return (
+            self.db.query(RadiologyImage)
+            .filter(RadiologyImage.series_id == series_id, ~RadiologyImage.is_deleted)
+            .all()
+        )
 
     # ── Reporting ─────────────────────────────────────────────────────────────
 
@@ -486,10 +516,19 @@ class RadiologyService:
         return report
 
     def get_report(self, report_id: str) -> RadiologyReport | None:
-        return self.db.query(RadiologyReport).filter(RadiologyReport.id == report_id, ~RadiologyReport.is_deleted).first()
+        return (
+            self.db.query(RadiologyReport)
+            .filter(RadiologyReport.id == report_id, ~RadiologyReport.is_deleted)
+            .first()
+        )
 
     def get_report_by_exam(self, exam_id: str) -> RadiologyReport | None:
-        return self.db.query(RadiologyReport).filter(RadiologyReport.exam_id == exam_id, ~RadiologyReport.is_deleted).order_by(RadiologyReport.version.desc()).first()
+        return (
+            self.db.query(RadiologyReport)
+            .filter(RadiologyReport.exam_id == exam_id, ~RadiologyReport.is_deleted)
+            .order_by(RadiologyReport.version.desc())
+            .first()
+        )
 
     def search_reports(
         self,
@@ -518,7 +557,15 @@ class RadiologyService:
         q = q.order_by(RadiologyReport.created_at.desc())
         return q.offset(skip).limit(limit).all()
 
-    def save_report_draft(self, report_id: str, findings: str | None = None, impression: str | None = None, conclusion: str | None = None, recommendation: str | None = None, body_text: str | None = None) -> RadiologyReport | None:
+    def save_report_draft(
+        self,
+        report_id: str,
+        findings: str | None = None,
+        impression: str | None = None,
+        conclusion: str | None = None,
+        recommendation: str | None = None,
+        body_text: str | None = None,
+    ) -> RadiologyReport | None:
         report = self.get_report(report_id)
         if not report:
             return None
@@ -537,7 +584,9 @@ class RadiologyService:
         self.db.refresh(report)
         return report
 
-    def finalize_report(self, report_id: str, radiologist_id: str | None = None) -> RadiologyReport | None:
+    def finalize_report(
+        self, report_id: str, radiologist_id: str | None = None
+    ) -> RadiologyReport | None:
         report = self.get_report(report_id)
         if not report:
             return None
@@ -560,7 +609,15 @@ class RadiologyService:
         self.db.refresh(report)
         return report
 
-    def amend_report(self, report_id: str, findings: str, impression: str, conclusion: str | None = None, recommendation: str | None = None, amended_by: str | None = None) -> RadiologyReport | None:
+    def amend_report(
+        self,
+        report_id: str,
+        findings: str,
+        impression: str,
+        conclusion: str | None = None,
+        recommendation: str | None = None,
+        amended_by: str | None = None,
+    ) -> RadiologyReport | None:
         report = self.get_report(report_id)
         if not report:
             return None
@@ -579,7 +636,9 @@ class RadiologyService:
         logger.info("Radiology report amended (v%s): %s", report.version, report.id)
         return report
 
-    def verify_report(self, report_id: str, verified_by: str | None = None) -> RadiologyReport | None:
+    def verify_report(
+        self, report_id: str, verified_by: str | None = None
+    ) -> RadiologyReport | None:
         report = self.get_report(report_id)
         if not report:
             return None
@@ -616,8 +675,12 @@ class RadiologyService:
         self.db.refresh(template)
         return template
 
-    def list_report_templates(self, modality: str | None = None, body_part: str | None = None) -> list[ReportTemplate]:
-        q = self.db.query(ReportTemplate).filter(ReportTemplate.is_active, ~ReportTemplate.is_deleted)
+    def list_report_templates(
+        self, modality: str | None = None, body_part: str | None = None
+    ) -> list[ReportTemplate]:
+        q = self.db.query(ReportTemplate).filter(
+            ReportTemplate.is_active, ~ReportTemplate.is_deleted
+        )
         if modality:
             q = q.filter(ReportTemplate.modality == modality.upper())
         if body_part:
@@ -655,7 +718,11 @@ class RadiologyService:
         return finding
 
     def get_critical_finding(self, finding_id: str) -> CriticalFinding | None:
-        return self.db.query(CriticalFinding).filter(CriticalFinding.id == finding_id, ~CriticalFinding.is_deleted).first()
+        return (
+            self.db.query(CriticalFinding)
+            .filter(CriticalFinding.id == finding_id, ~CriticalFinding.is_deleted)
+            .first()
+        )
 
     def list_critical_findings(
         self,
@@ -681,7 +748,9 @@ class RadiologyService:
         q = q.order_by(CriticalFinding.created_at.desc())
         return q.offset(skip).limit(limit).all()
 
-    def acknowledge_critical_finding(self, finding_id: str, acknowledged_by: str, notes: str | None = None) -> CriticalFinding | None:
+    def acknowledge_critical_finding(
+        self, finding_id: str, acknowledged_by: str, notes: str | None = None
+    ) -> CriticalFinding | None:
         finding = self.get_critical_finding(finding_id)
         if not finding:
             return None
@@ -694,7 +763,9 @@ class RadiologyService:
         self.db.refresh(finding)
         return finding
 
-    def notify_critical_finding(self, finding_id: str, notified_by: str, notified_to: str) -> CriticalFinding | None:
+    def notify_critical_finding(
+        self, finding_id: str, notified_by: str, notified_to: str
+    ) -> CriticalFinding | None:
         finding = self.get_critical_finding(finding_id)
         if not finding:
             return None
@@ -708,17 +779,28 @@ class RadiologyService:
 
     # ── Worklist Management ───────────────────────────────────────────────────
 
-    def get_technologist_worklist(self, modality: str | None = None, date: datetime | None = None) -> list[RadiologyExam]:
+    def get_technologist_worklist(
+        self, modality: str | None = None, date: datetime | None = None
+    ) -> list[RadiologyExam]:
         q = self.db.query(RadiologyExam).filter(~~RadiologyExam.is_deleted)
         if modality:
             q = q.filter(RadiologyExam.modality == modality.upper())
         if date:
-            q = q.filter(RadiologyExam.created_at >= date, RadiologyExam.created_at < date + timedelta(days=1))
-        q = q.filter(RadiologyExam.status.in_([ExamStatus.SCHEDULED, ExamStatus.CHECKED_IN, ExamStatus.IN_PROGRESS]))
+            q = q.filter(
+                RadiologyExam.created_at >= date,
+                RadiologyExam.created_at < date + timedelta(days=1),
+            )
+        q = q.filter(
+            RadiologyExam.status.in_(
+                [ExamStatus.SCHEDULED, ExamStatus.CHECKED_IN, ExamStatus.IN_PROGRESS]
+            )
+        )
         q = q.order_by(RadiologyExam.created_at.asc())
         return q.all()
 
-    def get_radiologist_worklist(self, status: str | None = None, priority: str | None = None) -> list[RadiologyExam]:
+    def get_radiologist_worklist(
+        self, status: str | None = None, priority: str | None = None
+    ) -> list[RadiologyExam]:
         q = self.db.query(RadiologyExam).filter(~~RadiologyExam.is_deleted)
         status_filter = [ExamStatus.COMPLETED, ExamStatus.VERIFIED]
         if status:
@@ -775,9 +857,13 @@ class RadiologyService:
         return protocol
 
     def get_protocol(self, protocol_id: str) -> Protocol | None:
-        return self.db.query(Protocol).filter(Protocol.id == protocol_id, ~Protocol.is_deleted).first()
+        return (
+            self.db.query(Protocol).filter(Protocol.id == protocol_id, ~Protocol.is_deleted).first()
+        )
 
-    def list_protocols(self, modality: str | None = None, body_part: str | None = None) -> list[Protocol]:
+    def list_protocols(
+        self, modality: str | None = None, body_part: str | None = None
+    ) -> list[Protocol]:
         q = self.db.query(Protocol).filter(Protocol.is_active, ~Protocol.is_deleted)
         if modality:
             q = q.filter(Protocol.modality == modality.upper())
@@ -788,24 +874,37 @@ class RadiologyService:
     # ── Dashboard / Analytics ─────────────────────────────────────────────────
 
     def get_exam_volume(self, date_from: datetime, date_to: datetime) -> dict[str, Any]:
-        total = self.db.query(RadiologyExam).filter(
-            ~~RadiologyExam.is_deleted,
-            RadiologyExam.created_at >= date_from,
-            RadiologyExam.created_at <= date_to,
-        ).count()
-        by_modality = {}
-        for modality in self.db.query(RadiologyExam.modality).filter(
-            ~~RadiologyExam.is_deleted,
-            RadiologyExam.created_at >= date_from,
-            RadiologyExam.created_at <= date_to,
-        ).distinct().all():
-            mod = modality[0]
-            cnt = self.db.query(RadiologyExam).filter(
-                RadiologyExam.modality == mod,
-                ~RadiologyExam.is_deleted,
+        total = (
+            self.db.query(RadiologyExam)
+            .filter(
+                ~~RadiologyExam.is_deleted,
                 RadiologyExam.created_at >= date_from,
                 RadiologyExam.created_at <= date_to,
-            ).count()
+            )
+            .count()
+        )
+        by_modality = {}
+        for modality in (
+            self.db.query(RadiologyExam.modality)
+            .filter(
+                ~~RadiologyExam.is_deleted,
+                RadiologyExam.created_at >= date_from,
+                RadiologyExam.created_at <= date_to,
+            )
+            .distinct()
+            .all()
+        ):
+            mod = modality[0]
+            cnt = (
+                self.db.query(RadiologyExam)
+                .filter(
+                    RadiologyExam.modality == mod,
+                    ~RadiologyExam.is_deleted,
+                    RadiologyExam.created_at >= date_from,
+                    RadiologyExam.created_at <= date_to,
+                )
+                .count()
+            )
             by_modality[mod.value if hasattr(mod, "value") else str(mod)] = cnt
         return {
             "total": total,
@@ -815,12 +914,16 @@ class RadiologyService:
         }
 
     def get_report_tat(self, date_from: datetime, date_to: datetime) -> dict[str, Any]:
-        reports = self.db.query(RadiologyReport).filter(
-            ~~RadiologyReport.is_deleted,
-            RadiologyReport.status.in_([ReportStatus.FINAL, ReportStatus.AMENDED]),
-            RadiologyReport.completed_at >= date_from,
-            RadiologyReport.completed_at <= date_to,
-        ).all()
+        reports = (
+            self.db.query(RadiologyReport)
+            .filter(
+                ~~RadiologyReport.is_deleted,
+                RadiologyReport.status.in_([ReportStatus.FINAL, ReportStatus.AMENDED]),
+                RadiologyReport.completed_at >= date_from,
+                RadiologyReport.completed_at <= date_to,
+            )
+            .all()
+        )
         tat_minutes = []
         for r in reports:
             if r.draft_at and r.completed_at:
@@ -834,68 +937,107 @@ class RadiologyService:
             "date_to": date_to.isoformat(),
         }
 
-    def get_modality_utilization(self, date_from: datetime, date_to: datetime) -> list[dict[str, Any]]:
+    def get_modality_utilization(
+        self, date_from: datetime, date_to: datetime
+    ) -> list[dict[str, Any]]:
         results = []
-        for mod_enum in self.db.query(RadiologyExam.modality).filter(
-            ~~RadiologyExam.is_deleted,
-            RadiologyExam.created_at >= date_from,
-            RadiologyExam.created_at <= date_to,
-        ).distinct().all():
+        for mod_enum in (
+            self.db.query(RadiologyExam.modality)
+            .filter(
+                ~~RadiologyExam.is_deleted,
+                RadiologyExam.created_at >= date_from,
+                RadiologyExam.created_at <= date_to,
+            )
+            .distinct()
+            .all()
+        ):
             mod = mod_enum[0]
-            total = self.db.query(RadiologyExam).filter(
-                RadiologyExam.modality == mod,
-                ~RadiologyExam.is_deleted,
-                RadiologyExam.created_at >= date_from,
-                RadiologyExam.created_at <= date_to,
-            ).count()
-            completed = self.db.query(RadiologyExam).filter(
-                RadiologyExam.modality == mod,
-                RadiologyExam.status == ExamStatus.COMPLETED,
-                ~RadiologyExam.is_deleted,
-                RadiologyExam.created_at >= date_from,
-                RadiologyExam.created_at <= date_to,
-            ).count()
-            results.append({
-                "modality": mod.value if hasattr(mod, "value") else str(mod),
-                "total": total,
-                "completed": completed,
-                "utilization_pct": round((completed / total * 100) if total else 0, 2),
-            })
+            total = (
+                self.db.query(RadiologyExam)
+                .filter(
+                    RadiologyExam.modality == mod,
+                    ~RadiologyExam.is_deleted,
+                    RadiologyExam.created_at >= date_from,
+                    RadiologyExam.created_at <= date_to,
+                )
+                .count()
+            )
+            completed = (
+                self.db.query(RadiologyExam)
+                .filter(
+                    RadiologyExam.modality == mod,
+                    RadiologyExam.status == ExamStatus.COMPLETED,
+                    ~RadiologyExam.is_deleted,
+                    RadiologyExam.created_at >= date_from,
+                    RadiologyExam.created_at <= date_to,
+                )
+                .count()
+            )
+            results.append(
+                {
+                    "modality": mod.value if hasattr(mod, "value") else str(mod),
+                    "total": total,
+                    "completed": completed,
+                    "utilization_pct": round((completed / total * 100) if total else 0, 2),
+                }
+            )
         return results
 
-    def get_workload_by_radiologist(self, date_from: datetime, date_to: datetime) -> list[dict[str, Any]]:
+    def get_workload_by_radiologist(
+        self, date_from: datetime, date_to: datetime
+    ) -> list[dict[str, Any]]:
         results = []
-        radiologists = self.db.query(RadiologyReport.radiologist_id).filter(
-            ~~RadiologyReport.is_deleted,
-            RadiologyReport.completed_at >= date_from,
-            RadiologyReport.completed_at <= date_to,
-            RadiologyReport.radiologist_id.isnot(None),
-        ).distinct().all()
-        for (rid,) in radiologists:
-            count = self.db.query(RadiologyReport).filter(
-                RadiologyReport.radiologist_id == rid,
-                ~RadiologyReport.is_deleted,
+        radiologists = (
+            self.db.query(RadiologyReport.radiologist_id)
+            .filter(
+                ~~RadiologyReport.is_deleted,
                 RadiologyReport.completed_at >= date_from,
                 RadiologyReport.completed_at <= date_to,
-            ).count()
+                RadiologyReport.radiologist_id.isnot(None),
+            )
+            .distinct()
+            .all()
+        )
+        for (rid,) in radiologists:
+            count = (
+                self.db.query(RadiologyReport)
+                .filter(
+                    RadiologyReport.radiologist_id == rid,
+                    ~RadiologyReport.is_deleted,
+                    RadiologyReport.completed_at >= date_from,
+                    RadiologyReport.completed_at <= date_to,
+                )
+                .count()
+            )
             results.append({"radiologist_id": rid, "report_count": count})
         return results
 
-    def get_workload_by_technologist(self, date_from: datetime, date_to: datetime) -> list[dict[str, Any]]:
+    def get_workload_by_technologist(
+        self, date_from: datetime, date_to: datetime
+    ) -> list[dict[str, Any]]:
         results = []
-        techs = self.db.query(RadiologyExam.technologist_id).filter(
-            ~~RadiologyExam.is_deleted,
-            RadiologyExam.completed_at >= date_from,
-            RadiologyExam.completed_at <= date_to,
-            RadiologyExam.technologist_id.isnot(None),
-        ).distinct().all()
-        for (tid,) in techs:
-            count = self.db.query(RadiologyExam).filter(
-                RadiologyExam.technologist_id == tid,
-                ~RadiologyExam.is_deleted,
+        techs = (
+            self.db.query(RadiologyExam.technologist_id)
+            .filter(
+                ~~RadiologyExam.is_deleted,
                 RadiologyExam.completed_at >= date_from,
                 RadiologyExam.completed_at <= date_to,
-            ).count()
+                RadiologyExam.technologist_id.isnot(None),
+            )
+            .distinct()
+            .all()
+        )
+        for (tid,) in techs:
+            count = (
+                self.db.query(RadiologyExam)
+                .filter(
+                    RadiologyExam.technologist_id == tid,
+                    ~RadiologyExam.is_deleted,
+                    RadiologyExam.completed_at >= date_from,
+                    RadiologyExam.completed_at <= date_to,
+                )
+                .count()
+            )
             results.append({"technologist_id": tid, "exam_count": count})
         return results
 

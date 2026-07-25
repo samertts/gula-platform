@@ -169,7 +169,10 @@ class DigitalTwinEngine:
         self.db = db
 
     async def get_or_create_twin(
-        self, twin_type: TwinType, entity_id: int, entity_type: str,
+        self,
+        twin_type: TwinType,
+        entity_id: int,
+        entity_type: str,
     ) -> DigitalTwin:
         twin = (
             self.db.query(DigitalTwin)
@@ -302,9 +305,7 @@ class DigitalTwinEngine:
         data_freshness = "current" if staleness_hours < 24 else "stale"
 
         simulation_count = (
-            self.db.query(func.count(Simulation.id))
-            .filter(Simulation.twin_id == twin_id)
-            .scalar()
+            self.db.query(func.count(Simulation.id)).filter(Simulation.twin_id == twin_id).scalar()
             or 0
         )
         failed_simulations = (
@@ -318,9 +319,7 @@ class DigitalTwinEngine:
         )
 
         prediction_count = (
-            self.db.query(func.count(Prediction.id))
-            .filter(Prediction.twin_id == twin_id)
-            .scalar()
+            self.db.query(func.count(Prediction.id)).filter(Prediction.twin_id == twin_id).scalar()
             or 0
         )
 
@@ -377,7 +376,10 @@ class DigitalTwinEngine:
     # ── Private helpers ────────────────────────────────────────────────────────
 
     def _resolve_entity_name(
-        self, twin_type: TwinType, entity_id: int, entity_type: str,
+        self,
+        twin_type: TwinType,
+        entity_id: int,
+        entity_type: str,
     ) -> str:
         if entity_type == "lab":
             lab = self.db.query(Lab).filter(Lab.id == entity_id).first()
@@ -389,15 +391,11 @@ class DigitalTwinEngine:
         now = datetime.now(UTC)
         if twin_type == TwinType.LABORATORY and entity_type == "lab":
             total_orders = (
-                self.db.query(func.count(LabOrder.id))
-                .filter(LabOrder.lab_id == entity_id)
-                .scalar()
+                self.db.query(func.count(LabOrder.id)).filter(LabOrder.lab_id == entity_id).scalar()
                 or 0
             )
             total_patients = (
-                self.db.query(func.count(Patient.id))
-                .filter(Patient.lab_id == entity_id)
-                .scalar()
+                self.db.query(func.count(Patient.id)).filter(Patient.lab_id == entity_id).scalar()
                 or 0
             )
             return {
@@ -438,7 +436,10 @@ class DigitalTwinEngine:
         return cls(twin, self.db)
 
     def _forecast(
-        self, twin: DigitalTwin, metric: str, horizon_days: int,
+        self,
+        twin: DigitalTwin,
+        metric: str,
+        horizon_days: int,
     ) -> tuple[dict, float, dict]:
         features = {"metric": metric, "horizon_days": horizon_days, "method": "linear_trend"}
 
@@ -451,34 +452,44 @@ class DigitalTwinEngine:
             projected = _project(numeric, horizon_days)
             _ema(numeric[-30:]) if len(numeric) >= 30 else numeric
             volatility = (
-                stdev(numeric[-14:]) / max(mean(numeric[-14:]), 1)
-                if len(numeric) >= 14
-                else 0.3
+                stdev(numeric[-14:]) / max(mean(numeric[-14:]), 1) if len(numeric) >= 14 else 0.3
             )
             confidence = max(0.1, 1.0 - volatility)
             features["volatility"] = round(volatility, 4)
             features["data_points"] = len(numeric)
 
-            return {
-                "metric": metric,
-                "current_value": numeric[-1] if numeric else 0.0,
-                "projected_values": [round(v, 2) for v in projected],
-                "trend_direction": "up" if projected[-1] > numeric[-1] else "down",
-                "peak_demand": round(max(projected), 2),
-                "peak_day": projected.index(max(projected)) + 1,
-            }, round(confidence, 4), features
+            return (
+                {
+                    "metric": metric,
+                    "current_value": numeric[-1] if numeric else 0.0,
+                    "projected_values": [round(v, 2) for v in projected],
+                    "trend_direction": "up" if projected[-1] > numeric[-1] else "down",
+                    "peak_demand": round(max(projected), 2),
+                    "peak_day": projected.index(max(projected)) + 1,
+                },
+                round(confidence, 4),
+                features,
+            )
 
-        return {
-            "metric": metric,
-            "current_value": 0.0,
-            "projected_values": [0.0] * horizon_days,
-            "trend_direction": "stable",
-            "peak_demand": 0.0,
-            "peak_day": 0,
-        }, 0.1, features
+        return (
+            {
+                "metric": metric,
+                "current_value": 0.0,
+                "projected_values": [0.0] * horizon_days,
+                "trend_direction": "stable",
+                "peak_demand": 0.0,
+                "peak_day": 0,
+            },
+            0.1,
+            features,
+        )
 
     def _create_capacity_plan(
-        self, twin: DigitalTwin, metric: str, predicted_value: dict, horizon_days: int,
+        self,
+        twin: DigitalTwin,
+        metric: str,
+        predicted_value: dict,
+        horizon_days: int,
     ) -> None:
         current = predicted_value.get("current_value", 0)
         peak = predicted_value.get("peak_demand", 0)
@@ -631,16 +642,23 @@ class HospitalTwin:
 
         results = []
         for i, pv in enumerate(smoothed):
-            occupancy_pct = min(100, max(10, (pv / max(volumes[-1] if volumes else 5, 1)) * 50 + 20 + random.gauss(0, 5)))
+            occupancy_pct = min(
+                100,
+                max(
+                    10, (pv / max(volumes[-1] if volumes else 5, 1)) * 50 + 20 + random.gauss(0, 5)
+                ),
+            )
             occupied_beds = round(total_beds * occupancy_pct / 100)
-            results.append({
-                "day": i + 1,
-                "date": (datetime.now(UTC) + timedelta(days=i)).date().isoformat(),
-                "predicted_occupancy_pct": round(occupancy_pct, 1),
-                "occupied_beds": occupied_beds,
-                "total_beds": total_beds,
-                "available_beds": total_beds - occupied_beds,
-            })
+            results.append(
+                {
+                    "day": i + 1,
+                    "date": (datetime.now(UTC) + timedelta(days=i)).date().isoformat(),
+                    "predicted_occupancy_pct": round(occupancy_pct, 1),
+                    "occupied_beds": occupied_beds,
+                    "total_beds": total_beds,
+                    "available_beds": total_beds - occupied_beds,
+                }
+            )
 
         occupancy_values = [r["predicted_occupancy_pct"] for r in results]
         self.twin.metrics = self.twin.metrics or {}
@@ -694,17 +712,21 @@ class HospitalTwin:
 
         seasonal = _seasonal_factor()
         bed_utilization = min(100, (orders_week / 50) * 100 * seasonal * random.uniform(0.9, 1.1))
-        staff_utilization = min(100, (unique_patients / 30) * 100 * seasonal * random.uniform(0.85, 1.05))
+        staff_utilization = min(
+            100, (unique_patients / 30) * 100 * seasonal * random.uniform(0.85, 1.05)
+        )
 
         self.twin.metrics = self.twin.metrics or {}
-        self.twin.metrics.update({
-            "bed_utilization_pct": round(bed_utilization, 1),
-            "staff_utilization_pct": round(staff_utilization, 1),
-            "orders_per_week": orders_week,
-            "orders_per_month": orders_month,
-            "unique_patients_month": unique_patients,
-            "last_calculated": today.isoformat(),
-        })
+        self.twin.metrics.update(
+            {
+                "bed_utilization_pct": round(bed_utilization, 1),
+                "staff_utilization_pct": round(staff_utilization, 1),
+                "orders_per_week": orders_week,
+                "orders_per_month": orders_month,
+                "unique_patients_month": unique_patients,
+                "last_calculated": today.isoformat(),
+            }
+        )
         self.twin.updated_at = datetime.now(UTC)
         self.db.commit()
 
@@ -717,7 +739,9 @@ class HospitalTwin:
             "orders_per_month": orders_month,
             "unique_patients_month": unique_patients,
             "seasonal_factor": round(seasonal, 3),
-            "status": "operational" if bed_utilization < 90 and staff_utilization < 90 else "stressed",
+            "status": "operational"
+            if bed_utilization < 90 and staff_utilization < 90
+            else "stressed",
         }
 
 
@@ -786,12 +810,14 @@ class LaboratoryTwin:
         metrics_list["daily_test_volume"] = daily_key
         self.twin.metrics = metrics_list
         self.twin.state = self.twin.state or {}
-        self.twin.state.update({
-            "avg_daily_volume": round(current_avg, 1),
-            "projected_avg_daily_volume": round(future_avg, 1),
-            "status": "simulated",
-            "last_simulation": datetime.now(UTC).isoformat(),
-        })
+        self.twin.state.update(
+            {
+                "avg_daily_volume": round(current_avg, 1),
+                "projected_avg_daily_volume": round(future_avg, 1),
+                "status": "simulated",
+                "last_simulation": datetime.now(UTC).isoformat(),
+            }
+        )
         self.twin.updated_at = datetime.now(UTC)
         self.db.commit()
 
@@ -844,19 +870,26 @@ class LaboratoryTwin:
         projected_tats = []
         for i in range(days):
             factor = 1.0 + 0.1 * math.sin(2 * math.pi * i / 7)
-            tat = base_tat * factor * seasonal * random.uniform(1 - tat_volatility, 1 + tat_volatility)
+            tat = (
+                base_tat
+                * factor
+                * seasonal
+                * random.uniform(1 - tat_volatility, 1 + tat_volatility)
+            )
             projected_tats.append(max(0.5, round(tat, 2)))
 
         results_list = []
         for i, tat in enumerate(projected_tats):
             date = (datetime.now(UTC) + timedelta(days=i)).date().isoformat()
             status = "normal" if tat <= 6 else "warning" if tat <= 12 else "critical"
-            results_list.append({
-                "day": i + 1,
-                "date": date,
-                "predicted_tat_hours": tat,
-                "status": status,
-            })
+            results_list.append(
+                {
+                    "day": i + 1,
+                    "date": date,
+                    "predicted_tat_hours": tat,
+                    "status": status,
+                }
+            )
 
         self.twin.metrics = self.twin.metrics or {}
         self.twin.metrics["daily_tat_hours"] = projected_tats
@@ -918,15 +951,17 @@ class LaboratoryTwin:
         error_rate = random.uniform(0.001, 0.03)
 
         self.twin.metrics = self.twin.metrics or {}
-        self.twin.metrics.update({
-            "equipment_uptime": round(equipment_uptime, 4),
-            "error_rate": round(error_rate, 4),
-            "throughput_per_hour": round(results_week / (7 * 8), 1),
-            "results_per_week": results_week,
-            "results_per_month": results_month,
-            "total_tests": total_tests_all,
-            "last_calculated": today.isoformat(),
-        })
+        self.twin.metrics.update(
+            {
+                "equipment_uptime": round(equipment_uptime, 4),
+                "error_rate": round(error_rate, 4),
+                "throughput_per_hour": round(results_week / (7 * 8), 1),
+                "results_per_week": results_week,
+                "results_per_month": results_month,
+                "total_tests": total_tests_all,
+                "last_calculated": today.isoformat(),
+            }
+        )
         self.twin.updated_at = datetime.now(UTC)
         self.db.commit()
 
@@ -991,7 +1026,11 @@ class DirectorateTwin:
         herd_immunity = _herd_immunity_threshold(r0)
 
         disease_profiles = {
-            "influenza": {"name": "Influenza", "r0_range": (1.2, 2.0), "hospitalization_rate": 0.02},
+            "influenza": {
+                "name": "Influenza",
+                "r0_range": (1.2, 2.0),
+                "hospitalization_rate": 0.02,
+            },
             "covid19": {"name": "COVID-19", "r0_range": (2.0, 3.5), "hospitalization_rate": 0.05},
             "measles": {"name": "Measles", "r0_range": (12.0, 18.0), "hospitalization_rate": 0.1},
             "cholera": {"name": "Cholera", "r0_range": (1.5, 4.0), "hospitalization_rate": 0.15},
@@ -1029,13 +1068,15 @@ class DirectorateTwin:
                 }
 
         self.twin.state = self.twin.state or {}
-        self.twin.state.update({
-            "last_disease_scenario": disease,
-            "last_r0": r0,
-            "attack_rate": sir["attack_rate"],
-            "herd_immunity_threshold": round(herd_immunity, 4),
-            "last_simulation": datetime.now(UTC).isoformat(),
-        })
+        self.twin.state.update(
+            {
+                "last_disease_scenario": disease,
+                "last_r0": r0,
+                "attack_rate": sir["attack_rate"],
+                "herd_immunity_threshold": round(herd_immunity, 4),
+                "last_simulation": datetime.now(UTC).isoformat(),
+            }
+        )
         self.twin.updated_at = datetime.now(UTC)
         self.db.commit()
 
@@ -1091,10 +1132,12 @@ class DirectorateTwin:
         vaccine_series = _random_walk(base_vaccine_need * scale, 0.15, days)
 
         self.twin.state = self.twin.state or {}
-        self.twin.state.update({
-            "resource_demand_calculated": datetime.now(UTC).isoformat(),
-            "population": population,
-        })
+        self.twin.state.update(
+            {
+                "resource_demand_calculated": datetime.now(UTC).isoformat(),
+                "population": population,
+            }
+        )
         self.twin.updated_at = datetime.now(UTC)
         self.db.commit()
 
@@ -1146,7 +1189,9 @@ class NationalHealthTwin:
         return await simulator(parameters.get("metrics", []))
 
     async def simulate_outbreak_scenario(
-        self, pathogen: str, parameters: dict | None = None,
+        self,
+        pathogen: str,
+        parameters: dict | None = None,
     ) -> dict:
         params = parameters or {}
         population = params.get("population", 40000000)  # Iraq ~40M
@@ -1195,13 +1240,15 @@ class NationalHealthTwin:
         profile = pathogen_profiles.get(pathogen, {"name": pathogen, "typical_r0": r0})
 
         self.twin.state = self.twin.state or {}
-        self.twin.state.update({
-            "last_outbreak_scenario": pathogen,
-            "last_r0": r0,
-            "estimated_fatalities": estimated_fatalities,
-            "attack_rate": sir["attack_rate"],
-            "last_simulation": datetime.now(UTC).isoformat(),
-        })
+        self.twin.state.update(
+            {
+                "last_outbreak_scenario": pathogen,
+                "last_r0": r0,
+                "estimated_fatalities": estimated_fatalities,
+                "attack_rate": sir["attack_rate"],
+                "last_simulation": datetime.now(UTC).isoformat(),
+            }
+        )
         self.twin.updated_at = datetime.now(UTC)
         self.db.commit()
 
@@ -1225,7 +1272,9 @@ class NationalHealthTwin:
                 "intervention_effectiveness": intervention_effectiveness,
                 "effective_r0": round(r0 * (1 - intervention_effectiveness), 2),
                 "peak_infected": delayed_sir.get("peak_infected", sir["peak_infected"]),
-                "peak_day": delayed_sir.get("peak_day", sir["peak_day"]) + intervention_day if delayed_sir.get("peak_day") else sir["peak_day"],
+                "peak_day": delayed_sir.get("peak_day", sir["peak_day"]) + intervention_day
+                if delayed_sir.get("peak_day")
+                else sir["peak_day"],
                 "total_infected": delayed_sir.get("total_infected", sir["total_infected"]),
                 "estimated_fatalities": delayed_fatalities,
                 "fatalities_averted": fatalities_averted,
@@ -1239,7 +1288,9 @@ class NationalHealthTwin:
         }
 
     async def _run_population_health(self, metrics: list[str]) -> dict:
-        return await self.predict_population_health(metrics or ["life_expectancy", "infant_mortality", "chronic_disease_prevalence"])
+        return await self.predict_population_health(
+            metrics or ["life_expectancy", "infant_mortality", "chronic_disease_prevalence"]
+        )
 
     async def predict_population_health(self, metrics: list[str]) -> dict:
         results = {}
@@ -1328,10 +1379,7 @@ class NationalHealthTwin:
                     if isinstance(v, dict) and v.get("unit") in ("pct",)
                 )
                 * 100
-                if any(
-                    isinstance(v, dict) and v.get("unit") in ("pct",)
-                    for v in results.values()
-                )
+                if any(isinstance(v, dict) and v.get("unit") in ("pct",) for v in results.values())
                 else 0,
                 1,
             ),

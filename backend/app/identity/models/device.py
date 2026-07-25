@@ -12,8 +12,12 @@ class Device(IdentityBaseEntity):
     __tablename__ = "niam_devices"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
-    account_id = Column(String(26), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=True, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    account_id = Column(
+        String(26), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=True, index=True
+    )
 
     device_name = Column(String(200), nullable=True)
     device_type = Column(String(50), nullable=True)
@@ -32,8 +36,12 @@ class Device(IdentityBaseEntity):
     trusted_at = Column(DateTime(timezone=True), nullable=True)
 
     last_ip = Column(String(45), nullable=True)
-    first_seen_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    last_seen_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    first_seen_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    last_seen_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
 
     is_active = Column(Boolean, default=True, nullable=False)
     is_locked = Column(Boolean, default=False, nullable=False)

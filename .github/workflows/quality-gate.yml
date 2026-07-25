@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: "3.12"
       - name: Install tools
@@ -68,7 +68,7 @@ jobs:
                 echo "WARNING: $file uses untagged image '$img'"
                 ;;
             esac
-          done < <(grep -r "^FROM " --include="Dockerfile" . 2>/dev/null || true)
+          done < <(grep -r "^[[:space:]]*FROM " --include="Dockerfile" --include="Dockerfile.*" --include="*.dockerfile" . 2>/dev/null || true)
           if [ "$errors" -gt 0 ]; then
             echo "❌ $errors Dockerfiles use unpinned base images"
             exit 1

@@ -7,8 +7,12 @@ from app.kernel.plugin.marketplace import MarketplacePlugin, PluginMarketplaceIn
 class TestPluginMarketplace:
     def test_register_and_search(self):
         mp = PluginMarketplaceInterface()
-        p1 = MarketplacePlugin(id="p1", name="Plugin One", version="1.0", description="First plugin", author="dev")
-        p2 = MarketplacePlugin(id="p2", name="Plugin Two", version="2.0", description="Second plugin", author="dev")
+        p1 = MarketplacePlugin(
+            id="p1", name="Plugin One", version="1.0", description="First plugin", author="dev"
+        )
+        p2 = MarketplacePlugin(
+            id="p2", name="Plugin Two", version="2.0", description="Second plugin", author="dev"
+        )
         mp.register_available(p1)
         mp.register_available(p2)
         assert len(mp.list_available()) == 2

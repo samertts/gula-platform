@@ -6,6 +6,7 @@ TEST 11 — Flapping Killer:     slow → fast × 10 must not oscillate
 TEST 12 — Recovery correctness: L2 stays L2 until explicit recovery
 TEST 13 — Cascading failure:   Redis + DB fail in sequence → L1 → L2 → L3
 """
+
 import asyncio
 import os
 import time
@@ -31,6 +32,7 @@ def _run_async(coro):
 
 def _fresh_health():
     from app.core.self_healing import SystemHealth
+
     h = object.__new__(SystemHealth)
     h._init()
     return h
@@ -40,11 +42,12 @@ def _fresh_health():
 # Critical Assertion 1 — Hysteresis (no flapping)
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestHysteresis:
 
+class TestHysteresis:
     def test_enter_and_exit_thresholds_differ(self):
         """Enter L1 at WARN, exit at 0.7×WARN — the gap prevents flapping."""
         from app.core.auto_repair import _DB_LATENCY_WARN
+
         enter = _DB_LATENCY_WARN
         exit_ = int(_DB_LATENCY_WARN * 0.7)
         assert exit_ < enter, (
@@ -58,6 +61,7 @@ class TestHysteresis:
         """Latency between exit and enter thresholds must NOT trigger exit from L1."""
         from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("slow", DegradationLevel.L1_CACHE_HEAVY)
 
@@ -65,12 +69,14 @@ class TestHysteresis:
         # Latency is in the "hysteresis gap": below enter but above exit threshold
         gap_latency = int(_DB_LATENCY_WARN * 0.85)  # e.g. 255ms if WARN=300
 
-        with patch("app.core.self_healing.health", h), \
-             patch.object(engine, "_rss_mb", return_value=100.0), \
-             patch.object(engine, "_db_latency_ms", return_value=float(gap_latency)), \
-             patch.object(engine, "_redis_latency_ms", return_value=1.0), \
-             patch.object(engine, "_queue_depth", return_value=0), \
-             patch.object(engine, "_can_trigger", return_value=False):
+        with (
+            patch("app.core.self_healing.health", h),
+            patch.object(engine, "_rss_mb", return_value=100.0),
+            patch.object(engine, "_db_latency_ms", return_value=float(gap_latency)),
+            patch.object(engine, "_redis_latency_ms", return_value=1.0),
+            patch.object(engine, "_queue_depth", return_value=0),
+            patch.object(engine, "_can_trigger", return_value=False),
+        ):
             _run_async(engine._check_and_repair())
 
         assert h.degradation_level == DegradationLevel.L1_CACHE_HEAVY, (
@@ -83,11 +89,12 @@ class TestHysteresis:
 # Critical Assertion 2 — Escalation is monotonic
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestMonotonicEscalation:
 
+class TestMonotonicEscalation:
     def test_cannot_downgrade_from_l2_to_l1(self):
         """Once at L2, enter_degraded_mode with L1 must be a no-op."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("circuit open", DegradationLevel.L2_READ_ONLY)
         assert h.degradation_level == DegradationLevel.L2_READ_ONLY
@@ -100,6 +107,7 @@ class TestMonotonicEscalation:
 
     def test_cannot_downgrade_from_l3_to_l2(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         h.enter_degraded_mode("circuit open", DegradationLevel.L2_READ_ONLY)
@@ -107,6 +115,7 @@ class TestMonotonicEscalation:
 
     def test_cannot_downgrade_from_l3_to_l1(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         h.enter_degraded_mode("slow", DegradationLevel.L1_CACHE_HEAVY)
@@ -115,6 +124,7 @@ class TestMonotonicEscalation:
     def test_level_values_enforce_ordering(self):
         """Ordering is enforced by enum integer values — not by name comparison."""
         from app.core.self_healing import DegradationLevel
+
         levels = [
             DegradationLevel.NONE,
             DegradationLevel.L1_CACHE_HEAVY,
@@ -123,12 +133,13 @@ class TestMonotonicEscalation:
         ]
         for i in range(len(levels) - 1):
             assert levels[i].value < levels[i + 1].value, (
-                f"Ordering broken: {levels[i].name}.value >= {levels[i+1].name}.value"
+                f"Ordering broken: {levels[i].name}.value >= {levels[i + 1].name}.value"
             )
 
     def test_enter_uses_value_comparison_not_identity(self):
         """enter_degraded_mode must use level.value comparison, not `is` or name check."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         # Enter L2
         h.enter_degraded_mode("test", DegradationLevel.L2_READ_ONLY)
@@ -141,11 +152,12 @@ class TestMonotonicEscalation:
 # Critical Assertion 3 — Window-based, not single-event
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestWindowBasedEscalation:
 
+class TestWindowBasedEscalation:
     def test_single_timeout_does_not_escalate(self):
         """1 timeout must NOT trigger L1 — threshold is > 1."""
         from app.database import _TIMEOUT_L1_THRESHOLD, _SlidingWindow
+
         assert _TIMEOUT_L1_THRESHOLD > 1, (
             f"_TIMEOUT_L1_THRESHOLD={_TIMEOUT_L1_THRESHOLD} — single error causes L1. "
             "This is too sensitive for production."
@@ -153,6 +165,7 @@ class TestWindowBasedEscalation:
 
     def test_single_refused_does_not_trigger_l2(self):
         from app.database import _CIRCUIT_OPEN_THRESHOLD
+
         assert _CIRCUIT_OPEN_THRESHOLD > 1
 
     def test_window_counts_only_recent_events(self):
@@ -160,6 +173,7 @@ class TestWindowBasedEscalation:
         import json
 
         from app.database import _TIMEOUT_L1_THRESHOLD, _SlidingWindow
+
         w = _SlidingWindow(max_age_s=10)  # very short window for test
         for _ in range(_TIMEOUT_L1_THRESHOLD + 5):
             w.record("timeout")
@@ -172,6 +186,7 @@ class TestWindowBasedEscalation:
     def test_escalation_resets_after_window_expires(self):
         """After the window expires, fresh events start clean."""
         from app.database import _TIMEOUT_L1_THRESHOLD, _SlidingWindow
+
         w = _SlidingWindow(max_age_s=5)
         # Fill up to threshold
         for _ in range(_TIMEOUT_L1_THRESHOLD):
@@ -189,6 +204,7 @@ class TestWindowBasedEscalation:
 # TEST 11 — Flapping Killer (slow↔fast × 10 cycles)
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestFlappingKiller:
     """
     Simulates: DB slow 5s → normal 5s → slow → ... × 10 cycles
@@ -199,31 +215,33 @@ class TestFlappingKiller:
         """10 alternating slow/fast poll results should NOT cause NONE↔L1 flapping."""
         from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         engine = RepairEngine()
 
         # Latencies that alternate around the enter threshold (300ms)
         # but stay ABOVE the exit threshold (210ms) — so should stay in L1
-        slow_ms = _DB_LATENCY_WARN + 50   # 350ms → above enter threshold
+        slow_ms = _DB_LATENCY_WARN + 50  # 350ms → above enter threshold
         fast_ms = int(_DB_LATENCY_WARN * 0.85)  # 255ms → in hysteresis gap
 
         levels_seen = []
 
         for cycle in range(10):
             latency = slow_ms if cycle % 2 == 0 else fast_ms
-            with patch("app.core.self_healing.health", h), \
-                 patch.object(engine, "_rss_mb", return_value=100.0), \
-                 patch.object(engine, "_db_latency_ms", return_value=float(latency)), \
-                 patch.object(engine, "_redis_latency_ms", return_value=1.0), \
-                 patch.object(engine, "_queue_depth", return_value=0), \
-                 patch.object(engine, "_can_trigger", return_value=False):
+            with (
+                patch("app.core.self_healing.health", h),
+                patch.object(engine, "_rss_mb", return_value=100.0),
+                patch.object(engine, "_db_latency_ms", return_value=float(latency)),
+                patch.object(engine, "_redis_latency_ms", return_value=1.0),
+                patch.object(engine, "_queue_depth", return_value=0),
+                patch.object(engine, "_can_trigger", return_value=False),
+            ):
                 _run_async(engine._check_and_repair())
             levels_seen.append(h.degradation_level)
 
         # After the first enter, level should stay at L1 (not bounce back to NONE)
         transitions = sum(
-            1 for i in range(1, len(levels_seen))
-            if levels_seen[i] != levels_seen[i - 1]
+            1 for i in range(1, len(levels_seen)) if levels_seen[i] != levels_seen[i - 1]
         )
         assert transitions <= 1, (
             f"System flapped {transitions} times in 10 slow/fast cycles! "
@@ -235,6 +253,7 @@ class TestFlappingKiller:
         """Only latency well below exit threshold (0.7×WARN) should exit L1."""
         from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("slow", DegradationLevel.L1_CACHE_HEAVY)
         engine = RepairEngine()
@@ -242,23 +261,25 @@ class TestFlappingKiller:
         # Latency well below exit threshold
         recovered_ms = int(_DB_LATENCY_WARN * 0.4)  # 120ms — clearly recovered
 
-        with patch("app.core.self_healing.health", h), \
-             patch.object(engine, "_rss_mb", return_value=100.0), \
-             patch.object(engine, "_db_latency_ms", return_value=float(recovered_ms)), \
-             patch.object(engine, "_redis_latency_ms", return_value=1.0), \
-             patch.object(engine, "_queue_depth", return_value=0), \
-             patch.object(engine, "_can_trigger", return_value=False):
+        with (
+            patch("app.core.self_healing.health", h),
+            patch.object(engine, "_rss_mb", return_value=100.0),
+            patch.object(engine, "_db_latency_ms", return_value=float(recovered_ms)),
+            patch.object(engine, "_redis_latency_ms", return_value=1.0),
+            patch.object(engine, "_queue_depth", return_value=0),
+            patch.object(engine, "_can_trigger", return_value=False),
+        ):
             _run_async(engine._check_and_repair())
 
         assert h.degradation_level == DegradationLevel.NONE, (
-            f"Clear recovery ({recovered_ms}ms) should exit L1, "
-            f"got {h.degradation_level.name}"
+            f"Clear recovery ({recovered_ms}ms) should exit L1, got {h.degradation_level.name}"
         )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TEST 12 — Recovery correctness (L2 stays L2 until explicit recovery)
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestRecoveryCorrectness:
     """
@@ -270,17 +291,20 @@ class TestRecoveryCorrectness:
         """Fast latency while in L2 must NOT auto-exit (circuit still open)."""
         from app.core.auto_repair import _DB_LATENCY_WARN, RepairEngine
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("circuit open", DegradationLevel.L2_READ_ONLY)
         engine = RepairEngine()
 
         # DB appears fast again (e.g. postgres restarted) but circuit is still OPEN
-        with patch("app.core.self_healing.health", h), \
-             patch.object(engine, "_rss_mb", return_value=100.0), \
-             patch.object(engine, "_db_latency_ms", return_value=1.0), \
-             patch.object(engine, "_redis_latency_ms", return_value=1.0), \
-             patch.object(engine, "_queue_depth", return_value=0), \
-             patch.object(engine, "_can_trigger", return_value=False):
+        with (
+            patch("app.core.self_healing.health", h),
+            patch.object(engine, "_rss_mb", return_value=100.0),
+            patch.object(engine, "_db_latency_ms", return_value=1.0),
+            patch.object(engine, "_redis_latency_ms", return_value=1.0),
+            patch.object(engine, "_queue_depth", return_value=0),
+            patch.object(engine, "_can_trigger", return_value=False),
+        ):
             _run_async(engine._check_and_repair())
 
         assert h.degradation_level == DegradationLevel.L2_READ_ONLY, (
@@ -291,13 +315,14 @@ class TestRecoveryCorrectness:
     def test_l2_cleared_only_via_exit_degraded_mode(self):
         """The ONLY way to exit L2 is explicit exit_degraded_mode() call."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("circuit open", DegradationLevel.L2_READ_ONLY)
 
         # Simulate RecoveryWorker confirms DB is back: closes circuit + calls update
-        h.db_circuit.record_success()   # circuit CLOSED
+        h.db_circuit.record_success()  # circuit CLOSED
         h.redis_circuit.record_success()
-        h.update_degraded_state()       # all circuits closed → auto-exit
+        h.update_degraded_state()  # all circuits closed → auto-exit
 
         assert h.degradation_level == DegradationLevel.NONE, (
             "Even after circuit recovery, system is stuck in L2! "
@@ -307,6 +332,7 @@ class TestRecoveryCorrectness:
     def test_l3_cleared_only_when_all_circuits_recover(self):
         """L3 must stay until BOTH circuits close — partial recovery is not enough."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         # Open BOTH circuits (realistic: Redis + DB both failed during storm)
         for _ in range(h.db_circuit.failure_threshold):
@@ -327,6 +353,7 @@ class TestRecoveryCorrectness:
     def test_l2_not_cleared_by_enter_l1(self):
         """Calling enter_degraded_mode(L1) when at L2 must be a no-op."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("circuit", DegradationLevel.L2_READ_ONLY)
         h.enter_degraded_mode("latency", DegradationLevel.L1_CACHE_HEAVY)
@@ -336,6 +363,7 @@ class TestRecoveryCorrectness:
 # ═════════════════════════════════════════════════════════════════════════════
 # TEST 13 — Cascading failure (Redis→down + DB→slow → L1→L2→L3)
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestCascadingFailure:
     """
@@ -348,6 +376,7 @@ class TestCascadingFailure:
 
     def test_step1_redis_down_to_l1(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         for _ in range(h.redis_circuit.failure_threshold):
             h.redis_circuit.record_failure()
@@ -357,6 +386,7 @@ class TestCascadingFailure:
     def test_step2_db_slow_stays_l1_or_escalates(self):
         """DB slow on top of Redis-down: level should be L1 or higher (never NONE)."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         # Redis down first
         for _ in range(h.redis_circuit.failure_threshold):
@@ -366,6 +396,7 @@ class TestCascadingFailure:
 
         # DB slow (L1 trigger from timeout)
         from app.database import _TIMEOUT_L1_THRESHOLD, _trigger_slow_db
+
         with patch("app.core.self_healing.health", h):
             _trigger_slow_db(_TIMEOUT_L1_THRESHOLD)
 
@@ -375,10 +406,12 @@ class TestCascadingFailure:
     def test_step3_db_circuit_opens_to_l2(self):
         """After Redis+slow DB: DB circuit opens → escalates to L2."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("redis down", DegradationLevel.L1_CACHE_HEAVY)
 
         from app.database import _CIRCUIT_OPEN_THRESHOLD, _trigger_circuit_open
+
         with patch("app.core.self_healing.health", h):
             _trigger_circuit_open(_CIRCUIT_OPEN_THRESHOLD + 1)
 
@@ -389,10 +422,12 @@ class TestCascadingFailure:
     def test_step4_db_storm_to_l3(self):
         """Sustained refused storm on top of L2 → L3."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("circuit open", DegradationLevel.L2_READ_ONLY)
 
         from app.database import _SYSTEM_DEGRADE_THRESHOLD, _trigger_system_degradation
+
         with patch("app.core.self_healing.health", h):
             _trigger_system_degradation(_SYSTEM_DEGRADE_THRESHOLD + 10)
 
@@ -403,6 +438,7 @@ class TestCascadingFailure:
     def test_cascading_state_is_consistent(self):
         """Final state after cascading failure must never be inconsistent."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
 
         # Full cascade in sequence
@@ -415,6 +451,7 @@ class TestCascadingFailure:
         h.update_degraded_state()
 
         from app.database import _SYSTEM_DEGRADE_THRESHOLD, _trigger_system_degradation
+
         with patch("app.core.self_healing.health", h):
             _trigger_system_degradation(_SYSTEM_DEGRADE_THRESHOLD + 5)
 

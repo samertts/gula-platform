@@ -13,30 +13,38 @@ class EngineeringAgent(AIAgent):
         super().__init__(agent_id=agent_id, name=name)
 
     def _register_default_tools(self) -> None:
-        self.register_tool(AgentTool(
-            name="audit_architecture",
-            description="Audit code architecture for compliance",
-            fn=self._tool_audit_arch,
-            parameters={"module": "str"},
-        ))
-        self.register_tool(AgentTool(
-            name="check_dependency",
-            description="Check dependency health and security",
-            fn=self._tool_check_dep,
-            parameters={"package": "str"},
-        ))
-        self.register_tool(AgentTool(
-            name="suggest_refactor",
-            description="Suggest code refactoring opportunities",
-            fn=self._tool_suggest_refactor,
-            parameters={"file_path": "str"},
-        ))
-        self.register_tool(AgentTool(
-            name="validate_config",
-            description="Validate configuration against best practices",
-            fn=self._tool_validate_config,
-            parameters={"config_section": "str"},
-        ))
+        self.register_tool(
+            AgentTool(
+                name="audit_architecture",
+                description="Audit code architecture for compliance",
+                fn=self._tool_audit_arch,
+                parameters={"module": "str"},
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="check_dependency",
+                description="Check dependency health and security",
+                fn=self._tool_check_dep,
+                parameters={"package": "str"},
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="suggest_refactor",
+                description="Suggest code refactoring opportunities",
+                fn=self._tool_suggest_refactor,
+                parameters={"file_path": "str"},
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="validate_config",
+                description="Validate configuration against best practices",
+                fn=self._tool_validate_config,
+                parameters={"config_section": "str"},
+            ),
+        )
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ("engineering", "architecture", "code", "devops", "config")
@@ -56,11 +64,15 @@ class EngineeringAgent(AIAgent):
         findings: list[dict[str, Any]] = []
         recommendations: list[str] = []
         if module == "ai_fabric":
-            findings.append({"severity": "info", "message": "AI fabric architecture follows layered pattern"})
+            findings.append(
+                {"severity": "info", "message": "AI fabric architecture follows layered pattern"},
+            )
             recommendations.append("Consider adding circuit breakers to all external AI calls")
             recommendations.append("Implement request caching for frequently used AI responses")
         elif module == "security":
-            findings.append({"severity": "ok", "message": "Security module implements defence-in-depth"})
+            findings.append(
+                {"severity": "ok", "message": "Security module implements defence-in-depth"},
+            )
         return {
             "module": module,
             "findings": findings,

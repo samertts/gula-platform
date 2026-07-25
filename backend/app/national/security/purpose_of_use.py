@@ -43,7 +43,9 @@ class PurposeOfUseEngine:
     def validate(self, purpose: PurposeOfUse) -> PurposeOfUseValidation:
         rules = self._PURPOSE_RULES.get(purpose)
         if not rules:
-            return PurposeOfUseValidation(purpose=purpose, is_valid=False, reason="Unknown purpose of use")
+            return PurposeOfUseValidation(
+                purpose=purpose, is_valid=False, reason="Unknown purpose of use",
+            )
         return PurposeOfUseValidation(
             purpose=purpose,
             requires_consent=rules["requires_consent"],

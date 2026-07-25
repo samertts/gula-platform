@@ -65,6 +65,7 @@ class ProvisioningEngine:
 
     async def _verify_deployment(self, plan: DeploymentPlan) -> bool:
         import asyncio
+
         await asyncio.sleep(0.5)
         return True
 

@@ -29,6 +29,7 @@ class TestSnapshotEngine:
             Event(name="item.added", data={"item": "test"}),
             Event(name="item.updated", data={"item": "updated"}),
         ]
+
         def apply_fn(state, event):
             s = dict(state)
             s.update(event.data)

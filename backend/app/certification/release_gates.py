@@ -29,8 +29,7 @@ class BaseGateChecker(ABC):
         self.remediations: list[str] = []
 
     @abstractmethod
-    def check(self) -> GateCheckResult:
-        ...
+    def check(self) -> GateCheckResult: ...
 
     def _add_evidence(self, message: str) -> None:
         self.evidence.append(message)
@@ -38,7 +37,9 @@ class BaseGateChecker(ABC):
     def _add_remediation(self, message: str) -> None:
         self.remediations.append(message)
 
-    def _result(self, name: str, gate: ReleaseGate, passed: bool, score: float = 0.0) -> GateCheckResult:
+    def _result(
+        self, name: str, gate: ReleaseGate, passed: bool, score: float = 0.0,
+    ) -> GateCheckResult:
         return GateCheckResult(
             name=name,
             gate=gate,
@@ -52,20 +53,28 @@ class BaseGateChecker(ABC):
 class ArchitectureGate(BaseGateChecker):
     def check(self) -> GateCheckResult:
         from .dimensions.architecture import ArchitectureEvaluator
+
         evaluator = ArchitectureEvaluator(self.project_root)
         result = evaluator.evaluate()
         self._add_evidence(f"Architecture score: {result.score:.2f}")
-        self._add_evidence(f"Clean arch violations: {len([e for e in result.evidence if 'arch' in e.name.lower() and not e.passed])}")
-        self._add_evidence(f"Circular deps: {len([e for e in result.evidence if 'circular' in e.name.lower() and not e.passed])}")
+        self._add_evidence(
+            f"Clean arch violations: {len([e for e in result.evidence if 'arch' in e.name.lower() and not e.passed])}",
+        )
+        self._add_evidence(
+            f"Circular deps: {len([e for e in result.evidence if 'circular' in e.name.lower() and not e.passed])}",
+        )
         if not result.passed:
             for r in result.remediations:
                 self._add_remediation(r.message)
-        return self._result("Architecture Gate", ReleaseGate.ARCHITECTURE, result.passed, result.score)
+        return self._result(
+            "Architecture Gate", ReleaseGate.ARCHITECTURE, result.passed, result.score,
+        )
 
 
 class SecurityGate(BaseGateChecker):
     def check(self) -> GateCheckResult:
         from .dimensions.security import SecurityEvaluator
+
         evaluator = SecurityEvaluator(self.project_root)
         result = evaluator.evaluate()
         self._add_evidence(f"Security score: {result.score:.2f}")
@@ -84,6 +93,7 @@ class SecurityGate(BaseGateChecker):
 class PerformanceGate(BaseGateChecker):
     def check(self) -> GateCheckResult:
         from .dimensions.performance import PerformanceEvaluator
+
         evaluator = PerformanceEvaluator(self.project_root)
         result = evaluator.evaluate()
         self._add_evidence(f"Performance score: {result.score:.2f}")
@@ -93,7 +103,9 @@ class PerformanceGate(BaseGateChecker):
         if not result.passed:
             for r in result.remediations:
                 self._add_remediation(r.message)
-        return self._result("Performance Gate", ReleaseGate.PERFORMANCE, result.passed, result.score)
+        return self._result(
+            "Performance Gate", ReleaseGate.PERFORMANCE, result.passed, result.score,
+        )
 
 
 class ClinicalSafetyGate(BaseGateChecker):
@@ -162,6 +174,7 @@ class ClinicalSafetyGate(BaseGateChecker):
 class DocumentationGate(BaseGateChecker):
     def check(self) -> GateCheckResult:
         from .dimensions.documentation import DocumentationEvaluator
+
         evaluator = DocumentationEvaluator(self.project_root)
         result = evaluator.evaluate()
         self._add_evidence(f"Documentation score: {result.score:.2f}")
@@ -170,13 +183,16 @@ class DocumentationGate(BaseGateChecker):
         if not result.passed:
             for r in result.remediations:
                 self._add_remediation(r.message)
-        return self._result("Documentation Gate", ReleaseGate.DOCUMENTATION, result.passed, result.score)
+        return self._result(
+            "Documentation Gate", ReleaseGate.DOCUMENTATION, result.passed, result.score,
+        )
 
 
 class SBOMGate(BaseGateChecker):
     def check(self) -> GateCheckResult:
         score = 1.0
         from app.engineering.security.sbom import SBOMGenerator
+
         generator = SBOMGenerator(self.project_root)
         sbom = generator.generate()
         components = sbom.get("components", [])
@@ -187,6 +203,7 @@ class SBOMGate(BaseGateChecker):
         score -= max(0, 100 - len(components)) * 0.005
 
         from app.engineering.security.sbom import DependencyAuditor
+
         auditor = DependencyAuditor(self.project_root)
         outdated = auditor.audit()
         self._add_evidence(f"Outdated dependencies: {len(outdated)}")
@@ -204,6 +221,7 @@ class RiskAssessmentGate(BaseGateChecker):
         risk_factors = []
 
         from .dimensions.security import SecurityEvaluator
+
         sec = SecurityEvaluator(self.project_root)
         sec_result = sec.evaluate()
         if sec_result.score < 0.7:
@@ -211,6 +229,7 @@ class RiskAssessmentGate(BaseGateChecker):
             score -= 0.2
 
         from .dimensions.reliability import ReliabilityEvaluator
+
         rel = ReliabilityEvaluator(self.project_root)
         rel_result = rel.evaluate()
         if rel_result.score < 0.7:
@@ -218,6 +237,7 @@ class RiskAssessmentGate(BaseGateChecker):
             score -= 0.15
 
         from .dimensions.db_integrity import DBIntegrityEvaluator
+
         db = DBIntegrityEvaluator(self.project_root)
         db_result = db.evaluate()
         if db_result.score < 0.7:

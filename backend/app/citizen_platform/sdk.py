@@ -74,7 +74,9 @@ class CitizenSDK:
     async def get_citizen_overview(self, citizen_id: str) -> dict[str, Any]:
         return {
             "appointments": {
-                "upcoming": len(await self.appointments.list_appointments(citizen_id, status="booked")),
+                "upcoming": len(
+                    await self.appointments.list_appointments(citizen_id, status="booked"),
+                ),
             },
             "medications": {
                 "active": len(self.medications.get_active_medications(citizen_id)),

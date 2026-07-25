@@ -55,7 +55,12 @@ logger = logging.getLogger("gula.document_intelligence.services")
 
 
 class InfrastructureVersioningService:
-    def __init__(self, version_repo: DocumentVersionRepository, doc_repo: DocumentRepository, storage_repo: Any) -> None:
+    def __init__(
+        self,
+        version_repo: DocumentVersionRepository,
+        doc_repo: DocumentRepository,
+        storage_repo: Any,
+    ) -> None:
         self._version_repo = version_repo
         self._doc_repo = doc_repo
         self._storage = storage_repo
@@ -65,7 +70,9 @@ class InfrastructureVersioningService:
         checksum = str(hash(data))
         storage_path = f"versions/{document_id}/v{version_number}"
         await self._storage.save(data, storage_path, encrypt=True)
-        await self._version_repo.save_version(document_id, version_number, storage_path, checksum, "system")
+        await self._version_repo.save_version(
+            document_id, version_number, storage_path, checksum, "system",
+        )
         return version_number
 
     async def get_version(self, document_id: UUID, version: int) -> bytes | None:
@@ -110,12 +117,14 @@ class InfrastructureDocumentLifecycleManager:
         start = datetime.now(UTC)
         start + timedelta(days=365 * 7)
         await self._retention.save(document_id, RetentionPolicy.standard_7y)
-        await self._lifecycle.save(DocumentLifecycleRecord(
-            document_id=document_id,
-            event_type="retention_applied",
-            actor="system",
-            reason="Retention policy applied",
-        ))
+        await self._lifecycle.save(
+            DocumentLifecycleRecord(
+                document_id=document_id,
+                event_type="retention_applied",
+                actor="system",
+                reason="Retention policy applied",
+            ),
+        )
 
     async def archive_document(self, document_id: UUID) -> None:
         doc = await self._doc_repo.get(document_id)
@@ -133,20 +142,24 @@ class InfrastructureDocumentLifecycleManager:
         return doc
 
     async def apply_legal_hold(self, document_id: UUID) -> None:
-        await self._lifecycle.save(DocumentLifecycleRecord(
-            document_id=document_id,
-            event_type="legal_hold_applied",
-            actor="system",
-            reason="Legal hold applied",
-        ))
+        await self._lifecycle.save(
+            DocumentLifecycleRecord(
+                document_id=document_id,
+                event_type="legal_hold_applied",
+                actor="system",
+                reason="Legal hold applied",
+            ),
+        )
 
     async def release_legal_hold(self, document_id: UUID) -> None:
-        await self._lifecycle.save(DocumentLifecycleRecord(
-            document_id=document_id,
-            event_type="legal_hold_released",
-            actor="system",
-            reason="Legal hold released",
-        ))
+        await self._lifecycle.save(
+            DocumentLifecycleRecord(
+                document_id=document_id,
+                event_type="legal_hold_released",
+                actor="system",
+                reason="Legal hold released",
+            ),
+        )
 
     async def deduplicate(self, document_id: UUID) -> list[UUID]:
         doc = await self._doc_repo.get(document_id)
@@ -158,36 +171,50 @@ class InfrastructureDocumentLifecycleManager:
         pass
 
     async def schedule_deletion(self, document_id: UUID, days: int) -> None:
-        await self._lifecycle.save(DocumentLifecycleRecord(
-            document_id=document_id,
-            event_type="deletion_scheduled",
-            actor="system",
-            reason=f"Deletion scheduled in {days} days",
-        ))
+        await self._lifecycle.save(
+            DocumentLifecycleRecord(
+                document_id=document_id,
+                event_type="deletion_scheduled",
+                actor="system",
+                reason=f"Deletion scheduled in {days} days",
+            ),
+        )
 
 
 class InfrastructureGovernmentRecordsService:
-    def __init__(self, gov_repo: GovernmentDocumentRepository, doc_repo: DocumentRepository) -> None:
+    def __init__(
+        self, gov_repo: GovernmentDocumentRepository, doc_repo: DocumentRepository,
+    ) -> None:
         self._gov_repo = gov_repo
         self._doc_repo = doc_repo
 
-    async def register_government_document(self, document_id: UUID, gov_record: GovernmentDocument) -> GovernmentDocument:
+    async def register_government_document(
+        self, document_id: UUID, gov_record: GovernmentDocument,
+    ) -> GovernmentDocument:
         if not gov_record.reference_number:
             gov_record.reference_number = await self.generate_reference_number(
-                gov_record.issuing_authority, "GOV",
+                gov_record.issuing_authority,
+                "GOV",
             )
         return await self._gov_repo.save(gov_record)
 
     async def get_government_document(self, document_id: UUID) -> GovernmentDocument | None:
         return await self._gov_repo.get(document_id)
 
-    async def search_government_documents(self, query: str, filters: dict | None = None) -> list[GovernmentDocument]:
+    async def search_government_documents(
+        self, query: str, filters: dict | None = None,
+    ) -> list[GovernmentDocument]:
         return await self._gov_repo.search(query, filters)
 
     async def track_order_lifecycle(self, document_id: UUID) -> list[dict[str, Any]]:
         items = []
         for status_name in (
-            "draft", "submitted", "under_review", "approved", "implemented", "completed",
+            "draft",
+            "submitted",
+            "under_review",
+            "approved",
+            "implemented",
+            "completed",
         ):
             items.append({"status": status_name, "timestamp": datetime.now(UTC).isoformat()})
         return items
@@ -207,12 +234,19 @@ class InfrastructureGovernmentRecordsService:
 
 
 class InfrastructureCollaborationService:
-    def __init__(self, review_repo: ReviewRepository, annotation_repo: AnnotationRepository) -> None:
+    def __init__(
+        self, review_repo: ReviewRepository, annotation_repo: AnnotationRepository,
+    ) -> None:
         self._review_repo = review_repo
         self._annotation_repo = annotation_repo
         self._sessions: dict[UUID, CollaborationSession] = {}
 
-    async def assign_reviewer(self, document_id: UUID, reviewer_id: str, role: CollaborationRole = CollaborationRole.reviewer) -> DocumentReview:
+    async def assign_reviewer(
+        self,
+        document_id: UUID,
+        reviewer_id: str,
+        role: CollaborationRole = CollaborationRole.reviewer,
+    ) -> DocumentReview:
         review = DocumentReview(
             document_id=document_id,
             reviewer_id=reviewer_id,
@@ -221,7 +255,13 @@ class InfrastructureCollaborationService:
         )
         return await self._review_repo.save(review)
 
-    async def submit_review(self, review_id: UUID, decision: ReviewDecision, comments: str = "", changes: list[str] | None = None) -> DocumentReview:
+    async def submit_review(
+        self,
+        review_id: UUID,
+        decision: ReviewDecision,
+        comments: str = "",
+        changes: list[str] | None = None,
+    ) -> DocumentReview:
         review = await self._review_repo.get(review_id)
         if not review:
             raise DocumentIntelligenceError(f"Review {review_id} not found")
@@ -257,7 +297,9 @@ class InfrastructureCollaborationService:
         session = self._sessions.get(session_id)
         if not session:
             raise DocumentIntelligenceError(f"Session {session_id} not found")
-        session.participants.append({"user_id": user_id, "joined_at": datetime.now(UTC).isoformat()})
+        session.participants.append(
+            {"user_id": user_id, "joined_at": datetime.now(UTC).isoformat()},
+        )
         return session
 
     async def get_session(self, session_id: UUID) -> CollaborationSession | None:
@@ -265,7 +307,12 @@ class InfrastructureCollaborationService:
 
 
 class InfrastructureGovernanceService:
-    def __init__(self, policy_repo: GovernancePolicyRepository, event_repo: GovernanceEventRepository, doc_repo: DocumentRepository) -> None:
+    def __init__(
+        self,
+        policy_repo: GovernancePolicyRepository,
+        event_repo: GovernanceEventRepository,
+        doc_repo: DocumentRepository,
+    ) -> None:
         self._policy_repo = policy_repo
         self._event_repo = event_repo
         self._doc_repo = doc_repo
@@ -306,7 +353,9 @@ class InfrastructureGovernanceService:
     async def evaluate_all(self) -> list[GovernanceEvent]:
         return []
 
-    async def get_governance_events(self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None) -> list[GovernanceEvent]:
+    async def get_governance_events(
+        self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None,
+    ) -> list[GovernanceEvent]:
         return await self._event_repo.list(document_id, severity)
 
     async def apply_policy_action(self, event: GovernanceEvent) -> None:
@@ -318,12 +367,19 @@ class InfrastructureGovernanceService:
 
 
 class InfrastructureNationalArchiveService:
-    def __init__(self, preservation_repo: PreservationRepository, doc_repo: DocumentRepository, storage_repo: Any) -> None:
+    def __init__(
+        self,
+        preservation_repo: PreservationRepository,
+        doc_repo: DocumentRepository,
+        storage_repo: Any,
+    ) -> None:
         self._preservation = preservation_repo
         self._doc_repo = doc_repo
         self._storage = storage_repo
 
-    async def archive_document(self, document_id: UUID, policy: RetentionPolicy = RetentionPolicy.standard_7y) -> DigitalPreservationRecord:
+    async def archive_document(
+        self, document_id: UUID, policy: RetentionPolicy = RetentionPolicy.standard_7y,
+    ) -> DigitalPreservationRecord:
         doc = await self._doc_repo.get(document_id)
         if not doc:
             raise DocumentIntelligenceError("Document not found")
@@ -340,7 +396,11 @@ class InfrastructureNationalArchiveService:
         )
         return await self._preservation.save(record)
 
-    async def preserve_document(self, document_id: UUID, standard: DigitalPreservationStandard = DigitalPreservationStandard.oais) -> DigitalPreservationRecord:
+    async def preserve_document(
+        self,
+        document_id: UUID,
+        standard: DigitalPreservationStandard = DigitalPreservationStandard.oais,
+    ) -> DigitalPreservationRecord:
         doc = await self._doc_repo.get(document_id)
         if not doc:
             raise DocumentIntelligenceError("Document not found")
@@ -393,11 +453,15 @@ class InfrastructureNationalArchiveService:
 
 
 class InfrastructureWebhookService:
-    def __init__(self, webhook_repo: WebhookRepository, event_repo: DocumentEventRepository) -> None:
+    def __init__(
+        self, webhook_repo: WebhookRepository, event_repo: DocumentEventRepository,
+    ) -> None:
         self._webhook_repo = webhook_repo
         self._event_repo = event_repo
 
-    async def register_webhook(self, url: str, events: list[EventChannel], secret: str | None = None) -> dict[str, Any]:
+    async def register_webhook(
+        self, url: str, events: list[EventChannel], secret: str | None = None,
+    ) -> dict[str, Any]:
         return await self._webhook_repo.register(url, events, secret)
 
     async def unregister_webhook(self, webhook_id: UUID) -> None:
@@ -423,7 +487,9 @@ class InfrastructureKnowledgeGraphService:
     async def add_edge(self, edge: KnowledgeGraphEdge) -> KnowledgeGraphEdge:
         return await self._edge_repo.save(edge)
 
-    async def find_related_documents(self, document_id: UUID, max_depth: int = 3) -> list[dict[str, Any]]:
+    async def find_related_documents(
+        self, document_id: UUID, max_depth: int = 3,
+    ) -> list[dict[str, Any]]:
         return await self._edge_repo.find_related(document_id, max_depth)
 
     async def get_entity_network(self, entity_name: str) -> dict[str, Any]:
@@ -494,7 +560,14 @@ class InfrastructureDocumentLifecycleService:
     async def get_lifecycle(self, document_id: UUID) -> list[DocumentLifecycleRecord]:
         return await self._lifecycle_repo.get_by_document(document_id)
 
-    async def record_event(self, document_id: UUID, event_type: str, actor: str, reason: str = "", metadata: dict | None = None) -> DocumentLifecycleRecord:
+    async def record_event(
+        self,
+        document_id: UUID,
+        event_type: str,
+        actor: str,
+        reason: str = "",
+        metadata: dict | None = None,
+    ) -> DocumentLifecycleRecord:
         record = DocumentLifecycleRecord(
             document_id=document_id,
             event_type=event_type,
@@ -515,11 +588,20 @@ class InfrastructureAccessControlService:
     def __init__(self, access_repo: AccessControlRepository) -> None:
         self._access_repo = access_repo
 
-    async def check_access(self, document_id: UUID, user_id: str, permission: str = "viewer") -> bool:
+    async def check_access(
+        self, document_id: UUID, user_id: str, permission: str = "viewer",
+    ) -> bool:
         role = await self._access_repo.check(document_id, user_id)
         if role is None:
             return False
-        hierarchy = {"viewer": 0, "commenter": 1, "reviewer": 2, "approver": 3, "editor": 4, "owner": 5}
+        hierarchy = {
+            "viewer": 0,
+            "commenter": 1,
+            "reviewer": 2,
+            "approver": 3,
+            "editor": 4,
+            "owner": 5,
+        }
         required = hierarchy.get(permission, 0)
         actual = hierarchy.get(role.value if hasattr(role, "value") else str(role), -1)
         return actual >= required
@@ -536,7 +618,9 @@ class InfrastructureAccessControlService:
     async def get_documents_for_user(self, user_id: str, permission: str = "viewer") -> list[UUID]:
         return await self._access_repo.get_by_user(user_id)
 
-    async def delegate_access(self, document_id: UUID, from_user: str, to_user: str, expiry: datetime | None = None) -> None:
+    async def delegate_access(
+        self, document_id: UUID, from_user: str, to_user: str, expiry: datetime | None = None,
+    ) -> None:
         await self._access_repo.grant(document_id, to_user, CollaborationRole.viewer)
 
 
@@ -564,7 +648,9 @@ class InfrastructureEventBusService:
         if key in self._handlers:
             self._handlers[key] = [h for h in self._handlers[key] if h != handler]
 
-    async def get_event_history(self, document_id: UUID | None = None, channel: EventChannel | None = None) -> list[DocumentEvent]:
+    async def get_event_history(
+        self, document_id: UUID | None = None, channel: EventChannel | None = None,
+    ) -> list[DocumentEvent]:
         return await self._event_repo.list(document_id, channel)
 
 
@@ -574,11 +660,17 @@ class InfrastructureSemanticSearchService:
 
     async def search(self, query: SemanticQuery) -> list[SemanticSearchResult]:
         docs, _ = await self._doc_repo.search(query.query_text, limit=query.limit)
-        return [SemanticSearchResult(document_id=d.id, score=1.0, text_snippet=d.filename) for d in docs]
+        return [
+            SemanticSearchResult(document_id=d.id, score=1.0, text_snippet=d.filename) for d in docs
+        ]
 
-    async def hybrid_search(self, query_text: str, query_vector: list[float] | None = None) -> list[SemanticSearchResult]:
+    async def hybrid_search(
+        self, query_text: str, query_vector: list[float] | None = None,
+    ) -> list[SemanticSearchResult]:
         docs, _ = await self._doc_repo.search(query_text, limit=20)
-        return [SemanticSearchResult(document_id=d.id, score=1.0, text_snippet=d.filename) for d in docs]
+        return [
+            SemanticSearchResult(document_id=d.id, score=1.0, text_snippet=d.filename) for d in docs
+        ]
 
     async def arabic_search(self, query: str) -> list[SemanticSearchResult]:
         return await self.hybrid_search(query)
@@ -586,7 +678,9 @@ class InfrastructureSemanticSearchService:
     async def natural_language_query(self, query: str) -> list[SemanticSearchResult]:
         return await self.hybrid_search(query)
 
-    async def similar_documents(self, document_id: UUID, limit: int = 10) -> list[SemanticSearchResult]:
+    async def similar_documents(
+        self, document_id: UUID, limit: int = 10,
+    ) -> list[SemanticSearchResult]:
         return []
 
     async def search_by_entity(self, entity_type: Any, value: str) -> list[SemanticSearchResult]:

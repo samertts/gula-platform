@@ -115,7 +115,9 @@ class TestPersistedIdentityGovernanceService:
     def test_link_document(self, svc):
         record = svc.register_citizen(full_name="Test", national_id="111111")
         updated = svc.link_document(
-            record.health_number, "passport", "PP-123456",
+            record.health_number,
+            "passport",
+            "PP-123456",
             issuing_authority="Iraq MOI",
         )
         docs = updated.documents_json or {}
@@ -131,13 +133,18 @@ class TestPersistedIdentityGovernanceService:
         record = svc.register_citizen(full_name="Lock", national_id="222222")
         with pytest.raises(Exception, match="version"):
             svc.link_document(
-                record.health_number, "passport", "PP-000", expected_version=99,
+                record.health_number,
+                "passport",
+                "PP-000",
+                expected_version=99,
             )
 
     def test_verify_document(self, svc):
         record = svc.register_citizen(full_name="Verify", national_id="333333")
         updated = svc.verify_document(
-            record.health_number, "iraqi_national_id", verified_by="admin",
+            record.health_number,
+            "iraqi_national_id",
+            verified_by="admin",
         )
         docs = updated.documents_json or {}
         assert docs["iraqi_national_id"]["verification_status"] == "verified"
@@ -173,9 +180,12 @@ class TestPersistedIdentityGovernanceService:
 
     def test_get_healthcare_view(self, svc):
         record = svc.register_citizen(
-            full_name="ViewTest", national_id="777777",
-            date_of_birth=date(2000, 1, 1), gender="female",
-            phone="+964000000000", email="view@test.com",
+            full_name="ViewTest",
+            national_id="777777",
+            date_of_birth=date(2000, 1, 1),
+            gender="female",
+            phone="+964000000000",
+            email="view@test.com",
         )
         view = svc.get_healthcare_view(record.health_number)
         assert view["health_number"] == record.health_number
@@ -210,10 +220,15 @@ class TestPersistedBreakGlassService:
 
     def test_request_access(self, glass):
         access = glass.request_access(
-            user_id="user-1", user_name="Dr. Ali", user_role="physician",
-            reason="emergency", reason_detail="Patient critical",
-            resource_type="patient_record", resource_id="patient-123",
-            patient_id="patient-123", duration_minutes=60,
+            user_id="user-1",
+            user_name="Dr. Ali",
+            user_role="physician",
+            reason="emergency",
+            reason_detail="Patient critical",
+            resource_type="patient_record",
+            resource_id="patient-123",
+            patient_id="patient-123",
+            duration_minutes=60,
         )
         assert access.is_active is True
         assert access.user_id == "user-1"
@@ -223,7 +238,9 @@ class TestPersistedBreakGlassService:
 
     def test_revoke_access(self, glass):
         access = glass.request_access(
-            user_id="user-2", user_name="Dr. Sara", user_role="physician",
+            user_id="user-2",
+            user_name="Dr. Sara",
+            user_role="physician",
             reason="emergency",
         )
         glass.revoke_access(access.id, reviewer="admin", notes="Resolved")
@@ -233,14 +250,18 @@ class TestPersistedBreakGlassService:
 
     def test_is_access_valid_true(self, glass):
         access = glass.request_access(
-            user_id="user-3", user_name="Dr. Test", user_role="nurse",
+            user_id="user-3",
+            user_name="Dr. Test",
+            user_role="nurse",
             reason="break_glass",
         )
         assert glass.is_access_valid(access.id) is True
 
     def test_is_access_valid_revoked(self, glass):
         access = glass.request_access(
-            user_id="user-4", user_name="Dr. Revoked", user_role="physician",
+            user_id="user-4",
+            user_name="Dr. Revoked",
+            user_role="physician",
             reason="emergency",
         )
         glass.revoke_access(access.id)
@@ -248,10 +269,14 @@ class TestPersistedBreakGlassService:
 
     def test_is_access_valid_expired(self, glass):
         access = glass.request_access(
-            user_id="user-5", user_name="Dr. Expired", user_role="physician",
-            reason="emergency", duration_minutes=0,
+            user_id="user-5",
+            user_name="Dr. Expired",
+            user_role="physician",
+            reason="emergency",
+            duration_minutes=0,
         )
         import time
+
         access.expires_at = datetime.now(UTC) - timedelta(seconds=1)
         glass._db.commit()
         assert glass.is_access_valid(access.id) is False
@@ -267,8 +292,11 @@ class TestPersistedBreakGlassService:
 
     def test_expire_stale(self, glass, gov_db):
         access = glass.request_access(
-            user_id="u-stale", user_name="Stale", user_role="r",
-            reason="emergency", duration_minutes=0,
+            user_id="u-stale",
+            user_name="Stale",
+            user_role="r",
+            reason="emergency",
+            duration_minutes=0,
         )
         access.expires_at = datetime.now(UTC) - timedelta(hours=1)
         gov_db.commit()
@@ -297,12 +325,16 @@ class TestPersistedIdentityMergeEngine:
 
     def test_calculate_confidence_name_and_dob_match(self, svc, engine):
         p = svc.register_citizen(
-            full_name="Muhammad Ali", national_id="SIM-A",
-            date_of_birth=date(1990, 1, 1), phone="+964000000001",
+            full_name="Muhammad Ali",
+            national_id="SIM-A",
+            date_of_birth=date(1990, 1, 1),
+            phone="+964000000001",
         )
         d = svc.register_citizen(
-            full_name="Muhammad Ali", national_id="SIM-B",
-            date_of_birth=date(1990, 1, 1), phone="+964000000001",
+            full_name="Muhammad Ali",
+            national_id="SIM-B",
+            date_of_birth=date(1990, 1, 1),
+            phone="+964000000001",
         )
         score = engine.calculate_confidence(p.health_number, d.health_number)
         assert score > 0.4
@@ -344,7 +376,9 @@ class TestPersistedIdentityMergeEngine:
         d.national_id_hash = p.national_id_hash
         svc._db.commit()
         proposal = engine.propose_merge(p.health_number, d.health_number)
-        approved = engine.approve_merge(proposal.proposal_key, reviewed_by="admin", reason="Duplicate")
+        approved = engine.approve_merge(
+            proposal.proposal_key, reviewed_by="admin", reason="Duplicate"
+        )
         assert approved.status == "approved"
         assert approved.reviewed_by == "admin"
         dup = svc._repo.get_by_health_number(d.health_number)

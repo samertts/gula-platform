@@ -37,7 +37,13 @@ class PharmacyService:
         self.user_id = user_id
         self.lab_id = lab_id
 
-    def _audit(self, action: str, resource_type: str, resource_id: str | None = None, details: str | None = None):
+    def _audit(
+        self,
+        action: str,
+        resource_type: str,
+        resource_id: str | None = None,
+        details: str | None = None,
+    ):
         log_action(
             db=self.db,
             action=action,
@@ -55,7 +61,9 @@ class PharmacyService:
             drug.lab_id = self.lab_id
         self.db.add(drug)
         self.db.flush()
-        self._audit("pharmacy.drug.create", "drug_catalog", drug.id, f"Created drug {data.get('code')}")
+        self._audit(
+            "pharmacy.drug.create", "drug_catalog", drug.id, f"Created drug {data.get('code')}"
+        )
         return drug
 
     def get_drug(self, drug_id: str) -> DrugCatalog | None:
@@ -130,7 +138,10 @@ class PharmacyService:
         drug = self.get_drug(drug_id)
         if not drug:
             return None
-        batch = DrugBatch(drug_catalog_id=drug_id, **{k: v for k, v in data.items() if hasattr(DrugBatch, k) and k != "drug_catalog_id"})
+        batch = DrugBatch(
+            drug_catalog_id=drug_id,
+            **{k: v for k, v in data.items() if hasattr(DrugBatch, k) and k != "drug_catalog_id"},
+        )
         if self.lab_id:
             batch.lab_id = self.lab_id
         self.db.add(batch)
@@ -148,7 +159,12 @@ class PharmacyService:
         self.db.add(stock)
         self.db.flush()
 
-        self._audit("pharmacy.batch.create", "drug_batch", batch.id, f"Created batch {data.get('batch_number')}")
+        self._audit(
+            "pharmacy.batch.create",
+            "drug_batch",
+            batch.id,
+            f"Created batch {data.get('batch_number')}",
+        )
         return batch
 
     def get_batches(self, drug_id: str) -> list[DrugBatch]:
@@ -185,7 +201,12 @@ class PharmacyService:
             supplier.lab_id = self.lab_id
         self.db.add(supplier)
         self.db.flush()
-        self._audit("pharmacy.supplier.create", "drug_supplier", supplier.id, f"Created supplier {data.get('name')}")
+        self._audit(
+            "pharmacy.supplier.create",
+            "drug_supplier",
+            supplier.id,
+            f"Created supplier {data.get('name')}",
+        )
         return supplier
 
     def list_suppliers(self) -> list[DrugSupplier]:
@@ -202,7 +223,12 @@ class PharmacyService:
             rx.lab_id = self.lab_id
         self.db.add(rx)
         self.db.flush()
-        self._audit("pharmacy.rx.create", "prescription", rx.id, f"Created prescription {data.get('prescription_number')}")
+        self._audit(
+            "pharmacy.rx.create",
+            "prescription",
+            rx.id,
+            f"Created prescription {data.get('prescription_number')}",
+        )
         return rx
 
     def get_prescription(self, rx_id: str) -> Prescription | None:
@@ -211,13 +237,17 @@ class PharmacyService:
             q = q.filter(Prescription.lab_id == self.lab_id)
         return q.first()
 
-    def update_prescription_status(self, rx_id: str, status: PrescriptionStatus) -> Prescription | None:
+    def update_prescription_status(
+        self, rx_id: str, status: PrescriptionStatus
+    ) -> Prescription | None:
         rx = self.get_prescription(rx_id)
         if not rx:
             return None
         rx.status = status
         self.db.flush()
-        self._audit("pharmacy.rx.status_update", "prescription", rx_id, f"Status changed to {status.value}")
+        self._audit(
+            "pharmacy.rx.status_update", "prescription", rx_id, f"Status changed to {status.value}"
+        )
         return rx
 
     def cancel_prescription(self, rx_id: str) -> Prescription | None:
@@ -246,7 +276,9 @@ class PharmacyService:
         self.db.add(renewal)
         self.db.flush()
 
-        for item in self.db.query(PrescriptionItem).filter(PrescriptionItem.prescription_id == rx_id).all():
+        for item in (
+            self.db.query(PrescriptionItem).filter(PrescriptionItem.prescription_id == rx_id).all()
+        ):
             new_item = PrescriptionItem(
                 prescription_id=renewal.id,
                 drug_catalog_id=item.drug_catalog_id,
@@ -279,19 +311,34 @@ class PharmacyService:
         rx = self.get_prescription(rx_id)
         if not rx:
             return None
-        item = PrescriptionItem(prescription_id=rx_id, **{k: v for k, v in data.items() if hasattr(PrescriptionItem, k) and k != "prescription_id"})
+        item = PrescriptionItem(
+            prescription_id=rx_id,
+            **{
+                k: v
+                for k, v in data.items()
+                if hasattr(PrescriptionItem, k) and k != "prescription_id"
+            },
+        )
         if self.lab_id:
             item.lab_id = self.lab_id
         self.db.add(item)
         self.db.flush()
-        self._audit("pharmacy.rx.add_item", "prescription_item", item.id, f"Item added to RX {rx_id}")
+        self._audit(
+            "pharmacy.rx.add_item", "prescription_item", item.id, f"Item added to RX {rx_id}"
+        )
         return item
 
-    def substitute_prescription_item(self, rx_id: str, item_id: str, new_drug_id: str) -> PrescriptionItem | None:
-        item = self.db.query(PrescriptionItem).filter(
-            PrescriptionItem.id == item_id,
-            PrescriptionItem.prescription_id == rx_id,
-        ).first()
+    def substitute_prescription_item(
+        self, rx_id: str, item_id: str, new_drug_id: str
+    ) -> PrescriptionItem | None:
+        item = (
+            self.db.query(PrescriptionItem)
+            .filter(
+                PrescriptionItem.id == item_id,
+                PrescriptionItem.prescription_id == rx_id,
+            )
+            .first()
+        )
         if not item:
             return None
         new_drug = self.get_drug(new_drug_id)
@@ -301,13 +348,22 @@ class PharmacyService:
         item.medication_code = new_drug.code
         item.medication_name = new_drug.name
         self.db.flush()
-        self._audit("pharmacy.rx.substitute", "prescription_item", item_id, f"Substituted with {new_drug_id}")
+        self._audit(
+            "pharmacy.rx.substitute",
+            "prescription_item",
+            item_id,
+            f"Substituted with {new_drug_id}",
+        )
         return item
 
     # ── Dispensing Workflow ────────────────────────────────────────────────────
 
     def get_dispense_queue(
-        self, status: str | None = None, priority: str | None = None, skip: int = 0, limit: int = 50,
+        self,
+        status: str | None = None,
+        priority: str | None = None,
+        skip: int = 0,
+        limit: int = 50,
     ) -> tuple[list[DispenseQueue], int]:
         q = self.db.query(DispenseQueue).filter(~~DispenseQueue.is_deleted)
         if self.lab_id:
@@ -317,15 +373,20 @@ class PharmacyService:
         if priority:
             q = q.filter(DispenseQueue.priority == priority)
         total = q.count()
-        items = q.order_by(
-            case(
-                (DispenseQueue.priority == "stat", 0),
-                (DispenseQueue.priority == "urgent", 1),
-                (DispenseQueue.priority == "normal", 2),
-                else_=3,
-            ),
-            DispenseQueue.queued_at,
-        ).offset(skip).limit(limit).all()
+        items = (
+            q.order_by(
+                case(
+                    (DispenseQueue.priority == "stat", 0),
+                    (DispenseQueue.priority == "urgent", 1),
+                    (DispenseQueue.priority == "normal", 2),
+                    else_=3,
+                ),
+                DispenseQueue.queued_at,
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return items, total
 
     def prepare_dispense(self, queue_id: str) -> DispenseQueue | None:
@@ -393,10 +454,14 @@ class PharmacyService:
             batch.quantity_remaining -= record.quantity_dispensed
             self.db.flush()
 
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.batch_id == record.batch_id,
-            StockLevel.drug_catalog_id == data.get("drug_catalog_id"),
-        ).first()
+        stock = (
+            self.db.query(StockLevel)
+            .filter(
+                StockLevel.batch_id == record.batch_id,
+                StockLevel.drug_catalog_id == data.get("drug_catalog_id"),
+            )
+            .first()
+        )
         if stock:
             stock.quantity -= record.quantity_dispensed
             stock.available_quantity = stock.quantity - stock.reserved_quantity
@@ -452,7 +517,11 @@ class PharmacyService:
         return items, total
 
     def get_stock_alerts(self) -> dict[str, list[dict[str, Any]]]:
-        alerts: dict[str, list[dict[str, Any]]] = {"low_stock": [], "overstocked": [], "expiring_soon": []}
+        alerts: dict[str, list[dict[str, Any]]] = {
+            "low_stock": [],
+            "overstocked": [],
+            "expiring_soon": [],
+        }
         q = self.db.query(StockLevel).filter(
             ~~StockLevel.is_deleted,
             StockLevel.available_quantity > 0,
@@ -462,42 +531,62 @@ class PharmacyService:
 
         for stock in q.all():
             if stock.reorder_point and stock.available_quantity <= stock.reorder_point:
-                drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == stock.drug_catalog_id).first()
-                alerts["low_stock"].append({
-                    "stock_id": stock.id,
-                    "drug_id": stock.drug_catalog_id,
-                    "drug_name": drug.name if drug else "Unknown",
-                    "available": stock.available_quantity,
-                    "reorder_point": stock.reorder_point,
-                })
+                drug = (
+                    self.db.query(DrugCatalog)
+                    .filter(DrugCatalog.id == stock.drug_catalog_id)
+                    .first()
+                )
+                alerts["low_stock"].append(
+                    {
+                        "stock_id": stock.id,
+                        "drug_id": stock.drug_catalog_id,
+                        "drug_name": drug.name if drug else "Unknown",
+                        "available": stock.available_quantity,
+                        "reorder_point": stock.reorder_point,
+                    }
+                )
             if stock.max_level and stock.available_quantity >= stock.max_level:
-                drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == stock.drug_catalog_id).first()
-                alerts["overstocked"].append({
-                    "stock_id": stock.id,
-                    "drug_id": stock.drug_catalog_id,
-                    "drug_name": drug.name if drug else "Unknown",
-                    "available": stock.available_quantity,
-                    "max_level": stock.max_level,
-                })
+                drug = (
+                    self.db.query(DrugCatalog)
+                    .filter(DrugCatalog.id == stock.drug_catalog_id)
+                    .first()
+                )
+                alerts["overstocked"].append(
+                    {
+                        "stock_id": stock.id,
+                        "drug_id": stock.drug_catalog_id,
+                        "drug_name": drug.name if drug else "Unknown",
+                        "available": stock.available_quantity,
+                        "max_level": stock.max_level,
+                    }
+                )
 
         expiring = self.get_expiring_batches(90)
         for batch in expiring:
-            drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
-            alerts["expiring_soon"].append({
-                "batch_id": batch.id,
-                "drug_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
-                "expiry_date": batch.expiry_date.isoformat(),
-                "quantity_remaining": batch.quantity_remaining,
-            })
+            drug = (
+                self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
+            )
+            alerts["expiring_soon"].append(
+                {
+                    "batch_id": batch.id,
+                    "drug_id": batch.drug_catalog_id,
+                    "drug_name": drug.name if drug else "Unknown",
+                    "expiry_date": batch.expiry_date.isoformat(),
+                    "quantity_remaining": batch.quantity_remaining,
+                }
+            )
 
         return alerts
 
     def adjust_stock(self, data: dict[str, Any]) -> StockLevel | None:
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == data.get("drug_catalog_id"),
-            StockLevel.batch_id == data.get("batch_id"),
-        ).first()
+        stock = (
+            self.db.query(StockLevel)
+            .filter(
+                StockLevel.drug_catalog_id == data.get("drug_catalog_id"),
+                StockLevel.batch_id == data.get("batch_id"),
+            )
+            .first()
+        )
         if not stock:
             stock = StockLevel(
                 drug_catalog_id=data.get("drug_catalog_id"),
@@ -533,7 +622,11 @@ class PharmacyService:
         return stock
 
     def get_movements(
-        self, drug_id: str | None = None, movement_type: str | None = None, skip: int = 0, limit: int = 50,
+        self,
+        drug_id: str | None = None,
+        movement_type: str | None = None,
+        skip: int = 0,
+        limit: int = 50,
     ) -> tuple[list[StockMovement], int]:
         q = self.db.query(StockMovement).filter(~~StockMovement.is_deleted)
         if self.lab_id:
@@ -552,11 +645,18 @@ class PharmacyService:
             movement.lab_id = self.lab_id
         self.db.add(movement)
         self.db.flush()
-        self._audit("pharmacy.movement.create", "stock_movement", movement.id, f"Movement {data.get('movement_type')}")
+        self._audit(
+            "pharmacy.movement.create",
+            "stock_movement",
+            movement.id,
+            f"Movement {data.get('movement_type')}",
+        )
         return movement
 
     def create_transfer(self, data: dict[str, Any]) -> InventoryTransfer:
-        transfer = InventoryTransfer(**{k: v for k, v in data.items() if hasattr(InventoryTransfer, k)})
+        transfer = InventoryTransfer(
+            **{k: v for k, v in data.items() if hasattr(InventoryTransfer, k)}
+        )
         if self.lab_id:
             transfer.lab_id = self.lab_id
         self.db.add(transfer)
@@ -564,7 +664,9 @@ class PharmacyService:
         self._audit("pharmacy.transfer.create", "inventory_transfer", transfer.id)
         return transfer
 
-    def get_transfers(self, status: str | None = None, skip: int = 0, limit: int = 50) -> tuple[list[InventoryTransfer], int]:
+    def get_transfers(
+        self, status: str | None = None, skip: int = 0, limit: int = 50
+    ) -> tuple[list[InventoryTransfer], int]:
         q = self.db.query(InventoryTransfer).filter(~~InventoryTransfer.is_deleted)
         if self.lab_id:
             q = q.filter(InventoryTransfer.lab_id == self.lab_id)
@@ -575,7 +677,9 @@ class PharmacyService:
         return items, total
 
     def approve_transfer(self, transfer_id: str) -> InventoryTransfer | None:
-        transfer = self.db.query(InventoryTransfer).filter(InventoryTransfer.id == transfer_id).first()
+        transfer = (
+            self.db.query(InventoryTransfer).filter(InventoryTransfer.id == transfer_id).first()
+        )
         if not transfer:
             return None
         transfer.status = "approved"
@@ -586,20 +690,30 @@ class PharmacyService:
         return transfer
 
     def receive_transfer(self, transfer_id: str) -> InventoryTransfer | None:
-        transfer = self.db.query(InventoryTransfer).filter(InventoryTransfer.id == transfer_id).first()
+        transfer = (
+            self.db.query(InventoryTransfer).filter(InventoryTransfer.id == transfer_id).first()
+        )
         if not transfer:
             return None
         transfer.status = "completed"
         transfer.received_date = datetime.now(UTC)
         self.db.flush()
 
-        for item in self.db.query(InventoryTransferItem).filter(InventoryTransferItem.transfer_id == transfer_id).all():
-            stock = self.db.query(StockLevel).filter(
-                StockLevel.drug_catalog_id == item.drug_catalog_id,
-                StockLevel.batch_id == item.batch_id,
-            ).first()
+        for item in (
+            self.db.query(InventoryTransferItem)
+            .filter(InventoryTransferItem.transfer_id == transfer_id)
+            .all()
+        ):
+            stock = (
+                self.db.query(StockLevel)
+                .filter(
+                    StockLevel.drug_catalog_id == item.drug_catalog_id,
+                    StockLevel.batch_id == item.batch_id,
+                )
+                .first()
+            )
             if stock:
-                stock.quantity += (item.quantity_received or item.quantity_shipped or 0)
+                stock.quantity += item.quantity_received or item.quantity_shipped or 0
                 stock.available_quantity = stock.quantity - stock.reserved_quantity
                 self.db.flush()
 
@@ -664,7 +778,9 @@ class PharmacyService:
         self._audit("pharmacy.waste.create", "waste_record", waste.id)
         return waste
 
-    def list_recalls(self, status: str | None = None, skip: int = 0, limit: int = 50) -> tuple[list[Recall], int]:
+    def list_recalls(
+        self, status: str | None = None, skip: int = 0, limit: int = 50
+    ) -> tuple[list[Recall], int]:
         q = self.db.query(Recall).filter(~~Recall.is_deleted)
         if self.lab_id:
             q = q.filter(Recall.lab_id == self.lab_id)
@@ -680,7 +796,12 @@ class PharmacyService:
             recall.lab_id = self.lab_id
         self.db.add(recall)
         self.db.flush()
-        self._audit("pharmacy.recall.create", "recall", recall.id, f"Recall for drug {data.get('drug_catalog_id')}")
+        self._audit(
+            "pharmacy.recall.create",
+            "recall",
+            recall.id,
+            f"Recall for drug {data.get('drug_catalog_id')}",
+        )
         return recall
 
     def get_inventory_forecast(self, drug_id: str) -> list[InventoryForecast]:
@@ -703,18 +824,22 @@ class PharmacyService:
             q = q.filter(StockLevel.lab_id == self.lab_id)
 
         for stock in q.all():
-            drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == stock.drug_catalog_id).first()
+            drug = (
+                self.db.query(DrugCatalog).filter(DrugCatalog.id == stock.drug_catalog_id).first()
+            )
             if not drug:
                 continue
             reorder_qty = stock.reorder_quantity or (stock.max_level or 0) * 2
-            recommendations.append({
-                "drug_id": stock.drug_catalog_id,
-                "drug_name": drug.name,
-                "current_stock": stock.available_quantity,
-                "reorder_point": stock.reorder_point,
-                "recommended_quantity": reorder_qty,
-                "priority": "high" if stock.available_quantity == 0 else "medium",
-            })
+            recommendations.append(
+                {
+                    "drug_id": stock.drug_catalog_id,
+                    "drug_name": drug.name,
+                    "current_stock": stock.available_quantity,
+                    "reorder_point": stock.reorder_point,
+                    "recommended_quantity": reorder_qty,
+                    "priority": "high" if stock.available_quantity == 0 else "medium",
+                }
+            )
 
         return recommendations
 
@@ -749,19 +874,29 @@ class PharmacyService:
 
         total = q.count()
         by_status = {
-            DispenseStatus.PENDING.value: q.filter(DispenseQueue.status == DispenseStatus.PENDING).count(),
-            DispenseStatus.PREPARED.value: q.filter(DispenseQueue.status == DispenseStatus.PREPARED).count(),
-            DispenseStatus.VERIFIED.value: q.filter(DispenseQueue.status == DispenseStatus.VERIFIED).count(),
+            DispenseStatus.PENDING.value: q.filter(
+                DispenseQueue.status == DispenseStatus.PENDING
+            ).count(),
+            DispenseStatus.PREPARED.value: q.filter(
+                DispenseQueue.status == DispenseStatus.PREPARED
+            ).count(),
+            DispenseStatus.VERIFIED.value: q.filter(
+                DispenseQueue.status == DispenseStatus.VERIFIED
+            ).count(),
         }
 
-        wait_times = self.db.query(
-            func.avg(
-                func.extract("epoch", DispenseQueue.completion_time - DispenseQueue.queued_at),
-            ),
-        ).filter(
-            DispenseQueue.status == DispenseStatus.DISPENSED,
-            DispenseQueue.completion_time.isnot(None),
-        ).scalar()
+        wait_times = (
+            self.db.query(
+                func.avg(
+                    func.extract("epoch", DispenseQueue.completion_time - DispenseQueue.queued_at),
+                ),
+            )
+            .filter(
+                DispenseQueue.status == DispenseStatus.DISPENSED,
+                DispenseQueue.completion_time.isnot(None),
+            )
+            .scalar()
+        )
 
         return {
             "total_in_queue": total,
@@ -775,14 +910,20 @@ class PharmacyService:
             batches = self.get_expiring_batches(days)
             for batch in batches:
                 if batch.expiry_date and batch.expiry_date >= date.today():
-                    drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
-                    alerts.append({
-                        "batch_id": batch.id,
-                        "drug_id": batch.drug_catalog_id,
-                        "drug_name": drug.name if drug else "Unknown",
-                        "expiry_date": batch.expiry_date.isoformat(),
-                        "days_remaining": (batch.expiry_date - date.today()).days,
-                        "quantity_remaining": batch.quantity_remaining,
-                        "severity": label,
-                    })
+                    drug = (
+                        self.db.query(DrugCatalog)
+                        .filter(DrugCatalog.id == batch.drug_catalog_id)
+                        .first()
+                    )
+                    alerts.append(
+                        {
+                            "batch_id": batch.id,
+                            "drug_id": batch.drug_catalog_id,
+                            "drug_name": drug.name if drug else "Unknown",
+                            "expiry_date": batch.expiry_date.isoformat(),
+                            "days_remaining": (batch.expiry_date - date.today()).days,
+                            "quantity_remaining": batch.quantity_remaining,
+                            "severity": label,
+                        }
+                    )
         return alerts

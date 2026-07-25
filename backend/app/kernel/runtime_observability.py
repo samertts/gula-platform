@@ -164,7 +164,16 @@ class SlowQueryDetector:
         self._threshold_ms = threshold_ms
         logger.info("Slow query threshold updated", extra={"threshold_ms": threshold_ms})
 
-    def record(self, query: str, duration_ms: float, database: str = "postgresql", caller: str = "", tenant_id: str = "", rows_affected: int = 0, plan: str = "") -> bool:
+    def record(
+        self,
+        query: str,
+        duration_ms: float,
+        database: str = "postgresql",
+        caller: str = "",
+        tenant_id: str = "",
+        rows_affected: int = 0,
+        plan: str = "",
+    ) -> bool:
         if duration_ms >= self._threshold_ms:
             record = SlowQueryRecord(
                 query=query,
@@ -177,7 +186,14 @@ class SlowQueryDetector:
             )
             self._records.append(record)
             self._alert_count += 1
-            logger.warning("Slow query detected", extra={"duration_ms": round(duration_ms, 1), "threshold": self._threshold_ms, "caller": caller})
+            logger.warning(
+                "Slow query detected",
+                extra={
+                    "duration_ms": round(duration_ms, 1),
+                    "threshold": self._threshold_ms,
+                    "caller": caller,
+                },
+            )
             return True
         return False
 
@@ -186,7 +202,12 @@ class SlowQueryDetector:
 
     def get_stats(self) -> dict[str, Any]:
         if not self._records:
-            return {"count": 0, "avg_duration_ms": 0, "max_duration_ms": 0, "alerts": self._alert_count}
+            return {
+                "count": 0,
+                "avg_duration_ms": 0,
+                "max_duration_ms": 0,
+                "alerts": self._alert_count,
+            }
         durations = [r.duration_ms for r in self._records]
         return {
             "count": len(self._records),
@@ -215,7 +236,9 @@ class RuntimeObserver:
     def slow_queries(self) -> SlowQueryDetector:
         return self._slow_queries
 
-    def start_trace(self, name: str, service: str = "kernel", trace_id: str = "", parent_span_id: str = "") -> Span:
+    def start_trace(
+        self, name: str, service: str = "kernel", trace_id: str = "", parent_span_id: str = "",
+    ) -> Span:
         span = Span(
             name=name,
             service=service,
@@ -236,12 +259,14 @@ class RuntimeObserver:
         self._metrics_store[name].append(value)
 
     def record_log(self, level: str, message: str, extra: dict[str, Any] | None = None) -> None:
-        self._log_buffer.append({
-            "timestamp": time.time(),
-            "level": level,
-            "message": message,
-            "extra": extra or {},
-        })
+        self._log_buffer.append(
+            {
+                "timestamp": time.time(),
+                "level": level,
+                "message": message,
+                "extra": extra or {},
+            },
+        )
 
     def get_metrics_snapshot(self) -> dict[str, Any]:
         snapshot = {}

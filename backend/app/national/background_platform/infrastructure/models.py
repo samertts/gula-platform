@@ -73,7 +73,12 @@ class NationalJobSchedule(BaseEntity):
     __tablename__ = "national_background_job_schedules"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    job_id = Column(String(26), ForeignKey("national_background_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(
+        String(26),
+        ForeignKey("national_background_jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     schedule_type = Column(SAEnum(ScheduleType), nullable=False, default=ScheduleType.ONCE)
     cron_expression = Column(String(255), nullable=True, default="")
     interval_seconds = Column(Integer, nullable=False, default=0)
@@ -113,7 +118,12 @@ class NationalJobExecution(BaseEntity):
     __tablename__ = "national_background_job_executions"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    job_id = Column(String(26), ForeignKey("national_background_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(
+        String(26),
+        ForeignKey("national_background_jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     scheduled_start = Column(DateTime(timezone=True), nullable=True)
     actual_start = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -153,8 +163,18 @@ class NationalJobDependency(BaseEntity):
     __tablename__ = "national_background_job_dependencies"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    job_id = Column(String(26), ForeignKey("national_background_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
-    depends_on_job_id = Column(String(26), ForeignKey("national_background_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(
+        String(26),
+        ForeignKey("national_background_jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    depends_on_job_id = Column(
+        String(26),
+        ForeignKey("national_background_jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     dependency_type = Column(SAEnum(DependencyType), nullable=False, default=DependencyType.SUCCESS)
 
     __table_args__ = (

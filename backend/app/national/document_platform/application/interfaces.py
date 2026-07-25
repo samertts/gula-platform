@@ -5,7 +5,6 @@ from typing import Any
 
 
 class StorageAdapter(ABC):
-
     @abstractmethod
     async def store(self, path: str, data: bytes, mime_type: str) -> str: ...
 
@@ -20,13 +19,13 @@ class StorageAdapter(ABC):
 
 
 class SignatureVerifier(ABC):
-
     @abstractmethod
-    async def verify(self, document_hash: str, signature_value: str, certificate_id: str) -> dict[str, Any]: ...
+    async def verify(
+        self, document_hash: str, signature_value: str, certificate_id: str,
+    ) -> dict[str, Any]: ...
 
 
 class QRCodeGenerator(ABC):
-
     @abstractmethod
     async def generate(self, data: str) -> str: ...
 
@@ -35,6 +34,5 @@ class QRCodeGenerator(ABC):
 
 
 class PDFGenerator(ABC):
-
     @abstractmethod
     async def generate(self, content: dict[str, Any], template: str = "") -> bytes: ...

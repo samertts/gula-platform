@@ -54,7 +54,10 @@ class Document:
 
     @property
     def is_active(self) -> bool:
-        return not self.is_deleted and self.status not in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED)
+        return not self.is_deleted and self.status not in (
+            DocumentStatus.DELETED,
+            DocumentStatus.ARCHIVED,
+        )
 
 
 @dataclass

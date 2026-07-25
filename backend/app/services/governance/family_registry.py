@@ -92,17 +92,21 @@ class FamilyRegistryService:
         family.updated_at = datetime.now(UTC)
 
         dependent = self._identity._get_by_health_number(health_number)
-        dependent.relationships.append({
-            "related_to": family.primary_member_hn,
-            "relationship_type": relationship,
-            "family_id": family.id,
-            "added_at": datetime.now(UTC).isoformat(),
-        })
-        dependent.add_history_entry({
-            "action": "family_member_added",
-            "family_id": family.id,
-            "relationship": relationship,
-        })
+        dependent.relationships.append(
+            {
+                "related_to": family.primary_member_hn,
+                "relationship_type": relationship,
+                "family_id": family.id,
+                "added_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        dependent.add_history_entry(
+            {
+                "action": "family_member_added",
+                "family_id": family.id,
+                "relationship": relationship,
+            }
+        )
 
         logger.info(
             "Member %s added to family %s as %s",
@@ -113,33 +117,44 @@ class FamilyRegistryService:
         return family
 
     def link_guardian(
-        self, guardian_hn: str, dependent_hn: str,
+        self,
+        guardian_hn: str,
+        dependent_hn: str,
     ) -> None:
         guardian = self._identity._get_by_health_number(guardian_hn)
         dependent = self._identity._get_by_health_number(dependent_hn)
 
-        guardian.relationships.append({
-            "related_to": dependent_hn,
-            "relationship_type": RelationshipType.GUARDIAN.value,
-            "added_at": datetime.now(UTC).isoformat(),
-        })
-        dependent.relationships.append({
-            "related_to": guardian_hn,
-            "relationship_type": RelationshipType.CHILD.value,
-            "added_at": datetime.now(UTC).isoformat(),
-        })
-        guardian.add_history_entry({
-            "action": "guardian_linked",
-            "dependent": dependent_hn,
-        })
-        dependent.add_history_entry({
-            "action": "guardian_assigned",
-            "guardian": guardian_hn,
-        })
+        guardian.relationships.append(
+            {
+                "related_to": dependent_hn,
+                "relationship_type": RelationshipType.GUARDIAN.value,
+                "added_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        dependent.relationships.append(
+            {
+                "related_to": guardian_hn,
+                "relationship_type": RelationshipType.CHILD.value,
+                "added_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        guardian.add_history_entry(
+            {
+                "action": "guardian_linked",
+                "dependent": dependent_hn,
+            }
+        )
+        dependent.add_history_entry(
+            {
+                "action": "guardian_assigned",
+                "guardian": guardian_hn,
+            }
+        )
         logger.info("Guardian linked: %s -> %s", guardian_hn, dependent_hn)
 
     def get_family_by_member(
-        self, health_number: str,
+        self,
+        health_number: str,
     ) -> FamilyRecord | None:
         family_id = self._member_index.get(health_number)
         if family_id:
@@ -153,25 +168,23 @@ class FamilyRegistryService:
         return family
 
     def list_dependents(
-        self, health_number: str,
+        self,
+        health_number: str,
     ) -> list[FamilyMember]:
         family = self.get_family_by_member(health_number)
         if not family:
             return []
-        return [
-            m for m in family.members
-            if m.is_dependent
-        ]
+        return [m for m in family.members if m.is_dependent]
 
     def list_guardians(
-        self, health_number: str,
+        self,
+        health_number: str,
     ) -> list[FamilyMember]:
         family = self.get_family_by_member(health_number)
         if not family:
             return []
         return [
-            m for m in family.members
-            if not m.is_dependent and m.health_number != health_number
+            m for m in family.members if not m.is_dependent and m.health_number != health_number
         ]
 
     def _get_family(self, family_id: str) -> FamilyRecord:

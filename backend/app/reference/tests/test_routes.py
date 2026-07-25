@@ -138,17 +138,11 @@ def _make_app_with_overrides(
     application.include_router(results_router)
 
     if patient_service is not None:
-        application.dependency_overrides[get_patient_service] = (
-            lambda: patient_service
-        )
+        application.dependency_overrides[get_patient_service] = lambda: patient_service
     if order_service is not None:
-        application.dependency_overrides[get_order_service] = (
-            lambda: order_service
-        )
+        application.dependency_overrides[get_order_service] = lambda: order_service
     if result_service is not None:
-        application.dependency_overrides[get_result_service] = (
-            lambda: result_service
-        )
+        application.dependency_overrides[get_result_service] = lambda: result_service
 
     return application
 
@@ -222,7 +216,8 @@ class TestPatientRoutes:
         mock_patient_service: MagicMock,
     ) -> None:
         mock_patient_service.create_patient.side_effect = DuplicatePatientError(
-            "name", "علي أحمد",
+            "name",
+            "علي أحمد",
         )
         app = _make_app_with_overrides(patient_service=mock_patient_service)
 
@@ -400,7 +395,9 @@ class TestResultRoutes:
         mock_result_service: MagicMock,
     ) -> None:
         mock_result_service.submit_result.side_effect = CriticalResultError(
-            "Potassium", "7.0", "mmol/L",
+            "Potassium",
+            "7.0",
+            "mmol/L",
         )
         app = _make_app_with_overrides(result_service=mock_result_service)
 

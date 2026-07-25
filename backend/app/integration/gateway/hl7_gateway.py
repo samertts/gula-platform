@@ -54,7 +54,11 @@ class HL7Gateway(MessageGateway):
             return GatewayResult(success=False, error="Not connected")
         start = time.monotonic()
         try:
-            hl7_message = message.payload if isinstance(message.payload, str) else self._serialize(message.payload)
+            hl7_message = (
+                message.payload
+                if isinstance(message.payload, str)
+                else self._serialize(message.payload)
+            )
             resp = await self._client.post(
                 self.config.endpoint,
                 content=hl7_message,
@@ -122,9 +126,7 @@ class HL7Gateway(MessageGateway):
         ]
         msa = ["MSA", ack_code, original_msh[9] if len(original_msh) > 9 else ""]
         return (
-            self.FIELD_SEPARATOR.join(msh)
-            + self.SEGMENT_SEPARATOR
-            + self.FIELD_SEPARATOR.join(msa)
+            self.FIELD_SEPARATOR.join(msh) + self.SEGMENT_SEPARATOR + self.FIELD_SEPARATOR.join(msa)
         )
 
 

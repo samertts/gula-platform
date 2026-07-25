@@ -40,7 +40,6 @@ logger = logging.getLogger("gula.national.rules_engine")
 
 
 class RulesEngineService:
-
     def __init__(
         self,
         repository: RuleRepository,
@@ -66,44 +65,54 @@ class RulesEngineService:
         if errors:
             raise RuleValidationError(rule.id, "; ".join(errors))
         saved = await self.repository.save(rule)
-        self._publish_event(RuleCreatedEvent(
-            rule_id=saved.id,
-            rule_name=saved.name,
-            category=saved.category,
-            rule_version=saved.version,
-            aggregate_id=saved.id,
-            payload={"name": saved.name, "category": saved.category.value},
-        ))
+        self._publish_event(
+            RuleCreatedEvent(
+                rule_id=saved.id,
+                rule_name=saved.name,
+                category=saved.category,
+                rule_version=saved.version,
+                aggregate_id=saved.id,
+                payload={"name": saved.name, "category": saved.category.value},
+            ),
+        )
         self._invalidate_cache()
         return saved
 
     async def activate_rule(self, rule_id: str) -> RuleDefinition:
         rule = await self._get_rule_or_raise(rule_id)
         if rule.status != RuleStatus.DRAFT and rule.status != RuleStatus.INACTIVE:
-            raise RuleValidationError(rule_id, f"Cannot activate rule in status {rule.status.value}")
+            raise RuleValidationError(
+                rule_id, f"Cannot activate rule in status {rule.status.value}",
+            )
         rule.status = RuleStatus.ACTIVE
         updated = await self.repository.save(rule)
-        self._publish_event(RuleActivatedEvent(
-            rule_id=updated.id,
-            rule_name=updated.name,
-            aggregate_id=updated.id,
-            payload={"name": updated.name},
-        ))
+        self._publish_event(
+            RuleActivatedEvent(
+                rule_id=updated.id,
+                rule_name=updated.name,
+                aggregate_id=updated.id,
+                payload={"name": updated.name},
+            ),
+        )
         self._invalidate_cache()
         return updated
 
     async def deactivate_rule(self, rule_id: str) -> RuleDefinition:
         rule = await self._get_rule_or_raise(rule_id)
         if rule.status != RuleStatus.ACTIVE:
-            raise RuleValidationError(rule_id, f"Cannot deactivate rule in status {rule.status.value}")
+            raise RuleValidationError(
+                rule_id, f"Cannot deactivate rule in status {rule.status.value}",
+            )
         rule.status = RuleStatus.INACTIVE
         updated = await self.repository.save(rule)
-        self._publish_event(RuleDeactivatedEvent(
-            rule_id=updated.id,
-            rule_name=updated.name,
-            aggregate_id=updated.id,
-            payload={"name": updated.name},
-        ))
+        self._publish_event(
+            RuleDeactivatedEvent(
+                rule_id=updated.id,
+                rule_name=updated.name,
+                aggregate_id=updated.id,
+                payload={"name": updated.name},
+            ),
+        )
         self._invalidate_cache()
         return updated
 
@@ -120,48 +129,57 @@ class RulesEngineService:
             try:
                 result = self.expression_engine.evaluate_rule(rule, context.data)
                 results.append(result)
-                self._publish_event(RuleEvaluatedEvent(
-                    rule_id=rule.id,
-                    context=context.data,
-                    result={
-                        "outcome": result.outcome.value,
-                        "message": result.message,
-                        "execution_time_ms": result.execution_time_ms,
-                    },
-                    trigger=context.trigger.value,
-                    aggregate_id=rule.id,
-                    payload={"outcome": result.outcome.value},
-                ))
-                if result.outcome in (
-                    RuleOutcome.FAIL, RuleOutcome.ERROR, RuleOutcome.BLOCK,
-                    RuleOutcome.FLAG, RuleOutcome.ESCALATE,
-                ):
-                    self._publish_event(RuleViolationEvent(
+                self._publish_event(
+                    RuleEvaluatedEvent(
                         rule_id=rule.id,
-                        rule_name=rule.name,
-                        severity=rule.severity.value,
-                        resource_type=context.resource_type,
-                        resource_id=context.resource_id,
-                        message=result.message,
                         context=context.data,
-                        aggregate_id=rule.id,
-                        payload={
+                        result={
                             "outcome": result.outcome.value,
-                            "severity": rule.severity.value,
+                            "message": result.message,
+                            "execution_time_ms": result.execution_time_ms,
                         },
-                    ))
+                        trigger=context.trigger.value,
+                        aggregate_id=rule.id,
+                        payload={"outcome": result.outcome.value},
+                    ),
+                )
+                if result.outcome in (
+                    RuleOutcome.FAIL,
+                    RuleOutcome.ERROR,
+                    RuleOutcome.BLOCK,
+                    RuleOutcome.FLAG,
+                    RuleOutcome.ESCALATE,
+                ):
+                    self._publish_event(
+                        RuleViolationEvent(
+                            rule_id=rule.id,
+                            rule_name=rule.name,
+                            severity=rule.severity.value,
+                            resource_type=context.resource_type,
+                            resource_id=context.resource_id,
+                            message=result.message,
+                            context=context.data,
+                            aggregate_id=rule.id,
+                            payload={
+                                "outcome": result.outcome.value,
+                                "severity": rule.severity.value,
+                            },
+                        ),
+                    )
                     await self._send_violation_notification(rule, result, context)
                 if result.outcome == RuleOutcome.BLOCK and execution_mode == "synchronous":
                     break
             except Exception as exc:
                 logger.error("Rule evaluation failed for %s: %s", rule.id, exc)
-                results.append(RuleEvaluationResult(
-                    rule_id=rule.id,
-                    rule_name=rule.name,
-                    outcome=RuleOutcome.ERROR,
-                    severity=rule.severity,
-                    message=f"Evaluation error: {exc}",
-                ))
+                results.append(
+                    RuleEvaluationResult(
+                        rule_id=rule.id,
+                        rule_name=rule.name,
+                        outcome=RuleOutcome.ERROR,
+                        severity=rule.severity,
+                        message=f"Evaluation error: {exc}",
+                    ),
+                )
         return results
 
     async def simulate(
@@ -170,14 +188,16 @@ class RulesEngineService:
         context: RuleEvaluationContext,
     ) -> dict[str, Any]:
         report = self.simulation_engine.run_simulation(rule, context)
-        self._publish_event(RuleSimulationEvent(
-            rule_id=rule.id,
-            context=context.data,
-            result=report.to_dict(),
-            simulated=True,
-            aggregate_id=rule.id,
-            payload={"outcome": report.outcome},
-        ))
+        self._publish_event(
+            RuleSimulationEvent(
+                rule_id=rule.id,
+                context=context.data,
+                result=report.to_dict(),
+                simulated=True,
+                aggregate_id=rule.id,
+                payload={"outcome": report.outcome},
+            ),
+        )
         return report.to_dict()
 
     async def batch_simulate(
@@ -212,14 +232,16 @@ class RulesEngineService:
         if errors:
             raise RuleValidationError(new_rule.id, "; ".join(errors))
         saved = await self.repository.save(new_rule)
-        self._publish_event(RuleCreatedEvent(
-            rule_id=saved.id,
-            rule_name=saved.name,
-            category=saved.category,
-            rule_version=saved.version,
-            aggregate_id=saved.id,
-            payload={"name": saved.name, "version": saved.version, "source_rule_id": rule_id},
-        ))
+        self._publish_event(
+            RuleCreatedEvent(
+                rule_id=saved.id,
+                rule_name=saved.name,
+                category=saved.category,
+                rule_version=saved.version,
+                aggregate_id=saved.id,
+                payload={"name": saved.name, "version": saved.version, "source_rule_id": rule_id},
+            ),
+        )
         self._invalidate_cache()
         return saved
 
@@ -237,10 +259,20 @@ class RulesEngineService:
         filters: dict[str, Any] = {}
         if category:
             from app.national.rules_engine.domain.enums import RuleCategory
-            filters["category"] = RuleCategory(category).value if hasattr(RuleCategory, "_value2member_map_") else RuleCategory(category)
+
+            filters["category"] = (
+                RuleCategory(category).value
+                if hasattr(RuleCategory, "_value2member_map_")
+                else RuleCategory(category)
+            )
         if status:
             from app.national.rules_engine.domain.enums import RuleStatus
-            filters["status"] = RuleStatus(status).value if hasattr(RuleStatus, "_value2member_map_") else RuleStatus(status)
+
+            filters["status"] = (
+                RuleStatus(status).value
+                if hasattr(RuleStatus, "_value2member_map_")
+                else RuleStatus(status)
+            )
         return await self.repository.list(skip=skip, limit=limit, **filters)
 
     async def delete_rule(self, rule_id: str) -> None:
@@ -254,6 +286,7 @@ class RulesEngineService:
 
     async def list_categories(self) -> list[str]:
         from app.national.rules_engine.domain.enums import RuleCategory
+
         return [c.value for c in RuleCategory]
 
     async def _get_rule_or_raise(self, rule_id: str) -> RuleDefinition:
@@ -262,7 +295,9 @@ class RulesEngineService:
             raise RuleNotFoundError(rule_id)
         return rule
 
-    async def _get_active_rules_for_context(self, context: RuleEvaluationContext) -> list[RuleDefinition]:
+    async def _get_active_rules_for_context(
+        self, context: RuleEvaluationContext,
+    ) -> list[RuleDefinition]:
         now = datetime.now(UTC)
         if self._cache and self._cache_timestamp:
             age = (now - self._cache_timestamp).total_seconds()
@@ -311,7 +346,9 @@ class RulesEngineService:
                 to="admin",
                 subject=subject,
                 body=body,
-                priority="high" if rule.severity in (RuleSeverity.CRITICAL, RuleSeverity.BLOCKER) else "normal",
+                priority="high"
+                if rule.severity in (RuleSeverity.CRITICAL, RuleSeverity.BLOCKER)
+                else "normal",
             )
         except Exception as exc:
             logger.error("Failed to send violation notification for rule %s: %s", rule.id, exc)
@@ -321,9 +358,15 @@ class RulesEngineService:
             event = Event(
                 name=domain_event.event_type,
                 data=domain_event.payload if hasattr(domain_event, "payload") else {},
-                correlation_id=domain_event.correlation_id if hasattr(domain_event, "correlation_id") else "",
+                correlation_id=domain_event.correlation_id
+                if hasattr(domain_event, "correlation_id")
+                else "",
                 tenant_id=domain_event.tenant_id if hasattr(domain_event, "tenant_id") else "",
             )
             self.event_bus.publish(event)
         except Exception as exc:
-            logger.error("Failed to publish event %s: %s", getattr(domain_event, "event_type", "unknown"), exc)
+            logger.error(
+                "Failed to publish event %s: %s",
+                getattr(domain_event, "event_type", "unknown"),
+                exc,
+            )

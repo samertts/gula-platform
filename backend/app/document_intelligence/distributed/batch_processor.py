@@ -42,10 +42,7 @@ class BatchProcessor:
         )
         self._jobs[job.id] = job
 
-        batches = [
-            items[i : i + self._batch_size]
-            for i in range(0, len(items), self._batch_size)
-        ]
+        batches = [items[i : i + self._batch_size] for i in range(0, len(items), self._batch_size)]
 
         async def _process_batch(batch: list[Any]):
             async with self._semaphore:

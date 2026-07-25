@@ -168,7 +168,13 @@ class MaintainabilityEvaluator(DimensionEvaluator):
         complexities = self._measure_cyclomatic_complexity(target)
         avg_cc = statistics.mean(complexities) if complexities else 1
         halstead_volume = self._estimate_halstead_volume(target)
-        mi = max(0, 171 - 5.2 * math.log(max(halstead_volume, 1)) - 0.23 * avg_cc * 10 - 16.2 * math.log(max(total_lines / max(total_files, 1), 1)))
+        mi = max(
+            0,
+            171
+            - 5.2 * math.log(max(halstead_volume, 1))
+            - 0.23 * avg_cc * 10
+            - 16.2 * math.log(max(total_lines / max(total_files, 1), 1)),
+        )
         return min(mi, 100)
 
     def _measure_function_length(self, target: Path) -> list[int]:
@@ -210,7 +216,11 @@ class MaintainabilityEvaluator(DimensionEvaluator):
                 tree = ast.parse(py_file.read_text())
                 if hasattr(tree, "body"):
                     for node in ast.walk(tree):
-                        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                        if (
+                            isinstance(node, ast.Expr)
+                            and isinstance(node.value, ast.Constant)
+                            and isinstance(node.value.value, str)
+                        ):
                             comments += 1
                 total += 1
             except SyntaxError:

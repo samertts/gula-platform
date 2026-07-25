@@ -1,4 +1,3 @@
-
 from sqlalchemy import select
 
 from app.identity.models.account import Account
@@ -6,7 +5,6 @@ from app.identity.repositories.base import IdentityRepositoryBase
 
 
 class AccountRepository(IdentityRepositoryBase[Account]):
-
     model_class = Account
 
     async def find_by_email(self, email: str) -> Account | None:
@@ -42,12 +40,9 @@ class AccountRepository(IdentityRepositoryBase[Account]):
         return result.scalar_one_or_none()
 
     async def find_locked_accounts(self) -> list[Account]:
-        stmt = (
-            select(self.model_class)
-            .where(
-                self.model_class.is_locked.is_(True),
-                self.model_class.is_active.is_(True),
-            )
+        stmt = select(self.model_class).where(
+            self.model_class.is_locked.is_(True),
+            self.model_class.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

@@ -3,6 +3,7 @@
 These tests are fully isolated — they never touch a real database.
 The escalation tests mock self_healing so no circular imports are needed.
 """
+
 import os
 import sys
 import threading
@@ -32,8 +33,8 @@ from app.database import (
 # _SlidingWindow tests
 # =============================================================================
 
-class TestSlidingWindow:
 
+class TestSlidingWindow:
     def setup_method(self):
         """Fresh window for each test."""
         self.w = _SlidingWindow(max_age_s=60, max_size=200)
@@ -47,7 +48,7 @@ class TestSlidingWindow:
         self.w.record("timeout")
         assert self.w.count("refused") == 2
         assert self.w.count("timeout") == 1
-        assert self.w.count("ok")      == 0
+        assert self.w.count("ok") == 0
 
     def test_count_respects_window(self):
         # Record one event, then check with a window ending 1 second in the future.
@@ -69,7 +70,7 @@ class TestSlidingWindow:
         self.w.record("refused")
         self.w.record("refused")
         snap = self.w.snapshot()
-        assert snap["ok"]      == 1
+        assert snap["ok"] == 1
         assert snap["refused"] == 2
         assert "timeout" not in snap  # never recorded
 
@@ -133,21 +134,28 @@ class TestSlidingWindow:
         self.w.record("ok")
         self.w.record("timeout")
         assert self.w.count("refused") == 1
-        assert self.w.count("ok")      == 1
+        assert self.w.count("ok") == 1
         assert self.w.count("timeout") == 1
-        assert self.w.count("error")   == 0
+        assert self.w.count("error") == 0
 
 
 # =============================================================================
 # get_db_window_snapshot tests
 # =============================================================================
 
-class TestGetDbWindowSnapshot:
 
+class TestGetDbWindowSnapshot:
     def test_returns_expected_keys(self):
         snap = get_db_window_snapshot(300)
-        required = {"window_s", "refused", "auth_failed", "timeout", "ok",
-                    "refused_per_min", "timeout_per_min"}
+        required = {
+            "window_s",
+            "refused",
+            "auth_failed",
+            "timeout",
+            "ok",
+            "refused_per_min",
+            "timeout_per_min",
+        }
         assert required.issubset(snap.keys())
 
     def test_window_s_matches_argument(self):
@@ -166,8 +174,8 @@ class TestGetDbWindowSnapshot:
 # get_db_error_counts tests
 # =============================================================================
 
-class TestGetDbErrorCounts:
 
+class TestGetDbErrorCounts:
     def test_returns_dict_with_expected_keys(self):
         ec = get_db_error_counts()
         for key in ("refused", "auth_failed", "timeout", "error"):
@@ -192,8 +200,8 @@ class TestGetDbErrorCounts:
 # Circuit escalation logic
 # =============================================================================
 
-class TestTriggerCircuitOpen:
 
+class TestTriggerCircuitOpen:
     def test_trigger_circuit_open_calls_record_failure(self):
         """_trigger_circuit_open should force-open the circuit by recording failures."""
         mock_circuit = MagicMock()
@@ -216,6 +224,7 @@ class TestTriggerCircuitOpen:
         # Simulate circuit already OPEN
         with patch("app.core.self_healing.health", mock_health):
             from app.core.self_healing import CircuitState
+
             mock_health.db_circuit.state = CircuitState.OPEN
             # Should return without calling record_failure
             _trigger_circuit_open(25)
@@ -231,6 +240,7 @@ class TestTriggerCircuitOpen:
 
         with patch("app.core.self_healing.health", mock_health):
             from app.core.self_healing import CircuitState
+
             mock_health.db_circuit.state = CircuitState.CLOSED
             mock_health.db_circuit.failure_threshold = 3
             _trigger_circuit_open(25)
@@ -239,7 +249,6 @@ class TestTriggerCircuitOpen:
 
 
 class TestTriggerSystemDegradation:
-
     def test_trigger_system_degradation_calls_enter_degraded_mode(self):
         from app.database import _trigger_system_degradation
 
@@ -254,6 +263,7 @@ class TestTriggerSystemDegradation:
     def test_trigger_system_degradation_swallows_import_errors(self):
         """Must not propagate exceptions — it's a best-effort alert."""
         from app.database import _trigger_system_degradation
+
         with patch("app.core.self_healing.health", side_effect=ImportError("boom")):
             # Should not raise
             _trigger_system_degradation(55)
@@ -263,8 +273,8 @@ class TestTriggerSystemDegradation:
 # Threshold constants sanity checks
 # =============================================================================
 
-class TestThresholdConstants:
 
+class TestThresholdConstants:
     def test_circuit_open_threshold_positive(self):
         assert _CIRCUIT_OPEN_THRESHOLD > 0
 
@@ -280,15 +290,17 @@ class TestThresholdConstants:
 # ContextVar correlation (light smoke test — no DB calls needed)
 # =============================================================================
 
-class TestCorrelationContextVars:
 
+class TestCorrelationContextVars:
     def test_request_id_var_default_empty(self):
         from app.database import _endpoint_var, _request_id_var
+
         assert _request_id_var.get("") == ""
         assert _endpoint_var.get("") == ""
 
     def test_request_id_var_set_and_reset(self):
         from app.database import _request_id_var
+
         token = _request_id_var.set("req-abc-123")
         assert _request_id_var.get("") == "req-abc-123"
         _request_id_var.reset(token)
@@ -296,6 +308,7 @@ class TestCorrelationContextVars:
 
     def test_endpoint_var_set_and_reset(self):
         from app.database import _endpoint_var
+
         token = _endpoint_var.set("/api/orders")
         assert _endpoint_var.get("") == "/api/orders"
         _endpoint_var.reset(token)
@@ -304,6 +317,7 @@ class TestCorrelationContextVars:
     def test_contextvars_thread_isolated(self):
         """ContextVars must be isolated between threads."""
         from app.database import _request_id_var
+
         results = {}
 
         def thread_a():

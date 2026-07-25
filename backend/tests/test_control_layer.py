@@ -8,6 +8,7 @@ Unit tests for the GULA Control Layer:
 All tests are pure-Python, no DB or Redis required.
 Run: pytest backend/tests/test_control_layer.py -v
 """
+
 from __future__ import annotations
 
 import os
@@ -28,13 +29,15 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
 # PolicyEngine
 # =============================================================================
 
-class TestPolicyEngine(unittest.TestCase):
 
+class TestPolicyEngine(unittest.TestCase):
     def setUp(self):
         # Fresh engine for each test — avoids counter pollution
         from app.core.policy_engine import PolicyEngine
+
         self.engine = PolicyEngine()
         from app.core.policy_engine import ActionType, RiskLevel
+
         self.ActionType = ActionType
         self.RiskLevel = RiskLevel
 
@@ -51,8 +54,7 @@ class TestPolicyEngine(unittest.TestCase):
         for action in critical:
             with self.subTest(action=action):
                 decision = self.engine.evaluate(action, {"env": "development"})
-                self.assertFalse(decision.allowed,
-                                 f"{action} should be blocked but was allowed")
+                self.assertFalse(decision.allowed, f"{action} should be blocked but was allowed")
                 self.assertEqual(decision.risk, self.RiskLevel.CRITICAL)
 
     def test_auto_repair_allowed_in_dev(self):
@@ -85,7 +87,7 @@ class TestPolicyEngine(unittest.TestCase):
         # Allow 10 (the limit), 11th should be blocked
         for i in range(10):
             d = self.engine.evaluate(self.ActionType.AUTO_REPAIR, {"env": "development"})
-            self.assertTrue(d.allowed, f"Call {i+1} should be allowed")
+            self.assertTrue(d.allowed, f"Call {i + 1} should be allowed")
         # 11th exceeds limit
         d = self.engine.evaluate(self.ActionType.AUTO_REPAIR, {"env": "development"})
         self.assertFalse(d.allowed)
@@ -94,6 +96,7 @@ class TestPolicyEngine(unittest.TestCase):
     def test_frequency_counter_resets_after_hour(self):
         """Counter window resets after 3600 seconds."""
         from app.core.policy_engine import _ActionCounter
+
         counter = _ActionCounter()
         counter.count = 5
         counter.window_start = time.monotonic() - 3601  # expired window
@@ -114,6 +117,7 @@ class TestPolicyEngine(unittest.TestCase):
         # by temporarily removing from _POLICY_TABLE
         from app.core import policy_engine as pe
         from app.core.policy_engine import ActionType
+
         backup = dict(pe._POLICY_TABLE)
         pe._POLICY_TABLE.pop(self.ActionType.AUTO_REPAIR)
         try:
@@ -126,7 +130,7 @@ class TestPolicyEngine(unittest.TestCase):
     def test_stats_tracking(self):
         """blocked_total and allowed_total increment correctly."""
         self.engine.evaluate(self.ActionType.AUTO_REPAIR, {"env": "development"})  # allowed
-        self.engine.evaluate(self.ActionType.CODE_CHANGE, {})                      # blocked
+        self.engine.evaluate(self.ActionType.CODE_CHANGE, {})  # blocked
         stats = self.engine.stats()
         self.assertEqual(stats["allowed_total"], 1)
         self.assertEqual(stats["blocked_total"], 1)
@@ -134,6 +138,7 @@ class TestPolicyEngine(unittest.TestCase):
     def test_control_layer_disabled_allows_everything(self):
         """When CONTROL_LAYER_ENABLED=false, all actions are allowed."""
         import app.core.policy_engine as pe
+
         orig = pe._CONTROL_LAYER_ENABLED
         pe._CONTROL_LAYER_ENABLED = False
         try:
@@ -168,23 +173,27 @@ class TestPolicyEngine(unittest.TestCase):
 # DecisionGuard
 # =============================================================================
 
-class TestDecisionGuard(unittest.TestCase):
 
+class TestDecisionGuard(unittest.TestCase):
     def setUp(self):
         # Patch policy engine with a fresh instance for isolation
         from app.core.policy_engine import PolicyEngine
+
         self._fresh_engine = PolicyEngine()
         import app.core.policy_engine as pe_mod
+
         self._orig_engine = pe_mod.policy_engine
         pe_mod.policy_engine = self._fresh_engine
 
     def tearDown(self):
         import app.core.policy_engine as pe_mod
+
         pe_mod.policy_engine = self._orig_engine
 
     def test_guard_raises_on_blocked(self):
         from app.core.decision_guard import PolicyViolation, guard
         from app.core.policy_engine import ActionType
+
         with self.assertRaises(PolicyViolation) as ctx:
             guard(ActionType.CODE_CHANGE, {})
         self.assertIn("blocked", str(ctx.exception).lower())
@@ -192,23 +201,27 @@ class TestDecisionGuard(unittest.TestCase):
     def test_guard_returns_decision_on_allowed(self):
         from app.core.decision_guard import guard
         from app.core.policy_engine import ActionType
+
         decision = guard(ActionType.AUTO_REPAIR, {"env": "development"})
         self.assertTrue(decision.allowed)
 
     def test_check_returns_false_on_blocked(self):
         from app.core.decision_guard import check
         from app.core.policy_engine import ActionType
+
         result = check(ActionType.AI_AUTO_FIX, {})
         self.assertFalse(result)
 
     def test_check_returns_true_on_allowed(self):
         from app.core.decision_guard import check
         from app.core.policy_engine import ActionType
+
         result = check(ActionType.SCALING, {"env": "production"})
         self.assertTrue(result)
 
     def test_guard_repair_convenience(self):
         from app.core.decision_guard import guard_repair
+
         # Should not raise
         decision = guard_repair("pool_recycle", {"env": "development"})
         self.assertTrue(decision.allowed)
@@ -216,22 +229,25 @@ class TestDecisionGuard(unittest.TestCase):
 
     def test_guard_repair_blocked_by_kill_switch(self):
         from app.core.decision_guard import PolicyViolation, guard_repair
-        with patch("app.core.kill_switch.is_kill_switch_active", return_value=True):
-            with self.assertRaises(PolicyViolation):
-                guard_repair("memory_gc")
+
+        with patch("app.core.kill_switch.is_kill_switch_active", return_value=True), self.assertRaises(PolicyViolation):
+            guard_repair("memory_gc")
 
     def test_guard_ai_fix_always_blocked(self):
         from app.core.decision_guard import PolicyViolation, guard_ai_fix
+
         with self.assertRaises(PolicyViolation):
             guard_ai_fix("backend/app/main.py")
 
     def test_guard_ai_commit_always_blocked(self):
         from app.core.decision_guard import PolicyViolation, guard_ai_commit
+
         with self.assertRaises(PolicyViolation):
             guard_ai_commit("fix: improve performance")
 
     def test_guard_scaling_in_production(self):
         from app.core.decision_guard import guard_scaling
+
         decision = guard_scaling(3)
         self.assertTrue(decision.allowed)
         self.assertIn("scale to 3 replicas", decision.reason)
@@ -239,6 +255,7 @@ class TestDecisionGuard(unittest.TestCase):
     def test_policy_violation_contains_action(self):
         from app.core.decision_guard import PolicyViolation, guard
         from app.core.policy_engine import ActionType
+
         try:
             guard(ActionType.AUDIT_DELETE, {})
             self.fail("Should have raised PolicyViolation")
@@ -251,15 +268,17 @@ class TestDecisionGuard(unittest.TestCase):
 # RiskEngine
 # =============================================================================
 
-class TestRiskEngine(unittest.TestCase):
 
+class TestRiskEngine(unittest.TestCase):
     def setUp(self):
         # Clear recency tracker before each test
         import app.core.risk_engine as re_mod
+
         re_mod._recent_actions.clear()
 
     def test_dry_run_zero_risk(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("auto_repair.gc", {"dry_run": True})
         self.assertEqual(assessment.score, 0)
         self.assertEqual(assessment.level, "low")
@@ -267,48 +286,58 @@ class TestRiskEngine(unittest.TestCase):
 
     def test_production_adds_3(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("auto_repair.gc", {"env": "production"})
         self.assertGreaterEqual(assessment.score, 3)
         self.assertTrue(any("+3 production" in f for f in assessment.factors))
 
     def test_affects_data_adds_3(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("db_write", {"env": "development", "affects_data": True})
         self.assertGreaterEqual(assessment.score, 3)
         self.assertTrue(any("patient data" in f for f in assessment.factors))
 
     def test_all_users_adds_2(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("cache_flush", {"env": "development", "all_users": True})
         self.assertGreaterEqual(assessment.score, 2)
         self.assertTrue(any("all tenants" in f for f in assessment.factors))
 
     def test_irreversible_adds_2(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("queue_purge", {"env": "development", "reversible": False})
         self.assertTrue(any("irreversible" in f for f in assessment.factors))
 
     def test_max_score_clamped_to_10(self):
         from app.core.risk_engine import compute_risk
+
         # production + data + all_users + irreversible + high frequency = 3+3+2+2+2 = 12 → clamped to 10
-        assessment = compute_risk("worst_case", {
-            "env": "production",
-            "affects_data": True,
-            "all_users": True,
-            "reversible": False,
-            "frequency": 10,
-        })
+        assessment = compute_risk(
+            "worst_case",
+            {
+                "env": "production",
+                "affects_data": True,
+                "all_users": True,
+                "reversible": False,
+                "frequency": 10,
+            },
+        )
         self.assertEqual(assessment.score, 10)
         self.assertEqual(assessment.level, "critical")
 
     def test_low_score_gives_allow(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("safe_action", {"env": "development"})
         self.assertEqual(assessment.recommended, "allow")
 
     def test_recency_adds_1_when_repeated_within_5_min(self):
         import app.core.risk_engine as re_mod
         from app.core.risk_engine import compute_risk
+
         action = "auto_repair.gc_recency_test"
         re_mod._recent_actions[action] = time.time() - 60  # 1 min ago
         assessment = compute_risk(action, {"env": "development"})
@@ -317,6 +346,7 @@ class TestRiskEngine(unittest.TestCase):
     def test_recency_ignored_when_older_than_5_min(self):
         import app.core.risk_engine as re_mod
         from app.core.risk_engine import compute_risk
+
         action = "auto_repair.gc_old"
         re_mod._recent_actions[action] = time.time() - 400  # 6+ min ago
         assessment = compute_risk(action, {"env": "development"})
@@ -324,12 +354,14 @@ class TestRiskEngine(unittest.TestCase):
 
     def test_assess_repair_convenience(self):
         from app.core.risk_engine import assess_repair
+
         assessment = assess_repair("pool_recycle", env="production", frequency=0)
         self.assertIsNotNone(assessment.score)
         self.assertIn("auto_repair.pool_recycle", assessment.action)
 
     def test_risk_assessment_to_dict(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("test_action", {})
         d = assessment.to_dict()
         self.assertIn("score", d)
@@ -339,11 +371,13 @@ class TestRiskEngine(unittest.TestCase):
 
     def test_high_frequency_adds_2(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("repair.loop", {"env": "development", "frequency": 6})
         self.assertTrue(any("high frequency" in f for f in assessment.factors))
 
     def test_moderate_frequency_adds_1(self):
         from app.core.risk_engine import compute_risk
+
         assessment = compute_risk("repair.moderate", {"env": "development", "frequency": 3})
         self.assertTrue(any("moderate frequency" in f for f in assessment.factors))
 
@@ -352,11 +386,12 @@ class TestRiskEngine(unittest.TestCase):
 # KillSwitch
 # =============================================================================
 
-class TestKillSwitch(unittest.TestCase):
 
+class TestKillSwitch(unittest.TestCase):
     def setUp(self):
         """Reset in-memory state before each test."""
         import app.core.kill_switch as ks
+
         ks._in_memory_active = False
         ks._activated_at = 0.0
         ks._activated_reason = ""
@@ -364,17 +399,19 @@ class TestKillSwitch(unittest.TestCase):
     def tearDown(self):
         """Ensure kill switch is off after each test."""
         import app.core.kill_switch as ks
+
         ks._in_memory_active = False
 
     def test_initially_inactive(self):
         from app.core.kill_switch import is_kill_switch_active
-        with patch.dict(os.environ, {"KILL_SWITCH": "false"}):
-            with patch("app.security.redis_client.cache") as mock_cache:
-                mock_cache.get.return_value = None
-                self.assertFalse(is_kill_switch_active())
+
+        with patch.dict(os.environ, {"KILL_SWITCH": "false"}), patch("app.security.redis_client.cache") as mock_cache:
+            mock_cache.get.return_value = None
+            self.assertFalse(is_kill_switch_active())
 
     def test_in_memory_activation(self):
         from app.core.kill_switch import activate, is_kill_switch_active
+
         with patch("app.security.redis_client.cache") as mock_cache:
             mock_cache.set.return_value = True
             activate("test reason", propagate=False)
@@ -382,34 +419,35 @@ class TestKillSwitch(unittest.TestCase):
 
     def test_env_var_activates(self):
         from app.core.kill_switch import is_kill_switch_active
-        with patch.dict(os.environ, {"KILL_SWITCH": "true"}):
-            with patch("app.security.redis_client.cache") as mock_cache:
-                mock_cache.get.return_value = None
-                self.assertTrue(is_kill_switch_active())
+
+        with patch.dict(os.environ, {"KILL_SWITCH": "true"}), patch("app.security.redis_client.cache") as mock_cache:
+            mock_cache.get.return_value = None
+            self.assertTrue(is_kill_switch_active())
 
     def test_env_var_1_activates(self):
         from app.core.kill_switch import is_kill_switch_active
-        with patch.dict(os.environ, {"KILL_SWITCH": "1"}):
-            with patch("app.security.redis_client.cache") as mock_cache:
-                mock_cache.get.return_value = None
-                self.assertTrue(is_kill_switch_active())
+
+        with patch.dict(os.environ, {"KILL_SWITCH": "1"}), patch("app.security.redis_client.cache") as mock_cache:
+            mock_cache.get.return_value = None
+            self.assertTrue(is_kill_switch_active())
 
     def test_redis_key_activates(self):
         from app.core.kill_switch import is_kill_switch_active
-        with patch.dict(os.environ, {"KILL_SWITCH": "false"}):
-            with patch("app.security.redis_client.cache") as mock_cache:
-                mock_cache.get.return_value = "1"
-                self.assertTrue(is_kill_switch_active())
+
+        with patch.dict(os.environ, {"KILL_SWITCH": "false"}), patch("app.security.redis_client.cache") as mock_cache:
+            mock_cache.get.return_value = "1"
+            self.assertTrue(is_kill_switch_active())
 
     def test_redis_key_0_does_not_activate(self):
         from app.core.kill_switch import is_kill_switch_active
-        with patch.dict(os.environ, {"KILL_SWITCH": "false"}):
-            with patch("app.security.redis_client.cache") as mock_cache:
-                mock_cache.get.return_value = "0"
-                self.assertFalse(is_kill_switch_active())
+
+        with patch.dict(os.environ, {"KILL_SWITCH": "false"}), patch("app.security.redis_client.cache") as mock_cache:
+            mock_cache.get.return_value = "0"
+            self.assertFalse(is_kill_switch_active())
 
     def test_deactivate_clears_in_memory(self):
         from app.core.kill_switch import activate, deactivate, is_kill_switch_active
+
         with patch("app.security.redis_client.cache") as mock_cache:
             mock_cache.set.return_value = True
             mock_cache.delete.return_value = True
@@ -423,6 +461,7 @@ class TestKillSwitch(unittest.TestCase):
 
     def test_activate_propagates_to_redis(self):
         from app.core.kill_switch import activate
+
         with patch("app.security.redis_client.cache") as mock_cache:
             mock_cache.set.return_value = True
             activate("propagation test", propagate=True)
@@ -431,6 +470,7 @@ class TestKillSwitch(unittest.TestCase):
     def test_deactivate_deletes_redis_key(self):
         import app.core.kill_switch as ks
         from app.core.kill_switch import deactivate
+
         ks._in_memory_active = True
         with patch("app.security.redis_client.cache") as mock_cache:
             mock_cache.delete.return_value = True
@@ -439,6 +479,7 @@ class TestKillSwitch(unittest.TestCase):
 
     def test_status_returns_dict(self):
         from app.core.kill_switch import activate, status
+
         with patch("app.security.redis_client.cache") as mock_cache:
             mock_cache.set.return_value = True
             mock_cache.get.return_value = "1"
@@ -450,26 +491,27 @@ class TestKillSwitch(unittest.TestCase):
 
     def test_status_inactive(self):
         from app.core.kill_switch import status
-        with patch.dict(os.environ, {"KILL_SWITCH": "false"}):
-            with patch("app.security.redis_client.cache") as mock_cache:
-                mock_cache.get.return_value = None
-                s = status()
+
+        with patch.dict(os.environ, {"KILL_SWITCH": "false"}), patch("app.security.redis_client.cache") as mock_cache:
+            mock_cache.get.return_value = None
+            s = status()
         self.assertFalse(s["active"])
         self.assertIsNone(s["reason"])
 
     def test_redis_unavailable_falls_through(self):
         """If Redis is down, kill switch falls through to False (fail open for kill switch)."""
         from app.core.kill_switch import is_kill_switch_active
-        with patch.dict(os.environ, {"KILL_SWITCH": "false"}):
-            with patch("app.security.redis_client.cache") as mock_cache:
-                mock_cache.get.side_effect = Exception("Redis down")
-                # Should NOT raise, should return False
-                result = is_kill_switch_active()
+
+        with patch.dict(os.environ, {"KILL_SWITCH": "false"}), patch("app.security.redis_client.cache") as mock_cache:
+            mock_cache.get.side_effect = Exception("Redis down")
+            # Should NOT raise, should return False
+            result = is_kill_switch_active()
         self.assertFalse(result)
 
     def test_activate_redis_failure_still_sets_in_memory(self):
         """Even if Redis propagation fails, in-memory flag is set."""
         from app.core.kill_switch import activate, is_kill_switch_active
+
         with patch("app.security.redis_client.cache") as mock_cache:
             mock_cache.set.side_effect = Exception("Redis down")
             activate("redis_fail_test", propagate=True)
@@ -480,27 +522,32 @@ class TestKillSwitch(unittest.TestCase):
 # Integration: Guard + PolicyEngine + KillSwitch interaction
 # =============================================================================
 
-class TestControlLayerIntegration(unittest.TestCase):
 
+class TestControlLayerIntegration(unittest.TestCase):
     def setUp(self):
         import app.core.policy_engine as pe_mod
         from app.core.policy_engine import PolicyEngine
+
         self._orig_engine = pe_mod.policy_engine
         pe_mod.policy_engine = PolicyEngine()
 
         import app.core.kill_switch as ks
+
         ks._in_memory_active = False
 
     def tearDown(self):
         import app.core.policy_engine as pe_mod
+
         pe_mod.policy_engine = self._orig_engine
         import app.core.kill_switch as ks
+
         ks._in_memory_active = False
 
     def test_full_flow_allowed(self):
         """guard() passes for a medium-risk action in dev with kill switch off."""
         from app.core.decision_guard import guard
         from app.core.policy_engine import ActionType
+
         with patch("app.core.kill_switch.is_kill_switch_active", return_value=False):
             decision = guard(ActionType.AUTO_REPAIR, {"env": "development"})
         self.assertTrue(decision.allowed)
@@ -509,9 +556,9 @@ class TestControlLayerIntegration(unittest.TestCase):
         """Even an allowed action is stopped when kill switch is on."""
         from app.core.decision_guard import PolicyViolation, guard
         from app.core.policy_engine import ActionType
-        with patch("app.core.kill_switch.is_kill_switch_active", return_value=True):
-            with self.assertRaises(PolicyViolation):
-                guard(ActionType.AUTO_REPAIR, {"env": "development"})
+
+        with patch("app.core.kill_switch.is_kill_switch_active", return_value=True), self.assertRaises(PolicyViolation):
+            guard(ActionType.AUTO_REPAIR, {"env": "development"})
 
     def test_frequency_exhaustion_then_manual_kill_switch(self):
         """After frequency limit, kill switch gives a clearer message."""

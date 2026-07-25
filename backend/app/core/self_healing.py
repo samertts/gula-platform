@@ -247,7 +247,8 @@ class SystemHealth:
         elif redis_open:
             # DB alive but Redis down → cache unavailable → L1 (writes still pass)
             self.enter_degraded_mode(
-                "Redis circuit open — cache unavailable", DegradationLevel.L1_CACHE_HEAVY,
+                "Redis circuit open — cache unavailable",
+                DegradationLevel.L1_CACHE_HEAVY,
             )
         else:
             # All circuits closed — this means the RecoveryWorker confirmed that

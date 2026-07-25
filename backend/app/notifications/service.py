@@ -76,7 +76,10 @@ class NotificationService:
                 return NotificationResult(success=True, channel=channel, recipient=to)
             self._circuit_breaker.record_failure()
             return NotificationResult(
-                success=False, channel=channel, recipient=to, error="Delivery failed",
+                success=False,
+                channel=channel,
+                recipient=to,
+                error="Delivery failed",
             )
         except Exception as exc:
             self._circuit_breaker.record_failure()
@@ -90,7 +93,11 @@ class NotificationService:
         return self.send("sms", to, body=body)
 
     def send_push(
-        self, token: str, title: str, body: str, data: dict[str, Any] | None = None,
+        self,
+        token: str,
+        title: str,
+        body: str,
+        data: dict[str, Any] | None = None,
     ) -> NotificationResult:
         return self.send("push", token, subject=title, body=body, template_data=data)
 
@@ -106,7 +113,10 @@ class NotificationService:
             return NotificationResult(success=True, channel="telegram", recipient=chat_id)
         self._circuit_breaker.record_failure()
         return NotificationResult(
-            success=False, channel="telegram", recipient=chat_id, error="Telegram delivery failed",
+            success=False,
+            channel="telegram",
+            recipient=chat_id,
+            error="Telegram delivery failed",
         )
 
     def send_template(
@@ -125,7 +135,10 @@ class NotificationService:
                 error=f"Template not found: {template_id}",
             )
         return self.send(
-            channel, to, subject=rendered.get("subject", ""), body=rendered.get("body", ""),
+            channel,
+            to,
+            subject=rendered.get("subject", ""),
+            body=rendered.get("body", ""),
         )
 
 

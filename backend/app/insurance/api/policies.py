@@ -167,17 +167,25 @@ def create_policy(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == data.provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == data.provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
-    existing = db.query(InsurancePolicy).filter(
-        InsurancePolicy.lab_id == current_user.lab_id,
-        InsurancePolicy.policy_number == data.policy_number,
-    ).first()
+    existing = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.lab_id == current_user.lab_id,
+            InsurancePolicy.policy_number == data.policy_number,
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail=f"Policy '{data.policy_number}' already exists")
 
@@ -209,10 +217,14 @@ def get_policy(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    policy = db.query(InsurancePolicy).filter(
-        InsurancePolicy.id == policy_id,
-        InsurancePolicy.lab_id == current_user.lab_id,
-    ).first()
+    policy = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.id == policy_id,
+            InsurancePolicy.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
     return policy
@@ -225,10 +237,14 @@ def update_policy(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    policy = db.query(InsurancePolicy).filter(
-        InsurancePolicy.id == policy_id,
-        InsurancePolicy.lab_id == current_user.lab_id,
-    ).first()
+    policy = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.id == policy_id,
+            InsurancePolicy.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
 
@@ -259,10 +275,14 @@ def cancel_policy(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    policy = db.query(InsurancePolicy).filter(
-        InsurancePolicy.id == policy_id,
-        InsurancePolicy.lab_id == current_user.lab_id,
-    ).first()
+    policy = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.id == policy_id,
+            InsurancePolicy.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
     if policy.status == PolicyStatus.CANCELLED:
@@ -291,17 +311,26 @@ def list_policy_coverages(
 ):
     from app.insurance.domain.models import Coverage
 
-    policy = db.query(InsurancePolicy).filter(
-        InsurancePolicy.id == policy_id,
-        InsurancePolicy.lab_id == current_user.lab_id,
-    ).first()
+    policy = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.id == policy_id,
+            InsurancePolicy.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
 
-    return db.query(Coverage).filter(
-        Coverage.policy_id == policy_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).order_by(Coverage.created_at.desc()).all()
+    return (
+        db.query(Coverage)
+        .filter(
+            Coverage.policy_id == policy_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .order_by(Coverage.created_at.desc())
+        .all()
+    )
 
 
 @router.post("/{policy_id}/coverages", status_code=201, response_model=dict)
@@ -316,10 +345,14 @@ def add_policy_coverage(
     from app.insurance.domain.enums import CoverageStatus
     from app.insurance.domain.models import Coverage
 
-    policy = db.query(InsurancePolicy).filter(
-        InsurancePolicy.id == policy_id,
-        InsurancePolicy.lab_id == current_user.lab_id,
-    ).first()
+    policy = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.id == policy_id,
+            InsurancePolicy.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
 
@@ -354,17 +387,26 @@ def list_policy_benefits(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    policy = db.query(InsurancePolicy).filter(
-        InsurancePolicy.id == policy_id,
-        InsurancePolicy.lab_id == current_user.lab_id,
-    ).first()
+    policy = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.id == policy_id,
+            InsurancePolicy.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
 
-    return db.query(BenefitPackage).filter(
-        BenefitPackage.policy_id == policy_id,
-        BenefitPackage.lab_id == current_user.lab_id,
-    ).order_by(BenefitPackage.name).all()
+    return (
+        db.query(BenefitPackage)
+        .filter(
+            BenefitPackage.policy_id == policy_id,
+            BenefitPackage.lab_id == current_user.lab_id,
+        )
+        .order_by(BenefitPackage.name)
+        .all()
+    )
 
 
 @router.post("/{policy_id}/benefits", status_code=201, response_model=BenefitPackageResponse)
@@ -374,26 +416,40 @@ def add_policy_benefit(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    policy = db.query(InsurancePolicy).filter(
-        InsurancePolicy.id == policy_id,
-        InsurancePolicy.lab_id == current_user.lab_id,
-    ).first()
+    policy = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.id == policy_id,
+            InsurancePolicy.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
 
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == data.provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == data.provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
-    existing = db.query(BenefitPackage).filter(
-        BenefitPackage.lab_id == current_user.lab_id,
-        BenefitPackage.code == data.code,
-    ).first()
+    existing = (
+        db.query(BenefitPackage)
+        .filter(
+            BenefitPackage.lab_id == current_user.lab_id,
+            BenefitPackage.code == data.code,
+        )
+        .first()
+    )
     if existing:
-        raise HTTPException(status_code=400, detail=f"Benefit package with code '{data.code}' already exists")
+        raise HTTPException(
+            status_code=400, detail=f"Benefit package with code '{data.code}' already exists"
+        )
 
     benefit = BenefitPackage(
         lab_id=current_user.lab_id,

@@ -51,10 +51,10 @@ storage:
     backend: s3
     s3:
       bucket: tempo-traces
-      endpoint: minio:9000
-      access_key: minioadmin
-      secret_key: minioadmin
-      insecure: true
+      endpoint: ${MINIO_ENDPOINT:-minio:9000}
+      access_key: ${MINIO_ACCESS_KEY:-minioadmin}
+      secret_key: ${MINIO_SECRET_KEY:-minioadmin}
+      insecure: ${MINIO_INSECURE:-true}
     wal:
       path: /tmp/tempo/wal
     local:
@@ -87,6 +87,10 @@ metrics_generator:
     remote_write:
       - url: http://prometheus:9090/api/v1/write
         send_exemplars: true
+        write_relabel_configs:
+          - source_labels: [__name__]
+            regex: '.*'
+            action: keep
   span_metrics:
     histogram_buckets: [0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
   service_graphs:

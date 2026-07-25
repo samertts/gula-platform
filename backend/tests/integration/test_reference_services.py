@@ -127,7 +127,9 @@ class TestNationalLabCatalog:
 
     def test_register_and_get_test(self):
         catalog = NationalLaboratoryCatalog()
-        test = LabTestDefinition(code="XYZ", name="Test XYZ", name_ar="اختبار", category="chemistry")
+        test = LabTestDefinition(
+            code="XYZ", name="Test XYZ", name_ar="اختبار", category="chemistry"
+        )
         catalog.register_test(test)
         assert catalog.get_test("XYZ") is test
 

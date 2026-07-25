@@ -50,9 +50,13 @@ def _get_or_create_node(
     tags: list[str] | None = None,
     version: str = "1.0.0",
 ) -> KnowledgeNode:
-    existing = db.query(KnowledgeNode).filter(
-        KnowledgeNode.qualified_name == qualified_name,
-    ).first()
+    existing = (
+        db.query(KnowledgeNode)
+        .filter(
+            KnowledgeNode.qualified_name == qualified_name,
+        )
+        .first()
+    )
     if existing:
         existing.name = name
         existing.description = description or existing.description
@@ -77,9 +81,13 @@ def _get_or_create_node(
 
 
 def _get_node_by_qualified_name(db: Session, qualified_name: str) -> KnowledgeNode | None:
-    return db.query(KnowledgeNode).filter(
-        KnowledgeNode.qualified_name == qualified_name,
-    ).first()
+    return (
+        db.query(KnowledgeNode)
+        .filter(
+            KnowledgeNode.qualified_name == qualified_name,
+        )
+        .first()
+    )
 
 
 def _create_edge(
@@ -102,11 +110,15 @@ def _create_edge(
             "found" if target else "NOT FOUND",
         )
         return None
-    existing = db.query(KnowledgeEdge).filter(
-        KnowledgeEdge.source_node_id == source.id,
-        KnowledgeEdge.target_node_id == target.id,
-        KnowledgeEdge.edge_type == edge_type.value,
-    ).first()
+    existing = (
+        db.query(KnowledgeEdge)
+        .filter(
+            KnowledgeEdge.source_node_id == source.id,
+            KnowledgeEdge.target_node_id == target.id,
+            KnowledgeEdge.edge_type == edge_type.value,
+        )
+        .first()
+    )
     if existing:
         return existing
     edge = KnowledgeEdge(
@@ -293,14 +305,24 @@ class _ASTScanner:
                     )
 
                 if is_route_handler:
-                    http_methods = [d for d in decorator_names if d in ("get", "post", "put", "patch", "delete")]
+                    http_methods = [
+                        d for d in decorator_names if d in ("get", "post", "put", "patch", "delete")
+                    ]
                     path_str = ""
                     for d in node.decorator_list:
-                        if isinstance(d, ast.Call) and isinstance(d.func, ast.Attribute) and d.func.attr in ("get", "post", "put", "patch", "delete"):
+                        if (
+                            isinstance(d, ast.Call)
+                            and isinstance(d.func, ast.Attribute)
+                            and d.func.attr in ("get", "post", "put", "patch", "delete")
+                        ):
                             if d.args:
-                                path_str = d.args[0].value if isinstance(d.args[0], ast.Constant) else ""
+                                path_str = (
+                                    d.args[0].value if isinstance(d.args[0], ast.Constant) else ""
+                                )
                             break
-                    param_names = [arg.arg for arg in node.args.args if arg.arg not in ("self", "cls")]
+                    param_names = [
+                        arg.arg for arg in node.args.args if arg.arg not in ("self", "cls")
+                    ]
                     route_node = _get_or_create_node(
                         self.db,
                         NodeType.ROUTE,
@@ -455,7 +477,10 @@ class _ASTScanner:
                     )
                     tablename_match = _TABLENAME_PATTERN.search(source)
                     if tablename_match:
-                        node.extra_metadata = {**(node.extra_metadata or {}), "table_name": tablename_match.group(1)}
+                        node.extra_metadata = {
+                            **(node.extra_metadata or {}),
+                            "table_name": tablename_match.group(1),
+                        }
                     count += 1
         self.commit()
         return count
@@ -487,8 +512,15 @@ class KnowledgeGraphEngine:
         db = SessionLocal()
         try:
             node = _get_or_create_node(
-                db, node_type, name, qualified_name, description,
-                metadata, source_path, tags, version,
+                db,
+                node_type,
+                name,
+                qualified_name,
+                description,
+                metadata,
+                source_path,
+                tags,
+                version,
             )
             db.commit()
             return node
@@ -508,7 +540,9 @@ class KnowledgeGraphEngine:
     ) -> KnowledgeEdge | None:
         db = SessionLocal()
         try:
-            edge = _create_edge(db, source_qualified_name, target_qualified_name, edge_type, metadata, weight)
+            edge = _create_edge(
+                db, source_qualified_name, target_qualified_name, edge_type, metadata, weight,
+            )
             db.commit()
             return edge
         except Exception:
@@ -547,12 +581,20 @@ class KnowledgeGraphEngine:
 
                 type_filter = [et.value for et in edge_types] if edge_types else None
 
-                for edge in db.query(KnowledgeEdge).filter(
-                    KnowledgeEdge.source_node_id == current.id,
-                ).all():
+                for edge in (
+                    db.query(KnowledgeEdge)
+                    .filter(
+                        KnowledgeEdge.source_node_id == current.id,
+                    )
+                    .all()
+                ):
                     if type_filter and edge.edge_type not in type_filter:
                         continue
-                    target = db.query(KnowledgeNode).filter(KnowledgeNode.id == edge.target_node_id).first()
+                    target = (
+                        db.query(KnowledgeNode)
+                        .filter(KnowledgeNode.id == edge.target_node_id)
+                        .first()
+                    )
                     if target and target.id not in visited:
                         visited.add(target.id)
                         entry = {
@@ -574,12 +616,20 @@ class KnowledgeGraphEngine:
                         results.append(entry)
                         queue.append((target, depth + 1))
 
-                for edge in db.query(KnowledgeEdge).filter(
-                    KnowledgeEdge.target_node_id == current.id,
-                ).all():
+                for edge in (
+                    db.query(KnowledgeEdge)
+                    .filter(
+                        KnowledgeEdge.target_node_id == current.id,
+                    )
+                    .all()
+                ):
                     if type_filter and edge.edge_type not in type_filter:
                         continue
-                    source = db.query(KnowledgeNode).filter(KnowledgeNode.id == edge.source_node_id).first()
+                    source = (
+                        db.query(KnowledgeNode)
+                        .filter(KnowledgeNode.id == edge.source_node_id)
+                        .first()
+                    )
                     if source and source.id not in visited:
                         visited.add(source.id)
                         entry = {
@@ -615,7 +665,16 @@ class KnowledgeGraphEngine:
                 return []
 
             if source.id == target.id:
-                return [{"node": {"id": source.id, "qualified_name": source.qualified_name, "name": source.name}, "edge": None}]
+                return [
+                    {
+                        "node": {
+                            "id": source.id,
+                            "qualified_name": source.qualified_name,
+                            "name": source.name,
+                        },
+                        "edge": None,
+                    },
+                ]
 
             parent: dict[int, tuple[int, KnowledgeEdge | None]] = {source.id: (-1, None)}
             queue = deque([source])
@@ -623,9 +682,13 @@ class KnowledgeGraphEngine:
 
             while queue and not found:
                 current = queue.popleft()
-                for edge in db.query(KnowledgeEdge).filter(
-                    KnowledgeEdge.source_node_id == current.id,
-                ).all():
+                for edge in (
+                    db.query(KnowledgeEdge)
+                    .filter(
+                        KnowledgeEdge.source_node_id == current.id,
+                    )
+                    .all()
+                ):
                     nid = edge.target_node_id
                     if nid not in parent:
                         parent[nid] = (current.id, edge)
@@ -636,16 +699,22 @@ class KnowledgeGraphEngine:
                         if neighbor:
                             queue.append(neighbor)
                 if not found:
-                    for edge in db.query(KnowledgeEdge).filter(
-                        KnowledgeEdge.target_node_id == current.id,
-                    ).all():
+                    for edge in (
+                        db.query(KnowledgeEdge)
+                        .filter(
+                            KnowledgeEdge.target_node_id == current.id,
+                        )
+                        .all()
+                    ):
                         nid = edge.source_node_id
                         if nid not in parent:
                             parent[nid] = (current.id, edge)
                             if nid == target.id:
                                 found = True
                                 break
-                            neighbor = db.query(KnowledgeNode).filter(KnowledgeNode.id == nid).first()
+                            neighbor = (
+                                db.query(KnowledgeNode).filter(KnowledgeNode.id == nid).first()
+                            )
                             if neighbor:
                                 queue.append(neighbor)
 
@@ -657,19 +726,23 @@ class KnowledgeGraphEngine:
             while cur != -1:
                 prev_id, edge = parent[cur]
                 node = db.query(KnowledgeNode).filter(KnowledgeNode.id == cur).first()
-                path.append({
-                    "node": {
-                        "id": node.id,
-                        "qualified_name": node.qualified_name,
-                        "name": node.name,
-                        "node_type": node.node_type,
+                path.append(
+                    {
+                        "node": {
+                            "id": node.id,
+                            "qualified_name": node.qualified_name,
+                            "name": node.name,
+                            "node_type": node.node_type,
+                        },
+                        "edge": {
+                            "id": edge.id,
+                            "edge_type": edge.edge_type,
+                            "weight": edge.weight,
+                        }
+                        if edge
+                        else None,
                     },
-                    "edge": {
-                        "id": edge.id,
-                        "edge_type": edge.edge_type,
-                        "weight": edge.weight,
-                    } if edge else None,
-                })
+                )
                 cur = prev_id
             path.reverse()
             return path
@@ -722,33 +795,53 @@ class KnowledgeGraphEngine:
             dependencies: list[dict] = []
             dependents: list[dict] = []
 
-            for edge in db.query(KnowledgeEdge).filter(
-                KnowledgeEdge.source_node_id == node.id,
-                KnowledgeEdge.edge_type.in_(["DEPENDS_ON", "CALLS", "REFERENCES", "EXTENDS", "IMPLEMENTS"]),
-            ).all():
-                target = db.query(KnowledgeNode).filter(KnowledgeNode.id == edge.target_node_id).first()
+            for edge in (
+                db.query(KnowledgeEdge)
+                .filter(
+                    KnowledgeEdge.source_node_id == node.id,
+                    KnowledgeEdge.edge_type.in_(
+                        ["DEPENDS_ON", "CALLS", "REFERENCES", "EXTENDS", "IMPLEMENTS"],
+                    ),
+                )
+                .all()
+            ):
+                target = (
+                    db.query(KnowledgeNode).filter(KnowledgeNode.id == edge.target_node_id).first()
+                )
                 if target:
-                    dependencies.append({
-                        "qualified_name": target.qualified_name,
-                        "name": target.name,
-                        "node_type": target.node_type,
-                        "edge_type": edge.edge_type,
-                        "weight": edge.weight,
-                    })
+                    dependencies.append(
+                        {
+                            "qualified_name": target.qualified_name,
+                            "name": target.name,
+                            "node_type": target.node_type,
+                            "edge_type": edge.edge_type,
+                            "weight": edge.weight,
+                        },
+                    )
 
-            for edge in db.query(KnowledgeEdge).filter(
-                KnowledgeEdge.target_node_id == node.id,
-                KnowledgeEdge.edge_type.in_(["DEPENDS_ON", "CALLS", "REFERENCES", "EXTENDS", "IMPLEMENTS"]),
-            ).all():
-                source = db.query(KnowledgeNode).filter(KnowledgeNode.id == edge.source_node_id).first()
+            for edge in (
+                db.query(KnowledgeEdge)
+                .filter(
+                    KnowledgeEdge.target_node_id == node.id,
+                    KnowledgeEdge.edge_type.in_(
+                        ["DEPENDS_ON", "CALLS", "REFERENCES", "EXTENDS", "IMPLEMENTS"],
+                    ),
+                )
+                .all()
+            ):
+                source = (
+                    db.query(KnowledgeNode).filter(KnowledgeNode.id == edge.source_node_id).first()
+                )
                 if source:
-                    dependents.append({
-                        "qualified_name": source.qualified_name,
-                        "name": source.name,
-                        "node_type": source.node_type,
-                        "edge_type": edge.edge_type,
-                        "weight": edge.weight,
-                    })
+                    dependents.append(
+                        {
+                            "qualified_name": source.qualified_name,
+                            "name": source.name,
+                            "node_type": source.node_type,
+                            "edge_type": edge.edge_type,
+                            "weight": edge.weight,
+                        },
+                    )
 
             return {
                 "node": {
@@ -813,9 +906,13 @@ class KnowledgeGraphEngine:
                 """),
             ).fetchall()
 
-            latest_snap = db.query(KnowledgeGraphSnapshot).order_by(
-                KnowledgeGraphSnapshot.created_at.desc(),
-            ).first()
+            latest_snap = (
+                db.query(KnowledgeGraphSnapshot)
+                .order_by(
+                    KnowledgeGraphSnapshot.created_at.desc(),
+                )
+                .first()
+            )
 
             return {
                 "node_count": node_count,
@@ -828,8 +925,12 @@ class KnowledgeGraphEngine:
                     "node_count": latest_snap.node_count,
                     "edge_count": latest_snap.edge_count,
                     "graph_hash": latest_snap.graph_hash,
-                    "created_at": latest_snap.created_at.isoformat() if latest_snap.created_at else None,
-                } if latest_snap else None,
+                    "created_at": latest_snap.created_at.isoformat()
+                    if latest_snap.created_at
+                    else None,
+                }
+                if latest_snap
+                else None,
             }
         finally:
             db.close()

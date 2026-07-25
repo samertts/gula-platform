@@ -50,7 +50,10 @@ class PopulationAnalytics:
             "scope": "disease_burden",
             "icd10_codes": icd10_codes,
             "governorate": governorate,
-            "period": {"from": date_from.isoformat() if date_from else None, "to": date_to.isoformat() if date_to else None},
+            "period": {
+                "from": date_from.isoformat() if date_from else None,
+                "to": date_to.isoformat() if date_to else None,
+            },
             "summary": result,
             "indicators": self._compute_morbidity_indicators(result),
         }
@@ -107,8 +110,16 @@ class PopulationAnalytics:
             "scope": "health_status",
             "governorate": governorate,
             "indicators": [
-                {"name": "life_expectancy", "value": None, "note": "Requires death registry integration"},
-                {"name": "healthy_life_expectancy", "value": None, "note": "Requires death registry integration"},
+                {
+                    "name": "life_expectancy",
+                    "value": None,
+                    "note": "Requires death registry integration",
+                },
+                {
+                    "name": "healthy_life_expectancy",
+                    "value": None,
+                    "note": "Requires death registry integration",
+                },
             ],
         }
 
@@ -138,7 +149,9 @@ class MaternalHealthAnalytics:
     def __init__(self, warehouse: WarehouseService | None = None):
         self._warehouse = warehouse or WarehouseService()
 
-    def maternal_mortality_ratio(self, governorate: str | None = None, year: int | None = None) -> dict[str, Any]:
+    def maternal_mortality_ratio(
+        self, governorate: str | None = None, year: int | None = None
+    ) -> dict[str, Any]:
         return {
             "scope": "maternal_mortality",
             "governorate": governorate,
@@ -236,7 +249,9 @@ class NCDAnalytics:
             "requires_integration": True,
         }
 
-    def cancer_incidence(self, governorate: str | None = None, cancer_type: str | None = None) -> dict[str, Any]:
+    def cancer_incidence(
+        self, governorate: str | None = None, cancer_type: str | None = None
+    ) -> dict[str, Any]:
         return {
             "scope": "cancer_incidence",
             "governorate": governorate,
@@ -258,7 +273,9 @@ class CommunicableDiseaseAnalytics:
     def __init__(self, warehouse: WarehouseService | None = None):
         self._warehouse = warehouse or WarehouseService()
 
-    def disease_incidence(self, disease: str | None = None, governorate: str | None = None) -> dict[str, Any]:
+    def disease_incidence(
+        self, disease: str | None = None, governorate: str | None = None
+    ) -> dict[str, Any]:
         query = WarehouseQuery(
             dimensions=["encounter_type"],
             measures=["diagnosis_count"],
@@ -269,7 +286,12 @@ class CommunicableDiseaseAnalytics:
         if governorate:
             query.filters["governorate"] = governorate
         result = self._warehouse.query(query)
-        return {"scope": "disease_incidence", "disease": disease, "governorate": governorate, "results": result}
+        return {
+            "scope": "disease_incidence",
+            "disease": disease,
+            "governorate": governorate,
+            "results": result,
+        }
 
     def outbreak_monitoring(self, region: str | None = None) -> dict[str, Any]:
         return {
@@ -335,7 +357,9 @@ class MentalHealthAnalytics:
     def __init__(self, warehouse: WarehouseService | None = None):
         self._warehouse = warehouse or WarehouseService()
 
-    def prevalence(self, condition: str | None = None, governorate: str | None = None) -> dict[str, Any]:
+    def prevalence(
+        self, condition: str | None = None, governorate: str | None = None
+    ) -> dict[str, Any]:
         query = WarehouseQuery(
             dimensions=["encounter_type"],
             measures=["diagnosis_count"],
@@ -345,7 +369,12 @@ class MentalHealthAnalytics:
         if governorate:
             query.filters["governorate"] = governorate
         result = self._warehouse.query(query)
-        return {"scope": "mental_health_prevalence", "condition": condition, "governorate": governorate, "results": result}
+        return {
+            "scope": "mental_health_prevalence",
+            "condition": condition,
+            "governorate": governorate,
+            "results": result,
+        }
 
     def suicide_rates(self, governorate: str | None = None) -> dict[str, Any]:
         return {
@@ -359,5 +388,9 @@ class MentalHealthAnalytics:
         return {
             "scope": "mental_health_service_coverage",
             "governorate": governorate,
-            "indicators": ["psychiatrists_per_capita", "psychologists_per_capita", "beds_per_capita"],
+            "indicators": [
+                "psychiatrists_per_capita",
+                "psychologists_per_capita",
+                "beds_per_capita",
+            ],
         }

@@ -273,7 +273,11 @@ async def approve_policy(
     entity = await service.approve_policy(workflow_id, approved_by)
     if not entity:
         return {"error": "not_found"}
-    return {"workflow_id": entity.workflow_id, "status": entity.status, "approved_by": entity.approved_by}
+    return {
+        "workflow_id": entity.workflow_id,
+        "status": entity.status,
+        "approved_by": entity.approved_by,
+    }
 
 
 @router.post("/policy-approvals/{workflow_id}/reject")
@@ -287,7 +291,11 @@ async def reject_policy(
     entity = await service.reject_policy(workflow_id, rejected_by, reason)
     if not entity:
         return {"error": "not_found"}
-    return {"workflow_id": entity.workflow_id, "status": entity.status, "rejected_by": entity.rejected_by}
+    return {
+        "workflow_id": entity.workflow_id,
+        "status": entity.status,
+        "rejected_by": entity.rejected_by,
+    }
 
 
 # ── Appeals ────────────────────────────────────────────────────────────────────
@@ -409,7 +417,11 @@ async def lift_suspension(
     entity = await service.lift_suspension(suspension_id, lifted_by, reason)
     if not entity:
         return {"error": "not_found"}
-    return {"suspension_id": entity.suspension_id, "status": entity.status, "lifted_by": entity.lifted_by}
+    return {
+        "suspension_id": entity.suspension_id,
+        "status": entity.status,
+        "lifted_by": entity.lifted_by,
+    }
 
 
 @router.get("/suspensions/active")

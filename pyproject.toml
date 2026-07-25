@@ -29,7 +29,7 @@ show-fixes = true
 exclude = [
     ".git", ".venv", "node_modules", "build", "dist",
     "__pycache__", "archive", "frontend", "frontend-v2", "test_library",
-    "scripts/", "nhop-platform/", "client/",
+    "nhop-platform/", "client/",
 ]
 
 [tool.ruff.lint]
@@ -47,7 +47,7 @@ indent-style = "space"
 line-ending = "lf"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 strict = true
 plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
 warn_unused_configs = true
@@ -61,7 +61,7 @@ explicit_package_bases = true
 exclude = ["tests/", "build/", "dist/", "archive/", "frontend/", "frontend-v2/"]
 
 [[tool.mypy.overrides]]
-module = ["backend.app.routes.*", "backend.app.migrations.*", "backend.app.services.*", "app.routes.*", "migrations.*"]
+module = ["backend.app.migrations.*", "migrations.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -101,4 +101,4 @@ exclude_lines = [
     "if __name__ == .__main__.:", "raise AssertionError",
     "raise NotImplementedError", "if 0:", "if False:", "if TYPE_CHECKING:",
 ]
-fail_under = 25
+fail_under = 40

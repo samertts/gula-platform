@@ -39,7 +39,9 @@ class SecureExecutionContext:
     name: str = ""
     isolation_level: IsolationLevel = IsolationLevel.PROCESS
     resource_limits: ResourceLimit = field(default_factory=ResourceLimit)
-    allowed_syscalls: list[str] = field(default_factory=lambda: ["read", "write", "open", "close", "stat", "fstat"])
+    allowed_syscalls: list[str] = field(
+        default_factory=lambda: ["read", "write", "open", "close", "stat", "fstat"],
+    )
     blocked_paths: list[str] = field(default_factory=list)
     environment_vars: list[str] = field(default_factory=list)
     started_at: float = 0.0
@@ -67,7 +69,10 @@ class RuntimeSecureIsolation:
         )
         with self._lock:
             self._contexts[ctx_id] = ctx
-        logger.info("Secure context created", extra={"id": ctx_id, "name": name, "isolation": isolation_level.value})
+        logger.info(
+            "Secure context created",
+            extra={"id": ctx_id, "name": name, "isolation": isolation_level.value},
+        )
         return ctx
 
     def start_context(self, ctx_id: str) -> bool:
@@ -94,7 +99,9 @@ class RuntimeSecureIsolation:
         if path:
             for blocked in ctx.blocked_paths:
                 if path.startswith(blocked):
-                    self._audit("blocked_path_access", {"ctx": ctx_id, "path": path, "blocked": blocked})
+                    self._audit(
+                        "blocked_path_access", {"ctx": ctx_id, "path": path, "blocked": blocked},
+                    )
                     return False
         return True
 
@@ -109,11 +116,13 @@ class RuntimeSecureIsolation:
         }
 
     def _audit(self, event: str, details: dict[str, Any]) -> None:
-        self._audit_log.append({
-            "timestamp": time.time(),
-            "event": event,
-            **details,
-        })
+        self._audit_log.append(
+            {
+                "timestamp": time.time(),
+                "event": event,
+                **details,
+            },
+        )
         if len(self._audit_log) > 500:
             self._audit_log.pop(0)
 
@@ -142,7 +151,10 @@ class SecretInjector:
             secrets = self._secrets_manager.get_secrets(vault_path)
             return self.inject(target, secrets)
         except Exception as exc:
-            logger.error("Vault injection failed", extra={"target": target, "path": vault_path, "error": str(exc)})
+            logger.error(
+                "Vault injection failed",
+                extra={"target": target, "path": vault_path, "error": str(exc)},
+            )
             return 0
 
     def revoke(self, target: str) -> int:
@@ -205,9 +217,18 @@ class RuntimeAttestation:
                 if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
                     deviation = abs(actual - expected) / max(abs(expected), 1) * 100
                     if deviation > 50:
-                        anomalies.append({"key": key, "expected": expected, "actual": actual, "deviation_pct": round(deviation, 1)})
+                        anomalies.append(
+                            {
+                                "key": key,
+                                "expected": expected,
+                                "actual": actual,
+                                "deviation_pct": round(deviation, 1),
+                            },
+                        )
         if anomalies:
-            self._violations.append({"timestamp": time.time(), "component": component, "anomalies": anomalies})
+            self._violations.append(
+                {"timestamp": time.time(), "component": component, "anomalies": anomalies},
+            )
             return True
         return False
 

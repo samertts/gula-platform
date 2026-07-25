@@ -89,7 +89,9 @@ class BloodDonationModel(TenantEntity):
 class ScreeningResultModel(TenantEntity):
     __tablename__ = "blood_bank_screening_results"
 
-    donation_id = Column(String(100), ForeignKey("blood_bank_donations.id"), nullable=False, index=True)
+    donation_id = Column(
+        String(100), ForeignKey("blood_bank_donations.id"), nullable=False, index=True,
+    )
     test = Column(String(50), nullable=False)
     result = Column(String(50), default="pending")
     result_value = Column(String(200), nullable=True)
@@ -106,7 +108,9 @@ class ScreeningResultModel(TenantEntity):
 class BloodComponentModel(TenantEntity):
     __tablename__ = "blood_bank_components"
 
-    donation_id = Column(String(100), ForeignKey("blood_bank_donations.id"), nullable=False, index=True)
+    donation_id = Column(
+        String(100), ForeignKey("blood_bank_donations.id"), nullable=False, index=True,
+    )
     component = Column(String(50), default="packed_rbc")
     status = Column(String(50), default="pending_processing")
     volume_ml = Column(Float, nullable=True)

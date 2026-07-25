@@ -125,7 +125,8 @@ class HttpConnector:
         return self.spec.health
 
     def _resolve_endpoint(
-        self, name: str | None,
+        self,
+        name: str | None,
     ) -> ConnectorEndpoint:
         if name:
             for ep in self.spec.endpoints:

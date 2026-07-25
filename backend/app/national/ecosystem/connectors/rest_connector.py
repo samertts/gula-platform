@@ -52,7 +52,9 @@ class RESTConnector(BaseConnector):
 
     async def send(self, data: Any) -> ConnectorResult:
         if not isinstance(data, dict) or "method" not in data or "path" not in data:
-            return self._build_result(False, error="send requires dict with 'method' and 'path'", status_code=400)
+            return self._build_result(
+                False, error="send requires dict with 'method' and 'path'", status_code=400,
+            )
         method = data["method"].upper()
         if method not in self.SUPPORTED_METHODS:
             return self._build_result(False, error=f"unsupported method {method}", status_code=400)
@@ -95,7 +97,9 @@ class RESTConnector(BaseConnector):
                     method=method,
                     url=path,
                     json=body if content_type == "application/json" else None,
-                    content=self._serialize_body(body, content_type) if content_type != "application/json" else None,
+                    content=self._serialize_body(body, content_type)
+                    if content_type != "application/json"
+                    else None,
                     params=params,
                     headers=request_headers,
                 )
@@ -105,20 +109,30 @@ class RESTConnector(BaseConnector):
 
                 if response.is_success:
                     self._record_success(duration_ms)
-                    return self._build_result(True, data=response_data, duration_ms=duration_ms, status_code=response.status_code)
+                    return self._build_result(
+                        True,
+                        data=response_data,
+                        duration_ms=duration_ms,
+                        status_code=response.status_code,
+                    )
 
                 error_msg = f"HTTP {response.status_code}: {response_data}"
                 self._record_failure(error_msg, duration_ms)
-                return self._build_result(False, error=error_msg, duration_ms=duration_ms, status_code=response.status_code)
+                return self._build_result(
+                    False,
+                    error=error_msg,
+                    duration_ms=duration_ms,
+                    status_code=response.status_code,
+                )
 
             except httpx.TimeoutException as exc:
                 last_error = f"timeout: {exc}"
                 if attempt < self._config.retry_count:
-                    await asyncio.sleep(self._config.retry_delay_seconds * (2 ** attempt))
+                    await asyncio.sleep(self._config.retry_delay_seconds * (2**attempt))
             except httpx.RequestError as exc:
                 last_error = f"request error: {exc}"
                 if attempt < self._config.retry_count:
-                    await asyncio.sleep(self._config.retry_delay_seconds * (2 ** attempt))
+                    await asyncio.sleep(self._config.retry_delay_seconds * (2**attempt))
             except Exception as exc:
                 last_error = str(exc)
                 break
@@ -144,6 +158,7 @@ class RESTConnector(BaseConnector):
             password = creds.get("password", "")
             if user and password:
                 import base64
+
                 encoded = base64.b64encode(f"{user}:{password}".encode()).decode()
                 self._headers = {"Authorization": f"Basic {encoded}"}
         return dict(self._headers)
@@ -173,6 +188,7 @@ class RESTConnector(BaseConnector):
             return str(body)
         if content_type == "application/x-www-form-urlencoded" and isinstance(body, dict):
             from urllib.parse import urlencode
+
             return urlencode(body)
         return str(body) if body else None
 

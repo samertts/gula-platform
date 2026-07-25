@@ -21,15 +21,16 @@ Two indexes cover the two hot paths:
   - idx_consents_lookup  — per-request middleware check (gpid+grantee+status+expiry)
   - idx_consents_expiry  — expiry sweeper / analytics
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
 
-revision      = "20260417_0001"
+revision = "20260417_0001"
 down_revision = "20260413_0001"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _has_table(name: str) -> bool:
@@ -51,24 +52,34 @@ def upgrade() -> None:
     if not _has_table("consents"):
         op.create_table(
             "consents",
-            sa.Column("id",          sa.String(26),  primary_key=True),
-            sa.Column("gpid",        sa.String(26),  nullable=False),
-            sa.Column("grantee_id",  sa.String(64),  nullable=False),
-            sa.Column("scope",       sa.String(64),  nullable=False),
-            sa.Column("status",      sa.String(16),  nullable=False, server_default="active"),
-            sa.Column("expires_at",  sa.DateTime(timezone=True), nullable=False),
-            sa.Column("created_at",  sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
-            sa.Column("revoked_at",  sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_by_user_id", sa.Integer(),
-                      sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.UniqueConstraint("gpid", "grantee_id", "scope", "status",
-                                name="uq_consents_active_tuple"),
+            sa.Column("id", sa.String(26), primary_key=True),
+            sa.Column("gpid", sa.String(26), nullable=False),
+            sa.Column("grantee_id", sa.String(64), nullable=False),
+            sa.Column("scope", sa.String(64), nullable=False),
+            sa.Column("status", sa.String(16), nullable=False, server_default="active"),
+            sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column(
+                "created_by_user_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.UniqueConstraint(
+                "gpid", "grantee_id", "scope", "status", name="uq_consents_active_tuple"
+            ),
         )
 
     if not _index_exists("idx_consents_lookup"):
         op.create_index(
-            "idx_consents_lookup", "consents",
+            "idx_consents_lookup",
+            "consents",
             ["gpid", "grantee_id", "status", "expires_at"],
         )
 

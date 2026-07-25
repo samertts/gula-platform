@@ -81,11 +81,14 @@ class TestFullSafetyChain:
         from app.ai.approval import TTL_SECONDS
 
         store = ApprovalStore()
-        suggestion = ai_suggest("summarize_history", {"order_count": 1, "recent_tests": []}, ai_model="test")
+        suggestion = ai_suggest(
+            "summarize_history", {"order_count": 1, "recent_tests": []}, ai_model="test"
+        )
         approval = store.submit(suggestion)
 
         original_ttl = TTL_SECONDS
         import app.ai.approval as approval_module
+
         approval_module.TTL_SECONDS = -1
 
         try:
@@ -99,7 +102,9 @@ class TestFullSafetyChain:
         from app.ai.approval import approval_store as module_store
         from app.ai.guardrails import AISuggestion
 
-        suggestion = ai_suggest("summarize_history", {"order_count": 1, "recent_tests": []}, ai_model="test")
+        suggestion = ai_suggest(
+            "summarize_history", {"order_count": 1, "recent_tests": []}, ai_model="test"
+        )
         approval = module_store.submit(suggestion)
         approved = module_store.approve(approval.id, "dr_test@lab.com")
         approved.suggestion = AISuggestion(
@@ -145,10 +150,34 @@ class TestKnowledgeGraphToCDSIntegration:
 
     def test_multi_test_order_cds(self):
         results = [
-            {"test_name": "glucose", "value": 12.0, "unit": "mmol/L", "normal_range_low": 3.9, "normal_range_high": 6.1},
-            {"test_name": "hemoglobin", "value": 65, "unit": "g/L", "normal_range_low": 120, "normal_range_high": 160},
-            {"test_name": "creatinine", "value": 0.9, "unit": "mg/dL", "normal_range_low": 0.5, "normal_range_high": 1.2},
-            {"test_name": "sodium", "value": 140, "unit": "mmol/L", "normal_range_low": 135, "normal_range_high": 145},
+            {
+                "test_name": "glucose",
+                "value": 12.0,
+                "unit": "mmol/L",
+                "normal_range_low": 3.9,
+                "normal_range_high": 6.1,
+            },
+            {
+                "test_name": "hemoglobin",
+                "value": 65,
+                "unit": "g/L",
+                "normal_range_low": 120,
+                "normal_range_high": 160,
+            },
+            {
+                "test_name": "creatinine",
+                "value": 0.9,
+                "unit": "mg/dL",
+                "normal_range_low": 0.5,
+                "normal_range_high": 1.2,
+            },
+            {
+                "test_name": "sodium",
+                "value": 140,
+                "unit": "mmol/L",
+                "normal_range_low": 135,
+                "normal_range_high": 145,
+            },
         ]
         result = asyncio.run(cds.evaluate_order(results))
         assert result["total_alerts"] >= 2
@@ -194,12 +223,14 @@ class TestObservabilityIntegration:
 
     def test_guardrail_violation_tracked(self):
         from app.ai.observability import track_guardrail_violation
+
         track_guardrail_violation()
         metrics = get_metrics()
         assert metrics["guardrails"]["violations"] > 0
 
     def test_approval_flow_tracked(self):
         from app.ai.observability import track_approval
+
         track_approval("approved")
         track_approval("rejected")
         metrics = get_metrics()
@@ -216,6 +247,7 @@ class TestObservabilityIntegration:
 
     def test_rag_and_vector_metrics(self):
         from app.ai.observability import track_agent, track_rag, track_vector_search
+
         track_rag()
         track_vector_search()
         track_agent()
@@ -231,7 +263,14 @@ class TestRAGWithSecurity:
     def test_rag_citation_extraction(self):
 
         docs = [
-            VectorSearchResult(id=1, content_type="knowledge", content_id=1, text="Normal glucose range is 3.9-6.1 mmol/L", score=0.95, source="clinical_guide"),
+            VectorSearchResult(
+                id=1,
+                content_type="knowledge",
+                content_id=1,
+                text="Normal glucose range is 3.9-6.1 mmol/L",
+                score=0.95,
+                source="clinical_guide",
+            ),
         ]
         citations = rag._extract_citations("Glucose is normal [المصدر: clinical_guide]", docs)
         assert len(citations) >= 1
@@ -244,7 +283,14 @@ class TestRAGWithSecurity:
         assert len(kg_nodes) >= 1
 
         docs = [
-            VectorSearchResult(id=1, content_type="knowledge", content_id=1, text="Hemoglobin measures oxygen-carrying capacity of blood. Low levels indicate anemia.", score=0.92, source="medical_kb"),
+            VectorSearchResult(
+                id=1,
+                content_type="knowledge",
+                content_id=1,
+                text="Hemoglobin measures oxygen-carrying capacity of blood. Low levels indicate anemia.",
+                score=0.92,
+                source="medical_kb",
+            ),
         ]
         scored = rag.rerank("anemia hemoglobin low", docs, top_k=1)
         assert len(scored) >= 1

@@ -86,7 +86,9 @@ class DrugInteractionChecker:
     }
 
     def check_interaction(
-        self, medication_a: str, medication_b: str,
+        self,
+        medication_a: str,
+        medication_b: str,
     ) -> DrugInteraction | None:
         key = (medication_a.lower(), medication_b.lower())
         reverse = (medication_b.lower(), medication_a.lower())
@@ -101,7 +103,8 @@ class DrugInteractionChecker:
         )
 
     def check_polypharmacy(
-        self, active_medications: list[str],
+        self,
+        active_medications: list[str],
     ) -> list[DrugInteraction]:
         interactions: list[DrugInteraction] = []
         for i in range(len(active_medications)):
@@ -117,7 +120,11 @@ class MedicationAdherence:
         self._adherence: dict[str, dict[str, Any]] = {}
 
     def record_dose(
-        self, citizen_id: str, medication_id: str, taken: bool, scheduled_time: str = "",
+        self,
+        citizen_id: str,
+        medication_id: str,
+        taken: bool,
+        scheduled_time: str = "",
     ) -> None:
         key = f"{citizen_id}:{medication_id}"
         if key not in self._adherence:
@@ -129,7 +136,11 @@ class MedicationAdherence:
         else:
             record["missed"] += 1
         record["history"].append(
-            {"taken": taken, "scheduled_time": scheduled_time, "recorded_at": datetime.now(UTC).isoformat()},
+            {
+                "taken": taken,
+                "scheduled_time": scheduled_time,
+                "recorded_at": datetime.now(UTC).isoformat(),
+            },
         )
 
     def get_adherence_rate(self, citizen_id: str, medication_id: str) -> float:

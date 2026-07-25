@@ -17,32 +17,48 @@ from app.national.security.sensitive_records import SensitiveRecordService, Sens
 class TestABACEngine:
     def test_sensitive_record_blocks_unauthorized(self):
         engine = ABACEngine()
-        request = AccessRequest(subject_id="user1", subject_roles=["doctor"], resource_is_sensitive=True, action="read")
+        request = AccessRequest(
+            subject_id="user1", subject_roles=["doctor"], resource_is_sensitive=True, action="read",
+        )
         decision = engine.evaluate(request)
         assert decision.granted is False
 
     def test_sensitive_record_allows_authorized(self):
         engine = ABACEngine()
-        request = AccessRequest(subject_id="user1", subject_roles=["doctor", "sensitive_access"], resource_is_sensitive=True, action="read")
+        request = AccessRequest(
+            subject_id="user1",
+            subject_roles=["doctor", "sensitive_access"],
+            resource_is_sensitive=True,
+            action="read",
+        )
         decision = engine.evaluate(request)
         assert decision.granted is True
 
     def test_emergency_grants_access(self):
         engine = ABACEngine()
-        request = AccessRequest(subject_id="user1", subject_roles=["doctor"], environment_is_emergency=True, action="read")
+        request = AccessRequest(
+            subject_id="user1",
+            subject_roles=["doctor"],
+            environment_is_emergency=True,
+            action="read",
+        )
         decision = engine.evaluate(request)
         assert decision.granted is True
         assert "log_break_glass" in decision.obligations
 
     def test_vip_protection_blocks(self):
         engine = ABACEngine()
-        request = AccessRequest(subject_id="user1", subject_roles=["nurse"], resource_is_vip=True, action="read")
+        request = AccessRequest(
+            subject_id="user1", subject_roles=["nurse"], resource_is_vip=True, action="read",
+        )
         decision = engine.evaluate(request)
         assert decision.granted is False
 
     def test_minor_protection_blocks(self):
         engine = ABACEngine()
-        request = AccessRequest(subject_id="user1", subject_roles=["nurse"], resource_is_minor=True, action="read")
+        request = AccessRequest(
+            subject_id="user1", subject_roles=["nurse"], resource_is_minor=True, action="read",
+        )
         decision = engine.evaluate(request)
         assert decision.granted is False
 
@@ -74,9 +90,14 @@ class TestBreakGlass:
     def test_request_access(self):
         svc = BreakGlassService()
         access = svc.request_access(
-            user_id="user1", user_name="Dr. Ahmed", user_role="doctor",
-            reason=BreakGlassReason.EMERGENCY, reason_detail="Patient critical",
-            resource_type="Patient", resource_id="PAT001", patient_id="PAT001",
+            user_id="user1",
+            user_name="Dr. Ahmed",
+            user_role="doctor",
+            reason=BreakGlassReason.EMERGENCY,
+            reason_detail="Patient critical",
+            resource_type="Patient",
+            resource_id="PAT001",
+            patient_id="PAT001",
         )
         assert access.access_id is not None
         assert access.is_active is True
@@ -84,9 +105,14 @@ class TestBreakGlass:
     def test_revoke_access(self):
         svc = BreakGlassService()
         access = svc.request_access(
-            user_id="user1", user_name="Dr. Ahmed", user_role="doctor",
-            reason=BreakGlassReason.EMERGENCY, reason_detail="Test",
-            resource_type="Patient", resource_id="PAT001", patient_id="PAT001",
+            user_id="user1",
+            user_name="Dr. Ahmed",
+            user_role="doctor",
+            reason=BreakGlassReason.EMERGENCY,
+            reason_detail="Test",
+            resource_type="Patient",
+            resource_id="PAT001",
+            patient_id="PAT001",
         )
         svc.revoke_access(access.access_id, "admin1", "Reviewed")
         assert svc.is_access_valid(access.access_id) is False
@@ -129,16 +155,19 @@ class TestMinimumNecessary:
 class TestMinorProtection:
     def test_adult_not_minor(self):
         from datetime import date
+
         svc = MinorProtectionService()
         assert svc.is_minor(date(2000, 1, 1)) is False
 
     def test_child_is_minor(self):
         from datetime import date
+
         svc = MinorProtectionService()
         assert svc.is_minor(date(2020, 1, 1)) is True
 
     def test_minor_requires_guardian(self):
         from datetime import date
+
         svc = MinorProtectionService()
         assert svc.requires_guardian(date(2020, 1, 1)) is True
 

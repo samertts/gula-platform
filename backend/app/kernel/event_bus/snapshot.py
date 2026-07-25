@@ -48,14 +48,19 @@ class SnapshotEngine:
         )
 
     def load_latest(
-        self, aggregate_type: str, aggregate_id: str,
+        self,
+        aggregate_type: str,
+        aggregate_id: str,
     ) -> Snapshot | None:
         key = f"{aggregate_type}:{aggregate_id}"
         snapshots = self._snapshots.get(key, [])
         return snapshots[0] if snapshots else None
 
     def load_at_version(
-        self, aggregate_type: str, aggregate_id: str, version: int,
+        self,
+        aggregate_type: str,
+        aggregate_id: str,
+        version: int,
     ) -> Snapshot | None:
         key = f"{aggregate_type}:{aggregate_id}"
         for snap in self._snapshots.get(key, []):
@@ -64,7 +69,9 @@ class SnapshotEngine:
         return None
 
     def list_versions(
-        self, aggregate_type: str, aggregate_id: str,
+        self,
+        aggregate_type: str,
+        aggregate_id: str,
     ) -> list[Snapshot]:
         key = f"{aggregate_type}:{aggregate_id}"
         return list(self._snapshots.get(key, []))

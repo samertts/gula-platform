@@ -31,30 +31,36 @@ class CanonicalProcedure(DataPlatformBase):
     citizen_id: str | None
 
     @classmethod
-    def query_all(cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:
-        query = db.query(
-            LabOrder.id.label("procedure_id"),
-            LabOrder.lab_id,
-            LabOrder.patient_id,
-            LabOrder.id.label("order_id"),
-            LabOrder.status.label("procedure_name"),
-            LabOrder.status,
-            LabOrder.created_at.label("performed_at"),
-            LabOrder.created_at,
-            LabOrder.doctor_name,
-            Encounter.id.label("encounter_id"),
-            Encounter.facility_id,
-            NationalPatient.id.label("national_patient_id"),
-            NationalPatient.citizen_id,
-        ).outerjoin(
-            NationalPatient,
-            and_(
-                NationalPatient.lab_patient_id == LabOrder.patient_id,
-                NationalPatient.lab_id == LabOrder.lab_id,
-            ),
-        ).outerjoin(
-            Encounter,
-            Encounter.patient_id == NationalPatient.id,
+    def query_all(
+        cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        query = (
+            db.query(
+                LabOrder.id.label("procedure_id"),
+                LabOrder.lab_id,
+                LabOrder.patient_id,
+                LabOrder.id.label("order_id"),
+                LabOrder.status.label("procedure_name"),
+                LabOrder.status,
+                LabOrder.created_at.label("performed_at"),
+                LabOrder.created_at,
+                LabOrder.doctor_name,
+                Encounter.id.label("encounter_id"),
+                Encounter.facility_id,
+                NationalPatient.id.label("national_patient_id"),
+                NationalPatient.citizen_id,
+            )
+            .outerjoin(
+                NationalPatient,
+                and_(
+                    NationalPatient.lab_patient_id == LabOrder.patient_id,
+                    NationalPatient.lab_id == LabOrder.lab_id,
+                ),
+            )
+            .outerjoin(
+                Encounter,
+                Encounter.patient_id == NationalPatient.id,
+            )
         )
 
         if lab_id is not None:
@@ -64,32 +70,39 @@ class CanonicalProcedure(DataPlatformBase):
         return [dict(row._mapping) for row in rows]
 
     @classmethod
-    def get_by_id(cls, db: Session, procedure_id: int, lab_id: int | None = None) -> dict[str, Any] | None:
-        query = db.query(
-            LabOrder.id.label("procedure_id"),
-            LabOrder.lab_id,
-            LabOrder.patient_id,
-            LabOrder.id.label("order_id"),
-            LabOrder.status.label("procedure_name"),
-            LabOrder.status,
-            LabOrder.created_at.label("performed_at"),
-            LabOrder.created_at,
-            LabOrder.doctor_name,
-            Encounter.id.label("encounter_id"),
-            Encounter.facility_id,
-            NationalPatient.id.label("national_patient_id"),
-            NationalPatient.citizen_id,
-        ).outerjoin(
-            NationalPatient,
-            and_(
-                NationalPatient.lab_patient_id == LabOrder.patient_id,
-                NationalPatient.lab_id == LabOrder.lab_id,
-            ),
-        ).outerjoin(
-            Encounter,
-            Encounter.patient_id == NationalPatient.id,
-        ).filter(
-            LabOrder.id == procedure_id,
+    def get_by_id(
+        cls, db: Session, procedure_id: int, lab_id: int | None = None
+    ) -> dict[str, Any] | None:
+        query = (
+            db.query(
+                LabOrder.id.label("procedure_id"),
+                LabOrder.lab_id,
+                LabOrder.patient_id,
+                LabOrder.id.label("order_id"),
+                LabOrder.status.label("procedure_name"),
+                LabOrder.status,
+                LabOrder.created_at.label("performed_at"),
+                LabOrder.created_at,
+                LabOrder.doctor_name,
+                Encounter.id.label("encounter_id"),
+                Encounter.facility_id,
+                NationalPatient.id.label("national_patient_id"),
+                NationalPatient.citizen_id,
+            )
+            .outerjoin(
+                NationalPatient,
+                and_(
+                    NationalPatient.lab_patient_id == LabOrder.patient_id,
+                    NationalPatient.lab_id == LabOrder.lab_id,
+                ),
+            )
+            .outerjoin(
+                Encounter,
+                Encounter.patient_id == NationalPatient.id,
+            )
+            .filter(
+                LabOrder.id == procedure_id,
+            )
         )
 
         if lab_id is not None:

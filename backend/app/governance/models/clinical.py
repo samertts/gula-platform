@@ -27,7 +27,11 @@ class ClinicalPolicy(GovernanceBaseEntity):
     supersedes_policy_code = Column(String(50), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class MedicalGuideline(GovernanceBaseEntity):
@@ -49,7 +53,11 @@ class MedicalGuideline(GovernanceBaseEntity):
     review_date = Column(Date, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class NationalProtocol(GovernanceBaseEntity):
@@ -71,7 +79,11 @@ class NationalProtocol(GovernanceBaseEntity):
     review_date = Column(Date, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class CriticalResultPolicy(GovernanceBaseEntity):
@@ -90,7 +102,11 @@ class CriticalResultPolicy(GovernanceBaseEntity):
     is_active = Column(Boolean, default=True, index=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class RepeatTestingPolicy(GovernanceBaseEntity):
@@ -104,7 +120,11 @@ class RepeatTestingPolicy(GovernanceBaseEntity):
     requires_approval = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class DeltaCheckPolicy(GovernanceBaseEntity):
@@ -130,7 +150,11 @@ class WestgardPolicy(GovernanceBaseEntity):
     num_control_measurements = Column(Integer, nullable=False, default=2)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class ReferenceRangePolicy(GovernanceBaseEntity):
@@ -147,7 +171,11 @@ class ReferenceRangePolicy(GovernanceBaseEntity):
     source = Column(String(200), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class ApprovalPolicy(GovernanceBaseEntity):
@@ -165,7 +193,11 @@ class ApprovalPolicy(GovernanceBaseEntity):
     auto_approve = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class ConsultationPolicy(GovernanceBaseEntity):

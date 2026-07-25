@@ -43,7 +43,6 @@ logger = logging.getLogger("gula.national.search_platform")
 
 
 class SearchPlatformService:
-
     def __init__(
         self,
         index_adapter: IndexAdapter,
@@ -73,17 +72,21 @@ class SearchPlatformService:
         parsed_filters = []
         if filters:
             for f in filters:
-                parsed_filters.append(SearchFilter(
-                    field=f.get("field", ""),
-                    operator=FilterOperator(f.get("operator", "eq")),
-                    value=f.get("value"),
-                ))
+                parsed_filters.append(
+                    SearchFilter(
+                        field=f.get("field", ""),
+                        operator=FilterOperator(f.get("operator", "eq")),
+                        value=f.get("value"),
+                    ),
+                )
 
         search_query = SearchQuery(
             id=str(uuid.uuid4()),
             query_text=query_text,
             filters=parsed_filters,
-            index_types=[SearchIndexType(t) for t in index_types] if index_types else list(SearchIndexType),
+            index_types=[SearchIndexType(t) for t in index_types]
+            if index_types
+            else list(SearchIndexType),
             page=page,
             page_size=page_size,
             sort_by=sort_by,
@@ -111,17 +114,19 @@ class SearchPlatformService:
         if result_records:
             await self.search_result_repository.save_results(result_records)
 
-        self._publish_event(SearchPerformed(
-            query_id=search_query.id,
-            query_text=query_text,
-            result_count=total,
-            aggregate_id=search_query.id,
-            payload={
-                "query_text": query_text,
-                "result_count": total,
-                "took_ms": took_ms,
-            },
-        ))
+        self._publish_event(
+            SearchPerformed(
+                query_id=search_query.id,
+                query_text=query_text,
+                result_count=total,
+                aggregate_id=search_query.id,
+                payload={
+                    "query_text": query_text,
+                    "result_count": total,
+                    "took_ms": took_ms,
+                },
+            ),
+        )
 
         return SearchResponse(
             results=result_records,
@@ -140,7 +145,9 @@ class SearchPlatformService:
         page: int = 1,
         page_size: int = 20,
     ) -> SearchResponse:
-        query_text = params.get("_query", "") or params.get("name", "") or params.get("identifier", "")
+        query_text = (
+            params.get("_query", "") or params.get("name", "") or params.get("identifier", "")
+        )
         filters = []
         for key, value in params.items():
             if key.startswith("_") or key in ("name", "identifier", "query"):
@@ -184,7 +191,9 @@ class SearchPlatformService:
         search_query = SearchQuery(
             id=str(uuid.uuid4()),
             query_text=query_text,
-            index_types=[SearchIndexType(t) for t in index_types] if index_types else list(SearchIndexType),
+            index_types=[SearchIndexType(t) for t in index_types]
+            if index_types
+            else list(SearchIndexType),
         )
         return await self.index_adapter.get_facets(search_query)
 
@@ -210,12 +219,14 @@ class SearchPlatformService:
         )
         result = await self.saved_search_repository.save(saved)
 
-        self._publish_event(SavedSearchCreated(
-            saved_search_id=result.id,
-            name=name,
-            aggregate_id=result.id,
-            payload={"name": name, "scheduled": scheduled},
-        ))
+        self._publish_event(
+            SavedSearchCreated(
+                saved_search_id=result.id,
+                name=name,
+                aggregate_id=result.id,
+                payload={"name": name, "scheduled": scheduled},
+            ),
+        )
 
         return result
 
@@ -254,12 +265,14 @@ class SearchPlatformService:
                 total += count
             except Exception as exc:
                 raise IndexAdapterError(f"Failed to rebuild index {t}: {exc}") from exc
-        self._publish_event(IndexRebuilt(
-            index_type=index_type or "all",
-            documents_indexed=total,
-            aggregate_id="index_rebuild",
-            payload={"index_type": index_type, "documents_indexed": total},
-        ))
+        self._publish_event(
+            IndexRebuilt(
+                index_type=index_type or "all",
+                documents_indexed=total,
+                aggregate_id="index_rebuild",
+                payload={"index_type": index_type, "documents_indexed": total},
+            ),
+        )
 
         return {"index_type": index_type or "all", "documents_indexed": results, "total": total}
 
@@ -272,19 +285,26 @@ class SearchPlatformService:
         try:
             await self.index_adapter.index_document(index_type, document_id, data)
         except Exception as exc:
-            raise IndexAdapterError(f"Failed to index document {index_type}/{document_id}: {exc}") from exc
-        self._publish_event(DocumentIndexed(
-            resource_type=index_type,
-            resource_id=document_id,
-            aggregate_id=document_id,
-            payload={"index_type": index_type, "document_id": document_id},
-        ))
+            raise IndexAdapterError(
+                f"Failed to index document {index_type}/{document_id}: {exc}",
+            ) from exc
+        self._publish_event(
+            DocumentIndexed(
+                resource_type=index_type,
+                resource_id=document_id,
+                aggregate_id=document_id,
+                payload={"index_type": index_type, "document_id": document_id},
+            ),
+        )
 
     async def remove_from_index(self, index_type: str, document_id: str) -> None:
         try:
             await self.index_adapter.remove_document(index_type, document_id)
         except Exception as exc:
-            raise IndexAdapterError(f"Failed to remove document {index_type}/{document_id}: {exc}") from exc
+            raise IndexAdapterError(
+                f"Failed to remove document {index_type}/{document_id}: {exc}",
+            ) from exc
+
     async def get_search_stats(self) -> dict[str, Any]:
         return await self.search_result_repository.get_stats()
 

@@ -106,12 +106,16 @@ class PolicyManager:
             "action": action,
             "effect": final_effect.value,
             "allowed": final_effect == PolicyEffect.ALLOW,
-            "core_policy": core_result.to_dict() if hasattr(core_result, "to_dict") else str(core_result),
+            "core_policy": core_result.to_dict()
+            if hasattr(core_result, "to_dict")
+            else str(core_result),
             "violations": results,
             "timestamp": datetime.now(UTC).isoformat(),
         }
 
-    def _check_policy(self, policy: Policy, action: str, context: dict[str, Any]) -> dict[str, Any] | None:
+    def _check_policy(
+        self, policy: Policy, action: str, context: dict[str, Any],
+    ) -> dict[str, Any] | None:
         conditions = policy.conditions
         for key, expected in conditions.items():
             actual = context.get(key)

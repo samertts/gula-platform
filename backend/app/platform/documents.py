@@ -26,8 +26,11 @@ class DocumentService:
     def __init__(self, storage_dir: str = "/app/data/documents") -> None:
         self._storage_dir = storage_dir
 
-    def upload(self, filename: str, content: bytes, mime_type: str = "application/octet-stream") -> Document:
+    def upload(
+        self, filename: str, content: bytes, mime_type: str = "application/octet-stream"
+    ) -> Document:
         import os
+
         doc_id = str(uuid.uuid4())
         safe_name = f"{doc_id}_{filename}"
         os.makedirs(self._storage_dir, exist_ok=True)
@@ -35,8 +38,11 @@ class DocumentService:
         with open(filepath, "wb") as f:
             f.write(content)
         return Document(
-            id=doc_id, filename=filename, mime_type=mime_type,
-            size_bytes=len(content), storage_path=filepath,
+            id=doc_id,
+            filename=filename,
+            mime_type=mime_type,
+            size_bytes=len(content),
+            storage_path=filepath,
         )
 
     def download(self, document_id: str) -> bytes | None:
@@ -59,17 +65,23 @@ class DocumentService:
         for fname in os.listdir(self._storage_dir):
             filepath = os.path.join(self._storage_dir, fname)
             if os.path.isfile(filepath):
-                docs.append({
-                    "id": fname.split("_")[0] if "_" in fname else fname,
-                    "filename": fname,
-                    "size_bytes": os.path.getsize(filepath),
-                })
+                docs.append(
+                    {
+                        "id": fname.split("_")[0] if "_" in fname else fname,
+                        "filename": fname,
+                        "size_bytes": os.path.getsize(filepath),
+                    }
+                )
         return docs
 
 
-PlatformRegistry.register("documents", DocumentService(), capabilities=[
-    {"name": "upload", "description": "Upload a document to platform storage"},
-    {"name": "download", "description": "Download a document by ID"},
-    {"name": "delete", "description": "Delete a document by ID"},
-    {"name": "list_documents", "description": "List all stored documents"},
-])
+PlatformRegistry.register(
+    "documents",
+    DocumentService(),
+    capabilities=[
+        {"name": "upload", "description": "Upload a document to platform storage"},
+        {"name": "download", "description": "Download a document by ID"},
+        {"name": "delete", "description": "Delete a document by ID"},
+        {"name": "list_documents", "description": "List all stored documents"},
+    ],
+)

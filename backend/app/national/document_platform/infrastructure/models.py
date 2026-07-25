@@ -32,15 +32,23 @@ class NationalDocumentModel(BaseEntity):
     filename = Column(String(512), nullable=False, index=True)
     original_name = Column(String(512), nullable=False)
     mime_type = Column(String(128), nullable=False)
-    format = Column(SAEnum(DocumentFormat), nullable=False, default=DocumentFormat.OTHER, index=True)
+    format = Column(
+        SAEnum(DocumentFormat), nullable=False, default=DocumentFormat.OTHER, index=True,
+    )
     size_bytes = Column(Integer, nullable=False, default=0)
     hash_sha256 = Column(String(64), nullable=False, default="", index=True)
     version = Column(Integer, nullable=False, default=1)
-    category = Column(SAEnum(DocumentCategory), nullable=False, default=DocumentCategory.OTHER, index=True)
-    status = Column(SAEnum(DocumentStatus), nullable=False, default=DocumentStatus.DRAFT, index=True)
+    category = Column(
+        SAEnum(DocumentCategory), nullable=False, default=DocumentCategory.OTHER, index=True,
+    )
+    status = Column(
+        SAEnum(DocumentStatus), nullable=False, default=DocumentStatus.DRAFT, index=True,
+    )
     tags = Column(JSON, nullable=True, default=list)
     metadata_ = Column("metadata", JSON, nullable=True, default=dict)
-    retention_policy = Column(SAEnum(RetentionPolicy), nullable=False, default=RetentionPolicy.STANDARD_1Y)
+    retention_policy = Column(
+        SAEnum(RetentionPolicy), nullable=False, default=RetentionPolicy.STANDARD_1Y,
+    )
     expires_at = Column(DateTime(timezone=True), nullable=True)
     created_by = Column(String(100), nullable=True)
 
@@ -82,7 +90,12 @@ class NationalDocumentVersionModel(BaseEntity):
     __tablename__ = "national_document_versions"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    document_id = Column(String(26), ForeignKey("national_documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_id = Column(
+        String(26),
+        ForeignKey("national_documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     version_number = Column(Integer, nullable=False, default=1)
     filename = Column(String(512), nullable=False, default="")
     size_bytes = Column(Integer, nullable=False, default=0)
@@ -116,7 +129,12 @@ class NationalElectronicSignatureModel(BaseEntity):
     __tablename__ = "national_electronic_signatures"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    document_id = Column(String(26), ForeignKey("national_documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_id = Column(
+        String(26),
+        ForeignKey("national_documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     signer_id = Column(String(100), nullable=False, index=True)
     signer_name = Column(String(255), nullable=False, default="")
     signer_role = Column(String(100), nullable=True, default="")
@@ -161,7 +179,12 @@ class NationalDocumentQRCodeModel(BaseEntity):
     __tablename__ = "national_document_qr_codes"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    document_id = Column(String(26), ForeignKey("national_documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_id = Column(
+        String(26),
+        ForeignKey("national_documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     qr_data = Column(Text, nullable=False, default="")
     verification_url = Column(String(512), nullable=True, default="")
     generated_at = Column(DateTime(timezone=True), nullable=False)
@@ -191,7 +214,12 @@ class NationalDocumentAttachmentModel(BaseEntity):
     __tablename__ = "national_document_attachments"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    document_id = Column(String(26), ForeignKey("national_documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_id = Column(
+        String(26),
+        ForeignKey("national_documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     filename = Column(String(512), nullable=False, default="")
     size_bytes = Column(Integer, nullable=False, default=0)
     mime_type = Column(String(128), nullable=False, default="")

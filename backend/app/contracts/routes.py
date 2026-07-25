@@ -36,9 +36,7 @@ async def get_schema(module: str):
         "events": lambda: {
             "$schema": "http://json-schema.org/draft-07/schema#",
             "title": "GULA Platform Events",
-            "definitions": {
-                name: evt["payload"] for name, evt in EVENT_REGISTRY.items()
-            },
+            "definitions": {name: evt["payload"] for name, evt in EVENT_REGISTRY.items()},
         },
         "event-catalog": lambda: get_event_catalog(),
         "fhir-profiles": get_fhir_profiles,
@@ -74,7 +72,11 @@ async def get_schema(module: str):
 async def get_fhir_profiles_endpoint():
     profiles = get_fhir_profiles()
     return JSONResponse(
-        content={"resourceType": "Bundle", "type": "collection", "entry": [{"resource": p} for p in profiles]},
+        content={
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [{"resource": p} for p in profiles],
+        },
     )
 
 

@@ -23,7 +23,9 @@ def _ulid() -> str:
     return str(uuid.uuid4()).replace("-", "").upper()[:26]
 
 
-class CareContinuumBaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, CareContinuumBase):
+class CareContinuumBaseEntity(
+    TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, CareContinuumBase,
+):
     __abstract__ = True
 
     id = Column(String(26), primary_key=True, default=_ulid)

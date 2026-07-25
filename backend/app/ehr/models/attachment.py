@@ -9,11 +9,36 @@ from app.ehr.base import EHRBaseEntity
 class ClinicalAttachment(EHRBaseEntity):
     __tablename__ = "ehr_clinical_attachments"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
-    uploaded_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    uploaded_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     source_type = Column(String(50), nullable=False)
     source_id = Column(String(26), nullable=False, index=True)
@@ -39,7 +64,12 @@ class ClinicalAttachment(EHRBaseEntity):
     sort_order = Column(Integer, default=0)
 
     uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     __table_args__ = (
         Index("ix_ehr_attachment_patient", "patient_id"),

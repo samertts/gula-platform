@@ -137,17 +137,23 @@ class PDFReportGenerator:
         ]
         table_data = [["Test", "Value", "Flag", "Date"]]
         for r in results:
-            table_data.append([
-                r.test_name or r.test_name_ar,
-                r.value or r.value_text or "",
-                r.flag or "",
-                r.collected_at,
-            ])
+            table_data.append(
+                [
+                    r.test_name or r.test_name_ar,
+                    r.value or r.value_text or "",
+                    r.flag or "",
+                    r.collected_at,
+                ],
+            )
         t = Table(table_data, colWidths=[120, 120, 60, 100])
-        t.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ]))
+        t.setStyle(
+            TableStyle(
+                [
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ],
+            ),
+        )
         elements.append(t)
         return generate_pdf(elements, title="Batch Laboratory Report")

@@ -11,8 +11,18 @@ class Laboratory(AuditEntity):
     license_number = Column(String(100), nullable=False, unique=True, index=True)
 
     lab_type = Column(String(50), nullable=False)
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("national_organizations.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     director_name = Column(String(200), nullable=True)
     phone = Column(String(20), nullable=True)

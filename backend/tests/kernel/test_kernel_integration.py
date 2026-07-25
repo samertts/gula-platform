@@ -53,6 +53,7 @@ class TestKernelIntegration:
     def test_integration_get_before_init(self):
         import app.kernel.integration as ki
         from app.kernel.integration import get_kernel
+
         original = ki._kernel_instance
         ki._kernel_instance = None
         try:

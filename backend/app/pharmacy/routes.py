@@ -541,7 +541,9 @@ async def get_drug(
     svc = _get_pharmacy_service(db, user)
     drug = svc.get_drug(drug_id)
     if not drug:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}"
+        )
     return drug
 
 
@@ -555,7 +557,9 @@ async def update_drug(
     svc = _get_pharmacy_service(db, user)
     drug = svc.update_drug(drug_id, data.model_dump(exclude_none=True))
     if not drug:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}"
+        )
     return drug
 
 
@@ -567,7 +571,9 @@ async def delete_drug(
 ):
     svc = _get_pharmacy_service(db, user)
     if not svc.delete_drug(drug_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}"
+        )
 
 
 @router.get("/drugs/search", response_model=DrugCatalogListResponse)
@@ -598,11 +604,15 @@ async def get_drugs_by_atc(
     svc = _get_pharmacy_service(db, user)
     items = svc.get_drugs_by_atc(atc_code)
     total = len(items)
-    items = items[skip:skip + limit]
+    items = items[skip : skip + limit]
     return DrugCatalogListResponse(items=items, total=total, skip=skip, limit=limit)
 
 
-@router.post("/drugs/{drug_id}/batches", response_model=DrugBatchResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/drugs/{drug_id}/batches",
+    response_model=DrugBatchResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_batch(
     drug_id: str,
     data: DrugBatchCreate,
@@ -612,7 +622,9 @@ async def create_batch(
     svc = _get_pharmacy_service(db, user)
     batch = svc.create_batch(drug_id, data.model_dump(exclude_none=True))
     if not batch:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}"
+        )
     return batch
 
 
@@ -635,7 +647,9 @@ async def get_batch(
     svc = _get_pharmacy_service(db, user)
     batch = svc.get_batch(batch_id)
     if not batch:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Batch not found: {batch_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Batch not found: {batch_id}"
+        )
     return batch
 
 
@@ -671,7 +685,9 @@ async def create_supplier(
 # ── Prescription Routes ────────────────────────────────────────────────────────
 
 
-@router.post("/prescriptions", response_model=PrescriptionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/prescriptions", response_model=PrescriptionResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_prescription(
     data: PrescriptionCreate,
     db: Session = Depends(get_db),
@@ -708,7 +724,9 @@ async def get_prescription(
     svc = _get_pharmacy_service(db, user)
     rx = svc.get_prescription(rx_id)
     if not rx:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}"
+        )
     return rx
 
 
@@ -722,14 +740,20 @@ async def update_prescription_status(
     svc = _get_pharmacy_service(db, user)
     new_status = status_data.get("status")
     if not new_status:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="status field required")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="status field required"
+        )
     try:
         parsed = PrescriptionStatus(new_status)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Invalid status: {new_status}") from e
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Invalid status: {new_status}"
+        ) from e
     rx = svc.update_prescription_status(rx_id, parsed)
     if not rx:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}"
+        )
     return rx
 
 
@@ -742,7 +766,9 @@ async def renew_prescription(
     svc = _get_pharmacy_service(db, user)
     renewal = svc.renew_prescription(rx_id)
     if not renewal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}"
+        )
     return renewal
 
 
@@ -755,11 +781,17 @@ async def cancel_prescription(
     svc = _get_pharmacy_service(db, user)
     rx = svc.cancel_prescription(rx_id)
     if not rx:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}"
+        )
     return rx
 
 
-@router.post("/prescriptions/{rx_id}/items", response_model=PrescriptionItemResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/prescriptions/{rx_id}/items",
+    response_model=PrescriptionItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_prescription_item(
     rx_id: str,
     data: PrescriptionItemCreate,
@@ -769,11 +801,15 @@ async def add_prescription_item(
     svc = _get_pharmacy_service(db, user)
     item = svc.add_prescription_item(rx_id, data.model_dump(exclude_none=True))
     if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}"
+        )
     return item
 
 
-@router.put("/prescriptions/{rx_id}/items/{item_id}/substitute", response_model=PrescriptionItemResponse)
+@router.put(
+    "/prescriptions/{rx_id}/items/{item_id}/substitute", response_model=PrescriptionItemResponse
+)
 async def substitute_prescription_item(
     rx_id: str,
     item_id: str,
@@ -783,11 +819,15 @@ async def substitute_prescription_item(
 ):
     new_drug_id = data.get("drug_catalog_id")
     if not new_drug_id:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="drug_catalog_id required")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="drug_catalog_id required"
+        )
     svc = _get_pharmacy_service(db, user)
     item = svc.substitute_prescription_item(rx_id, item_id, new_drug_id)
     if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prescription item not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Prescription item not found"
+        )
     return item
 
 
@@ -817,7 +857,9 @@ async def prepare_dispense(
     svc = _get_pharmacy_service(db, user)
     entry = svc.prepare_dispense(queue_id)
     if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}"
+        )
     return {"status": "prepared", "id": queue_id}
 
 
@@ -830,7 +872,9 @@ async def verify_dispense(
     svc = _get_pharmacy_service(db, user)
     entry = svc.verify_dispense(queue_id)
     if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}"
+        )
     return {"status": "verified", "id": queue_id}
 
 
@@ -843,7 +887,9 @@ async def complete_dispense(
     svc = _get_pharmacy_service(db, user)
     entry = svc.complete_dispense(queue_id)
     if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}"
+        )
     return {"status": "dispensed", "id": queue_id}
 
 
@@ -856,7 +902,9 @@ async def partial_dispense(
     svc = _get_pharmacy_service(db, user)
     entry = svc.partial_dispense(queue_id)
     if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}"
+        )
     return {"status": "partial", "id": queue_id}
 
 
@@ -869,11 +917,17 @@ async def cancel_dispense(
     svc = _get_pharmacy_service(db, user)
     entry = svc.cancel_dispense(queue_id)
     if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}"
+        )
     return {"status": "cancelled", "id": queue_id}
 
 
-@router.post("/dispense/dispense-record", response_model=DispenseRecordResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/dispense/dispense-record",
+    response_model=DispenseRecordResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_dispense_record(
     data: DispenseRecordCreate,
     db: Session = Depends(get_db),
@@ -907,7 +961,9 @@ async def check_interactions(
     engine = DrugInteractionEngine(db, user.lab_id)
     interactions = engine.check_multiple_drugs(data.drug_codes)
     severe_count = sum(1 for i in interactions if i.get("severity") in ("contraindicated", "major"))
-    return InteractionCheckResponse(interactions=interactions, total=len(interactions), severe_count=severe_count)
+    return InteractionCheckResponse(
+        interactions=interactions, total=len(interactions), severe_count=severe_count
+    )
 
 
 @router.post("/clinical/contraindications/check")
@@ -945,7 +1001,9 @@ async def calculate_dose(
     from app.pharmacy.clinical import DoseEngine
 
     engine = DoseEngine(db, user.lab_id)
-    results = engine.calculate_dose(data.drug_code, data.indication_code, data.age_months, data.weight_kg)
+    results = engine.calculate_dose(
+        data.drug_code, data.indication_code, data.age_months, data.weight_kg
+    )
     return {"dose_guidelines": results, "total": len(results)}
 
 
@@ -1041,7 +1099,9 @@ async def list_movements(
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
-@router.post("/inventory/movements", response_model=MovementResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/inventory/movements", response_model=MovementResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_movement(
     data: MovementCreate,
     db: Session = Depends(get_db),
@@ -1064,7 +1124,9 @@ async def list_transfers(
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
-@router.post("/inventory/transfers", response_model=TransferResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/inventory/transfers", response_model=TransferResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_transfer(
     data: TransferCreate,
     db: Session = Depends(get_db),
@@ -1083,7 +1145,9 @@ async def approve_transfer(
     svc = _get_pharmacy_service(db, user)
     transfer = svc.approve_transfer(transfer_id)
     if not transfer:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Transfer not found: {transfer_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Transfer not found: {transfer_id}"
+        )
     return {"status": "approved", "id": transfer_id}
 
 
@@ -1096,7 +1160,9 @@ async def receive_transfer(
     svc = _get_pharmacy_service(db, user)
     transfer = svc.receive_transfer(transfer_id)
     if not transfer:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Transfer not found: {transfer_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Transfer not found: {transfer_id}"
+        )
     return {"status": "received", "id": transfer_id}
 
 
@@ -1135,7 +1201,9 @@ async def list_recalls(
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
-@router.post("/inventory/recalls", response_model=RecallResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/inventory/recalls", response_model=RecallResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_recall(
     data: RecallCreate,
     db: Session = Depends(get_db),

@@ -104,7 +104,11 @@ class SecurityEvaluator(DimensionEvaluator):
                 continue
             try:
                 content = py_file.read_text()
-                if "get_current_user" in content or "has_permission" in content or "@requires" in content:
+                if (
+                    "get_current_user" in content
+                    or "has_permission" in content
+                    or "@requires" in content
+                ):
                     count += 1
             except Exception:
                 continue

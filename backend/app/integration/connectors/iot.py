@@ -49,7 +49,9 @@ class IoTConnector(BaseConnector):
                 headers=headers,
             )
             self._connected = True
-            logger.info("IoT connector connected: protocol=%s device=%s", self._protocol, self._device_id)
+            logger.info(
+                "IoT connector connected: protocol=%s device=%s", self._protocol, self._device_id
+            )
             return True
         except Exception as exc:
             logger.error("IoT connector failed: %s", exc)
@@ -129,7 +131,11 @@ class IoTConnector(BaseConnector):
             url = f"{base.rstrip('/')}/api/devices/{device_id}/telemetry"
             resp = await self._client.post(url, json=payload)
             if resp.is_success:
-                return {"success": True, "device_id": device_id, "message_id": resp.json().get("id", "")}
+                return {
+                    "success": True,
+                    "device_id": device_id,
+                    "message_id": resp.json().get("id", ""),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("IoT telemetry publish failed: %s", exc)
@@ -269,7 +275,12 @@ class IoTConnector(BaseConnector):
             if resp.is_success:
                 body = resp.json()
                 telemetry = body.get("telemetry", body.get("data", []))
-                return {"success": True, "device_id": device_id, "telemetry": telemetry, "count": len(telemetry)}
+                return {
+                    "success": True,
+                    "device_id": device_id,
+                    "telemetry": telemetry,
+                    "count": len(telemetry),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("IoT telemetry fetch failed: %s", exc)

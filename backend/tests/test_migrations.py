@@ -13,6 +13,7 @@ These run in < 1s with zero external dependencies — safe to run anywhere.
 Run:
   cd backend && python -m pytest tests/test_migrations.py -v
 """
+
 import importlib.util
 import pathlib
 import re
@@ -22,6 +23,7 @@ MIGRATIONS_DIR = pathlib.Path(__file__).parent.parent / "migrations" / "versions
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _read_migration_meta(path: pathlib.Path) -> dict:
     """Extract revision/down_revision from a migration file without importing it."""
@@ -57,6 +59,7 @@ def _load_all_migrations() -> list[dict]:
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
+
 
 def test_base_migration_exists():
     """20250322_0000 must exist — it is the bootstrap foundation."""
@@ -102,10 +105,7 @@ def test_no_duplicate_revision_ids():
     seen: dict[str, str] = {}
     for m in migs:
         rev = m["revision"]
-        assert rev not in seen, (
-            f"Duplicate revision ID '{rev}' in:\n"
-            f"  {seen[rev]}\n  {m['path']}"
-        )
+        assert rev not in seen, f"Duplicate revision ID '{rev}' in:\n  {seen[rev]}\n  {m['path']}"
         seen[rev] = m["path"]
 
 
@@ -194,7 +194,6 @@ def test_chain_reachable_from_root():
 
     all_revs = {m["revision"] for m in migs}
     unreachable = all_revs - visited
-    assert not unreachable, (
-        "Unreachable migrations (not in the chain from root):\n"
-        + "\n".join(f"  {r}" for r in sorted(unreachable))
+    assert not unreachable, "Unreachable migrations (not in the chain from root):\n" + "\n".join(
+        f"  {r}" for r in sorted(unreachable)
     )

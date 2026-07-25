@@ -74,11 +74,12 @@ def auto_validate_result(
     if patient_age_days is not None:
         range_query = range_query.filter(
             (
-                (ReferenceRangeDef.age_min_days.is_(None)) |
-                (ReferenceRangeDef.age_min_days <= patient_age_days)
-            ) & (
-                (ReferenceRangeDef.age_max_days.is_(None)) |
-                (ReferenceRangeDef.age_max_days >= patient_age_days)
+                (ReferenceRangeDef.age_min_days.is_(None))
+                | (ReferenceRangeDef.age_min_days <= patient_age_days)
+            )
+            & (
+                (ReferenceRangeDef.age_max_days.is_(None))
+                | (ReferenceRangeDef.age_max_days >= patient_age_days)
             ),
         )
 
@@ -97,8 +98,12 @@ def auto_validate_result(
             result["flags"].append("low")
 
         # Critical check
-        is_critical_high = ref_range.critical_high is not None and result_value > ref_range.critical_high
-        is_critical_low = ref_range.critical_low is not None and result_value < ref_range.critical_low
+        is_critical_high = (
+            ref_range.critical_high is not None and result_value > ref_range.critical_high
+        )
+        is_critical_low = (
+            ref_range.critical_low is not None and result_value < ref_range.critical_low
+        )
 
         if is_critical_high:
             result["flags"].append("critical_high")
@@ -109,14 +114,22 @@ def auto_validate_result(
 
     # Step 2: Delta check
     if previous_value is not None and previous_days is not None:
-        delta_rule = db.query(DeltaCheckRule).filter(
-            DeltaCheckRule.test_code == test_code,
-            DeltaCheckRule.is_active,
-            DeltaCheckRule.window_days >= previous_days,
-        ).first()
+        delta_rule = (
+            db.query(DeltaCheckRule)
+            .filter(
+                DeltaCheckRule.test_code == test_code,
+                DeltaCheckRule.is_active,
+                DeltaCheckRule.window_days >= previous_days,
+            )
+            .first()
+        )
 
         if delta_rule:
-            delta_pct = abs(result_value - previous_value) / abs(previous_value) * 100 if previous_value != 0 else 0
+            delta_pct = (
+                abs(result_value - previous_value) / abs(previous_value) * 100
+                if previous_value != 0
+                else 0
+            )
             delta_abs = abs(result_value - previous_value)
 
             delta_failed = False
@@ -132,11 +145,16 @@ def auto_validate_result(
 
     # Step 3: Auto-validation rules
     if not result["flags"]:
-        rules = db.query(AutoValidationRule).filter(
-            AutoValidationRule.test_code == test_code,
-            AutoValidationRule.lab_id == lab_id,
-            AutoValidationRule.is_active,
-        ).order_by(AutoValidationRule.priority.desc()).all()
+        rules = (
+            db.query(AutoValidationRule)
+            .filter(
+                AutoValidationRule.test_code == test_code,
+                AutoValidationRule.lab_id == lab_id,
+                AutoValidationRule.is_active,
+            )
+            .order_by(AutoValidationRule.priority.desc())
+            .all()
+        )
 
         can_auto_validate = True
         for rule in rules:
@@ -202,7 +220,9 @@ def _evaluate_rule_conditions(conditions: dict, value: float, result: dict) -> b
         elif op == "neq":
             results_list.append(actual != threshold)
         elif op == "between":
-            results_list.append(conditions.get("min", 0) <= actual <= conditions.get("max", float("inf")))
+            results_list.append(
+                conditions.get("min", 0) <= actual <= conditions.get("max", float("inf")),
+            )
         else:
             results_list.append(True)
 
@@ -234,10 +254,14 @@ def process_critical_result(
     """
     from .models import Result
 
-    result_obj = db.query(Result).filter(
-        Result.id == result_id,
-        Result.lab_id == lab_id,
-    ).first()
+    result_obj = (
+        db.query(Result)
+        .filter(
+            Result.id == result_id,
+            Result.lab_id == lab_id,
+        )
+        .first()
+    )
 
     if not result_obj:
         return {"status": "error", "message": "Result not found"}
@@ -286,7 +310,9 @@ def determine_reflex_tests(
             continue
         condition_met = False
         cond = rule.get("condition")
-        if (cond == "above" and value > rule.get("threshold", float("inf"))) or (cond == "below" and value < rule.get("threshold", 0)):
+        if (cond == "above" and value > rule.get("threshold", float("inf"))) or (
+            cond == "below" and value < rule.get("threshold", 0)
+        ):
             condition_met = True
         elif cond == "range":
             min_v = rule.get("threshold_min", float("-inf"))
@@ -295,11 +321,13 @@ def determine_reflex_tests(
                 condition_met = True
 
         if condition_met:
-            triggered.append({
-                "reflex_test_code": rule.get("reflex_test_code"),
-                "reason": rule.get("description", "Reflex triggered"),
-                "priority": rule.get("priority", "routine"),
-            })
+            triggered.append(
+                {
+                    "reflex_test_code": rule.get("reflex_test_code"),
+                    "reason": rule.get("description", "Reflex triggered"),
+                    "priority": rule.get("priority", "routine"),
+                },
+            )
 
     return triggered
 
@@ -324,10 +352,14 @@ def execute_result_correction(
     """
     from .models import Result, ResultValidation
 
-    result_obj = db.query(Result).filter(
-        Result.id == result_id,
-        Result.lab_id == lab_id,
-    ).first()
+    result_obj = (
+        db.query(Result)
+        .filter(
+            Result.id == result_id,
+            Result.lab_id == lab_id,
+        )
+        .first()
+    )
 
     if not result_obj:
         return {"status": "error", "message": "Result not found"}

@@ -65,9 +65,13 @@ def seed_subscriptions(db: Session | None = None) -> int:
     try:
         labs = db.query(Lab).filter(Lab.is_active).all()
         for lab in labs:
-            existing = db.query(LabSubscription).filter(
-                LabSubscription.lab_id == lab.id,
-            ).first()
+            existing = (
+                db.query(LabSubscription)
+                .filter(
+                    LabSubscription.lab_id == lab.id,
+                )
+                .first()
+            )
             if existing:
                 continue
 
@@ -115,9 +119,13 @@ def upgrade_subscription(
         logger.error("Unknown tier: %s", tier)
         return None
 
-    sub = db.query(LabSubscription).filter(
-        LabSubscription.lab_id == lab_id,
-    ).first()
+    sub = (
+        db.query(LabSubscription)
+        .filter(
+            LabSubscription.lab_id == lab_id,
+        )
+        .first()
+    )
 
     if sub:
         existing_tier_level = list(TIER_CONFIGS.keys()).index(
@@ -127,7 +135,9 @@ def upgrade_subscription(
         if target_tier_level <= existing_tier_level:
             logger.info(
                 "Lab %d already on tier '%s' (requested '%s') — no upgrade needed",
-                lab_id, sub.tier, tier,
+                lab_id,
+                sub.tier,
+                tier,
             )
             return sub
 

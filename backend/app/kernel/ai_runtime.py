@@ -34,7 +34,9 @@ class ModelCapability:
     supports_structured_output: bool = False
     supports_streaming: bool = False
     requires_api_key: bool = True
-    resource_requirements: dict[str, Any] = field(default_factory=lambda: {"memory_mb": 512, "gpu_vram_mb": 0})
+    resource_requirements: dict[str, Any] = field(
+        default_factory=lambda: {"memory_mb": 512, "gpu_vram_mb": 0}
+    )
     tags: list[str] = field(default_factory=list)
 
 
@@ -67,7 +69,9 @@ class ModelRegistry:
 
     def register(self, model: ModelCapability) -> None:
         self._models[model.name] = model
-        logger.info("Model registered", extra={"model": model.name, "provider": model.provider.value})
+        logger.info(
+            "Model registered", extra={"model": model.name, "provider": model.provider.value}
+        )
 
     def get(self, name: str) -> ModelCapability | None:
         return self._models.get(name)

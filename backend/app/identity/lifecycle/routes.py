@@ -21,6 +21,7 @@ router = APIRouter(prefix="/lifecycle", tags=["NIAM Lifecycle"])
 #  Enterprise Registration
 # ──────────────────────────────────────────────
 
+
 @router.post("/enterprise/register")
 async def start_enterprise_registration(
     organization_id: str,
@@ -99,9 +100,11 @@ async def get_enterprise_status(
     status = await svc.get_registration_status(org_id)
     return {"status": status}
 
+
 # ──────────────────────────────────────────────
 #  Workforce
 # ──────────────────────────────────────────────
+
 
 @router.post("/workforce/request")
 async def request_employee(
@@ -207,9 +210,11 @@ async def preserve_workforce_history(
     requests = await svc.preserve_history(person_id)
     return {"preserved": len(requests)}
 
+
 # ──────────────────────────────────────────────
 #  Government HR
 # ──────────────────────────────────────────────
+
 
 @router.post("/government/appointments")
 async def create_government_appointment(
@@ -339,9 +344,11 @@ async def retire_government_employee(
     appt = await svc.retire(appointment_id, retirement_date)
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
+
 # ──────────────────────────────────────────────
 #  Citizen Lifecycle
 # ──────────────────────────────────────────────
+
 
 @router.post("/citizen/register")
 async def register_citizen(
@@ -478,9 +485,11 @@ async def get_citizen_status(
     status = await svc.get_citizen_status(person_id)
     return {"status": status}
 
+
 # ──────────────────────────────────────────────
 #  Guardian Accounts
 # ──────────────────────────────────────────────
+
 
 @router.post("/guardians")
 async def create_guardianship(

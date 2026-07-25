@@ -150,6 +150,7 @@ class UnifiedAISDK:
 
     async def chat(self, prompt: str, model: str = "gpt-4o-mini", **kwargs: Any) -> str:
         from app.ai_fabric.base import InferenceRequest
+
         request = InferenceRequest(prompt=prompt, model=model, **kwargs)
         response = self._gateway.chat(request)
         return response.text
@@ -181,13 +182,17 @@ class AgentSDK:
             **kwargs,
         )
 
-    def run_agent(self, agent_name: str, context: AgentContext, input_data: dict[str, Any]) -> dict[str, Any]:
+    def run_agent(
+        self, agent_name: str, context: AgentContext, input_data: dict[str, Any],
+    ) -> dict[str, Any]:
         agent = self._registry.get_by_name(agent_name)
         if not agent:
             return {"error": f"Agent {agent_name} not found"}
         return agent.run(context, input_data)
 
-    def find_and_run(self, task_type: str, context: AgentContext, input_data: dict[str, Any]) -> dict[str, Any]:
+    def find_and_run(
+        self, task_type: str, context: AgentContext, input_data: dict[str, Any],
+    ) -> dict[str, Any]:
         agent = self._registry.find_for_task(task_type)
         if not agent:
             return {"error": f"No agent found for task type: {task_type}"}
@@ -202,11 +207,16 @@ class RAGSDK:
         self._sdk = sdk or UnifiedAISDK()
         self._rag = self._sdk.rag
 
-    async def query(self, question: str, collection: str = "default", top_k: int = 5) -> dict[str, Any]:
+    async def query(
+        self, question: str, collection: str = "default", top_k: int = 5,
+    ) -> dict[str, Any]:
         return await self._rag.query(question, collection=collection, top_k=top_k)
 
-    async def index(self, collection: str, texts: list[str], sources: list[str] | None = None) -> int:
+    async def index(
+        self, collection: str, texts: list[str], sources: list[str] | None = None,
+    ) -> int:
         from app.ai_fabric.rag import Chunk
+
         chunks = []
         for i, text in enumerate(texts):
             chunk = Chunk(

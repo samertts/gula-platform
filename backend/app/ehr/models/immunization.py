@@ -9,11 +9,36 @@ from app.ehr.base import EHRBaseEntity
 class ImmunizationRecord(EHRBaseEntity):
     __tablename__ = "ehr_immunizations"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
-    administrator_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    administrator_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     vaccine_code = Column(String(50), nullable=False, index=True)
     vaccine_code_system = Column(String(20), nullable=True)
@@ -21,7 +46,9 @@ class ImmunizationRecord(EHRBaseEntity):
     vaccine_name_ar = Column(String(300), nullable=True)
 
     administration_date = Column(DateTime(timezone=True), nullable=False)
-    recorded_date = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
+    recorded_date = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True,
+    )
 
     manufacturer = Column(String(200), nullable=True)
     lot_number = Column(String(100), nullable=True, index=True)
@@ -43,7 +70,12 @@ class ImmunizationRecord(EHRBaseEntity):
     adverse_event = Column(Text, nullable=True)
     adverse_event_reported = Column(Boolean, default=False)
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", Text, nullable=True)
 

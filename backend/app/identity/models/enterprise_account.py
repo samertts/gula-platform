@@ -9,7 +9,12 @@ class EnterpriseAccount(IdentityBaseEntity):
     __tablename__ = "niam_enterprise_accounts"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     display_name = Column(String(200), nullable=False)
 

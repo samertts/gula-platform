@@ -1,4 +1,5 @@
 """Identity Platform - Domain Layer Tests"""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -66,9 +67,7 @@ class TestIdentityDocument:
 class TestPatientIdentity:
     def test_age_from_dob(self):
         patient = PatientIdentity(date_of_birth=date(1990, 6, 15))
-        expected_age = date.today().year - 1990 - (
-            (date.today().month, date.today().day) < (6, 15)
-        )
+        expected_age = date.today().year - 1990 - ((date.today().month, date.today().day) < (6, 15))
         assert patient.age() == expected_age
 
     def test_age_none_when_no_dob(self):
@@ -78,19 +77,23 @@ class TestPatientIdentity:
     def test_has_valid_national_id_true(self):
         patient = PatientIdentity(
             national_id_hash="abc123",
-            documents=[IdentityDocument(
-                type=IdentityDocumentType.IRAQI_NATIONAL_ID,
-                value="1234567890",
-            )],
+            documents=[
+                IdentityDocument(
+                    type=IdentityDocumentType.IRAQI_NATIONAL_ID,
+                    value="1234567890",
+                )
+            ],
         )
         assert patient.has_valid_national_id() is True
 
     def test_has_valid_national_id_false_when_no_hash(self):
         patient = PatientIdentity(
-            documents=[IdentityDocument(
-                type=IdentityDocumentType.IRAQI_NATIONAL_ID,
-                value="1234567890",
-            )],
+            documents=[
+                IdentityDocument(
+                    type=IdentityDocumentType.IRAQI_NATIONAL_ID,
+                    value="1234567890",
+                )
+            ],
         )
         assert patient.has_valid_national_id() is False
 

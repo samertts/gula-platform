@@ -209,7 +209,9 @@ async def list_partners(
     db: Session = Depends(get_db),
 ) -> dict:
     manager = PartnerManager(db)
-    partners = manager.list_partners(status=status, tier=tier, org_type=org_type, offset=offset, limit=limit)
+    partners = manager.list_partners(
+        status=status, tier=tier, org_type=org_type, offset=offset, limit=limit,
+    )
     total = manager.count_partners(status=status)
     return {
         "total": total,
@@ -222,6 +224,7 @@ async def list_partners(
 @router.get("/partners/{partner_id}")
 async def get_partner(partner_id: str, db: Session = Depends(get_db)) -> dict:
     from .partners.service import PartnerNotFoundError
+
     manager = PartnerManager(db)
     try:
         partner = manager.get_partner(partner_id)
@@ -231,8 +234,11 @@ async def get_partner(partner_id: str, db: Session = Depends(get_db)) -> dict:
 
 
 @router.put("/partners/{partner_id}")
-async def update_partner(partner_id: str, data: dict = Body(...), db: Session = Depends(get_db)) -> dict:
+async def update_partner(
+    partner_id: str, data: dict = Body(...), db: Session = Depends(get_db),
+) -> dict:
     from .partners.service import PartnerNotFoundError
+
     manager = PartnerManager(db)
     try:
         partner = manager.update_partner(partner_id, data)
@@ -242,8 +248,11 @@ async def update_partner(partner_id: str, data: dict = Body(...), db: Session = 
 
 
 @router.post("/partners/{partner_id}/credentials")
-async def issue_credential(partner_id: str, data: dict = Body(...), db: Session = Depends(get_db)) -> dict:
+async def issue_credential(
+    partner_id: str, data: dict = Body(...), db: Session = Depends(get_db),
+) -> dict:
     from .partners.service import PartnerNotFoundError
+
     credential_mgr = CredentialManager(db)
     try:
         api_key = credential_mgr.issue_api_key(
@@ -257,8 +266,11 @@ async def issue_credential(partner_id: str, data: dict = Body(...), db: Session 
 
 
 @router.post("/partners/{partner_id}/certificates")
-async def register_certificate(partner_id: str, data: dict = Body(...), db: Session = Depends(get_db)) -> dict:
+async def register_certificate(
+    partner_id: str, data: dict = Body(...), db: Session = Depends(get_db),
+) -> dict:
     from .partners.service import PartnerNotFoundError
+
     cert_mgr = CertificateManager(db)
     try:
         cert = cert_mgr.register_certificate(partner_id, data)

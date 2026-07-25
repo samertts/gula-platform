@@ -11,10 +11,30 @@ from app.ehr.enums import AlcoholStatus, DisabilityType, SmokingStatus
 class SocialHistoryRecord(EHRBaseEntity):
     __tablename__ = "ehr_social_history"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     smoking_status = Column(SAEnum(SmokingStatus), nullable=True)
     smoking_pack_years = Column(Integer, nullable=True)
@@ -39,7 +59,9 @@ class SocialHistoryRecord(EHRBaseEntity):
     diet_notes = Column(Text, nullable=True)
     lifestyle_factors = Column(JSON, nullable=True)
 
-    recorded_date = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
+    recorded_date = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True,
+    )
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 

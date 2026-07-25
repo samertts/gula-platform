@@ -33,7 +33,9 @@ class RadiologyIntegration(BaseConnector):
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
             headers["X-AE-Title"] = self._ae_title
-            self._client = httpx.AsyncClient(timeout=self._timeout, verify=self._verify_ssl, headers=headers)
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, verify=self._verify_ssl, headers=headers
+            )
             self._connected = True
             logger.info("Radiology integration connected")
             return True
@@ -50,7 +52,11 @@ class RadiologyIntegration(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -147,7 +153,11 @@ class RadiologyIntegration(BaseConnector):
             resp = await self._client.get(urljoin(self._base_url, "/api/studies"), params=params)
             if resp.is_success:
                 studies = resp.json()
-                return {"success": True, "studies": studies, "count": len(studies) if isinstance(studies, list) else 0}
+                return {
+                    "success": True,
+                    "studies": studies,
+                    "count": len(studies) if isinstance(studies, list) else 0,
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Study query failed: %s", exc)
@@ -166,7 +176,9 @@ class RadiologyIntegration(BaseConnector):
             "notes": data.get("notes", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/schedule"), json=appointment)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/schedule"), json=appointment
+            )
             if resp.is_success:
                 return {"success": True, "appointment": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}

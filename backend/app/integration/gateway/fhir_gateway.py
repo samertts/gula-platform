@@ -60,7 +60,11 @@ class FHIRGateway(MessageGateway):
             return GatewayResult(success=False, error="Not connected")
         start = time.monotonic()
         try:
-            resource = message.payload if isinstance(message.payload, dict) else json.loads(message.payload)
+            resource = (
+                message.payload
+                if isinstance(message.payload, dict)
+                else json.loads(message.payload)
+            )
             validation = self._validator.validate(resource)
             if not validation.valid:
                 return GatewayResult(

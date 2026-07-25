@@ -68,7 +68,8 @@ def _resolve_account(acct: AdminAccountDef) -> dict | None:
         email_val = acct.email.lower().replace("_", "-") + "@gula-platform.org"
         logger.debug(
             "Using default email for %s: %s",
-            acct.role, email_val,
+            acct.role,
+            email_val,
         )
 
     name_val = os.getenv(f"{acct.role.upper()}_NAME", acct.name)
@@ -91,7 +92,8 @@ def _resolve_account(acct: AdminAccountDef) -> dict | None:
 
     logger.info(
         "Account %s (%s) skipped — no password configured",
-        acct.role, email_val,
+        acct.role,
+        email_val,
     )
     return None
 
@@ -113,23 +115,32 @@ def seed_national_admin_accounts(db: Session | None = None) -> int:
             db.add(platform_lab)
             db.flush()
 
-        master_admin = db.query(LabUser).filter(
-            LabUser.role == MASTER_ADMIN_ROLE,
-            LabUser.lab_id == platform_lab.id,
-        ).first()
+        master_admin = (
+            db.query(LabUser)
+            .filter(
+                LabUser.role == MASTER_ADMIN_ROLE,
+                LabUser.lab_id == platform_lab.id,
+            )
+            .first()
+        )
 
         for acct in ADMIN_ACCOUNTS:
             resolved = _resolve_account(acct)
             if not resolved:
                 continue
 
-            existing = db.query(LabUser).filter(
-                LabUser.email == resolved["email"],
-            ).first()
+            existing = (
+                db.query(LabUser)
+                .filter(
+                    LabUser.email == resolved["email"],
+                )
+                .first()
+            )
             if existing:
                 logger.debug(
                     "Account %s (%s) already exists — skipping",
-                    acct.role, resolved["email"],
+                    acct.role,
+                    resolved["email"],
                 )
                 continue
 
@@ -146,7 +157,8 @@ def seed_national_admin_accounts(db: Session | None = None) -> int:
             created += 1
             logger.info(
                 "Created %s account (%s)",
-                acct.role, resolved["email"],
+                acct.role,
+                resolved["email"],
             )
 
         if created:

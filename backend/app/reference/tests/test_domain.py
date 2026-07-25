@@ -124,11 +124,7 @@ class TestPatientValidationService:
     def test_compute_age(self) -> None:
         dob = date(1990, 6, 15)
         today = date.today()
-        expected = (
-            today.year
-            - 1990
-            - ((today.month, today.day) < (6, 15))
-        )
+        expected = today.year - 1990 - ((today.month, today.day) < (6, 15))
         assert PatientValidationService.compute_age(dob) == expected
 
     def test_compute_age_none(self) -> None:

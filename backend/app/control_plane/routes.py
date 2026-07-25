@@ -37,7 +37,9 @@ async def list_components(
             ct = PlatformComponent(component_type)
             components = sdk.registry.list(ct)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid component type: {component_type}") from None
+            raise HTTPException(
+                status_code=400, detail=f"Invalid component type: {component_type}",
+            ) from None
     else:
         components = sdk.registry.list()
     return {
@@ -62,7 +64,9 @@ async def register_component(data: dict[str, Any], user=Depends(_user)):
     try:
         ct = PlatformComponent(data.get("type", "service"))
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid component type: {data.get('type')}") from e
+        raise HTTPException(
+            status_code=400, detail=f"Invalid component type: {data.get('type')}",
+        ) from e
     descriptor = ComponentDescriptor(
         name=data["name"],
         component_type=ct,
@@ -74,7 +78,11 @@ async def register_component(data: dict[str, Any], user=Depends(_user)):
         metadata=data.get("metadata", {}),
     )
     sdk.registry.register(descriptor)
-    return {"status": "registered", "name": descriptor.name, "type": descriptor.component_type.value}
+    return {
+        "status": "registered",
+        "name": descriptor.name,
+        "type": descriptor.component_type.value,
+    }
 
 
 @router.put("/registry/components/{name}")
@@ -87,7 +95,9 @@ async def update_component(name: str, data: dict[str, Any], user=Depends(_user))
             status = ComponentStatus(data["status"])
             sdk.registry.update_status(name, status)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid status: {data['status']}") from None
+            raise HTTPException(
+                status_code=400, detail=f"Invalid status: {data['status']}",
+            ) from None
     return {"status": "updated", "name": name}
 
 
@@ -111,7 +121,9 @@ async def control_plane_health(user=Depends(_user)):
 
 
 @router.get("/config/{scope}/{component}")
-async def get_config(scope: str, component: str, key: str | None = Query(None), user=Depends(_user)):
+async def get_config(
+    scope: str, component: str, key: str | None = Query(None), user=Depends(_user),
+):
     try:
         s = ConfigurationScope(scope)
     except ValueError:
@@ -119,7 +131,11 @@ async def get_config(scope: str, component: str, key: str | None = Query(None), 
     if key:
         value = sdk.config.get(key, scope=s, component=component)
         return {"key": key, "value": value, "scope": scope, "component": component}
-    return {"scope": scope, "component": component, "config": sdk.config.get_scope(s, component=component)}
+    return {
+        "scope": scope,
+        "component": component,
+        "config": sdk.config.get_scope(s, component=component),
+    }
 
 
 @router.put("/config/{scope}/{component}")
@@ -211,6 +227,7 @@ async def list_nodes(role: str | None = Query(None), user=Depends(_user)):
 @router.post("/fleet/deploy")
 async def deploy_component(data: dict[str, Any], user=Depends(_user)):
     from app.control_plane.fleet.provisioning import DeploymentPlan
+
     plan = DeploymentPlan(
         component=data["component"],
         node_id=data.get("node_id", "default"),
@@ -270,7 +287,9 @@ async def create_release(data: dict[str, Any], user=Depends(_user)):
     try:
         channel = ReleaseChannel(data.get("channel", "stable"))
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid channel: {data.get('channel')}") from e
+        raise HTTPException(
+            status_code=400, detail=f"Invalid channel: {data.get('channel')}",
+        ) from e
     release = sdk.releases.create_release(
         name=data["name"],
         version=data["version"],

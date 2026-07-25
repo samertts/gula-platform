@@ -55,7 +55,6 @@ logger = logging.getLogger("gula.national.observability")
 
 
 class ObservabilityService:
-
     def __init__(
         self,
         metric_repository: MetricRepository,
@@ -98,13 +97,15 @@ class ObservabilityService:
         )
         saved = await self.metric_repository.save(metric)
 
-        self._publish_event(MetricRecorded(
-            metric_name=name,
-            metric_value=value,
-            metric_type=type,
-            aggregate_id=name,
-            payload={"name": name, "value": value, "type": type},
-        ))
+        self._publish_event(
+            MetricRecorded(
+                metric_name=name,
+                metric_value=value,
+                metric_type=type,
+                aggregate_id=name,
+                payload={"name": name, "value": value, "type": type},
+            ),
+        )
 
         return saved
 
@@ -114,15 +115,19 @@ class ObservabilityService:
     ) -> list[MetricPoint]:
         points = []
         for m in metrics:
-            points.append(MetricPoint(
-                id=str(uuid.uuid4()),
-                name=m.get("name", ""),
-                type=MetricType(m.get("type", "gauge")),
-                value=m.get("value", 0.0),
-                tags=m.get("tags", {}),
-                timestamp=datetime.fromisoformat(m["timestamp"]) if m.get("timestamp") else datetime.now(UTC),
-                resource_attributes=m.get("resource_attributes", {}),
-            ))
+            points.append(
+                MetricPoint(
+                    id=str(uuid.uuid4()),
+                    name=m.get("name", ""),
+                    type=MetricType(m.get("type", "gauge")),
+                    value=m.get("value", 0.0),
+                    tags=m.get("tags", {}),
+                    timestamp=datetime.fromisoformat(m["timestamp"])
+                    if m.get("timestamp")
+                    else datetime.now(UTC),
+                    resource_attributes=m.get("resource_attributes", {}),
+                ),
+            )
         return await self.metric_repository.save_many(points)
 
     async def query_metrics(
@@ -178,20 +183,24 @@ class ObservabilityService:
         attributes: dict[str, Any] | None = None,
     ) -> TraceSpan:
         span.end_time = datetime.now(UTC)
-        span.duration_ms = (span.end_time - span.start_time).total_seconds() * 1000 if span.start_time else 0
+        span.duration_ms = (
+            (span.end_time - span.start_time).total_seconds() * 1000 if span.start_time else 0
+        )
         span.status = SpanStatus(status)
         if attributes:
             span.attributes.update(attributes)
 
         saved = await self.trace_span_repository.save(span)
 
-        self._publish_event(SpanCompleted(
-            trace_id=span.trace_id,
-            span_id=span.id,
-            duration_ms=span.duration_ms,
-            aggregate_id=span.trace_id,
-            payload={"span_id": span.id, "duration_ms": span.duration_ms},
-        ))
+        self._publish_event(
+            SpanCompleted(
+                trace_id=span.trace_id,
+                span_id=span.id,
+                duration_ms=span.duration_ms,
+                aggregate_id=span.trace_id,
+                payload={"span_id": span.id, "duration_ms": span.duration_ms},
+            ),
+        )
 
         return saved
 
@@ -275,13 +284,19 @@ class ObservabilityService:
         saved = await self.health_check_repository.save(check)
 
         if previous_status != saved.status:
-            self._publish_event(HealthStatusChanged(
-                check_name=name,
-                previous_status=previous_status.value,
-                new_status=saved.status.value,
-                aggregate_id=name,
-                payload={"check": name, "previous": previous_status.value, "new": saved.status.value},
-            ))
+            self._publish_event(
+                HealthStatusChanged(
+                    check_name=name,
+                    previous_status=previous_status.value,
+                    new_status=saved.status.value,
+                    aggregate_id=name,
+                    payload={
+                        "check": name,
+                        "previous": previous_status.value,
+                        "new": saved.status.value,
+                    },
+                ),
+            )
 
         return saved
 
@@ -361,18 +376,26 @@ class ObservabilityService:
                 fe.status = AlertStatus.RESOLVED
                 fe.resolved_at = datetime.now(UTC)
                 await self.alert_event_repository.save(fe)
-                self._publish_event(AlertResolved(
-                    alert_event_id=fe.id,
-                    rule_id=rule_id,
-                    aggregate_id=rule_id,
-                    payload={"rule_name": rule.name},
-                ))
+                self._publish_event(
+                    AlertResolved(
+                        alert_event_id=fe.id,
+                        rule_id=rule_id,
+                        aggregate_id=rule_id,
+                        payload={"rule_name": rule.name},
+                    ),
+                )
             return None
 
         current_value = recent[0].get("value", 0.0)
         triggered = False
 
-        if (rule.condition == "gt" and current_value > rule.threshold) or (rule.condition == "gte" and current_value >= rule.threshold) or (rule.condition == "lt" and current_value < rule.threshold) or (rule.condition == "lte" and current_value <= rule.threshold) or (rule.condition == "eq" and current_value == rule.threshold):
+        if (
+            (rule.condition == "gt" and current_value > rule.threshold)
+            or (rule.condition == "gte" and current_value >= rule.threshold)
+            or (rule.condition == "lt" and current_value < rule.threshold)
+            or (rule.condition == "lte" and current_value <= rule.threshold)
+            or (rule.condition == "eq" and current_value == rule.threshold)
+        ):
             triggered = True
 
         if triggered:
@@ -387,14 +410,20 @@ class ObservabilityService:
                     message=f"Alert {rule.name}: {rule.metric_name} is {current_value} (threshold: {rule.threshold})",
                 )
                 saved = await self.alert_event_repository.save(event)
-                self._publish_event(AlertFired(
-                    alert_event_id=saved.id,
-                    rule_id=rule_id,
-                    metric_value=current_value,
-                    severity=rule.severity.value,
-                    aggregate_id=rule_id,
-                    payload={"rule_name": rule.name, "value": current_value, "threshold": rule.threshold},
-                ))
+                self._publish_event(
+                    AlertFired(
+                        alert_event_id=saved.id,
+                        rule_id=rule_id,
+                        metric_value=current_value,
+                        severity=rule.severity.value,
+                        aggregate_id=rule_id,
+                        payload={
+                            "rule_name": rule.name,
+                            "value": current_value,
+                            "threshold": rule.threshold,
+                        },
+                    ),
+                )
                 return saved
         else:
             firing_events = await self.alert_event_repository.list(
@@ -405,12 +434,14 @@ class ObservabilityService:
                 fe.status = AlertStatus.RESOLVED
                 fe.resolved_at = datetime.now(UTC)
                 await self.alert_event_repository.save(fe)
-                self._publish_event(AlertResolved(
-                    alert_event_id=fe.id,
-                    rule_id=rule_id,
-                    aggregate_id=rule_id,
-                    payload={"rule_name": rule.name},
-                ))
+                self._publish_event(
+                    AlertResolved(
+                        alert_event_id=fe.id,
+                        rule_id=rule_id,
+                        aggregate_id=rule_id,
+                        payload={"rule_name": rule.name},
+                    ),
+                )
 
         return None
 
@@ -573,19 +604,25 @@ class ObservabilityService:
         checks = await self.health_check_repository.list()
         firing = await self.alert_event_repository.find_firing()
         firing_count = len(firing)
-        critical_count = sum(1 for e in firing if e.severity == AlertSeverity.CRITICAL or e.severity == AlertSeverity.EMERGENCY)
+        critical_count = sum(
+            1
+            for e in firing
+            if e.severity == AlertSeverity.CRITICAL or e.severity == AlertSeverity.EMERGENCY
+        )
 
         checks_data = []
         for c in checks:
-            checks_data.append({
-                "id": c.id,
-                "name": c.name,
-                "component": c.component,
-                "status": c.status.value,
-                "last_checked_at": c.last_checked_at.isoformat() if c.last_checked_at else None,
-                "failure_count": c.failure_count,
-                "success_count": c.success_count,
-            })
+            checks_data.append(
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "component": c.component,
+                    "status": c.status.value,
+                    "last_checked_at": c.last_checked_at.isoformat() if c.last_checked_at else None,
+                    "failure_count": c.failure_count,
+                    "success_count": c.success_count,
+                },
+            )
 
         recent_alerts = await self.alert_event_repository.list(limit=10)
 
@@ -642,7 +679,9 @@ class ObservabilityService:
                                         "dataPoints": [
                                             {
                                                 "asDouble": metric.value,
-                                                "timeUnixNano": int(metric.timestamp.timestamp() * 1_000_000_000),
+                                                "timeUnixNano": int(
+                                                    metric.timestamp.timestamp() * 1_000_000_000,
+                                                ),
                                                 "attributes": [
                                                     {"key": k, "value": {"stringValue": v}}
                                                     for k, v in metric.tags.items()

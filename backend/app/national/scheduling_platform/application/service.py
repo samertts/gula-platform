@@ -58,10 +58,27 @@ logger = logging.getLogger("gula.national.scheduling_platform")
 
 
 _ALLOWED_APPOINTMENT_TRANSITIONS: dict[AppointmentStatus, set[AppointmentStatus]] = {
-    AppointmentStatus.PROPOSED: {AppointmentStatus.PENDING, AppointmentStatus.CANCELLED, AppointmentStatus.ENTERED_IN_ERROR},
-    AppointmentStatus.PENDING: {AppointmentStatus.BOOKED, AppointmentStatus.CANCELLED, AppointmentStatus.ENTERED_IN_ERROR},
-    AppointmentStatus.BOOKED: {AppointmentStatus.ARRIVED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW, AppointmentStatus.ENTERED_IN_ERROR},
-    AppointmentStatus.ARRIVED: {AppointmentStatus.IN_PROGRESS, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW},
+    AppointmentStatus.PROPOSED: {
+        AppointmentStatus.PENDING,
+        AppointmentStatus.CANCELLED,
+        AppointmentStatus.ENTERED_IN_ERROR,
+    },
+    AppointmentStatus.PENDING: {
+        AppointmentStatus.BOOKED,
+        AppointmentStatus.CANCELLED,
+        AppointmentStatus.ENTERED_IN_ERROR,
+    },
+    AppointmentStatus.BOOKED: {
+        AppointmentStatus.ARRIVED,
+        AppointmentStatus.CANCELLED,
+        AppointmentStatus.NO_SHOW,
+        AppointmentStatus.ENTERED_IN_ERROR,
+    },
+    AppointmentStatus.ARRIVED: {
+        AppointmentStatus.IN_PROGRESS,
+        AppointmentStatus.CANCELLED,
+        AppointmentStatus.NO_SHOW,
+    },
     AppointmentStatus.IN_PROGRESS: {AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED},
     AppointmentStatus.COMPLETED: set(),
     AppointmentStatus.CANCELLED: set(),
@@ -71,7 +88,6 @@ _ALLOWED_APPOINTMENT_TRANSITIONS: dict[AppointmentStatus, set[AppointmentStatus]
 
 
 class SchedulingPlatformService:
-
     def __init__(
         self,
         appointment_repository: AppointmentRepository,
@@ -147,12 +163,17 @@ class SchedulingPlatformService:
         saved = await self.appointment_repository.save(appointment)
 
         if resource_id:
-            self._publish_event(ResourceBooked(
-                resource_id=resource_id,
-                appointment_id=saved.id,
-                aggregate_id=resource_id,
-                payload={"appointment_id": saved.id, "start_at": start_at.isoformat() if start_at else ""},
-            ))
+            self._publish_event(
+                ResourceBooked(
+                    resource_id=resource_id,
+                    appointment_id=saved.id,
+                    aggregate_id=resource_id,
+                    payload={
+                        "appointment_id": saved.id,
+                        "start_at": start_at.isoformat() if start_at else "",
+                    },
+                ),
+            )
 
         if reminder_enabled and start_at:
             reminder_time = start_at - timedelta(minutes=reminder_minutes_before)
@@ -165,19 +186,21 @@ class SchedulingPlatformService:
                 )
                 await self.reminder_repository.save(reminder)
 
-        self._publish_event(AppointmentCreated(
-            appointment_id=saved.id,
-            patient_id=patient_id,
-            practitioner_id=practitioner_id,
-            aggregate_id=saved.id,
-            payload={
-                "patient_id": patient_id,
-                "practitioner_id": practitioner_id,
-                "start_at": start_at.isoformat() if start_at else None,
-                "end_at": end_at.isoformat() if end_at else None,
-                "resource_id": resource_id,
-            },
-        ))
+        self._publish_event(
+            AppointmentCreated(
+                appointment_id=saved.id,
+                patient_id=patient_id,
+                practitioner_id=practitioner_id,
+                aggregate_id=saved.id,
+                payload={
+                    "patient_id": patient_id,
+                    "practitioner_id": practitioner_id,
+                    "start_at": start_at.isoformat() if start_at else None,
+                    "end_at": end_at.isoformat() if end_at else None,
+                    "resource_id": resource_id,
+                },
+            ),
+        )
 
         return saved
 
@@ -217,7 +240,9 @@ class SchedulingPlatformService:
         if not appointment.is_cancellable:
             raise ConflictDetectionError(
                 "reschedule",
-                [f"Appointment {appointment_id} is in status {appointment.status.value} and cannot be rescheduled"],
+                [
+                    f"Appointment {appointment_id} is in status {appointment.status.value} and cannot be rescheduled",
+                ],
             )
 
         conflict = await self.detect_conflicts(
@@ -239,13 +264,19 @@ class SchedulingPlatformService:
         appointment.version += 1
         saved = await self.appointment_repository.save(appointment)
 
-        self._publish_event(AppointmentRescheduled(
-            appointment_id=appointment_id,
-            previous_start=previous_start.isoformat() if previous_start else "",
-            new_start=new_start.isoformat(),
-            aggregate_id=appointment_id,
-            payload={"reason": reason, "previous_start": str(previous_start), "new_start": str(new_start)},
-        ))
+        self._publish_event(
+            AppointmentRescheduled(
+                appointment_id=appointment_id,
+                previous_start=previous_start.isoformat() if previous_start else "",
+                new_start=new_start.isoformat(),
+                aggregate_id=appointment_id,
+                payload={
+                    "reason": reason,
+                    "previous_start": str(previous_start),
+                    "new_start": str(new_start),
+                },
+            ),
+        )
 
         return saved
 
@@ -254,7 +285,9 @@ class SchedulingPlatformService:
         if not appointment.is_cancellable:
             raise ConflictDetectionError(
                 "cancel",
-                [f"Appointment {appointment_id} is in status {appointment.status.value} and cannot be cancelled"],
+                [
+                    f"Appointment {appointment_id} is in status {appointment.status.value} and cannot be cancelled",
+                ],
             )
 
         old_status = appointment.status
@@ -263,19 +296,23 @@ class SchedulingPlatformService:
         saved = await self.appointment_repository.save(appointment)
 
         if appointment.resource_id:
-            self._publish_event(ResourceFreed(
-                resource_id=appointment.resource_id,
-                appointment_id=appointment_id,
-                aggregate_id=appointment.resource_id,
-                payload={"appointment_id": appointment_id},
-            ))
+            self._publish_event(
+                ResourceFreed(
+                    resource_id=appointment.resource_id,
+                    appointment_id=appointment_id,
+                    aggregate_id=appointment.resource_id,
+                    payload={"appointment_id": appointment_id},
+                ),
+            )
 
-        self._publish_event(AppointmentCancelled(
-            appointment_id=appointment_id,
-            reason=reason,
-            aggregate_id=appointment_id,
-            payload={"reason": reason, "previous_status": old_status.value},
-        ))
+        self._publish_event(
+            AppointmentCancelled(
+                appointment_id=appointment_id,
+                reason=reason,
+                aggregate_id=appointment_id,
+                payload={"reason": reason, "previous_status": old_status.value},
+            ),
+        )
 
         return saved
 
@@ -290,11 +327,13 @@ class SchedulingPlatformService:
         appointment.version += 1
         saved = await self.appointment_repository.save(appointment)
 
-        self._publish_event(AppointmentCompleted(
-            appointment_id=appointment_id,
-            aggregate_id=appointment_id,
-            payload={},
-        ))
+        self._publish_event(
+            AppointmentCompleted(
+                appointment_id=appointment_id,
+                aggregate_id=appointment_id,
+                payload={},
+            ),
+        )
 
         return saved
 
@@ -303,26 +342,32 @@ class SchedulingPlatformService:
         if appointment.status not in (AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED):
             raise ConflictDetectionError(
                 "no_show",
-                [f"Appointment {appointment_id} cannot be marked no-show from {appointment.status.value}"],
+                [
+                    f"Appointment {appointment_id} cannot be marked no-show from {appointment.status.value}",
+                ],
             )
         appointment.status = AppointmentStatus.NO_SHOW
         appointment.version += 1
         saved = await self.appointment_repository.save(appointment)
 
         if appointment.resource_id:
-            self._publish_event(ResourceFreed(
-                resource_id=appointment.resource_id,
-                appointment_id=appointment_id,
-                aggregate_id=appointment.resource_id,
-                payload={"appointment_id": appointment_id},
-            ))
+            self._publish_event(
+                ResourceFreed(
+                    resource_id=appointment.resource_id,
+                    appointment_id=appointment_id,
+                    aggregate_id=appointment.resource_id,
+                    payload={"appointment_id": appointment_id},
+                ),
+            )
 
-        self._publish_event(AppointmentNoShow(
-            appointment_id=appointment_id,
-            patient_id=appointment.patient_id,
-            aggregate_id=appointment_id,
-            payload={"patient_id": appointment.patient_id},
-        ))
+        self._publish_event(
+            AppointmentNoShow(
+                appointment_id=appointment_id,
+                patient_id=appointment.patient_id,
+                aggregate_id=appointment_id,
+                payload={"patient_id": appointment.patient_id},
+            ),
+        )
 
         return saved
 
@@ -418,12 +463,15 @@ class SchedulingPlatformService:
             )
             if overlapping:
                 for apt in overlapping:
-                    result.add_conflict("resource_double_booked", {
-                        "resource_id": resource_id,
-                        "conflicting_appointment_id": apt.id,
-                        "conflicting_start": apt.start_at.isoformat() if apt.start_at else "",
-                        "conflicting_end": apt.end_at.isoformat() if apt.end_at else "",
-                    })
+                    result.add_conflict(
+                        "resource_double_booked",
+                        {
+                            "resource_id": resource_id,
+                            "conflicting_appointment_id": apt.id,
+                            "conflicting_start": apt.start_at.isoformat() if apt.start_at else "",
+                            "conflicting_end": apt.end_at.isoformat() if apt.end_at else "",
+                        },
+                    )
 
         if practitioner_id:
             overlapping = await self.appointment_repository.find_overlapping(
@@ -434,10 +482,13 @@ class SchedulingPlatformService:
             )
             if overlapping:
                 for apt in overlapping:
-                    result.add_conflict("personnel_double_booked", {
-                        "practitioner_id": practitioner_id,
-                        "conflicting_appointment_id": apt.id,
-                    })
+                    result.add_conflict(
+                        "personnel_double_booked",
+                        {
+                            "practitioner_id": practitioner_id,
+                            "conflicting_appointment_id": apt.id,
+                        },
+                    )
 
         return result
 
@@ -546,7 +597,9 @@ class SchedulingPlatformService:
     ) -> list[TimeSlot]:
         schedule = await self.schedule_repository.find_by_date(resource_id, start_at.date())
         if not schedule:
-            raise ScheduleNotFoundError(f"No schedule found for resource {resource_id} on {start_at.date()}")
+            raise ScheduleNotFoundError(
+                f"No schedule found for resource {resource_id} on {start_at.date()}",
+            )
         slots = await self.time_slot_repository.find_by_schedule(schedule.id)
         blocked: list[TimeSlot] = []
         for slot in slots:
@@ -607,17 +660,19 @@ class SchedulingPlatformService:
         )
         saved = await self.waiting_list_repository.save(entry)
 
-        self._publish_event(WaitingListAdded(
-            waiting_list_id=saved.id,
-            patient_id=patient_id,
-            resource_id=resource_id,
-            aggregate_id=saved.id,
-            payload={
-                "patient_id": patient_id,
-                "resource_id": resource_id,
-                "priority": priority,
-            },
-        ))
+        self._publish_event(
+            WaitingListAdded(
+                waiting_list_id=saved.id,
+                patient_id=patient_id,
+                resource_id=resource_id,
+                aggregate_id=saved.id,
+                payload={
+                    "patient_id": patient_id,
+                    "resource_id": resource_id,
+                    "priority": priority,
+                },
+            ),
+        )
 
         return saved
 
@@ -631,13 +686,15 @@ class SchedulingPlatformService:
             raise WaitingListNotFoundError(entry_id)
         entry.status = "fulfilled"
 
-        self._publish_event(WaitingListFulfilled(
-            waiting_list_id=entry_id,
-            patient_id=entry.patient_id,
-            appointment_id=appointment_id,
-            aggregate_id=entry_id,
-            payload={"appointment_id": appointment_id},
-        ))
+        self._publish_event(
+            WaitingListFulfilled(
+                waiting_list_id=entry_id,
+                patient_id=entry.patient_id,
+                appointment_id=appointment_id,
+                aggregate_id=entry_id,
+                payload={"appointment_id": appointment_id},
+            ),
+        )
 
         return await self.waiting_list_repository.save(entry)
 

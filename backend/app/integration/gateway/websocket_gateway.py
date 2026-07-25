@@ -26,6 +26,7 @@ class WebSocketGateway(MessageGateway):
     async def connect(self) -> bool:
         try:
             import websockets
+
             self._connection = await websockets.connect(
                 self.config.endpoint,
                 ping_interval=30,
@@ -55,7 +56,11 @@ class WebSocketGateway(MessageGateway):
     async def send(self, message: GatewayMessage) -> GatewayResult:
         start = time.monotonic()
         try:
-            payload = json.dumps(message.payload) if not isinstance(message.payload, str) else message.payload
+            payload = (
+                json.dumps(message.payload)
+                if not isinstance(message.payload, str)
+                else message.payload
+            )
             if self._connection:
                 await self._connection.send(payload)
             lat = (time.monotonic() - start) * 1000

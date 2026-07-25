@@ -59,7 +59,10 @@ class PrescriptionQueueManager:
         priority_order = {"stat": 0, "urgent": 1, "emergency": 2, "high": 3, "normal": 4, "low": 5}
         return sorted(
             queue_entries,
-            key=lambda e: (priority_order.get(getattr(e, "priority", "normal"), 4), getattr(e, "queued_at", datetime.min)),
+            key=lambda e: (
+                priority_order.get(getattr(e, "priority", "normal"), 4),
+                getattr(e, "queued_at", datetime.min),
+            ),
         )
 
     def sort_by_status(self, queue_entries: list[Any]) -> list[Any]:
@@ -105,7 +108,9 @@ class BarcodeVerification:
                 error=str(exc),
             )
 
-    def scan_medication_barcode(self, scanned_barcode: str, expected_code: str) -> BarcodeScanResult:
+    def scan_medication_barcode(
+        self, scanned_barcode: str, expected_code: str
+    ) -> BarcodeScanResult:
         try:
             matched = scanned_barcode == expected_code or expected_code in scanned_barcode
             return BarcodeScanResult(
@@ -113,7 +118,9 @@ class BarcodeVerification:
                 barcode_type="medication",
                 matched=matched,
                 data={"medication_code": expected_code} if matched else {},
-                error=None if matched else f"Scanned barcode does not match expected medication {expected_code}",
+                error=None
+                if matched
+                else f"Scanned barcode does not match expected medication {expected_code}",
             )
         except Exception as exc:
             return BarcodeScanResult(
@@ -143,10 +150,14 @@ class BarcodeVerification:
             )
 
     def _generate_patient_code(self, patient_mrn: str) -> str:
-        return hmac.new(self._hmac_key, patient_mrn.encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+        return hmac.new(self._hmac_key, patient_mrn.encode("utf-8"), hashlib.sha256).hexdigest()[
+            :16
+        ]
 
     def _generate_prescriber_code(self, prescriber_id: str) -> str:
-        return hmac.new(self._hmac_key, prescriber_id.encode("utf-8"), hashlib.sha256).hexdigest()[:12]
+        return hmac.new(self._hmac_key, prescriber_id.encode("utf-8"), hashlib.sha256).hexdigest()[
+            :12
+        ]
 
 
 class PatientVerification:
@@ -226,7 +237,10 @@ class MedicationLabelGenerator:
         if label_data.warnings:
             warnings_html = (
                 '<div style="border-top: 2px dashed #000; margin: 8px 0; padding: 8px 0;">'
-                + "".join(f'<p style="color: #cc0000; font-weight: bold;">⚠ {w}</p>' for w in label_data.warnings)
+                + "".join(
+                    f'<p style="color: #cc0000; font-weight: bold;">⚠ {w}</p>'
+                    for w in label_data.warnings
+                )
                 + "</div>"
             )
 
@@ -235,7 +249,7 @@ class MedicationLabelGenerator:
 <head><meta charset="utf-8"><title>Medication Label</title></head>
 <body style="font-family: monospace; padding: 20px; max-width: 400px;">
 <div style="border: 2px solid #000; padding: 16px;">
-<h2 style="text-align: center;">{self.facility_name or 'Pharmacy'}</h2>
+<h2 style="text-align: center;">{self.facility_name or "Pharmacy"}</h2>
 <hr>
 <p><strong>Patient:</strong> {label_data.patient_name}</p>
 <p><strong>MRN:</strong> {label_data.patient_mrn}</p>
@@ -326,13 +340,21 @@ class CounselingChecklist:
         ],
     }
 
-    def get_checklist(self, category: DrugCategory, additional_points: list[str] | None = None) -> list[str]:
-        points = list(self._STANDARD_POINTS_BY_CATEGORY.get(category, self._STANDARD_POINTS_BY_CATEGORY[DrugCategory.OTHER]))
+    def get_checklist(
+        self, category: DrugCategory, additional_points: list[str] | None = None
+    ) -> list[str]:
+        points = list(
+            self._STANDARD_POINTS_BY_CATEGORY.get(
+                category, self._STANDARD_POINTS_BY_CATEGORY[DrugCategory.OTHER]
+            )
+        )
         if additional_points:
             points.extend(additional_points)
         return points
 
-    def verify_checklist_completed(self, completed_points: list[str], category: DrugCategory) -> VerificationResult:
+    def verify_checklist_completed(
+        self, completed_points: list[str], category: DrugCategory
+    ) -> VerificationResult:
         required = self.get_checklist(category)
         checks: dict[str, bool] = {}
         errors: list[str] = []
@@ -349,7 +371,9 @@ class DispensingConfirmation:
         self._signatures: dict[str, dict[str, Any]] = {}
 
     def capture_electronic_signature(self, dispenser_id: str, signature_data: str) -> str:
-        sig_hash = hashlib.sha256(f"{dispenser_id}:{signature_data}:{datetime.now(UTC).isoformat()}".encode()).hexdigest()
+        sig_hash = hashlib.sha256(
+            f"{dispenser_id}:{signature_data}:{datetime.now(UTC).isoformat()}".encode()
+        ).hexdigest()
         self._signatures[sig_hash] = {
             "dispenser_id": dispenser_id,
             "timestamp": datetime.now(UTC).isoformat(),
@@ -358,7 +382,9 @@ class DispensingConfirmation:
         }
         return sig_hash
 
-    def verify_controlled_substance_witness(self, dispenser_id: str, witness_id: str, substance_code: str) -> VerificationResult:
+    def verify_controlled_substance_witness(
+        self, dispenser_id: str, witness_id: str, substance_code: str
+    ) -> VerificationResult:
         checks: dict[str, bool] = {
             "dispenser_identified": bool(dispenser_id),
             "witness_identified": bool(witness_id),
@@ -371,7 +397,9 @@ class DispensingConfirmation:
         if not witness_id:
             errors.append("Witness not identified")
         if dispenser_id == witness_id:
-            errors.append("Witness must be a different person from dispenser for controlled substances")
+            errors.append(
+                "Witness must be a different person from dispenser for controlled substances"
+            )
         return VerificationResult(passed=len(errors) == 0, checks=checks, errors=errors)
 
     def get_signature(self, sig_hash: str) -> dict[str, Any] | None:
@@ -412,7 +440,10 @@ class PharmacyAuditTrail:
         self._entries.append(entry)
         logger.info(
             "[AUDIT] %s %s %s by %s%s",
-            action, resource_type, resource_id, performed_by,
+            action,
+            resource_type,
+            resource_id,
+            performed_by,
             " [CONTROLLED]" if controlled_substance else "",
         )
         return entry

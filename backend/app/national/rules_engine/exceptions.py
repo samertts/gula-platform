@@ -34,4 +34,6 @@ class RuleVersionError(NationalDomainError):
         self.rule_id = rule_id
         self.current_version = current_version
         self.expected_version = expected_version
-        super().__init__(f"Rule version mismatch for {rule_id}: current v{current_version}, expected v{expected_version}")
+        super().__init__(
+            f"Rule version mismatch for {rule_id}: current v{current_version}, expected v{expected_version}",
+        )

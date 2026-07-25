@@ -205,7 +205,8 @@ async def get_execution_steps(execution_id: str, current_user: Any = Depends(get
 
 @router.get("/executions/{execution_id}/approvals")
 async def get_execution_approvals(
-    execution_id: str, current_user: Any = Depends(get_current_user),
+    execution_id: str,
+    current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     if svc._approval_repo:
@@ -309,7 +310,8 @@ async def get_stats(current_user: Any = Depends(get_current_user)):
 
 @router.get("/definitions/{definition_id}/versions")
 async def list_definition_versions(
-    definition_id: str, current_user: Any = Depends(get_current_user),
+    definition_id: str,
+    current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     definition = await svc.get_definition(definition_id)

@@ -71,13 +71,15 @@ class GISService:
             if dist <= radius_km:
                 if facility_type and fac.facility_type != facility_type:
                     continue
-                nearby.append({
-                    "facility_id": fid,
-                    "name": fac.name,
-                    "type": fac.facility_type,
-                    "distance_km": round(dist, 2),
-                    "location": {"lat": fac.location.latitude, "lon": fac.location.longitude},
-                })
+                nearby.append(
+                    {
+                        "facility_id": fid,
+                        "name": fac.name,
+                        "type": fac.facility_type,
+                        "distance_km": round(dist, 2),
+                        "location": {"lat": fac.location.latitude, "lon": fac.location.longitude},
+                    }
+                )
         return sorted(nearby, key=lambda x: x["distance_km"])
 
     def set_boundary(self, region: str, boundary: list[GeoLocation]) -> None:
@@ -90,10 +92,14 @@ class GISService:
     @staticmethod
     def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         import math
+
         R = 6371.0
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        )
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return R * c
 
@@ -168,7 +174,9 @@ class FacilityMapper:
                     "name": f.name,
                     "type": f.facility_type,
                     "city": f.city,
-                    "location": {"lat": f.location.latitude, "lon": f.location.longitude} if f.location else None,
+                    "location": {"lat": f.location.latitude, "lon": f.location.longitude}
+                    if f.location
+                    else None,
                 }
                 for f in facilities
             ],
@@ -224,10 +232,7 @@ class HotspotDetector:
         )
         result = self._warehouse.query(query)
         rows = result.get("rows", [])
-        hotspots = [
-            r for r in rows
-            if (r.get("diagnosis_count") or 0) >= min_cases
-        ]
+        hotspots = [r for r in rows if (r.get("diagnosis_count") or 0) >= min_cases]
         return {
             "disease": disease,
             "min_cases": min_cases,

@@ -19,9 +19,13 @@ class InteropProtocol(GovernanceBaseEntity):
     protocol_code = Column(String(50), unique=True, nullable=False, index=True)
     name_ar = Column(String(300), nullable=False)
     name_en = Column(String(300), nullable=True)
-    protocol_type = Column(Enum(InteropProtocolType, values_callable=_interop_values), nullable=False, index=True)
+    protocol_type = Column(
+        Enum(InteropProtocolType, values_callable=_interop_values), nullable=False, index=True
+    )
     version = Column(String(20), nullable=False, default="1.0")
-    status = Column(Enum(InteropProtocolStatus), nullable=False, default=InteropProtocolStatus.DRAFT, index=True)
+    status = Column(
+        Enum(InteropProtocolStatus), nullable=False, default=InteropProtocolStatus.DRAFT, index=True
+    )
     specification_url = Column(String(500), nullable=True)
     profile = Column(String(200), nullable=True)
     implementation_guide = Column(Text, nullable=True)
@@ -31,7 +35,11 @@ class InteropProtocol(GovernanceBaseEntity):
     review_date = Column(Date, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class MasterDataAgreement(GovernanceBaseEntity):
@@ -52,7 +60,11 @@ class MasterDataAgreement(GovernanceBaseEntity):
     effective_date = Column(Date, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class TerminologyMapping(GovernanceBaseEntity):
@@ -69,7 +81,11 @@ class TerminologyMapping(GovernanceBaseEntity):
     equivalence = Column(String(20), default="equivalent")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class CanonicalMapping(GovernanceBaseEntity):
@@ -86,4 +102,8 @@ class CanonicalMapping(GovernanceBaseEntity):
     validation_rules = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )

@@ -49,7 +49,11 @@ class VersionTranslator:
 
     def supports(self, source_version: str, target_version: str) -> bool:
         key = f"{source_version}:{target_version}"
-        return key in self._adapters or key in self._supported_translations or source_version == target_version
+        return (
+            key in self._adapters
+            or key in self._supported_translations
+            or source_version == target_version
+        )
 
     def list_translations(self) -> list[str]:
         return list(self._supported_translations.keys()) + list(self._adapters.keys())

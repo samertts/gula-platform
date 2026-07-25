@@ -47,9 +47,17 @@ class GraphQLGateway(MessageGateway):
             return GatewayResult(success=False, error="Not connected")
         start = time.monotonic()
         try:
-            query = message.payload if isinstance(message.payload, str) else message.payload.get("query", "")
-            variables = message.payload.get("variables", {}) if isinstance(message.payload, dict) else {}
-            operation_name = message.payload.get("operationName") if isinstance(message.payload, dict) else None
+            query = (
+                message.payload
+                if isinstance(message.payload, str)
+                else message.payload.get("query", "")
+            )
+            variables = (
+                message.payload.get("variables", {}) if isinstance(message.payload, dict) else {}
+            )
+            operation_name = (
+                message.payload.get("operationName") if isinstance(message.payload, dict) else None
+            )
             body = {"query": query, "variables": variables}
             if operation_name:
                 body["operationName"] = operation_name
@@ -75,7 +83,9 @@ class GraphQLGateway(MessageGateway):
         return message
 
     async def execute(self, query: str, variables: dict[str, Any] | None = None) -> GatewayResult:
-        return await self.send(GatewayMessage(payload={"query": query, "variables": variables or {}}))
+        return await self.send(
+            GatewayMessage(payload={"query": query, "variables": variables or {}})
+        )
 
 
 GatewayRegistry.register(GraphQLGateway())

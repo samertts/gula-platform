@@ -19,6 +19,7 @@ tests against the most common penetration patterns:
 
 Blast radius: zero. Pure regression suite.
 """
+
 from __future__ import annotations
 
 import os
@@ -78,7 +79,9 @@ class TestStaleTokenRejection:
     def test_expired_access_token_rejected(self):
         # Forge an already-expired token
         payload = {
-            "user_id": 1, "lab_id": 1, "role": "admin",
+            "user_id": 1,
+            "lab_id": 1,
+            "role": "admin",
             "exp": datetime.now(UTC) - timedelta(hours=1),
             "type": "access",
             "jti": "fake-jti",
@@ -88,18 +91,25 @@ class TestStaleTokenRejection:
 
     def test_expired_refresh_token_rejected(self):
         from app.config import REFRESH_TOKEN_SECRET
+
         payload = {
-            "user_id": 1, "lab_id": 1, "role": "admin",
+            "user_id": 1,
+            "lab_id": 1,
+            "role": "admin",
             "exp": datetime.now(UTC) - timedelta(days=60),
             "type": "refresh",
             "jti": "fake-jti",
         }
-        token = jose_jwt.encode({"alg": JWT_ALGORITHM}, payload, jwk.OctKey.import_key(REFRESH_TOKEN_SECRET))
+        token = jose_jwt.encode(
+            {"alg": JWT_ALGORITHM}, payload, jwk.OctKey.import_key(REFRESH_TOKEN_SECRET)
+        )
         assert decode_refresh_token(token) is None
 
     def test_token_without_exp_claim_documents_jose_behavior(self):
         payload = {
-            "user_id": 1, "lab_id": 1, "role": "admin",
+            "user_id": 1,
+            "lab_id": 1,
+            "role": "admin",
             "type": "access",
             "jti": "fake",
         }
@@ -137,7 +147,9 @@ class TestSignatureTampering:
         bad = jose_jwt.encode(
             {"alg": JWT_ALGORITHM},
             {
-                "user_id": 1, "lab_id": 1, "role": "admin",
+                "user_id": 1,
+                "lab_id": 1,
+                "role": "admin",
                 "exp": datetime.now(UTC) + timedelta(hours=1),
                 "type": "access",
                 "jti": "fake",
@@ -160,7 +172,9 @@ class TestSignatureTampering:
         bad = jose_jwt.encode(
             {"alg": JWT_ALGORITHM},
             {
-                "user_id": 1, "lab_id": 1, "role": "master_admin",
+                "user_id": 1,
+                "lab_id": 1,
+                "role": "master_admin",
                 "exp": datetime.now(UTC) + timedelta(hours=1),
                 "type": "access",
                 "jti": "fake",
@@ -195,12 +209,15 @@ class TestHeaderOverrideBypassResistance:
     def test_x_user_id_header_does_not_change_actor(self, client, sec_lab, db):
         """A spoofed X-User-Id must not flip the audit log's user_id."""
         from app.models.audit_log import AuditLog
+
         admin = sec_lab["admin"]
         before = db.query(AuditLog).count()
         # Make a real mutation while passing a spoofed X-User-Id
         patient = Patient(
-            lab_id=sec_lab["lab"].id, full_name="Sec P",
-            phone="07700111111", health_id="HID-SEC-1",
+            lab_id=sec_lab["lab"].id,
+            full_name="Sec P",
+            phone="07700111111",
+            health_id="HID-SEC-1",
         )
         db.add(patient)
         db.commit()
@@ -225,8 +242,10 @@ class TestMassAssignmentDefense:
     def test_patient_update_cannot_change_lab_id(self, client, db, sec_lab):
         admin = sec_lab["admin"]
         patient = Patient(
-            lab_id=sec_lab["lab"].id, full_name="Original",
-            phone="07700111111", health_id="HID-SEC-2",
+            lab_id=sec_lab["lab"].id,
+            full_name="Original",
+            phone="07700111111",
+            health_id="HID-SEC-2",
         )
         db.add(patient)
         db.commit()
@@ -277,11 +296,15 @@ class TestRefreshTokenReplayProtection:
 
     def test_blacklisted_refresh_token_rejected(self):
         from app.security.auth import blacklist_token, is_token_blacklisted
+
         token = create_refresh_token({"user_id": 1, "lab_id": 1, "role": "admin"})
         # Decode to extract JTI
         from app.config import REFRESH_TOKEN_SECRET
+
         decoded = jose_jwt.decode(
-            token, jwk.OctKey.import_key(REFRESH_TOKEN_SECRET), algorithms=[JWT_ALGORITHM],
+            token,
+            jwk.OctKey.import_key(REFRESH_TOKEN_SECRET),
+            algorithms=[JWT_ALGORITHM],
         )
         jti = decoded.claims["jti"]
         # Blacklist it
@@ -300,11 +323,13 @@ class TestUserEnumerationResistance:
 
     def test_dummy_hash_constant_exists(self):
         from app.security import auth
+
         assert hasattr(auth, "_DUMMY_HASH")
         assert auth._DUMMY_HASH.startswith("$2")  # bcrypt prefix
 
     def test_dummy_hash_does_not_match_real_passwords(self):
         from app.security.auth import _DUMMY_HASH
+
         assert verify_password("admin", _DUMMY_HASH) is False
         assert verify_password("password", _DUMMY_HASH) is False
         assert verify_password("", _DUMMY_HASH) is False
@@ -323,7 +348,9 @@ class TestAlgorithmConfusionResistance:
             bad = jose_jwt.encode(
                 {"alg": "none"},
                 {
-                    "user_id": 1, "lab_id": 1, "role": "admin",
+                    "user_id": 1,
+                    "lab_id": 1,
+                    "role": "admin",
                     "exp": datetime.now(UTC) + timedelta(hours=1),
                     "type": "access",
                 },
@@ -351,6 +378,7 @@ class TestPermissionVersionInvalidation:
             lab_id = 7
             role = "admin"
             perm_version = 5
+
         payload = build_token_payload(_U())
         assert payload["perm_ver"] == 5
 
@@ -360,6 +388,7 @@ class TestPermissionVersionInvalidation:
             lab_id = 7
             role = "admin"
             perm_version = None
+
         payload = build_token_payload(_U())
         assert payload["perm_ver"] == 1
 
@@ -411,18 +440,14 @@ class TestAuditWriteRequiresAuth:
 
         # Filter out audit-write actions specifically (login_failed is fine)
         write_actions = ("create", "update", "delete", "validate", "verify")
-        before = db.query(AuditLog).filter(
-            AuditLog.action.in_(write_actions)
-        ).count()
+        before = db.query(AuditLog).filter(AuditLog.action.in_(write_actions)).count()
 
         # Hammer the API anonymously
         for path in ("/patients", "/orders", "/samples", "/labs/me"):
             for _ in range(10):
                 client.get(path)
 
-        after = db.query(AuditLog).filter(
-            AuditLog.action.in_(write_actions)
-        ).count()
+        after = db.query(AuditLog).filter(AuditLog.action.in_(write_actions)).count()
         assert after == before, (
             "Anonymous traffic produced write-action audit entries — "
             "an unauthenticated mutation path may exist."

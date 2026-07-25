@@ -8,7 +8,6 @@ from app.identity.repositories.base import IdentityRepositoryBase
 
 
 class SessionRepository(IdentityRepositoryBase[UserSession]):
-
     model_class = UserSession
 
     async def find_by_token_jti(self, jti: str) -> UserSession | None:
@@ -20,12 +19,9 @@ class SessionRepository(IdentityRepositoryBase[UserSession]):
         return result.scalar_one_or_none()
 
     async def find_by_account_id(self, account_id: str) -> list[UserSession]:
-        stmt = (
-            select(self.model_class)
-            .where(
-                self.model_class.account_id == account_id,
-                self.model_class.is_active.is_(True),
-            )
+        stmt = select(self.model_class).where(
+            self.model_class.account_id == account_id,
+            self.model_class.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

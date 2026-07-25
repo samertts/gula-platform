@@ -10,7 +10,12 @@ from ..hospital.models import HospitalDepartment as Department
 from .models import Admission, Discharge, QueueEntry, Transfer
 
 
-def bed_occupancy_rate(db: Session, lab_id: int, department_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
+def bed_occupancy_rate(
+    db: Session,
+    lab_id: int,
+    department_id: int | None = None,
+    date_range: tuple[datetime, datetime] | None = None,
+) -> dict:
     q = db.query(Bed).filter(Bed.lab_id == lab_id, ~Bed.is_deleted)
     if department_id is not None:
         q = q.join(Room).filter(Room.department_id == department_id)
@@ -26,15 +31,25 @@ def bed_occupancy_rate(db: Session, lab_id: int, department_id: int | None = Non
     }
 
 
-def average_length_of_stay(db: Session, lab_id: int, department_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
-    q = db.query(
-        func.avg(
-            func.extract("epoch", Discharge.discharge_date - Admission.admission_date) / 86400.0,
-        ),
-    ).join(Admission, Discharge.admission_id == Admission.id).filter(
-        Admission.lab_id == lab_id,
-        ~Admission.is_deleted,
-        Discharge.discharge_date.isnot(None),
+def average_length_of_stay(
+    db: Session,
+    lab_id: int,
+    department_id: int | None = None,
+    date_range: tuple[datetime, datetime] | None = None,
+) -> dict:
+    q = (
+        db.query(
+            func.avg(
+                func.extract("epoch", Discharge.discharge_date - Admission.admission_date)
+                / 86400.0,
+            ),
+        )
+        .join(Admission, Discharge.admission_id == Admission.id)
+        .filter(
+            Admission.lab_id == lab_id,
+            ~Admission.is_deleted,
+            Discharge.discharge_date.isnot(None),
+        )
     )
     if department_id is not None:
         q = q.filter(Admission.department_id == department_id)
@@ -47,7 +62,13 @@ def average_length_of_stay(db: Session, lab_id: int, department_id: int | None =
     }
 
 
-def admission_rate(db: Session, lab_id: int, days: int = 30, department_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
+def admission_rate(
+    db: Session,
+    lab_id: int,
+    days: int = 30,
+    department_id: int | None = None,
+    date_range: tuple[datetime, datetime] | None = None,
+) -> dict:
     since = date_range[0] if date_range is not None else datetime.now(UTC) - timedelta(days=days)
     q = db.query(func.count(Admission.id)).filter(
         Admission.lab_id == lab_id,
@@ -67,14 +88,25 @@ def admission_rate(db: Session, lab_id: int, days: int = 30, department_id: int 
     }
 
 
-def discharge_rate(db: Session, lab_id: int, days: int = 30, department_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
+def discharge_rate(
+    db: Session,
+    lab_id: int,
+    days: int = 30,
+    department_id: int | None = None,
+    date_range: tuple[datetime, datetime] | None = None,
+) -> dict:
     since = date_range[0] if date_range is not None else datetime.now(UTC) - timedelta(days=days)
-    q = db.query(func.count(Discharge.id)).join(
-        Admission, Discharge.admission_id == Admission.id,
-    ).filter(
-        Admission.lab_id == lab_id,
-        ~Admission.is_deleted,
-        Discharge.discharge_date >= since,
+    q = (
+        db.query(func.count(Discharge.id))
+        .join(
+            Admission,
+            Discharge.admission_id == Admission.id,
+        )
+        .filter(
+            Admission.lab_id == lab_id,
+            ~Admission.is_deleted,
+            Discharge.discharge_date >= since,
+        )
     )
     if department_id is not None:
         q = q.filter(Admission.department_id == department_id)
@@ -89,7 +121,13 @@ def discharge_rate(db: Session, lab_id: int, days: int = 30, department_id: int 
     }
 
 
-def transfer_rate(db: Session, lab_id: int, days: int = 30, department_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
+def transfer_rate(
+    db: Session,
+    lab_id: int,
+    days: int = 30,
+    department_id: int | None = None,
+    date_range: tuple[datetime, datetime] | None = None,
+) -> dict:
     since = date_range[0] if date_range is not None else datetime.now(UTC) - timedelta(days=days)
     q = db.query(func.count(Transfer.id)).filter(
         Transfer.lab_id == lab_id,
@@ -98,7 +136,8 @@ def transfer_rate(db: Session, lab_id: int, days: int = 30, department_id: int |
     )
     if department_id is not None:
         q = q.filter(
-            (Transfer.from_department_id == department_id) | (Transfer.to_department_id == department_id),
+            (Transfer.from_department_id == department_id)
+            | (Transfer.to_department_id == department_id),
         )
     if date_range is not None:
         q = q.filter(Transfer.transfer_date <= date_range[1])
@@ -111,32 +150,53 @@ def transfer_rate(db: Session, lab_id: int, days: int = 30, department_id: int |
     }
 
 
-def readmission_rate_30d(db: Session, lab_id: int, days: int = 30, department_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
+def readmission_rate_30d(
+    db: Session,
+    lab_id: int,
+    days: int = 30,
+    department_id: int | None = None,
+    date_range: tuple[datetime, datetime] | None = None,
+) -> dict:
     thirty_days_ago = datetime.now(UTC) - timedelta(days=days)
     ninety_days_ago = datetime.now(UTC) - timedelta(days=days + 30)
     if date_range is not None:
         thirty_days_ago = date_range[0]
         ninety_days_ago = date_range[0] - timedelta(days=30)
-    discharged = db.query(Discharge.admission_id).join(
-        Admission, Discharge.admission_id == Admission.id,
-    ).filter(
-        Admission.lab_id == lab_id,
-        ~Admission.is_deleted,
-        Discharge.discharge_date.between(ninety_days_ago, thirty_days_ago),
+    discharged = (
+        db.query(Discharge.admission_id)
+        .join(
+            Admission,
+            Discharge.admission_id == Admission.id,
+        )
+        .filter(
+            Admission.lab_id == lab_id,
+            ~Admission.is_deleted,
+            Discharge.discharge_date.between(ninety_days_ago, thirty_days_ago),
+        )
     )
     if department_id is not None:
         discharged = discharged.filter(Admission.department_id == department_id)
     discharged_ids = [r[0] for r in discharged.all()]
     if not discharged_ids:
-        return {"readmission_rate_percent": 0.0, "total_discharged": 0, "readmissions": 0, "period_days": days}
-    readmissions = db.query(func.count(Admission.id)).filter(
-        Admission.lab_id == lab_id,
-        ~Admission.is_deleted,
-        Admission.patient_id.in_(
-            db.query(Admission.patient_id).filter(Admission.id.in_(discharged_ids)),
-        ),
-        Admission.admission_date > thirty_days_ago,
-    ).scalar() or 0
+        return {
+            "readmission_rate_percent": 0.0,
+            "total_discharged": 0,
+            "readmissions": 0,
+            "period_days": days,
+        }
+    readmissions = (
+        db.query(func.count(Admission.id))
+        .filter(
+            Admission.lab_id == lab_id,
+            ~Admission.is_deleted,
+            Admission.patient_id.in_(
+                db.query(Admission.patient_id).filter(Admission.id.in_(discharged_ids)),
+            ),
+            Admission.admission_date > thirty_days_ago,
+        )
+        .scalar()
+        or 0
+    )
     total_discharged = len(discharged_ids)
     rate = round((readmissions / total_discharged) * 100, 2) if total_discharged > 0 else 0.0
     return {
@@ -147,18 +207,24 @@ def readmission_rate_30d(db: Session, lab_id: int, days: int = 30, department_id
     }
 
 
-def emergency_wait_times(db: Session, lab_id: int, days: int = 7, date_range: tuple[datetime, datetime] | None = None) -> dict:
+def emergency_wait_times(
+    db: Session, lab_id: int, days: int = 7, date_range: tuple[datetime, datetime] | None = None
+) -> dict:
     since = date_range[0] if date_range is not None else datetime.now(UTC) - timedelta(days=days)
-    entries = db.query(
-        QueueEntry.check_in_time,
-        QueueEntry.seen_time,
-    ).filter(
-        QueueEntry.lab_id == lab_id,
-        ~QueueEntry.is_deleted,
-        QueueEntry.check_in_time.isnot(None),
-        QueueEntry.seen_time.isnot(None),
-        QueueEntry.queue_date >= since.date(),
-    ).all()
+    entries = (
+        db.query(
+            QueueEntry.check_in_time,
+            QueueEntry.seen_time,
+        )
+        .filter(
+            QueueEntry.lab_id == lab_id,
+            ~QueueEntry.is_deleted,
+            QueueEntry.check_in_time.isnot(None),
+            QueueEntry.seen_time.isnot(None),
+            QueueEntry.queue_date >= since.date(),
+        )
+        .all()
+    )
     wait_times = []
     for entry in entries:
         delta = (entry.seen_time - entry.check_in_time).total_seconds() / 60.0
@@ -179,13 +245,23 @@ def emergency_wait_times(db: Session, lab_id: int, days: int = 7, date_range: tu
         "period_days": days,
         "average_wait_minutes": round(sum(wait_times) / n, 1),
         "median_wait_minutes": round(sorted_times[n // 2], 1),
-        "p95_wait_minutes": round(sorted_times[int(n * 0.95)], 1) if n > 1 else round(sorted_times[-1], 1),
-        "p99_wait_minutes": round(sorted_times[int(n * 0.99)], 1) if n > 1 else round(sorted_times[-1], 1),
+        "p95_wait_minutes": round(sorted_times[int(n * 0.95)], 1)
+        if n > 1
+        else round(sorted_times[-1], 1),
+        "p99_wait_minutes": round(sorted_times[int(n * 0.99)], 1)
+        if n > 1
+        else round(sorted_times[-1], 1),
         "max_wait_minutes": round(sorted_times[-1], 1),
     }
 
 
-def or_utilization_rate(db: Session, lab_id: int, days: int = 30, hospital_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
+def or_utilization_rate(
+    db: Session,
+    lab_id: int,
+    days: int = 30,
+    hospital_id: int | None = None,
+    date_range: tuple[datetime, datetime] | None = None,
+) -> dict:
     q = db.query(func.count(OperationTheater.id)).filter(
         OperationTheater.lab_id == lab_id,
         ~OperationTheater.is_deleted,
@@ -209,12 +285,22 @@ def or_utilization_rate(db: Session, lab_id: int, days: int = 30, hospital_id: i
     }
 
 
-def bed_turnover_interval(db: Session, lab_id: int, department_id: int | None = None, date_range: tuple[datetime, datetime] | None = None) -> dict:
-    q = db.query(func.count(Discharge.id)).join(
-        Admission, Discharge.admission_id == Admission.id,
-    ).filter(
-        Admission.lab_id == lab_id,
-        ~Admission.is_deleted,
+def bed_turnover_interval(
+    db: Session,
+    lab_id: int,
+    department_id: int | None = None,
+    date_range: tuple[datetime, datetime] | None = None,
+) -> dict:
+    q = (
+        db.query(func.count(Discharge.id))
+        .join(
+            Admission,
+            Discharge.admission_id == Admission.id,
+        )
+        .filter(
+            Admission.lab_id == lab_id,
+            ~Admission.is_deleted,
+        )
     )
     if department_id is not None:
         q = q.filter(Admission.department_id == department_id)
@@ -235,32 +321,51 @@ def bed_turnover_interval(db: Session, lab_id: int, department_id: int | None = 
 
 
 def occupancy_by_department(db: Session, lab_id: int) -> list[dict]:
-    depts = db.query(Department).filter(
-        Department.lab_id == lab_id, ~Department.is_deleted,
-    ).all()
+    depts = (
+        db.query(Department)
+        .filter(
+            Department.lab_id == lab_id,
+            ~Department.is_deleted,
+        )
+        .all()
+    )
     result = []
     for dept in depts:
-        total = db.query(func.count(Bed.id)).join(Room).filter(
-            Room.department_id == dept.id,
-            Bed.lab_id == lab_id,
-            ~Bed.is_deleted,
-        ).scalar() or 0
-        occupied = db.query(func.count(Bed.id)).join(Room).filter(
-            Room.department_id == dept.id,
-            Bed.lab_id == lab_id,
-            ~Bed.is_deleted,
-            Bed.status == "occupied",
-        ).scalar() or 0
+        total = (
+            db.query(func.count(Bed.id))
+            .join(Room)
+            .filter(
+                Room.department_id == dept.id,
+                Bed.lab_id == lab_id,
+                ~Bed.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        occupied = (
+            db.query(func.count(Bed.id))
+            .join(Room)
+            .filter(
+                Room.department_id == dept.id,
+                Bed.lab_id == lab_id,
+                ~Bed.is_deleted,
+                Bed.status == "occupied",
+            )
+            .scalar()
+            or 0
+        )
         rate = round((occupied / total) * 100, 1) if total > 0 else 0.0
-        result.append({
-            "department_id": dept.id,
-            "department_name": dept.name,
-            "department_name_ar": dept.name_ar,
-            "total_beds": total,
-            "occupied_beds": occupied,
-            "available_beds": total - occupied,
-            "occupancy_rate_percent": rate,
-        })
+        result.append(
+            {
+                "department_id": dept.id,
+                "department_name": dept.name,
+                "department_name_ar": dept.name_ar,
+                "total_beds": total,
+                "occupied_beds": occupied,
+                "available_beds": total - occupied,
+                "occupancy_rate_percent": rate,
+            }
+        )
     return result
 
 
@@ -274,10 +379,15 @@ def executive_summary(db: Session, lab_id: int) -> dict:
     ewt = emergency_wait_times(db, lab_id, 7)
     oru = or_utilization_rate(db, lab_id, 30)
     occ_by_dept = occupancy_by_department(db, lab_id)
-    active_admissions = db.query(func.count(Admission.id)).filter(
-        Admission.lab_id == lab_id,
-        ~Admission.is_deleted,
-    ).scalar() or 0
+    active_admissions = (
+        db.query(func.count(Admission.id))
+        .filter(
+            Admission.lab_id == lab_id,
+            ~Admission.is_deleted,
+        )
+        .scalar()
+        or 0
+    )
     return {
         "bed_occupancy": occ,
         "average_length_of_stay": alos,

@@ -109,9 +109,15 @@ class PolicyEngine:
                 continue
             if isinstance(policy, AccessPolicy):
                 if policy.allowed_roles and role not in policy.allowed_roles:
-                    return PolicyEffect.DENY, f"Role {role} not in allowed roles for policy {policy.name}"
+                    return (
+                        PolicyEffect.DENY,
+                        f"Role {role} not in allowed roles for policy {policy.name}",
+                    )
                 if policy.allowed_purposes and purpose not in policy.allowed_purposes:
-                    return PolicyEffect.DENY, f"Purpose {purpose} not allowed by policy {policy.name}"
+                    return (
+                        PolicyEffect.DENY,
+                        f"Purpose {purpose} not allowed by policy {policy.name}",
+                    )
 
             if isinstance(policy, ConsentPolicy) and policy.opt_out_allowed:
                 pass

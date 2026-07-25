@@ -9,6 +9,7 @@ class TestHealthcare_consentCapability:
         from app.capabilities.healthcare_consent.capability import (
             Healthcare_consentCapability,
         )
+
         return Healthcare_consentCapability()
 
     @pytest.mark.asyncio

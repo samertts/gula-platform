@@ -48,7 +48,6 @@ _SEVERITIES = {"low", "medium", "high", "critical"}
 
 
 class AdaptiveAuthService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -184,18 +183,17 @@ class AdaptiveAuthService:
         }
 
     async def check_credential_stuffing(
-        self, account_id: str, ip_address: str,
+        self,
+        account_id: str,
+        ip_address: str,
     ) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=5)
-        stmt = (
-            select(func.count(RiskEvent.id))
-            .where(
-                RiskEvent.account_id == account_id,
-                RiskEvent.event_type == "failed_login",
-                RiskEvent.ip_address == ip_address,
-                RiskEvent.timestamp >= since,
-                RiskEvent.is_active.is_(True),
-            )
+        stmt = select(func.count(RiskEvent.id)).where(
+            RiskEvent.account_id == account_id,
+            RiskEvent.event_type == "failed_login",
+            RiskEvent.ip_address == ip_address,
+            RiskEvent.timestamp >= since,
+            RiskEvent.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         count = result.scalar() or 0
@@ -213,14 +211,11 @@ class AdaptiveAuthService:
 
     async def check_password_spray(self, ip_address: str) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=10)
-        stmt = (
-            select(func.count(func.distinct(RiskEvent.account_id)))
-            .where(
-                RiskEvent.event_type == "failed_login",
-                RiskEvent.ip_address == ip_address,
-                RiskEvent.timestamp >= since,
-                RiskEvent.is_active.is_(True),
-            )
+        stmt = select(func.count(func.distinct(RiskEvent.account_id))).where(
+            RiskEvent.event_type == "failed_login",
+            RiskEvent.ip_address == ip_address,
+            RiskEvent.timestamp >= since,
+            RiskEvent.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         distinct_accounts = result.scalar() or 0
@@ -238,14 +233,11 @@ class AdaptiveAuthService:
 
     async def check_brute_force(self, account_id: str) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=2)
-        stmt = (
-            select(func.count(RiskEvent.id))
-            .where(
-                RiskEvent.account_id == account_id,
-                RiskEvent.event_type == "failed_login",
-                RiskEvent.timestamp >= since,
-                RiskEvent.is_active.is_(True),
-            )
+        stmt = select(func.count(RiskEvent.id)).where(
+            RiskEvent.account_id == account_id,
+            RiskEvent.event_type == "failed_login",
+            RiskEvent.timestamp >= since,
+            RiskEvent.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         count = result.scalar() or 0
@@ -298,7 +290,9 @@ class AdaptiveAuthService:
         return True
 
     async def detect_new_device(
-        self, account_id: str, device_fingerprint: str,
+        self,
+        account_id: str,
+        device_fingerprint: str,
     ) -> bool:
         stmt = (
             select(RiskEvent)
@@ -371,7 +365,9 @@ class AdaptiveAuthService:
         return entity
 
     async def apply_mitigation(
-        self, risk_score: int, account_id: str,
+        self,
+        risk_score: int,
+        account_id: str,
     ) -> dict[str, Any]:
         stmt = (
             select(RiskPolicy)
@@ -419,7 +415,9 @@ class AdaptiveAuthService:
         return {"action": action, "reason": "low_risk", "policy_id": policy.policy_id}
 
     async def create_mfa_challenge(
-        self, account_id: str, mfa_type: str = "totp",
+        self,
+        account_id: str,
+        mfa_type: str = "totp",
     ) -> AdaptiveMFASession:
         challenge_code = str(uuid.uuid4()).replace("-", "")[:12]
         expires_at = datetime.now(UTC) + timedelta(minutes=5)
@@ -443,14 +441,13 @@ class AdaptiveAuthService:
         return entity
 
     async def verify_mfa(
-        self, mfa_id: str, challenge_response: str,
+        self,
+        mfa_id: str,
+        challenge_response: str,
     ) -> dict[str, Any]:
-        stmt = (
-            select(AdaptiveMFASession)
-            .where(
-                AdaptiveMFASession.mfa_id == mfa_id,
-                AdaptiveMFASession.is_active.is_(True),
-            )
+        stmt = select(AdaptiveMFASession).where(
+            AdaptiveMFASession.mfa_id == mfa_id,
+            AdaptiveMFASession.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         mfa_session = result.scalar_one_or_none()
@@ -488,7 +485,9 @@ class AdaptiveAuthService:
         return {"verified": False, "reason": "invalid_challenge", "remaining_attempts": remaining}
 
     async def get_risk_history(
-        self, account_id: str, limit: int = 50,
+        self,
+        account_id: str,
+        limit: int = 50,
     ) -> list[RiskEvent]:
         stmt = (
             select(RiskEvent)
@@ -504,7 +503,6 @@ class AdaptiveAuthService:
 
 
 class SessionGovernanceService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -522,7 +520,9 @@ class SessionGovernanceService:
         return result.scalar_one_or_none()
 
     async def enforce_session_policy(
-        self, account_id: str, account_type: str,
+        self,
+        account_id: str,
+        account_type: str,
     ) -> dict[str, Any]:
         policy = await self.get_session_policy(account_type)
         if not policy:
@@ -533,7 +533,9 @@ class SessionGovernanceService:
         if not policy.allow_concurrent and active_count >= policy.max_sessions:
             if policy.terminate_previous_on_new_login:
                 await self.terminate_previous_sessions(
-                    account_id, current_session_id=None, notify=policy.notify_previous_device,
+                    account_id,
+                    current_session_id=None,
+                    notify=policy.notify_previous_device,
                 )
                 return {
                     "enforced": True,
@@ -564,12 +566,9 @@ class SessionGovernanceService:
     ) -> int:
         from app.identity.models import UserSession
 
-        stmt = (
-            select(UserSession)
-            .where(
-                UserSession.account_id == account_id,
-                UserSession.is_active.is_(True),
-            )
+        stmt = select(UserSession).where(
+            UserSession.account_id == account_id,
+            UserSession.is_active.is_(True),
         )
         if current_session_id:
             stmt = stmt.where(UserSession.id != current_session_id)
@@ -593,7 +592,9 @@ class SessionGovernanceService:
         return count
 
     async def notify_previous_device(
-        self, account_id: str, session_id: str | None = None,
+        self,
+        account_id: str,
+        session_id: str | None = None,
     ) -> dict[str, Any]:
         return {
             "notification_sent": True,
@@ -643,7 +644,9 @@ class SessionGovernanceService:
         return entity
 
     async def update_session_policy(
-        self, policy_id: str, **kwargs: Any,
+        self,
+        policy_id: str,
+        **kwargs: Any,
     ) -> SessionPolicy | None:
         stmt = select(SessionPolicy).where(
             SessionPolicy.policy_id == policy_id,
@@ -676,12 +679,9 @@ class SessionGovernanceService:
 
             timeout_limit = now - timedelta(minutes=policy.session_timeout_minutes)
 
-            stmt = (
-                select(UserSession)
-                .where(
-                    UserSession.is_active.is_(True),
-                    UserSession.created_at < timeout_limit,
-                )
+            stmt = select(UserSession).where(
+                UserSession.is_active.is_(True),
+                UserSession.created_at < timeout_limit,
             )
             result = await self.session.execute(stmt)
             sessions = list(result.scalars().all())
@@ -692,12 +692,9 @@ class SessionGovernanceService:
                 session.termination_reason = "session_timeout"
                 expired_count += 1
 
-        inactivity_stmt = (
-            select(UserSession)
-            .where(
-                UserSession.is_active.is_(True),
-                UserSession.last_activity_at.isnot(None),
-            )
+        inactivity_stmt = select(UserSession).where(
+            UserSession.is_active.is_(True),
+            UserSession.last_activity_at.isnot(None),
         )
         inactivity_result = await self.session.execute(inactivity_stmt)
         all_sessions = list(inactivity_result.scalars().all())
@@ -712,7 +709,9 @@ class SessionGovernanceService:
             policy_result = await self.session.execute(stmt)
             policy = policy_result.scalar_one_or_none()
             if policy and policy.inactivity_timeout_minutes:
-                inactive_limit = datetime.now(UTC) - timedelta(minutes=policy.inactivity_timeout_minutes)
+                inactive_limit = datetime.now(UTC) - timedelta(
+                    minutes=policy.inactivity_timeout_minutes
+                )
                 if session.last_activity_at < inactive_limit:
                     session.is_active = False
                     session.terminated_at = datetime.now(UTC)
@@ -727,12 +726,9 @@ class SessionGovernanceService:
     async def get_active_session_count(self, account_id: str) -> int:
         from app.identity.models import UserSession
 
-        stmt = (
-            select(func.count(UserSession.id))
-            .where(
-                UserSession.account_id == account_id,
-                UserSession.is_active.is_(True),
-            )
+        stmt = select(func.count(UserSession.id)).where(
+            UserSession.account_id == account_id,
+            UserSession.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         return result.scalar() or 0
@@ -760,7 +756,9 @@ class SessionGovernanceService:
         policy = policy_result.scalar_one_or_none()
 
         if policy and policy.inactivity_timeout_minutes:
-            inactive_limit = datetime.now(UTC) - timedelta(minutes=policy.inactivity_timeout_minutes)
+            inactive_limit = datetime.now(UTC) - timedelta(
+                minutes=policy.inactivity_timeout_minutes
+            )
             if session.last_activity_at < inactive_limit:
                 session.is_active = False
                 session.terminated_at = datetime.now(UTC)

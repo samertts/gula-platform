@@ -137,7 +137,9 @@ class AIEvaluationHarness:
             return {}
         passed = sum(1 for e in examples if e.passed)
         scores = [e.score for e in examples]
-        latencies = [e.metadata.get("latency_ms", 0) for e in examples if e.metadata.get("latency_ms")]
+        latencies = [
+            e.metadata.get("latency_ms", 0) for e in examples if e.metadata.get("latency_ms")
+        ]
         return {
             EvalMetric.ACCURACY: passed / len(examples),
             EvalMetric.ACCURACY: passed / len(examples),
@@ -169,9 +171,7 @@ class AIEvaluationHarness:
                 "status": latest.status.value,
                 "metrics": latest.metrics,
             },
-            "aggregate": {
-                k: sum(v) / len(v) for k, v in all_metrics.items()
-            },
+            "aggregate": {k: sum(v) / len(v) for k, v in all_metrics.items()},
         }
 
 
@@ -184,17 +184,23 @@ class RAGEvaluationSuite:
             EvalExample(
                 input="What is the normal range for hemoglobin?",
                 expected_output="hemoglobin normal range",
-                context=["Hemoglobin normal range: 13.5-17.5 g/dL for men, 12.0-15.5 g/dL for women"],
+                context=[
+                    "Hemoglobin normal range: 13.5-17.5 g/dL for men, 12.0-15.5 g/dL for women",
+                ],
             ),
             EvalExample(
                 input="What does an elevated WBC indicate?",
                 expected_output="elevated white blood cell count indicates infection inflammation",
-                context=["Elevated WBC (leukocytosis) typically indicates infection, inflammation, or stress response"],
+                context=[
+                    "Elevated WBC (leukocytosis) typically indicates infection, inflammation, or stress response",
+                ],
             ),
             EvalExample(
                 input="Explain the process for handling critical lab values",
                 expected_output="critical lab value protocol notify physician document",
-                context=["Critical lab values must be reported to the ordering physician within 30 minutes. Documentation is required."],
+                context=[
+                    "Critical lab values must be reported to the ordering physician within 30 minutes. Documentation is required.",
+                ],
             ),
         ]
 
@@ -215,7 +221,9 @@ class RAGEvaluationSuite:
             EvalExample(
                 input="What tests are in a basic metabolic panel?",
                 expected_output="BMP includes glucose calcium sodium potassium CO2 chloride BUN creatinine",
-                context=["Basic Metabolic Panel: glucose, calcium, sodium, potassium, CO2, chloride, BUN, creatinine"],
+                context=[
+                    "Basic Metabolic Panel: glucose, calcium, sodium, potassium, CO2, chloride, BUN, creatinine",
+                ],
             ),
         ]
 
@@ -223,8 +231,17 @@ class RAGEvaluationSuite:
         self._harness.register_suite("rag_relevance", self.build_relevance_suite())
         self._harness.register_suite("ai_safety", self.build_safety_suite())
         self._harness.register_suite("groundedness", self.build_groundedness_suite())
-        logger.info("Registered 3 AI evaluation suites (%d examples total)",
-                     sum(len(s) for s in [self.build_relevance_suite(), self.build_safety_suite(), self.build_groundedness_suite()]))
+        logger.info(
+            "Registered 3 AI evaluation suites (%d examples total)",
+            sum(
+                len(s)
+                for s in [
+                    self.build_relevance_suite(),
+                    self.build_safety_suite(),
+                    self.build_groundedness_suite(),
+                ]
+            ),
+        )
 
 
 class ClinicalEvalSuite:

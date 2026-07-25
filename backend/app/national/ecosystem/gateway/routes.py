@@ -17,8 +17,14 @@ _engine = GatewayPolicyEngine()
 async def route_request(request: dict = Body(...)) -> dict:
     result = _engine.evaluate(request)
     if result.decision == PolicyDecision.DENY:
-        raise HTTPException(status_code=403, detail={"error": result.reason, "policy": result.policy_name})
-    return {"decision": result.decision.value, "policy": result.policy_name, "message": result.reason}
+        raise HTTPException(
+            status_code=403, detail={"error": result.reason, "policy": result.policy_name},
+        )
+    return {
+        "decision": result.decision.value,
+        "policy": result.policy_name,
+        "message": result.reason,
+    }
 
 
 @router.get("/status")

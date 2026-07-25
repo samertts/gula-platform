@@ -68,7 +68,11 @@ class DeviceAuthError(PermissionError):
 
 
 def _compute_signature(
-    device_id: str, sample_id: str, test: str, value: float, timestamp: int,
+    device_id: str,
+    sample_id: str,
+    test: str,
+    value: float,
+    timestamp: int,
 ) -> str:
     msg = f"{device_id}:{sample_id}:{test}:{value}:{timestamp}".encode()
     return hmac.new(_DEVICE_HMAC_KEY.encode(), msg, hashlib.sha256).hexdigest()

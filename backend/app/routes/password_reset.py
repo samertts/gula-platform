@@ -44,13 +44,19 @@ async def forgot_password(
     import secrets
 
     from shared.auth.passwords import hash_password
+
     token = secrets.token_urlsafe(32)
     user.reset_token = hash_password(token)
     user.reset_token_expires = datetime.now(UTC) + timedelta(hours=1)
     db.commit()
     if user:
         with contextlib.suppress(Exception):
-            log_action(db, action="password_reset_requested", resource_type="password_reset", user_id=user.id)
+            log_action(
+                db,
+                action="password_reset_requested",
+                resource_type="password_reset",
+                user_id=user.id,
+            )
     return {"message": "If the email exists, a reset link has been sent"}
 
 
@@ -61,10 +67,15 @@ async def reset_password(
     _rate=Depends(rate_limit_auth),
 ):
     from shared.auth.passwords import verify_password
-    users = db.query(LabUser).filter(
-        LabUser.reset_token.isnot(None),
-        LabUser.reset_token_expires > datetime.now(UTC),
-    ).all()
+
+    users = (
+        db.query(LabUser)
+        .filter(
+            LabUser.reset_token.isnot(None),
+            LabUser.reset_token_expires > datetime.now(UTC),
+        )
+        .all()
+    )
     user = next((u for u in users if verify_password(req.token, u.reset_token)), None)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
@@ -73,7 +84,9 @@ async def reset_password(
     user.reset_token_expires = None
     db.commit()
     with contextlib.suppress(Exception):
-        log_action(db, action="password_reset_completed", resource_type="password_reset", user_id=user.id)
+        log_action(
+            db, action="password_reset_completed", resource_type="password_reset", user_id=user.id
+        )
     return {"message": "Password reset successful"}
 
 
@@ -84,10 +97,12 @@ async def change_password(
     current_user=Depends(get_current_user),
 ):
     from shared.auth.passwords import verify_password
+
     if not verify_password(req.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.password_hash = hash_password(req.new_password)
     from app.security.session import bump_perm_version
+
     bump_perm_version(db, current_user.id)
     db.commit()
     return {"message": "Password changed successfully"}

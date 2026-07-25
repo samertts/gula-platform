@@ -46,7 +46,9 @@ def get_rag() -> RAGEngine:
         gateway = get_gateway()
         vector_store = VectorStore()
         semantic_search = SemanticSearch(gateway, vector_store)
-        _rag = RAGEngine(gateway=gateway, vector_store=vector_store, semantic_search=semantic_search)
+        _rag = RAGEngine(
+            gateway=gateway, vector_store=vector_store, semantic_search=semantic_search,
+        )
     return _rag
 
 
@@ -87,8 +89,11 @@ def initialize_ai_fabric(app: FastAPI | None = None) -> dict[str, Any]:
         app.include_router(ai_fabric_router)
 
     _initalized = True
-    logger.info("AI Fabric initialized with %d agents and %d providers",
-                registry.count, len(gateway.router.list_available()))
+    logger.info(
+        "AI Fabric initialized with %d agents and %d providers",
+        registry.count,
+        len(gateway.router.list_available()),
+    )
 
     return {
         "status": "initialized",

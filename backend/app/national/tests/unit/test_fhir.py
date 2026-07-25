@@ -74,7 +74,9 @@ class TestFHIRBundle:
     def test_create_bundle(self):
         bundle = FHIRBundle(bundle_type="searchset")
         bundle.id = "bundle-1"
-        entry = FHIRBundleEntry(full_url="http://example.com/Patient/1", resource={"resourceType": "Patient", "id": "1"})
+        entry = FHIRBundleEntry(
+            full_url="http://example.com/Patient/1", resource={"resourceType": "Patient", "id": "1"},
+        )
         bundle.add_entry(entry)
         result = bundle.to_dict()
         assert result["resourceType"] == "Bundle"
@@ -105,9 +107,14 @@ class TestFHIRSearch:
 class TestFHIRObservation:
     def test_from_lab_result(self):
         result = {
-            "id": "RES001", "test_code": "4544-3", "test_name": "Hemoglobin",
-            "value": "13.5", "unit": "g/dL", "flag": "normal",
-            "normal_range_low": "12.0", "normal_range_high": "16.0",
+            "id": "RES001",
+            "test_code": "4544-3",
+            "test_name": "Hemoglobin",
+            "value": "13.5",
+            "unit": "g/dL",
+            "flag": "normal",
+            "normal_range_low": "12.0",
+            "normal_range_high": "16.0",
             "created_at": "2026-05-01T10:00:00",
         }
         fhir = FHIRObservationMapper.from_lab_result(result, "PAT001")

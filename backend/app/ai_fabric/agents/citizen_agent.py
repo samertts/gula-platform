@@ -13,27 +13,33 @@ class CitizenAgent(AIAgent):
         super().__init__(agent_id=agent_id, name=name)
 
     def _register_default_tools(self) -> None:
-        self.register_tool(AgentTool(
-            name="answer_health_query",
-            description="Answer citizen health-related questions",
-            fn=self._tool_answer_query,
-            parameters={"query": "str", "language": "str"},
-            requires_approval=False,
-        ))
-        self.register_tool(AgentTool(
-            name="explain_result",
-            description="Explain lab results in plain language",
-            fn=self._tool_explain_result,
-            parameters={"test_name": "str", "value": "str", "reference_range": "str"},
-            requires_approval=False,
-        ))
-        self.register_tool(AgentTool(
-            name="schedule_reminder",
-            description="Schedule a health reminder for the citizen",
-            fn=self._tool_schedule_reminder,
-            parameters={"type": "str", "date": "str", "message": "str"},
-            requires_approval=True,
-        ))
+        self.register_tool(
+            AgentTool(
+                name="answer_health_query",
+                description="Answer citizen health-related questions",
+                fn=self._tool_answer_query,
+                parameters={"query": "str", "language": "str"},
+                requires_approval=False,
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="explain_result",
+                description="Explain lab results in plain language",
+                fn=self._tool_explain_result,
+                parameters={"test_name": "str", "value": "str", "reference_range": "str"},
+                requires_approval=False,
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="schedule_reminder",
+                description="Schedule a health reminder for the citizen",
+                fn=self._tool_schedule_reminder,
+                parameters={"type": "str", "date": "str", "message": "str"},
+                requires_approval=True,
+            ),
+        )
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ("citizen", "patient", "health_query", "education", "wellness")

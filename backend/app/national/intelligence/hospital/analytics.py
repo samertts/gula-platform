@@ -67,12 +67,14 @@ class BedPredictor:
     def record_occupancy(self, ward_id: str, occupied: int, capacity: int) -> None:
         if ward_id not in self._occupancy_history:
             self._occupancy_history[ward_id] = []
-        self._occupancy_history[ward_id].append({
-            "occupied": occupied,
-            "capacity": capacity,
-            "rate": occupied / capacity if capacity > 0 else 0,
-            "timestamp": time.time(),
-        })
+        self._occupancy_history[ward_id].append(
+            {
+                "occupied": occupied,
+                "capacity": capacity,
+                "rate": occupied / capacity if capacity > 0 else 0,
+                "timestamp": time.time(),
+            },
+        )
 
     def predict_occupancy(self, ward_id: str, days: int = 7) -> list[BedForecast]:
         forecasts: list[BedForecast] = []
@@ -80,13 +82,15 @@ class BedPredictor:
         if not history:
             capacity = _BED_TYPE_CAPACITY.get("general_ward", {}).get("baseline_capacity", 50)
             for d in range(days):
-                forecasts.append(BedForecast(
-                    ward_id=ward_id,
-                    date=time.time() + d * 86400,
-                    predicted_occupancy=capacity * 0.7,
-                    total_capacity=capacity,
-                    occupancy_rate=0.7,
-                ))
+                forecasts.append(
+                    BedForecast(
+                        ward_id=ward_id,
+                        date=time.time() + d * 86400,
+                        predicted_occupancy=capacity * 0.7,
+                        total_capacity=capacity,
+                        occupancy_rate=0.7,
+                    ),
+                )
             return forecasts
         recent = [h["rate"] for h in history[-30:]]
         avg_rate = sum(recent) / len(recent) if recent else 0.7
@@ -116,13 +120,21 @@ class BedPredictor:
         all_forecasts: list[BedForecast] = []
         for ward in wards or [f"{hospital_id}:general_ward"]:
             all_forecasts.extend(self.predict_occupancy(ward, days))
-        peak_day = max(all_forecasts, key=lambda f: f.predicted_occupancy) if all_forecasts else None
+        peak_day = (
+            max(all_forecasts, key=lambda f: f.predicted_occupancy) if all_forecasts else None
+        )
         return {
             "hospital_id": hospital_id,
             "days_forecasted": days,
             "wards_analyzed": len(wards) or 1,
             "forecasts": [
-                {"ward_id": f.ward_id, "date": f.date, "predicted_occupancy": f.predicted_occupancy, "occupancy_rate": f.occupancy_rate, "surge_needed": f.surge_needed}
+                {
+                    "ward_id": f.ward_id,
+                    "date": f.date,
+                    "predicted_occupancy": f.predicted_occupancy,
+                    "occupancy_rate": f.occupancy_rate,
+                    "surge_needed": f.surge_needed,
+                }
                 for f in all_forecasts
             ],
             "peak_predicted_occupancy": peak_day.predicted_occupancy if peak_day else 0,
@@ -150,20 +162,19 @@ class QueuePredictor:
     def record_queue(self, department_id: str, queue_length: int, wait_minutes: float) -> None:
         if department_id not in self._queue_history:
             self._queue_history[department_id] = []
-        self._queue_history[department_id].append({
-            "queue_length": queue_length,
-            "wait_minutes": wait_minutes,
-            "timestamp": time.time(),
-        })
+        self._queue_history[department_id].append(
+            {
+                "queue_length": queue_length,
+                "wait_minutes": wait_minutes,
+                "timestamp": time.time(),
+            },
+        )
 
     def predict_queue_length(self, department_id: str, day: int, hour: int) -> float:
         history = self._queue_history.get(department_id, [])
         if not history:
             return 5.0
-        matching = [
-            h for h in history
-            if abs(h["timestamp"] % (7 * 86400) - day * 86400) < 86400
-        ]
+        matching = [h for h in history if abs(h["timestamp"] % (7 * 86400) - day * 86400) < 86400]
         if not matching:
             matching = history[-30:]
         if not matching:
@@ -196,22 +207,28 @@ class QueuePredictor:
         expected_queue = queue_prediction.get("predicted_queue_length", 10)
         recommendations: list[dict[str, Any]] = []
         if expected_queue > 30:
-            recommendations.append({
-                "role": "physician",
-                "additional_staff": 2,
-                "reason": "High queue volume predicted",
-            })
-            recommendations.append({
-                "role": "nurse",
-                "additional_staff": 3,
-                "reason": "Support high patient throughput",
-            })
+            recommendations.append(
+                {
+                    "role": "physician",
+                    "additional_staff": 2,
+                    "reason": "High queue volume predicted",
+                },
+            )
+            recommendations.append(
+                {
+                    "role": "nurse",
+                    "additional_staff": 3,
+                    "reason": "Support high patient throughput",
+                },
+            )
         elif expected_queue > 15:
-            recommendations.append({
-                "role": "nurse",
-                "additional_staff": 1,
-                "reason": "Moderate queue volume predicted",
-            })
+            recommendations.append(
+                {
+                    "role": "nurse",
+                    "additional_staff": 1,
+                    "reason": "Moderate queue volume predicted",
+                },
+            )
         return recommendations
 
 
@@ -219,18 +236,24 @@ class ICUCapacityPredictor:
     def __init__(self) -> None:
         self._icu_history: dict[str, list[dict[str, Any]]] = {}
 
-    def record_icu_data(self, hospital_id: str, occupied: int, capacity: int, admissions: int, discharges: int) -> None:
+    def record_icu_data(
+        self, hospital_id: str, occupied: int, capacity: int, admissions: int, discharges: int,
+    ) -> None:
         if hospital_id not in self._icu_history:
             self._icu_history[hospital_id] = []
-        self._icu_history[hospital_id].append({
-            "occupied": occupied,
-            "capacity": capacity,
-            "admissions": admissions,
-            "discharges": discharges,
-            "timestamp": time.time(),
-        })
+        self._icu_history[hospital_id].append(
+            {
+                "occupied": occupied,
+                "capacity": capacity,
+                "admissions": admissions,
+                "discharges": discharges,
+                "timestamp": time.time(),
+            },
+        )
 
-    def predict_icu_demand(self, hospital_id: str, season: str = "winter", trends: dict[str, Any] | None = None) -> dict[str, Any]:
+    def predict_icu_demand(
+        self, hospital_id: str, season: str = "winter", trends: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         history = self._icu_history.get(hospital_id, [])
         seasonal_factor = _SEASONAL_FACTORS.get(season, 1.0)
         if not history:
@@ -271,23 +294,27 @@ class ICUCapacityPredictor:
             for d in range(days):
                 daily_var = 0.1 * math.sin(2 * math.pi * d / 7)
                 predicted = avg * (1 + daily_var)
-                forecasts.append({
-                    "hospital_id": hospital_id,
-                    "day": d + 1,
-                    "predicted_occupancy": round(predicted, 1),
-                    "capacity": capacity,
-                    "overcapacity": predicted > capacity,
-                })
+                forecasts.append(
+                    {
+                        "hospital_id": hospital_id,
+                        "day": d + 1,
+                        "predicted_occupancy": round(predicted, 1),
+                        "capacity": capacity,
+                        "overcapacity": predicted > capacity,
+                    },
+                )
         return forecasts
 
     def alert_overcapacity(self, forecast: dict[str, Any]) -> list[dict[str, Any]]:
         alerts: list[dict[str, Any]] = []
         if forecast.get("overcapacity_risk"):
-            alerts.append({
-                "type": "critical",
-                "message": f"ICU overcapacity predicted for {forecast.get('hospital_id')}",
-                "recommendation": "Activate surge plan and coordinate transfers",
-            })
+            alerts.append(
+                {
+                    "type": "critical",
+                    "message": f"ICU overcapacity predicted for {forecast.get('hospital_id')}",
+                    "recommendation": "Activate surge plan and coordinate transfers",
+                },
+            )
         return alerts
 
 
@@ -298,14 +325,18 @@ class EmergencyLoadPredictor:
     def record_volume(self, hospital_id: str, day: int, hour: int, volume: int) -> None:
         if hospital_id not in self._volume_history:
             self._volume_history[hospital_id] = []
-        self._volume_history[hospital_id].append({
-            "day": day,
-            "hour": hour,
-            "volume": volume,
-            "timestamp": time.time(),
-        })
+        self._volume_history[hospital_id].append(
+            {
+                "day": day,
+                "hour": hour,
+                "volume": volume,
+                "timestamp": time.time(),
+            },
+        )
 
-    def predict_emergency_volume(self, hospital_id: str, day: int, hour: int, season: str = "winter") -> float:
+    def predict_emergency_volume(
+        self, hospital_id: str, day: int, hour: int, season: str = "winter",
+    ) -> float:
         history = self._volume_history.get(hospital_id, [])
         seasonal = _SEASONAL_FACTORS.get(season, 1.0)
         if not history:
@@ -354,17 +385,23 @@ class AdmissionForecaster:
     def __init__(self) -> None:
         self._admission_history: dict[str, list[dict[str, Any]]] = {}
 
-    def record_admission(self, hospital_id: str, date: str, count: int, discharges: int = 0) -> None:
+    def record_admission(
+        self, hospital_id: str, date: str, count: int, discharges: int = 0,
+    ) -> None:
         if hospital_id not in self._admission_history:
             self._admission_history[hospital_id] = []
-        self._admission_history[hospital_id].append({
-            "date": date,
-            "admissions": count,
-            "discharges": discharges,
-            "timestamp": time.time(),
-        })
+        self._admission_history[hospital_id].append(
+            {
+                "date": date,
+                "admissions": count,
+                "discharges": discharges,
+                "timestamp": time.time(),
+            },
+        )
 
-    def predict_admissions(self, hospital_id: str, days: int = 30, factors: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def predict_admissions(
+        self, hospital_id: str, days: int = 30, factors: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         history = self._admission_history.get(hospital_id, [])
         season = (factors or {}).get("season", "winter")
         seasonal = _SEASONAL_FACTORS.get(season, 1.0)
@@ -372,13 +409,17 @@ class AdmissionForecaster:
             baseline = 20
             predictions = []
             for d in range(days):
-                day_factor = 1.3 if datetime.fromtimestamp(time.time() + d * 86400).weekday() >= 5 else 1.0
+                day_factor = (
+                    1.3 if datetime.fromtimestamp(time.time() + d * 86400).weekday() >= 5 else 1.0
+                )
                 predicted = baseline * seasonal * day_factor
-                predictions.append({
-                    "day": d + 1,
-                    "predicted_admissions": round(predicted, 1),
-                    "confidence": "low",
-                })
+                predictions.append(
+                    {
+                        "day": d + 1,
+                        "predicted_admissions": round(predicted, 1),
+                        "confidence": "low",
+                    },
+                )
             return predictions
         recent = [h["admissions"] for h in history[-90:]]
         avg = sum(recent) / len(recent) if recent else 20
@@ -388,11 +429,13 @@ class AdmissionForecaster:
             day_factor = 1.3 if day_of_week >= 5 else 1.0
             predicted = avg * seasonal * day_factor
             confidence = "high" if len(recent) > 60 else "medium"
-            predictions.append({
-                "day": d + 1,
-                "predicted_admissions": round(predicted, 1),
-                "confidence": confidence,
-            })
+            predictions.append(
+                {
+                    "day": d + 1,
+                    "predicted_admissions": round(predicted, 1),
+                    "confidence": confidence,
+                },
+            )
         return predictions
 
     def get_admission_trends(self, months: int = 12) -> list[AdmissionTrend]:
@@ -408,13 +451,15 @@ class AdmissionForecaster:
                 monthly[month_key]["admissions"] += h.get("admissions", 0)
                 monthly[month_key]["discharges"] += h.get("discharges", 0)
             for month_key, counts in sorted(monthly.items()):
-                trends.append(AdmissionTrend(
-                    date=month_key,
-                    admissions=counts["admissions"],
-                    discharge=counts["discharges"],
-                    net_change=counts["admissions"] - counts["discharges"],
-                    primary_drivers=["seasonal_illness"],
-                ))
+                trends.append(
+                    AdmissionTrend(
+                        date=month_key,
+                        admissions=counts["admissions"],
+                        discharge=counts["discharges"],
+                        net_change=counts["admissions"] - counts["discharges"],
+                        primary_drivers=["seasonal_illness"],
+                    ),
+                )
         return trends
 
     def identify_admission_drivers(self, trends: list[AdmissionTrend]) -> list[dict[str, Any]]:
@@ -431,7 +476,12 @@ class AdmissionForecaster:
             recent = sum(monthly_admissions.get(m, 0) for m in months[-3:])
             earlier = sum(monthly_admissions.get(m, 0) for m in months[:-3])
             if earlier > 0 and recent > earlier * 1.2:
-                drivers.append({"driver": "seasonal_increase", "impact": round((recent - earlier) / earlier * 100, 1)})
+                drivers.append(
+                    {
+                        "driver": "seasonal_increase",
+                        "impact": round((recent - earlier) / earlier * 100, 1),
+                    },
+                )
         drivers.append({"driver": "baseline_demand", "impact": 100})
         return drivers
 
@@ -440,13 +490,17 @@ from datetime import datetime
 
 
 class DischargePredictor:
-    def predict_discharge_readiness(self, patient_id: str, clinical_data: dict[str, Any] | None = None) -> dict[str, Any]:
+    def predict_discharge_readiness(
+        self, patient_id: str, clinical_data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         data = clinical_data or {}
         vitals_stable = data.get("vitals_stable", False)
         lab_trends_improving = data.get("lab_trends_improving", False)
         pain_controlled = data.get("pain_controlled", False)
         ambulatory = data.get("ambulatory", False)
-        readiness_score = sum([vitals_stable, lab_trends_improving, pain_controlled, ambulatory]) / 4.0
+        readiness_score = (
+            sum([vitals_stable, lab_trends_improving, pain_controlled, ambulatory]) / 4.0
+        )
         barriers: list[str] = []
         if not vitals_stable:
             barriers.append("Unstable vital signs")
@@ -491,7 +545,9 @@ class DischargePredictor:
             barriers.append("No caregiver available at home")
         if not patient.get("home_ready", True):
             barriers.append("Home environment not prepared")
-        if patient.get("requires_home_care", False) and not patient.get("home_care_arranged", False):
+        if patient.get("requires_home_care", False) and not patient.get(
+            "home_care_arranged", False,
+        ):
             barriers.append("Home care services not arranged")
         if patient.get("medication_education", False) is False:
             barriers.append("Medication education not completed")
@@ -502,18 +558,24 @@ class ResourceUtilizationEngine:
     def __init__(self) -> None:
         self._utilization_data: dict[str, list[dict[str, Any]]] = {}
 
-    def record_utilization(self, resource_type: str, department: str, used: int, available: int) -> None:
+    def record_utilization(
+        self, resource_type: str, department: str, used: int, available: int,
+    ) -> None:
         key = f"{resource_type}:{department}"
         if key not in self._utilization_data:
             self._utilization_data[key] = []
-        self._utilization_data[key].append({
-            "used": used,
-            "available": available,
-            "rate": used / available if available > 0 else 0,
-            "timestamp": time.time(),
-        })
+        self._utilization_data[key].append(
+            {
+                "used": used,
+                "available": available,
+                "rate": used / available if available > 0 else 0,
+                "timestamp": time.time(),
+            },
+        )
 
-    def analyze_utilization(self, resource_type: str, department: str, period: int = 30) -> dict[str, Any]:
+    def analyze_utilization(
+        self, resource_type: str, department: str, period: int = 30,
+    ) -> dict[str, Any]:
         key = f"{resource_type}:{department}"
         records = self._utilization_data.get(key, [])
         cutoff = time.time() - period * 86400

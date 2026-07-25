@@ -1,5 +1,4 @@
-class LifecyclePlatformError(Exception):
-    ...
+class LifecyclePlatformError(Exception): ...
 
 
 class ComponentNotFoundError(LifecyclePlatformError):

@@ -389,6 +389,7 @@ def get_financial_summary(
 ):
     _check_enabled()
     from datetime import timedelta
+
     date_to = date_to or date.today()
     date_from = date_from or (date_to - timedelta(days=30))
     return FinancialReportService.generate_report(
@@ -409,11 +410,7 @@ def list_subscriptions(
 ):
     _check_enabled()
     provider = _get_provider(db, current_user.lab_id)
-    subs = (
-        db.query(FinSubscription)
-        .filter(FinSubscription.provider_id == provider.id)
-        .all()
-    )
+    subs = db.query(FinSubscription).filter(FinSubscription.provider_id == provider.id).all()
     return [
         {
             "id": s.id,

@@ -51,23 +51,30 @@ class RuleModel(AuditEntity):
         )
 
         conditions = []
-        for c in (self.conditions or []):
+        for c in self.conditions or []:
             if isinstance(c, dict):
                 from app.national.rules_engine.domain.enums import Operator
-                conditions.append(RuleCondition(
-                    field=c.get("field", ""),
-                    operator=Operator(c.get("operator", "eq")) if isinstance(c.get("operator"), str) else c.get("operator"),
-                    value=c.get("value"),
-                    value_type=c.get("value_type", "string"),
-                ))
+
+                conditions.append(
+                    RuleCondition(
+                        field=c.get("field", ""),
+                        operator=Operator(c.get("operator", "eq"))
+                        if isinstance(c.get("operator"), str)
+                        else c.get("operator"),
+                        value=c.get("value"),
+                        value_type=c.get("value_type", "string"),
+                    ),
+                )
 
         actions = []
-        for a in (self.actions or []):
+        for a in self.actions or []:
             if isinstance(a, dict):
-                actions.append(RuleAction(
-                    action_type=a.get("action_type", ""),
-                    params=a.get("params", {}),
-                ))
+                actions.append(
+                    RuleAction(
+                        action_type=a.get("action_type", ""),
+                        params=a.get("params", {}),
+                    ),
+                )
 
         return RuleDefinition(
             id=self.id,
@@ -102,7 +109,9 @@ class RuleEvaluationLog(AuditEntity):
     context = Column(JSON, nullable=True)
     result = Column(JSON, nullable=True)
     execution_time_ms = Column(Float, nullable=True)
-    triggered_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    triggered_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC),
+    )
 
     __table_args__ = (
         Index("ix_national_rule_eval_logs_rule_id", "rule_id"),

@@ -42,7 +42,11 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
                         {"name": "_id", "type": "token", "documentation": "Patient ID"},
-                        {"name": "identifier", "type": "token", "documentation": "Health number or national ID"},
+                        {
+                            "name": "identifier",
+                            "type": "token",
+                            "documentation": "Health number or national ID",
+                        },
                         {"name": "name", "type": "string", "documentation": "Patient name"},
                         {"name": "birthdate", "type": "date", "documentation": "Date of birth"},
                         {"name": "gender", "type": "token", "documentation": "Gender"},
@@ -53,7 +57,11 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULAEncounterProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
                         {"name": "date", "type": "date", "documentation": "Encounter date"},
                         {"name": "status", "type": "token", "documentation": "Encounter status"},
                         {"name": "type", "type": "token", "documentation": "Encounter type"},
@@ -64,9 +72,21 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULALaboratoryObservationProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
-                        {"name": "code", "type": "token", "documentation": "LOINC or local test code"},
-                        {"name": "category", "type": "token", "documentation": "Observation category"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
+                        {
+                            "name": "code",
+                            "type": "token",
+                            "documentation": "LOINC or local test code",
+                        },
+                        {
+                            "name": "category",
+                            "type": "token",
+                            "documentation": "Observation category",
+                        },
                         {"name": "date", "type": "date", "documentation": "Effective date"},
                         {"name": "status", "type": "token", "documentation": "Observation status"},
                     ],
@@ -76,9 +96,21 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULAConditionProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
-                        {"name": "encounter", "type": "reference", "documentation": "Encounter reference"},
-                        {"name": "clinical-status", "type": "token", "documentation": "Clinical status"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
+                        {
+                            "name": "encounter",
+                            "type": "reference",
+                            "documentation": "Encounter reference",
+                        },
+                        {
+                            "name": "clinical-status",
+                            "type": "token",
+                            "documentation": "Clinical status",
+                        },
                     ],
                 },
                 {
@@ -86,8 +118,16 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULAMedicationRequestProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
-                        {"name": "status", "type": "token", "documentation": "Medication request status"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
+                        {
+                            "name": "status",
+                            "type": "token",
+                            "documentation": "Medication request status",
+                        },
                     ],
                 },
                 {
@@ -95,7 +135,11 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULAMedicationStatementProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
                         {"name": "status", "type": "token", "documentation": "Statement status"},
                     ],
                 },
@@ -104,8 +148,16 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULAAllergyIntoleranceProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
-                        {"name": "clinical-status", "type": "token", "documentation": "Clinical status"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
+                        {
+                            "name": "clinical-status",
+                            "type": "token",
+                            "documentation": "Clinical status",
+                        },
                     ],
                 },
                 {
@@ -113,7 +165,11 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULAImmunizationProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
                         {"name": "status", "type": "token", "documentation": "Immunization status"},
                     ],
                 },
@@ -122,7 +178,11 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULACarePlanProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
                         {"name": "status", "type": "token", "documentation": "Care plan status"},
                     ],
                 },
@@ -131,7 +191,11 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULADocumentReferenceProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
                         {"name": "category", "type": "token", "documentation": "Document category"},
                     ],
                 },
@@ -140,7 +204,11 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULACompositionProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
                         {"name": "status", "type": "token", "documentation": "Composition status"},
                     ],
                 },
@@ -149,7 +217,11 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULADiagnosticReportProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                     "searchParam": [
-                        {"name": "patient", "type": "reference", "documentation": "Patient reference"},
+                        {
+                            "name": "patient",
+                            "type": "reference",
+                            "documentation": "Patient reference",
+                        },
                         {"name": "status", "type": "token", "documentation": "Report status"},
                     ],
                 },

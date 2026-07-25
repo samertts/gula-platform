@@ -65,6 +65,7 @@ on a clean DB; production rollback should be coordinated with the route
 schema rollback (the route will simply stop accepting the new fields and
 return defaults).
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -74,16 +75,17 @@ from sqlalchemy.dialects import postgresql
 import contextlib
 
 
-revision      = "20260511_0002"
+revision = "20260511_0002"
 down_revision = "20260511_0001"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 # Local copies kept consistent with the surrounding migrations
 # (20260511_0001, 20260506_0001). A future consolidation into
 # backend/migrations/helpers.py is tracked separately in directive §17A.
+
 
 def _table_exists(table: str) -> bool:
     return inspect(op.get_bind()).has_table(table)
@@ -118,16 +120,24 @@ _TABLE = "ai_interactions"
 
 _NEW_COLUMNS = [
     # name,                     factory
-    ("confidence_score",        lambda: sa.Column("confidence_score", sa.Float(), nullable=True)),
-    ("risk_level",              lambda: sa.Column("risk_level", sa.String(32), nullable=True)),
-    ("escalation_recommended",  lambda: sa.Column("escalation_recommended", sa.Boolean(),
-                                                  nullable=False, server_default=sa.text("false"))),
-    ("retrieval_used",          lambda: sa.Column("retrieval_used", sa.Boolean(), nullable=True)),
-    ("source_quality",          lambda: sa.Column("source_quality", sa.Float(), nullable=True)),
-    ("unsupported_claims",      lambda: sa.Column("unsupported_claims", sa.Integer(), nullable=True)),
-    ("fallback_generation",     lambda: sa.Column("fallback_generation", sa.Boolean(),
-                                                  nullable=False, server_default=sa.text("false"))),
-    ("safety_flags",            lambda: sa.Column("safety_flags", _json_col(), nullable=True)),
+    ("confidence_score", lambda: sa.Column("confidence_score", sa.Float(), nullable=True)),
+    ("risk_level", lambda: sa.Column("risk_level", sa.String(32), nullable=True)),
+    (
+        "escalation_recommended",
+        lambda: sa.Column(
+            "escalation_recommended", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
+    ),
+    ("retrieval_used", lambda: sa.Column("retrieval_used", sa.Boolean(), nullable=True)),
+    ("source_quality", lambda: sa.Column("source_quality", sa.Float(), nullable=True)),
+    ("unsupported_claims", lambda: sa.Column("unsupported_claims", sa.Integer(), nullable=True)),
+    (
+        "fallback_generation",
+        lambda: sa.Column(
+            "fallback_generation", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
+    ),
+    ("safety_flags", lambda: sa.Column("safety_flags", _json_col(), nullable=True)),
 ]
 
 
@@ -148,6 +158,7 @@ def upgrade() -> None:
 
 
 # ─── Downgrade ───────────────────────────────────────────────────────────────
+
 
 def downgrade() -> None:
     if not _table_exists(_TABLE):

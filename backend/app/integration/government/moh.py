@@ -51,7 +51,11 @@ class MinistryOfHealth(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -88,7 +92,11 @@ class MinistryOfHealth(BaseConnector):
         try:
             resp = await self._client.post(
                 urljoin(self._base_url, "/auth/token"),
-                json={"client_id": self._client_id, "client_secret": self._client_secret, "grant_type": "client_credentials"},
+                json={
+                    "client_id": self._client_id,
+                    "client_secret": self._client_secret,
+                    "grant_type": "client_credentials",
+                },
             )
             if resp.is_success:
                 result = resp.json()
@@ -120,7 +128,11 @@ class MinistryOfHealth(BaseConnector):
             "notes": data.get("notes", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/notifiable-diseases"), json=report, headers=self._headers())
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/notifiable-diseases"),
+                json=report,
+                headers=self._headers(),
+            )
             if resp.is_success:
                 return {"success": True, "report_id": resp.json().get("id", "")}
             if resp.status_code == 401:
@@ -146,7 +158,11 @@ class MinistryOfHealth(BaseConnector):
             "data": data.get("data", {}),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/lab-data/submit"), json=payload, headers=self._headers())
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/lab-data/submit"),
+                json=payload,
+                headers=self._headers(),
+            )
             if resp.is_success:
                 return {"success": True, "submission_id": resp.json().get("id", "")}
             if resp.status_code == 401:
@@ -161,7 +177,9 @@ class MinistryOfHealth(BaseConnector):
         if not self._client:
             raise RuntimeError("MoH connector not connected")
         try:
-            resp = await self._client.get(urljoin(self._base_url, "/api/policies"), headers=self._headers())
+            resp = await self._client.get(
+                urljoin(self._base_url, "/api/policies"), headers=self._headers()
+            )
             if resp.is_success:
                 return {"success": True, "policies": resp.json()}
             if resp.status_code == 401:
@@ -185,7 +203,11 @@ class MinistryOfHealth(BaseConnector):
             "status": data.get("status", "active"),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/facilities/sync"), json=facility, headers=self._headers())
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/facilities/sync"),
+                json=facility,
+                headers=self._headers(),
+            )
             if resp.is_success:
                 return {"success": True, "facility": resp.json()}
             if resp.status_code == 401:
@@ -208,7 +230,11 @@ class MinistryOfHealth(BaseConnector):
             "region": data.get("region", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/vaccinations/report"), json=report, headers=self._headers())
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/vaccinations/report"),
+                json=report,
+                headers=self._headers(),
+            )
             if resp.is_success:
                 return {"success": True, "report_id": resp.json().get("id", "")}
             if resp.status_code == 401:
@@ -229,7 +255,9 @@ class MinistryOfHealth(BaseConnector):
             "end_date": data.get("end_date", ""),
         }
         try:
-            resp = await self._client.get(urljoin(self._base_url, "/api/epidemiology"), params=params, headers=self._headers())
+            resp = await self._client.get(
+                urljoin(self._base_url, "/api/epidemiology"), params=params, headers=self._headers()
+            )
             if resp.is_success:
                 return {"success": True, "data": resp.json()}
             if resp.status_code == 401:

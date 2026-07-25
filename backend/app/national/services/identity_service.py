@@ -67,6 +67,7 @@ class IdentityService:
 
     async def register_unknown_patient(self, data: dict[str, Any]) -> dict:
         import uuid
+
         emergency_hn = f"EM{str(uuid.uuid4())[:8].upper()}"
         citizen_data = {
             "first_name": data.get("description", "Unknown"),
@@ -78,4 +79,9 @@ class IdentityService:
             "identity_status": "pending_verification",
         }
         citizen = await self.citizen_service.register_citizen(citizen_data)
-        return {"citizen": citizen, "health_number": emergency_hn, "is_temporary": True, "requires_merge": True}
+        return {
+            "citizen": citizen,
+            "health_number": emergency_hn,
+            "is_temporary": True,
+            "requires_merge": True,
+        }

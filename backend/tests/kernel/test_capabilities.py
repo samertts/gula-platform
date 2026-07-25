@@ -18,7 +18,11 @@ class TestCapabilityRegistry:
     def test_check_dependencies(self):
         cr = CapabilityRegistry()
         cr.register(CapabilityDescriptor(name="base", version="1.0", description="base"))
-        cr.register(CapabilityDescriptor(name="ext", version="1.0", description="ext", dependencies=["base"]))
+        cr.register(
+            CapabilityDescriptor(
+                name="ext", version="1.0", description="ext", dependencies=["base"]
+            )
+        )
         assert cr.check_dependencies("ext")
         assert not cr.check_dependencies("nonexistent")
 

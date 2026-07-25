@@ -116,6 +116,7 @@ class AIGovernanceService:
         metadata_json: dict[str, Any] | None = None,
     ) -> AIAuditEvent:
         import hashlib
+
         input_hash = hashlib.sha256((prompt or "").encode()).hexdigest() if prompt else None
         output_hash = hashlib.sha256((response or "").encode()).hexdigest() if response else None
 
@@ -139,7 +140,10 @@ class AIGovernanceService:
         return event
 
     def approve_ai_output(
-        self, audit_event_id: int, reviewed_by: str, approved: bool,
+        self,
+        audit_event_id: int,
+        reviewed_by: str,
+        approved: bool,
     ) -> AIAuditEvent | None:
         event = self.db.query(AIAuditEvent).filter(AIAuditEvent.id == audit_event_id).first()
         if not event:
@@ -217,7 +221,9 @@ class AIGovernanceService:
         )
 
     def evaluate_guardrails(
-        self, prompt: str, guardrail_type: AIGuardrailType | None = None,
+        self,
+        prompt: str,
+        guardrail_type: AIGuardrailType | None = None,
     ) -> list[dict[str, Any]]:
         q = self.db.query(AIGuardrail).filter(AIGuardrail.is_active.is_(True))
         if guardrail_type:
@@ -230,24 +236,28 @@ class AIGovernanceService:
                 injection_patterns = guardrail.rules.get("patterns", [])
                 for pattern in injection_patterns:
                     if pattern.lower() in prompt.lower():
-                        violations.append({
-                            "guardrail_code": guardrail.guardrail_code,
-                            "type": guardrail.guardrail_type.value,
-                            "violation": f"Pattern detected: {pattern}",
-                            "severity": guardrail.severity.value,
-                            "action": guardrail.action_on_violation,
-                        })
+                        violations.append(
+                            {
+                                "guardrail_code": guardrail.guardrail_code,
+                                "type": guardrail.guardrail_type.value,
+                                "violation": f"Pattern detected: {pattern}",
+                                "severity": guardrail.severity.value,
+                                "action": guardrail.action_on_violation,
+                            }
+                        )
 
             elif guardrail.guardrail_type == AIGuardrailType.PRIVACY:
                 pii_patterns = guardrail.rules.get("pii_patterns", [])
                 for pattern in pii_patterns:
                     if pattern.lower() in prompt.lower():
-                        violations.append({
-                            "guardrail_code": guardrail.guardrail_code,
-                            "type": guardrail.guardrail_type.value,
-                            "violation": f"PII pattern detected: {pattern}",
-                            "severity": guardrail.severity.value,
-                            "action": guardrail.action_on_violation,
-                        })
+                        violations.append(
+                            {
+                                "guardrail_code": guardrail.guardrail_code,
+                                "type": guardrail.guardrail_type.value,
+                                "violation": f"PII pattern detected: {pattern}",
+                                "severity": guardrail.severity.value,
+                                "action": guardrail.action_on_violation,
+                            }
+                        )
 
         return violations

@@ -89,10 +89,12 @@ class WarehouseService:
             data = list(groups.values())
 
         if query.order_by:
-            data = sorted(data, key=lambda r: r.get(query.order_by, 0) or 0, reverse=query.order_desc)
+            data = sorted(
+                data, key=lambda r: r.get(query.order_by, 0) or 0, reverse=query.order_desc
+            )
 
         total = len(data)
-        page = data[query.offset:query.offset + query.limit]
+        page = data[query.offset : query.offset + query.limit]
 
         duration = (time.monotonic() - start) * 1000
 

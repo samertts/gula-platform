@@ -13,7 +13,6 @@ from .models import WorkflowApproval, WorkflowDefinition, WorkflowInstance
 
 
 class WorkflowEngine:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 

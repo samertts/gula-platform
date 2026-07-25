@@ -31,11 +31,11 @@ class EventBusSource(StreamSource):
         self._buffer: list[dict] = []
 
     async def start(self) -> None:
-        for name in (self._event_names or []):
+        for name in self._event_names or []:
             self._bus.subscribe(name, self._on_event)
 
     async def stop(self) -> None:
-        for name in (self._event_names or []):
+        for name in self._event_names or []:
             self._bus.unsubscribe(name, self._on_event)
 
     async def read(self) -> list[dict[str, Any]]:
@@ -44,15 +44,17 @@ class EventBusSource(StreamSource):
         return batch
 
     def _on_event(self, event: Event) -> None:
-        self._buffer.append({
-            "event_id": event.id,
-            "event_name": event.name,
-            "data": event.data,
-            "version": event.version,
-            "timestamp": event.timestamp,
-            "correlation_id": event.correlation_id,
-            "source": event.source,
-        })
+        self._buffer.append(
+            {
+                "event_id": event.id,
+                "event_name": event.name,
+                "data": event.data,
+                "version": event.version,
+                "timestamp": event.timestamp,
+                "correlation_id": event.correlation_id,
+                "source": event.source,
+            }
+        )
 
 
 class StreamProcessor(ABC):
@@ -136,7 +138,7 @@ class StreamPipeline:
                         processed.append(current)
 
                 for batch_start in range(0, len(processed), self.batch_size):
-                    batch = processed[batch_start:batch_start + self.batch_size]
+                    batch = processed[batch_start : batch_start + self.batch_size]
                     for sink in self.sinks:
                         try:
                             await sink.write(batch)

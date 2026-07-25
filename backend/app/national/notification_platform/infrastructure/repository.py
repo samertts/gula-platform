@@ -69,7 +69,9 @@ def _model_to_notification(m: NationalNotificationModel) -> Notification:
     )
 
 
-def _notification_to_model(m: NationalNotificationModel, e: Notification) -> NationalNotificationModel:
+def _notification_to_model(
+    m: NationalNotificationModel, e: Notification,
+) -> NationalNotificationModel:
     m.id = e.id
     m.channel = e.channel.value
     m.recipient = e.recipients[0] if e.recipients else ""
@@ -104,7 +106,9 @@ def _model_to_template(m: NationalNotificationTemplateModel) -> NotificationTemp
         language=m.language,
         subject_template=m.subject_template or "",
         body_template=m.body_template or "",
-        template_engine=TemplateEngine(m.template_engine) if m.template_engine else TemplateEngine.JINJA2,
+        template_engine=TemplateEngine(m.template_engine)
+        if m.template_engine
+        else TemplateEngine.JINJA2,
         variables=m.variables,
         category=NotificationCategory(m.category) if m.category else NotificationCategory.SYSTEM,
         created_by=m.created_by,
@@ -121,7 +125,9 @@ def _model_to_delivery(m: NationalDeliveryReportModel) -> DeliveryReport:
         provider_status=m.provider_status,
         provider_message_id=m.provider_message_id,
         provider_response=m.provider_response,
-        status=DeliveryReportStatus(m.status) if m.status else DeliveryReportStatus.SENT_TO_PROVIDER,
+        status=DeliveryReportStatus(m.status)
+        if m.status
+        else DeliveryReportStatus.SENT_TO_PROVIDER,
         attempted_at=m.attempted_at,
         delivered_at=m.delivered_at,
         error_message=m.error_message,
@@ -137,8 +143,12 @@ def _model_to_preference(m: NationalNotificationPreferenceModel) -> Notification
         quiet_hours_start=m.quiet_hours_start,
         quiet_hours_end=m.quiet_hours_end,
         max_daily=m.max_daily,
-        categories_opt_in=[NotificationCategory(c) for c in (m.categories_opt_in or [])] if m.categories_opt_in else [],
-        categories_opt_out=[NotificationCategory(c) for c in (m.categories_opt_out or [])] if m.categories_opt_out else [],
+        categories_opt_in=[NotificationCategory(c) for c in (m.categories_opt_in or [])]
+        if m.categories_opt_in
+        else [],
+        categories_opt_out=[NotificationCategory(c) for c in (m.categories_opt_out or [])]
+        if m.categories_opt_out
+        else [],
     )
 
 
@@ -157,7 +167,6 @@ def _model_to_batch(m: NationalNotificationBatchModel) -> NotificationBatch:
 
 
 class SQLAlchemyNotificationRepository(NotificationRepository):
-
     def __init__(self, db: Session) -> None:
         self._db = db
 
@@ -189,7 +198,9 @@ class SQLAlchemyNotificationRepository(NotificationRepository):
         for key, val in filters.items():
             if hasattr(NationalNotificationModel, key):
                 q = q.filter(getattr(NationalNotificationModel, key) == val)
-        rows = q.order_by(NationalNotificationModel.created_at.desc()).offset(skip).limit(limit).all()
+        rows = (
+            q.order_by(NationalNotificationModel.created_at.desc()).offset(skip).limit(limit).all()
+        )
         return [_model_to_notification(r) for r in rows]
 
     async def find_by_status(
@@ -272,13 +283,17 @@ class SQLAlchemyNotificationRepository(NotificationRepository):
         total = q.count()
 
         status_counts = (
-            self._db.query(NationalNotificationModel.status, func.count(NationalNotificationModel.id))
+            self._db.query(
+                NationalNotificationModel.status, func.count(NationalNotificationModel.id),
+            )
             .group_by(NationalNotificationModel.status)
             .all()
         )
 
         channel_counts = (
-            self._db.query(NationalNotificationModel.channel, func.count(NationalNotificationModel.id))
+            self._db.query(
+                NationalNotificationModel.channel, func.count(NationalNotificationModel.id),
+            )
             .group_by(NationalNotificationModel.channel)
             .all()
         )
@@ -291,12 +306,13 @@ class SQLAlchemyNotificationRepository(NotificationRepository):
 
 
 class SQLAlchemyNotificationTemplateRepository(NotificationTemplateRepository):
-
     def __init__(self, db: Session) -> None:
         self._db = db
 
     async def save(self, template: NotificationTemplate) -> NotificationTemplate:
-        existing = self._db.query(NationalNotificationTemplateModel).filter_by(id=template.id).first()
+        existing = (
+            self._db.query(NationalNotificationTemplateModel).filter_by(id=template.id).first()
+        )
         if existing:
             existing.name = template.name
             existing.description = template.description
@@ -347,7 +363,12 @@ class SQLAlchemyNotificationTemplateRepository(NotificationTemplateRepository):
         for key, val in filters.items():
             if hasattr(NationalNotificationTemplateModel, key):
                 q = q.filter(getattr(NationalNotificationTemplateModel, key) == val)
-        rows = q.order_by(NationalNotificationTemplateModel.created_at.desc()).offset(skip).limit(limit).all()
+        rows = (
+            q.order_by(NationalNotificationTemplateModel.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [_model_to_template(r) for r in rows]
 
     async def find_by_channel(
@@ -404,7 +425,6 @@ class SQLAlchemyNotificationTemplateRepository(NotificationTemplateRepository):
 
 
 class SQLAlchemyDeliveryReportRepository(DeliveryReportRepository):
-
     def __init__(self, db: Session) -> None:
         self._db = db
 
@@ -446,7 +466,6 @@ class SQLAlchemyDeliveryReportRepository(DeliveryReportRepository):
 
 
 class SQLAlchemyNotificationPreferenceRepository(NotificationPreferenceRepository):
-
     def __init__(self, db: Session) -> None:
         self._db = db
 
@@ -482,7 +501,9 @@ class SQLAlchemyNotificationPreferenceRepository(NotificationPreferenceRepositor
         self._db.refresh(m)
         return _model_to_preference(m)
 
-    async def get(self, user_id: str, channel: NotificationChannel) -> NotificationPreference | None:
+    async def get(
+        self, user_id: str, channel: NotificationChannel,
+    ) -> NotificationPreference | None:
         m = (
             self._db.query(NationalNotificationPreferenceModel)
             .filter_by(user_id=user_id, channel=channel.value)
@@ -493,11 +514,7 @@ class SQLAlchemyNotificationPreferenceRepository(NotificationPreferenceRepositor
         return _model_to_preference(m)
 
     async def find_by_user(self, user_id: str) -> list[NotificationPreference]:
-        rows = (
-            self._db.query(NationalNotificationPreferenceModel)
-            .filter_by(user_id=user_id)
-            .all()
-        )
+        rows = self._db.query(NationalNotificationPreferenceModel).filter_by(user_id=user_id).all()
         return [_model_to_preference(r) for r in rows]
 
     async def find_by_user_and_channel(
@@ -509,7 +526,6 @@ class SQLAlchemyNotificationPreferenceRepository(NotificationPreferenceRepositor
 
 
 class SQLAlchemyNotificationBatchRepository(NotificationBatchRepository):
-
     def __init__(self, db: Session) -> None:
         self._db = db
 

@@ -41,14 +41,14 @@ class RegistryRecord:
 class RegistryManager:
     def __init__(self, warehouse: WarehouseService | None = None):
         self._warehouse = warehouse or WarehouseService()
-        self._registries: dict[RegistryType, list[RegistryRecord]] = {
-            rt: [] for rt in RegistryType
-        }
+        self._registries: dict[RegistryType, list[RegistryRecord]] = {rt: [] for rt in RegistryType}
 
     def register_record(self, record: RegistryRecord) -> RegistryRecord:
         self._registries.setdefault(record.registry_type, []).append(record)
         logger.info(
-            "Registry record added: %s (%s)", record.registry_id, record.registry_type.value,
+            "Registry record added: %s (%s)",
+            record.registry_id,
+            record.registry_type.value,
         )
         return record
 
@@ -74,13 +74,17 @@ class RegistryManager:
             results = [r for r in results if r.diagnosis_code == diagnosis_code]
         if date_from:
             results = [
-                r for r in results
-                if (r.diagnosis_date and r.diagnosis_date >= date_from) or (r.registered_at and r.registered_at.date() >= date_from)
+                r
+                for r in results
+                if (r.diagnosis_date and r.diagnosis_date >= date_from)
+                or (r.registered_at and r.registered_at.date() >= date_from)
             ]
         if date_to:
             results = [
-                r for r in results
-                if (r.diagnosis_date and r.diagnosis_date <= date_to) or (r.registered_at and r.registered_at.date() <= date_to)
+                r
+                for r in results
+                if (r.diagnosis_date and r.diagnosis_date <= date_to)
+                or (r.registered_at and r.registered_at.date() <= date_to)
             ]
         return results[:limit]
 
@@ -198,7 +202,9 @@ class BirthRegistry:
         )
         return self._manager.register_record(record)
 
-    def birth_statistics(self, governorate: str | None = None, year: int | None = None) -> dict[str, Any]:
+    def birth_statistics(
+        self, governorate: str | None = None, year: int | None = None
+    ) -> dict[str, Any]:
         records = self._manager.query(RegistryType.BIRTH, governorate=governorate)
         return {
             "registry": "birth",
@@ -206,7 +212,9 @@ class BirthRegistry:
             "year": year,
             "total_births": len(records),
             "live_births": len(records),
-            "low_birth_weight": sum(1 for r in records if r.birth_weight_grams and r.birth_weight_grams < 2500),
+            "low_birth_weight": sum(
+                1 for r in records if r.birth_weight_grams and r.birth_weight_grams < 2500
+            ),
             "preterm": sum(1 for r in records if r.gestational_weeks and r.gestational_weeks < 37),
         }
 

@@ -15,14 +15,24 @@ class DeIdentificationService:
         self._salt = "research-deid-salt"
 
     def deidentify_record(self, record: dict, phi_fields: list[str] | None = None) -> dict:
-        fields = phi_fields or ["first_name", "last_name", "full_name", "national_id", "phone", "email", "address"]
+        fields = phi_fields or [
+            "first_name",
+            "last_name",
+            "full_name",
+            "national_id",
+            "phone",
+            "email",
+            "address",
+        ]
         result = record.copy()
         for field in fields:
             if field in result:
                 result[field] = self._mask_value(result[field])
         return result
 
-    def deidentify_batch(self, records: list[dict], phi_fields: list[str] | None = None) -> list[dict]:
+    def deidentify_batch(
+        self, records: list[dict], phi_fields: list[str] | None = None
+    ) -> list[dict]:
         return [self.deidentify_record(r, phi_fields) for r in records]
 
     @staticmethod
@@ -50,7 +60,11 @@ class DeIdentificationService:
         return safe
 
     def expert_determination(self, record: dict, expert_approval_id: str) -> dict:
-        return {**record, "_deid_method": "expert_determination", "_expert_approval": expert_approval_id}
+        return {
+            **record,
+            "_deid_method": "expert_determination",
+            "_expert_approval": expert_approval_id,
+        }
 
 
 class PseudonymizationService:
@@ -75,7 +89,9 @@ class PseudonymizationService:
                 result[field] = self.pseudonymize(str(result[field]), field)
         return result
 
-    def pseudonymize_batch(self, records: list[dict], fields: list[str] | None = None) -> list[dict]:
+    def pseudonymize_batch(
+        self, records: list[dict], fields: list[str] | None = None
+    ) -> list[dict]:
         return [self.pseudonymize_record(r, fields) for r in records]
 
     def reidentify(self, pseudonym: str) -> str | None:
@@ -111,7 +127,12 @@ class DifferentialPrivacy:
 
     def consume_budget(self, query_id: str, amount: float) -> None:
         self._budget_tracker[query_id] = self._budget_tracker.get(query_id, 0) + amount
-        logger.debug("DP budget consumed for %s: %.2f/%.2f", query_id, self._budget_tracker[query_id], self._epsilon)
+        logger.debug(
+            "DP budget consumed for %s: %.2f/%.2f",
+            query_id,
+            self._budget_tracker[query_id],
+            self._epsilon,
+        )
 
     def reset_budget(self, query_id: str) -> None:
         self._budget_tracker.pop(query_id, None)
@@ -124,7 +145,9 @@ class DifferentialPrivacy:
         if not values:
             return 0.0
         actual = sum(values) / len(values)
-        return self.add_laplace_noise(actual, sensitivity=max(values) - min(values) if values else 1.0)
+        return self.add_laplace_noise(
+            actual, sensitivity=max(values) - min(values) if values else 1.0
+        )
 
 
 class ConsentEnforcement:
@@ -260,15 +283,19 @@ class EthicsReviewWorkflow:
             review["committee_members"].append(reviewer_id)
         return review
 
-    def record_decision(self, review_id: str, reviewer_id: str, decision: str, comments: str = "") -> dict | None:
+    def record_decision(
+        self, review_id: str, reviewer_id: str, decision: str, comments: str = ""
+    ) -> dict | None:
         review = self._reviews.get(review_id)
         if review:
-            review["decisions"].append({
-                "reviewer_id": reviewer_id,
-                "decision": decision,
-                "comments": comments,
-                "timestamp": datetime.now(UTC).isoformat(),
-            })
+            review["decisions"].append(
+                {
+                    "reviewer_id": reviewer_id,
+                    "decision": decision,
+                    "comments": comments,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
             decisions = review["decisions"]
             if all(d["decision"] == "approve" for d in decisions) and len(decisions) >= 1:
                 review["final_decision"] = "approved"

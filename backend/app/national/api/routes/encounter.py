@@ -145,29 +145,80 @@ def _to_fhir(encounter: Encounter) -> dict[str, Any]:
         EncounterStatus.UNKNOWN: "unknown",
     }
     class_map = {
-        EncounterType.OUTPATIENT: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB", "display": "ambulatory"},
-        EncounterType.INPATIENT: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "IMP", "display": "inpatient encounter"},
-        EncounterType.EMERGENCY: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "EMER", "display": "emergency"},
-        EncounterType.HOME_HEALTH: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "HH", "display": "home health"},
-        EncounterType.TELEHEALTH: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "VR", "display": "virtual"},
-        EncounterType.VIRTUAL: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "VR", "display": "virtual"},
-        EncounterType.FOLLOW_UP: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "FLD", "display": "field"},
-        EncounterType.CONSULTATION: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "CONSULT", "display": "consultation"},
-        EncounterType.OTHER: {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "OTHER", "display": "other"},
+        EncounterType.OUTPATIENT: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "AMB",
+            "display": "ambulatory",
+        },
+        EncounterType.INPATIENT: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "IMP",
+            "display": "inpatient encounter",
+        },
+        EncounterType.EMERGENCY: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "EMER",
+            "display": "emergency",
+        },
+        EncounterType.HOME_HEALTH: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "HH",
+            "display": "home health",
+        },
+        EncounterType.TELEHEALTH: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "VR",
+            "display": "virtual",
+        },
+        EncounterType.VIRTUAL: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "VR",
+            "display": "virtual",
+        },
+        EncounterType.FOLLOW_UP: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "FLD",
+            "display": "field",
+        },
+        EncounterType.CONSULTATION: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "CONSULT",
+            "display": "consultation",
+        },
+        EncounterType.OTHER: {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "OTHER",
+            "display": "other",
+        },
     }
     return {
         "resourceType": "Encounter",
         "id": encounter.id,
         "status": status_map.get(encounter.status, "unknown"),
         "class": class_map.get(encounter.encounter_type, {"code": "OTHER", "display": "other"}),
-        "subject": {"reference": f"Patient/{encounter.patient_id}"} if encounter.patient_id else None,
-        "participant": [{"individual": {"reference": f"Practitioner/{encounter.practitioner_id}"}}] if encounter.practitioner_id else None,
+        "subject": {"reference": f"Patient/{encounter.patient_id}"}
+        if encounter.patient_id
+        else None,
+        "participant": [{"individual": {"reference": f"Practitioner/{encounter.practitioner_id}"}}]
+        if encounter.practitioner_id
+        else None,
         "period": {
             "start": encounter.period_start.isoformat() if encounter.period_start else None,
             "end": encounter.period_end.isoformat() if encounter.period_end else None,
         },
-        "reasonCode": [{"coding": [{"code": encounter.reason_code}], "text": encounter.reason_description}] if encounter.reason_code else None,
-        "diagnosis": [{"condition": {"coding": [{"code": encounter.diagnosis_code}]}, "use": {"coding": [{"code": "DD"}]}}] if encounter.diagnosis_code else None,
+        "reasonCode": [
+            {"coding": [{"code": encounter.reason_code}], "text": encounter.reason_description},
+        ]
+        if encounter.reason_code
+        else None,
+        "diagnosis": [
+            {
+                "condition": {"coding": [{"code": encounter.diagnosis_code}]},
+                "use": {"coding": [{"code": "DD"}]},
+            },
+        ]
+        if encounter.diagnosis_code
+        else None,
     }
 
 
@@ -192,7 +243,9 @@ async def get_encounter(
 ):
     encounter = service_get_encounter(db, encounter_id)
     if not encounter:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}",
+        )
     return encounter
 
 
@@ -208,7 +261,9 @@ async def update_encounter(
         db.commit()
         return encounter
     except EncounterNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}",
+        ) from e
 
 
 @router.delete("/{encounter_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -221,7 +276,9 @@ async def delete_encounter(
         service_delete_encounter(db, encounter_id)
         db.commit()
     except EncounterNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}",
+        ) from e
 
 
 @router.put("/{encounter_id}/complete", response_model=EncounterResponse)
@@ -235,7 +292,9 @@ async def complete_encounter(
         db.commit()
         return encounter
     except EncounterNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}",
+        ) from e
 
 
 @router.put("/{encounter_id}/cancel", response_model=EncounterResponse)
@@ -249,7 +308,9 @@ async def cancel_encounter(
         db.commit()
         return encounter
     except EncounterNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}",
+        ) from e
 
 
 @router.get("/by-patient/{patient_id}", response_model=EncounterListResponse)
@@ -311,5 +372,7 @@ async def get_encounter_fhir(
 ):
     encounter = service_get_encounter(db, encounter_id)
     if not encounter:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}",
+        )
     return _to_fhir(encounter)

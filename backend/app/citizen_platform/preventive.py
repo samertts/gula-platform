@@ -58,12 +58,20 @@ class VaccinationService:
     def get_upcoming_vaccinations(self, citizen_id: str) -> list[VaccinationRecord]:
         records = self._records.get(citizen_id, [])
         today = date.today().isoformat()
-        return [r for r in records if r.next_due_date and r.next_due_date >= today and r.status == "completed"]
+        return [
+            r
+            for r in records
+            if r.next_due_date and r.next_due_date >= today and r.status == "completed"
+        ]
 
     def get_missed_vaccinations(self, citizen_id: str) -> list[VaccinationRecord]:
         records = self._records.get(citizen_id, [])
         today = date.today().isoformat()
-        return [r for r in records if r.next_due_date and r.next_due_date < today and r.status != "completed"]
+        return [
+            r
+            for r in records
+            if r.next_due_date and r.next_due_date < today and r.status != "completed"
+        ]
 
 
 class ScreeningService:
@@ -83,12 +91,15 @@ class ScreeningService:
                 s.status = "completed"
                 s.last_performed = date.today().isoformat()
                 from dateutil.relativedelta import relativedelta
+
                 next_date = date.today() + relativedelta(months=s.frequency_months)
                 s.next_due = next_date.isoformat()
                 return True
         return False
 
-    def add_screening_recommendation(self, citizen_id: str, screening: ScreeningRecommendation) -> None:
+    def add_screening_recommendation(
+        self, citizen_id: str, screening: ScreeningRecommendation,
+    ) -> None:
         if citizen_id not in self._screenings:
             self._screenings[citizen_id] = []
         self._screenings[citizen_id].append(screening)

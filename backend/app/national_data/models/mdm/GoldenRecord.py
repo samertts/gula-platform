@@ -6,7 +6,9 @@ from app.national_data.base import BaseEntity
 class GoldenRecord(BaseEntity):
     __tablename__ = "dp_golden_records"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     national_patient_id = Column(String(26), nullable=True, index=True)
     citizen_id = Column(String(26), nullable=True, index=True)
 

@@ -10,9 +10,24 @@ class Coverage(TenantAuditEntity):
 
     status = Column(SAEnum(CoverageStatus), nullable=False, default=CoverageStatus.ACTIVE)
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    insurance_id = Column(String(26), ForeignKey("national_insurances.id", ondelete="RESTRICT"), nullable=False, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    insurance_id = Column(
+        String(26),
+        ForeignKey("national_insurances.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
 
     policy_number = Column(String(100), nullable=False, index=True)
     group_number = Column(String(100), nullable=True)

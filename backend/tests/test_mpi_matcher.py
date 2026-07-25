@@ -7,6 +7,7 @@ Covers:
   - Fellegi-Sunter scoring: NID short-circuit, thresholds, feature weights
   - Audit hash-chain continuity (SHA-256 chaining invariant)
 """
+
 import hashlib
 import json
 import os
@@ -31,6 +32,7 @@ from app.services.mpi.matcher import (
 )
 
 # ─── Jaro-Winkler ────────────────────────────────────────────────────────────
+
 
 class TestJaroWinkler:
     def test_identical_returns_one(self):
@@ -61,6 +63,7 @@ class TestJaroWinkler:
 
 # ─── Name normalization ──────────────────────────────────────────────────────
 
+
 class TestNormalizeName:
     def test_arabic_alef_variants_collapse(self):
         assert normalize_name("أحمد") == normalize_name("احمد")
@@ -73,8 +76,8 @@ class TestNormalizeName:
         # NAME_ALIASES["mohammed"] -> ["mohammad","mohamed","muhammed",...]
         # so "Muhammed" (e-h) collapses to "mohammed"; NOT "Muhammad" (a-h).
         assert normalize_name("Mohammed") == normalize_name("Muhammed")
-        assert normalize_name("Ahmed")    == normalize_name("Ahmad")
-        assert normalize_name("Hussein")  == normalize_name("Husain")
+        assert normalize_name("Ahmed") == normalize_name("Ahmad")
+        assert normalize_name("Hussein") == normalize_name("Husain")
 
     def test_lowercase_and_whitespace(self):
         assert normalize_name("  MOHAMMED    ALI  ") == "mohammed ali"
@@ -84,6 +87,7 @@ class TestNormalizeName:
 
 
 # ─── Blocking key ────────────────────────────────────────────────────────────
+
 
 class TestBlockingKey:
     def test_same_arabic_form_same_key(self):
@@ -136,6 +140,7 @@ class TestBlockingKey:
 
 # ─── Phone normalization ─────────────────────────────────────────────────────
 
+
 class TestPhoneLast10:
     def test_strips_non_digits(self):
         # "+964 (790) 123-4567" -> digits "9647901234567" (13 digits) -> last 10
@@ -154,15 +159,19 @@ class TestPhoneLast10:
 
 # ─── Matcher scoring ─────────────────────────────────────────────────────────
 
+
 def _make_candidate(**overrides) -> Candidate:
     base = {
         "id": 1,
         "citizen_ulid": "01HKX" + "0" * 21,
         "name_canonical": "mohammed ali hussein",
         "phone_last10": "7901234567",
-        "birth_year": 1990, "birth_month": 5, "birth_day": 12,
+        "birth_year": 1990,
+        "birth_month": 5,
+        "birth_day": 12,
         "gender": "M",
-        "nid_hash": None, "family_id_hash": None,
+        "nid_hash": None,
+        "family_id_hash": None,
     }
     base.update(overrides)
     return Candidate(**base)
@@ -172,7 +181,7 @@ class TestScoring:
     def test_nid_exact_short_circuits(self):
         p = build_profile(
             name="Totally Different Name",
-            nid_hash="deadbeef" * 8,   # 64 chars
+            nid_hash="deadbeef" * 8,  # 64 chars
         )
         c = _make_candidate(nid_hash="deadbeef" * 8)
         r = score(p, c)
@@ -184,7 +193,9 @@ class TestScoring:
             name="mohammed ali hussein",
             nid_hash="aaaa" * 16,
             phone_last10="7901234567",
-            birth_year=1990, birth_month=5, birth_day=12,
+            birth_year=1990,
+            birth_month=5,
+            birth_day=12,
             gender="M",
         )
         c = _make_candidate(nid_hash="bbbb" * 16)
@@ -197,7 +208,9 @@ class TestScoring:
         p = build_profile(
             name="mohammed ali hussein",
             phone_last10="7901234567",
-            birth_year=1990, birth_month=5, birth_day=12,
+            birth_year=1990,
+            birth_month=5,
+            birth_day=12,
             gender="M",
             family_id_hash="fam1" * 16,
         )
@@ -207,12 +220,20 @@ class TestScoring:
 
     def test_dob_swap_half_weight(self):
         exact = build_profile(
-            name="mohammed ali hussein", phone_last10="7901234567",
-            birth_year=1990, birth_month=5, birth_day=12, gender="M",
+            name="mohammed ali hussein",
+            phone_last10="7901234567",
+            birth_year=1990,
+            birth_month=5,
+            birth_day=12,
+            gender="M",
         )
         swapped = build_profile(
-            name="mohammed ali hussein", phone_last10="7901234567",
-            birth_year=1990, birth_month=12, birth_day=5, gender="M",
+            name="mohammed ali hussein",
+            phone_last10="7901234567",
+            birth_year=1990,
+            birth_month=12,
+            birth_day=5,
+            gender="M",
         )
         c = _make_candidate()
         assert score(exact, c).score > score(swapped, c).score
@@ -235,7 +256,9 @@ class TestScoring:
         p = build_profile(
             name="mohammed ali hussein",
             phone_last10="7901234567",
-            birth_year=1990, birth_month=5, birth_day=12,
+            birth_year=1990,
+            birth_month=5,
+            birth_day=12,
             gender="M",
         )
         c = _make_candidate()
@@ -248,12 +271,14 @@ class TestScoring:
 
 # ─── Audit hash chain continuity ─────────────────────────────────────────────
 
+
 class TestAuditChain:
     """Reproduce the SHA-256 chaining invariant used in resolver._write_audit.
 
     We don't spin up a DB here; we just verify that the chaining algorithm
     matches what a verifier would compute row-by-row.
     """
+
     @staticmethod
     def _chain(prev, row):
         canonical = json.dumps(row, sort_keys=True, separators=(",", ":"))
@@ -278,7 +303,7 @@ class TestAuditChain:
     def test_chain_depends_on_payload(self):
         prev = "0" * 64
         a = self._chain(prev, {"event_type": "create", "id": 1})
-        b = self._chain(prev, {"event_type": "merge",  "id": 1})
+        b = self._chain(prev, {"event_type": "merge", "id": 1})
         assert a != b
 
     def test_tamper_detection(self):
@@ -301,9 +326,9 @@ class TestAuditChain:
             chain_b.append(h)
             prev = h
 
-        assert chain_a[0] == chain_b[0]       # row 0 unchanged
-        assert chain_a[1] != chain_b[1]       # tampered row differs
-        assert chain_a[2] != chain_b[2]       # row 3 also differs (downstream)
+        assert chain_a[0] == chain_b[0]  # row 0 unchanged
+        assert chain_a[1] != chain_b[1]  # tampered row differs
+        assert chain_a[2] != chain_b[2]  # row 3 also differs (downstream)
 
 
 if __name__ == "__main__":

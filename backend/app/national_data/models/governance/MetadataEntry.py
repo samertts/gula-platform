@@ -18,6 +18,4 @@ class MetadataEntry(BaseEntity):
     source = Column(String(100), nullable=True)
     version = Column(String(20), nullable=True)
 
-    __table_args__ = (
-        {"extend_existing": True},
-    )
+    __table_args__ = ({"extend_existing": True},)

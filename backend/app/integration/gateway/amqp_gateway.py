@@ -26,6 +26,7 @@ class AMQPGateway(MessageGateway):
     async def connect(self) -> bool:
         try:
             import aio_pika
+
             self._connection = await aio_pika.connect_robust(
                 self.config.endpoint,
                 timeout=self.config.timeout,
@@ -58,11 +59,16 @@ class AMQPGateway(MessageGateway):
         start = time.monotonic()
         try:
             import aio_pika
+
             if not self._channel:
                 return GatewayResult(success=False, error="Not connected")
             exchange_name = self.config.options.get("exchange", "")
             routing_key = message.destination or self.config.options.get("routing_key", "")
-            body = json.dumps(message.payload) if not isinstance(message.payload, str) else message.payload
+            body = (
+                json.dumps(message.payload)
+                if not isinstance(message.payload, str)
+                else message.payload
+            )
             if exchange_name:
                 exchange = await self._channel.get_exchange(exchange_name)
                 await exchange.send(

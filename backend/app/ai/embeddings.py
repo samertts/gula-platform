@@ -14,9 +14,7 @@ _EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
 _EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "768"))
 _EMBEDDING_TIMEOUT = float(os.getenv("AI_BUDGET_SECONDS", "6"))
 
-_REST_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={key}"
-)
+_REST_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={key}"
 
 
 async def embed_text(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:

@@ -119,12 +119,16 @@ class RiskBasedAuthService:
 
         if context.hour_of_day < 6 or context.hour_of_day > 23:
             risk_score += AdaptiveAuthWeights.UNUSUAL_HOUR
-            factors.append(f"+{AdaptiveAuthWeights.UNUSUAL_HOUR} unusual hour ({context.hour_of_day}:00)")
+            factors.append(
+                f"+{AdaptiveAuthWeights.UNUSUAL_HOUR} unusual hour ({context.hour_of_day}:00)"
+            )
 
         velocity = max(self._check_velocity(context.user_id), context.login_velocity)
         if velocity > 5:
             risk_score += AdaptiveAuthWeights.HIGH_VELOCITY
-            factors.append(f"+{AdaptiveAuthWeights.HIGH_VELOCITY} high login velocity ({velocity}/min)")
+            factors.append(
+                f"+{AdaptiveAuthWeights.HIGH_VELOCITY} high login velocity ({velocity}/min)"
+            )
 
         if context.failed_attempts_24h > 3:
             f_score = min(AdaptiveAuthWeights.FAILED_ATTEMPTS, context.failed_attempts_24h * 5)
@@ -145,7 +149,9 @@ class RiskBasedAuthService:
 
         if context.anomaly_score > 0.5:
             risk_score += AdaptiveAuthWeights.ANOMALY * context.anomaly_score
-            factors.append(f"+{AdaptiveAuthWeights.ANOMALY * context.anomaly_score:.1f} anomaly score ({context.anomaly_score:.2f})")
+            factors.append(
+                f"+{AdaptiveAuthWeights.ANOMALY * context.anomaly_score:.1f} anomaly score ({context.anomaly_score:.2f})"
+            )
 
         risk_score = max(0, min(100, risk_score))
 
@@ -162,15 +168,19 @@ class RiskBasedAuthService:
         return len(attempts)
 
     def _is_known_location(
-        self, current: dict[str, Any], previous: list[dict[str, Any]],
+        self,
+        current: dict[str, Any],
+        previous: list[dict[str, Any]],
     ) -> bool:
         for prev in previous:
             if prev.get("country") == current.get("country"):
                 if prev.get("city") == current.get("city"):
                     return True
                 dist = self._haversine(
-                    prev.get("lat", 0), prev.get("lon", 0),
-                    current.get("lat", 0), current.get("lon", 0),
+                    prev.get("lat", 0),
+                    prev.get("lon", 0),
+                    current.get("lat", 0),
+                    current.get("lon", 0),
                 )
                 if dist < 100:
                     return True
@@ -180,7 +190,10 @@ class RiskBasedAuthService:
         R = 6371
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        )
         return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     def _impossible_travel_check(self, context: AuthContext) -> bool:
@@ -189,8 +202,10 @@ class RiskBasedAuthService:
         last_geo = context.previous_geos[-1]
         current_geo = context.geolocation
         dist = self._haversine(
-            last_geo.get("lat", 0), last_geo.get("lon", 0),
-            current_geo.get("lat", 0), current_geo.get("lon", 0),
+            last_geo.get("lat", 0),
+            last_geo.get("lon", 0),
+            current_geo.get("lat", 0),
+            current_geo.get("lon", 0),
         )
         if dist < 50:
             return False
@@ -198,13 +213,18 @@ class RiskBasedAuthService:
         if context.session_age_minutes < min_hours * 60:
             logger.warning(
                 "Impossible travel detected for user %s: %.0fkm in %.0fmin",
-                context.user_id, dist, context.session_age_minutes,
+                context.user_id,
+                dist,
+                context.session_age_minutes,
             )
             return True
         return False
 
     def _classify_risk(
-        self, risk_score: float, factors: list[str], context: AuthContext,
+        self,
+        risk_score: float,
+        factors: list[str],
+        context: AuthContext,
     ) -> AuthDecision:
         if self._impossible_travel_check(context):
             return AuthDecision(
@@ -268,8 +288,11 @@ class RiskBasedAuthService:
         if decision.risk_level in (AuthRiskLevel.HIGH, AuthRiskLevel.CRITICAL):
             logger.warning(
                 "Risk Based Auth: user=%s score=%.1f level=%s action=%s factors=%s",
-                context.user_id, decision.risk_score, decision.risk_level.value,
-                decision.required_action.value, decision.factors,
+                context.user_id,
+                decision.risk_score,
+                decision.risk_level.value,
+                decision.required_action.value,
+                decision.factors,
             )
 
     def get_decisions(self, user_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:

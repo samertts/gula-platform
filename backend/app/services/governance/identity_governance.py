@@ -151,11 +151,13 @@ class IdentityGovernanceService:
                 issuing_country="IQ",
             ),
         )
-        record.add_history_entry({
-            "action": "citizen_registered",
-            "actor": "system",
-            "description": "Citizen registered with National ID",
-        })
+        record.add_history_entry(
+            {
+                "action": "citizen_registered",
+                "actor": "system",
+                "description": "Citizen registered with National ID",
+            }
+        )
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
@@ -187,11 +189,13 @@ class IdentityGovernanceService:
                     issuing_authority="Iraq Ministry of Health",
                 ),
             )
-        record.add_history_entry({
-            "action": "newborn_registered",
-            "parent_national_id": self._hash_national_id(parent_national_id),
-            "description": "Newborn registered via birth certificate",
-        })
+        record.add_history_entry(
+            {
+                "action": "newborn_registered",
+                "parent_national_id": self._hash_national_id(parent_national_id),
+                "description": "Newborn registered via birth certificate",
+            }
+        )
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
@@ -231,12 +235,14 @@ class IdentityGovernanceService:
                     issuing_authority="Iraq Ministry of Interior",
                 ),
             )
-        record.add_history_entry({
-            "action": "foreigner_registered",
-            "passport": passport_number,
-            "country": country_of_origin,
-            "description": "Foreigner registered with passport",
-        })
+        record.add_history_entry(
+            {
+                "action": "foreigner_registered",
+                "passport": passport_number,
+                "country": country_of_origin,
+                "description": "Foreigner registered with passport",
+            }
+        )
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
@@ -266,11 +272,13 @@ class IdentityGovernanceService:
                 issuing_authority="Iraq Ministry of Interior",
             ),
         )
-        record.add_history_entry({
-            "action": "resident_registered",
-            "residency": residency_number,
-            "description": "Resident registered with residency document",
-        })
+        record.add_history_entry(
+            {
+                "action": "resident_registered",
+                "residency": residency_number,
+                "description": "Resident registered with residency document",
+            }
+        )
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
@@ -307,12 +315,14 @@ class IdentityGovernanceService:
                 issuing_authority="Iraq Ministry of Interior",
             ),
         )
-        record.add_history_entry({
-            "action": "visitor_registered",
-            "passport": passport_number,
-            "visa": visa_number,
-            "description": "Visitor registered with passport and visa",
-        })
+        record.add_history_entry(
+            {
+                "action": "visitor_registered",
+                "passport": passport_number,
+                "visa": visa_number,
+                "description": "Visitor registered with passport and visa",
+            }
+        )
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
@@ -334,10 +344,12 @@ class IdentityGovernanceService:
                 "presenting_complaint": presenting_complaint,
             },
         )
-        record.add_history_entry({
-            "action": "unknown_patient_registered",
-            "description": "Unknown patient registered for emergency care",
-        })
+        record.add_history_entry(
+            {
+                "action": "unknown_patient_registered",
+                "description": "Unknown patient registered for emergency care",
+            }
+        )
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
@@ -345,7 +357,9 @@ class IdentityGovernanceService:
         return record
 
     def link_birth_certificate(
-        self, health_number: str, birth_certificate_number: str,
+        self,
+        health_number: str,
+        birth_certificate_number: str,
     ) -> IdentityRecord:
         record = self._get_by_health_number(health_number)
         record.add_document(
@@ -356,14 +370,19 @@ class IdentityGovernanceService:
                 verification_status=DocumentVerificationStatus.PENDING,
             ),
         )
-        record.add_history_entry({
-            "action": "birth_certificate_linked",
-            "birth_certificate": birth_certificate_number,
-        })
+        record.add_history_entry(
+            {
+                "action": "birth_certificate_linked",
+                "birth_certificate": birth_certificate_number,
+            }
+        )
         return record
 
     def link_passport(
-        self, health_number: str, passport_number: str, issuing_country: str = "IQ",
+        self,
+        health_number: str,
+        passport_number: str,
+        issuing_country: str = "IQ",
     ) -> IdentityRecord:
         record = self._get_by_health_number(health_number)
         record.add_document(
@@ -373,14 +392,18 @@ class IdentityGovernanceService:
                 issuing_country=issuing_country,
             ),
         )
-        record.add_history_entry({
-            "action": "passport_linked",
-            "passport": passport_number,
-        })
+        record.add_history_entry(
+            {
+                "action": "passport_linked",
+                "passport": passport_number,
+            }
+        )
         return record
 
     def link_visa(
-        self, health_number: str, visa_number: str,
+        self,
+        health_number: str,
+        visa_number: str,
     ) -> IdentityRecord:
         record = self._get_by_health_number(health_number)
         record.add_document(
@@ -390,10 +413,12 @@ class IdentityGovernanceService:
                 issuing_authority="Iraq Ministry of Interior",
             ),
         )
-        record.add_history_entry({
-            "action": "visa_linked",
-            "visa": visa_number,
-        })
+        record.add_history_entry(
+            {
+                "action": "visa_linked",
+                "visa": visa_number,
+            }
+        )
         return record
 
     def verify_document(
@@ -409,11 +434,13 @@ class IdentityGovernanceService:
         doc.verification_status = DocumentVerificationStatus.VERIFIED
         doc.verified_at = datetime.now(UTC)
         doc.verified_by = verified_by
-        record.add_history_entry({
-            "action": "document_verified",
-            "document_type": doc_type.value,
-            "verified_by": verified_by,
-        })
+        record.add_history_entry(
+            {
+                "action": "document_verified",
+                "document_type": doc_type.value,
+                "verified_by": verified_by,
+            }
+        )
         return record
 
     def get_identity_history(self, health_number: str) -> list[dict[str, Any]]:
@@ -443,8 +470,7 @@ class IdentityGovernanceService:
         record = self._get_by_health_number(health_number)
         view = record.to_healthcare_view()
         view["documents"] = {
-            dt: {"status": doc.verification_status.value}
-            for dt, doc in record.documents.items()
+            dt: {"status": doc.verification_status.value} for dt, doc in record.documents.items()
         }
         return view
 
@@ -452,7 +478,9 @@ class IdentityGovernanceService:
         if not nid or not self._nid_hmac_key:
             return hashlib.sha256(nid.encode()).hexdigest()
         return hmac.new(
-            self._nid_hmac_key.encode(), nid.encode(), hashlib.sha256,
+            self._nid_hmac_key.encode(),
+            nid.encode(),
+            hashlib.sha256,
         ).hexdigest()
 
     def _generate_health_number(self, seed: str) -> str:

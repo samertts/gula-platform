@@ -127,7 +127,9 @@ class OfflineEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "sync" in content.lower() and ("data" in content.lower() or "pull" in content.lower()):
+                if "sync" in content.lower() and (
+                    "data" in content.lower() or "pull" in content.lower()
+                ):
                     return True
             except Exception:
                 continue

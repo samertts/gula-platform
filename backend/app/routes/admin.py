@@ -670,7 +670,8 @@ def list_users(
     if role:
         if role not in VALID_ROLES:
             raise HTTPException(
-                status_code=400, detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}",
+                status_code=400,
+                detail=f"Invalid role. Valid: {sorted(VALID_ROLES)}",
             )
         if not can_manage_role(actor.role, role):
             raise HTTPException(status_code=403, detail="Cannot view users of that role level")
@@ -685,7 +686,9 @@ def list_users(
     # Batch load lab names
     lab_ids = {u.lab_id for u in users}
     labs_map = (
-        {lab.id: lab.name for lab in db.query(Lab).filter(Lab.id.in_(lab_ids)).all()} if lab_ids else {}
+        {lab.id: lab.name for lab in db.query(Lab).filter(Lab.id.in_(lab_ids)).all()}
+        if lab_ids
+        else {}
     )
 
     return {
@@ -994,7 +997,10 @@ def kill_switch_activate(
     )
     db.commit()
     logger.critical(
-        "[KILL-SWITCH] Activated by %s (id=%d) — reason: %s", admin.email, admin.id, body.reason,
+        "[KILL-SWITCH] Activated by %s (id=%d) — reason: %s",
+        admin.email,
+        admin.id,
+        body.reason,
     )
     return result
 
@@ -1020,7 +1026,10 @@ def kill_switch_deactivate(
     )
     db.commit()
     logger.warning(
-        "[KILL-SWITCH] Deactivated by %s (id=%d) — reason: %s", admin.email, admin.id, body.reason,
+        "[KILL-SWITCH] Deactivated by %s (id=%d) — reason: %s",
+        admin.email,
+        admin.id,
+        body.reason,
     )
     return result
 

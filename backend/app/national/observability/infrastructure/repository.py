@@ -41,7 +41,6 @@ from app.national.observability.infrastructure.models import (
 
 
 class SQLAlchemyMetricRepository(MetricRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -109,10 +108,14 @@ class SQLAlchemyMetricRepository(MetricRepository):
 
     async def get_stats(self) -> dict[str, Any]:
         total = self.db.query(func.count(NationalMetricPoint.id)).scalar() or 0
-        by_name = self.db.query(
-            NationalMetricPoint.name,
-            func.count(NationalMetricPoint.id).label("count"),
-        ).group_by(NationalMetricPoint.name).all()
+        by_name = (
+            self.db.query(
+                NationalMetricPoint.name,
+                func.count(NationalMetricPoint.id).label("count"),
+            )
+            .group_by(NationalMetricPoint.name)
+            .all()
+        )
         return {
             "total": total,
             "by_metric": {row.name: row.count for row in by_name},
@@ -124,7 +127,6 @@ class SQLAlchemyMetricRepository(MetricRepository):
 
 
 class SQLAlchemyTraceSpanRepository(TraceSpanRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -169,9 +171,14 @@ class SQLAlchemyTraceSpanRepository(TraceSpanRepository):
         return model.to_domain()
 
     async def find_by_trace(self, trace_id: str) -> list[TraceSpan]:
-        models = self.db.query(NationalTraceSpan).filter(
-            NationalTraceSpan.trace_id == trace_id,
-        ).order_by(NationalTraceSpan.start_time.asc()).all()
+        models = (
+            self.db.query(NationalTraceSpan)
+            .filter(
+                NationalTraceSpan.trace_id == trace_id,
+            )
+            .order_by(NationalTraceSpan.start_time.asc())
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def search(
@@ -201,19 +208,27 @@ class SQLAlchemyTraceSpanRepository(TraceSpanRepository):
             query = query.filter(NationalTraceSpan.start_time <= to_time)
         if status:
             from app.national.observability.domain.enums import SpanStatus
+
             query = query.filter(NationalTraceSpan.status == SpanStatus(status))
         models = query.order_by(NationalTraceSpan.start_time.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
     async def get_stats(self) -> dict[str, Any]:
         total = self.db.query(func.count(NationalTraceSpan.id)).scalar() or 0
-        by_service = self.db.query(
-            NationalTraceSpan.service,
-            func.count(NationalTraceSpan.id).label("count"),
-        ).group_by(NationalTraceSpan.service).all()
-        avg_duration = self.db.query(
-            func.avg(NationalTraceSpan.duration_ms),
-        ).scalar() or 0.0
+        by_service = (
+            self.db.query(
+                NationalTraceSpan.service,
+                func.count(NationalTraceSpan.id).label("count"),
+            )
+            .group_by(NationalTraceSpan.service)
+            .all()
+        )
+        avg_duration = (
+            self.db.query(
+                func.avg(NationalTraceSpan.duration_ms),
+            ).scalar()
+            or 0.0
+        )
         return {
             "total": total,
             "by_service": {row.service: row.count for row in by_service if row.service},
@@ -222,12 +237,13 @@ class SQLAlchemyTraceSpanRepository(TraceSpanRepository):
 
 
 class SQLAlchemyHealthCheckRepository(HealthCheckRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, check: HealthCheck) -> HealthCheck:
-        model = self.db.query(NationalHealthCheck).filter(NationalHealthCheck.id == check.id).first()
+        model = (
+            self.db.query(NationalHealthCheck).filter(NationalHealthCheck.id == check.id).first()
+        )
         if model:
             model.name = check.name
             model.component = check.component
@@ -259,25 +275,38 @@ class SQLAlchemyHealthCheckRepository(HealthCheckRepository):
         return model.to_domain()
 
     async def get(self, check_id: str) -> HealthCheck | None:
-        model = self.db.query(NationalHealthCheck).filter(
-            NationalHealthCheck.id == check_id,
-            ~NationalHealthCheck.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalHealthCheck)
+            .filter(
+                NationalHealthCheck.id == check_id,
+                ~NationalHealthCheck.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
 
     async def list(self) -> list[HealthCheck]:
-        models = self.db.query(NationalHealthCheck).filter(
-            ~~NationalHealthCheck.is_deleted,
-        ).order_by(NationalHealthCheck.name.asc()).all()
+        models = (
+            self.db.query(NationalHealthCheck)
+            .filter(
+                ~~NationalHealthCheck.is_deleted,
+            )
+            .order_by(NationalHealthCheck.name.asc())
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_by_name(self, name: str) -> HealthCheck | None:
-        model = self.db.query(NationalHealthCheck).filter(
-            NationalHealthCheck.name == name,
-            ~NationalHealthCheck.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalHealthCheck)
+            .filter(
+                NationalHealthCheck.name == name,
+                ~NationalHealthCheck.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -299,7 +328,6 @@ class SQLAlchemyHealthCheckRepository(HealthCheckRepository):
 
 
 class SQLAlchemyAlertRuleRepository(AlertRuleRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -332,10 +360,14 @@ class SQLAlchemyAlertRuleRepository(AlertRuleRepository):
         return model.to_domain()
 
     async def get(self, rule_id: str) -> AlertRule | None:
-        model = self.db.query(NationalAlertRule).filter(
-            NationalAlertRule.id == rule_id,
-            ~NationalAlertRule.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalAlertRule)
+            .filter(
+                NationalAlertRule.id == rule_id,
+                ~NationalAlertRule.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -345,31 +377,45 @@ class SQLAlchemyAlertRuleRepository(AlertRuleRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[AlertRule]:
-        models = self.db.query(NationalAlertRule).filter(
-            ~~NationalAlertRule.is_deleted,
-        ).order_by(NationalAlertRule.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalAlertRule)
+            .filter(
+                ~~NationalAlertRule.is_deleted,
+            )
+            .order_by(NationalAlertRule.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, rule_id: str) -> None:
-        model = self.db.query(NationalAlertRule).filter(
-            NationalAlertRule.id == rule_id,
-            ~NationalAlertRule.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalAlertRule)
+            .filter(
+                NationalAlertRule.id == rule_id,
+                ~NationalAlertRule.is_deleted,
+            )
+            .first()
+        )
         if model:
             model.is_deleted = True
             model.deleted_at = datetime.now(UTC)
             self.db.commit()
 
     async def find_enabled(self) -> list[AlertRule]:
-        models = self.db.query(NationalAlertRule).filter(
-            NationalAlertRule.enabled,
-            ~NationalAlertRule.is_deleted,
-        ).all()
+        models = (
+            self.db.query(NationalAlertRule)
+            .filter(
+                NationalAlertRule.enabled,
+                ~NationalAlertRule.is_deleted,
+            )
+            .all()
+        )
         return [m.to_domain() for m in models]
 
 
 class SQLAlchemyAlertEventRepository(AlertEventRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -428,28 +474,38 @@ class SQLAlchemyAlertEventRepository(AlertEventRepository):
         return [m.to_domain() for m in models]
 
     async def find_firing(self) -> list[AlertEvent]:
-        models = self.db.query(NationalAlertEvent).filter(
-            NationalAlertEvent.status == AlertStatus.FIRING,
-        ).all()
+        models = (
+            self.db.query(NationalAlertEvent)
+            .filter(
+                NationalAlertEvent.status == AlertStatus.FIRING,
+            )
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def get_active_count_by_severity(self) -> dict[str, int]:
-        rows = self.db.query(
-            NationalAlertEvent.severity,
-            func.count(NationalAlertEvent.id).label("count"),
-        ).filter(
-            NationalAlertEvent.status == AlertStatus.FIRING,
-        ).group_by(NationalAlertEvent.severity).all()
+        rows = (
+            self.db.query(
+                NationalAlertEvent.severity,
+                func.count(NationalAlertEvent.id).label("count"),
+            )
+            .filter(
+                NationalAlertEvent.status == AlertStatus.FIRING,
+            )
+            .group_by(NationalAlertEvent.severity)
+            .all()
+        )
         return {row.severity.value: row.count for row in rows}
 
 
 class SQLAlchemyDashboardRepository(DashboardRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, dashboard: Dashboard) -> Dashboard:
-        model = self.db.query(NationalDashboard).filter(NationalDashboard.id == dashboard.id).first()
+        model = (
+            self.db.query(NationalDashboard).filter(NationalDashboard.id == dashboard.id).first()
+        )
         if model:
             model.name = dashboard.name
             model.description = dashboard.description
@@ -469,10 +525,14 @@ class SQLAlchemyDashboardRepository(DashboardRepository):
         return model.to_domain()
 
     async def get(self, dashboard_id: str) -> Dashboard | None:
-        model = self.db.query(NationalDashboard).filter(
-            NationalDashboard.id == dashboard_id,
-            ~NationalDashboard.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalDashboard)
+            .filter(
+                NationalDashboard.id == dashboard_id,
+                ~NationalDashboard.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -482,16 +542,27 @@ class SQLAlchemyDashboardRepository(DashboardRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[Dashboard]:
-        models = self.db.query(NationalDashboard).filter(
-            ~~NationalDashboard.is_deleted,
-        ).order_by(NationalDashboard.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalDashboard)
+            .filter(
+                ~~NationalDashboard.is_deleted,
+            )
+            .order_by(NationalDashboard.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, dashboard_id: str) -> None:
-        model = self.db.query(NationalDashboard).filter(
-            NationalDashboard.id == dashboard_id,
-            ~NationalDashboard.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalDashboard)
+            .filter(
+                NationalDashboard.id == dashboard_id,
+                ~NationalDashboard.is_deleted,
+            )
+            .first()
+        )
         if model:
             model.is_deleted = True
             model.deleted_at = datetime.now(UTC)
@@ -499,12 +570,15 @@ class SQLAlchemyDashboardRepository(DashboardRepository):
 
 
 class SQLAlchemyDashboardPanelRepository(DashboardPanelRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, panel: DashboardPanel) -> DashboardPanel:
-        model = self.db.query(NationalDashboardPanel).filter(NationalDashboardPanel.id == panel.id).first()
+        model = (
+            self.db.query(NationalDashboardPanel)
+            .filter(NationalDashboardPanel.id == panel.id)
+            .first()
+        )
         if model:
             model.dashboard_id = panel.dashboard_id
             model.title = panel.title
@@ -536,29 +610,41 @@ class SQLAlchemyDashboardPanelRepository(DashboardPanelRepository):
         return saved
 
     async def find_by_dashboard(self, dashboard_id: str) -> list[DashboardPanel]:
-        models = self.db.query(NationalDashboardPanel).filter(
-            NationalDashboardPanel.dashboard_id == dashboard_id,
-        ).order_by(NationalDashboardPanel.position.asc()).all()
+        models = (
+            self.db.query(NationalDashboardPanel)
+            .filter(
+                NationalDashboardPanel.dashboard_id == dashboard_id,
+            )
+            .order_by(NationalDashboardPanel.position.asc())
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete_by_dashboard(self, dashboard_id: str) -> None:
-        models = self.db.query(NationalDashboardPanel).filter(
-            NationalDashboardPanel.dashboard_id == dashboard_id,
-        ).all()
+        models = (
+            self.db.query(NationalDashboardPanel)
+            .filter(
+                NationalDashboardPanel.dashboard_id == dashboard_id,
+            )
+            .all()
+        )
         for m in models:
             self.db.delete(m)
         self.db.commit()
 
 
 class SQLAlchemyServiceGraphRepository(ServiceGraphRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, graph: ServiceGraph) -> ServiceGraph:
-        model = self.db.query(NationalServiceGraph).filter(
-            NationalServiceGraph.service_name == graph.service_name,
-        ).first()
+        model = (
+            self.db.query(NationalServiceGraph)
+            .filter(
+                NationalServiceGraph.service_name == graph.service_name,
+            )
+            .first()
+        )
         if model:
             model.dependencies = [
                 {
@@ -597,25 +683,37 @@ class SQLAlchemyServiceGraphRepository(ServiceGraphRepository):
         return model.to_domain()
 
     async def get(self, service_name: str) -> ServiceGraph | None:
-        model = self.db.query(NationalServiceGraph).filter(
-            NationalServiceGraph.service_name == service_name,
-            ~NationalServiceGraph.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalServiceGraph)
+            .filter(
+                NationalServiceGraph.service_name == service_name,
+                ~NationalServiceGraph.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
 
     async def list(self) -> list[ServiceGraph]:
-        models = self.db.query(NationalServiceGraph).filter(
-            ~~NationalServiceGraph.is_deleted,
-        ).all()
+        models = (
+            self.db.query(NationalServiceGraph)
+            .filter(
+                ~~NationalServiceGraph.is_deleted,
+            )
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, service_name: str) -> None:
-        model = self.db.query(NationalServiceGraph).filter(
-            NationalServiceGraph.service_name == service_name,
-            ~NationalServiceGraph.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalServiceGraph)
+            .filter(
+                NationalServiceGraph.service_name == service_name,
+                ~NationalServiceGraph.is_deleted,
+            )
+            .first()
+        )
         if model:
             model.is_deleted = True
             model.deleted_at = datetime.now(UTC)

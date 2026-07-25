@@ -49,7 +49,6 @@ def create(
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can create service accounts")
 
-
     account, api_key = create_service_account(
         db=db,
         name=data.name,
@@ -74,7 +73,6 @@ def list_all(
 ):
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can list service accounts")
-
 
     accounts = list_service_accounts(db)
     return [
@@ -101,7 +99,6 @@ def revoke(
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can revoke service accounts")
 
-
     if not revoke_service_account(db, account_id):
         raise HTTPException(status_code=404, detail="Service account not found")
     return {"message": "Service account revoked"}
@@ -115,7 +112,6 @@ def rotate(
 ):
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can rotate API keys")
-
 
     new_key = rotate_api_key(db, account_id)
     if not new_key:

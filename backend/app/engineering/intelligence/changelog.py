@@ -35,7 +35,9 @@ class CHANGELOGAutomator:
         self.project_root = Path(project_root)
 
     def generate_from_git(
-        self, since_tag: str | None = None, output_path: str = "CHANGELOG.md",
+        self,
+        since_tag: str | None = None,
+        output_path: str = "CHANGELOG.md",
     ) -> list[ChangelogEntry]:
         entries = self._parse_git_log(since_tag)
         content = self._format_changelog(entries)
@@ -54,7 +56,9 @@ class CHANGELOGAutomator:
         return self._format_changelog(entries)
 
     def write(
-        self, entries: list[ChangelogEntry] | None = None, output_path: str = "CHANGELOG.md",
+        self,
+        entries: list[ChangelogEntry] | None = None,
+        output_path: str = "CHANGELOG.md",
     ) -> None:
         content = self.generate(entries)
         path = Path(output_path)

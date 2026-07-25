@@ -80,7 +80,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_biomed_devices_udi_di", "biomed_devices", ["udi_di"])
         op.create_index("ix_biomed_devices_fhir_id", "biomed_devices", ["fhir_id"])
@@ -126,7 +126,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_biomed_work_orders_lab_id", "biomed_work_orders", ["lab_id"])
         op.create_index("ix_biomed_work_orders_fhir_id", "biomed_work_orders", ["fhir_id"])
@@ -165,7 +165,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_biomed_calibrations_fhir_id", "biomed_calibrations", ["fhir_id"])
         op.create_index("ix_biomed_calibrations_lab_id", "biomed_calibrations", ["lab_id"])
@@ -199,11 +199,17 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_biomed_safety_inspections_lab_id", "biomed_safety_inspections", ["lab_id"])
-        op.create_index("ix_biomed_safety_inspections_fhir_id", "biomed_safety_inspections", ["fhir_id"])
-        op.create_index("ix_biomed_safety_inspections_device_id", "biomed_safety_inspections", ["device_id"])
+        op.create_index(
+            "ix_biomed_safety_inspections_lab_id", "biomed_safety_inspections", ["lab_id"]
+        )
+        op.create_index(
+            "ix_biomed_safety_inspections_fhir_id", "biomed_safety_inspections", ["fhir_id"]
+        )
+        op.create_index(
+            "ix_biomed_safety_inspections_device_id", "biomed_safety_inspections", ["device_id"]
+        )
 
     if not _table_exists("biomed_incidents"):
         op.create_table(
@@ -237,7 +243,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_biomed_incidents_lab_id", "biomed_incidents", ["lab_id"])
         op.create_index("ix_biomed_incidents_fhir_id", "biomed_incidents", ["fhir_id"])
@@ -270,7 +276,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_biomed_recalls_fhir_id", "biomed_recalls", ["fhir_id"])
         op.create_index("ix_biomed_recalls_lab_id", "biomed_recalls", ["lab_id"])
@@ -298,7 +304,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_biomed_technicians_lab_id", "biomed_technicians", ["lab_id"])
         op.create_index("ix_biomed_technicians_fhir_id", "biomed_technicians", ["fhir_id"])
@@ -325,7 +331,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_biomed_vendors_fhir_id", "biomed_vendors", ["fhir_id"])
         op.create_index("ix_biomed_vendors_lab_id", "biomed_vendors", ["lab_id"])
@@ -351,7 +357,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_biomed_spare_parts_lab_id", "biomed_spare_parts", ["lab_id"])
         op.create_index("ix_biomed_spare_parts_fhir_id", "biomed_spare_parts", ["fhir_id"])
@@ -384,10 +390,14 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_biomed_service_contracts_lab_id", "biomed_service_contracts", ["lab_id"])
-        op.create_index("ix_biomed_service_contracts_fhir_id", "biomed_service_contracts", ["fhir_id"])
+        op.create_index(
+            "ix_biomed_service_contracts_lab_id", "biomed_service_contracts", ["lab_id"]
+        )
+        op.create_index(
+            "ix_biomed_service_contracts_fhir_id", "biomed_service_contracts", ["fhir_id"]
+        )
 
     if not _table_exists("biomed_maintenance_schedules"):
         op.create_table(
@@ -410,10 +420,14 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_biomed_maintenance_schedules_lab_id", "biomed_maintenance_schedules", ["lab_id"])
-        op.create_index("ix_biomed_maintenance_schedules_fhir_id", "biomed_maintenance_schedules", ["fhir_id"])
+        op.create_index(
+            "ix_biomed_maintenance_schedules_lab_id", "biomed_maintenance_schedules", ["lab_id"]
+        )
+        op.create_index(
+            "ix_biomed_maintenance_schedules_fhir_id", "biomed_maintenance_schedules", ["fhir_id"]
+        )
 
     if not _table_exists("biomed_performance_verifications"):
         op.create_table(
@@ -437,12 +451,23 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_biomed_performance_verifications_lab_id", "biomed_performance_verifications", ["lab_id"])
-        op.create_index("ix_biomed_performance_verifications_device_id", "biomed_performance_verifications", ["device_id"])
-        op.create_index("ix_biomed_performance_verifications_fhir_id", "biomed_performance_verifications", ["fhir_id"])
-
+        op.create_index(
+            "ix_biomed_performance_verifications_lab_id",
+            "biomed_performance_verifications",
+            ["lab_id"],
+        )
+        op.create_index(
+            "ix_biomed_performance_verifications_device_id",
+            "biomed_performance_verifications",
+            ["device_id"],
+        )
+        op.create_index(
+            "ix_biomed_performance_verifications_fhir_id",
+            "biomed_performance_verifications",
+            ["fhir_id"],
+        )
 
 
 def downgrade() -> None:

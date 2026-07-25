@@ -60,7 +60,6 @@ logger = logging.getLogger("gula.national.document_platform")
 
 
 class DocumentPlatformService:
-
     def __init__(
         self,
         document_repository: DocumentRepository,
@@ -129,19 +128,21 @@ class DocumentPlatformService:
 
         saved = await self.document_repository.save(document)
 
-        self._publish_event(DocumentCreatedEvent(
-            document_id=saved.id,
-            filename=saved.filename,
-            category=saved.category,
-            format=saved.format,
-            aggregate_id=saved.id,
-            payload={
-                "filename": saved.filename,
-                "category": saved.category.value,
-                "format": saved.format.value,
-                "size_bytes": saved.size_bytes,
-            },
-        ))
+        self._publish_event(
+            DocumentCreatedEvent(
+                document_id=saved.id,
+                filename=saved.filename,
+                category=saved.category,
+                format=saved.format,
+                aggregate_id=saved.id,
+                payload={
+                    "filename": saved.filename,
+                    "category": saved.category.value,
+                    "format": saved.format.value,
+                    "size_bytes": saved.size_bytes,
+                },
+            ),
+        )
 
         return saved
 
@@ -159,12 +160,20 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
             raise DocumentStateTransitionError(
-                document_id, document.status.value, "update",
+                document_id,
+                document.status.value,
+                "update",
             )
 
         changes: dict[str, Any] = {}
         for key, value in updates.items():
-            if hasattr(document, key) and key not in ("id", "created_at", "version", "is_deleted", "deleted_at"):
+            if hasattr(document, key) and key not in (
+                "id",
+                "created_at",
+                "version",
+                "is_deleted",
+                "deleted_at",
+            ):
                 old_val = getattr(document, key)
                 if key == "category" and isinstance(value, str):
                     value = DocumentCategory(value)
@@ -176,18 +185,23 @@ class DocumentPlatformService:
                     value = RetentionPolicy(value)
                 setattr(document, key, value)
                 if old_val != value:
-                    changes[key] = {"from": str(old_val) if not isinstance(old_val, (list, dict)) else old_val, "to": str(value) if not isinstance(value, (list, dict)) else value}
+                    changes[key] = {
+                        "from": str(old_val) if not isinstance(old_val, (list, dict)) else old_val,
+                        "to": str(value) if not isinstance(value, (list, dict)) else value,
+                    }
 
         document.version += 1
         document.updated_at = datetime.now(UTC)
         saved = await self.document_repository.save(document)
 
-        self._publish_event(DocumentUpdatedEvent(
-            document_id=saved.id,
-            changes=changes,
-            aggregate_id=saved.id,
-            payload={"changes": changes},
-        ))
+        self._publish_event(
+            DocumentUpdatedEvent(
+                document_id=saved.id,
+                changes=changes,
+                aggregate_id=saved.id,
+                payload={"changes": changes},
+            ),
+        )
 
         return saved
 
@@ -203,7 +217,9 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
             raise DocumentStateTransitionError(
-                document_id, document.status.value, "create_version",
+                document_id,
+                document.status.value,
+                "create_version",
             )
 
         existing_versions = await self.version_repository.list(document_id, limit=1000)
@@ -227,17 +243,19 @@ class DocumentPlatformService:
         document.hash_sha256 = hash_sha256 or document.hash_sha256
         await self.document_repository.save(document)
 
-        self._publish_event(DocumentVersionedEvent(
-            document_id=document_id,
-            version_id=saved.id,
-            version_number=saved.version_number,
-            aggregate_id=document_id,
-            payload={
-                "version_id": saved.id,
-                "version_number": saved.version_number,
-                "change_summary": saved.change_summary,
-            },
-        ))
+        self._publish_event(
+            DocumentVersionedEvent(
+                document_id=document_id,
+                version_id=saved.id,
+                version_number=saved.version_number,
+                aggregate_id=document_id,
+                payload={
+                    "version_id": saved.id,
+                    "version_number": saved.version_number,
+                    "change_summary": saved.change_summary,
+                },
+            ),
+        )
 
         return saved
 
@@ -254,11 +272,17 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
             raise DocumentStateTransitionError(
-                document_id, document.status.value, "sign",
+                document_id,
+                document.status.value,
+                "sign",
             )
 
         existing_signatures = await self.signature_repository.list(document_id, limit=1000)
-        previous_hash = existing_signatures[-1].hash_chain_current if existing_signatures else document.hash_sha256
+        previous_hash = (
+            existing_signatures[-1].hash_chain_current
+            if existing_signatures
+            else document.hash_sha256
+        )
 
         hash_input = f"{previous_hash}:{signer_id}:{document_id}:{datetime.now(UTC).isoformat()}"
         current_hash = hashlib.sha256(hash_input.encode()).hexdigest()
@@ -285,19 +309,21 @@ class DocumentPlatformService:
         document.updated_at = datetime.now(UTC)
         await self.document_repository.save(document)
 
-        self._publish_event(DocumentSignedEvent(
-            document_id=document_id,
-            signature_id=saved.id,
-            signer_id=saved.signer_id,
-            signer_name=saved.signer_name,
-            aggregate_id=document_id,
-            payload={
-                "signature_id": saved.id,
-                "signer_id": saved.signer_id,
-                "signer_name": saved.signer_name,
-                "hash_chain_current": saved.hash_chain_current,
-            },
-        ))
+        self._publish_event(
+            DocumentSignedEvent(
+                document_id=document_id,
+                signature_id=saved.id,
+                signer_id=saved.signer_id,
+                signer_name=saved.signer_name,
+                aggregate_id=document_id,
+                payload={
+                    "signature_id": saved.id,
+                    "signer_id": saved.signer_id,
+                    "signer_name": saved.signer_name,
+                    "hash_chain_current": saved.hash_chain_current,
+                },
+            ),
+        )
 
         return saved
 
@@ -311,15 +337,25 @@ class DocumentPlatformService:
         if not signature:
             raise SignatureNotFoundError(signature_id)
         if signature.document_id != document_id:
-            raise SignatureVerificationError(signature_id, "Signature does not belong to this document")
+            raise SignatureVerificationError(
+                signature_id, "Signature does not belong to this document",
+            )
 
         if signature.status == SignatureStatus.EXPIRED:
             return {"valid": False, "reason": "Signature has expired", "signature_id": signature_id}
 
         if signature.status == SignatureStatus.REVOKED:
-            return {"valid": False, "reason": "Signature has been revoked", "signature_id": signature_id}
+            return {
+                "valid": False,
+                "reason": "Signature has been revoked",
+                "signature_id": signature_id,
+            }
 
-        hash_input = f"{signature.hash_chain_previous}:{signature.signer_id}:{document_id}:{signature.signed_at.isoformat()}" if signature.signed_at else ""
+        hash_input = (
+            f"{signature.hash_chain_previous}:{signature.signer_id}:{document_id}:{signature.signed_at.isoformat()}"
+            if signature.signed_at
+            else ""
+        )
         expected_hash = hashlib.sha256(hash_input.encode()).hexdigest() if hash_input else ""
         hash_valid = signature.signature_value == expected_hash
 
@@ -342,18 +378,20 @@ class DocumentPlatformService:
             signature.status = SignatureStatus.VERIFIED
             await self.signature_repository.save(signature)
 
-        self._publish_event(DocumentVerifiedEvent(
-            document_id=document_id,
-            signature_id=signature_id,
-            valid=valid,
-            aggregate_id=document_id,
-            payload={
-                "signature_id": signature_id,
-                "valid": valid,
-                "hash_valid": hash_valid,
-                "external_valid": external_valid,
-            },
-        ))
+        self._publish_event(
+            DocumentVerifiedEvent(
+                document_id=document_id,
+                signature_id=signature_id,
+                valid=valid,
+                aggregate_id=document_id,
+                payload={
+                    "signature_id": signature_id,
+                    "valid": valid,
+                    "hash_valid": hash_valid,
+                    "external_valid": external_valid,
+                },
+            ),
+        )
 
         return {
             "valid": valid,
@@ -465,7 +503,9 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
             raise DocumentStateTransitionError(
-                document_id, document.status.value, "add_attachment",
+                document_id,
+                document.status.value,
+                "add_attachment",
             )
 
         attachment = DocumentAttachment(
@@ -496,19 +536,23 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status == DocumentStatus.ARCHIVED:
             raise DocumentStateTransitionError(
-                document_id, document.status.value, DocumentStatus.ARCHIVED.value,
+                document_id,
+                document.status.value,
+                DocumentStatus.ARCHIVED.value,
             )
 
         document.status = DocumentStatus.ARCHIVED
         document.updated_at = datetime.now(UTC)
         saved = await self.document_repository.save(document)
 
-        self._publish_event(DocumentArchivedEvent(
-            document_id=document_id,
-            reason=reason,
-            aggregate_id=document_id,
-            payload={"reason": reason},
-        ))
+        self._publish_event(
+            DocumentArchivedEvent(
+                document_id=document_id,
+                reason=reason,
+                aggregate_id=document_id,
+                payload={"reason": reason},
+            ),
+        )
 
         return saved
 
@@ -520,7 +564,9 @@ class DocumentPlatformService:
         document = await self.get_document(document_id)
         if document.status == DocumentStatus.DELETED:
             raise DocumentStateTransitionError(
-                document_id, document.status.value, DocumentStatus.DELETED.value,
+                document_id,
+                document.status.value,
+                DocumentStatus.DELETED.value,
             )
 
         document.status = DocumentStatus.DELETED
@@ -529,12 +575,14 @@ class DocumentPlatformService:
         document.updated_at = datetime.now(UTC)
         await self.document_repository.save(document)
 
-        self._publish_event(DocumentDeletedEvent(
-            document_id=document_id,
-            reason=reason,
-            aggregate_id=document_id,
-            payload={"reason": reason},
-        ))
+        self._publish_event(
+            DocumentDeletedEvent(
+                document_id=document_id,
+                reason=reason,
+                aggregate_id=document_id,
+                payload={"reason": reason},
+            ),
+        )
 
     async def apply_retention_policy(
         self,
@@ -576,19 +624,21 @@ class DocumentPlatformService:
             document.updated_at = datetime.now(UTC)
             await self.document_repository.save(document)
 
-            self._publish_event(DocumentRetentionTriggeredEvent(
-                document_id=document_id,
-                rule_id=rule.id,
-                policy=rule.policy,
-                aggregate_id=document_id,
-                payload={
-                    "rule_id": rule.id,
-                    "policy": rule.policy.value,
-                    "action": result["action"],
-                    "retention_days": rule.retention_days,
-                    "age_days": age_days,
-                },
-            ))
+            self._publish_event(
+                DocumentRetentionTriggeredEvent(
+                    document_id=document_id,
+                    rule_id=rule.id,
+                    policy=rule.policy,
+                    aggregate_id=document_id,
+                    payload={
+                        "rule_id": rule.id,
+                        "policy": rule.policy.value,
+                        "action": result["action"],
+                        "retention_days": rule.retention_days,
+                        "age_days": age_days,
+                    },
+                ),
+            )
 
         return result
 
@@ -612,29 +662,33 @@ class DocumentPlatformService:
         ]
 
         for v in versions:
-            history.append({
-                "type": "versioned",
-                "timestamp": v.created_at.isoformat() if v.created_at else "",
-                "by": v.created_by,
-                "details": {
-                    "version_number": v.version_number,
-                    "change_summary": v.change_summary,
-                    "filename": v.filename,
+            history.append(
+                {
+                    "type": "versioned",
+                    "timestamp": v.created_at.isoformat() if v.created_at else "",
+                    "by": v.created_by,
+                    "details": {
+                        "version_number": v.version_number,
+                        "change_summary": v.change_summary,
+                        "filename": v.filename,
+                    },
                 },
-            })
+            )
 
         for s in signatures:
-            history.append({
-                "type": "signature",
-                "timestamp": s.signed_at.isoformat() if s.signed_at else "",
-                "by": s.signer_name,
-                "details": {
-                    "signer_id": s.signer_id,
-                    "signer_role": s.signer_role,
-                    "signature_type": s.signature_type,
-                    "status": s.status.value,
+            history.append(
+                {
+                    "type": "signature",
+                    "timestamp": s.signed_at.isoformat() if s.signed_at else "",
+                    "by": s.signer_name,
+                    "details": {
+                        "signer_id": s.signer_id,
+                        "signer_role": s.signer_role,
+                        "signature_type": s.signature_type,
+                        "status": s.status.value,
+                    },
                 },
-            })
+            )
 
         history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
@@ -692,17 +746,25 @@ class DocumentPlatformService:
         now = datetime.now(UTC)
 
         for doc in documents:
-            if doc.expires_at and doc.expires_at <= now and doc.status not in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED):
+            if (
+                doc.expires_at
+                and doc.expires_at <= now
+                and doc.status not in (DocumentStatus.DELETED, DocumentStatus.ARCHIVED)
+            ):
                 doc.status = DocumentStatus.ARCHIVED
                 doc.updated_at = now
                 await self.document_repository.save(doc)
 
-                self._publish_event(DocumentExpiredEvent(
-                    document_id=doc.id,
-                    filename=doc.filename,
-                    aggregate_id=doc.id,
-                    payload={"expires_at": doc.expires_at.isoformat() if doc.expires_at else ""},
-                ))
+                self._publish_event(
+                    DocumentExpiredEvent(
+                        document_id=doc.id,
+                        filename=doc.filename,
+                        aggregate_id=doc.id,
+                        payload={
+                            "expires_at": doc.expires_at.isoformat() if doc.expires_at else "",
+                        },
+                    ),
+                )
                 expired.append(doc.id)
 
         return expired

@@ -166,7 +166,9 @@ async def check_duplicate_therapy(
     )
 
 
-@router.get("/patient/{patient_id}/contraindications", response_model=list[ContraindicationResponse])
+@router.get(
+    "/patient/{patient_id}/contraindications", response_model=list[ContraindicationResponse],
+)
 async def check_contraindications(
     patient_id: str,
     medication_code: str = Query(...),

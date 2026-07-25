@@ -74,7 +74,10 @@ EVENT_REGISTRY = {
                 "lab_id": {"type": "integer"},
                 "doctor_name": {"type": "string"},
                 "doctor_user_id": {"type": "integer"},
-                "status": {"type": "string", "enum": ["pending", "completed", "validated", "cancelled"]},
+                "status": {
+                    "type": "string",
+                    "enum": ["pending", "completed", "validated", "cancelled"],
+                },
                 "test_types": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -488,7 +491,10 @@ EVENT_REGISTRY = {
             "required": ["audit_id", "action", "entity_type", "entity_id"],
             "properties": {
                 "audit_id": {"type": "integer"},
-                "action": {"type": "string", "enum": ["CREATE", "UPDATE", "DELETE", "READ", "EXPORT"]},
+                "action": {
+                    "type": "string",
+                    "enum": ["CREATE", "UPDATE", "DELETE", "READ", "EXPORT"],
+                },
                 "entity_type": {"type": "string"},
                 "entity_id": {"type": "string"},
                 "user_id": {"type": "integer"},
@@ -524,7 +530,9 @@ def get_asyncapi_spec() -> dict:
     channels = {}
     for event_name, event_def in EVENT_REGISTRY.items():
         topic = event_name.replace(  # camelCase → kebab-case
-            event_name[0], event_name[0].lower(), 1,
+            event_name[0],
+            event_name[0].lower(),
+            1,
         )
         topic = "".join([f"-{c.lower()}" if c.isupper() else c for c in topic]).lstrip("-")
         topic = topic.replace("_", "-")

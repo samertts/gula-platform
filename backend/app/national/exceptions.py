@@ -133,7 +133,9 @@ class ForeignerRegistrationError(NationalDomainError):
 
 
 class OfflineSyncConflictError(NationalDomainError):
-    def __init__(self, entity: str, entity_id: str, local_version: int, remote_version: int) -> None:
+    def __init__(
+        self, entity: str, entity_id: str, local_version: int, remote_version: int,
+    ) -> None:
         self.entity = entity
         self.entity_id = entity_id
         self.local_version = local_version
@@ -149,4 +151,6 @@ class OptimisticLockError(NationalDomainError):
         self.entity = entity
         self.entity_id = entity_id
         self.expected_version = expected_version
-        super().__init__(f"Optimistic lock failed: {entity} {entity_id} expected version {expected_version}")
+        super().__init__(
+            f"Optimistic lock failed: {entity} {entity_id} expected version {expected_version}",
+        )

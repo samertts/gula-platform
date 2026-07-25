@@ -53,7 +53,9 @@ class TestSuite:
             "total": self.total,
             "passed_count": self.passed_count,
             "failed_count": self.failed_count,
-            "duration_ms": (self.completed_at - self.started_at) * 1000 if self.completed_at else 0.0,
+            "duration_ms": (self.completed_at - self.started_at) * 1000
+            if self.completed_at
+            else 0.0,
             "results": [
                 {
                     "name": r.name,
@@ -75,7 +77,9 @@ class ContractTester:
         self._contracts[name] = spec
         logger.info("Contract registered: %s", name)
 
-    async def test_endpoint(self, name: str, base_url: str, path: str, method: str = "GET") -> TestResult:
+    async def test_endpoint(
+        self, name: str, base_url: str, path: str, method: str = "GET"
+    ) -> TestResult:
         start = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -138,21 +142,27 @@ class FHIRValidationTester:
                 if not result.get("valid", False):
                     issues = result.get("issues", [])
                     for issue in issues:
-                        errors.append(f"Issue: {issue.get('severity')}: {issue.get('details', {}).get('text', '')}")
-                suite.results.append(TestResult(
-                    name=f"fhir_valid_{resource_type}_{i}",
-                    passed=result.get("valid", False),
-                    duration_ms=(time.monotonic() - start) * 1000,
-                    errors=errors,
-                    details={"resource_type": resource_type, "validation": result},
-                ))
+                        errors.append(
+                            f"Issue: {issue.get('severity')}: {issue.get('details', {}).get('text', '')}"
+                        )
+                suite.results.append(
+                    TestResult(
+                        name=f"fhir_valid_{resource_type}_{i}",
+                        passed=result.get("valid", False),
+                        duration_ms=(time.monotonic() - start) * 1000,
+                        errors=errors,
+                        details={"resource_type": resource_type, "validation": result},
+                    )
+                )
             except Exception as exc:
-                suite.results.append(TestResult(
-                    name=f"fhir_valid_{resource_type}_{i}",
-                    passed=False,
-                    duration_ms=(time.monotonic() - start) * 1000,
-                    errors=[str(exc)],
-                ))
+                suite.results.append(
+                    TestResult(
+                        name=f"fhir_valid_{resource_type}_{i}",
+                        passed=False,
+                        duration_ms=(time.monotonic() - start) * 1000,
+                        errors=[str(exc)],
+                    )
+                )
         suite.completed_at = time.time()
         return suite
 
@@ -192,7 +202,9 @@ class IntegrationTester:
                         errors.append(f"Step {i}: {method} {path} returned {resp.status_code}")
                 except Exception as exc:
                     errors.append(f"Step {i}: {exc!s}")
-                    details["steps"].append({"step": i, "method": method, "path": path, "error": str(exc)})
+                    details["steps"].append(
+                        {"step": i, "method": method, "path": path, "error": str(exc)}
+                    )
         return TestResult(
             name=name,
             passed=len(errors) == 0,
@@ -276,7 +288,9 @@ class LoadTester:
                 "avg_latency_ms": round(avg_latency, 2),
                 "min_latency_ms": round(min(latencies), 2) if latencies else 0,
                 "max_latency_ms": round(max(latencies), 2) if latencies else 0,
-                "p95_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.95)], 2) if latencies else 0,
+                "p95_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.95)], 2)
+                if latencies
+                else 0,
                 "total_duration_ms": round(duration_ms, 2),
             },
         )
@@ -306,11 +320,14 @@ class ChaosTester:
                 try:
                     if action_type == "http":
                         resp = await client.request(method, url)
-                        details.append({"step": i, "type": action_type, "status_code": resp.status_code})
+                        details.append(
+                            {"step": i, "type": action_type, "status_code": resp.status_code}
+                        )
                         if resp.is_error:
                             pass
                     elif action_type == "delay":
                         import asyncio
+
                         delay = action.get("duration", 0.5)
                         await asyncio.sleep(delay)
                         details.append({"step": i, "type": "delay", "duration": delay})
@@ -402,7 +419,9 @@ class SecurityTester:
             elif test_type == "injection":
                 result = await self.test_injection(target_url, path)
             else:
-                result = TestResult(name=name, passed=False, errors=[f"Unknown test type: {test_type}"])
+                result = TestResult(
+                    name=name, passed=False, errors=[f"Unknown test type: {test_type}"]
+                )
             suite.results.append(result)
         suite.completed_at = time.time()
         return suite
@@ -415,7 +434,9 @@ class CompatibilityTester:
     def add_version(self, version: str) -> None:
         self._versions.append(version)
 
-    async def test_fhir_version(self, fhir_service: FHIRService, version: str, resource: dict[str, Any]) -> TestResult:
+    async def test_fhir_version(
+        self, fhir_service: FHIRService, version: str, resource: dict[str, Any]
+    ) -> TestResult:
         start = time.monotonic()
         errors: list[str] = []
         try:
@@ -505,12 +526,11 @@ class IntegrationTestSuite:
 
         if self._fhir_service and self.compatibility._versions:
             test_resource = {"resourceType": "Patient", "id": "test"}
-            suites["compatibility"] = await self.compatibility.run_all(self._fhir_service, test_resource)
+            suites["compatibility"] = await self.compatibility.run_all(
+                self._fhir_service, test_resource
+            )
 
-        return {
-            name: suite.to_dict()
-            for name, suite in suites.items()
-        }
+        return {name: suite.to_dict() for name, suite in suites.items()}
 
     def get_test_report(self) -> dict[str, Any]:
         return self.run_all()

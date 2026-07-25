@@ -74,7 +74,9 @@ class DataLakeCatalog:
         ds = self.get(dataset_name)
         return ds.schema if ds else None
 
-    def update_stats(self, dataset_name: str, record_count: int | None = None, size_bytes: int | None = None) -> None:
+    def update_stats(
+        self, dataset_name: str, record_count: int | None = None, size_bytes: int | None = None
+    ) -> None:
         ds = self.get(dataset_name)
         if not ds:
             raise ValueError(f"Dataset not found: {dataset_name}")

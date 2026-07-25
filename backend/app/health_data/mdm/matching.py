@@ -124,8 +124,16 @@ class FuzzyMatcher(Matcher):
         )
 
     def _name_similarity(self, source: dict, target: dict) -> float:
-        src_full = ((source.get("first_name") or "") + " " + (source.get("last_name") or "")).strip().lower()
-        tgt_full = ((target.get("first_name") or "") + " " + (target.get("last_name") or "")).strip().lower()
+        src_full = (
+            ((source.get("first_name") or "") + " " + (source.get("last_name") or ""))
+            .strip()
+            .lower()
+        )
+        tgt_full = (
+            ((target.get("first_name") or "") + " " + (target.get("last_name") or ""))
+            .strip()
+            .lower()
+        )
         if not src_full or not tgt_full:
             return 0.0
         return self._jaro_winkler(src_full, tgt_full)
@@ -188,7 +196,9 @@ class FuzzyMatcher(Matcher):
                 transpositions += 1
             k += 1
 
-        jaro = (matches / len_s1 + matches / len_s2 + (matches - transpositions / 2) / matches) / 3.0
+        jaro = (
+            matches / len_s1 + matches / len_s2 + (matches - transpositions / 2) / matches
+        ) / 3.0
 
         prefix = 0
         for i in range(min(4, len_s1, len_s2)):
@@ -211,7 +221,9 @@ class ProbabilisticMatcher(Matcher):
         nid_match = self._field_equal(source, target, "national_id_hash")
         features["national_id"] = nid_match
         if nid_match:
-            return MatchResult(score=1.0, method="probabilistic", matched=True, confidence=1.0, features=features)
+            return MatchResult(
+                score=1.0, method="probabilistic", matched=True, confidence=1.0, features=features
+            )
 
         matched_phone = self._field_equal(source, target, "phone")
         matched_dob = self._field_equal(source, target, "date_of_birth")
@@ -260,6 +272,7 @@ class ProbabilisticMatcher(Matcher):
 
     def _log2(self, x: float) -> float:
         import math
+
         return math.log2(x) if x > 0 else -20.0
 
     def _field_equal(self, source: dict, target: dict, field: str) -> bool:
@@ -295,7 +308,9 @@ class MatchingEngine:
     def unregister(self, name: str) -> None:
         self._matchers.pop(name, None)
 
-    def match(self, source: dict[str, Any], target: dict[str, Any], method: str = "all") -> MatchResult:
+    def match(
+        self, source: dict[str, Any], target: dict[str, Any], method: str = "all"
+    ) -> MatchResult:
         if method == "exact":
             return self._matchers["exact"].match(source, target)
         if method == "fuzzy":

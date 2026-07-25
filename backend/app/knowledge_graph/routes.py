@@ -64,6 +64,7 @@ def add_node(
         raise HTTPException(status_code=400, detail=f"Invalid node_type: {body.node_type}") from e
 
     import asyncio
+
     node = asyncio.run(
         kg_engine.add_node(
             node_type=node_type,
@@ -97,6 +98,7 @@ def add_edge(
         raise HTTPException(status_code=400, detail=f"Invalid edge_type: {body.edge_type}") from e
 
     import asyncio
+
     edge = asyncio.run(
         kg_engine.add_edge(
             source_qualified_name=body.source_qualified_name,
@@ -127,6 +129,7 @@ def get_node(
 ):
     """Get details for a single knowledge graph node."""
     import asyncio
+
     node = asyncio.run(kg_engine.get_node(qualified_name))
     if not node:
         raise HTTPException(status_code=404, detail=f"Node '{qualified_name}' not found")
@@ -161,6 +164,7 @@ def get_neighbors(
             raise HTTPException(status_code=400, detail="Invalid edge_type in filter") from e
 
     import asyncio
+
     neighbors = asyncio.run(
         kg_engine.get_neighbors(qualified_name, edge_types=parsed_types, max_depth=depth),
     )
@@ -175,6 +179,7 @@ def find_path(
 ):
     """Find the shortest path between two nodes in the knowledge graph."""
     import asyncio
+
     path = asyncio.run(kg_engine.find_path(source, target))
     if not path:
         raise HTTPException(
@@ -199,6 +204,7 @@ def search_nodes(
             raise HTTPException(status_code=400, detail="Invalid node_type in filter") from e
 
     import asyncio
+
     results = asyncio.run(kg_engine.search_nodes(q, node_types=parsed_types))
     return {"query": q, "total": len(results), "results": results}
 
@@ -209,6 +215,7 @@ def scan_routes(
 ):
     """Scan and index all FastAPI routes into the knowledge graph."""
     import asyncio
+
     count = asyncio.run(kg_engine.scan_backend_routes())
     return {"scanned": True, "type": "routes", "nodes_created": count}
 
@@ -219,6 +226,7 @@ def scan_models(
 ):
     """Scan and index all SQLAlchemy data models."""
     import asyncio
+
     count = asyncio.run(kg_engine.scan_models())
     return {"scanned": True, "type": "models", "nodes_created": count}
 
@@ -229,6 +237,7 @@ def scan_events(
 ):
     """Scan and index all event definitions."""
     import asyncio
+
     count = asyncio.run(kg_engine.scan_events())
     return {"scanned": True, "type": "events", "nodes_created": count}
 
@@ -263,6 +272,7 @@ def create_snapshot(
 ):
     """Create a snapshot of the current knowledge graph state."""
     import asyncio
+
     snap = asyncio.run(kg_engine.snapshot())
     return {
         "id": snap.id,
@@ -280,6 +290,7 @@ def get_statistics(
 ):
     """Get knowledge graph statistics and distribution."""
     import asyncio
+
     return asyncio.run(kg_engine.get_statistics())
 
 
@@ -290,6 +301,7 @@ def get_dependency_graph(
 ):
     """Get dependency graph for a node (what it depends on and what depends on it)."""
     import asyncio
+
     result = asyncio.run(kg_engine.get_dependency_graph(qualified_name))
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])

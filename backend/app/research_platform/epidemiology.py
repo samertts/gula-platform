@@ -273,7 +273,9 @@ class TrendAnalyzer:
         granularity: str = "weekly",
         periods: int = 12,
     ) -> dict[str, Any]:
-        date_from = date.today() - timedelta(days=periods * 7 if granularity == "weekly" else periods * 30)
+        date_from = date.today() - timedelta(
+            days=periods * 7 if granularity == "weekly" else periods * 30
+        )
         query = WarehouseQuery(
             dimensions=["encounter_type"] if disease else [],
             measures=["diagnosis_count"],

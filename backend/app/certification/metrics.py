@@ -25,8 +25,7 @@ class BaseMetricCollector(ABC):
         self.project_root = Path(project_root)
 
     @abstractmethod
-    def collect(self) -> MetricResult:
-        ...
+    def collect(self) -> MetricResult: ...
 
 
 class CodeCoverage(BaseMetricCollector):
@@ -43,7 +42,7 @@ class CodeCoverage(BaseMetricCollector):
                         total_lines += 1
             except SyntaxError:
                 continue
-        for _tgz_file in self.project_root.rglob(".coverage"):
+        for _ in self.project_root.rglob(".coverage"):
             total_lines += 1
             covered_lines += 1
 
@@ -52,7 +51,9 @@ class CodeCoverage(BaseMetricCollector):
             try:
                 tree = ast.parse(py_file.read_text())
                 for node in ast.walk(tree):
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+                    if isinstance(
+                        node, (ast.FunctionDef, ast.AsyncFunctionDef),
+                    ) and node.name.startswith("test_"):
                         test_count += 1
             except SyntaxError:
                 continue
@@ -133,7 +134,14 @@ class MaintainabilityIndex(BaseMetricCollector):
                         cc_total += cc
                 avg_cc = cc_total / max(func_count, 1)
                 import math
-                mi = max(0, 171 - 5.2 * math.log(vol) - 0.23 * avg_cc - 16.2 * math.log(max(lines / max(func_count, 1), 1)))
+
+                mi = max(
+                    0,
+                    171
+                    - 5.2 * math.log(vol)
+                    - 0.23 * avg_cc
+                    - 16.2 * math.log(max(lines / max(func_count, 1), 1)),
+                )
                 mi_values.append(min(mi, 100))
             except (SyntaxError, ValueError):
                 continue
@@ -204,9 +212,13 @@ class ArchitectureViolations(BaseMetricCollector):
                 content = py_file.read_text()
                 tree = ast.parse(content)
                 for node in ast.walk(tree):
-                    if isinstance(node, ast.ImportFrom) and node.module:
-                        if (node.module.startswith("app.domain") and "domain" not in str(py_file)) or (node.module.startswith("app.infrastructure") and "domain" in str(py_file)):
-                            violations += 1
+                    if isinstance(node, ast.ImportFrom) and node.module and ((
+                        node.module.startswith("app.domain") and "domain" not in str(py_file)
+                    ) or (
+                        node.module.startswith("app.infrastructure")
+                        and "domain" in str(py_file)
+                    )):
+                        violations += 1
             except SyntaxError:
                 continue
 
@@ -284,7 +296,10 @@ class PerformanceScore(BaseMetricCollector):
             unit="score",
             threshold=70.0,
             passed=score >= 70.0,
-            details={"async_ratio_pct": round(async_ratio * 100, 1), "n_plus_one_count": n_plus_one},
+            details={
+                "async_ratio_pct": round(async_ratio * 100, 1),
+                "n_plus_one_count": n_plus_one,
+            },
         )
 
 
@@ -320,7 +335,11 @@ class ReliabilityScore(BaseMetricCollector):
             unit="score",
             threshold=70.0,
             passed=score >= 70.0,
-            details={"retry_patterns": retry_count, "circuit_breaker": circuit_breaker, "health_endpoints": health_checks},
+            details={
+                "retry_patterns": retry_count,
+                "circuit_breaker": circuit_breaker,
+                "health_endpoints": health_checks,
+            },
         )
 
 
@@ -377,7 +396,9 @@ class ScalabilityScore(BaseMetricCollector):
                 continue
             try:
                 content = py_file.read_text()
-                if "redis" in content.lower() and ("cache" in content.lower() or "session" in content.lower()):
+                if "redis" in content.lower() and (
+                    "cache" in content.lower() or "session" in content.lower()
+                ):
                     caching = True
                 if "pool_size" in content or "PoolSize" in content or "max_overflow" in content:
                     connection_pool = True
@@ -420,7 +441,9 @@ class DocumentationCoverage(BaseMetricCollector):
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                         total += 1
                         if node.body and isinstance(node.body[0], ast.Expr):
-                            if isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str):
+                            if isinstance(node.body[0].value, ast.Constant) and isinstance(
+                                node.body[0].value.value, str,
+                            ):
                                 documented += 1
             except SyntaxError:
                 continue
@@ -473,9 +496,7 @@ class MetricsCollector:
         return results
 
     def collect_category(self, category: MetricCategory) -> list[MetricResult]:
-        return [
-            r for r in self.collect_all() if r.category == category
-        ]
+        return [r for r in self.collect_all() if r.category == category]
 
     def collect_one(self, name: str) -> MetricResult | None:
         for r in self.collect_all():

@@ -62,7 +62,11 @@ class SecurityPolicy(GovernanceBaseEntity):
     approved_by = Column(String(200), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class BreakGlassPolicy(GovernanceBaseEntity):
@@ -81,7 +85,11 @@ class BreakGlassPolicy(GovernanceBaseEntity):
     require_justification = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class ThreatIntelligenceEvent(GovernanceBaseEntity):
@@ -110,7 +118,9 @@ class IncidentRecord(GovernanceBaseEntity):
     title = Column(String(300), nullable=False)
     description = Column(Text, nullable=True)
     severity = Column(Enum(ThreatSeverity), nullable=False, index=True)
-    status = Column(Enum(IncidentStatus), nullable=False, default=IncidentStatus.DETECTED, index=True)
+    status = Column(
+        Enum(IncidentStatus), nullable=False, default=IncidentStatus.DETECTED, index=True
+    )
     category = Column(String(100), nullable=False)
     affected_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=True)
     detected_at = Column(DateTime(timezone=True), nullable=False)
@@ -121,7 +131,11 @@ class IncidentRecord(GovernanceBaseEntity):
     lessons_learned = Column(Text, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class RiskRegistryItem(GovernanceBaseEntity):
@@ -144,7 +158,11 @@ class RiskRegistryItem(GovernanceBaseEntity):
     review_date = Column(Date, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class DataClassification(GovernanceBaseEntity):
@@ -164,7 +182,11 @@ class DataClassification(GovernanceBaseEntity):
     sharing_allowed = Column(Boolean, default=False)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class DigitalCertificate(GovernanceBaseEntity):
@@ -175,7 +197,9 @@ class DigitalCertificate(GovernanceBaseEntity):
     common_name = Column(String(300), nullable=False)
     issuer = Column(String(300), nullable=False)
     serial_number = Column(String(200), nullable=True, index=True)
-    status = Column(Enum(CertificateStatus), nullable=False, default=CertificateStatus.PENDING, index=True)
+    status = Column(
+        Enum(CertificateStatus), nullable=False, default=CertificateStatus.PENDING, index=True
+    )
     type = Column(String(50), nullable=False)
     issued_date = Column(Date, nullable=False)
     expiry_date = Column(Date, nullable=False)
@@ -184,4 +208,8 @@ class DigitalCertificate(GovernanceBaseEntity):
     owner = Column(String(200), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )

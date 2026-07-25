@@ -20,7 +20,9 @@ from .models import (
 
 class CommandIntelligenceEngine:
     async def get_situation_status(
-        self, db: Session, region: str | None = None,
+        self,
+        db: Session,
+        region: str | None = None,
     ) -> dict[str, Any]:
         query = db.query(SituationRoom)
         if region:
@@ -79,7 +81,9 @@ class CommandIntelligenceEngine:
         }
 
     async def get_national_kpis(
-        self, db: Session, category: str | None = None,
+        self,
+        db: Session,
+        category: str | None = None,
     ) -> list[dict[str, Any]]:
         query = db.query(NationalKPI)
         if category:
@@ -107,7 +111,9 @@ class CommandIntelligenceEngine:
         ]
 
     async def get_active_incidents(
-        self, db: Session, severity: str | None = None,
+        self,
+        db: Session,
+        severity: str | None = None,
     ) -> list[dict[str, Any]]:
         query = db.query(IncidentIntelligence).filter(
             IncidentIntelligence.status != "resolved",
@@ -135,7 +141,9 @@ class CommandIntelligenceEngine:
         ]
 
     async def get_capacity_intelligence(
-        self, db: Session, entity_type: str | None = None,
+        self,
+        db: Session,
+        entity_type: str | None = None,
     ) -> list[dict[str, Any]]:
         query = db.query(CapacityIntelligence)
         if entity_type:
@@ -164,7 +172,9 @@ class CommandIntelligenceEngine:
         ]
 
     async def generate_recommendation(
-        self, db: Session, context: dict[str, Any],
+        self,
+        db: Session,
+        context: dict[str, Any],
     ) -> dict[str, Any]:
         rec_type = context.get("recommendation_type", "general")
         priority = context.get("priority", 0)
@@ -197,11 +207,15 @@ class CommandIntelligenceEngine:
             "expected_impact": recommendation.expected_impact,
             "risk_assessment": recommendation.risk_assessment,
             "status": recommendation.status,
-            "created_at": recommendation.created_at.isoformat() if recommendation.created_at else None,
+            "created_at": recommendation.created_at.isoformat()
+            if recommendation.created_at
+            else None,
         }
 
     async def get_live_situation_room(
-        self, db: Session, region: str | None = None,
+        self,
+        db: Session,
+        region: str | None = None,
     ) -> dict[str, Any]:
         status = await self.get_situation_status(db, region)
         kpis = await self.get_national_kpis(db)
@@ -294,13 +308,12 @@ class SituationAnalyzer:
         }
 
     async def analyze_regional_health(
-        self, db: Session, region: str,
+        self,
+        db: Session,
+        region: str,
     ) -> dict[str, Any]:
         total_kpis = (
-            db.query(func.count(NationalKPI.id))
-            .filter(NationalKPI.region == region)
-            .scalar()
-            or 0
+            db.query(func.count(NationalKPI.id)).filter(NationalKPI.region == region).scalar() or 0
         )
         kpis_meeting_target = (
             db.query(func.count(NationalKPI.id))
@@ -462,7 +475,10 @@ class SituationAnalyzer:
 
 class KPIEngine:
     async def calculate_kpi(
-        self, db: Session, kpi_name: str, region: str | None = None,
+        self,
+        db: Session,
+        kpi_name: str,
+        region: str | None = None,
     ) -> float | None:
         query = db.query(NationalKPI).filter(NationalKPI.kpi_name == kpi_name)
         if region:
@@ -474,7 +490,10 @@ class KPIEngine:
         return latest.kpi_value
 
     async def get_kpi_trend(
-        self, db: Session, kpi_name: str, days: int = 30,
+        self,
+        db: Session,
+        kpi_name: str,
+        days: int = 30,
     ) -> list[dict[str, Any]]:
         since = datetime.now(UTC) - timedelta(days=days)
         kpis = (
@@ -500,7 +519,10 @@ class KPIEngine:
         ]
 
     async def compare_kpis(
-        self, db: Session, region_a: str, region_b: str,
+        self,
+        db: Session,
+        region_a: str,
+        region_b: str,
     ) -> dict[str, Any]:
         categories = (
             db.query(NationalKPI.kpi_category)

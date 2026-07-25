@@ -45,7 +45,12 @@ class SubscriptionManager:
         self._subscriptions[sub.id] = sub
         if sub.group:
             self._group_members.setdefault(sub.group, []).append(sub.id)
-        logger.info("Subscription registered: %s (type=%s, events=%s)", sub.id, sub.sub_type.value, sub.event_types)
+        logger.info(
+            "Subscription registered: %s (type=%s, events=%s)",
+            sub.id,
+            sub.sub_type.value,
+            sub.event_types,
+        )
 
     def unregister(self, sub_id: str) -> None:
         sub = self._subscriptions.pop(sub_id, None)
@@ -83,14 +88,19 @@ class SubscriptionManager:
         processed = 0
 
         for batch_start in range(0, len(filtered), sub.batch_size):
-            batch = filtered[batch_start:batch_start + sub.batch_size]
+            batch = filtered[batch_start : batch_start + sub.batch_size]
             for event in batch:
                 try:
                     await self._call_handler(sub, event)
                     sub.last_processed_version += 1
                     processed += 1
                 except Exception as exc:
-                    logger.error("Handler failed for subscription %s on event %s: %s", sub_id, event.event_id, exc)
+                    logger.error(
+                        "Handler failed for subscription %s on event %s: %s",
+                        sub_id,
+                        event.event_id,
+                        exc,
+                    )
                     if sub.sub_type == SubscriptionType.PERSISTENT:
                         raise
 
@@ -114,7 +124,12 @@ class SubscriptionManager:
                     await self._call_handler(sub, event)
                     processed += 1
                 except Exception as exc:
-                    logger.error("Competing consumer %s failed on event %s: %s", consumer_id, event.event_id, exc)
+                    logger.error(
+                        "Competing consumer %s failed on event %s: %s",
+                        consumer_id,
+                        event.event_id,
+                        exc,
+                    )
 
         return processed
 
@@ -126,8 +141,14 @@ class SubscriptionManager:
                     await result
                 return
             except Exception as exc:
-                logger.warning("Handler attempt %d/%d failed for %s: %s", attempt + 1, sub.max_retries, sub.id, exc)
+                logger.warning(
+                    "Handler attempt %d/%d failed for %s: %s",
+                    attempt + 1,
+                    sub.max_retries,
+                    sub.id,
+                    exc,
+                )
                 if attempt < sub.max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                 else:
                     raise

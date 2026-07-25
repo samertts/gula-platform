@@ -82,7 +82,8 @@ async def webauthn_register_begin(
 ):
     service = MFAService(db)
     options = service.begin_webauthn_registration(
-        current_user.id, current_user.email or current_user.id,
+        current_user.id,
+        current_user.email or current_user.id,
         getattr(current_user, "full_name", current_user.email or ""),
     )
     return WebAuthnRegisterBeginResponse(options=options)

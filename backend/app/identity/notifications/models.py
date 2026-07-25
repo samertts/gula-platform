@@ -32,7 +32,11 @@ class NotificationQueue(IdentityBaseEntity):
     recipient_type = Column(String(30), nullable=False)
     notification_type = Column(String(20), nullable=False)
     channel = Column(String(20), nullable=False)
-    template_id = Column(String(100), ForeignKey("niam_notif_templates.template_id", ondelete="SET NULL"), nullable=True)
+    template_id = Column(
+        String(100),
+        ForeignKey("niam_notif_templates.template_id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     subject = Column(String(200), nullable=True)
     body = Column(Text, nullable=True)

@@ -21,10 +21,10 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
-revision      = "20260324_0006"
+revision = "20260324_0006"
 down_revision = "20250323_0005"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _col_exists(table: str, col: str) -> bool:
@@ -61,8 +61,10 @@ def upgrade() -> None:
         # FK with SET NULL on delete — removing a guardian keeps the child record
         op.create_foreign_key(
             "fk_patients_guardian_id",
-            "patients", "patients",
-            ["guardian_id"], ["id"],
+            "patients",
+            "patients",
+            ["guardian_id"],
+            ["id"],
             ondelete="SET NULL",
         )
         op.create_index(

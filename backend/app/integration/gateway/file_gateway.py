@@ -43,7 +43,9 @@ class FileGateway(MessageGateway):
     async def send(self, message: GatewayMessage) -> GatewayResult:
         start = time.monotonic()
         try:
-            output_dir = self._watch_dir or Path(self.config.options.get("output_dir", tempfile.gettempdir()))
+            output_dir = self._watch_dir or Path(
+                self.config.options.get("output_dir", tempfile.gettempdir())
+            )
             output_dir.mkdir(parents=True, exist_ok=True)
             file_format = message.headers.get("format", "json").lower()
             filename = message.headers.get("filename", f"export_{int(time.time())}.{file_format}")

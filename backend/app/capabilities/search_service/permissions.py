@@ -8,6 +8,8 @@ class Search_servicePermission(Enum):
     ADMIN = "search_service:search.admin"
 
     def describe(self) -> str:
-        descriptions = {        "search_service:search.execute": "Search.Execute",
-                "search_service:search.admin": "Search.Admin"}
+        descriptions = {
+            "search_service:search.execute": "Search.Execute",
+            "search_service:search.admin": "Search.Admin",
+        }
         return descriptions.get(self, self.value)

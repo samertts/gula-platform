@@ -129,11 +129,12 @@ class AppointmentTracking:
         return False
 
     def get_appointments(
-        self, citizen_id: str, status: str | None = None,
+        self,
+        citizen_id: str,
+        status: str | None = None,
     ) -> list[dict[str, Any]]:
         appointments = self._appointments.get(citizen_id, [])
         if status:
             appointments = [a for a in appointments if a["status"] == status]
         appointments.sort(key=lambda a: a["start_at"], reverse=True)
         return appointments
-

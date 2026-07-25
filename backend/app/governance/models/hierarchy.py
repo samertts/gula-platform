@@ -40,7 +40,11 @@ class GovernanceNode(GovernanceBaseEntity):
     is_active = Column(Boolean, default=True, index=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
     __table_args__ = (
         UniqueConstraint("code", name="uq_gov_hierarchy_node_code"),
@@ -58,24 +62,38 @@ class GovernanceRole(GovernanceBaseEntity):
     permissions = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class Delegation(GovernanceBaseEntity):
     __tablename__ = "gov_delegations"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    delegator_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True)
-    delegate_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True)
+    delegator_node_id = Column(
+        Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True
+    )
+    delegate_node_id = Column(
+        Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True
+    )
     delegation_type = Column(Enum(DelegationType), nullable=False)
-    status = Column(Enum(DelegationStatus), nullable=False, default=DelegationStatus.ACTIVE, index=True)
+    status = Column(
+        Enum(DelegationStatus), nullable=False, default=DelegationStatus.ACTIVE, index=True
+    )
     scope = Column(JSON, nullable=True)
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=True)
     reason = Column(Text, nullable=True)
     created_by = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class ActingAppointment(GovernanceBaseEntity):
@@ -83,14 +101,22 @@ class ActingAppointment(GovernanceBaseEntity):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True)
-    acting_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True)
-    status = Column(Enum(ActingRoleStatus), nullable=False, default=ActingRoleStatus.ACTIVE, index=True)
+    acting_node_id = Column(
+        Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True
+    )
+    status = Column(
+        Enum(ActingRoleStatus), nullable=False, default=ActingRoleStatus.ACTIVE, index=True
+    )
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=True)
     reason = Column(Text, nullable=True)
     approved_by = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class EmergencyAdministration(GovernanceBaseEntity):
@@ -98,7 +124,9 @@ class EmergencyAdministration(GovernanceBaseEntity):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True)
-    administration_type = Column(Enum(AdministrationType), nullable=False, default=AdministrationType.EMERGENCY)
+    administration_type = Column(
+        Enum(AdministrationType), nullable=False, default=AdministrationType.EMERGENCY
+    )
     administering_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=True)
     status = Column(String(20), default="active", index=True)
     start_date = Column(DateTime(timezone=True), nullable=False)
@@ -113,8 +141,12 @@ class TemporaryAdministration(GovernanceBaseEntity):
     __tablename__ = "gov_temporary_admin"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    original_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True)
-    temporary_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True)
+    original_node_id = Column(
+        Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True
+    )
+    temporary_node_id = Column(
+        Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=False, index=True
+    )
     status = Column(String(20), default="active", index=True)
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=True)

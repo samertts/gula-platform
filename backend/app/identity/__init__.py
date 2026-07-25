@@ -31,6 +31,7 @@ It can be used by any current or future GULA sub-system.
 
 def get_router():
     from .api.router import router as _router
+
     return _router
 
 

@@ -538,6 +538,7 @@ class TestModelsImports:
             ProfessionalLicense,
             UserSession,
         )
+
         assert Person is not None
         assert IdentityType is not None
         assert Account is not None
@@ -556,6 +557,7 @@ class TestModelsImports:
             PersonService,
             SessionService,
         )
+
         assert PersonService is not None
         assert AuthenticationService is not None
         assert AuditService is not None
@@ -569,6 +571,7 @@ class TestModelsImports:
             PersonRepository,
             SessionRepository,
         )
+
         assert PersonRepository is not None
         assert OrganizationRepository is not None
         assert SessionRepository is not None

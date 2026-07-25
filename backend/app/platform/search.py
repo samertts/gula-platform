@@ -42,6 +42,7 @@ class SearchService:
         from ..national.search_platform.domain.entities import (
             SearchQuery,
         )
+
         SearchQuery(
             id=str(uuid.uuid4()),
             query_text=query,
@@ -62,9 +63,13 @@ class SearchService:
         return []
 
 
-PlatformRegistry.register("search", SearchService(), capabilities=[
-    {"name": "search", "description": "Full-text search across indexed resources"},
-    {"name": "index", "description": "Index a resource for search"},
-    {"name": "reindex", "description": "Rebuild the search index"},
-    {"name": "suggest", "description": "Get search suggestions for a partial query"},
-])
+PlatformRegistry.register(
+    "search",
+    SearchService(),
+    capabilities=[
+        {"name": "search", "description": "Full-text search across indexed resources"},
+        {"name": "index", "description": "Index a resource for search"},
+        {"name": "reindex", "description": "Rebuild the search index"},
+        {"name": "suggest", "description": "Get search suggestions for a partial query"},
+    ],
+)

@@ -147,7 +147,11 @@ class ERPConnector(BaseConnector):
                 urljoin(self._base_url, "/api/inventory/sync"),
                 json={"items": items},
             )
-            return {"success": resp.is_success, "status_code": resp.status_code, "response": resp.text}
+            return {
+                "success": resp.is_success,
+                "status_code": resp.status_code,
+                "response": resp.text,
+            }
         except Exception as exc:
             logger.error("ERP inventory sync failed: %s", exc)
             return {"success": False, "error": str(exc)}

@@ -17,10 +17,16 @@ logger = logging.getLogger("gula.routes.clinical_documentation")
 
 router = APIRouter(prefix="/clinical/documentation", tags=["clinical documentation"])
 
-_DOCUMENT_TYPES = frozenset({
-    "soap_note", "progress_note", "nursing_note", "consultation_note",
-    "operation_note", "emergency_note",
-})
+_DOCUMENT_TYPES = frozenset(
+    {
+        "soap_note",
+        "progress_note",
+        "nursing_note",
+        "consultation_note",
+        "operation_note",
+        "emergency_note",
+    }
+)
 
 
 class SoapNoteCreate(BaseModel):
@@ -161,7 +167,9 @@ def create_soap_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("soap_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    return _store_document(
+        "soap_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id}
+    )
 
 
 # ==============================================================================
@@ -175,7 +183,9 @@ def create_progress_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("progress_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    return _store_document(
+        "progress_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id}
+    )
 
 
 # ==============================================================================
@@ -189,7 +199,9 @@ def create_nursing_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("nursing_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    return _store_document(
+        "nursing_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id}
+    )
 
 
 # ==============================================================================
@@ -203,7 +215,9 @@ def create_consultation_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("consultation_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    return _store_document(
+        "consultation_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id}
+    )
 
 
 # ==============================================================================
@@ -217,7 +231,9 @@ def create_operation_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("operation_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    return _store_document(
+        "operation_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id}
+    )
 
 
 # ==============================================================================
@@ -231,7 +247,9 @@ def create_emergency_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("emergency_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    return _store_document(
+        "emergency_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id}
+    )
 
 
 # ==============================================================================
@@ -258,7 +276,7 @@ def list_documents(
         items = [d for d in items if d.get("department") == department]
     total = len(items)
     items.sort(key=lambda d: d.get("created_at", ""), reverse=True)
-    return {"items": items[skip:skip + limit], "total": total, "skip": skip, "limit": limit}
+    return {"items": items[skip : skip + limit], "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/{document_id}")
@@ -341,12 +359,14 @@ def sign_document(
     doc["updated_at"] = now
 
     if data.document_id in _VERSION_HISTORY:
-        _VERSION_HISTORY[data.document_id].append({
-            "version": doc["version"] + 1,
-            "timestamp": now,
-            "action": "signed",
-            "signed_by": current_user.id,
-        })
+        _VERSION_HISTORY[data.document_id].append(
+            {
+                "version": doc["version"] + 1,
+                "timestamp": now,
+                "action": "signed",
+                "signed_by": current_user.id,
+            }
+        )
         doc["version"] += 1
 
     return doc

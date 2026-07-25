@@ -18,7 +18,6 @@ from app.identity.federation.models import (
 
 
 class FederationService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -215,7 +214,6 @@ class FederationService:
 
 
 class CrossOrgTrustService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -287,7 +285,6 @@ class CrossOrgTrustService:
 
 
 class FederationAgreementService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -347,10 +344,7 @@ class FederationAgreementService:
             FederationAgreement.status == "active",
         )
         result = await self.session.execute(stmt)
-        return [
-            a for a in result.scalars().all()
-            if a.parties and org_id in a.parties
-        ]
+        return [a for a in result.scalars().all() if a.parties and org_id in a.parties]
 
     async def get_agreement(self, agreement_id: str) -> FederationAgreement | None:
         stmt = select(FederationAgreement).where(

@@ -69,7 +69,9 @@ async def create_appointment(
             end_at=datetime.fromisoformat(body["end_at"]) if body.get("end_at") else None,
             appointment_type=body.get("appointment_type", ""),
             recurrence_pattern=RecurrencePattern(body.get("recurrence_pattern", "none")),
-            recurrence_end=datetime.fromisoformat(body["recurrence_end"]) if body.get("recurrence_end") else None,
+            recurrence_end=datetime.fromisoformat(body["recurrence_end"])
+            if body.get("recurrence_end")
+            else None,
             reminder_enabled=body.get("reminder_enabled", True),
             reminder_minutes_before=body.get("reminder_minutes_before", 60),
             notes=body.get("notes", ""),
@@ -113,7 +115,9 @@ async def get_appointment(
         appointment = await service.get_appointment(appointment_id)
         return _appointment_to_dict(appointment)
     except AppointmentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.put("/appointments/{appointment_id}")
@@ -139,7 +143,9 @@ async def update_appointment(
             appointment = await service.get_appointment(appointment_id)
         return _appointment_to_dict(appointment)
     except AppointmentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except ConflictDetectionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -155,7 +161,9 @@ async def cancel_appointment(
     try:
         await service.cancel_appointment(appointment_id, reason=body.get("reason", ""))
     except AppointmentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except ConflictDetectionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -169,7 +177,9 @@ async def complete_appointment(
         appointment = await service.complete_appointment(appointment_id)
         return _appointment_to_dict(appointment)
     except AppointmentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except ConflictDetectionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -183,7 +193,9 @@ async def mark_no_show(
         appointment = await service.mark_no_show(appointment_id)
         return _appointment_to_dict(appointment)
     except AppointmentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except ConflictDetectionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -203,7 +215,9 @@ async def reschedule_appointment(
         )
         return _appointment_to_dict(appointment)
     except AppointmentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except ConflictDetectionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -220,7 +234,9 @@ async def check_availability(
             end_at=datetime.fromisoformat(body["end_at"]),
         )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.get("/availability/slots")
@@ -274,7 +290,9 @@ async def get_resource(
         resource = await service.get_resource(resource_id)
         return _resource_to_dict(resource)
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.put("/resources/{resource_id}")
@@ -287,7 +305,9 @@ async def update_resource(
         resource = await service.update_resource(resource_id, body)
         return _resource_to_dict(resource)
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.delete("/resources/{resource_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -298,7 +318,9 @@ async def deactivate_resource(
     try:
         await service.deactivate_resource(resource_id)
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/schedules")
@@ -317,7 +339,9 @@ async def set_availability(
         )
         return _schedule_to_dict(schedule)
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/schedules/block")
@@ -334,7 +358,9 @@ async def block_time(
         )
         return [_slot_to_dict(s) for s in slots]
     except ScheduleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.get("/schedules/{resource_id}/{date}")
@@ -349,7 +375,9 @@ async def get_schedule(
             date=date.fromisoformat(date),
         )
     except ScheduleNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/waiting-list", status_code=status.HTTP_201_CREATED)
@@ -360,10 +388,18 @@ async def add_to_waiting_list(
     entry = await service.add_to_waiting_list(
         patient_id=body.get("patient_id", ""),
         resource_id=body.get("resource_id", ""),
-        preferred_date_from=date.fromisoformat(body["preferred_date_from"]) if body.get("preferred_date_from") else None,
-        preferred_date_to=date.fromisoformat(body["preferred_date_to"]) if body.get("preferred_date_to") else None,
-        preferred_time_from=time.fromisoformat(body["preferred_time_from"]) if body.get("preferred_time_from") else None,
-        preferred_time_to=time.fromisoformat(body["preferred_time_to"]) if body.get("preferred_time_to") else None,
+        preferred_date_from=date.fromisoformat(body["preferred_date_from"])
+        if body.get("preferred_date_from")
+        else None,
+        preferred_date_to=date.fromisoformat(body["preferred_date_to"])
+        if body.get("preferred_date_to")
+        else None,
+        preferred_time_from=time.fromisoformat(body["preferred_time_from"])
+        if body.get("preferred_time_from")
+        else None,
+        preferred_time_to=time.fromisoformat(body["preferred_time_to"])
+        if body.get("preferred_time_to")
+        else None,
         priority=body.get("priority", 0),
         notes=body.get("notes", ""),
     )
@@ -395,7 +431,9 @@ async def remove_from_waiting_list(
     try:
         await service.remove_from_waiting_list(entry_id)
     except WaitingListNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/waiting-list/{entry_id}/fulfill")
@@ -411,7 +449,9 @@ async def fulfill_waiting_list(
         )
         return _waiting_list_to_dict(entry)
     except (WaitingListNotFoundError, AppointmentNotFoundError) as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/reminders/send")
@@ -456,7 +496,9 @@ async def get_calendar(
         calendar = await service.get_calendar(calendar_id)
         return _calendar_to_dict(calendar)
     except CalendarNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.get("/stats")

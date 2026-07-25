@@ -76,7 +76,10 @@ class PluginRuntimeAPI:
         self._hooks[hook.name].append(hook)
         self._hooks[hook.name].sort(key=lambda h: h.priority)
         self._plugin_states[plugin_name] = "registered"
-        logger.info("Plugin hook registered", extra={"plugin": plugin_name, "hook": hook.name, "phase": hook.phase})
+        logger.info(
+            "Plugin hook registered",
+            extra={"plugin": plugin_name, "hook": hook.name, "phase": hook.phase},
+        )
 
     def execute_hooks(self, hook_name: str, context: dict[str, Any] | None = None) -> list[Any]:
         results = []
@@ -98,9 +101,12 @@ class PluginRuntimeAPI:
         eb = self._kernel.get_component("event_bus")
         if eb:
             from app.kernel.event_bus.events import Event
+
             eb.publish(Event(name=event_name, data=data, source="plugin_api"))
         else:
-            logger.warning("Event bus not available for event publishing", extra={"event": event_name})
+            logger.warning(
+                "Event bus not available for event publishing", extra={"event": event_name},
+            )
 
     def get_service(self, name: str) -> Any | None:
         return self._kernel.get_service(name)
@@ -116,9 +122,14 @@ class ModuleRuntimeAPI:
 
     def register(self, registration: ModuleRegistration) -> None:
         if registration.name in self._modules:
-            logger.warning("Module already registered, updating", extra={"module": registration.name})
+            logger.warning(
+                "Module already registered, updating", extra={"module": registration.name},
+            )
         self._modules[registration.name] = registration
-        logger.info("Module registered", extra={"module": registration.name, "version": registration.version})
+        logger.info(
+            "Module registered",
+            extra={"module": registration.name, "version": registration.version},
+        )
 
     def unregister(self, name: str) -> bool:
         if name in self._modules:
@@ -153,10 +164,14 @@ class WorkflowRuntimeAPI:
         self._workflows: dict[str, WorkflowInstance] = {}
         self._step_registry: dict[str, type[WorkflowStep]] = {}
 
-    def create_workflow(self, name: str, steps: list[WorkflowStep], saga: bool = False) -> WorkflowInstance:
+    def create_workflow(
+        self, name: str, steps: list[WorkflowStep], saga: bool = False,
+    ) -> WorkflowInstance:
         wf = WorkflowInstance(name=name, steps=steps, saga=saga)
         self._workflows[wf.id] = wf
-        logger.info("Workflow created", extra={"id": wf.id, "name": name, "steps": len(steps), "saga": saga})
+        logger.info(
+            "Workflow created", extra={"id": wf.id, "name": name, "steps": len(steps), "saga": saga},
+        )
         return wf
 
     def execute_step(self, workflow_id: str, context: dict[str, Any]) -> dict[str, Any] | None:
@@ -185,12 +200,15 @@ class WorkflowRuntimeAPI:
             return None
 
     def _compensate(self, wf: WorkflowInstance) -> None:
-        for step in reversed(wf.steps[:wf.current_step]):
+        for step in reversed(wf.steps[: wf.current_step]):
             if step.compensation:
                 try:
                     step.compensation(wf.state)
                 except Exception as exc:
-                    logger.error("Compensation failed", extra={"workflow": wf.id, "step": step.name, "error": str(exc)})
+                    logger.error(
+                        "Compensation failed",
+                        extra={"workflow": wf.id, "step": step.name, "error": str(exc)},
+                    )
         wf.status = "compensated"
         wf.completed_at = time.time()
 
@@ -214,7 +232,9 @@ class ObservabilityAPI:
         if len(self._metrics[name]) > self._max_metrics:
             self._metrics[name].pop(0)
 
-    def emit_trace(self, name: str, duration_ms: float, attributes: dict[str, Any] | None = None) -> None:
+    def emit_trace(
+        self, name: str, duration_ms: float, attributes: dict[str, Any] | None = None,
+    ) -> None:
         observer = self._kernel.get_component("runtime_observer")
         if observer:
             span = observer.start_trace(name=name, service="sdk")
@@ -224,7 +244,9 @@ class ObservabilityAPI:
                 span.attributes.update(attributes)
             observer.end_trace(span.span_id)
         else:
-            logger.debug("Trace emitted (no observer)", extra={"name": name, "duration_ms": duration_ms})
+            logger.debug(
+                "Trace emitted (no observer)", extra={"name": name, "duration_ms": duration_ms},
+            )
 
     def emit_log(self, level: str, message: str, extra: dict[str, Any] | None = None) -> None:
         observer = self._kernel.get_component("runtime_observer")
@@ -274,4 +296,5 @@ class RuntimeSDK:
         eb = self._kernel.get_component("event_bus")
         if eb:
             from app.kernel.event_bus.events import Event
+
             eb.publish(Event(name=event_name, data=data, source="sdk"))

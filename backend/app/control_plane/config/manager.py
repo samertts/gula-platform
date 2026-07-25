@@ -24,6 +24,7 @@ class CentralConfigManager:
             reg = kernel.get_component("config_registry")
             if reg is None:
                 from app.kernel.config.registry import ConfigurationRegistry
+
                 reg = ConfigurationRegistry()
                 kernel.register_component("config_registry", reg)
             self._kernel_registry = reg
@@ -64,7 +65,9 @@ class CentralConfigManager:
                 return stored
         return default
 
-    def get_scope(self, scope: ConfigurationScope, component: str = "", tenant: str = "") -> dict[str, Any]:
+    def get_scope(
+        self, scope: ConfigurationScope, component: str = "", tenant: str = "",
+    ) -> dict[str, Any]:
         scope_key = self._scope_key(scope, component, tenant)
         return dict(self._hierarchical.get(scope_key, {}))
 
@@ -72,11 +75,15 @@ class CentralConfigManager:
         parts = [scope.value]
         if scope == ConfigurationScope.TENANT and tenant:
             parts.append(tenant)
-        elif (scope == ConfigurationScope.COMPONENT and component) or (scope == ConfigurationScope.ENVIRONMENT and component):
+        elif (scope == ConfigurationScope.COMPONENT and component) or (
+            scope == ConfigurationScope.ENVIRONMENT and component
+        ):
             parts.append(component)
         return ".".join(parts)
 
-    def _resolution_order(self, scope: ConfigurationScope, component: str = "", tenant: str = "") -> list[str]:
+    def _resolution_order(
+        self, scope: ConfigurationScope, component: str = "", tenant: str = "",
+    ) -> list[str]:
         base = [self._scope_key(ConfigurationScope.ENVIRONMENT, component=component)]
         if scope in (ConfigurationScope.COMPONENT, ConfigurationScope.TENANT):
             base.insert(0, self._scope_key(ConfigurationScope.GLOBAL))

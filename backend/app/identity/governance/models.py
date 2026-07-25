@@ -18,17 +18,23 @@ class IdentityAuthority(IdentityBaseEntity):
     name_ar = Column(String(300), nullable=True)
 
     authority_type = Column(
-        String(50), nullable=False, index=True,
+        String(50),
+        nullable=False,
+        index=True,
         default="identity_authority",
     )
 
     jurisdiction = Column(
-        String(30), nullable=False, default="national",
+        String(30),
+        nullable=False,
+        default="national",
     )
 
     parent_authority_id = Column(
-        String(26), ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"),
-        nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     contact_email = Column(String(200), nullable=True)
@@ -52,13 +58,17 @@ class DigitalIdentityCouncil(IdentityBaseEntity):
     name_ar = Column(String(300), nullable=True)
 
     council_type = Column(
-        String(30), nullable=False, index=True,
+        String(30),
+        nullable=False,
+        index=True,
         default="governance",
     )
 
     authority_id = Column(
-        String(26), ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"),
-        nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     chairperson_id = Column(String(100), nullable=False)
@@ -81,7 +91,9 @@ class PolicyApprovalWorkflow(IdentityBaseEntity):
 
     policy_id = Column(String(100), nullable=False, index=True)
     submitted_by = Column(String(100), nullable=False)
-    submitted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    submitted_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
 
     status = Column(String(20), default="draft", nullable=False, index=True)
 
@@ -110,7 +122,9 @@ class IdentityAppeal(IdentityBaseEntity):
     identity_id = Column(String(100), nullable=False, index=True)
 
     appeal_type = Column(
-        String(30), nullable=False, index=True,
+        String(30),
+        nullable=False,
+        index=True,
         default="suspension",
     )
 
@@ -122,8 +136,10 @@ class IdentityAppeal(IdentityBaseEntity):
     assigned_to = Column(String(100), nullable=True)
 
     council_id = Column(
-        String(26), ForeignKey("niam_gov_councils.id", ondelete="SET NULL"),
-        nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_gov_councils.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     decision = Column(Text, nullable=True)
@@ -150,7 +166,9 @@ class IdentitySuspension(IdentityBaseEntity):
     severity = Column(String(20), default="medium", nullable=False, index=True)
 
     suspended_by = Column(String(100), nullable=False)
-    suspended_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    suspended_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
 
     duration_hours = Column(Integer, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -176,8 +194,10 @@ class IdentityRestoration(IdentityBaseEntity):
     identity_id = Column(String(100), nullable=False, index=True)
 
     suspension_id = Column(
-        String(26), ForeignKey("niam_gov_suspensions.id", ondelete="SET NULL"),
-        nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_gov_suspensions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     request_reason = Column(Text, nullable=False)
@@ -192,7 +212,9 @@ class IdentityRestoration(IdentityBaseEntity):
     status = Column(String(20), default="requested", nullable=False, index=True)
 
     restoration_type = Column(
-        String(30), default="automatic", nullable=False,
+        String(30),
+        default="automatic",
+        nullable=False,
     )
 
     post_restoration_actions = Column(JSON, nullable=True)
@@ -211,13 +233,17 @@ class NationalIdentityRegistry(IdentityBaseEntity):
     identity_id = Column(String(100), nullable=False, index=True)
 
     registry_type = Column(
-        String(30), nullable=False, index=True,
+        String(30),
+        nullable=False,
+        index=True,
         default="citizen",
     )
 
     registration_number = Column(String(100), unique=True, nullable=False, index=True)
 
-    registered_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    registered_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     registered_by = Column(String(100), nullable=False)
 
     verified_at = Column(DateTime(timezone=True), nullable=True)
@@ -244,8 +270,10 @@ class IdentityCertificationRegistry(IdentityBaseEntity):
     organization_id = Column(String(100), nullable=True, index=True)
 
     certifying_authority_id = Column(
-        String(26), ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"),
+        nullable=False,
+        index=True,
     )
 
     certification_type = Column(String(50), nullable=False)
@@ -277,8 +305,10 @@ class IdentityReviewBoard(IdentityBaseEntity):
     board_type = Column(String(50), nullable=False, index=True)
 
     authority_id = Column(
-        String(26), ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"),
-        nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     chairperson_id = Column(String(100), nullable=False)

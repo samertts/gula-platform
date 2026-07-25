@@ -165,11 +165,7 @@ class SecureMessaging:
 
     def get_unread_count(self, session_id: str, user_id: str) -> int:
         messages = self._messages.get(session_id, [])
-        return sum(
-            1
-            for m in messages
-            if m.sender_id != user_id and not m.read_at
-        )
+        return sum(1 for m in messages if m.sender_id != user_id and not m.read_at)
 
 
 class FollowUpService:
@@ -208,11 +204,7 @@ class FollowUpService:
         return False
 
     def get_pending_follow_ups(self, citizen_id: str) -> list[dict[str, Any]]:
-        return [
-            f
-            for f in self._follow_ups.get(citizen_id, [])
-            if f["status"] == "pending"
-        ]
+        return [f for f in self._follow_ups.get(citizen_id, []) if f["status"] == "pending"]
 
     def get_follow_up_history(self, citizen_id: str) -> list[dict[str, Any]]:
         follow_ups = self._follow_ups.get(citizen_id, [])

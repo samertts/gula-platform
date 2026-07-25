@@ -103,6 +103,7 @@ class TestRecoveryTaskRetry:
 class TestRecoveryCircuitBreaker:
     def test_circuit_breaker_auto_recovery(self):
         import time
+
         cb = CircuitBreaker("recovery_test", failure_threshold=2, recovery_timeout=0.01)
         cb.record_failure()
         cb.record_failure()
@@ -116,6 +117,7 @@ class TestRecoveryCircuitBreaker:
         cbm.register(cb)
         cbm.record_failure("cleanup_test")
         import time
+
         time.sleep(0.02)
         assert cbm.can_proceed("cleanup_test")
 

@@ -58,21 +58,25 @@ class SQLPatientRepository(PatientRepository):
         """)
         now = datetime.now(UTC)
         row = (
-            await self._session.execute(
-                stmt,
-                {
-                    "name": patient.name,
-                    "date_of_birth": patient.date_of_birth,
-                    "gender": patient.gender.value if patient.gender else None,
-                    "phone": patient.phone,
-                    "lab_id": patient.lab_id,
-                    "national_id": patient.national_id,
-                    "address": patient.address,
-                    "created_at": now,
-                    "updated_at": now,
-                },
+            (
+                await self._session.execute(
+                    stmt,
+                    {
+                        "name": patient.name,
+                        "date_of_birth": patient.date_of_birth,
+                        "gender": patient.gender.value if patient.gender else None,
+                        "phone": patient.phone,
+                        "lab_id": patient.lab_id,
+                        "national_id": patient.national_id,
+                        "address": patient.address,
+                        "created_at": now,
+                        "updated_at": now,
+                    },
+                )
             )
-        ).mappings().one()
+            .mappings()
+            .one()
+        )
 
         return self._row_to_domain(row)
 
@@ -84,8 +88,8 @@ class SQLPatientRepository(PatientRepository):
             WHERE id = :patient_id
         """)
         row = (
-            await self._session.execute(stmt, {"patient_id": patient_id})
-        ).mappings().one_or_none()
+            (await self._session.execute(stmt, {"patient_id": patient_id})).mappings().one_or_none()
+        )
         return self._row_to_domain(row) if row else None
 
     async def search(
@@ -111,9 +115,7 @@ class SQLPatientRepository(PatientRepository):
         where_clause = and_(*conditions) if conditions else text("TRUE")
         base_sql = f"""
             FROM patients
-            WHERE {where_clause.compile(
-                compile_kwargs={"literal_binds": False}
-            )}
+            WHERE {where_clause.compile(compile_kwargs={"literal_binds": False})}
         """
 
         params: dict = {}
@@ -127,9 +129,7 @@ class SQLPatientRepository(PatientRepository):
             params["national_id"] = national_id
 
         count_stmt = text(f"SELECT COUNT(*) AS total {base_sql}")
-        total_row = (
-            await self._session.execute(count_stmt, params)
-        ).mappings().one()
+        total_row = (await self._session.execute(count_stmt, params)).mappings().one()
         total = total_row["total"]
 
         data_stmt = text(f"""
@@ -141,9 +141,7 @@ class SQLPatientRepository(PatientRepository):
         """)
         params["limit"] = limit
         params["offset"] = offset
-        rows = (
-            await self._session.execute(data_stmt, params)
-        ).mappings().all()
+        rows = (await self._session.execute(data_stmt, params)).mappings().all()
 
         patients = [self._row_to_domain(r) for r in rows]
         return patients, total
@@ -162,15 +160,19 @@ class SQLPatientRepository(PatientRepository):
             LIMIT 1
         """)
         row = (
-            await self._session.execute(
-                stmt,
-                {
-                    "name": name,
-                    "phone": phone,
-                    "lab_id": lab_id,
-                },
+            (
+                await self._session.execute(
+                    stmt,
+                    {
+                        "name": name,
+                        "phone": phone,
+                        "lab_id": lab_id,
+                    },
+                )
             )
-        ).mappings().one_or_none()
+            .mappings()
+            .one_or_none()
+        )
         return self._row_to_domain(row) if row else None
 
     @staticmethod
@@ -209,21 +211,25 @@ class SQLOrderRepository(OrderRepository):
         """)
         now = datetime.now(UTC)
         row = (
-            await self._session.execute(
-                stmt,
-                {
-                    "patient_id": order.patient_id,
-                    "lab_id": order.lab_id,
-                    "test_type": order.test_type,
-                    "status": order.status.value,
-                    "priority": order.priority.value,
-                    "notes": order.notes,
-                    "created_at": now,
-                    "updated_at": now,
-                    "performed_by": order.performed_by,
-                },
+            (
+                await self._session.execute(
+                    stmt,
+                    {
+                        "patient_id": order.patient_id,
+                        "lab_id": order.lab_id,
+                        "test_type": order.test_type,
+                        "status": order.status.value,
+                        "priority": order.priority.value,
+                        "notes": order.notes,
+                        "created_at": now,
+                        "updated_at": now,
+                        "performed_by": order.performed_by,
+                    },
+                )
             )
-        ).mappings().one()
+            .mappings()
+            .one()
+        )
         return self._row_to_domain(row)
 
     async def get_by_id(self, order_id: str) -> LabOrderDomain | None:
@@ -233,9 +239,7 @@ class SQLOrderRepository(OrderRepository):
             FROM lab_orders
             WHERE id = :order_id
         """)
-        row = (
-            await self._session.execute(stmt, {"order_id": order_id})
-        ).mappings().one_or_none()
+        row = (await self._session.execute(stmt, {"order_id": order_id})).mappings().one_or_none()
         return self._row_to_domain(row) if row else None
 
     async def list_by_patient(
@@ -250,10 +254,15 @@ class SQLOrderRepository(OrderRepository):
             WHERE patient_id = :patient_id
         """)
         total_row = (
-            await self._session.execute(
-                count_stmt, {"patient_id": patient_id},
+            (
+                await self._session.execute(
+                    count_stmt,
+                    {"patient_id": patient_id},
+                )
             )
-        ).mappings().one()
+            .mappings()
+            .one()
+        )
         total = total_row["total"]
 
         data_stmt = text("""
@@ -265,15 +274,19 @@ class SQLOrderRepository(OrderRepository):
             LIMIT :limit OFFSET :offset
         """)
         rows = (
-            await self._session.execute(
-                data_stmt,
-                {
-                    "patient_id": patient_id,
-                    "limit": limit,
-                    "offset": offset,
-                },
+            (
+                await self._session.execute(
+                    data_stmt,
+                    {
+                        "patient_id": patient_id,
+                        "limit": limit,
+                        "offset": offset,
+                    },
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         return [self._row_to_domain(r) for r in rows], total
 
     @staticmethod
@@ -316,25 +329,33 @@ class SQLResultRepository(ResultRepository):
         now = datetime.now(UTC)
         rr = result.reference_range
         row = (
-            await self._session.execute(
-                stmt,
-                {
-                    "order_id": result.order_id,
-                    "analyte": result.analyte,
-                    "value": str(result.value),
-                    "unit": result.unit,
-                    "min_value": str(rr.min_value) if rr and rr.min_value is not None else None,
-                    "max_value": str(rr.max_value) if rr and rr.max_value is not None else None,
-                    "min_critical": str(rr.min_critical) if rr and rr.min_critical is not None else None,
-                    "max_critical": str(rr.max_critical) if rr and rr.max_critical is not None else None,
-                    "is_critical": result.is_critical,
-                    "flagged": result.flagged,
-                    "notes": result.notes,
-                    "created_at": now,
-                    "performed_by": result.performed_by,
-                },
+            (
+                await self._session.execute(
+                    stmt,
+                    {
+                        "order_id": result.order_id,
+                        "analyte": result.analyte,
+                        "value": str(result.value),
+                        "unit": result.unit,
+                        "min_value": str(rr.min_value) if rr and rr.min_value is not None else None,
+                        "max_value": str(rr.max_value) if rr and rr.max_value is not None else None,
+                        "min_critical": str(rr.min_critical)
+                        if rr and rr.min_critical is not None
+                        else None,
+                        "max_critical": str(rr.max_critical)
+                        if rr and rr.max_critical is not None
+                        else None,
+                        "is_critical": result.is_critical,
+                        "flagged": result.flagged,
+                        "notes": result.notes,
+                        "created_at": now,
+                        "performed_by": result.performed_by,
+                    },
+                )
             )
-        ).mappings().one()
+            .mappings()
+            .one()
+        )
         return self._row_to_domain(row)
 
     async def get_by_id(self, result_id: str) -> LabResultDomain | None:
@@ -345,9 +366,7 @@ class SQLResultRepository(ResultRepository):
             FROM lab_results
             WHERE id = :result_id
         """)
-        row = (
-            await self._session.execute(stmt, {"result_id": result_id})
-        ).mappings().one_or_none()
+        row = (await self._session.execute(stmt, {"result_id": result_id})).mappings().one_or_none()
         return self._row_to_domain(row) if row else None
 
     async def list_by_order(
@@ -362,9 +381,7 @@ class SQLResultRepository(ResultRepository):
             WHERE order_id = :order_id
             ORDER BY created_at ASC
         """)
-        rows = (
-            await self._session.execute(stmt, {"order_id": order_id})
-        ).mappings().all()
+        rows = (await self._session.execute(stmt, {"order_id": order_id})).mappings().all()
         return [self._row_to_domain(r) for r in rows]
 
     async def list_critical(
@@ -381,10 +398,15 @@ class SQLResultRepository(ResultRepository):
               AND lo.lab_id = :lab_id
         """)
         total_row = (
-            await self._session.execute(
-                count_stmt, {"lab_id": lab_id},
+            (
+                await self._session.execute(
+                    count_stmt,
+                    {"lab_id": lab_id},
+                )
             )
-        ).mappings().one()
+            .mappings()
+            .one()
+        )
         total = total_row["total"]
 
         data_stmt = text("""
@@ -402,15 +424,19 @@ class SQLResultRepository(ResultRepository):
             LIMIT :limit OFFSET :offset
         """)
         rows = (
-            await self._session.execute(
-                data_stmt,
-                {
-                    "lab_id": lab_id,
-                    "limit": limit,
-                    "offset": offset,
-                },
+            (
+                await self._session.execute(
+                    data_stmt,
+                    {
+                        "lab_id": lab_id,
+                        "limit": limit,
+                        "offset": offset,
+                    },
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         return [self._row_to_domain(r) for r in rows], total
 
     @staticmethod
@@ -423,26 +449,10 @@ class SQLResultRepository(ResultRepository):
             rr = ReferenceRange(
                 analyte=row["analyte"],
                 unit=row["unit"],
-                min_value=(
-                    row["min_value"]
-                    if row["min_value"] is not None
-                    else None
-                ),
-                max_value=(
-                    row["max_value"]
-                    if row["max_value"] is not None
-                    else None
-                ),
-                min_critical=(
-                    row["min_critical"]
-                    if row["min_critical"] is not None
-                    else None
-                ),
-                max_critical=(
-                    row["max_critical"]
-                    if row["max_critical"] is not None
-                    else None
-                ),
+                min_value=(row["min_value"] if row["min_value"] is not None else None),
+                max_value=(row["max_value"] if row["max_value"] is not None else None),
+                min_critical=(row["min_critical"] if row["min_critical"] is not None else None),
+                max_critical=(row["max_critical"] if row["max_critical"] is not None else None),
             )
 
         return LabResultDomain(

@@ -100,12 +100,18 @@ class VitalSignTrendResponse(BaseModel):
 
 
 def _get_reference_or_404(db: Session, code: str) -> VitalSignsReference:
-    ref = db.query(VitalSignsReference).filter(
-        VitalSignsReference.vital_sign_code == code,
-        ~VitalSignsReference.is_deleted,
-    ).first()
+    ref = (
+        db.query(VitalSignsReference)
+        .filter(
+            VitalSignsReference.vital_sign_code == code,
+            ~VitalSignsReference.is_deleted,
+        )
+        .first()
+    )
     if not ref:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vital sign reference not found: {code}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Vital sign reference not found: {code}",
+        )
     return ref
 
 
@@ -122,7 +128,9 @@ async def list_vital_signs_reference(
     return VitalSignsReferenceListResponse(items=refs, total=len(refs))
 
 
-@router.post("/reference", response_model=VitalSignsReferenceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/reference", response_model=VitalSignsReferenceResponse, status_code=status.HTTP_201_CREATED,
+)
 async def create_vital_signs_reference(
     data: VitalSignsReferenceCreate,
     db: Session = Depends(get_db),
@@ -170,20 +178,29 @@ async def get_latest_vital_signs(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    vital_sign_codes = db.query(VitalSignsReference).filter(
-        ~~VitalSignsReference.is_deleted,
-    ).all()
+    vital_sign_codes = (
+        db.query(VitalSignsReference)
+        .filter(
+            ~~VitalSignsReference.is_deleted,
+        )
+        .all()
+    )
     vital_sign_map: dict[str, LatestVitalSign] = {}
     latest_datetime: datetime | None = None
 
     for ref in vital_sign_codes:
-        obs = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            Observation.code == ref.vital_sign_code,
-            ~Observation.is_deleted,
-        ).order_by(
-            Observation.effective_datetime.desc(),
-        ).first()
+        obs = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                Observation.code == ref.vital_sign_code,
+                ~Observation.is_deleted,
+            )
+            .order_by(
+                Observation.effective_datetime.desc(),
+            )
+            .first()
+        )
 
         if obs:
             vital_sign_map[ref.vital_sign_code] = LatestVitalSign(
@@ -198,7 +215,9 @@ async def get_latest_vital_signs(
                 effective_datetime=obs.effective_datetime,
                 observation_id=obs.id,
             )
-            if obs.effective_datetime and (latest_datetime is None or obs.effective_datetime > latest_datetime):
+            if obs.effective_datetime and (
+                latest_datetime is None or obs.effective_datetime > latest_datetime
+            ):
                 latest_datetime = obs.effective_datetime
         else:
             vital_sign_map[ref.vital_sign_code] = LatestVitalSign(
@@ -229,18 +248,28 @@ async def get_vital_sign_trend(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    ref = db.query(VitalSignsReference).filter(
-        VitalSignsReference.vital_sign_code == code,
-        ~VitalSignsReference.is_deleted,
-    ).first()
+    ref = (
+        db.query(VitalSignsReference)
+        .filter(
+            VitalSignsReference.vital_sign_code == code,
+            ~VitalSignsReference.is_deleted,
+        )
+        .first()
+    )
 
-    observations = db.query(Observation).filter(
-        Observation.patient_id == patient_id,
-        Observation.code == code,
-        ~Observation.is_deleted,
-    ).order_by(
-        Observation.effective_datetime.asc(),
-    ).limit(limit).all()
+    observations = (
+        db.query(Observation)
+        .filter(
+            Observation.patient_id == patient_id,
+            Observation.code == code,
+            ~Observation.is_deleted,
+        )
+        .order_by(
+            Observation.effective_datetime.asc(),
+        )
+        .limit(limit)
+        .all()
+    )
 
     return VitalSignTrendResponse(
         patient_id=patient_id,

@@ -43,6 +43,7 @@ def register_runtime_routes(kernel: Kernel) -> None:
         return
 
     from fastapi import APIRouter
+
     router = APIRouter()
     router.include_router(runtime_router)
     kernel.register_component("runtime_router", router)
@@ -163,16 +164,20 @@ def _init_runtime_observability(kernel: Kernel, lifecycle) -> None:
 
         def _register_topology():
             observer.topology.register_node(
-                type("obj", (object,), {
-                    "name": "gula-kernel",
-                    "type": "service",
-                    "version": kernel.config.version,
-                    "to_dict": lambda self: {
-                        "name": self.name,
-                        "type": self.type,
-                        "version": self.version,
+                type(
+                    "obj",
+                    (object,),
+                    {
+                        "name": "gula-kernel",
+                        "type": "service",
+                        "version": kernel.config.version,
+                        "to_dict": lambda self: {
+                            "name": self.name,
+                            "type": self.type,
+                            "version": self.version,
+                        },
                     },
-                })(),
+                )(),
             )
 
         comp.on_start(_register_topology)
@@ -207,7 +212,10 @@ def _init_runtime_digital_twin(kernel: Kernel, lifecycle) -> None:
                 entity_type="service",
                 name=kernel.config.name,
                 status="running",
-                properties={"version": kernel.config.version, "environment": kernel.config.environment},
+                properties={
+                    "version": kernel.config.version,
+                    "environment": kernel.config.environment,
+                },
                 tags=["kernel", "core"],
             )
 

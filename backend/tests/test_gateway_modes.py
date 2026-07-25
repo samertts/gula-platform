@@ -6,6 +6,7 @@ These tests stay in stub mode (no network). They assert:
   - The stub response from each adapter has the correct schema.
   - The Cloudflare stub reports `configured=False` when CF_ZONE_ID absent.
 """
+
 import importlib.util
 import os
 import sys
@@ -17,8 +18,12 @@ os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 _BACKEND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 _cfg = types.ModuleType("app.config")
+
+
 class _S:
     NID_HMAC_KEY = "a" * 64
+
+
 _cfg.settings = _S()
 sys.modules.setdefault("app.config", _cfg)
 
@@ -26,7 +31,7 @@ sys.modules.setdefault("app.config", _cfg)
 # ─── Import the mode module (no fastapi needed) ────────────────────────────
 def _load(name: str, path: str):
     spec = importlib.util.spec_from_file_location(name, path)
-    mod  = importlib.util.module_from_spec(spec)
+    mod = importlib.util.module_from_spec(spec)
     sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
@@ -41,6 +46,7 @@ resolve_mode = _mode.resolve_mode
 
 
 # ─── resolve_mode() tests ───────────────────────────────────────────────────
+
 
 class TestResolveMode:
     def test_default_is_stub(self, monkeypatch):
@@ -83,6 +89,7 @@ class TestResolveMode:
 # We bypass the fastapi-dependent parts of each gateway module by loading
 # just the stub helpers via direct method calls.
 
+
 class TestStubResponses:
     def _make_gw(self, path_rel: str, cls_name: str, monkeypatch):
         """Load a gateway module standalone (no fastapi in app.*)."""
@@ -90,7 +97,7 @@ class TestStubResponses:
             if k.startswith("GULA_ADAPTER_MODE"):
                 monkeypatch.delenv(k, raising=False)
         mod = _load(
-            f"app.gateways.{path_rel.replace('/', '.').replace('.py','')}",
+            f"app.gateways.{path_rel.replace('/', '.').replace('.py', '')}",
             os.path.join(_BACKEND, "app", "gateways", path_rel),
         )
         cls = getattr(mod, cls_name)
@@ -135,4 +142,5 @@ class TestStubResponses:
 
 if __name__ == "__main__":
     import pytest
+
     pytest.main([__file__, "-v"])

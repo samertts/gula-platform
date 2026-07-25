@@ -15,27 +15,33 @@ class ClinicalAgent(AIAgent):
         super().__init__(agent_id=agent_id, name=name)
 
     def _register_default_tools(self) -> None:
-        self.register_tool(AgentTool(
-            name="suggest_interpretation",
-            description="Interpret a single lab result with clinical context",
-            fn=self._tool_interpret_result,
-            parameters={"test_name": "str", "value": "float", "unit": "str"},
-            requires_approval=True,
-        ))
-        self.register_tool(AgentTool(
-            name="analyze_clinical_pattern",
-            description="Analyze multi-test patterns for clinical conditions",
-            fn=self._tool_analyze_pattern,
-            parameters={"order_id": "str", "results": "list"},
-            requires_approval=False,
-        ))
-        self.register_tool(AgentTool(
-            name="suggest_reorder",
-            description="Suggest re-running a specific test",
-            fn=self._tool_suggest_reorder,
-            parameters={"test_name": "str", "reason": "str"},
-            requires_approval=True,
-        ))
+        self.register_tool(
+            AgentTool(
+                name="suggest_interpretation",
+                description="Interpret a single lab result with clinical context",
+                fn=self._tool_interpret_result,
+                parameters={"test_name": "str", "value": "float", "unit": "str"},
+                requires_approval=True,
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="analyze_clinical_pattern",
+                description="Analyze multi-test patterns for clinical conditions",
+                fn=self._tool_analyze_pattern,
+                parameters={"order_id": "str", "results": "list"},
+                requires_approval=False,
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="suggest_reorder",
+                description="Suggest re-running a specific test",
+                fn=self._tool_suggest_reorder,
+                parameters={"test_name": "str", "reason": "str"},
+                requires_approval=True,
+            ),
+        )
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ("clinical", "interpretation", "cds", "diagnosis")

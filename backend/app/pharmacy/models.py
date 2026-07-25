@@ -148,9 +148,24 @@ class DrugSupplier(TenantAuditEntity):
 class Prescription(TenantAuditEntity):
     __tablename__ = "pharmacy_prescriptions"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    prescriber_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    prescriber_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     prescription_number = Column(String(50), nullable=False, unique=True)
     status = Column(SAEnum(PrescriptionStatus), nullable=False, default=PrescriptionStatus.ACTIVE)
@@ -249,10 +264,22 @@ class DispenseRecord(TenantAuditEntity):
         ForeignKey("pharmacy_prescription_items.id", ondelete="SET NULL"),
         nullable=True,
     )
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
-    dispensed_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
-    verified_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    dispensed_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    verified_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True
+    )
 
     dispensed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
     status = Column(SAEnum(DispenseStatus), nullable=False, default=DispenseStatus.PENDING)
@@ -301,7 +328,9 @@ class DispenseQueue(TenantAuditEntity):
     queued_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     status = Column(SAEnum(DispenseStatus), nullable=False, default=DispenseStatus.PENDING)
 
-    assigned_to = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    assigned_to = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True
+    )
     pickup_time = Column(DateTime(timezone=True), nullable=True)
     ready_time = Column(DateTime(timezone=True), nullable=True)
     completion_time = Column(DateTime(timezone=True), nullable=True)
@@ -445,7 +474,9 @@ class StockMovement(TenantAuditEntity):
 
     reason = Column(String(500), nullable=True)
     performed_by = Column(String(26), nullable=True)
-    movement_date = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    movement_date = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
@@ -534,7 +565,12 @@ class InventoryTransferItem(TenantAuditEntity):
 class DrugReturn(TenantAuditEntity):
     __tablename__ = "pharmacy_drug_returns"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     prescription_id = Column(
         String(26),
         ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"),

@@ -18,7 +18,9 @@ class ProfessionalLicense(IdentityBaseEntity):
     __tablename__ = "niam_licenses"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     license_type = Column(String(50), nullable=False, index=True)
     license_number = Column(String(100), nullable=False, index=True)

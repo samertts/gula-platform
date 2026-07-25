@@ -35,7 +35,9 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
                 CapabilityAPI(path="/login", method="POST", description="User login"),
                 CapabilityAPI(path="/logout", method="POST", description="User logout"),
                 CapabilityAPI(path="/register", method="POST", description="Lab registration"),
-                CapabilityAPI(path="/register/citizen", method="POST", description="Citizen registration"),
+                CapabilityAPI(
+                    path="/register/citizen", method="POST", description="Citizen registration"
+                ),
             ],
             dependencies=["authorization_rbac", "audit_logging"],
             tags=["auth", "jwt", "security"],
@@ -465,15 +467,21 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             events=[
                 CapabilityEvent(name="DocumentUploaded", description="A document was uploaded"),
                 CapabilityEvent(name="DocumentDeleted", description="A document was deleted"),
-                CapabilityEvent(name="DocumentSigned", description="A document was digitally signed"),
+                CapabilityEvent(
+                    name="DocumentSigned", description="A document was digitally signed"
+                ),
             ],
             commands=[
-                CapabilityCommand(name="upload_document", description="Upload a document to storage"),
+                CapabilityCommand(
+                    name="upload_document", description="Upload a document to storage"
+                ),
                 CapabilityCommand(name="delete_document", description="Delete a document"),
             ],
             queries=[
                 CapabilityQuery(name="search_documents", description="Search across documents"),
-                CapabilityQuery(name="get_document", description="Get document metadata and content"),
+                CapabilityQuery(
+                    name="get_document", description="Get document metadata and content"
+                ),
             ],
             dependencies=["storage_service", "authentication", "audit_logging"],
             tags=["document", "storage"],
@@ -487,17 +495,27 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             layer="application",
             status=CapabilityStatus.ACTIVE,
             events=[
-                CapabilityEvent(name="WorkflowCreated", description="A workflow instance was created"),
-                CapabilityEvent(name="WorkflowCompleted", description="A workflow reached terminal state"),
+                CapabilityEvent(
+                    name="WorkflowCreated", description="A workflow instance was created"
+                ),
+                CapabilityEvent(
+                    name="WorkflowCompleted", description="A workflow reached terminal state"
+                ),
                 CapabilityEvent(name="WorkflowEscalated", description="A workflow was escalated"),
             ],
             commands=[
-                CapabilityCommand(name="create_workflow", description="Create a new workflow instance"),
-                CapabilityCommand(name="transition", description="Transition workflow to next state"),
+                CapabilityCommand(
+                    name="create_workflow", description="Create a new workflow instance"
+                ),
+                CapabilityCommand(
+                    name="transition", description="Transition workflow to next state"
+                ),
             ],
             queries=[
                 CapabilityQuery(name="get_workflow", description="Get workflow state and history"),
-                CapabilityQuery(name="get_pending_tasks", description="List pending tasks for user"),
+                CapabilityQuery(
+                    name="get_pending_tasks", description="List pending tasks for user"
+                ),
             ],
             dependencies=["notification_service", "audit_logging"],
             tags=["workflow", "bpm"],
@@ -512,7 +530,9 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             status=CapabilityStatus.ACTIVE,
             commands=[
                 CapabilityCommand(name="generate_report", description="Generate a report"),
-                CapabilityCommand(name="schedule_report", description="Schedule recurring report generation"),
+                CapabilityCommand(
+                    name="schedule_report", description="Schedule recurring report generation"
+                ),
             ],
             queries=[
                 CapabilityQuery(name="list_reports", description="List available reports"),
@@ -549,7 +569,9 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             layer="infrastructure",
             status=CapabilityStatus.ACTIVE,
             commands=[
-                CapabilityCommand(name="store_file", description="Store a file in the storage backend"),
+                CapabilityCommand(
+                    name="store_file", description="Store a file in the storage backend"
+                ),
                 CapabilityCommand(name="retrieve_file", description="Retrieve a file by key"),
             ],
             dependencies=["encryption_service"],
@@ -565,16 +587,22 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             layer="application",
             status=CapabilityStatus.ACTIVE,
             events=[
-                CapabilityEvent(name="ProviderRegistered", description="A new provider was registered"),
+                CapabilityEvent(
+                    name="ProviderRegistered", description="A new provider was registered"
+                ),
                 CapabilityEvent(name="LicenseUpdated", description="Provider license was updated"),
             ],
             commands=[
-                CapabilityCommand(name="register_provider", description="Register a new healthcare provider"),
+                CapabilityCommand(
+                    name="register_provider", description="Register a new healthcare provider"
+                ),
                 CapabilityCommand(name="update_license", description="Update provider license"),
             ],
             queries=[
                 CapabilityQuery(name="search_providers", description="Search healthcare providers"),
-                CapabilityQuery(name="list_by_specialty", description="List providers by specialty"),
+                CapabilityQuery(
+                    name="list_by_specialty", description="List providers by specialty"
+                ),
             ],
             dependencies=["authentication", "authorization_rbac"],
             tags=["provider", "workforce"],
@@ -588,18 +616,26 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             layer="application",
             status=CapabilityStatus.ACTIVE,
             events=[
-                CapabilityEvent(name="EncounterCreated", description="A new clinical encounter was created"),
+                CapabilityEvent(
+                    name="EncounterCreated", description="A new clinical encounter was created"
+                ),
                 CapabilityEvent(name="PatientAdmitted", description="Patient admitted to facility"),
-                CapabilityEvent(name="PatientDischarged", description="Patient discharged from facility"),
+                CapabilityEvent(
+                    name="PatientDischarged", description="Patient discharged from facility"
+                ),
             ],
             commands=[
-                CapabilityCommand(name="create_encounter", description="Create a new clinical encounter"),
+                CapabilityCommand(
+                    name="create_encounter", description="Create a new clinical encounter"
+                ),
                 CapabilityCommand(name="admit", description="Admit a patient"),
                 CapabilityCommand(name="discharge", description="Discharge a patient"),
             ],
             queries=[
                 CapabilityQuery(name="get_encounter", description="Get encounter details"),
-                CapabilityQuery(name="get_patient_timeline", description="Get patient encounter timeline"),
+                CapabilityQuery(
+                    name="get_patient_timeline", description="Get patient encounter timeline"
+                ),
             ],
             dependencies=["patient_management", "provider_management"],
             tags=["encounter", "clinical"],
@@ -614,7 +650,9 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             status=CapabilityStatus.ACTIVE,
             events=[
                 CapabilityEvent(name="DiagnosisAdded", description="A diagnosis was added"),
-                CapabilityEvent(name="MedicationPrescribed", description="A medication was prescribed"),
+                CapabilityEvent(
+                    name="MedicationPrescribed", description="A medication was prescribed"
+                ),
                 CapabilityEvent(name="AllergyRecorded", description="An allergy was recorded"),
             ],
             commands=[
@@ -623,7 +661,9 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
                 CapabilityCommand(name="record_vitals", description="Record vital signs"),
             ],
             queries=[
-                CapabilityQuery(name="get_clinical_history", description="Get full clinical history"),
+                CapabilityQuery(
+                    name="get_clinical_history", description="Get full clinical history"
+                ),
                 CapabilityQuery(name="get_active_problems", description="Get active problem list"),
             ],
             dependencies=["patient_management", "encounter_management"],
@@ -638,11 +678,17 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             layer="infrastructure",
             status=CapabilityStatus.ACTIVE,
             events=[
-                CapabilityEvent(name="FhirResourceCreated", description="A FHIR resource was created"),
-                CapabilityEvent(name="Hl7MessageReceived", description="An HL7 message was received"),
+                CapabilityEvent(
+                    name="FhirResourceCreated", description="A FHIR resource was created"
+                ),
+                CapabilityEvent(
+                    name="Hl7MessageReceived", description="An HL7 message was received"
+                ),
             ],
             commands=[
-                CapabilityCommand(name="convert_to_fhir", description="Convert internal data to FHIR resource"),
+                CapabilityCommand(
+                    name="convert_to_fhir", description="Convert internal data to FHIR resource"
+                ),
                 CapabilityCommand(name="validate_resource", description="Validate a FHIR resource"),
             ],
             queries=[
@@ -663,7 +709,10 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             events=[
                 CapabilityEvent(name="ConsentGranted", description="Patient consent was granted"),
                 CapabilityEvent(name="ConsentRevoked", description="Patient consent was revoked"),
-                CapabilityEvent(name="BreakGlassActivated", description="Break-glass emergency override activated"),
+                CapabilityEvent(
+                    name="BreakGlassActivated",
+                    description="Break-glass emergency override activated",
+                ),
             ],
             commands=[
                 CapabilityCommand(name="grant_consent", description="Grant patient consent"),
@@ -672,7 +721,9 @@ def _get_all_descriptors() -> list[CapabilityDescriptor]:
             ],
             queries=[
                 CapabilityQuery(name="check_consent", description="Check if consent is active"),
-                CapabilityQuery(name="get_active_consents", description="List active consents for patient"),
+                CapabilityQuery(
+                    name="get_active_consents", description="List active consents for patient"
+                ),
             ],
             dependencies=["consent_management", "patient_management"],
             tags=["consent", "privacy"],

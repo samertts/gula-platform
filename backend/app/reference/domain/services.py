@@ -95,10 +95,7 @@ class PatientValidationService:
         return (
             today.year
             - date_of_birth.year
-            - (
-                (today.month, today.day)
-                < (date_of_birth.month, date_of_birth.day)
-            )
+            - ((today.month, today.day) < (date_of_birth.month, date_of_birth.day))
         )
 
 
@@ -200,7 +197,9 @@ class ResultValidationService:
         flag = ResultValidationService.NORMAL_FLAG
         is_critical = False
 
-        if (rr.min_critical is not None and result.value <= rr.min_critical) or (rr.max_critical is not None and result.value >= rr.max_critical):
+        if (rr.min_critical is not None and result.value <= rr.min_critical) or (
+            rr.max_critical is not None and result.value >= rr.max_critical
+        ):
             is_critical = True
             flag = ResultValidationService.CRITICAL_FLAG
         elif rr.min_value is not None and result.value < rr.min_value:
@@ -237,9 +236,7 @@ class ResultValidationService:
         for r in results:
             if r.reference_range:
                 rr = r.reference_range
-                if (
-                    rr.min_critical is not None and r.value <= rr.min_critical
-                ) or (
+                if (rr.min_critical is not None and r.value <= rr.min_critical) or (
                     rr.max_critical is not None and r.value >= rr.max_critical
                 ):
                     r.is_critical = True

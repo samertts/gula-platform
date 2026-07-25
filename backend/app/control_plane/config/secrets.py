@@ -46,18 +46,21 @@ class SecretsManager:
         old_value = loader._secrets.get(key)
         if old_value is None:
             return False
-        self._rotation_history.append({
-            "key": key,
-            "rotated_at": datetime.now(UTC).isoformat(),
-            "len_old": len(old_value),
-            "len_new": len(new_value),
-        })
+        self._rotation_history.append(
+            {
+                "key": key,
+                "rotated_at": datetime.now(UTC).isoformat(),
+                "len_old": len(old_value),
+                "len_new": len(new_value),
+            },
+        )
         loader._secrets[key] = new_value
         logger.info("Secret rotated: %s", key)
         return True
 
     def access_audit_log(self, key: str, user_id: int | None = None) -> dict[str, Any]:
         import uuid
+
         return {
             "event_id": str(uuid.uuid4()),
             "action": "secret_access",

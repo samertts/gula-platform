@@ -9,6 +9,7 @@ class TestEncounter_managementCapability:
         from app.capabilities.encounter_management.capability import (
             Encounter_managementCapability,
         )
+
         return Encounter_managementCapability()
 
     @pytest.mark.asyncio

@@ -82,7 +82,6 @@ _CHANNEL_REGISTRY: dict[NotificationChannel, type[NotificationChannelAdapter]] =
 
 
 class NotificationPlatformService:
-
     def __init__(
         self,
         notification_repo: NotificationRepository,
@@ -129,7 +128,9 @@ class NotificationPlatformService:
         rendered_subject, rendered_body = subject, body
         if template_id:
             rendered_subject, rendered_body = await self.render_template(
-                template_id, channel, template_data or {},
+                template_id,
+                channel,
+                template_data or {},
             )
 
         notification_id = _ulid()
@@ -221,7 +222,6 @@ class NotificationPlatformService:
         )
         return await self._template_repo.save(template)
 
-
     async def render_template(
         self,
         template_id: str,
@@ -236,13 +236,21 @@ class NotificationPlatformService:
             if template.template_engine == TemplateEngine.JINJA2:
                 from jinja2 import Template
 
-                subject_t = Template(template.subject_template) if template.subject_template else None
+                subject_t = (
+                    Template(template.subject_template) if template.subject_template else None
+                )
                 body_t = Template(template.body_template) if template.body_template else None
             elif template.template_engine == TemplateEngine.MUSTACHE:
                 import chevron
 
-                subject_str = chevron.render(template.subject_template, data) if template.subject_template else ""
-                body_str = chevron.render(template.body_template, data) if template.body_template else ""
+                subject_str = (
+                    chevron.render(template.subject_template, data)
+                    if template.subject_template
+                    else ""
+                )
+                body_str = (
+                    chevron.render(template.body_template, data) if template.body_template else ""
+                )
                 return subject_str, body_str
             else:
                 subject_t = None
@@ -399,7 +407,9 @@ class NotificationPlatformService:
             provider_status="sent" if result.success else "failed",
             provider_message_id=result.provider_message_id,
             provider_response=result.provider_response,
-            status=DeliveryReportStatus.SENT_TO_PROVIDER if result.success else DeliveryReportStatus.FAILED_TEMPORARY,
+            status=DeliveryReportStatus.SENT_TO_PROVIDER
+            if result.success
+            else DeliveryReportStatus.FAILED_TEMPORARY,
             attempted_at=_now(),
             error_message=result.error,
         )
@@ -413,7 +423,9 @@ class NotificationPlatformService:
             raise NotificationNotFoundError(notification_id)
 
         if notification.status != NotificationStatus.QUEUED:
-            logger.warning("Skipping dispatch of %s — status is %s", notification_id, notification.status)
+            logger.warning(
+                "Skipping dispatch of %s — status is %s", notification_id, notification.status,
+            )
             return
 
         await self._dispatch(notification)
@@ -575,15 +587,20 @@ async def handle_national_notification_deliver(payload: dict) -> dict:
             batch = await batch_repo.get(batch_id)
             if batch:
                 all_notifications = [
-                    await notification_repo.get(nid) or None
-                    for nid in batch.notifications
+                    await notification_repo.get(nid) or None for nid in batch.notifications
                 ]
-                sent = sum(1 for n in all_notifications if n and n.status == NotificationStatus.SENT)
-                failed = sum(1 for n in all_notifications if n and n.status == NotificationStatus.FAILED)
+                sent = sum(
+                    1 for n in all_notifications if n and n.status == NotificationStatus.SENT
+                )
+                failed = sum(
+                    1 for n in all_notifications if n and n.status == NotificationStatus.FAILED
+                )
                 batch.success_count = sent
                 batch.failure_count = failed
                 if sent + failed == batch.total_count:
-                    batch.status = NotificationStatus.DELIVERED if failed == 0 else NotificationStatus.FAILED
+                    batch.status = (
+                        NotificationStatus.DELIVERED if failed == 0 else NotificationStatus.FAILED
+                    )
                     batch.completed_at = _now()
                 await batch_repo.save(batch)
 

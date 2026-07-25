@@ -20,7 +20,9 @@ class NationalAnalyticsService:
         self.db = db
 
     def citizen_statistics(
-        self, governorate: str | None = None, node_id: int | None = None,
+        self,
+        governorate: str | None = None,
+        node_id: int | None = None,
     ) -> dict[str, Any]:
         return {
             "scope": "citizen_statistics",
@@ -31,7 +33,10 @@ class NationalAnalyticsService:
         }
 
     def disease_statistics(
-        self, icd10_code: str | None = None, period_start: date | None = None, period_end: date | None = None,
+        self,
+        icd10_code: str | None = None,
+        period_start: date | None = None,
+        period_end: date | None = None,
     ) -> dict[str, Any]:
         return {
             "scope": "disease_statistics",
@@ -51,9 +56,13 @@ class NationalAnalyticsService:
         results = q.all()
 
         total_labs = self.db.query(LaboratoryRegistry).count()
-        active_labs = self.db.query(LaboratoryRegistry).filter(
-            LaboratoryRegistry.is_active.is_(True),
-        ).count()
+        active_labs = (
+            self.db.query(LaboratoryRegistry)
+            .filter(
+                LaboratoryRegistry.is_active.is_(True),
+            )
+            .count()
+        )
 
         return {
             "total_labs": total_labs,
@@ -92,7 +101,9 @@ class NationalAnalyticsService:
         }
 
     def turnaround_time_statistics(
-        self, lab_id: int | None = None, period: ProductivityPeriod = ProductivityPeriod.DAILY,
+        self,
+        lab_id: int | None = None,
+        period: ProductivityPeriod = ProductivityPeriod.DAILY,
     ) -> dict[str, Any]:
         q = self.db.query(
             func.avg(ProductivityRecord.tat_average_minutes).label("avg_tat"),
@@ -105,9 +116,15 @@ class NationalAnalyticsService:
             )
         result = q.first()
         return {
-            "average_tat_minutes": round(float(result.avg_tat), 2) if result and result.avg_tat else None,
-            "min_tat_minutes": round(float(result.min_tat), 2) if result and result.min_tat else None,
-            "max_tat_minutes": round(float(result.max_tat), 2) if result and result.max_tat else None,
+            "average_tat_minutes": round(float(result.avg_tat), 2)
+            if result and result.avg_tat
+            else None,
+            "min_tat_minutes": round(float(result.min_tat), 2)
+            if result and result.min_tat
+            else None,
+            "max_tat_minutes": round(float(result.max_tat), 2)
+            if result and result.max_tat
+            else None,
         }
 
     def quality_indicators(self, lab_id: int | None = None) -> dict[str, Any]:
@@ -127,7 +144,9 @@ class NationalAnalyticsService:
 
         return {
             "qc_in_control_rate": round((in_control_qc / total_qc * 100), 2) if total_qc > 0 else 0,
-            "eqa_acceptable_rate": round((acceptable_eqa / total_eqa * 100), 2) if total_eqa > 0 else 0,
+            "eqa_acceptable_rate": round((acceptable_eqa / total_eqa * 100), 2)
+            if total_eqa > 0
+            else 0,
         }
 
     def national_dashboard(self) -> dict[str, Any]:
@@ -140,14 +159,24 @@ class NationalAnalyticsService:
         }
 
     def governorate_dashboard(self, governorate: str) -> dict[str, Any]:
-        labs = self.db.query(LaboratoryRegistry).filter(
-            LaboratoryRegistry.governorate == governorate,
-        ).count()
-        workers = self.db.query(HealthcareWorker).join(
-            GovernanceNode, HealthcareWorker.organization_node_id == GovernanceNode.id,
-        ).filter(
-            GovernanceNode.governorate == governorate,
-        ).count()
+        labs = (
+            self.db.query(LaboratoryRegistry)
+            .filter(
+                LaboratoryRegistry.governorate == governorate,
+            )
+            .count()
+        )
+        workers = (
+            self.db.query(HealthcareWorker)
+            .join(
+                GovernanceNode,
+                HealthcareWorker.organization_node_id == GovernanceNode.id,
+            )
+            .filter(
+                GovernanceNode.governorate == governorate,
+            )
+            .count()
+        )
         return {
             "governorate": governorate,
             "laboratories": labs,

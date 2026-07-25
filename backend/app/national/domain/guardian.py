@@ -9,7 +9,12 @@ class Guardian(TenantAuditEntity):
     __tablename__ = "national_guardians"
 
     guardian_type = Column(SAEnum(GuardianType), nullable=False)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     full_name = Column(String(200), nullable=False)
     relationship = Column(String(100), nullable=False)

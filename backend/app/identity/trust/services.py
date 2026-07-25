@@ -30,7 +30,6 @@ from .models import (
 
 
 class TrustFrameworkService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -81,7 +80,9 @@ class TrustFrameworkService:
         return entity
 
     async def supersede_framework(
-        self, framework_id: str, superseded_by_id: str,
+        self,
+        framework_id: str,
+        superseded_by_id: str,
     ) -> TrustFramework | None:
         entity = await self.get_framework(framework_id)
         if not entity:
@@ -92,7 +93,9 @@ class TrustFrameworkService:
         return entity
 
     async def list_frameworks(
-        self, skip: int = 0, limit: int = 100,
+        self,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[TrustFramework]:
         stmt = (
             select(TrustFramework)
@@ -104,7 +107,9 @@ class TrustFrameworkService:
         return list(result.scalars().all())
 
     async def update_framework(
-        self, framework_id: str, **kwargs: Any,
+        self,
+        framework_id: str,
+        **kwargs: Any,
     ) -> TrustFramework | None:
         entity = await self.get_framework(framework_id)
         if not entity:
@@ -117,7 +122,6 @@ class TrustFrameworkService:
 
 
 class AssuranceService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -178,7 +182,8 @@ class AssuranceService:
         return result.scalar_one_or_none()
 
     async def get_profiles_for_identity(
-        self, identity_id: str,
+        self,
+        identity_id: str,
     ) -> list[IdentityAssuranceProfile]:
         stmt = (
             select(IdentityAssuranceProfile)
@@ -200,7 +205,9 @@ class AssuranceService:
         return entity
 
     async def list_profiles(
-        self, skip: int = 0, limit: int = 100,
+        self,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[IdentityAssuranceProfile]:
         stmt = (
             select(IdentityAssuranceProfile)
@@ -213,7 +220,6 @@ class AssuranceService:
 
 
 class TrustAnchorService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -258,7 +264,9 @@ class TrustAnchorService:
         return result.scalar_one_or_none()
 
     async def revoke_anchor(
-        self, anchor_id: str, reason: str,
+        self,
+        anchor_id: str,
+        reason: str,
     ) -> TrustAnchor | None:
         entity = await self.get_anchor(anchor_id)
         if not entity:
@@ -270,14 +278,11 @@ class TrustAnchorService:
         return entity
 
     async def list_anchors(
-        self, skip: int = 0, limit: int = 100,
+        self,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[TrustAnchor]:
-        stmt = (
-            select(TrustAnchor)
-            .where(TrustAnchor.is_active.is_(True))
-            .offset(skip)
-            .limit(limit)
-        )
+        stmt = select(TrustAnchor).where(TrustAnchor.is_active.is_(True)).offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -299,7 +304,6 @@ class TrustAnchorService:
 
 
 class FederationTrustService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -373,7 +377,9 @@ class FederationTrustService:
         return list(result.scalars().all())
 
     async def list_all(
-        self, skip: int = 0, limit: int = 100,
+        self,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[FederationTrust]:
         stmt = (
             select(FederationTrust)
@@ -386,7 +392,6 @@ class FederationTrustService:
 
 
 class IdentityProofingService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -419,7 +424,9 @@ class IdentityProofingService:
         return entity
 
     async def verify_proofing(
-        self, proofing_id: str, verified_by: str,
+        self,
+        proofing_id: str,
+        verified_by: str,
     ) -> IdentityProofing | None:
         entity = await self.get_proofing(proofing_id)
         if not entity:
@@ -432,7 +439,9 @@ class IdentityProofingService:
         return entity
 
     async def reject_proofing(
-        self, proofing_id: str, reason: str,
+        self,
+        proofing_id: str,
+        reason: str,
     ) -> IdentityProofing | None:
         entity = await self.get_proofing(proofing_id)
         if not entity:
@@ -451,7 +460,8 @@ class IdentityProofingService:
         return result.scalar_one_or_none()
 
     async def list_for_person(
-        self, person_id: str,
+        self,
+        person_id: str,
     ) -> list[IdentityProofing]:
         stmt = (
             select(IdentityProofing)
@@ -465,7 +475,9 @@ class IdentityProofingService:
         return list(result.scalars().all())
 
     async def list_all(
-        self, skip: int = 0, limit: int = 100,
+        self,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[IdentityProofing]:
         stmt = (
             select(IdentityProofing)
@@ -478,7 +490,6 @@ class IdentityProofingService:
 
 
 class TrustEvaluationService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -524,7 +535,9 @@ class TrustEvaluationService:
         return result.scalar_one_or_none()
 
     async def list_for_target(
-        self, target_type: str, target_id: str,
+        self,
+        target_type: str,
+        target_id: str,
     ) -> list[TrustEvaluation]:
         stmt = (
             select(TrustEvaluation)
@@ -539,7 +552,9 @@ class TrustEvaluationService:
         return list(result.scalars().all())
 
     async def list_all(
-        self, skip: int = 0, limit: int = 100,
+        self,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[TrustEvaluation]:
         stmt = (
             select(TrustEvaluation)

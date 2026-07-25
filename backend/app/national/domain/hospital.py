@@ -11,8 +11,18 @@ class Hospital(AuditEntity):
     license_number = Column(String(100), nullable=False, unique=True, index=True)
 
     hospital_type = Column(String(50), nullable=False)
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("national_organizations.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     phone = Column(String(20), nullable=True)
     email = Column(String(255), nullable=True)

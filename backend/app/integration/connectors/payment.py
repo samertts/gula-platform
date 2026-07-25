@@ -25,7 +25,9 @@ class PaymentConnector(BaseConnector):
         super().__init__(name, version, config)
         self._provider = self.config.get("provider", "zaincash")
         if self._provider not in SUPPORTED_PROVIDERS:
-            raise ValueError(f"Unsupported payment provider: {self._provider}. Supported: {', '.join(sorted(SUPPORTED_PROVIDERS))}")
+            raise ValueError(
+                f"Unsupported payment provider: {self._provider}. Supported: {', '.join(sorted(SUPPORTED_PROVIDERS))}"
+            )
         self._base_url = self.config.get("base_url", "")
         self._merchant_id = self.config.get("merchant_id", "")
         self._api_key = self.config.get("api_key", "")
@@ -117,7 +119,12 @@ class PaymentConnector(BaseConnector):
                 result = resp.json()
                 result["transaction_id"] = transaction_id
                 return {"success": True, "payment": result}
-            return {"success": False, "error": resp.text, "status_code": resp.status_code, "transaction_id": transaction_id}
+            return {
+                "success": False,
+                "error": resp.text,
+                "status_code": resp.status_code,
+                "transaction_id": transaction_id,
+            }
         except Exception as exc:
             logger.error("Payment initiation failed: %s", exc)
             return {"success": False, "error": str(exc), "transaction_id": transaction_id}

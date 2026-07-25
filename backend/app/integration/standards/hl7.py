@@ -22,7 +22,9 @@ class HL7Segment:
 @dataclass
 class HL7Message:
     segments: list[HL7Segment] = field(default_factory=list)
-    encoding_chars: str = f"{HL7_COMPONENT_SEP}{HL7_REPETITION_SEP}{HL7_ESCAPE_CHAR}{HL7_SUBCOMPONENT_SEP}"
+    encoding_chars: str = (
+        f"{HL7_COMPONENT_SEP}{HL7_REPETITION_SEP}{HL7_ESCAPE_CHAR}{HL7_SUBCOMPONENT_SEP}"
+    )
 
     def to_str(self) -> str:
         lines: list[str] = []
@@ -87,7 +89,15 @@ class HL7Service:
             ["MSA", ack_code, msg_id],
             ["SFT", sending_app, sending_facility],
         ]
-        ack_msg = self.create_message([("MSH", [sending_app, sending_facility, "", "", "", "", "", "", str(len(msg.segments))]), ("MSA", [ack_code, msg_id])])
+        ack_msg = self.create_message(
+            [
+                (
+                    "MSH",
+                    [sending_app, sending_facility, "", "", "", "", "", "", str(len(msg.segments))],
+                ),
+                ("MSA", [ack_code, msg_id]),
+            ]
+        )
         return ack_msg.to_str()
 
     def version(self) -> str:

@@ -9,7 +9,6 @@ from app.national.background_platform.domain.entities import JobDefinition, JobE
 
 
 class JobExecutor(ABC):
-
     @abstractmethod
     async def execute(self, job: JobDefinition, execution: JobExecution) -> dict[str, Any]: ...
 
@@ -21,7 +20,6 @@ class JobExecutor(ABC):
 
 
 class ScheduleCalculator(ABC):
-
     @abstractmethod
     def calculate_next_run(
         self,
@@ -34,7 +32,6 @@ class ScheduleCalculator(ABC):
 
 
 class SimpleScheduleCalculator(ScheduleCalculator):
-
     def calculate_next_run(
         self,
         cron_expression: str,

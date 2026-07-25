@@ -39,7 +39,9 @@ class Admission(NHDWBaseEntity):
     room_id = Column(Integer, nullable=True, index=True)
     bed_id = Column(Integer, nullable=True, index=True)
     admission_type = Column(SAEnum(AdmissionType), nullable=False, index=True)
-    admission_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    admission_date = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
     expected_discharge_date = Column(DateTime(timezone=True), nullable=True)
     discharge_date = Column(DateTime(timezone=True), nullable=True)
     discharge_type = Column(SAEnum(DischargeType), nullable=True)
@@ -70,10 +72,17 @@ class Admission(NHDWBaseEntity):
 class Discharge(NHDWBaseEntity):
     __tablename__ = "nhdw_discharges"
 
-    admission_id = Column(String(26), ForeignKey("nhdw_admissions.id", ondelete="RESTRICT"), nullable=False, index=True)
+    admission_id = Column(
+        String(26),
+        ForeignKey("nhdw_admissions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     patient_id = Column(Integer, nullable=False, index=True)
     encounter_id = Column(String(64), nullable=True, index=True)
-    discharge_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    discharge_date = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
     discharge_type = Column(SAEnum(DischargeType), nullable=False, index=True)
     discharge_destination = Column(String(300), nullable=True)
     discharge_summary = Column(Text, nullable=True)
@@ -110,7 +119,9 @@ class Transfer(NHDWBaseEntity):
     reason = Column(String(500), nullable=False)
     clinical_summary = Column(JSON, nullable=True)
     transferred_by = Column(Integer, nullable=False)
-    transfer_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    transfer_date = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
     transfer_type = Column(String(50), nullable=True)
     status = Column(String(50), nullable=False, default="completed", index=True)
     notes = Column(Text, nullable=True)
@@ -132,7 +143,9 @@ class QueueEntry(NHDWBaseEntity):
     encounter_id = Column(String(64), nullable=True, index=True)
     department_id = Column(Integer, nullable=False, index=True)
     clinic_id = Column(Integer, nullable=True, index=True)
-    priority = Column(SAEnum(QueuePriority), nullable=False, default=QueuePriority.MEDIUM, index=True)
+    priority = Column(
+        SAEnum(QueuePriority), nullable=False, default=QueuePriority.MEDIUM, index=True
+    )
     queue_date = Column(Date, nullable=False, index=True)
     check_in_time = Column(DateTime(timezone=True), nullable=True)
     seen_time = Column(DateTime(timezone=True), nullable=True)
@@ -161,7 +174,9 @@ class WaitingListEntry(NHDWBaseEntity):
     department_id = Column(Integer, nullable=False, index=True)
     procedure_code = Column(String(50), nullable=True, index=True)
     procedure_name = Column(String(300), nullable=True)
-    priority = Column(SAEnum(QueuePriority), nullable=False, default=QueuePriority.MEDIUM, index=True)
+    priority = Column(
+        SAEnum(QueuePriority), nullable=False, default=QueuePriority.MEDIUM, index=True
+    )
     listed_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     clinical_urgency = Column(String(50), nullable=True)
     status = Column(String(50), nullable=False, default="active", index=True)
@@ -186,8 +201,12 @@ class ClinicalTask(NHDWBaseEntity):
     assigned_by = Column(Integer, nullable=False)
     task_type = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=False)
-    priority = Column(SAEnum(QueuePriority), nullable=False, default=QueuePriority.MEDIUM, index=True)
-    status = Column(SAEnum(ClinicalTaskStatus), nullable=False, default=ClinicalTaskStatus.PENDING, index=True)
+    priority = Column(
+        SAEnum(QueuePriority), nullable=False, default=QueuePriority.MEDIUM, index=True
+    )
+    status = Column(
+        SAEnum(ClinicalTaskStatus), nullable=False, default=ClinicalTaskStatus.PENDING, index=True
+    )
     due_date = Column(DateTime(timezone=True), nullable=True)
     scheduled_time = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -297,12 +316,16 @@ class HospitalMessage(NHDWBaseEntity):
     is_read = Column(Boolean, default=False, nullable=False, index=True)
     read_at = Column(DateTime(timezone=True), nullable=True)
     department_id = Column(Integer, nullable=True, index=True)
-    parent_message_id = Column(String(26), ForeignKey("nhdw_hospital_messages.id", ondelete="SET NULL"), nullable=True)
+    parent_message_id = Column(
+        String(26), ForeignKey("nhdw_hospital_messages.id", ondelete="SET NULL"), nullable=True
+    )
     has_attachments = Column(Boolean, default=False, nullable=False)
     metadata_ = Column("metadata", JSON, nullable=True)
 
     department = relationship("HospitalDepartment", foreign_keys=[department_id])
-    parent = relationship("HospitalMessage", remote_side="HospitalMessage.id", foreign_keys=[parent_message_id])
+    parent = relationship(
+        "HospitalMessage", remote_side="HospitalMessage.id", foreign_keys=[parent_message_id]
+    )
 
     __table_args__ = (
         Index("ix_nhdw_messages_sender", "sender_id"),

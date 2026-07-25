@@ -10,7 +10,6 @@ from app.identity.repositories.person_repository import PersonRepository
 
 
 class PersonService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.repo = PersonRepository(session)
 

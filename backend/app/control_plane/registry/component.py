@@ -56,12 +56,22 @@ class ComponentRegistry:
         self._components[descriptor.name] = descriptor
         sr = self._get_kernel_service_registry()
         if sr and not sr.has(descriptor.name):
-            sr.register(descriptor.name, descriptor, singleton=True, metadata={
-                "type": descriptor.component_type.value,
-                "version": descriptor.version,
-                "status": descriptor.status.value,
-            })
-        logger.info("Component registered: %s (%s v%s)", descriptor.name, descriptor.component_type.value, descriptor.version)
+            sr.register(
+                descriptor.name,
+                descriptor,
+                singleton=True,
+                metadata={
+                    "type": descriptor.component_type.value,
+                    "version": descriptor.version,
+                    "status": descriptor.status.value,
+                },
+            )
+        logger.info(
+            "Component registered: %s (%s v%s)",
+            descriptor.name,
+            descriptor.component_type.value,
+            descriptor.version,
+        )
 
     def unregister(self, name: str) -> None:
         self._components.pop(name, None)

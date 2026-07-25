@@ -77,7 +77,9 @@ class DeltaChecker:
                 result.delta_pct = result.delta_abs * 100
 
             is_significant = False
-            if (self._significant_abs > 0 and result.delta_abs >= self._significant_abs) or (self._significant_pct > 0 and result.delta_pct >= self._significant_pct):
+            if (self._significant_abs > 0 and result.delta_abs >= self._significant_abs) or (
+                self._significant_pct > 0 and result.delta_pct >= self._significant_pct
+            ):
                 is_significant = True
 
             result.significant = is_significant
@@ -210,14 +212,16 @@ class QCAnalyzer:
 
         elif rule == "4_1s" and n >= 4:
             for i in range(n - 3):
-                window = values[i:i + 4]
-                same_side = all((v - mean) > sd for v in window) or all((mean - v) > sd for v in window)
+                window = values[i : i + 4]
+                same_side = all((v - mean) > sd for v in window) or all(
+                    (mean - v) > sd for v in window
+                )
                 if same_side:
                     violations.append("4-1s: 4 consecutive values exceed 1 SD on same side")
 
         elif rule == "10x" and n >= 10:
             for i in range(n - 9):
-                window = values[i:i + 10]
+                window = values[i : i + 10]
                 if all(v >= mean for v in window) or all(v <= mean for v in window):
                     violations.append("10x: 10 consecutive values on same side of mean")
                     break
@@ -244,7 +248,9 @@ class WorkloadPredictor:
     def predict_daily(self, date: str | None = None) -> WorkloadPrediction:
         avg_orders = 0
         if self._historical_data:
-            values = [d.get("order_count", 0) for d in self._historical_data if d.get("order_count")]
+            values = [
+                d.get("order_count", 0) for d in self._historical_data if d.get("order_count")
+            ]
             avg_orders = int(statistics.mean(values)) if values else 0
         return WorkloadPrediction(
             period=date or "today",

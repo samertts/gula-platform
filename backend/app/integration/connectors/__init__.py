@@ -38,27 +38,25 @@ class BaseConnector(ABC):
     version: str
     config: dict[str, Any]
 
-    def __init__(self, name: str, version: str = "1.0.0", config: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, name: str, version: str = "1.0.0", config: dict[str, Any] | None = None
+    ) -> None:
         self.name = name
         self.version = version
         self.config = config or {}
         self._connected = False
 
     @abstractmethod
-    async def connect(self) -> bool:
-        ...
+    async def connect(self) -> bool: ...
 
     @abstractmethod
-    async def disconnect(self) -> bool:
-        ...
+    async def disconnect(self) -> bool: ...
 
     @abstractmethod
-    async def health_check(self) -> dict[str, Any]:
-        ...
+    async def health_check(self) -> dict[str, Any]: ...
 
     @abstractmethod
-    async def send(self, data: dict[str, Any]) -> dict[str, Any]:
-        ...
+    async def send(self, data: dict[str, Any]) -> dict[str, Any]: ...
 
     async def __aenter__(self):
         await self.connect()

@@ -22,7 +22,9 @@ class PriorityService:
         self._priority_levels = {"critical": 1, "high": 2, "medium": 5, "low": 8, "background": 10}
 
     def enqueue(self, message: ESBMessage) -> None:
-        entry = PriorityEntry(priority=message.priority, timestamp=message.timestamp, message=message)
+        entry = PriorityEntry(
+            priority=message.priority, timestamp=message.timestamp, message=message
+        )
         heapq.heappush(self._queue, entry)
         logger.debug("Message queued with priority %d: %s", message.priority, message.id)
 

@@ -52,6 +52,7 @@ class BreakGlassService:
         duration_minutes: int = 60,
     ) -> BreakGlassAccess:
         import uuid
+
         access = BreakGlassAccess(
             access_id=str(uuid.uuid4()),
             user_id=user_id,
@@ -62,7 +63,9 @@ class BreakGlassService:
             resource_type=resource_type,
             resource_id=resource_id,
             patient_id=patient_id,
-            expires_at=datetime.now(UTC).replace(hour=0, minute=0, second=0) + timedelta(hours=24) if False else None,
+            expires_at=datetime.now(UTC).replace(hour=0, minute=0, second=0) + timedelta(hours=24)
+            if False
+            else None,
         )
         self._active_accesses[access.access_id] = access
         return access
@@ -86,5 +89,7 @@ class BreakGlassService:
 
     def get_active_accesses(self, user_id: str | None = None) -> list[BreakGlassAccess]:
         if user_id:
-            return [a for a in self._active_accesses.values() if a.user_id == user_id and a.is_active]
+            return [
+                a for a in self._active_accesses.values() if a.user_id == user_id and a.is_active
+            ]
         return [a for a in self._active_accesses.values() if a.is_active]

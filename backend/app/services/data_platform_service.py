@@ -30,7 +30,6 @@ logger = logging.getLogger("gula.data_platform")
 
 
 class DataPlatformService:
-
     # ── Master Data Management ─────────────────────────────────────────────────
 
     @staticmethod
@@ -125,7 +124,9 @@ class DataPlatformService:
         db.flush()
 
         DuplicateRecord.update_golden(
-            db, golden_record_id=golden_record_id, resolution="merged",
+            db,
+            golden_record_id=golden_record_id,
+            resolution="merged",
         )
 
         emit_to_outbox(
@@ -184,12 +185,15 @@ class DataPlatformService:
         db.add(event)
         db.flush()
 
-        events.emit(event_type, {
-            "event_id": event.id,
-            "aggregate_type": aggregate_type,
-            "aggregate_id": aggregate_id,
-            "event_data": event_data,
-        })
+        events.emit(
+            event_type,
+            {
+                "event_id": event.id,
+                "aggregate_type": aggregate_type,
+                "aggregate_id": aggregate_id,
+                "event_data": event_data,
+            },
+        )
 
         return event
 
@@ -286,14 +290,17 @@ class DataPlatformService:
                 .order_by(DataLineageEntry.processed_at.desc())
                 .all()
             )
-            upstream = [{
-                "id": e.id,
-                "source_entity": e.source_entity,
-                "source_entity_id": e.source_entity_id,
-                "transformation_type": e.transformation_type,
-                "pipeline_name": e.pipeline_name,
-                "processed_at": e.processed_at.isoformat() if e.processed_at else None,
-            } for e in entries]
+            upstream = [
+                {
+                    "id": e.id,
+                    "source_entity": e.source_entity,
+                    "source_entity_id": e.source_entity_id,
+                    "transformation_type": e.transformation_type,
+                    "pipeline_name": e.pipeline_name,
+                    "processed_at": e.processed_at.isoformat() if e.processed_at else None,
+                }
+                for e in entries
+            ]
 
         if direction in ("downstream", "both"):
             entries = (
@@ -305,14 +312,17 @@ class DataPlatformService:
                 .order_by(DataLineageEntry.processed_at.desc())
                 .all()
             )
-            downstream = [{
-                "id": e.id,
-                "target_entity": e.target_entity,
-                "target_entity_id": e.target_entity_id,
-                "transformation_type": e.transformation_type,
-                "pipeline_name": e.pipeline_name,
-                "processed_at": e.processed_at.isoformat() if e.processed_at else None,
-            } for e in entries]
+            downstream = [
+                {
+                    "id": e.id,
+                    "target_entity": e.target_entity,
+                    "target_entity_id": e.target_entity_id,
+                    "transformation_type": e.transformation_type,
+                    "pipeline_name": e.pipeline_name,
+                    "processed_at": e.processed_at.isoformat() if e.processed_at else None,
+                }
+                for e in entries
+            ]
 
         return {"upstream": upstream, "downstream": downstream}
 

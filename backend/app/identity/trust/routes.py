@@ -430,7 +430,12 @@ async def create_proofing(
         evidence_documents=evidence_documents,
         authority_id=authority_id,
     )
-    return {"uuid": entity.uuid, "id": entity.id, "proofing_id": entity.proofing_id, "status": entity.status}
+    return {
+        "uuid": entity.uuid,
+        "id": entity.id,
+        "proofing_id": entity.proofing_id,
+        "status": entity.status,
+    }
 
 
 @router.get("/proofing")

@@ -59,11 +59,12 @@ class BatchSimulationResult:
 
 
 class SimulationEngine:
-
     def __init__(self, expression_engine: ExpressionEngine | None = None) -> None:
         self.engine = expression_engine or ExpressionEngine()
 
-    def run_simulation(self, rule: RuleDefinition, context: RuleEvaluationContext) -> SimulationReport:
+    def run_simulation(
+        self, rule: RuleDefinition, context: RuleEvaluationContext,
+    ) -> SimulationReport:
         start = datetime.now(UTC)
         result = self.engine.evaluate_rule(rule, context.data)
         elapsed = (datetime.now(UTC) - start).total_seconds() * 1000.0

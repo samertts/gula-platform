@@ -34,18 +34,47 @@ class RedactionResult:
 class PromptInjectionProtector:
     def __init__(self) -> None:
         self._patterns: list[tuple[re.Pattern, str]] = [
-            (re.compile(r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|directions)", re.IGNORECASE), "instruction_override"),
+            (
+                re.compile(
+                    r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|directions)",
+                    re.IGNORECASE,
+                ),
+                "instruction_override",
+            ),
             (re.compile(r"(system|main|base)\s+prompt", re.IGNORECASE), "system_prompt_extraction"),
-            (re.compile(r"forget\s+(all\s+)?(previous|prior|past)", re.IGNORECASE), "memory_manipulation"),
+            (
+                re.compile(r"forget\s+(all\s+)?(previous|prior|past)", re.IGNORECASE),
+                "memory_manipulation",
+            ),
             (re.compile(r"you\s+are\s+(not|now|instead)", re.IGNORECASE), "role_manipulation"),
-            (re.compile(r"admin(isrator)?\s*(access|bypass|override)", re.IGNORECASE), "privilege_escalation"),
-            (re.compile(r"reveal\s+(your\s+)?(instructions|prompt|system|rules)", re.IGNORECASE), "instruction_reveal"),
-            (re.compile(r"output\s+(raw|original|unmodified|unfiltered)", re.IGNORECASE), "filter_bypass"),
-            (re.compile(r"simulate\s+(jailbreak|bypass|override)", re.IGNORECASE), "jailbreak_attempt"),
-            (re.compile(r"do\s+(not\s+)?(follow|obey|adhere)", re.IGNORECASE), "instruction_refusal"),
+            (
+                re.compile(r"admin(isrator)?\s*(access|bypass|override)", re.IGNORECASE),
+                "privilege_escalation",
+            ),
+            (
+                re.compile(r"reveal\s+(your\s+)?(instructions|prompt|system|rules)", re.IGNORECASE),
+                "instruction_reveal",
+            ),
+            (
+                re.compile(r"output\s+(raw|original|unmodified|unfiltered)", re.IGNORECASE),
+                "filter_bypass",
+            ),
+            (
+                re.compile(r"simulate\s+(jailbreak|bypass|override)", re.IGNORECASE),
+                "jailbreak_attempt",
+            ),
+            (
+                re.compile(r"do\s+(not\s+)?(follow|obey|adhere)", re.IGNORECASE),
+                "instruction_refusal",
+            ),
             (re.compile(r"<[^>]*script[^>]*>", re.IGNORECASE), "xss_attempt"),
             (re.compile(r"DROP\s+(TABLE|DATABASE|INDEX)", re.IGNORECASE), "sql_injection"),
-            (re.compile(r"(api[_-]?key|secret[_-]?key|password|token)\s*[:=]\s*\S+", re.IGNORECASE), "credential_leak"),
+            (
+                re.compile(
+                    r"(api[_-]?key|secret[_-]?key|password|token)\s*[:=]\s*\S+", re.IGNORECASE,
+                ),
+                "credential_leak",
+            ),
         ]
 
     def analyze(self, text: str) -> InjectionResult:
@@ -105,14 +134,18 @@ class OutputValidator:
         score = max(0.0, 1.0 - len(issues) * 0.2)
         return ValidationResult(passed=len(issues) == 0, issues=issues, score=round(score, 2))
 
-    def validate_structured(self, data: dict[str, Any], schema: dict[str, type] | None = None) -> ValidationResult:
+    def validate_structured(
+        self, data: dict[str, Any], schema: dict[str, type] | None = None,
+    ) -> ValidationResult:
         issues: list[str] = []
         if schema:
             for field_name, expected_type in schema.items():
                 if field_name not in data:
                     issues.append(f"Missing field: {field_name}")
                 elif not isinstance(data[field_name], expected_type):
-                    issues.append(f"Field {field_name} expected {expected_type.__name__}, got {type(data[field_name]).__name__}")
+                    issues.append(
+                        f"Field {field_name} expected {expected_type.__name__}, got {type(data[field_name]).__name__}",
+                    )
         return ValidationResult(passed=len(issues) == 0, issues=issues)
 
 
@@ -127,19 +160,26 @@ class PIIProtector:
             (re.compile(r"\b(?:\d{4}[-\s]?){3}\d{4}\b"), "credit_card"),
             (re.compile(r"\b\d{5}(?:-\d{4})?\b"), "zip_code"),
             (re.compile(r"\b(?:M[rs]s?\.|Dr\.|Prof\.)\s+[A-Z][a-z]+\b"), "name_with_title"),
-            (re.compile(r"\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b"), "ip_address"),
+            (
+                re.compile(
+                    r"\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b",
+                ),
+                "ip_address",
+            ),
         ]
 
     def detect(self, text: str) -> list[dict[str, Any]]:
         findings: list[dict[str, Any]] = []
         for pattern, pii_type in self._patterns:
             for match in pattern.finditer(text):
-                findings.append({
-                    "type": pii_type,
-                    "value": match.group(),
-                    "start": match.start(),
-                    "end": match.end(),
-                })
+                findings.append(
+                    {
+                        "type": pii_type,
+                        "value": match.group(),
+                        "start": match.start(),
+                        "end": match.end(),
+                    },
+                )
         return findings
 
     def redact(self, text: str) -> RedactionResult:

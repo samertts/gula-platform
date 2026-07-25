@@ -36,6 +36,7 @@ class HealthAggregator:
         try:
             if comp.health_endpoint:
                 import httpx
+
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     resp = await client.get(comp.health_endpoint)
                     health.status = "healthy" if resp.is_success else "unhealthy"
@@ -71,7 +72,10 @@ class HealthAggregator:
             "total_components": total,
             "healthy": healthy,
             "degraded": degraded,
-            "components": {r.name: {"status": r.status, "error": r.error, "last_checked": r.last_checked} for r in results},
+            "components": {
+                r.name: {"status": r.status, "error": r.error, "last_checked": r.last_checked}
+                for r in results
+            },
             "circuit_breakers": circuit_health,
             "timestamp": datetime.now(UTC).isoformat(),
         }

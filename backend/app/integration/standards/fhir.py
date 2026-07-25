@@ -35,7 +35,9 @@ class FHIRService:
             errors.append("Missing resourceType")
         return errors
 
-    def create_bundle(self, resources: list[FHIRResource], bundle_type: str = "collection") -> dict[str, Any]:
+    def create_bundle(
+        self, resources: list[FHIRResource], bundle_type: str = "collection"
+    ) -> dict[str, Any]:
         return {
             "resourceType": "Bundle",
             "type": bundle_type,

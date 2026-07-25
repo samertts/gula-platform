@@ -25,6 +25,7 @@ Invariants asserted:
 
 Blast radius: zero. No production code modified.
 """
+
 from __future__ import annotations
 
 import os
@@ -113,8 +114,14 @@ class TestAuditChainDeterministic:
         """Compute the chain twice over the same rows, hashes must match."""
         # Seed
         for i in range(3):
-            log_action(db, action=f"a{i}", resource_type="patient",
-                       resource_id=i, user_id=1, user_role="admin")
+            log_action(
+                db,
+                action=f"a{i}",
+                resource_type="patient",
+                resource_id=i,
+                user_id=1,
+                user_role="admin",
+            )
             db.commit()
 
         # First pass
@@ -145,8 +152,14 @@ class TestAuditChainDeterministic:
         """Restoring a backup with a missing audit row → tampered."""
         # Seed via _seed_chain_persisted-equivalent (re-stitch)
         for i in range(4):
-            log_action(db, action=f"a{i}", resource_type="patient",
-                       resource_id=i, user_id=1, user_role="admin")
+            log_action(
+                db,
+                action=f"a{i}",
+                resource_type="patient",
+                resource_id=i,
+                user_id=1,
+                user_role="admin",
+            )
             db.commit()
         # Re-stitch chain over persisted form
         rows = db.query(AuditLog).order_by(AuditLog.id.asc()).all()
@@ -175,21 +188,41 @@ class TestTenantIsolationUnderRestore:
     def test_inserting_mixed_tenant_rows_keeps_them_separate(self, db):
         """Simulate restoring rows belonging to two labs; queries by
         lab_id must continue to scope correctly."""
-        lab_a = Lab(name="Restored A", license_number="LIC-RA",
-                    lab_type="private", city="Baghdad", is_active=True)
-        lab_b = Lab(name="Restored B", license_number="LIC-RB",
-                    lab_type="private", city="Mosul", is_active=True)
+        lab_a = Lab(
+            name="Restored A",
+            license_number="LIC-RA",
+            lab_type="private",
+            city="Baghdad",
+            is_active=True,
+        )
+        lab_b = Lab(
+            name="Restored B",
+            license_number="LIC-RB",
+            lab_type="private",
+            city="Mosul",
+            is_active=True,
+        )
         db.add_all([lab_a, lab_b])
         db.flush()
 
         # Simulate restoring patient rows
         for i in range(5):
-            db.add(Patient(lab_id=lab_a.id,
-                           full_name=f"PA{i}", phone=f"077000{i:05d}",
-                           health_id=f"HID-RA-{i}"))
-            db.add(Patient(lab_id=lab_b.id,
-                           full_name=f"PB{i}", phone=f"077001{i:05d}",
-                           health_id=f"HID-RB-{i}"))
+            db.add(
+                Patient(
+                    lab_id=lab_a.id,
+                    full_name=f"PA{i}",
+                    phone=f"077000{i:05d}",
+                    health_id=f"HID-RA-{i}",
+                )
+            )
+            db.add(
+                Patient(
+                    lab_id=lab_b.id,
+                    full_name=f"PB{i}",
+                    phone=f"077001{i:05d}",
+                    health_id=f"HID-RB-{i}",
+                )
+            )
         db.commit()
 
         a_count = db.query(Patient).filter(Patient.lab_id == lab_a.id).count()
@@ -214,6 +247,7 @@ class TestAnchorFileFormat:
             _anchor_hmac,
             _verify_anchor_hmac,
         )
+
         # Round-trip: produce + verify
         payload = "v1|2026-05-08T12:00:00Z|42|deadbeef"
         h = _anchor_hmac(payload)
@@ -223,6 +257,7 @@ class TestAnchorFileFormat:
 
     def test_anchor_hmac_resists_tampering(self):
         from app.services.audit_service import _anchor_hmac, _verify_anchor_hmac
+
         payload = "v1|2026-05-08T12:00:00Z|42|deadbeef"
         h = _anchor_hmac(payload)
         # Mutate the payload — HMAC must not validate
@@ -239,6 +274,7 @@ class TestRecoveryGuardsStartupReady:
 
     def test_startup_guard_module_is_loadable(self):
         from app.core import startup_guard
+
         # The guard module must expose system_ready
         assert hasattr(startup_guard, "system_ready")
 
@@ -247,6 +283,7 @@ class TestRecoveryGuardsStartupReady:
         monkeypatch it via the conftest pattern). If this attribute moves,
         every test fixture in the suite would break silently."""
         from app.core import startup_guard
+
         sr = startup_guard.system_ready
         assert isinstance(sr, bool) or sr is None
 

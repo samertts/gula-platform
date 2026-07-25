@@ -175,15 +175,15 @@ class SqlDocumentRepository(DocumentRepository):
 
             total = q.count()
             models = (
-                q.order_by(desc(ScannedDocumentModel.created_at))
-                .offset(offset)
-                .limit(limit)
-                .all()
+                q.order_by(desc(ScannedDocumentModel.created_at)).offset(offset).limit(limit).all()
             )
             return [m.to_domain() for m in models], total
 
     async def update_status(
-        self, document_id: UUID, status: DocumentStatus, error: str = "",
+        self,
+        document_id: UUID,
+        status: DocumentStatus,
+        error: str = "",
     ) -> None:
         with self._session() as session:
             model = session.get(ScannedDocumentModel, document_id)
@@ -195,11 +195,13 @@ class SqlDocumentRepository(DocumentRepository):
             session.commit()
 
     async def count_by_status(
-        self, tenant_id: UUID | None = None,
+        self,
+        tenant_id: UUID | None = None,
     ) -> dict[DocumentStatus, int]:
         with self._session() as session:
             query = session.query(
-                ScannedDocumentModel.status, func.count(ScannedDocumentModel.id),
+                ScannedDocumentModel.status,
+                func.count(ScannedDocumentModel.id),
             )
             if tenant_id:
                 query = query.filter(ScannedDocumentModel.tenant_id == tenant_id)
@@ -207,7 +209,9 @@ class SqlDocumentRepository(DocumentRepository):
             return {row[0]: row[1] for row in query.all()}
 
     async def find_duplicates(
-        self, checksum: str, tenant_id: UUID | None = None,
+        self,
+        checksum: str,
+        tenant_id: UUID | None = None,
     ) -> list[ScannedDocument]:
         with self._session() as session:
             query = session.query(ScannedDocumentModel).filter(
@@ -218,17 +222,21 @@ class SqlDocumentRepository(DocumentRepository):
             return [m.to_domain() for m in query.all()]
 
     async def get_pending_processing(
-        self, limit: int = 50, priority: ProcessingPriority | None = None,
+        self,
+        limit: int = 50,
+        priority: ProcessingPriority | None = None,
     ) -> list[ScannedDocument]:
         with self._session() as session:
             query = session.query(ScannedDocumentModel).filter(
-                ScannedDocumentModel.status.in_([
-                    DocumentStatus.pending_ingestion,
-                    DocumentStatus.ocr_pending,
-                    DocumentStatus.classification_pending,
-                    DocumentStatus.entity_extraction_pending,
-                    DocumentStatus.fhir_mapping_pending,
-                ]),
+                ScannedDocumentModel.status.in_(
+                    [
+                        DocumentStatus.pending_ingestion,
+                        DocumentStatus.ocr_pending,
+                        DocumentStatus.classification_pending,
+                        DocumentStatus.entity_extraction_pending,
+                        DocumentStatus.fhir_mapping_pending,
+                    ],
+                ),
             )
             if priority:
                 query = query.filter(ScannedDocumentModel.priority == priority)
@@ -292,7 +300,9 @@ class SqlEntityRepository(EntityRepository):
         self._session_factory = session_factory
 
     async def save_many(
-        self, document_id: UUID, entities: list[ExtractedEntity],
+        self,
+        document_id: UUID,
+        entities: list[ExtractedEntity],
     ) -> list[ExtractedEntity]:
         with self._session_factory() as session:
             session.query(ExtractedEntityModel).filter(
@@ -313,7 +323,10 @@ class SqlEntityRepository(EntityRepository):
             return [m.to_domain() for m in models]
 
     async def search_by_value(
-        self, value: str, tenant_id: UUID | None = None, limit: int = 50,
+        self,
+        value: str,
+        tenant_id: UUID | None = None,
+        limit: int = 50,
     ) -> list[ExtractedEntity]:
         with self._session_factory() as session:
             query = session.query(ExtractedEntityModel).filter(
@@ -328,7 +341,9 @@ class SqlFieldRepository(FieldRepository):
         self._session_factory = session_factory
 
     async def save_many(
-        self, document_id: UUID, fields: list[ExtractedField],
+        self,
+        document_id: UUID,
+        fields: list[ExtractedField],
     ) -> list[ExtractedField]:
         with self._session_factory() as session:
             session.query(ExtractedFieldModel).filter(
@@ -354,7 +369,9 @@ class SqlTableRepository(TableRepository):
         self._session_factory = session_factory
 
     async def save_many(
-        self, document_id: UUID, tables: list[ExtractedTable],
+        self,
+        document_id: UUID,
+        tables: list[ExtractedTable],
     ) -> list[ExtractedTable]:
         with self._session_factory() as session:
             session.query(ExtractedTableModel).filter(
@@ -470,7 +487,9 @@ class SqlGovernmentDocumentRepository(GovernmentDocumentRepository):
 
     async def save(self, gov: GovernmentDocument) -> GovernmentDocument:
         with self._session_factory() as s:
-            existing = s.query(GovernmentDocumentModel).filter_by(document_id=gov.document_id).first()
+            existing = (
+                s.query(GovernmentDocumentModel).filter_by(document_id=gov.document_id).first()
+            )
             if existing:
                 for k, v in GovernmentDocumentModel.from_domain(gov).__dict__.items():
                     if k != "_sa_instance_state":
@@ -487,7 +506,9 @@ class SqlGovernmentDocumentRepository(GovernmentDocumentRepository):
             m = s.query(GovernmentDocumentModel).filter_by(document_id=document_id).first()
             return m.to_domain() if m else None
 
-    async def search(self, query: str, filters: dict[str, Any] | None = None, limit: int = 50) -> list[GovernmentDocument]:
+    async def search(
+        self, query: str, filters: dict[str, Any] | None = None, limit: int = 50,
+    ) -> list[GovernmentDocument]:
         with self._session_factory() as s:
             q = s.query(GovernmentDocumentModel)
             q = q.filter(
@@ -516,7 +537,10 @@ class SqlReviewRepository(ReviewRepository):
 
     async def get_by_document(self, document_id: UUID) -> list[DocumentReview]:
         with self._session_factory() as s:
-            return [m.to_domain() for m in s.query(DocumentReviewModel).filter_by(document_id=document_id).all()]
+            return [
+                m.to_domain()
+                for m in s.query(DocumentReviewModel).filter_by(document_id=document_id).all()
+            ]
 
     async def update(self, review: DocumentReview) -> DocumentReview:
         with self._session_factory() as s:
@@ -548,7 +572,10 @@ class SqlAnnotationRepository(AnnotationRepository):
 
     async def get_by_document(self, document_id: UUID) -> list[DocumentAnnotation]:
         with self._session_factory() as s:
-            return [m.to_domain() for m in s.query(DocumentAnnotationModel).filter_by(document_id=document_id).all()]
+            return [
+                m.to_domain()
+                for m in s.query(DocumentAnnotationModel).filter_by(document_id=document_id).all()
+            ]
 
     async def update(self, annotation: DocumentAnnotation) -> DocumentAnnotation:
         with self._session_factory() as s:
@@ -566,7 +593,11 @@ class SqlPreservationRepository(PreservationRepository):
 
     async def save(self, record: DigitalPreservationRecord) -> DigitalPreservationRecord:
         with self._session_factory() as s:
-            existing = s.query(DigitalPreservationRecordModel).filter_by(document_id=record.document_id).first()
+            existing = (
+                s.query(DigitalPreservationRecordModel)
+                .filter_by(document_id=record.document_id)
+                .first()
+            )
             if existing:
                 for k, v in DigitalPreservationRecordModel.from_domain(record).__dict__.items():
                     if k != "_sa_instance_state":
@@ -588,10 +619,15 @@ class SqlPreservationRepository(PreservationRepository):
 
     async def list_due_for_integrity_check(self) -> list[DigitalPreservationRecord]:
         from datetime import datetime
+
         with self._session_factory() as s:
-            ms = s.query(DigitalPreservationRecordModel).filter(
-                DigitalPreservationRecordModel.next_integrity_check <= datetime.now(UTC),
-            ).all()
+            ms = (
+                s.query(DigitalPreservationRecordModel)
+                .filter(
+                    DigitalPreservationRecordModel.next_integrity_check <= datetime.now(UTC),
+                )
+                .all()
+            )
             return [m.to_domain() for m in ms]
 
 
@@ -647,7 +683,9 @@ class SqlGovernanceEventRepository(GovernanceEventRepository):
             s.commit()
             return model.to_domain()
 
-    async def list(self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None) -> list[GovernanceEvent]:
+    async def list(
+        self, document_id: UUID | None = None, severity: GovernanceRuleSeverity | None = None,
+    ) -> list[GovernanceEvent]:
         with self._session_factory() as s:
             q = s.query(GovernanceEventModel)
             if document_id:
@@ -668,7 +706,9 @@ class SqlDocumentEventRepository(DocumentEventRepository):
             s.commit()
             return model.to_domain()
 
-    async def list(self, document_id: UUID | None = None, channel: EventChannel | None = None) -> list[DocumentEvent]:
+    async def list(
+        self, document_id: UUID | None = None, channel: EventChannel | None = None,
+    ) -> list[DocumentEvent]:
         with self._session_factory() as s:
             q = s.query(DocumentEventModel)
             if document_id:
@@ -700,8 +740,13 @@ class SqlLifecycleRepository(LifecycleRepository):
 
     async def get_by_document(self, document_id: UUID) -> list[DocumentLifecycleRecord]:
         with self._session_factory() as s:
-            return [m.to_domain() for m in s.query(DocumentLifecycleModel).filter_by(document_id=document_id)
-                    .order_by(DocumentLifecycleModel.created_at.desc()).all()]
+            return [
+                m.to_domain()
+                for m in s.query(DocumentLifecycleModel)
+                .filter_by(document_id=document_id)
+                .order_by(DocumentLifecycleModel.created_at.desc())
+                .all()
+            ]
 
 
 class SqlGraphEdgeRepository(GraphEdgeRepository):
@@ -717,35 +762,57 @@ class SqlGraphEdgeRepository(GraphEdgeRepository):
 
     async def get_by_document(self, document_id: UUID) -> list[KnowledgeGraphEdge]:
         with self._session_factory() as s:
-            return [m.to_domain() for m in s.query(KnowledgeGraphEdgeModel)
-                    .filter((KnowledgeGraphEdgeModel.source_document_id == document_id)
-                            | (KnowledgeGraphEdgeModel.target_document_id == document_id)).all()]
+            return [
+                m.to_domain()
+                for m in s.query(KnowledgeGraphEdgeModel)
+                .filter(
+                    (KnowledgeGraphEdgeModel.source_document_id == document_id)
+                    | (KnowledgeGraphEdgeModel.target_document_id == document_id),
+                )
+                .all()
+            ]
 
     async def find_related(self, document_id: UUID, max_depth: int = 3) -> list[dict[str, Any]]:
         with self._session_factory() as s:
-            edges = s.query(KnowledgeGraphEdgeModel).filter(
-                (KnowledgeGraphEdgeModel.source_document_id == document_id)
-                | (KnowledgeGraphEdgeModel.target_document_id == document_id),
-            ).limit(50).all()
+            edges = (
+                s.query(KnowledgeGraphEdgeModel)
+                .filter(
+                    (KnowledgeGraphEdgeModel.source_document_id == document_id)
+                    | (KnowledgeGraphEdgeModel.target_document_id == document_id),
+                )
+                .limit(50)
+                .all()
+            )
             seen: set[UUID] = set()
             related: list[dict[str, Any]] = []
             for e in edges:
-                other = e.target_document_id if e.source_document_id == document_id else e.source_document_id
+                other = (
+                    e.target_document_id
+                    if e.source_document_id == document_id
+                    else e.source_document_id
+                )
                 if other and other not in seen:
                     seen.add(other)
-                    related.append({
-                        "document_id": str(other),
-                        "relation": str(e.relation),
-                        "confidence": e.confidence,
-                    })
+                    related.append(
+                        {
+                            "document_id": str(other),
+                            "relation": str(e.relation),
+                            "confidence": e.confidence,
+                        },
+                    )
             return related
 
     async def get_entity_network(self, entity_name: str) -> list[dict[str, Any]]:
         with self._session_factory() as s:
-            edges = s.query(KnowledgeGraphEdgeModel).filter(
-                KnowledgeGraphEdgeModel.source_entity.ilike(f"%{entity_name}%")
-                | KnowledgeGraphEdgeModel.target_entity.ilike(f"%{entity_name}%"),
-            ).limit(100).all()
+            edges = (
+                s.query(KnowledgeGraphEdgeModel)
+                .filter(
+                    KnowledgeGraphEdgeModel.source_entity.ilike(f"%{entity_name}%")
+                    | KnowledgeGraphEdgeModel.target_entity.ilike(f"%{entity_name}%"),
+                )
+                .limit(100)
+                .all()
+            )
             return [e.to_domain() for e in edges]
 
 
@@ -755,7 +822,11 @@ class SqlAccessControlRepository(AccessControlRepository):
 
     async def grant(self, document_id: UUID, user_id: str, role: CollaborationRole) -> None:
         with self._session_factory() as s:
-            existing = s.query(AccessControlModel).filter_by(document_id=document_id, user_id=user_id).first()
+            existing = (
+                s.query(AccessControlModel)
+                .filter_by(document_id=document_id, user_id=user_id)
+                .first()
+            )
             if existing:
                 existing.role = role
             else:
@@ -769,19 +840,27 @@ class SqlAccessControlRepository(AccessControlRepository):
 
     async def check(self, document_id: UUID, user_id: str) -> CollaborationRole | None:
         with self._session_factory() as s:
-            m = s.query(AccessControlModel).filter_by(document_id=document_id, user_id=user_id).first()
+            m = (
+                s.query(AccessControlModel)
+                .filter_by(document_id=document_id, user_id=user_id)
+                .first()
+            )
             return m.role if m else None
 
     async def get_by_user(self, user_id: str) -> list[UUID]:
         with self._session_factory() as s:
-            return [m.document_id for m in s.query(AccessControlModel).filter_by(user_id=user_id).all()]
+            return [
+                m.document_id for m in s.query(AccessControlModel).filter_by(user_id=user_id).all()
+            ]
 
 
 class SqlWebhookRepository(WebhookRepository):
     def __init__(self, session_factory: sessionmaker) -> None:
         self._session_factory = session_factory
 
-    async def register(self, url: str, events: list[EventChannel], secret: str | None = None) -> dict[str, Any]:
+    async def register(
+        self, url: str, events: list[EventChannel], secret: str | None = None,
+    ) -> dict[str, Any]:
         with self._session_factory() as s:
             model = WebhookRegistrationModel(
                 url=url,
@@ -829,8 +908,12 @@ class SqlRetentionRepository(RetentionRepository):
 
         with self._session_factory() as s:
             cutoff = datetime.now(UTC) + timedelta(days=days)
-            return [m.document_id for m in s.query(DocumentRetentionModel)
-                    .filter(DocumentRetentionModel.retention_end <= cutoff).all()]
+            return [
+                m.document_id
+                for m in s.query(DocumentRetentionModel)
+                .filter(DocumentRetentionModel.retention_end <= cutoff)
+                .all()
+            ]
 
     async def list_active(self) -> list[UUID]:
         with self._session_factory() as s:
@@ -841,18 +924,29 @@ class SqlVersionRepository(DocumentVersionRepository):
     def __init__(self, session_factory: sessionmaker) -> None:
         self._session_factory = session_factory
 
-    async def save_version(self, document_id: UUID, version: int, storage_path: str, checksum: str, created_by: str) -> None:
+    async def save_version(
+        self, document_id: UUID, version: int, storage_path: str, checksum: str, created_by: str,
+    ) -> None:
         with self._session_factory() as s:
-            s.add(DocumentVersionModel(
-                document_id=document_id, version_number=version,
-                storage_path=storage_path, checksum_sha256=checksum, created_by=created_by,
-            ))
+            s.add(
+                DocumentVersionModel(
+                    document_id=document_id,
+                    version_number=version,
+                    storage_path=storage_path,
+                    checksum_sha256=checksum,
+                    created_by=created_by,
+                ),
+            )
             s.commit()
 
     async def get_latest_version(self, document_id: UUID) -> int:
         with self._session_factory() as s:
-            m = s.query(DocumentVersionModel).filter_by(document_id=document_id)\
-                .order_by(DocumentVersionModel.version_number.desc()).first()
+            m = (
+                s.query(DocumentVersionModel)
+                .filter_by(document_id=document_id)
+                .order_by(DocumentVersionModel.version_number.desc())
+                .first()
+            )
             return m.version_number if m else 0
 
     async def list_versions(self, document_id: UUID) -> list[dict[str, Any]]:
@@ -866,8 +960,10 @@ class SqlVersionRepository(DocumentVersionRepository):
                     "created_by": m.created_by,
                     "created_at": m.created_at.isoformat(),
                 }
-                for m in s.query(DocumentVersionModel).filter_by(document_id=document_id)
-                .order_by(DocumentVersionModel.version_number.desc()).all()
+                for m in s.query(DocumentVersionModel)
+                .filter_by(document_id=document_id)
+                .order_by(DocumentVersionModel.version_number.desc())
+                .all()
             ]
 
 
@@ -877,9 +973,14 @@ class SqlPipelineHealthRepository(PipelineHealthRepository):
 
     async def save(self, health: PipelineHealth) -> PipelineHealth:
         with self._session_factory() as s:
-            existing = s.query(PipelineHealthModel).filter_by(
-                pipeline_name=health.pipeline_name, phase=health.phase,
-            ).first()
+            existing = (
+                s.query(PipelineHealthModel)
+                .filter_by(
+                    pipeline_name=health.pipeline_name,
+                    phase=health.phase,
+                )
+                .first()
+            )
             if existing:
                 existing.status = health.status
                 existing.documents_processed = health.documents_processed
@@ -891,8 +992,10 @@ class SqlPipelineHealthRepository(PipelineHealthRepository):
                 s.commit()
                 return existing.to_domain()
             model = PipelineHealthModel(
-                pipeline_name=health.pipeline_name, phase=health.phase,
-                status=health.status, documents_processed=health.documents_processed,
+                pipeline_name=health.pipeline_name,
+                phase=health.phase,
+                status=health.status,
+                documents_processed=health.documents_processed,
                 documents_failed=health.documents_failed,
                 avg_processing_time_ms=health.avg_processing_time_ms,
                 p95_processing_time_ms=health.p95_processing_time_ms,
@@ -905,9 +1008,15 @@ class SqlPipelineHealthRepository(PipelineHealthRepository):
 
     async def get_latest(self, pipeline_name: str, phase: str) -> PipelineHealth | None:
         with self._session_factory() as s:
-            m = s.query(PipelineHealthModel).filter_by(
-                pipeline_name=pipeline_name, phase=phase,
-            ).order_by(PipelineHealthModel.updated_at.desc()).first()
+            m = (
+                s.query(PipelineHealthModel)
+                .filter_by(
+                    pipeline_name=pipeline_name,
+                    phase=phase,
+                )
+                .order_by(PipelineHealthModel.updated_at.desc())
+                .first()
+            )
             return m.to_domain() if m else None
 
     async def get_all_pipelines(self) -> list[PipelineHealth]:

@@ -28,6 +28,7 @@ These tests exercise pure Python invariants — no DB or HTTP needed.
 Blast radius: zero. Risk: changes to the AI module that loosen these
 invariants will fail loudly here.
 """
+
 from __future__ import annotations
 
 import os
@@ -96,8 +97,7 @@ class TestSuggestionDefaults:
     human-driven, and must never auto-flip from a state-changing op."""
 
     def test_suggestion_starts_unapproved(self):
-        s = ai_suggest("suggest_interpretation",
-                       {"test_name": "Glucose", "value": 100})
+        s = ai_suggest("suggest_interpretation", {"test_name": "Glucose", "value": 100})
         assert s.is_approved is False
 
     def test_suggestion_id_is_unique(self):
@@ -179,8 +179,7 @@ class TestSandboxExecution:
     def test_unapproved_approval_cannot_execute(self):
         """Pending approval → AIGuardrailViolation."""
         store = ApprovalStore()
-        s = ai_suggest("suggest_interpretation",
-                       {"test_name": "Glucose", "value": 100})
+        s = ai_suggest("suggest_interpretation", {"test_name": "Glucose", "value": 100})
         a = store.submit(s)
         # Status is PENDING — not executable
         with pytest.raises(AIGuardrailViolation):
@@ -206,10 +205,16 @@ class TestSandboxExecution:
         # Sandbox.execute() calls approval_store.mark_executed, so we must
         # use the module-level global store the sandbox imports from.
         from app.ai.approval import approval_store
+
         s = ai_suggest(
             "suggest_interpretation",
-            {"test_name": "Glucose", "value": 100,
-             "unit": "mg/dL", "normal_low": 70, "normal_high": 100},
+            {
+                "test_name": "Glucose",
+                "value": 100,
+                "unit": "mg/dL",
+                "normal_low": 70,
+                "normal_high": 100,
+            },
         )
         a = approval_store.submit(s)
         approval_store.approve(a.id, approver="dr@hospital.com")
@@ -223,12 +228,18 @@ class TestSandboxExecution:
         store = ApprovalStore()
         s = ai_suggest(
             "suggest_interpretation",
-            {"test_name": "Glucose", "value": 100,
-             "unit": "mg/dL", "normal_low": 70, "normal_high": 100},
+            {
+                "test_name": "Glucose",
+                "value": 100,
+                "unit": "mg/dL",
+                "normal_low": 70,
+                "normal_high": 100,
+            },
         )
         # We need to use the *module-level* approval_store because the
         # sandbox imports it directly. Recreate the flow there.
         from app.ai.approval import approval_store as global_store
+
         a = global_store.submit(s)
         global_store.approve(a.id, approver="dr@hospital.com")
         AISandbox.execute(a)
@@ -249,6 +260,7 @@ class TestSandboxHandlersReadOnly:
     def test_all_registered_handlers_have_correct_arity(self):
         """Each registered handler accepts exactly one positional arg (payload)."""
         import inspect
+
         for op, handler in _REGISTRY.items():
             sig = inspect.signature(handler)
             params = list(sig.parameters.values())
@@ -264,6 +276,7 @@ class TestSandboxHandlersReadOnly:
         We check the source code of each registered handler module-locally.
         """
         import inspect
+
         for op, handler in _REGISTRY.items():
             src = inspect.getsource(handler)
             # Forbidden DB-write entry points for handlers
@@ -292,10 +305,10 @@ class TestApprovalTTL:
     def test_expired_pending_approval_is_rejected_on_approve(self, monkeypatch):
         """Mock TTL to 0s and confirm an aged pending approval is rejected."""
         import app.ai.approval as appr
+
         monkeypatch.setattr(appr, "TTL_SECONDS", 0)
         store = appr.ApprovalStore()
-        s = ai_suggest("suggest_interpretation",
-                       {"test_name": "Glucose", "value": 100})
+        s = ai_suggest("suggest_interpretation", {"test_name": "Glucose", "value": 100})
         a = store.submit(s)
         # With TTL=0 it's immediately expired
         with pytest.raises(ValueError):
@@ -303,10 +316,10 @@ class TestApprovalTTL:
 
     def test_get_marks_expired_on_read(self, monkeypatch):
         import app.ai.approval as appr
+
         monkeypatch.setattr(appr, "TTL_SECONDS", 0)
         store = appr.ApprovalStore()
-        s = ai_suggest("suggest_interpretation",
-                       {"test_name": "Glucose", "value": 100})
+        s = ai_suggest("suggest_interpretation", {"test_name": "Glucose", "value": 100})
         a = store.submit(s)
         fetched = store.get(a.id)
         assert fetched is not None

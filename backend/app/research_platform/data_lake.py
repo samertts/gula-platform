@@ -70,7 +70,8 @@ class DataCatalog:
 
     def search(self, query: str) -> list[DatasetMetadata]:
         return [
-            ds for ds in self._inner.list()
+            ds
+            for ds in self._inner.list()
             if query.lower() in ds.name.lower()
             or query.lower() in ds.description.lower()
             or any(query.lower() in t.lower() for t in ds.tags)

@@ -18,19 +18,37 @@ logger = logging.getLogger("gula.routes.clinical_orders")
 router = APIRouter(prefix="/clinical/orders", tags=["clinical orders"])
 
 
-_ORDER_TYPES = frozenset({
-    "lab", "radiology", "medication", "procedure",
-    "consultation", "referral", "nutrition", "nursing",
-})
-_ORDER_STATUSES = frozenset({
-    "draft", "pending", "active", "completed", "cancelled", "on_hold",
-})
+_ORDER_TYPES = frozenset(
+    {
+        "lab",
+        "radiology",
+        "medication",
+        "procedure",
+        "consultation",
+        "referral",
+        "nutrition",
+        "nursing",
+    }
+)
+_ORDER_STATUSES = frozenset(
+    {
+        "draft",
+        "pending",
+        "active",
+        "completed",
+        "cancelled",
+        "on_hold",
+    }
+)
 
 
 class ClinicalOrderCreate(BaseModel):
     patient_id: str
     encounter_id: str | None = None
-    order_type: str = Field(..., description="lab/radiology/medication/procedure/consultation/referral/nutrition/nursing")
+    order_type: str = Field(
+        ...,
+        description="lab/radiology/medication/procedure/consultation/referral/nutrition/nursing",
+    )
     order_code: str | None = None
     order_name: str = Field(..., max_length=512)
     description: str | None = None
@@ -145,7 +163,7 @@ def list_orders(
 
     total = len(items)
     items.sort(key=lambda o: o.get("created_at", ""), reverse=True)
-    paged = items[skip:skip + limit]
+    paged = items[skip : skip + limit]
 
     return {"items": paged, "total": total, "skip": skip, "limit": limit}
 
@@ -319,7 +337,8 @@ def get_standing_orders_for_patient(
     db: Session = Depends(get_db),
 ):
     items = [
-        a for a in _STANDING_ORDER_ASSIGNMENTS.values()
+        a
+        for a in _STANDING_ORDER_ASSIGNMENTS.values()
         if a.get("patient_id") == patient_id and a.get("is_active", True)
     ]
     return {"items": items, "total": len(items)}

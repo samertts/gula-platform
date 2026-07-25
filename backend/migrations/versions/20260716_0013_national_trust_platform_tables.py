@@ -28,7 +28,9 @@ def upgrade() -> None:
         op.create_table(
             "trust_consent_records",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False, index=True),
+            sa.Column(
+                "patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False, index=True
+            ),
             sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id"), nullable=False, index=True),
             sa.Column("purpose", sa.String(50), nullable=False),
             sa.Column("status", sa.String(20), nullable=False, server_default="pending"),
@@ -41,12 +43,24 @@ def upgrade() -> None:
             sa.Column("consent_version", sa.String(20), nullable=False, server_default="1.0"),
             sa.Column("ip_address", sa.String(45), nullable=True),
             sa.Column("user_agent", sa.String(500), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("is_deleted", sa.DateTime(timezone=True), nullable=True),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         )
-        op.create_index("ix_trust_consent_patient_purpose", "trust_consent_records", ["patient_id", "purpose"])
+        op.create_index(
+            "ix_trust_consent_patient_purpose", "trust_consent_records", ["patient_id", "purpose"]
+        )
 
     # ── Data Retention Policies ──
     if not _table_exists("trust_retention_policies"):
@@ -56,11 +70,23 @@ def upgrade() -> None:
             sa.Column("data_category", sa.String(50), nullable=False, unique=True),
             sa.Column("retention_period", sa.String(50), nullable=False),
             sa.Column("retention_days", sa.Integer(), nullable=False),
-            sa.Column("action_on_expiry", sa.String(100), nullable=False, server_default="anonymize"),
+            sa.Column(
+                "action_on_expiry", sa.String(100), nullable=False, server_default="anonymize"
+            ),
             sa.Column("is_active", sa.Integer(), nullable=False, server_default="1"),
             sa.Column("policy_version", sa.String(20), nullable=False, server_default="1.0"),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("is_deleted", sa.DateTime(timezone=True), nullable=True),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         )
@@ -71,16 +97,30 @@ def upgrade() -> None:
             "trust_sovereignty_rules",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column("data_category", sa.String(50), nullable=False, unique=True),
-            sa.Column("sovereignty_level", sa.String(50), nullable=False, server_default="national_only"),
+            sa.Column(
+                "sovereignty_level", sa.String(50), nullable=False, server_default="national_only"
+            ),
             sa.Column("allows_cross_border", sa.Integer(), nullable=False, server_default="0"),
             sa.Column("requires_encryption", sa.Integer(), nullable=False, server_default="1"),
             sa.Column("requires_consent", sa.Integer(), nullable=False, server_default="1"),
-            sa.Column("encryption_algorithm", sa.String(100), nullable=False, server_default="AES-256-GCM"),
+            sa.Column(
+                "encryption_algorithm", sa.String(100), nullable=False, server_default="AES-256-GCM"
+            ),
             sa.Column("key_ownership", sa.String(100), nullable=False, server_default="national"),
             sa.Column("data_residency", sa.String(200), nullable=False, server_default="IRQ"),
             sa.Column("rule_version", sa.String(20), nullable=False, server_default="1.0"),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("is_deleted", sa.DateTime(timezone=True), nullable=True),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         )
@@ -102,8 +142,18 @@ def upgrade() -> None:
             sa.Column("status", sa.String(50), nullable=False, server_default="completed"),
             sa.Column("result_hash", sa.String(128), nullable=True),
             sa.Column("metadata_json", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("is_deleted", sa.DateTime(timezone=True), nullable=True),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         )
@@ -116,15 +166,30 @@ def upgrade() -> None:
             sa.Column("evidence_type", sa.String(100), nullable=False),
             sa.Column("evidence_id", sa.String(128), nullable=False, unique=True),
             sa.Column("source", sa.String(200), nullable=False),
-            sa.Column("collected_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+            sa.Column(
+                "collected_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
             sa.Column("collected_by", sa.Integer(), sa.ForeignKey("lab_users.id"), nullable=True),
             sa.Column("status", sa.String(50), nullable=False, server_default="pending_review"),
             sa.Column("evidence_hash", sa.String(128), nullable=False),
             sa.Column("evidence_data", sa.Text(), nullable=True),
             sa.Column("retention_until", sa.DateTime(timezone=True), nullable=True),
             sa.Column("chain_of_custody", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("is_deleted", sa.DateTime(timezone=True), nullable=True),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         )
@@ -143,11 +208,26 @@ def upgrade() -> None:
             sa.Column("score", sa.Integer(), nullable=True),
             sa.Column("details", sa.Text(), nullable=True),
             sa.Column("checked_by", sa.Integer(), sa.ForeignKey("lab_users.id"), nullable=True),
-            sa.Column("checked_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+            sa.Column(
+                "checked_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
             sa.Column("next_check_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("corrective_action_id", sa.String(128), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("is_deleted", sa.DateTime(timezone=True), nullable=True),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         )

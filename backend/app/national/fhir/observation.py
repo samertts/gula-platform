@@ -7,14 +7,22 @@ class FHIRObservationMapper:
     RESOURCE_TYPE = "Observation"
 
     @classmethod
-    def from_lab_result(cls, result: dict, patient_id: str, encounter_id: str | None = None) -> dict[str, Any]:
+    def from_lab_result(
+        cls, result: dict, patient_id: str, encounter_id: str | None = None,
+    ) -> dict[str, Any]:
         resource = {
             "resourceType": cls.RESOURCE_TYPE,
             "id": str(result.get("id", "")),
             "status": "final",
             "subject": {"reference": f"Patient/{patient_id}"},
             "code": {
-                "coding": [{"system": "http://loinc.org", "code": result.get("test_code", ""), "display": result.get("test_name", "")}],
+                "coding": [
+                    {
+                        "system": "http://loinc.org",
+                        "code": result.get("test_code", ""),
+                        "display": result.get("test_name", ""),
+                    },
+                ],
                 "text": result.get("test_name", ""),
             },
             "valueQuantity": cls._build_quantity(result),
@@ -43,8 +51,23 @@ class FHIRObservationMapper:
         flag = result.get("flag", "")
         if not flag:
             return None
-        mapping = {"high": "H", "low": "L", "critical_high": "HH", "critical_low": "LL", "normal": "N"}
-        return [{"coding": [{"code": mapping.get(flag, "N"), "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"}]}]
+        mapping = {
+            "high": "H",
+            "low": "L",
+            "critical_high": "HH",
+            "critical_low": "LL",
+            "normal": "N",
+        }
+        return [
+            {
+                "coding": [
+                    {
+                        "code": mapping.get(flag, "N"),
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                    },
+                ],
+            },
+        ]
 
     @classmethod
     def _build_reference_range(cls, result: dict) -> list[dict] | None:
@@ -52,4 +75,9 @@ class FHIRObservationMapper:
         high = result.get("normal_range_high")
         if low is None and high is None:
             return None
-        return [{"low": {"value": float(low)} if low is not None else None, "high": {"value": float(high)} if high is not None else None}]
+        return [
+            {
+                "low": {"value": float(low)} if low is not None else None,
+                "high": {"value": float(high)} if high is not None else None,
+            },
+        ]

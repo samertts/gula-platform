@@ -56,7 +56,9 @@ def create_claim(
         )
         if existing:
             logger.info(
-                "[CLAIMS] Idempotent return for key=%s claim_id=%d", idempotency_key, existing.id,
+                "[CLAIMS] Idempotent return for key=%s claim_id=%d",
+                idempotency_key,
+                existing.id,
             )
             return existing
 
@@ -201,7 +203,10 @@ def submit_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
     db.commit()
     db.refresh(claim)
     logger.info(
-        "[CLAIMS] Submitted claim_id=%d lab_id=%d total=%s", claim_id, lab_id, claim.total_amount,
+        "[CLAIMS] Submitted claim_id=%d lab_id=%d total=%s",
+        claim_id,
+        lab_id,
+        claim.total_amount,
     )
     return claim
 

@@ -58,20 +58,57 @@ SCORECARD = {
         },
     },
     "verified_improvements_this_session": [
-        {"area": "FHIR consolidation", "change": "Created backend/app/fhir/ module, fixed quality gate path bug", "evidence": "Quality gate now actively checks 2 real .py files, passes all 7 checks"},
-        {"area": "FHIR validation report", "change": "Verified 16 implemented resources, 2 stubs, 5 planned", "evidence": "backend/app/fhir/_capabilities.py, _reference.py, _validation_report.py"},
-        {"area": "AI evaluation harness", "change": "Added evaluation module with scoring, suites, metrics", "evidence": "backend/app/ai_fabric/evaluation.py (137 lines, 96% coverage, 8 tests passing)"},
-        {"area": "Quality gate fix", "change": "Fixed path resolution bug in fhir-gate.py", "evidence": "config/quality-gates/fhir-gate.py (relative_to bug fix in 6 functions)"},
+        {
+            "area": "FHIR consolidation",
+            "change": "Created backend/app/fhir/ module, fixed quality gate path bug",
+            "evidence": "Quality gate now actively checks 2 real .py files, passes all 7 checks",
+        },
+        {
+            "area": "FHIR validation report",
+            "change": "Verified 16 implemented resources, 2 stubs, 5 planned",
+            "evidence": "backend/app/fhir/_capabilities.py, _reference.py, _validation_report.py",
+        },
+        {
+            "area": "AI evaluation harness",
+            "change": "Added evaluation module with scoring, suites, metrics",
+            "evidence": "backend/app/ai_fabric/evaluation.py (137 lines, 96% coverage, 8 tests passing)",
+        },
+        {
+            "area": "Quality gate fix",
+            "change": "Fixed path resolution bug in fhir-gate.py",
+            "evidence": "config/quality-gates/fhir-gate.py (relative_to bug fix in 6 functions)",
+        },
     ],
     "recommended_actions": [
-        {"priority": "high", "action": "Update contracts/fhir/capability-statement.json to include all 16 implemented resources"},
-        {"priority": "high", "action": "Complete Procedure resource (currently 501 stub in routes/ehr_fhir.py:629)"},
-        {"priority": "medium", "action": "Run full coverage measurement with database tests to verify ≥80% claim"},
-        {"priority": "medium", "action": "Add write support (create/update/delete) for core FHIR resources"},
-        {"priority": "low", "action": "Add Goal, Device, Location, Provenance FHIR resource endpoints"},
+        {
+            "priority": "high",
+            "action": "Update contracts/fhir/capability-statement.json to include all 16 implemented resources",
+        },
+        {
+            "priority": "high",
+            "action": "Complete Procedure resource (currently 501 stub in routes/ehr_fhir.py:629)",
+        },
+        {
+            "priority": "medium",
+            "action": "Run full coverage measurement with database tests to verify ≥80% claim",
+        },
+        {
+            "priority": "medium",
+            "action": "Add write support (create/update/delete) for core FHIR resources",
+        },
+        {
+            "priority": "low",
+            "action": "Add Goal, Device, Location, Provenance FHIR resource endpoints",
+        },
         {"priority": "medium", "action": "Add FHIR create/update/delete integration tests"},
-        {"priority": "high", "action": "Complete Financial Engine Phase B (routes + services) — current Phase A only"},
-        {"priority": "low", "action": "Native mobile apps (Android/iOS) should be separate product tracks"},
+        {
+            "priority": "high",
+            "action": "Complete Financial Engine Phase B (routes + services) — current Phase A only",
+        },
+        {
+            "priority": "low",
+            "action": "Native mobile apps (Android/iOS) should be separate product tracks",
+        },
     ],
 }
 
@@ -86,7 +123,9 @@ def print_scorecard() -> str:
     lines.append("=" * 64)
     lines.append()
     lines.append(f"  OVERALL SCORE: {s['overall']['score']}/1000 ({s['overall']['grade']})")
-    lines.append(f"  Previous: {s['overall']['previous_score']} | Improvement: +{s['overall']['improvement']}")
+    lines.append(
+        f"  Previous: {s['overall']['previous_score']} | Improvement: +{s['overall']['improvement']}"
+    )
     lines.append()
     lines.append("  ── Dimension Scores ──")
     for dim, info in s["dimensions"].items():

@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: "3.12"
       - name: Install ruff
@@ -29,11 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version: "24"
-      - name: Install prettier
-        run: npm install prettier --save-dev 2>/dev/null || npx prettier --version
-      - name: Check formatting
-        run: npx prettier --check "**/*.{ts,tsx,json,md}" --ignore-path .gitignore 2>/dev/null || echo "Formatting check skipped (prettier not fully configured)"
+      - name: Check formatting with Prettier
+        run: npx --yes prettier@3 --check "**/*.{ts,tsx,json,md}" --ignore-path .gitignore 2>/dev/null || echo "Formatting issues found — run 'npx prettier --write \"**/*.{ts,tsx,json,md}\"' to fix"

@@ -57,7 +57,12 @@ logger = logging.getLogger("gula.national.background_platform")
 
 _ALLOWED_TRANSITIONS: dict[JobStatus, set[JobStatus]] = {
     JobStatus.PENDING: {JobStatus.RUNNING, JobStatus.CANCELLED, JobStatus.PAUSED},
-    JobStatus.RUNNING: {JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED, JobStatus.TIMED_OUT},
+    JobStatus.RUNNING: {
+        JobStatus.COMPLETED,
+        JobStatus.FAILED,
+        JobStatus.CANCELLED,
+        JobStatus.TIMED_OUT,
+    },
     JobStatus.PAUSED: {JobStatus.PENDING, JobStatus.CANCELLED},
     JobStatus.FAILED: {JobStatus.PENDING, JobStatus.RETRYING, JobStatus.CANCELLED},
     JobStatus.RETRYING: {JobStatus.PENDING, JobStatus.RUNNING, JobStatus.FAILED, JobStatus.DEAD},
@@ -69,7 +74,6 @@ _ALLOWED_TRANSITIONS: dict[JobStatus, set[JobStatus]] = {
 
 
 class JobService:
-
     def __init__(
         self,
         job_repository: JobRepository,
@@ -135,19 +139,21 @@ class JobService:
                 dep.id = dep.id or str(uuid.uuid4())
                 await self.dependency_repository.save(dep)
 
-        self._publish_event(JobCreatedEvent(
-            job_id=saved.id,
-            name=saved.name,
-            category=saved.category,
-            priority=saved.priority,
-            aggregate_id=saved.id,
-            payload={
-                "name": saved.name,
-                "type": saved.type,
-                "category": saved.category.value,
-                "priority": saved.priority.value,
-            },
-        ))
+        self._publish_event(
+            JobCreatedEvent(
+                job_id=saved.id,
+                name=saved.name,
+                category=saved.category,
+                priority=saved.priority,
+                aggregate_id=saved.id,
+                payload={
+                    "name": saved.name,
+                    "type": saved.type,
+                    "category": saved.category.value,
+                    "priority": saved.priority.value,
+                },
+            ),
+        )
 
         return saved
 
@@ -177,7 +183,8 @@ class JobService:
         if search:
             search_lower = search.lower()
             jobs = [
-                j for j in jobs
+                j
+                for j in jobs
                 if search_lower in j.name.lower() or search_lower in j.description.lower()
             ]
         return jobs
@@ -222,7 +229,8 @@ class JobService:
             resolved = await self._check_dependency_satisfied(dep)
             if not resolved:
                 raise JobDependencyError(
-                    job_id, dep.depends_on_job_id,
+                    job_id,
+                    dep.depends_on_job_id,
                     f"Dependency not satisfied: {dep.dependency_type.value}",
                 )
 
@@ -239,13 +247,15 @@ class JobService:
         job.status = JobStatus.RUNNING
         await self.job_repository.save(job)
 
-        self._publish_event(JobStartedEvent(
-            job_id=job_id,
-            execution_id=execution.id,
-            worker_id=execution.worker_id,
-            aggregate_id=job_id,
-            payload={"execution_id": execution.id, "attempt": 1},
-        ))
+        self._publish_event(
+            JobStartedEvent(
+                job_id=job_id,
+                execution_id=execution.id,
+                worker_id=execution.worker_id,
+                aggregate_id=job_id,
+                payload={"execution_id": execution.id, "attempt": 1},
+            ),
+        )
 
         try:
             payload = TaskPayload(
@@ -261,46 +271,60 @@ class JobService:
             await task_queue.enqueue(payload)
             logger.info(
                 "Enqueued job %s (%s) as task %s",
-                job_id, job.name, payload.task_id,
+                job_id,
+                job.name,
+                payload.task_id,
             )
         except Exception as exc:
             execution.status = JobStatus.FAILED
             execution.error = f"Enqueue failed: {exc}"
             execution.completed_at = datetime.now(UTC)
-            execution.duration_ms = (datetime.now(UTC) - execution.actual_start).total_seconds() * 1000
+            execution.duration_ms = (
+                datetime.now(UTC) - execution.actual_start
+            ).total_seconds() * 1000
             await self.execution_repository.save(execution)
 
             job.status = JobStatus.FAILED
             await self.job_repository.save(job)
 
-            self._publish_event(JobFailedEvent(
-                job_id=job_id,
-                execution_id=execution.id,
-                error=str(exc),
-                attempt=1,
-                will_retry=job.max_retries > 0,
-                aggregate_id=job_id,
-                payload={"error": str(exc), "attempt": 1},
-            ))
+            self._publish_event(
+                JobFailedEvent(
+                    job_id=job_id,
+                    execution_id=execution.id,
+                    error=str(exc),
+                    attempt=1,
+                    will_retry=job.max_retries > 0,
+                    aggregate_id=job_id,
+                    payload={"error": str(exc), "attempt": 1},
+                ),
+            )
 
         return execution
 
     async def cancel_job(self, job_id: str, reason: str = "") -> None:
         job = await self.get_job(job_id)
-        if job.status not in (JobStatus.PENDING, JobStatus.RUNNING, JobStatus.PAUSED, JobStatus.FAILED, JobStatus.RETRYING):
+        if job.status not in (
+            JobStatus.PENDING,
+            JobStatus.RUNNING,
+            JobStatus.PAUSED,
+            JobStatus.FAILED,
+            JobStatus.RETRYING,
+        ):
             raise JobStateTransitionError(job_id, job.status.value, JobStatus.CANCELLED.value)
 
         old_status = job.status
         job.status = JobStatus.CANCELLED
         await self.job_repository.save(job)
 
-        self._publish_event(JobCancelledEvent(
-            job_id=job_id,
-            execution_id="",
-            reason=reason,
-            aggregate_id=job_id,
-            payload={"reason": reason, "previous_status": old_status.value},
-        ))
+        self._publish_event(
+            JobCancelledEvent(
+                job_id=job_id,
+                execution_id="",
+                reason=reason,
+                aggregate_id=job_id,
+                payload={"reason": reason, "previous_status": old_status.value},
+            ),
+        )
 
     async def pause_job(self, job_id: str) -> None:
         job = await self.get_job(job_id)
@@ -310,11 +334,13 @@ class JobService:
         job.status = JobStatus.PAUSED
         await self.job_repository.save(job)
 
-        self._publish_event(JobPausedEvent(
-            job_id=job_id,
-            aggregate_id=job_id,
-            payload={},
-        ))
+        self._publish_event(
+            JobPausedEvent(
+                job_id=job_id,
+                aggregate_id=job_id,
+                payload={},
+            ),
+        )
 
     async def resume_job(self, job_id: str) -> None:
         job = await self.get_job(job_id)
@@ -324,11 +350,13 @@ class JobService:
         job.status = JobStatus.PENDING
         await self.job_repository.save(job)
 
-        self._publish_event(JobResumedEvent(
-            job_id=job_id,
-            aggregate_id=job_id,
-            payload={},
-        ))
+        self._publish_event(
+            JobResumedEvent(
+                job_id=job_id,
+                aggregate_id=job_id,
+                payload={},
+            ),
+        )
 
     async def get_execution_history(
         self,
@@ -371,28 +399,33 @@ class JobService:
         if schedule_type == ScheduleType.CRON and cron_expression:
             if not self.schedule_calculator.validate_expression(cron_expression):
                 raise JobValidationError(
-                    job_id, f"Invalid cron expression: {cron_expression}",
+                    job_id,
+                    f"Invalid cron expression: {cron_expression}",
                 )
             schedule.next_run_at = self.schedule_calculator.calculate_next_run(
                 cron_expression,
                 after=start_at or datetime.now(UTC),
             )
-        elif (schedule_type == ScheduleType.INTERVAL and interval_seconds > 0) or schedule_type == ScheduleType.ONCE:
-            schedule.next_run_at = (start_at or datetime.now(UTC))
+        elif (
+            schedule_type == ScheduleType.INTERVAL and interval_seconds > 0
+        ) or schedule_type == ScheduleType.ONCE:
+            schedule.next_run_at = start_at or datetime.now(UTC)
 
         saved = await self.schedule_repository.save(schedule)
 
-        self._publish_event(JobScheduledEvent(
-            job_id=job_id,
-            schedule_id=saved.id,
-            next_run_at=saved.next_run_at.isoformat() if saved.next_run_at else "",
-            aggregate_id=job_id,
-            payload={
-                "schedule_id": saved.id,
-                "schedule_type": saved.schedule_type.value,
-                "next_run_at": saved.next_run_at.isoformat() if saved.next_run_at else None,
-            },
-        ))
+        self._publish_event(
+            JobScheduledEvent(
+                job_id=job_id,
+                schedule_id=saved.id,
+                next_run_at=saved.next_run_at.isoformat() if saved.next_run_at else "",
+                aggregate_id=job_id,
+                payload={
+                    "schedule_id": saved.id,
+                    "schedule_type": saved.schedule_type.value,
+                    "next_run_at": saved.next_run_at.isoformat() if saved.next_run_at else None,
+                },
+            ),
+        )
 
         return saved
 
@@ -430,10 +463,12 @@ class JobService:
             job = await self.job_repository.get(s.job_id)
             if not job or job.status in (JobStatus.CANCELLED, JobStatus.DEAD, JobStatus.COMPLETED):
                 continue
-            result.append({
-                "schedule": s,
-                "job": job,
-            })
+            result.append(
+                {
+                    "schedule": s,
+                    "job": job,
+                },
+            )
         return result
 
     async def get_dashboard_stats(self) -> dict[str, Any]:
@@ -464,7 +499,11 @@ class JobService:
     async def validate_cron_expression(self, expression: str) -> dict[str, Any]:
         valid = self.schedule_calculator.validate_expression(expression)
         if not valid:
-            return {"valid": False, "expression": expression, "error": "Invalid cron expression format"}
+            return {
+                "valid": False,
+                "expression": expression,
+                "error": "Invalid cron expression format",
+            }
         next_run = self.schedule_calculator.calculate_next_run(expression)
         return {
             "valid": True,
@@ -478,22 +517,26 @@ class JobService:
                 schedule.cron_expression,
                 after=schedule.start_at or datetime.now(UTC),
             )
-        elif (schedule.schedule_type == ScheduleType.INTERVAL and schedule.interval_seconds > 0) or schedule.schedule_type == ScheduleType.ONCE:
+        elif (
+            schedule.schedule_type == ScheduleType.INTERVAL and schedule.interval_seconds > 0
+        ) or schedule.schedule_type == ScheduleType.ONCE:
             schedule.next_run_at = schedule.start_at or datetime.now(UTC)
 
         schedule.id = schedule.id or str(uuid.uuid4())
         saved = await self.schedule_repository.save(schedule)
 
-        self._publish_event(JobScheduledEvent(
-            job_id=saved.job_id,
-            schedule_id=saved.id,
-            next_run_at=saved.next_run_at.isoformat() if saved.next_run_at else "",
-            aggregate_id=saved.job_id,
-            payload={
-                "schedule_id": saved.id,
-                "schedule_type": saved.schedule_type.value,
-            },
-        ))
+        self._publish_event(
+            JobScheduledEvent(
+                job_id=saved.job_id,
+                schedule_id=saved.id,
+                next_run_at=saved.next_run_at.isoformat() if saved.next_run_at else "",
+                aggregate_id=saved.job_id,
+                payload={
+                    "schedule_id": saved.id,
+                    "schedule_type": saved.schedule_type.value,
+                },
+            ),
+        )
         return saved
 
     async def _check_dependency_satisfied(self, dep: JobDependency) -> bool:
@@ -503,7 +546,11 @@ class JobService:
 
         if dep.dependency_type == DependencyType.FINISHED:
             return depends_on.status in (
-                JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED, JobStatus.DEAD, JobStatus.TIMED_OUT,
+                JobStatus.COMPLETED,
+                JobStatus.FAILED,
+                JobStatus.CANCELLED,
+                JobStatus.DEAD,
+                JobStatus.TIMED_OUT,
             )
         if dep.dependency_type == DependencyType.SUCCESS:
             return depends_on.status == JobStatus.COMPLETED

@@ -24,6 +24,7 @@ class DICOMConnector:
     async def connect(self) -> bool:
         try:
             import importlib
+
             importlib.import_module("pydicom")
         except ImportError:
             logger.error("pydicom library not installed")

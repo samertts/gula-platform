@@ -152,7 +152,11 @@ class ReliabilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "retry" in content.lower() and ("backoff" in content.lower() or "attempt" in content.lower() or "tenacity" in content.lower()):
+                if "retry" in content.lower() and (
+                    "backoff" in content.lower()
+                    or "attempt" in content.lower()
+                    or "tenacity" in content.lower()
+                ):
                     return True
             except Exception:
                 continue
@@ -183,7 +187,9 @@ class ReliabilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "timeout" in content.lower() and ("set" in content.lower() or "config" in content.lower()):
+                if "timeout" in content.lower() and (
+                    "set" in content.lower() or "config" in content.lower()
+                ):
                     return True
             except Exception:
                 continue
@@ -193,7 +199,11 @@ class ReliabilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "exception_handler" in content or "ExceptionHandlerMiddleware" in content or "@app.exception_handler" in content:
+                if (
+                    "exception_handler" in content
+                    or "ExceptionHandlerMiddleware" in content
+                    or "@app.exception_handler" in content
+                ):
                     return True
             except Exception:
                 continue
@@ -203,7 +213,11 @@ class ReliabilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "rate_limit" in content.lower() or "RateLimiter" in content or "throttle" in content.lower():
+                if (
+                    "rate_limit" in content.lower()
+                    or "RateLimiter" in content
+                    or "throttle" in content.lower()
+                ):
                     return True
             except Exception:
                 continue
@@ -213,7 +227,11 @@ class ReliabilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "bulkhead" in content.lower() or "semaphore" in content.lower() or "ConcurrencyLimit" in content:
+                if (
+                    "bulkhead" in content.lower()
+                    or "semaphore" in content.lower()
+                    or "ConcurrencyLimit" in content
+                ):
                     return True
             except Exception:
                 continue

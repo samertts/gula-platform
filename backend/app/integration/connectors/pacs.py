@@ -89,7 +89,13 @@ class PACSConnector(BaseConnector):
             raise RuntimeError("PACS connector not connected")
         qido_base = self._qido_url or urljoin(self._base_url, "/dicom-web/studies")
         params: dict[str, str] = {}
-        for field in ("PatientName", "PatientID", "StudyDate", "StudyDescription", "AccessionNumber"):
+        for field in (
+            "PatientName",
+            "PatientID",
+            "StudyDate",
+            "StudyDescription",
+            "AccessionNumber",
+        ):
             if field in data:
                 params[field] = str(data[field])
         try:
@@ -112,7 +118,11 @@ class PACSConnector(BaseConnector):
         try:
             resp = await self._client.get(wado_base)
             if resp.is_success:
-                return {"success": True, "study_uid": study_uid, "content_type": resp.headers.get("content-type", "")}
+                return {
+                    "success": True,
+                    "study_uid": study_uid,
+                    "content_type": resp.headers.get("content-type", ""),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("PACS retrieve failed: %s", exc)
@@ -126,7 +136,9 @@ class PACSConnector(BaseConnector):
             return {"success": False, "error": "dicom_data required"}
         stow_url = urljoin(self._base_url, "/dicom-web/studies")
         try:
-            resp = await self._client.post(stow_url, content=dicom_data, headers={"Content-Type": "application/dicom"})
+            resp = await self._client.post(
+                stow_url, content=dicom_data, headers={"Content-Type": "application/dicom"}
+            )
             return {"success": resp.is_success, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("PACS store failed: %s", exc)

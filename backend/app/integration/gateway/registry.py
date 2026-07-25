@@ -26,7 +26,11 @@ class GatewayRegistry:
 
     @classmethod
     def list_by_protocol(cls, protocol: str) -> list[MessageGateway]:
-        return [g for g in cls._gateways.values() if type(g).__name__.lower().startswith(protocol.lower())]
+        return [
+            g
+            for g in cls._gateways.values()
+            if type(g).__name__.lower().startswith(protocol.lower())
+        ]
 
     @classmethod
     def unregister(cls, name: str) -> bool:

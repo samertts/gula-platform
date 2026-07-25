@@ -31,21 +31,53 @@ from ..services import ehr_service
 
 router = APIRouter(prefix="/fhir", tags=["fhir"])
 
-_SUPPORTED_CREATE = frozenset({
-    "AllergyIntolerance", "CarePlan", "Composition", "Condition",
-    "DocumentReference", "Encounter", "Immunization", "MedicationRequest",
-    "MedicationStatement", "Observation", "Patient", "Procedure",
-})
-_SUPPORTED_UPDATE = frozenset({
-    "AllergyIntolerance", "CarePlan", "Composition", "Condition",
-    "DocumentReference", "Encounter", "Immunization", "MedicationRequest",
-    "MedicationStatement", "Observation", "Patient", "Procedure",
-})
-_SUPPORTED_DELETE = frozenset({
-    "AllergyIntolerance", "CarePlan", "Composition", "Condition",
-    "DocumentReference", "Encounter", "Immunization", "MedicationRequest",
-    "MedicationStatement", "Observation", "Procedure",
-})
+_SUPPORTED_CREATE = frozenset(
+    {
+        "AllergyIntolerance",
+        "CarePlan",
+        "Composition",
+        "Condition",
+        "DocumentReference",
+        "Encounter",
+        "Immunization",
+        "MedicationRequest",
+        "MedicationStatement",
+        "Observation",
+        "Patient",
+        "Procedure",
+    }
+)
+_SUPPORTED_UPDATE = frozenset(
+    {
+        "AllergyIntolerance",
+        "CarePlan",
+        "Composition",
+        "Condition",
+        "DocumentReference",
+        "Encounter",
+        "Immunization",
+        "MedicationRequest",
+        "MedicationStatement",
+        "Observation",
+        "Patient",
+        "Procedure",
+    }
+)
+_SUPPORTED_DELETE = frozenset(
+    {
+        "AllergyIntolerance",
+        "CarePlan",
+        "Composition",
+        "Condition",
+        "DocumentReference",
+        "Encounter",
+        "Immunization",
+        "MedicationRequest",
+        "MedicationStatement",
+        "Observation",
+        "Procedure",
+    }
+)
 
 
 def _fmt_fhir_datetime(val: datetime | None) -> str | None:
@@ -73,7 +105,9 @@ def _encounter_ref(encounter_id: str | None) -> dict | None:
 
 
 def _codeable_concept(
-    code: str | None, display: str | None, system: str | None = None,
+    code: str | None,
+    display: str | None,
+    system: str | None = None,
 ) -> dict | None:
     if not code and not display:
         return None
@@ -119,12 +153,16 @@ def fhir_read_patient(
         "identifier": [
             {"system": "urn:gula:health-number", "value": patient.health_number},
         ],
-        "name": [{"family": patient.last_name, "given": [patient.first_name], "text": " ".join(name_parts)}],
+        "name": [
+            {
+                "family": patient.last_name,
+                "given": [patient.first_name],
+                "text": " ".join(name_parts),
+            }
+        ],
         "gender": patient.gender.value if patient.gender else None,
         "birthDate": _fmt_fhir_date(patient.date_of_birth),
-        "telecom": (
-            [{"system": "phone", "value": patient.phone}] if patient.phone else []
-        ),
+        "telecom": ([{"system": "phone", "value": patient.phone}] if patient.phone else []),
         "address": (
             [
                 {
@@ -160,7 +198,9 @@ def fhir_read_encounter(
     if not encounter:
         raise HTTPException(status_code=404, detail="Encounter not found")
     ehr_service.get_national_patient_or_404(
-        db, encounter.patient_id, current_user.lab_id,
+        db,
+        encounter.patient_id,
+        current_user.lab_id,
     )
     return {
         "resourceType": "Encounter",
@@ -243,7 +283,9 @@ def _condition_to_fhir_condition(rec: ConditionRecord) -> dict:
         "resourceType": "Condition",
         "id": rec.id,
         "clinicalStatus": _codeable_concept(
-            rec.clinical_status, rec.clinical_status, "http://terminology.hl7.org/CodeSystem/condition-clinical",
+            rec.clinical_status,
+            rec.clinical_status,
+            "http://terminology.hl7.org/CodeSystem/condition-clinical",
         ),
         "verificationStatus": _codeable_concept(
             rec.verification_status,
@@ -274,7 +316,9 @@ def _diagnosis_to_fhir_condition(rec: DiagnosisRecord) -> dict:
             "Active" if rec.is_active else "Resolved",
             "http://terminology.hl7.org/CodeSystem/condition-clinical",
         ),
-        "code": _codeable_concept(rec.icd10_code, rec.icd10_description, "http://hl7.org/fhir/sid/icd-10"),
+        "code": _codeable_concept(
+            rec.icd10_code, rec.icd10_description, "http://hl7.org/fhir/sid/icd-10"
+        ),
         "subject": _patient_ref(rec.patient_id),
         "encounter": _encounter_ref(rec.encounter_id),
         "onsetDateTime": _fmt_fhir_date(rec.diagnosis_date),
@@ -331,12 +375,7 @@ def fhir_read_observation(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = (
-        db.query(LabResult)
-        .join(LabOrder)
-        .filter(LabResult.id == observation_id)
-        .first()
-    )
+    result = db.query(LabResult).join(LabOrder).filter(LabResult.id == observation_id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Observation not found")
     order = (
@@ -378,7 +417,11 @@ def _lab_result_to_observation(result: LabResult, order: LabOrder) -> dict:
         obs["referenceRange"] = [ref]
     if result.flag:
         obs["interpretation"] = [
-            _codeable_concept(result.flag, result.flag, "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"),
+            _codeable_concept(
+                result.flag,
+                result.flag,
+                "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+            ),
         ]
     obs["meta"] = {
         "versionId": "1",
@@ -402,11 +445,7 @@ def fhir_search_observation(
         "entry": [],
         "total": 0,
     }
-    q = (
-        db.query(LabResult)
-        .join(LabOrder)
-        .filter(LabOrder.lab_id == current_user.lab_id)
-    )
+    q = db.query(LabResult).join(LabOrder).filter(LabOrder.lab_id == current_user.lab_id)
     if patient:
         q = q.filter(LabOrder.patient_id == patient)
     if code:
@@ -414,9 +453,7 @@ def fhir_search_observation(
     results = q.order_by(LabResult.created_at.desc()).limit(100).all()
     entries = []
     for r in results:
-        order = (
-            db.query(LabOrder).filter(LabOrder.id == r.order_id).first()
-        )
+        order = db.query(LabOrder).filter(LabOrder.id == r.order_id).first()
         if order:
             entries.append(
                 {
@@ -452,7 +489,9 @@ def _medication_request_to_fhir(rec: MedicationRequest) -> dict:
         "status": rec.status.value if hasattr(rec.status, "value") else rec.status,
         "intent": rec.intent,
         "medicationCodeableConcept": _codeable_concept(
-            rec.medication_code, rec.medication_name, rec.medication_code_system,
+            rec.medication_code,
+            rec.medication_name,
+            rec.medication_code_system,
         )
         or {"text": rec.medication_name},
         "subject": _patient_ref(rec.patient_id),
@@ -547,7 +586,9 @@ def _medication_statement_to_fhir(rec: MedicationStatement) -> dict:
         "id": rec.id,
         "status": rec.status or "unknown",
         "medicationCodeableConcept": _codeable_concept(
-            rec.medication_code, rec.medication_name, rec.medication_code_system,
+            rec.medication_code,
+            rec.medication_name,
+            rec.medication_code_system,
         )
         or {"text": rec.medication_name},
         "subject": _patient_ref(rec.patient_id),
@@ -626,7 +667,9 @@ def _care_plan_to_fhir(db: Session, rec: CarePlan) -> dict:
         "activity": [
             {
                 "detail": {
-                    "code": _codeable_concept(a.activity_code, a.description, a.activity_code_system),
+                    "code": _codeable_concept(
+                        a.activity_code, a.description, a.activity_code_system
+                    ),
                     "status": a.status,
                     "scheduledPeriod": {
                         "start": _fmt_fhir_date(a.scheduled_start),
@@ -662,14 +705,18 @@ def fhir_read_procedure(
     data = {
         "id": record.id,
         "status": "completed" if record.is_final else "in-progress",
-        "code": record.note_type.value if hasattr(record.note_type, "value") else str(record.note_type or ""),
+        "code": record.note_type.value
+        if hasattr(record.note_type, "value")
+        else str(record.note_type or ""),
         "display": record.title or "",
         "display_ar": record.title_ar or "",
         "performed_start": _fmt_fhir_datetime(record.authored_at),
         "practitioner_id": record.author_id,
         "notes": record.content[:500] if record.content else "",
     }
-    return FHIRProcedureMapper.from_dict(data, patient_id=record.patient_id, encounter_id=record.encounter_id)
+    return FHIRProcedureMapper.from_dict(
+        data, patient_id=record.patient_id, encounter_id=record.encounter_id
+    )
 
 
 @router.get("/Procedure", summary="FHIR Procedure search")
@@ -682,6 +729,7 @@ def fhir_search_procedure(
     if patient:
         ehr_service.get_national_patient_or_404(db, patient, current_user.lab_id)
     from app.ehr.models.clinical_note import ClinicalNote
+
     q = db.query(ClinicalNote).filter(ClinicalNote.is_deleted.is_(False))
     if patient:
         q = q.filter(ClinicalNote.patient_id == patient)
@@ -693,6 +741,7 @@ def fhir_search_procedure(
     records = q.order_by(ClinicalNote.authored_at.desc()).limit(100).all()
 
     from app.national.fhir.procedure import FHIRProcedureMapper
+
     entries = []
     for r in records:
         data = {
@@ -704,7 +753,9 @@ def fhir_search_procedure(
             "practitioner_id": r.author_id,
             "notes": (r.content or "")[:300],
         }
-        resource = FHIRProcedureMapper.from_dict(data, patient_id=r.patient_id, encounter_id=r.encounter_id)
+        resource = FHIRProcedureMapper.from_dict(
+            data, patient_id=r.patient_id, encounter_id=r.encounter_id
+        )
         entries.append({"resource": resource, "fullUrl": f"Procedure/{r.id}"})
     return {
         "resourceType": "Bundle",
@@ -757,7 +808,9 @@ def _allergy_to_fhir(rec: AllergyIntolerance) -> dict:
             [
                 {
                     "manifestation": [{"text": rec.reaction}],
-                    "severity": rec.severity.value if hasattr(rec.severity, "value") else rec.severity,
+                    "severity": rec.severity.value
+                    if hasattr(rec.severity, "value")
+                    else rec.severity,
                 },
             ]
             if rec.reaction
@@ -786,8 +839,7 @@ def fhir_search_allergy(
         q = q.filter(AllergyIntolerance.status == clinical_status)
     records = q.order_by(AllergyIntolerance.created_at.desc()).limit(100).all()
     entries = [
-        {"resource": _allergy_to_fhir(r), "fullUrl": f"AllergyIntolerance/{r.id}"}
-        for r in records
+        {"resource": _allergy_to_fhir(r), "fullUrl": f"AllergyIntolerance/{r.id}"} for r in records
     ]
     return {
         "resourceType": "Bundle",
@@ -819,7 +871,9 @@ def _immunization_to_fhir(rec: ImmunizationRecord) -> dict:
         "id": rec.id,
         "status": rec.status or "completed",
         "vaccineCode": _codeable_concept(
-            rec.vaccine_code, rec.vaccine_name, rec.vaccine_code_system,
+            rec.vaccine_code,
+            rec.vaccine_name,
+            rec.vaccine_code_system,
         )
         or {"text": rec.vaccine_name},
         "patient": _patient_ref(rec.patient_id),
@@ -882,8 +936,7 @@ def fhir_search_immunization(
         q = q.filter(ImmunizationRecord.status == status)
     records = q.order_by(ImmunizationRecord.administration_date.desc()).limit(100).all()
     entries = [
-        {"resource": _immunization_to_fhir(r), "fullUrl": f"Immunization/{r.id}"}
-        for r in records
+        {"resource": _immunization_to_fhir(r), "fullUrl": f"Immunization/{r.id}"} for r in records
     ]
     return {
         "resourceType": "Bundle",
@@ -1090,21 +1143,24 @@ def fhir_read_bundle(
         .all()
     )
     for enc in encounters:
-        entries.append({
-            "resource": {
-                "resourceType": "Encounter",
-                "id": enc.id,
-                "status": enc.status.value if enc.status else "unknown",
-                "subject": {"reference": f"Patient/{bundle_id}"},
-                "period": {
-                    "start": _fmt_fhir_datetime(enc.period_start),
-                    "end": _fmt_fhir_datetime(enc.period_end),
+        entries.append(
+            {
+                "resource": {
+                    "resourceType": "Encounter",
+                    "id": enc.id,
+                    "status": enc.status.value if enc.status else "unknown",
+                    "subject": {"reference": f"Patient/{bundle_id}"},
+                    "period": {
+                        "start": _fmt_fhir_datetime(enc.period_start),
+                        "end": _fmt_fhir_datetime(enc.period_end),
+                    },
                 },
-            },
-            "fullUrl": f"Encounter/{enc.id}",
-        })
+                "fullUrl": f"Encounter/{enc.id}",
+            }
+        )
 
     from app.ehr.models.clinical_note import ClinicalNote
+
     notes = (
         db.query(ClinicalNote)
         .filter(ClinicalNote.patient_id == bundle_id, ClinicalNote.is_deleted.is_(False))
@@ -1112,19 +1168,22 @@ def fhir_read_bundle(
         .all()
     )
     for note in notes:
-        entries.append({
-            "resource": {
-                "resourceType": "Composition",
-                "id": note.id,
-                "status": "final" if note.is_final else "preliminary",
-                "subject": {"reference": f"Patient/{bundle_id}"},
-                "title": note.title or "",
-                "date": _fmt_fhir_datetime(note.authored_at),
-            },
-            "fullUrl": f"Composition/{note.id}",
-        })
+        entries.append(
+            {
+                "resource": {
+                    "resourceType": "Composition",
+                    "id": note.id,
+                    "status": "final" if note.is_final else "preliminary",
+                    "subject": {"reference": f"Patient/{bundle_id}"},
+                    "title": note.title or "",
+                    "date": _fmt_fhir_datetime(note.authored_at),
+                },
+                "fullUrl": f"Composition/{note.id}",
+            }
+        )
 
     from app.ehr.models import ConditionRecord
+
     conditions = (
         db.query(ConditionRecord)
         .filter(ConditionRecord.patient_id == bundle_id, ConditionRecord.is_deleted.is_(False))
@@ -1132,19 +1191,22 @@ def fhir_read_bundle(
         .all()
     )
     for cond in conditions:
-        entries.append({
-            "resource": {
-                "resourceType": "Condition",
-                "id": cond.id,
-                "subject": {"reference": f"Patient/{bundle_id}"},
-                "code": {"text": cond.code_display or ""},
-                "clinicalStatus": {"coding": [{"code": cond.clinical_status or "active"}]},
-            },
-            "fullUrl": f"Condition/{cond.id}",
-        })
+        entries.append(
+            {
+                "resource": {
+                    "resourceType": "Condition",
+                    "id": cond.id,
+                    "subject": {"reference": f"Patient/{bundle_id}"},
+                    "code": {"text": cond.code_display or ""},
+                    "clinicalStatus": {"coding": [{"code": cond.clinical_status or "active"}]},
+                },
+                "fullUrl": f"Condition/{cond.id}",
+            }
+        )
 
     from ..models.lab_order import LabOrder
     from ..models.lab_result import LabResult
+
     orders = (
         db.query(LabOrder)
         .filter(LabOrder.patient_id == bundle_id, LabOrder.lab_id == current_user.lab_id)
@@ -1152,37 +1214,38 @@ def fhir_read_bundle(
         .all()
     )
     for order in orders:
-        entries.append({
-            "resource": {
-                "resourceType": "ServiceRequest",
-                "id": str(order.id),
-                "status": order.status or "unknown",
-                "intent": "order",
-                "subject": {"reference": f"Patient/{bundle_id}"},
-                "code": {"text": order.test_name or ""},
-                "authoredOn": _fmt_fhir_datetime(order.created_at),
-            },
-            "fullUrl": f"ServiceRequest/{order.id}",
-        })
-        results = (
-            db.query(LabResult)
-            .filter(LabResult.order_id == order.id)
-            .limit(50)
-            .all()
-        )
-        for r in results:
-            entries.append({
+        entries.append(
+            {
                 "resource": {
-                    "resourceType": "Observation",
-                    "id": str(r.id),
-                    "status": "final",
-                    "code": {"text": r.test_name or ""},
+                    "resourceType": "ServiceRequest",
+                    "id": str(order.id),
+                    "status": order.status or "unknown",
+                    "intent": "order",
                     "subject": {"reference": f"Patient/{bundle_id}"},
-                    "valueQuantity": {"value": r.value, "unit": r.unit or ""} if r.value is not None else None,
-                    "effectiveDateTime": _fmt_fhir_datetime(order.created_at),
+                    "code": {"text": order.test_name or ""},
+                    "authoredOn": _fmt_fhir_datetime(order.created_at),
                 },
-                "fullUrl": f"Observation/{r.id}",
-            })
+                "fullUrl": f"ServiceRequest/{order.id}",
+            }
+        )
+        results = db.query(LabResult).filter(LabResult.order_id == order.id).limit(50).all()
+        for r in results:
+            entries.append(
+                {
+                    "resource": {
+                        "resourceType": "Observation",
+                        "id": str(r.id),
+                        "status": "final",
+                        "code": {"text": r.test_name or ""},
+                        "subject": {"reference": f"Patient/{bundle_id}"},
+                        "valueQuantity": {"value": r.value, "unit": r.unit or ""}
+                        if r.value is not None
+                        else None,
+                        "effectiveDateTime": _fmt_fhir_datetime(order.created_at),
+                    },
+                    "fullUrl": f"Observation/{r.id}",
+                }
+            )
 
     return {
         "resourceType": "Bundle",
@@ -1213,7 +1276,9 @@ def fhir_create_resource(
     encounter_id = _extract_encounter_ref(body)
     if patient_id and resource_type != "Patient":
         ehr_service.get_national_patient_or_404(db, patient_id, current_user.lab_id)
-    _create_fhir_resource(db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now)
+    _create_fhir_resource(
+        db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now
+    )
     db.commit()
     return {"resourceType": resource_type, "id": resource_id}
 
@@ -1237,7 +1302,9 @@ def fhir_update_resource(
     now = datetime.now(UTC)
     patient_id = _extract_patient_ref(body)
     encounter_id = _extract_encounter_ref(body)
-    _update_fhir_resource(db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now)
+    _update_fhir_resource(
+        db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now
+    )
     db.commit()
     return {"resourceType": resource_type, "id": resource_id}
 
@@ -1295,20 +1362,28 @@ def fhir_batch(
                     now = datetime.now(UTC)
                     pid = _extract_patient_ref(resource)
                     eid = _extract_encounter_ref(resource)
-                    _create_fhir_resource(db, rt, resource_id, resource, pid, eid, current_user, now)
+                    _create_fhir_resource(
+                        db, rt, resource_id, resource, pid, eid, current_user, now
+                    )
                     status_code = 201
                 else:
                     status_code = 422
             elif method == "PUT":
                 if rt in _SUPPORTED_UPDATE:
                     rec = db.query(_fhir_model_class(rt)).filter_by(id=resource_id).first()
-                    if rec and hasattr(rec, "lab_id") and getattr(rec, "lab_id", None) != current_user.lab_id:
+                    if (
+                        rec
+                        and hasattr(rec, "lab_id")
+                        and getattr(rec, "lab_id", None) != current_user.lab_id
+                    ):
                         status_code = 403
                     elif rec:
                         now = datetime.now(UTC)
                         pid = _extract_patient_ref(resource)
                         eid = _extract_encounter_ref(resource)
-                        _update_fhir_resource(db, rt, resource_id, resource, pid, eid, current_user, now)
+                        _update_fhir_resource(
+                            db, rt, resource_id, resource, pid, eid, current_user, now
+                        )
                     else:
                         status_code = 404
                 else:
@@ -1316,7 +1391,11 @@ def fhir_batch(
             elif method == "DELETE":
                 if rt in _SUPPORTED_DELETE:
                     rec = db.query(_fhir_model_class(rt)).filter_by(id=resource_id).first()
-                    if rec and hasattr(rec, "lab_id") and getattr(rec, "lab_id", None) != current_user.lab_id:
+                    if (
+                        rec
+                        and hasattr(rec, "lab_id")
+                        and getattr(rec, "lab_id", None) != current_user.lab_id
+                    ):
                         status_code = 403
                     elif rec:
                         if hasattr(rec, "is_deleted"):
@@ -1333,11 +1412,15 @@ def fhir_batch(
                 status_code = 405
         except HTTPException as exc:
             status_code = exc.status_code
-        results.append({
-            "resourceType": "Bundle",
-            "type": bundle_type,
-            "entry": [{"response": {"status": str(status_code), "location": f"{rt}/{resource_id}"}}],
-        })
+        results.append(
+            {
+                "resourceType": "Bundle",
+                "type": bundle_type,
+                "entry": [
+                    {"response": {"status": str(status_code), "location": f"{rt}/{resource_id}"}}
+                ],
+            }
+        )
     if bundle_type == "transaction":
         db.commit()
     return {"resourceType": "Bundle", "type": f"{bundle_type}-response", "entry": results}
@@ -1393,10 +1476,17 @@ def _fhir_model_class(resource_type: str):
         MedicationStatement as MS,
     )
     from ..national.domain.encounter import Encounter as EncModel
+
     _map: dict[str, Any] = {
-        "AllergyIntolerance": AI, "CarePlan": CP, "Composition": CN,
-        "Condition": CR, "DiagnosisRecord": DR, "DocumentReference": CA,
-        "Encounter": EncModel, "Immunization": IR, "MedicationRequest": MR,
+        "AllergyIntolerance": AI,
+        "CarePlan": CP,
+        "Composition": CN,
+        "Condition": CR,
+        "DiagnosisRecord": DR,
+        "DocumentReference": CA,
+        "Encounter": EncModel,
+        "Immunization": IR,
+        "MedicationRequest": MR,
         "MedicationStatement": MS,
     }
     return _map.get(resource_type)
@@ -1411,7 +1501,11 @@ def _get_fhir_resource_or_404(db: Session, resource_type: str, resource_id: str,
         raise HTTPException(status_code=404, detail=f"{resource_type} not found")
     if hasattr(record, "is_deleted") and record.is_deleted:
         raise HTTPException(status_code=410, detail=f"{resource_type} has been deleted")
-    if hasattr(record, "lab_id") and getattr(record, "lab_id", None) and record.lab_id != user.lab_id:
+    if (
+        hasattr(record, "lab_id")
+        and getattr(record, "lab_id", None)
+        and record.lab_id != user.lab_id
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
     if hasattr(record, "patient_id") and getattr(record, "patient_id", None):
         ehr_service.get_national_patient_or_404(db, record.patient_id, user.lab_id)
@@ -1419,9 +1513,14 @@ def _get_fhir_resource_or_404(db: Session, resource_type: str, resource_id: str,
 
 
 def _create_fhir_resource(
-    db: Session, resource_type: str, resource_id: str, body: dict[str, Any],
-    patient_id: str | None, encounter_id: str | None,
-    user: LabUser, now: datetime,
+    db: Session,
+    resource_type: str,
+    resource_id: str,
+    body: dict[str, Any],
+    patient_id: str | None,
+    encounter_id: str | None,
+    user: LabUser,
+    now: datetime,
 ):
     model = _fhir_model_class(resource_type)
     if not model:
@@ -1450,9 +1549,14 @@ def _create_fhir_resource(
 
 
 def _update_fhir_resource(
-    db: Session, resource_type: str, resource_id: str, body: dict[str, Any],
-    patient_id: str | None, encounter_id: str | None,
-    user: LabUser, now: datetime,
+    db: Session,
+    resource_type: str,
+    resource_id: str,
+    body: dict[str, Any],
+    patient_id: str | None,
+    encounter_id: str | None,
+    user: LabUser,
+    now: datetime,
 ):
     record = _get_fhir_resource_or_404(db, resource_type, resource_id, user)
     if hasattr(record, "updated_at"):

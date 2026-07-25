@@ -72,11 +72,17 @@ def specimen_to_fhir(specimen) -> dict:
         resource["collection"]["quantity"] = _fhir_quantity(specimen.volume_ml, "mL")
 
     if specimen.container_type:
-        resource["container"] = [{
-            "type": _fhir_codeable_concept(
-                [_fhir_coding("http://gula.iq/CodeSystem/container-type", specimen.container_type)],
-            ),
-        }]
+        resource["container"] = [
+            {
+                "type": _fhir_codeable_concept(
+                    [
+                        _fhir_coding(
+                            "http://gula.iq/CodeSystem/container-type", specimen.container_type,
+                        ),
+                    ],
+                ),
+            },
+        ]
 
     if specimen.storage_id:
         resource["note"] = [{"text": f"Storage: {specimen.storage_id}"}]
@@ -112,9 +118,17 @@ def result_to_fhir(result) -> dict:
         "id": result.fhir_id or f"lims-obs-{result.id}",
         "status": _map_result_status(result.validation_status),
         "code": _fhir_codeable_concept(
-            [_fhir_coding("http://loinc.org", result.loinc_code or result.test_code, result.test_name)],
+            [
+                _fhir_coding(
+                    "http://loinc.org", result.loinc_code or result.test_code, result.test_name,
+                ),
+            ],
         ),
-        "subject": _fhir_reference(f"Patient/{result.specimen.order.patient_id}" if hasattr(result, "specimen") and hasattr(result.specimen, "order") else "unknown"),
+        "subject": _fhir_reference(
+            f"Patient/{result.specimen.order.patient_id}"
+            if hasattr(result, "specimen") and hasattr(result.specimen, "order")
+            else "unknown",
+        ),
         "specimen": _fhir_reference(f"Specimen/lims-spec-{result.specimen_id}"),
     }
 
@@ -128,10 +142,12 @@ def result_to_fhir(result) -> dict:
     if result.ref_range_low is not None or result.ref_range_high is not None:
         low = result.ref_range_low if result.ref_range_low is not None else 0
         high = result.ref_range_high if result.ref_range_high is not None else float("inf")
-        resource["referenceRange"] = [{
-            "low": {"value": low, "unit": result.unit or ""},
-            "high": {"value": high, "unit": result.unit or ""},
-        }]
+        resource["referenceRange"] = [
+            {
+                "low": {"value": low, "unit": result.unit or ""},
+                "high": {"value": high, "unit": result.unit or ""},
+            },
+        ]
 
     if result.flag:
         interpretation = _map_flag_to_interpretation(result.flag)
@@ -160,12 +176,28 @@ def _map_result_status(status: str) -> str:
 
 def _map_flag_to_interpretation(flag: str) -> dict | None:
     mapping = {
-        "high": _fhir_coding("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "H", "High"),
-        "low": _fhir_coding("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "L", "Low"),
-        "critical_high": _fhir_coding("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "HH", "Critical high"),
-        "critical_low": _fhir_coding("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "LL", "Critical low"),
-        "normal": _fhir_coding("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "N", "Normal"),
-        "panic": _fhir_coding("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "A", "Abnormal"),
+        "high": _fhir_coding(
+            "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "H", "High",
+        ),
+        "low": _fhir_coding(
+            "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "L", "Low",
+        ),
+        "critical_high": _fhir_coding(
+            "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+            "HH",
+            "Critical high",
+        ),
+        "critical_low": _fhir_coding(
+            "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+            "LL",
+            "Critical low",
+        ),
+        "normal": _fhir_coding(
+            "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "N", "Normal",
+        ),
+        "panic": _fhir_coding(
+            "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", "A", "Abnormal",
+        ),
     }
     return mapping.get(flag)
 
@@ -190,9 +222,7 @@ def report_to_fhir_diagnostic(report, results: list | None = None) -> dict:
         resource["code"]["text"] = report.title
 
     if results:
-        resource["result"] = [
-            _fhir_reference(f"Observation/lims-obs-{r.id}") for r in results
-        ]
+        resource["result"] = [_fhir_reference(f"Observation/lims-obs-{r.id}") for r in results]
 
     return {k: v for k, v in resource.items() if v is not None}
 
@@ -250,14 +280,18 @@ def instrument_to_fhir_device(instrument) -> dict:
         "id": instrument.fhir_id or f"lims-inst-{instrument.id}",
         "status": _map_device_status(instrument.status),
         "serialNumber": instrument.serial_number or "",
-        "deviceName": [{
-            "name": instrument.instrument_code,
-            "type": "user-friendly-name",
-        }],
+        "deviceName": [
+            {
+                "name": instrument.instrument_code,
+                "type": "user-friendly-name",
+            },
+        ],
     }
 
     if instrument.model:
-        resource["modelNumber"] = instrument.model.model_code if hasattr(instrument.model, "model_code") else ""
+        resource["modelNumber"] = (
+            instrument.model.model_code if hasattr(instrument.model, "model_code") else ""
+        )
         if hasattr(instrument.model, "manufacturer") and instrument.model.manufacturer:
             resource["manufacturer"] = instrument.model.manufacturer.name
 

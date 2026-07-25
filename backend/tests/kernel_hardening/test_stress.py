@@ -112,6 +112,7 @@ class TestStressTaskQueue:
     def test_priority_ordering_large_set(self):
         pq = PriorityQueue()
         import random
+
         tasks = [PriorityTask(priority=random.randint(0, 100), name=f"t{i}") for i in range(1000)]
         start = time.monotonic()
         for t in tasks:

@@ -63,7 +63,9 @@ class DelegationCreateRequest(BaseModel):
 
 
 class BreakGlassActivateRequest(BaseModel):
-    emergency_category: str = Field(..., pattern="^(clinical|technical|security|compliance|system_failure)$")
+    emergency_category: str = Field(
+        ..., pattern="^(clinical|technical|security|compliance|system_failure)$"
+    )
     justification: str = Field(..., min_length=10, max_length=500)
     patient_id: int | None = None
     duration_minutes: int = Field(60, ge=15, le=480)
@@ -405,11 +407,15 @@ def activate_break_glass(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    existing = db.query(BreakGlassSession).filter(
-        BreakGlassSession.user_id == current_user.id,
-        BreakGlassSession.status == "active",
-        BreakGlassSession.expires_at > datetime.now(UTC),
-    ).first()
+    existing = (
+        db.query(BreakGlassSession)
+        .filter(
+            BreakGlassSession.user_id == current_user.id,
+            BreakGlassSession.status == "active",
+            BreakGlassSession.expires_at > datetime.now(UTC),
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=409, detail="An active break-glass session already exists")
     svc = BreakGlassService(db)
@@ -438,7 +444,9 @@ def deactivate_break_glass(
     svc = BreakGlassService(db)
     success = svc.deactivate(session_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Break-glass session not found or already deactivated")
+        raise HTTPException(
+            status_code=404, detail="Break-glass session not found or already deactivated"
+        )
     return {"status": "deactivated"}
 
 
@@ -602,40 +610,185 @@ def revoke_role_assignment(
 
 ROUTES_REGISTRY: list[dict[str, Any]] = [
     {"path": "/dashboard", "permission": None, "label_en": "Dashboard", "label_ar": "لوحة التحكم"},
-    {"path": "/patients", "permission": "patient.view", "label_en": "Patients", "label_ar": "المرضى"},
-    {"path": "/patients/list", "permission": "patient.view", "label_en": "Patient List", "label_ar": "قائمة المرضى"},
-    {"path": "/patients/register", "permission": "patient.create", "label_en": "Register Patient", "label_ar": "تسجيل مريض"},
-    {"path": "/patients/{id}", "permission": "patient.view", "label_en": "Patient Detail", "label_ar": "تفاصيل المريض"},
-    {"path": "/patients/{id}/edit", "permission": "patient.update", "label_en": "Edit Patient", "label_ar": "تعديل المريض"},
+    {
+        "path": "/patients",
+        "permission": "patient.view",
+        "label_en": "Patients",
+        "label_ar": "المرضى",
+    },
+    {
+        "path": "/patients/list",
+        "permission": "patient.view",
+        "label_en": "Patient List",
+        "label_ar": "قائمة المرضى",
+    },
+    {
+        "path": "/patients/register",
+        "permission": "patient.create",
+        "label_en": "Register Patient",
+        "label_ar": "تسجيل مريض",
+    },
+    {
+        "path": "/patients/{id}",
+        "permission": "patient.view",
+        "label_en": "Patient Detail",
+        "label_ar": "تفاصيل المريض",
+    },
+    {
+        "path": "/patients/{id}/edit",
+        "permission": "patient.update",
+        "label_en": "Edit Patient",
+        "label_ar": "تعديل المريض",
+    },
     {"path": "/orders", "permission": "order.view", "label_en": "Orders", "label_ar": "الطلبات"},
-    {"path": "/orders/list", "permission": "order.view", "label_en": "Order List", "label_ar": "قائمة الطلبات"},
-    {"path": "/orders/create", "permission": "order.create", "label_en": "New Order", "label_ar": "طلب جديد"},
-    {"path": "/orders/{id}", "permission": "order.view", "label_en": "Order Detail", "label_ar": "تفاصيل الطلب"},
+    {
+        "path": "/orders/list",
+        "permission": "order.view",
+        "label_en": "Order List",
+        "label_ar": "قائمة الطلبات",
+    },
+    {
+        "path": "/orders/create",
+        "permission": "order.create",
+        "label_en": "New Order",
+        "label_ar": "طلب جديد",
+    },
+    {
+        "path": "/orders/{id}",
+        "permission": "order.view",
+        "label_en": "Order Detail",
+        "label_ar": "تفاصيل الطلب",
+    },
     {"path": "/results", "permission": "result.view", "label_en": "Results", "label_ar": "النتائج"},
-    {"path": "/results/entry", "permission": "result.create", "label_en": "Result Entry", "label_ar": "إدخال النتائج"},
-    {"path": "/results/review", "permission": "result.review", "label_en": "Review Results", "label_ar": "مراجعة النتائج"},
-    {"path": "/results/history", "permission": "result.view", "label_en": "Result History", "label_ar": "سجل النتائج"},
+    {
+        "path": "/results/entry",
+        "permission": "result.create",
+        "label_en": "Result Entry",
+        "label_ar": "إدخال النتائج",
+    },
+    {
+        "path": "/results/review",
+        "permission": "result.review",
+        "label_en": "Review Results",
+        "label_ar": "مراجعة النتائج",
+    },
+    {
+        "path": "/results/history",
+        "permission": "result.view",
+        "label_en": "Result History",
+        "label_ar": "سجل النتائج",
+    },
     {"path": "/samples", "permission": "sample.view", "label_en": "Samples", "label_ar": "العينات"},
-    {"path": "/analytics", "permission": "stats.view", "label_en": "Analytics", "label_ar": "التحليلات"},
-    {"path": "/analytics/dashboard", "permission": "stats.view", "label_en": "Analytics Dashboard", "label_ar": "لوحة التحليلات"},
-    {"path": "/analytics/epidemiology", "permission": "stats.epidemiology", "label_en": "Epidemiology", "label_ar": "علم الأوبئة"},
-    {"path": "/analytics/reports", "permission": "stats.reports", "label_en": "Reports", "label_ar": "التقارير"},
-    {"path": "/quality", "permission": "quality.view", "label_en": "Quality Control", "label_ar": "مراقبة الجودة"},
-    {"path": "/inventory", "permission": "inventory.view", "label_en": "Inventory", "label_ar": "المخزون"},
+    {
+        "path": "/analytics",
+        "permission": "stats.view",
+        "label_en": "Analytics",
+        "label_ar": "التحليلات",
+    },
+    {
+        "path": "/analytics/dashboard",
+        "permission": "stats.view",
+        "label_en": "Analytics Dashboard",
+        "label_ar": "لوحة التحليلات",
+    },
+    {
+        "path": "/analytics/epidemiology",
+        "permission": "stats.epidemiology",
+        "label_en": "Epidemiology",
+        "label_ar": "علم الأوبئة",
+    },
+    {
+        "path": "/analytics/reports",
+        "permission": "stats.reports",
+        "label_en": "Reports",
+        "label_ar": "التقارير",
+    },
+    {
+        "path": "/quality",
+        "permission": "quality.view",
+        "label_en": "Quality Control",
+        "label_ar": "مراقبة الجودة",
+    },
+    {
+        "path": "/inventory",
+        "permission": "inventory.view",
+        "label_en": "Inventory",
+        "label_ar": "المخزون",
+    },
     {"path": "/staff", "permission": "user.view", "label_en": "Staff", "label_ar": "الموظفون"},
-    {"path": "/staff/roles", "permission": "role.manage", "label_en": "Role Management", "label_ar": "إدارة الأدوار"},
-    {"path": "/settings", "permission": "settings.view", "label_en": "Settings", "label_ar": "الإعدادات"},
-    {"path": "/settings/lab", "permission": "lab.manage", "label_en": "Lab Settings", "label_ar": "إعدادات المختبر"},
-    {"path": "/settings/users", "permission": "user.manage", "label_en": "User Management", "label_ar": "إدارة المستخدمين"},
-    {"path": "/settings/authorization", "permission": "authorization.manage", "label_en": "Authorization", "label_ar": "التفويض"},
-    {"path": "/settings/policies", "permission": "policy.manage", "label_en": "Policies", "label_ar": "السياسات"},
-    {"path": "/settings/delegations", "permission": "delegation.manage", "label_en": "Delegations", "label_ar": "التفويضات"},
-    {"path": "/settings/audit", "permission": "audit.view", "label_en": "Audit Log", "label_ar": "سجل التدقيق"},
-    {"path": "/ai", "permission": "ai.view", "label_en": "AI Services", "label_ar": "خدمات الذكاء الاصطناعي"},
+    {
+        "path": "/staff/roles",
+        "permission": "role.manage",
+        "label_en": "Role Management",
+        "label_ar": "إدارة الأدوار",
+    },
+    {
+        "path": "/settings",
+        "permission": "settings.view",
+        "label_en": "Settings",
+        "label_ar": "الإعدادات",
+    },
+    {
+        "path": "/settings/lab",
+        "permission": "lab.manage",
+        "label_en": "Lab Settings",
+        "label_ar": "إعدادات المختبر",
+    },
+    {
+        "path": "/settings/users",
+        "permission": "user.manage",
+        "label_en": "User Management",
+        "label_ar": "إدارة المستخدمين",
+    },
+    {
+        "path": "/settings/authorization",
+        "permission": "authorization.manage",
+        "label_en": "Authorization",
+        "label_ar": "التفويض",
+    },
+    {
+        "path": "/settings/policies",
+        "permission": "policy.manage",
+        "label_en": "Policies",
+        "label_ar": "السياسات",
+    },
+    {
+        "path": "/settings/delegations",
+        "permission": "delegation.manage",
+        "label_en": "Delegations",
+        "label_ar": "التفويضات",
+    },
+    {
+        "path": "/settings/audit",
+        "permission": "audit.view",
+        "label_en": "Audit Log",
+        "label_ar": "سجل التدقيق",
+    },
+    {
+        "path": "/ai",
+        "permission": "ai.view",
+        "label_en": "AI Services",
+        "label_ar": "خدمات الذكاء الاصطناعي",
+    },
     {"path": "/devices", "permission": "device.view", "label_en": "Devices", "label_ar": "الأجهزة"},
-    {"path": "/edge", "permission": "edge.view", "label_en": "Edge Sites", "label_ar": "المواقع البعيدة"},
-    {"path": "/compliance", "permission": "compliance.view", "label_en": "Compliance", "label_ar": "الامتثال"},
-    {"path": "/help", "permission": None, "label_en": "Help & Support", "label_ar": "المساعدة والدعم"},
+    {
+        "path": "/edge",
+        "permission": "edge.view",
+        "label_en": "Edge Sites",
+        "label_ar": "المواقع البعيدة",
+    },
+    {
+        "path": "/compliance",
+        "permission": "compliance.view",
+        "label_en": "Compliance",
+        "label_ar": "الامتثال",
+    },
+    {
+        "path": "/help",
+        "permission": None,
+        "label_en": "Help & Support",
+        "label_ar": "المساعدة والدعم",
+    },
 ]
 
 

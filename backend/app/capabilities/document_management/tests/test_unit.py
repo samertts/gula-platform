@@ -9,6 +9,7 @@ class TestDocument_managementCapability:
         from app.capabilities.document_management.capability import (
             Document_managementCapability,
         )
+
         return Document_managementCapability()
 
     @pytest.mark.asyncio

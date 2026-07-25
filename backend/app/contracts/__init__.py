@@ -1,5 +1,7 @@
 CONTRACTS_PACKAGE_VERSION = "1.0.0"
-CONTRACTS_PACKAGE_DESCRIPTION = "Platform Contracts generation system — OpenAPI, AsyncAPI, JSON Schema, FHIR R4, GraphQL"
+CONTRACTS_PACKAGE_DESCRIPTION = (
+    "Platform Contracts generation system — OpenAPI, AsyncAPI, JSON Schema, FHIR R4, GraphQL"
+)
 
 __all__ = [
     "CONTRACTS_PACKAGE_DESCRIPTION",

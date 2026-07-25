@@ -45,16 +45,18 @@ class QualityIndicator(BaseEntity):
     effective_start = Column(Date, nullable=True)
     effective_end = Column(Date, nullable=True)
 
-    measurements = relationship("IndicatorMeasurement", back_populates="indicator", cascade="all, delete-orphan")
+    measurements = relationship(
+        "IndicatorMeasurement", back_populates="indicator", cascade="all, delete-orphan",
+    )
 
 
 class IndicatorMeasurement(BaseEntity):
     __tablename__ = "clinical_indicator_measurements"
-    __table_args__ = (
-        Index("ix_indicator_measurement_date", "indicator_id", "measurement_date"),
-    )
+    __table_args__ = (Index("ix_indicator_measurement_date", "indicator_id", "measurement_date"),)
 
-    indicator_id = Column(String(26), ForeignKey("clinical_quality_indicators.id", ondelete="CASCADE"), nullable=False)
+    indicator_id = Column(
+        String(26), ForeignKey("clinical_quality_indicators.id", ondelete="CASCADE"), nullable=False,
+    )
     measurement_date = Column(Date, nullable=False)
     period_start = Column(Date, nullable=True)
     period_end = Column(Date, nullable=True)
@@ -122,11 +124,11 @@ class ComplianceCheck(BaseEntity):
 
 class BenchmarkValue(BaseEntity):
     __tablename__ = "clinical_benchmark_values"
-    __table_args__ = (
-        Index("ix_benchmark_indicator", "indicator_id"),
-    )
+    __table_args__ = (Index("ix_benchmark_indicator", "indicator_id"),)
 
-    indicator_id = Column(String(26), ForeignKey("clinical_quality_indicators.id", ondelete="CASCADE"), nullable=False)
+    indicator_id = Column(
+        String(26), ForeignKey("clinical_quality_indicators.id", ondelete="CASCADE"), nullable=False,
+    )
     benchmark_name = Column(String(128), nullable=False)
     source = Column(String(256), nullable=True)
     value = Column(Float, nullable=False)

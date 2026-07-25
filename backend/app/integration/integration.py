@@ -48,6 +48,7 @@ class IntegrationPlatform:
             return
         self.register_routes(app, prefix)
         from app.integration.connectors.routes import router as connectors_router
+
         app.include_router(connectors_router)
         logger.info("Integration platform initialized")
         self._initialized = True

@@ -260,6 +260,7 @@ async def check_redis(max_retries: int = 5, delay: int = 2) -> None:
     for attempt in range(max_retries):
         try:
             import redis as _redis_check
+
             r = _redis_check.from_url(REDIS_URL, socket_timeout=2, decode_responses=True)
             r.ping()
             r.close()
@@ -268,7 +269,10 @@ async def check_redis(max_retries: int = 5, delay: int = 2) -> None:
         except Exception as exc:
             logger.warning(
                 "[STARTUP GUARD] Redis not ready (attempt %d/%d) — %s — retrying in %ds",
-                attempt + 1, max_retries, exc, delay,
+                attempt + 1,
+                max_retries,
+                exc,
+                delay,
             )
         await asyncio.sleep(delay)
 
@@ -632,6 +636,7 @@ def _run_national_bootstrap() -> None:
             return
 
         from ..database import SessionLocal
+
         db = SessionLocal()
         try:
             counts = run_bootstrap(db=db)
@@ -692,8 +697,16 @@ def _run_ensure_audit_log_immutable() -> None:
 
 
 _VENDOR_SDKS = [
-    "boto3", "azure", "google.cloud", "firebase",
-    "supabase", "auth0", "okta", "stripe", "twilio", "sendgrid",
+    "boto3",
+    "azure",
+    "google.cloud",
+    "firebase",
+    "supabase",
+    "auth0",
+    "okta",
+    "stripe",
+    "twilio",
+    "sendgrid",
 ]
 
 _CONSTITUTION_POLICIES = [
@@ -711,6 +724,7 @@ def _check_constitutional_compliance() -> None:
     Non-fatal — warns but doesn't block startup.
     """
     import pathlib
+
     repo_root = pathlib.Path(__file__).resolve().parent.parent.parent.parent
 
     missing = []
@@ -832,7 +846,8 @@ async def run_startup_guard() -> None:
         _check_constitutional_compliance()
     except Exception as e:
         logger.warning(
-            "[STARTUP GUARD] Constitutional compliance check failed (non-fatal): %s", e,
+            "[STARTUP GUARD] Constitutional compliance check failed (non-fatal): %s",
+            e,
         )
 
     try:

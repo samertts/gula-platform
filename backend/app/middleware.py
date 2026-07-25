@@ -88,7 +88,9 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
             log_fn = logger.warning if elapsed_ms > 2000 or status >= 500 else logger.info
             log_fn(
                 "%s %s %d",
-                request.method, path, status,
+                request.method,
+                path,
+                status,
                 extra={"path": path, "latency_ms": elapsed_ms, "status": status},
             )
         response.headers["X-Response-Time"] = f"{elapsed_ms}ms"

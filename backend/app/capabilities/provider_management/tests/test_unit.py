@@ -9,6 +9,7 @@ class TestProvider_managementCapability:
         from app.capabilities.provider_management.capability import (
             Provider_managementCapability,
         )
+
         return Provider_managementCapability()
 
     @pytest.mark.asyncio

@@ -14,13 +14,13 @@ from dataclasses import dataclass, field
 logger = logging.getLogger("gula.lims.integration.hl7")
 
 # HL7 segment types used in lab results
-MSH = "MSH"   # Message Header
-PID = "PID"   # Patient Identification
-OBR = "OBR"   # Observation Request
-OBX = "OBX"   # Observation/Result
-SPM = "SPM"   # Specimen
-ORC = "ORC"   # Common Order
-NTE = "NTE"   # Notes/Comments
+MSH = "MSH"  # Message Header
+PID = "PID"  # Patient Identification
+OBR = "OBR"  # Observation Request
+OBX = "OBX"  # Observation/Result
+SPM = "SPM"  # Specimen
+ORC = "ORC"  # Common Order
+NTE = "NTE"  # Notes/Comments
 
 
 @dataclass
@@ -89,7 +89,13 @@ def parse_oru_message(raw_message: str) -> list[HL7Result]:
 
         elif seg.segment_type == SPM and len(seg.fields) > 1:
             # SPM-2: Specimen ID
-            spm_fields = seg.fields[1].split("^") if "|" in seg.raw else [seg.fields[1]] if len(seg.fields) > 1 else []
+            spm_fields = (
+                seg.fields[1].split("^")
+                if "|" in seg.raw
+                else [seg.fields[1]]
+                if len(seg.fields) > 1
+                else []
+            )
             current.specimen_id = spm_fields[0] if spm_fields else ""
 
         elif seg.segment_type == OBR:
@@ -101,12 +107,18 @@ def parse_oru_message(raw_message: str) -> list[HL7Result]:
         elif seg.segment_type == OBX:
             if len(seg.fields) > 2:
                 current.test_code = seg.fields[3].split("^")[0] if seg.fields[3] else ""
-                current.test_name = seg.fields[3].split("^")[1] if seg.fields[3] and "^" in seg.fields[3] else ""
+                current.test_name = (
+                    seg.fields[3].split("^")[1] if seg.fields[3] and "^" in seg.fields[3] else ""
+                )
                 current.value = seg.fields[5] if len(seg.fields) > 5 and seg.fields[5] else ""
                 current.unit = seg.fields[6] if len(seg.fields) > 6 and seg.fields[6] else ""
                 current.ref_range = seg.fields[7] if len(seg.fields) > 7 and seg.fields[7] else ""
-                current.abnormal_flag = seg.fields[8] if len(seg.fields) > 8 and seg.fields[8] else ""
-                current.result_status = seg.fields[11] if len(seg.fields) > 11 and seg.fields[11] else ""
+                current.abnormal_flag = (
+                    seg.fields[8] if len(seg.fields) > 8 and seg.fields[8] else ""
+                )
+                current.result_status = (
+                    seg.fields[11] if len(seg.fields) > 11 and seg.fields[11] else ""
+                )
 
                 results.append(current)
                 current = HL7Result(specimen_id=current.specimen_id, patient_id=current.patient_id)
@@ -117,6 +129,7 @@ def parse_oru_message(raw_message: str) -> list[HL7Result]:
 def build_hl7_ack(message_control_id: str, ack_code: str = "AA") -> str:
     """Build HL7 ACK response."""
     from datetime import datetime
+
     now = datetime.now().strftime("%Y%m%d%H%M%S")
     return (
         f"MSH|^~\\&|LIS|LAB|SENDING_APP|SENDING_FAC|{now}||ACK|{message_control_id}|P|2.5.1\r"

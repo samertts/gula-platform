@@ -9,6 +9,7 @@ Tables:
   - patient_links       — bridge from patients → canonical_patients
   - citizen_links       — bridge from citizens → canonical_patients
 """
+
 from __future__ import annotations
 
 from typing import Union
@@ -61,7 +62,9 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
             sa.ForeignKeyConstraint(
-                ["lab_id"], ["labs.id"], ondelete="SET NULL",
+                ["lab_id"],
+                ["labs.id"],
+                ondelete="SET NULL",
             ),
             sa.PrimaryKeyConstraint("id"),
         )
@@ -101,21 +104,31 @@ def upgrade() -> None:
             sa.Column("confidence", sa.Float(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
             sa.ForeignKeyConstraint(
-                ["patient_id"], ["patients.id"], ondelete="CASCADE",
+                ["patient_id"],
+                ["patients.id"],
+                ondelete="CASCADE",
             ),
             sa.ForeignKeyConstraint(
-                ["canonical_id"], ["canonical_patients.id"], ondelete="CASCADE",
+                ["canonical_id"],
+                ["canonical_patients.id"],
+                ondelete="CASCADE",
             ),
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index(
-            "ix_patient_links_patient", "patient_links", ["patient_id"],
+            "ix_patient_links_patient",
+            "patient_links",
+            ["patient_id"],
         )
         op.create_index(
-            "ix_patient_links_canonical", "patient_links", ["canonical_id"],
+            "ix_patient_links_canonical",
+            "patient_links",
+            ["canonical_id"],
         )
         op.create_index(
-            "ix_patient_links_method", "patient_links", ["linkage_method"],
+            "ix_patient_links_method",
+            "patient_links",
+            ["linkage_method"],
         )
 
     if not _table_exists("citizen_links"):
@@ -128,21 +141,31 @@ def upgrade() -> None:
             sa.Column("confidence", sa.Float(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
             sa.ForeignKeyConstraint(
-                ["citizen_id"], ["citizens.id"], ondelete="RESTRICT",
+                ["citizen_id"],
+                ["citizens.id"],
+                ondelete="RESTRICT",
             ),
             sa.ForeignKeyConstraint(
-                ["canonical_id"], ["canonical_patients.id"], ondelete="CASCADE",
+                ["canonical_id"],
+                ["canonical_patients.id"],
+                ondelete="CASCADE",
             ),
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index(
-            "ix_citizen_links_citizen", "citizen_links", ["citizen_id"],
+            "ix_citizen_links_citizen",
+            "citizen_links",
+            ["citizen_id"],
         )
         op.create_index(
-            "ix_citizen_links_canonical", "citizen_links", ["canonical_id"],
+            "ix_citizen_links_canonical",
+            "citizen_links",
+            ["canonical_id"],
         )
         op.create_index(
-            "ix_citizen_links_method", "citizen_links", ["linkage_method"],
+            "ix_citizen_links_method",
+            "citizen_links",
+            ["linkage_method"],
         )
 
 

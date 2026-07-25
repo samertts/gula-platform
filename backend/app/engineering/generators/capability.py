@@ -473,9 +473,7 @@ class CapabilityGenerator(BaseGenerator):
             f"{cap}/__init__.py",
             f'''from __future__ import annotations
 
-"""{
-    spec.name
-} Capability: {spec.description}
+"""{spec.name} Capability: {spec.description}
 
 Domain: {spec.domain}
 Layer: {spec.layer}
@@ -501,7 +499,11 @@ __all__ = ["{cap_cap}Capability"]
         )
 
     def _generate_capability(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str,
+        self,
+        cap: str,
+        cap_cap: str,
+        spec: CapabilitySpec,
+        module_path: str,
     ) -> None:
         deps = "\n".join(f"        # Depends on: {d}" for d in spec.dependencies)
         self._write(
@@ -560,7 +562,10 @@ class {cap_cap}Capability:
         )
 
     def _generate_domain(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec,
+        self,
+        cap: str,
+        cap_cap: str,
+        spec: CapabilitySpec,
     ) -> None:
         fields_str = "\n".join(
             f"    {f.name}: {f.type}{'' if f.required else ' = None'}"
@@ -602,7 +607,11 @@ class {cap_cap}Capability:
         )
 
     def _generate_repository(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str,
+        self,
+        cap: str,
+        cap_cap: str,
+        spec: CapabilitySpec,
+        module_path: str,
     ) -> None:
         self._write(
             f"{cap}/application/__init__.py",
@@ -613,7 +622,11 @@ class {cap_cap}Capability:
         )
 
     def _generate_service(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str,
+        self,
+        cap: str,
+        cap_cap: str,
+        spec: CapabilitySpec,
+        module_path: str,
     ) -> None:
         entity_name = cap_cap
         self._write(
@@ -626,19 +639,13 @@ class {cap_cap}Capability:
         )
 
     def _generate_dto(self, cap: str, cap_cap: str, spec: CapabilitySpec) -> None:
-        fields = (spec.entities or [])
-        create_fields = "\n".join(
-            f"    {f.name}: {f.type}{'' if f.required else ' = None'}"
-            for f in fields
-        ) or "    pass"
-        update_fields = "\n".join(
-            f"    {f.name}: {f.type} = None"
-            for f in fields
-        ) or "    pass"
-        response_fields = "\n".join(
-            f"    {f.name}: {f.type}"
-            for f in fields
-        ) or "    pass"
+        fields = spec.entities or []
+        create_fields = (
+            "\n".join(f"    {f.name}: {f.type}{'' if f.required else ' = None'}" for f in fields)
+            or "    pass"
+        )
+        update_fields = "\n".join(f"    {f.name}: {f.type} = None" for f in fields) or "    pass"
+        response_fields = "\n".join(f"    {f.name}: {f.type}" for f in fields) or "    pass"
         self._write(
             f"{cap}/dto.py",
             _DTO_TPL.format(
@@ -756,8 +763,7 @@ class {qry_cap}Query:
 
     def _generate_permissions(self, cap: str, cap_cap: str, spec: CapabilitySpec) -> None:
         perms = "\n".join(
-            f'    {p.upper()} = "{cap.lower()}:{p.lower()}"'
-            for p in spec.permissions
+            f'    {p.upper()} = "{cap.lower()}:{p.lower()}"' for p in spec.permissions
         )
         desc_items = ",\n        ".join(
             f'        "{cap.lower()}:{p.lower()}": "{p.replace("_", " ").title()}"'
@@ -785,7 +791,12 @@ class {qry_cap}Query:
         )
 
     def _generate_tests(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, module_path: str, prefix: str,
+        self,
+        cap: str,
+        cap_cap: str,
+        spec: CapabilitySpec,
+        module_path: str,
+        prefix: str,
     ) -> None:
         self._write(
             f"{cap}/tests/__init__.py",
@@ -819,7 +830,9 @@ class {qry_cap}Query:
 
     def _generate_readme(self, cap: str, cap_cap: str, spec: CapabilitySpec) -> None:
         deps = "\n".join(f"- {d}" for d in spec.dependencies) or "None"
-        api_docs = "\n".join(f"- `/{cap.replace('_', '-')}/` — REST API" if spec.with_api else "None")
+        api_docs = "\n".join(
+            f"- `/{cap.replace('_', '-')}/` — REST API" if spec.with_api else "None"
+        )
         events_docs = "\n".join(f"- `{e}`" for e in spec.events) or "None"
         commands_docs = "\n".join(f"- `{c}`" for c in spec.commands) or "None"
         queries_docs = "\n".join(f"- `{q}`" for q in spec.queries) or "None"
@@ -850,20 +863,21 @@ class {qry_cap}Query:
         )
 
     def _generate_capability_descriptor(
-        self, cap: str, cap_cap: str, spec: CapabilitySpec, prefix: str, module_path: str,
+        self,
+        cap: str,
+        cap_cap: str,
+        spec: CapabilitySpec,
+        prefix: str,
+        module_path: str,
     ) -> None:
         events = "\n".join(
             f'        {{"name": "{e}", "version": 1, "description": "", "type": "domain"}},'
             for e in spec.events
         )
         commands = "\n".join(
-            f'        {{"name": "{c}", "description": ""}},'
-            for c in spec.commands
+            f'        {{"name": "{c}", "description": ""}},' for c in spec.commands
         )
-        queries = "\n".join(
-            f'        {{"name": "{q}", "description": ""}},'
-            for q in spec.queries
-        )
+        queries = "\n".join(f'        {{"name": "{q}", "description": ""}},' for q in spec.queries)
         entities = "\n".join(
             f'        {{"name": "{e.name}", "description": "", "fields": []}},'
             for e in (spec.entities or [])

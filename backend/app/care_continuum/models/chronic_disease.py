@@ -20,17 +20,39 @@ from app.care_continuum.enums import CareProgramStatus, ChronicDiseaseType, Dise
 class ChronicDiseaseRegistry(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_chronic_disease_registry"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    episode_of_care_id = Column(String(26), ForeignKey("national_episodes_of_care.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    episode_of_care_id = Column(
+        String(26),
+        ForeignKey("national_episodes_of_care.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     disease_type = Column(SAEnum(ChronicDiseaseType), nullable=False, index=True)
     severity = Column(SAEnum(DiseaseSeverity), nullable=False, default=DiseaseSeverity.MILD)
     status = Column(SAEnum(CareProgramStatus), nullable=False, default=CareProgramStatus.ACTIVE)
 
-    diagnosed_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    diagnosed_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     diagnosed_at = Column(DateTime(timezone=True), nullable=False)
-    diagnosing_facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True)
+    diagnosing_facility_id = Column(
+        String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True,
+    )
 
     icd10_code = Column(String(20), nullable=True)
     diagnosis_description = Column(Text, nullable=True)
@@ -45,7 +67,9 @@ class ChronicDiseaseRegistry(CareContinuumTenantAuditEntity):
     next_review_date = Column(Date, nullable=True)
     review_interval_days = Column(Integer, nullable=True)
 
-    care_manager_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    care_manager_id = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     is_controlled = Column(Boolean, nullable=True)
     is_active = Column(Boolean, default=True)
     notes = Column(Text, nullable=True)
@@ -63,9 +87,24 @@ class ChronicDiseaseRegistry(CareContinuumTenantAuditEntity):
 class DiseaseManagementPlan(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_disease_management_plans"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    registry_id = Column(String(26), ForeignKey("cc_chronic_disease_registry.id", ondelete="CASCADE"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    registry_id = Column(
+        String(26),
+        ForeignKey("cc_chronic_disease_registry.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     disease_type = Column(SAEnum(ChronicDiseaseType), nullable=False)
     severity = Column(SAEnum(DiseaseSeverity), nullable=True)
@@ -74,8 +113,15 @@ class DiseaseManagementPlan(CareContinuumTenantAuditEntity):
     review_date = Column(Date, nullable=True)
     status = Column(SAEnum(CareProgramStatus), nullable=False, default=CareProgramStatus.ACTIVE)
 
-    created_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    facility_id = Column(
+        String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True,
+    )
 
     treatment_goals = Column(JSON, nullable=True)
     medications = Column(JSON, nullable=True)
@@ -110,17 +156,39 @@ class DiseaseManagementPlan(CareContinuumTenantAuditEntity):
 class ClinicalPathwayEnrollment(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_clinical_pathway_enrollments"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    registry_id = Column(String(26), ForeignKey("cc_chronic_disease_registry.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    registry_id = Column(
+        String(26),
+        ForeignKey("cc_chronic_disease_registry.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     pathway_code = Column(String(50), nullable=False, index=True)
     pathway_name = Column(String(200), nullable=False)
     pathway_version = Column(String(20), nullable=True)
 
-    enrolled_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
+    enrolled_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     enrolled_at = Column(DateTime(timezone=True), nullable=False)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True)
+    facility_id = Column(
+        String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True,
+    )
 
     status = Column(SAEnum(CareProgramStatus), nullable=False, default=CareProgramStatus.ACTIVE)
     current_step = Column(String(100), nullable=True)
@@ -130,7 +198,9 @@ class ClinicalPathwayEnrollment(CareContinuumTenantAuditEntity):
     expected_duration_days = Column(Integer, nullable=True)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    completed_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    completed_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
 
     outcomes = Column(JSON, nullable=True)
     deviation_reason = Column(Text, nullable=True)
@@ -149,9 +219,24 @@ class ClinicalPathwayEnrollment(CareContinuumTenantAuditEntity):
 class RiskStratification(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_risk_stratification"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    registry_id = Column(String(26), ForeignKey("cc_chronic_disease_registry.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    registry_id = Column(
+        String(26),
+        ForeignKey("cc_chronic_disease_registry.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     assessment_date = Column(DateTime(timezone=True), nullable=False)
     stratification_type = Column(String(100), nullable=False)
@@ -159,8 +244,15 @@ class RiskStratification(CareContinuumTenantAuditEntity):
     risk_score = Column(Float, nullable=True)
     risk_category = Column(String(50), nullable=False, index=True)
 
-    assessed_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True)
+    assessed_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    facility_id = Column(
+        String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True,
+    )
 
     risk_factors = Column(JSON, nullable=True)
     protective_factors = Column(JSON, nullable=True)
@@ -192,10 +284,27 @@ class RiskStratification(CareContinuumTenantAuditEntity):
 class SelfMonitoringRecord(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_self_monitoring_records"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    registry_id = Column(String(26), ForeignKey("cc_chronic_disease_registry.id", ondelete="SET NULL"), nullable=True, index=True)
-    care_plan_id = Column(String(26), ForeignKey("cc_disease_management_plans.id", ondelete="SET NULL"), nullable=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    registry_id = Column(
+        String(26),
+        ForeignKey("cc_chronic_disease_registry.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    care_plan_id = Column(
+        String(26), ForeignKey("cc_disease_management_plans.id", ondelete="SET NULL"), nullable=True,
+    )
 
     recorded_at = Column(DateTime(timezone=True), nullable=False)
     recording_method = Column(String(100), nullable=True)
@@ -229,7 +338,9 @@ class SelfMonitoringRecord(CareContinuumTenantAuditEntity):
 
     is_flagged = Column(Boolean, default=False)
     flag_reason = Column(String(200), nullable=True)
-    reviewed_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    reviewed_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 

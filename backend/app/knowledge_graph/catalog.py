@@ -81,7 +81,9 @@ class APICatalog:
                     operation_id=route.name or f"{method.lower()}_{route.path.replace('/', '_')}",
                     tags=list(route.tags) if route.tags else [],
                     deprecated=getattr(route, "deprecated", False),
-                    module=route.endpoint.__module__ if hasattr(route.endpoint, "__module__") else "",
+                    module=route.endpoint.__module__
+                    if hasattr(route.endpoint, "__module__")
+                    else "",
                 )
                 key = f"{entry.method}:{entry.path}"
                 self._endpoints[key] = entry
@@ -108,16 +110,20 @@ class APICatalog:
                 if method == "HEAD":
                     continue
                 doc = route.endpoint.__doc__
-                groups[prefix].endpoints.append(EndpointEntry(
-                    method=method.lower(),
-                    path=route.path,
-                    summary=route.summary or (doc.strip()[:80] if doc else ""),
-                    description=doc.strip() if doc else "",
-                    operation_id=route.name or "",
-                    tags=list(route.tags) if route.tags else [],
-                    deprecated=getattr(route, "deprecated", False),
-                    module=route.endpoint.__module__ if hasattr(route.endpoint, "__module__") else "",
-                ))
+                groups[prefix].endpoints.append(
+                    EndpointEntry(
+                        method=method.lower(),
+                        path=route.path,
+                        summary=route.summary or (doc.strip()[:80] if doc else ""),
+                        description=doc.strip() if doc else "",
+                        operation_id=route.name or "",
+                        tags=list(route.tags) if route.tags else [],
+                        deprecated=getattr(route, "deprecated", False),
+                        module=route.endpoint.__module__
+                        if hasattr(route.endpoint, "__module__")
+                        else "",
+                    ),
+                )
         self._groups = groups
         return list(groups.values())
 

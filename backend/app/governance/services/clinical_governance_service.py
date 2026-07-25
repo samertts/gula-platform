@@ -248,7 +248,8 @@ class ClinicalGovernanceService:
         return policy
 
     def get_active_policies(
-        self, policy_type: ClinicalPolicyType | None = None,
+        self,
+        policy_type: ClinicalPolicyType | None = None,
     ) -> list[ClinicalPolicy]:
         q = self.db.query(ClinicalPolicy).filter(ClinicalPolicy.status == PolicyStatus.ACTIVE)
         if policy_type:
@@ -256,7 +257,9 @@ class ClinicalGovernanceService:
         return q.order_by(ClinicalPolicy.policy_code).all()
 
     def evaluate_critical_result(
-        self, test_code: str, result_value: float,
+        self,
+        test_code: str,
+        result_value: float,
     ) -> dict[str, Any]:
         policy = (
             self.db.query(CriticalResultPolicy)
@@ -286,7 +289,10 @@ class ClinicalGovernanceService:
         }
 
     def evaluate_delta_check(
-        self, test_code: str, current_value: float, previous_value: float,
+        self,
+        test_code: str,
+        current_value: float,
+        previous_value: float,
     ) -> dict[str, Any]:
         policy = (
             self.db.query(DeltaCheckPolicy)

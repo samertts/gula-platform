@@ -90,38 +90,21 @@ repos:
       # Fail on any .env file being staged
       - id: forbid-env-files
         name: forbid .env files in commits
-        entry: >
-          bash -c 'if git diff --cached --name-only | grep -E "^\.env$|\.env\.local$|\.env\.production$" ; then
-          echo "ERROR: .env files must never be committed"; exit 1; fi'
+        entry: python3 -c "import subprocess,sys;r=subprocess.run(['git','diff','--cached','--name-only'],capture_output=True,text=True);envs=[f for f in r.stdout.split('\n') if f and (f=='.env' or '.env.local' in f or '.env.production' in f)];exit(1) if envs else exit(0)"
         language: system
         stages: [commit]
 
       # Check for hardcoded secrets in staged files
       - id: check-hardcoded-secrets
         name: check hardcoded secrets
-        entry: bash -c '
-          git diff --cached --name-only | while read f; do
-            if [ -f "$f" ]; then
-              python3 -m detect_secrets scan --no-baseline "$f" 2>/dev/null | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-if data.get(\"results\") and any(data[\"results\"].values()):
-    print(f\"SECRETS FOUND in $f\")
-    sys.exit(1)
-"
-            fi
-          done
-        '
+        entry: python3 scripts/pre-commit-check-secrets.py
         language: system
         stages: [commit]
 
       # Migration policy: forbid editing existing alembic revisions
       - id: forbid-edit-existing-migrations
         name: forbid editing existing alembic migrations
-        entry: bash -c '
-          git diff --cached --name-only | grep -q "^backend/migrations/versions/.*\.py$" &&
-          echo "ERROR: editing existing migrations is forbidden" && exit 1 || exit 0
-        '
+        entry: bash scripts/pre-commit-check-migrations.sh
         language: system
         files: ^backend/migrations/versions/.+\.py$
         stages: [commit]

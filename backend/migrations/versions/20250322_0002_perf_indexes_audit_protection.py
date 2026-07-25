@@ -53,7 +53,8 @@ def upgrade() -> None:
         op.create_index("ix_lab_users_role", "lab_users", ["role"])
     if not _index_exists("audit_logs", "ix_audit_logs_user_created"):
         op.create_index(
-            "ix_audit_logs_user_created", "audit_logs",
+            "ix_audit_logs_user_created",
+            "audit_logs",
             ["user_id", "created_at"],
         )
 
@@ -74,7 +75,8 @@ def upgrade() -> None:
     # This is a DB-level lock: even if the app is compromised, audit rows
     # cannot be modified or deleted.  Checked in both UPDATE and DELETE.
     if _is_postgresql():
-        op.execute(text("""
+        op.execute(
+            text("""
             CREATE OR REPLACE FUNCTION audit_logs_deny_mutation()
             RETURNS trigger LANGUAGE plpgsql AS $$
             BEGIN
@@ -83,25 +85,32 @@ def upgrade() -> None:
                     TG_OP;
             END;
             $$;
-        """))
+        """)
+        )
 
         # Drop existing triggers before recreating (idempotent)
-        op.execute(text("""
+        op.execute(
+            text("""
             DROP TRIGGER IF EXISTS trg_audit_logs_no_update ON audit_logs;
             DROP TRIGGER IF EXISTS trg_audit_logs_no_delete ON audit_logs;
-        """))
+        """)
+        )
 
-        op.execute(text("""
+        op.execute(
+            text("""
             CREATE TRIGGER trg_audit_logs_no_update
             BEFORE UPDATE ON audit_logs
             FOR EACH ROW EXECUTE FUNCTION audit_logs_deny_mutation();
-        """))
+        """)
+        )
 
-        op.execute(text("""
+        op.execute(
+            text("""
             CREATE TRIGGER trg_audit_logs_no_delete
             BEFORE DELETE ON audit_logs
             FOR EACH ROW EXECUTE FUNCTION audit_logs_deny_mutation();
-        """))
+        """)
+        )
 
 
 def downgrade() -> None:

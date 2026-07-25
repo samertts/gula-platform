@@ -93,7 +93,9 @@ class DataTransformer:
         return result
 
     @staticmethod
-    def filter_fields(data: dict[str, Any], include: list[str] | None = None, exclude: list[str] | None = None) -> dict[str, Any]:
+    def filter_fields(
+        data: dict[str, Any], include: list[str] | None = None, exclude: list[str] | None = None
+    ) -> dict[str, Any]:
         if include:
             return {k: v for k, v in data.items() if k in include}
         if exclude:

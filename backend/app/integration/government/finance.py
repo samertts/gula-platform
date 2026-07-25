@@ -51,7 +51,11 @@ class FinanceIntegration(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -86,7 +90,11 @@ class FinanceIntegration(BaseConnector):
         try:
             resp = await self._client.post(
                 urljoin(self._base_url, "/auth/token"),
-                json={"client_id": self._client_id, "client_secret": self._client_secret, "grant_type": "client_credentials"},
+                json={
+                    "client_id": self._client_id,
+                    "client_secret": self._client_secret,
+                    "grant_type": "client_credentials",
+                },
             )
             if resp.is_success:
                 result = resp.json()

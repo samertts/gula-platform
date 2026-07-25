@@ -30,7 +30,9 @@ class ResearchWorkspace:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def add_member(self, user_id: str, role: str = "viewer") -> None:
-        self.members.append({"user_id": user_id, "role": role, "joined_at": datetime.now(UTC).isoformat()})
+        self.members.append(
+            {"user_id": user_id, "role": role, "joined_at": datetime.now(UTC).isoformat()}
+        )
         self.updated_at = datetime.now(UTC)
 
     def remove_member(self, user_id: str) -> bool:
@@ -95,7 +97,9 @@ class StudyManager:
     def get_project(self, project_id: str) -> ResearchProject | None:
         return self._projects.get(project_id)
 
-    def update_status(self, project_id: str, status: ResearchProjectStatus) -> ResearchProject | None:
+    def update_status(
+        self, project_id: str, status: ResearchProjectStatus
+    ) -> ResearchProject | None:
         project = self._projects.get(project_id)
         if project:
             project.status = status.value
@@ -240,7 +244,8 @@ class InstitutionManager:
     def search(self, query: str) -> list[ResearchInstitution]:
         q = query.lower()
         return [
-            i for i in self._institutions.values()
+            i
+            for i in self._institutions.values()
             if q in i.name.lower() or q in (i.name_ar or "").lower()
         ]
 
@@ -295,7 +300,8 @@ class PublicationTracker:
     def search(self, query: str) -> list[ResearchPublication]:
         q = query.lower()
         return [
-            p for p in self._publications.values()
+            p
+            for p in self._publications.values()
             if q in p.title.lower() or any(q in (kw or "").lower() for kw in (p.keywords or []))
         ]
 

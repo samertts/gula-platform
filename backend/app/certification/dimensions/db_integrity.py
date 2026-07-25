@@ -183,7 +183,11 @@ class DBIntegrityEvaluator(DimensionEvaluator):
             for py_file in d.glob("*.py"):
                 try:
                     content = py_file.read_text()
-                    if "_has_column" in content or "_table_exists" in content or "_index_exists" in content:
+                    if (
+                        "_has_column" in content
+                        or "_table_exists" in content
+                        or "_index_exists" in content
+                    ):
                         return True
                 except Exception:
                     continue
@@ -212,7 +216,9 @@ class DBIntegrityEvaluator(DimensionEvaluator):
             if "model" in py_file.parts or "models" in py_file.parts:
                 try:
                     content = py_file.read_text()
-                    if "version" in content.lower() and ("Column" in content or "Integer" in content or "Mapped" in content):
+                    if "version" in content.lower() and (
+                        "Column" in content or "Integer" in content or "Mapped" in content
+                    ):
                         return True
                 except Exception:
                     continue

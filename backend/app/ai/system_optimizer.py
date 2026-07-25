@@ -133,7 +133,10 @@ def _collect_cpu() -> CPUMetrics:
         num_cpus = 1
 
     return CPUMetrics(
-        load_1m=load_1m, load_5m=load_5m, load_15m=load_15m, num_cpus=max(num_cpus, 1),
+        load_1m=load_1m,
+        load_5m=load_5m,
+        load_15m=load_15m,
+        num_cpus=max(num_cpus, 1),
     )
 
 
@@ -154,7 +157,10 @@ def _collect_memory() -> MemoryMetrics:
     used_pct = round(used_mb / max(total_mb, 1) * 100, 1)
 
     return MemoryMetrics(
-        total_mb=total_mb, available_mb=available_mb, used_mb=used_mb, used_pct=used_pct,
+        total_mb=total_mb,
+        available_mb=available_mb,
+        used_mb=used_mb,
+        used_pct=used_pct,
     )
 
 

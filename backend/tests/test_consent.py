@@ -11,6 +11,7 @@ The tests hit the service layer + the FastAPI dependency directly, not a
 full TestClient, because the dependency is the single source of truth for
 access control and we want to isolate it from route wiring churn.
 """
+
 from __future__ import annotations
 
 import os
@@ -41,10 +42,10 @@ from sqlalchemy.orm import sessionmaker
 
 # ── In-memory test DB ─────────────────────────────────────────────────────────
 
+
 @pytest.fixture()
 def db():
-    engine = create_engine("sqlite:///:memory:",
-                           connect_args={"check_same_thread": False})
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     # Create only the tables we need; bulk metadata.create_all may pull in
     # tables with FKs we don't care about — but Consent has an FK to
     # lab_users, so we create all to satisfy it.
@@ -57,8 +58,12 @@ def db():
         s.close()
 
 
-def _make_request(user_role: str = "doctor", user_id: int = 42,
-                  emergency: bool = False, citizen_ulid: str = "01CITIZEN000000000000000ZZ"):
+def _make_request(
+    user_role: str = "doctor",
+    user_id: int = 42,
+    emergency: bool = False,
+    citizen_ulid: str = "01CITIZEN000000000000000ZZ",
+):
     """Fabricate a minimal FastAPI Request stand-in for the dependency."""
     headers = {}
     if emergency:
@@ -83,17 +88,17 @@ def _make_user(role: str = "doctor", user_id: int = 42, citizen_ulid=None):
 
 # ── TEST 1: no consent → 403 ─────────────────────────────────────────────────
 
+
 def test_no_consent_denies(db):
     dep = require_consent("read:citizen")
     with pytest.raises(HTTPException) as exc:
-        dep(request=_make_request(),
-            current_user=_make_user(),
-            db=db)
+        dep(request=_make_request(), current_user=_make_user(), db=db)
     assert exc.value.status_code == 403
     assert exc.value.detail["error"] == "consent_required"
 
 
 # ── TEST 2: valid consent → allow ────────────────────────────────────────────
+
 
 def test_valid_consent_allows(db):
     consent_service.grant_consent(
@@ -108,13 +113,12 @@ def test_valid_consent_allows(db):
     db.commit()
 
     dep = require_consent("read:citizen")
-    result = dep(request=_make_request(),
-                 current_user=_make_user(),
-                 db=db)
+    result = dep(request=_make_request(), current_user=_make_user(), db=db)
     assert result.id == 42
 
 
 # ── TEST 3: expired consent → 403 ────────────────────────────────────────────
+
 
 def test_expired_consent_denies(db):
     # Insert directly with expires_at in the past (bypasses API 72h cap)
@@ -132,9 +136,7 @@ def test_expired_consent_denies(db):
 
     dep = require_consent("read:citizen")
     with pytest.raises(HTTPException) as exc:
-        dep(request=_make_request(),
-            current_user=_make_user(),
-            db=db)
+        dep(request=_make_request(), current_user=_make_user(), db=db)
     assert exc.value.status_code == 403
 
     # The service should have lazily flipped status to 'expired'
@@ -144,17 +146,22 @@ def test_expired_consent_denies(db):
 
 # ── TEST 4: emergency break-glass (doctor) → allow + audit ───────────────────
 
+
 def test_emergency_break_glass_allows_doctor(db):
     dep = require_consent("read:citizen")
-    result = dep(request=_make_request(emergency=True),
-                 current_user=_make_user(role="doctor"),
-                 db=db)
+    result = dep(
+        request=_make_request(emergency=True), current_user=_make_user(role="doctor"), db=db
+    )
     assert result.id == 42
 
     # Audit row must have been written with emergency=True in details
-    audits = db.query(AuditLog).filter(
-        AuditLog.action == "consent_check_allow",
-    ).all()
+    audits = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.action == "consent_check_allow",
+        )
+        .all()
+    )
     assert len(audits) == 1
     assert "emergency=True" in audits[0].details
 
@@ -162,13 +169,12 @@ def test_emergency_break_glass_allows_doctor(db):
 def test_emergency_break_glass_rejects_non_doctor(db):
     dep = require_consent("read:citizen")
     with pytest.raises(HTTPException) as exc:
-        dep(request=_make_request(emergency=True),
-            current_user=_make_user(role="staff"),
-            db=db)
+        dep(request=_make_request(emergency=True), current_user=_make_user(role="staff"), db=db)
     assert exc.value.status_code == 403
 
 
 # ── TEST 5: revoke → immediate block ─────────────────────────────────────────
+
 
 def test_revoke_immediately_blocks(db):
     consent_service.grant_consent(
@@ -198,24 +204,23 @@ def test_revoke_immediately_blocks(db):
 
     # Subsequent access denied
     with pytest.raises(HTTPException) as exc:
-        dep(request=_make_request(),
-            current_user=_make_user(),
-            db=db)
+        dep(request=_make_request(), current_user=_make_user(), db=db)
     assert exc.value.status_code == 403
     assert exc.value.detail["error"] == "consent_required"
 
 
 # ── Additional: owner bypass ─────────────────────────────────────────────────
 
+
 def test_owner_bypasses_consent(db):
     dep = require_consent("read:citizen")
-    user = _make_user(role="citizen", user_id=7,
-                      citizen_ulid="01CITIZEN000000000000000ZZ")
+    user = _make_user(role="citizen", user_id=7, citizen_ulid="01CITIZEN000000000000000ZZ")
     result = dep(request=_make_request(), current_user=user, db=db)
     assert result.id == 7
 
 
 # ── Additional: scope + duration policy ──────────────────────────────────────
+
 
 def test_grant_rejects_disallowed_scope(db):
     with pytest.raises(consent_service.ConsentError):
@@ -223,7 +228,7 @@ def test_grant_rejects_disallowed_scope(db):
             db,
             gpid="01CITIZEN000000000000000ZZ",
             grantee_id="user:42",
-            scope="read:everything",   # wildcard-ish, not in ALLOWED_SCOPES
+            scope="read:everything",  # wildcard-ish, not in ALLOWED_SCOPES
             expires_in_hours=1,
         )
 

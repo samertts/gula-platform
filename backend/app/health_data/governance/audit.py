@@ -48,7 +48,10 @@ class DataAccessAuditTrail:
         self._previous_hash = current_hash
         logger.debug(
             "Audit recorded: %s on %s/%s by %s — %s",
-            entry.action, entry.resource_type, entry.resource_id, entry.user_id,
+            entry.action,
+            entry.resource_type,
+            entry.resource_id,
+            entry.user_id,
             "GRANTED" if entry.granted else "DENIED",
         )
 
@@ -95,12 +98,16 @@ class DataAccessAuditTrail:
         return len(self._entries)
 
     def _build_chain_entry(self, entry: DataAccessAudit) -> str:
-        return json.dumps({
-            "id": entry.id,
-            "user_id": entry.user_id,
-            "action": entry.action,
-            "resource_type": entry.resource_type,
-            "resource_id": entry.resource_id,
-            "access_time": entry.access_time.isoformat(),
-            "granted": entry.granted,
-        }, sort_keys=True, default=str)
+        return json.dumps(
+            {
+                "id": entry.id,
+                "user_id": entry.user_id,
+                "action": entry.action,
+                "resource_type": entry.resource_type,
+                "resource_id": entry.resource_id,
+                "access_time": entry.access_time.isoformat(),
+                "granted": entry.granted,
+            },
+            sort_keys=True,
+            default=str,
+        )

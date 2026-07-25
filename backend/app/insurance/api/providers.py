@@ -158,12 +158,18 @@ def create_provider(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    existing = db.query(InsuranceProvider).filter(
-        InsuranceProvider.lab_id == current_user.lab_id,
-        InsuranceProvider.code == data.code,
-    ).first()
+    existing = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.lab_id == current_user.lab_id,
+            InsuranceProvider.code == data.code,
+        )
+        .first()
+    )
     if existing:
-        raise HTTPException(status_code=400, detail=f"Provider with code '{data.code}' already exists")
+        raise HTTPException(
+            status_code=400, detail=f"Provider with code '{data.code}' already exists"
+        )
 
     provider = InsuranceProvider(
         lab_id=current_user.lab_id,
@@ -192,10 +198,14 @@ def get_provider(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
     return provider
@@ -208,10 +218,14 @@ def update_provider(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
@@ -242,10 +256,14 @@ def deactivate_provider(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
     if not provider.is_active:
@@ -271,10 +289,14 @@ def list_provider_contracts(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
@@ -294,19 +316,29 @@ def add_provider_contract(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
-    existing = db.query(ProviderContract).filter(
-        ProviderContract.lab_id == current_user.lab_id,
-        ProviderContract.contract_number == data.contract_number,
-    ).first()
+    existing = (
+        db.query(ProviderContract)
+        .filter(
+            ProviderContract.lab_id == current_user.lab_id,
+            ProviderContract.contract_number == data.contract_number,
+        )
+        .first()
+    )
     if existing:
-        raise HTTPException(status_code=400, detail=f"Contract with number '{data.contract_number}' already exists")
+        raise HTTPException(
+            status_code=400, detail=f"Contract with number '{data.contract_number}' already exists"
+        )
 
     contract = ProviderContract(
         lab_id=current_user.lab_id,

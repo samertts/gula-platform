@@ -15,15 +15,16 @@ Notes
 Revision ID : 20260505_0002
 Revises     : 20260505_0001
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
 
-revision      = "20260505_0002"
+revision = "20260505_0002"
 down_revision = "20260505_0001"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _pg() -> bool:
@@ -35,10 +36,10 @@ def _index_exists(name: str) -> bool:
     if bind.dialect.name != "postgresql":
         # Other dialects: best-effort via inspector
         return name in {ix["name"] for ix in inspect(bind).get_indexes("patients")}
-    row = bind.execute(text(
-        "SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() "
-        "AND indexname = :n"
-    ), {"n": name}).first()
+    row = bind.execute(
+        text("SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = :n"),
+        {"n": name},
+    ).first()
     return row is not None
 
 
@@ -54,10 +55,12 @@ def upgrade() -> None:
 
     # CREATE INDEX CONCURRENTLY must NOT run inside a tx.
     with op.get_context().autocommit_block():
-        op.execute(text(
-            "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_patients_national_id "
-            "ON patients (national_id)"
-        ))
+        op.execute(
+            text(
+                "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_patients_national_id "
+                "ON patients (national_id)"
+            )
+        )
 
 
 def downgrade() -> None:

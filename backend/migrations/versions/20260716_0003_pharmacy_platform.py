@@ -86,16 +86,22 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("drug_code", name="uq_pharmacy_drug_code"),
         )
-        op.create_index("ix_pharmacy_drug_catalog_drug_code", "pharmacy_drug_catalog", ["drug_code"])
+        op.create_index(
+            "ix_pharmacy_drug_catalog_drug_code", "pharmacy_drug_catalog", ["drug_code"]
+        )
         op.create_index("ix_pharmacy_drug_catalog_atc_code", "pharmacy_drug_catalog", ["atc_code"])
-        op.create_index("ix_pharmacy_drug_catalog_generic_name", "pharmacy_drug_catalog", ["generic_name"])
+        op.create_index(
+            "ix_pharmacy_drug_catalog_generic_name", "pharmacy_drug_catalog", ["generic_name"]
+        )
 
     # ── Drug Suppliers ────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_drug_suppliers"):
         op.create_table(
             "pharmacy_drug_suppliers",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("supplier_code", sa.String(50), nullable=False),
             sa.Column("supplier_name", sa.String(200), nullable=False),
             sa.Column("supplier_name_ar", sa.String(200), nullable=True),
@@ -126,9 +132,21 @@ def upgrade() -> None:
         op.create_table(
             "pharmacy_drug_batches",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("supplier_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_suppliers.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "supplier_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_suppliers.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("batch_number", sa.String(100), nullable=False),
             sa.Column("manufacturing_date", sa.Date(), nullable=True),
             sa.Column("expiry_date", sa.Date(), nullable=False),
@@ -139,7 +157,12 @@ def upgrade() -> None:
             sa.Column("storage_condition", sa.String(100), nullable=True),
             sa.Column("location", sa.String(100), nullable=True),
             sa.Column("received_date", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("received_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "received_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("is_quarantined", sa.Boolean(), default=False),
             sa.Column("quarantine_reason", sa.Text(), nullable=True),
             sa.Column("status", sa.String(20), nullable=False, server_default="active"),
@@ -159,15 +182,24 @@ def upgrade() -> None:
         op.create_index("ix_pharmacy_drug_batches_lab_id", "pharmacy_drug_batches", ["lab_id"])
         op.create_index("ix_pharmacy_drug_batches_drug_id", "pharmacy_drug_batches", ["drug_id"])
         op.create_index("ix_pharmacy_drug_batches_expiry", "pharmacy_drug_batches", ["expiry_date"])
-        op.create_index("ix_pharmacy_batch_expiry_active", "pharmacy_drug_batches", ["expiry_date", "status"])
+        op.create_index(
+            "ix_pharmacy_batch_expiry_active", "pharmacy_drug_batches", ["expiry_date", "status"]
+        )
 
     # ── Prescriptions ─────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_prescriptions"):
         op.create_table(
             "pharmacy_prescriptions",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("prescription_number", sa.String(30), nullable=False),
             sa.Column("prescribed_by", sa.String(200), nullable=False),
             sa.Column("prescriber_license", sa.String(100), nullable=True),
@@ -197,17 +229,36 @@ def upgrade() -> None:
             sa.UniqueConstraint("lab_id", "prescription_number", name="uq_pharmacy_rx_number"),
         )
         op.create_index("ix_pharmacy_prescriptions_lab_id", "pharmacy_prescriptions", ["lab_id"])
-        op.create_index("ix_pharmacy_prescriptions_patient_id", "pharmacy_prescriptions", ["patient_id"])
-        op.create_index("ix_pharmacy_prescriptions_status", "pharmacy_prescriptions", ["lab_id", "status"])
+        op.create_index(
+            "ix_pharmacy_prescriptions_patient_id", "pharmacy_prescriptions", ["patient_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_prescriptions_status", "pharmacy_prescriptions", ["lab_id", "status"]
+        )
 
     # ── Prescription Items ────────────────────────────────────────────────────
     if not _table_exists("pharmacy_prescription_items"):
         op.create_table(
             "pharmacy_prescription_items",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("prescription_id", sa.Integer(), sa.ForeignKey("pharmacy_prescriptions.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("batch_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "prescription_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_prescriptions.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "batch_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("drug_name", sa.String(300), nullable=False),
             sa.Column("dosage", sa.String(100), nullable=False),
             sa.Column("frequency", sa.String(100), nullable=False),
@@ -230,23 +281,63 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_pharmacy_rx_items_prescription_id", "pharmacy_prescription_items", ["prescription_id"])
+        op.create_index(
+            "ix_pharmacy_rx_items_prescription_id",
+            "pharmacy_prescription_items",
+            ["prescription_id"],
+        )
         op.create_index("ix_pharmacy_rx_items_drug_id", "pharmacy_prescription_items", ["drug_id"])
-        op.create_index("ix_pharmacy_rx_items_status", "pharmacy_prescription_items", ["prescription_id", "status"])
+        op.create_index(
+            "ix_pharmacy_rx_items_status",
+            "pharmacy_prescription_items",
+            ["prescription_id", "status"],
+        )
 
     # ── Dispense Records ──────────────────────────────────────────────────────
     if not _table_exists("pharmacy_dispense_records"):
         op.create_table(
             "pharmacy_dispense_records",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("prescription_id", sa.Integer(), sa.ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("prescription_item_id", sa.Integer(), sa.ForeignKey("pharmacy_prescription_items.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("batch_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "prescription_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "prescription_item_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_prescription_items.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "batch_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("dispense_number", sa.String(30), nullable=False),
-            sa.Column("dispensed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False),
+            sa.Column(
+                "dispensed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=False,
+            ),
             sa.Column("dispensed_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("quantity_dispensed", sa.Float(), nullable=False),
             sa.Column("quantity_unit", sa.String(20), nullable=True),
@@ -255,10 +346,20 @@ def upgrade() -> None:
             sa.Column("instructions", sa.Text(), nullable=True),
             sa.Column("label_notes", sa.Text(), nullable=True),
             sa.Column("is_verified", sa.Boolean(), default=False),
-            sa.Column("verified_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "verified_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("is_counselled", sa.Boolean(), default=False),
-            sa.Column("counselled_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "counselled_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("counselled_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
@@ -274,25 +375,53 @@ def upgrade() -> None:
             sa.UniqueConstraint("lab_id", "dispense_number", name="uq_pharmacy_dispense_number"),
         )
         op.create_index("ix_pharmacy_dispense_lab_id", "pharmacy_dispense_records", ["lab_id"])
-        op.create_index("ix_pharmacy_dispense_prescription_id", "pharmacy_dispense_records", ["prescription_id"])
-        op.create_index("ix_pharmacy_dispense_patient_id", "pharmacy_dispense_records", ["patient_id"])
+        op.create_index(
+            "ix_pharmacy_dispense_prescription_id", "pharmacy_dispense_records", ["prescription_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_dispense_patient_id", "pharmacy_dispense_records", ["patient_id"]
+        )
         op.create_index("ix_pharmacy_dispense_drug_id", "pharmacy_dispense_records", ["drug_id"])
-        op.create_index("ix_pharmacy_dispense_dispensed_at", "pharmacy_dispense_records", ["dispensed_at"])
+        op.create_index(
+            "ix_pharmacy_dispense_dispensed_at", "pharmacy_dispense_records", ["dispensed_at"]
+        )
 
     # ── Dispense Queue ────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_dispense_queue"):
         op.create_table(
             "pharmacy_dispense_queue",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("prescription_id", sa.Integer(), sa.ForeignKey("pharmacy_prescriptions.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("prescription_item_id", sa.Integer(), sa.ForeignKey("pharmacy_prescription_items.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "prescription_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_prescriptions.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "prescription_item_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_prescription_items.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("queue_number", sa.String(20), nullable=False),
             sa.Column("priority", sa.Integer(), default=0),
             sa.Column("status", sa.String(20), nullable=False, server_default="waiting"),
             sa.Column("entered_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("assigned_to", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "assigned_to",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("estimated_wait_minutes", sa.Integer(), nullable=True),
@@ -308,15 +437,21 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_pharmacy_dispense_queue_lab_id", "pharmacy_dispense_queue", ["lab_id"])
-        op.create_index("ix_pharmacy_dispense_queue_status", "pharmacy_dispense_queue", ["lab_id", "status"])
-        op.create_index("ix_pharmacy_dispense_queue_assigned", "pharmacy_dispense_queue", ["assigned_to"])
+        op.create_index(
+            "ix_pharmacy_dispense_queue_status", "pharmacy_dispense_queue", ["lab_id", "status"]
+        )
+        op.create_index(
+            "ix_pharmacy_dispense_queue_assigned", "pharmacy_dispense_queue", ["assigned_to"]
+        )
 
     # ── Warehouses ────────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_warehouses"):
         op.create_table(
             "pharmacy_warehouses",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
             sa.Column("warehouse_code", sa.String(30), nullable=False),
             sa.Column("warehouse_name", sa.String(200), nullable=False),
             sa.Column("warehouse_name_ar", sa.String(200), nullable=True),
@@ -349,8 +484,15 @@ def upgrade() -> None:
         op.create_table(
             "pharmacy_stores",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("warehouse_id", sa.Integer(), sa.ForeignKey("pharmacy_warehouses.id", ondelete="CASCADE"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "warehouse_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_warehouses.id", ondelete="CASCADE"),
+                nullable=True,
+            ),
             sa.Column("store_code", sa.String(30), nullable=False),
             sa.Column("store_name", sa.String(200), nullable=False),
             sa.Column("store_name_ar", sa.String(200), nullable=True),
@@ -376,11 +518,33 @@ def upgrade() -> None:
         op.create_table(
             "pharmacy_stock_levels",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("batch_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("store_id", sa.Integer(), sa.ForeignKey("pharmacy_stores.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("warehouse_id", sa.Integer(), sa.ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "batch_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "store_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_stores.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "warehouse_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("quantity_on_hand", sa.Float(), nullable=False, default=0),
             sa.Column("quantity_reserved", sa.Float(), default=0),
             sa.Column("quantity_available", sa.Float(), nullable=False, default=0),
@@ -391,7 +555,12 @@ def upgrade() -> None:
             sa.Column("unit", sa.String(20), nullable=False),
             sa.Column("location", sa.String(100), nullable=True),
             sa.Column("last_counted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("last_counted_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "last_counted_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("created_by", sa.Integer(), nullable=True),
             sa.Column("updated_by", sa.Integer(), nullable=True),
@@ -401,12 +570,18 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
-            sa.UniqueConstraint("lab_id", "drug_id", "batch_id", "store_id", name="uq_pharmacy_stock"),
+            sa.UniqueConstraint(
+                "lab_id", "drug_id", "batch_id", "store_id", name="uq_pharmacy_stock"
+            ),
         )
         op.create_index("ix_pharmacy_stock_levels_lab_id", "pharmacy_stock_levels", ["lab_id"])
         op.create_index("ix_pharmacy_stock_levels_drug_id", "pharmacy_stock_levels", ["drug_id"])
         op.create_index("ix_pharmacy_stock_levels_store_id", "pharmacy_stock_levels", ["store_id"])
-        op.create_index("ix_pharmacy_stock_levels_low_stock", "pharmacy_stock_levels", ["lab_id", "quantity_available"])
+        op.create_index(
+            "ix_pharmacy_stock_levels_low_stock",
+            "pharmacy_stock_levels",
+            ["lab_id", "quantity_available"],
+        )
         op.create_index("ix_pharmacy_stock_levels_batch_id", "pharmacy_stock_levels", ["batch_id"])
 
     # ── Stock Movements ───────────────────────────────────────────────────────
@@ -414,9 +589,21 @@ def upgrade() -> None:
         op.create_table(
             "pharmacy_stock_movements",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("batch_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "batch_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("movement_type", sa.String(30), nullable=False),
             sa.Column("quantity", sa.Float(), nullable=False),
             sa.Column("unit", sa.String(20), nullable=False),
@@ -425,7 +612,12 @@ def upgrade() -> None:
             sa.Column("reference_type", sa.String(50), nullable=True),
             sa.Column("reference_id", sa.Integer(), nullable=True),
             sa.Column("reason", sa.String(200), nullable=True),
-            sa.Column("performed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False),
+            sa.Column(
+                "performed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=False,
+            ),
             sa.Column("performed_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -438,31 +630,81 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_pharmacy_stock_movements_lab_id", "pharmacy_stock_movements", ["lab_id"])
-        op.create_index("ix_pharmacy_stock_movements_drug_id", "pharmacy_stock_movements", ["drug_id"])
-        op.create_index("ix_pharmacy_stock_movements_batch_id", "pharmacy_stock_movements", ["batch_id"])
-        op.create_index("ix_pharmacy_stock_movements_performed_at", "pharmacy_stock_movements", ["performed_at"])
+        op.create_index(
+            "ix_pharmacy_stock_movements_lab_id", "pharmacy_stock_movements", ["lab_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_stock_movements_drug_id", "pharmacy_stock_movements", ["drug_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_stock_movements_batch_id", "pharmacy_stock_movements", ["batch_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_stock_movements_performed_at", "pharmacy_stock_movements", ["performed_at"]
+        )
 
     # ── Inventory Transfers ───────────────────────────────────────────────────
     if not _table_exists("pharmacy_inventory_transfers"):
         op.create_table(
             "pharmacy_inventory_transfers",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("from_store_id", sa.Integer(), sa.ForeignKey("pharmacy_stores.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("to_store_id", sa.Integer(), sa.ForeignKey("pharmacy_stores.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("from_warehouse_id", sa.Integer(), sa.ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("to_warehouse_id", sa.Integer(), sa.ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "from_store_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_stores.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "to_store_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_stores.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "from_warehouse_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "to_warehouse_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("transfer_number", sa.String(30), nullable=False),
             sa.Column("transfer_type", sa.String(30), nullable=False),
             sa.Column("status", sa.String(20), nullable=False, server_default="draft"),
-            sa.Column("requested_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "requested_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("requested_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("approved_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "approved_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("dispatched_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "dispatched_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("dispatched_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("received_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "received_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("received_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("cancelled_reason", sa.Text(), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
@@ -477,19 +719,44 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("lab_id", "transfer_number", name="uq_pharmacy_transfer_number"),
         )
-        op.create_index("ix_pharmacy_inv_transfers_lab_id", "pharmacy_inventory_transfers", ["lab_id"])
-        op.create_index("ix_pharmacy_inv_transfers_from_store", "pharmacy_inventory_transfers", ["from_store_id"])
-        op.create_index("ix_pharmacy_inv_transfers_to_store", "pharmacy_inventory_transfers", ["to_store_id"])
-        op.create_index("ix_pharmacy_inv_transfers_status", "pharmacy_inventory_transfers", ["lab_id", "status"])
+        op.create_index(
+            "ix_pharmacy_inv_transfers_lab_id", "pharmacy_inventory_transfers", ["lab_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_inv_transfers_from_store",
+            "pharmacy_inventory_transfers",
+            ["from_store_id"],
+        )
+        op.create_index(
+            "ix_pharmacy_inv_transfers_to_store", "pharmacy_inventory_transfers", ["to_store_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_inv_transfers_status", "pharmacy_inventory_transfers", ["lab_id", "status"]
+        )
 
     # ── Inventory Transfer Items ──────────────────────────────────────────────
     if not _table_exists("pharmacy_inventory_transfer_items"):
         op.create_table(
             "pharmacy_inventory_transfer_items",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("transfer_id", sa.Integer(), sa.ForeignKey("pharmacy_inventory_transfers.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("batch_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "transfer_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_inventory_transfers.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "batch_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("quantity", sa.Float(), nullable=False),
             sa.Column("unit", sa.String(20), nullable=False),
             sa.Column("notes", sa.Text(), nullable=True),
@@ -500,25 +767,58 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_pharmacy_transfer_items_transfer_id", "pharmacy_inventory_transfer_items", ["transfer_id"])
-        op.create_index("ix_pharmacy_transfer_items_drug_id", "pharmacy_inventory_transfer_items", ["drug_id"])
+        op.create_index(
+            "ix_pharmacy_transfer_items_transfer_id",
+            "pharmacy_inventory_transfer_items",
+            ["transfer_id"],
+        )
+        op.create_index(
+            "ix_pharmacy_transfer_items_drug_id", "pharmacy_inventory_transfer_items", ["drug_id"]
+        )
 
     # ── Drug Returns ──────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_drug_returns"):
         op.create_table(
             "pharmacy_drug_returns",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("batch_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "batch_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("return_type", sa.String(30), nullable=False),
             sa.Column("return_reason", sa.Text(), nullable=False),
             sa.Column("quantity", sa.Float(), nullable=False),
             sa.Column("unit", sa.String(20), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("returned_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "returned_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("returned_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("approved_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "approved_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("disposition", sa.String(30), nullable=True),
             sa.Column("disposition_notes", sa.Text(), nullable=True),
@@ -534,22 +834,46 @@ def upgrade() -> None:
         )
         op.create_index("ix_pharmacy_drug_returns_lab_id", "pharmacy_drug_returns", ["lab_id"])
         op.create_index("ix_pharmacy_drug_returns_drug_id", "pharmacy_drug_returns", ["drug_id"])
-        op.create_index("ix_pharmacy_drug_returns_returned_at", "pharmacy_drug_returns", ["returned_at"])
+        op.create_index(
+            "ix_pharmacy_drug_returns_returned_at", "pharmacy_drug_returns", ["returned_at"]
+        )
 
     # ── Waste Records ─────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_waste_records"):
         op.create_table(
             "pharmacy_waste_records",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("batch_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "batch_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("waste_type", sa.String(30), nullable=False),
             sa.Column("waste_reason", sa.Text(), nullable=False),
             sa.Column("quantity", sa.Float(), nullable=False),
             sa.Column("unit", sa.String(20), nullable=False),
-            sa.Column("witnessed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("wasted_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False),
+            sa.Column(
+                "witnessed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "wasted_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=False,
+            ),
             sa.Column("wasted_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("disposal_method", sa.String(100), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -572,15 +896,32 @@ def upgrade() -> None:
         op.create_table(
             "pharmacy_recalls",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("batch_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "batch_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("recall_number", sa.String(50), nullable=False),
             sa.Column("recall_reason", sa.Text(), nullable=False),
             sa.Column("recall_source", sa.String(200), nullable=True),
             sa.Column("severity", sa.String(20), nullable=False),
             sa.Column("status", sa.String(20), nullable=False, server_default="active"),
-            sa.Column("initiated_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "initiated_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("initiated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("affected_quantity", sa.Float(), nullable=True),
@@ -611,8 +952,15 @@ def upgrade() -> None:
         op.create_table(
             "pharmacy_inventory_forecasts",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("forecast_date", sa.Date(), nullable=False),
             sa.Column("forecast_period_start", sa.Date(), nullable=False),
             sa.Column("forecast_period_end", sa.Date(), nullable=False),
@@ -638,16 +986,32 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_pharmacy_forecasts_lab_id", "pharmacy_inventory_forecasts", ["lab_id"])
-        op.create_index("ix_pharmacy_forecasts_drug_id", "pharmacy_inventory_forecasts", ["drug_id"])
-        op.create_index("ix_pharmacy_forecasts_period", "pharmacy_inventory_forecasts", ["lab_id", "drug_id", "forecast_period_start"])
+        op.create_index(
+            "ix_pharmacy_forecasts_drug_id", "pharmacy_inventory_forecasts", ["drug_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_forecasts_period",
+            "pharmacy_inventory_forecasts",
+            ["lab_id", "drug_id", "forecast_period_start"],
+        )
 
     # ── Drug Interaction Rules ────────────────────────────────────────────────
     if not _table_exists("pharmacy_drug_interaction_rules"):
         op.create_table(
             "pharmacy_drug_interaction_rules",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("drug_id_a", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id_b", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "drug_id_a",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "drug_id_b",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("severity", sa.String(20), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
             sa.Column("clinical_consequence", sa.Text(), nullable=True),
@@ -666,16 +1030,27 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("drug_id_a", "drug_id_b", name="uq_pharmacy_interaction_pair"),
         )
-        op.create_index("ix_pharmacy_interaction_drug_a", "pharmacy_drug_interaction_rules", ["drug_id_a"])
-        op.create_index("ix_pharmacy_interaction_drug_b", "pharmacy_drug_interaction_rules", ["drug_id_b"])
-        op.create_index("ix_pharmacy_interaction_severity", "pharmacy_drug_interaction_rules", ["severity"])
+        op.create_index(
+            "ix_pharmacy_interaction_drug_a", "pharmacy_drug_interaction_rules", ["drug_id_a"]
+        )
+        op.create_index(
+            "ix_pharmacy_interaction_drug_b", "pharmacy_drug_interaction_rules", ["drug_id_b"]
+        )
+        op.create_index(
+            "ix_pharmacy_interaction_severity", "pharmacy_drug_interaction_rules", ["severity"]
+        )
 
     # ── Contraindication Rules ────────────────────────────────────────────────
     if not _table_exists("pharmacy_contraindication_rules"):
         op.create_table(
             "pharmacy_contraindication_rules",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("contraindication_type", sa.String(50), nullable=False),
             sa.Column("contraindication_value", sa.String(300), nullable=False),
             sa.Column("severity", sa.String(20), nullable=False),
@@ -695,15 +1070,26 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_pharmacy_contraindication_drug_id", "pharmacy_contraindication_rules", ["drug_id"])
-        op.create_index("ix_pharmacy_contraindication_type", "pharmacy_contraindication_rules", ["contraindication_type"])
+        op.create_index(
+            "ix_pharmacy_contraindication_drug_id", "pharmacy_contraindication_rules", ["drug_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_contraindication_type",
+            "pharmacy_contraindication_rules",
+            ["contraindication_type"],
+        )
 
     # ── Allergy Rules ─────────────────────────────────────────────────────────
     if not _table_exists("pharmacy_allergy_rules"):
         op.create_table(
             "pharmacy_allergy_rules",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("allergen", sa.String(200), nullable=False),
             sa.Column("allergen_code", sa.String(50), nullable=True),
             sa.Column("reaction_type", sa.String(100), nullable=True),
@@ -724,14 +1110,21 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_pharmacy_allergy_rules_drug_id", "pharmacy_allergy_rules", ["drug_id"])
-        op.create_index("ix_pharmacy_allergy_rules_allergen", "pharmacy_allergy_rules", ["allergen"])
+        op.create_index(
+            "ix_pharmacy_allergy_rules_allergen", "pharmacy_allergy_rules", ["allergen"]
+        )
 
     # ── Dose Guidelines ───────────────────────────────────────────────────────
     if not _table_exists("pharmacy_dose_guidelines"):
         op.create_table(
             "pharmacy_dose_guidelines",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("route", sa.String(50), nullable=True),
             sa.Column("indication", sa.String(300), nullable=True),
             sa.Column("age_min_years", sa.Float(), nullable=True),
@@ -762,18 +1155,41 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_pharmacy_dose_guidelines_drug_id", "pharmacy_dose_guidelines", ["drug_id"])
-        op.create_index("ix_pharmacy_dose_guidelines_indication", "pharmacy_dose_guidelines", ["drug_id", "indication"])
+        op.create_index(
+            "ix_pharmacy_dose_guidelines_drug_id", "pharmacy_dose_guidelines", ["drug_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_dose_guidelines_indication",
+            "pharmacy_dose_guidelines",
+            ["drug_id", "indication"],
+        )
 
     # ── Drug Monitoring ───────────────────────────────────────────────────────
     if not _table_exists("pharmacy_drug_monitoring"):
         op.create_table(
             "pharmacy_drug_monitoring",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("drug_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("prescription_id", sa.Integer(), sa.ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "drug_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "prescription_id",
+                sa.Integer(),
+                sa.ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("monitoring_type", sa.String(50), nullable=False),
             sa.Column("monitoring_date", sa.DateTime(timezone=True), nullable=False),
             sa.Column("value", sa.String(200), nullable=True),
@@ -785,7 +1201,12 @@ def upgrade() -> None:
             sa.Column("adverse_reaction", sa.Text(), nullable=True),
             sa.Column("severity", sa.String(20), nullable=True),
             sa.Column("action_taken", sa.Text(), nullable=True),
-            sa.Column("performed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "performed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("next_monitoring_date", sa.DateTime(timezone=True), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -800,10 +1221,20 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_pharmacy_drug_monitoring_lab_id", "pharmacy_drug_monitoring", ["lab_id"])
-        op.create_index("ix_pharmacy_drug_monitoring_patient_id", "pharmacy_drug_monitoring", ["patient_id"])
-        op.create_index("ix_pharmacy_drug_monitoring_drug_id", "pharmacy_drug_monitoring", ["drug_id"])
-        op.create_index("ix_pharmacy_drug_monitoring_patient_drug", "pharmacy_drug_monitoring", ["patient_id", "drug_id", "monitoring_date"])
+        op.create_index(
+            "ix_pharmacy_drug_monitoring_lab_id", "pharmacy_drug_monitoring", ["lab_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_drug_monitoring_patient_id", "pharmacy_drug_monitoring", ["patient_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_drug_monitoring_drug_id", "pharmacy_drug_monitoring", ["drug_id"]
+        )
+        op.create_index(
+            "ix_pharmacy_drug_monitoring_patient_drug",
+            "pharmacy_drug_monitoring",
+            ["patient_id", "drug_id", "monitoring_date"],
+        )
 
     # ── Clinical Guidelines ──────────────────────────────────────────────────
     if not _table_exists("pharmacy_clinical_guidelines"):
@@ -837,8 +1268,16 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("guideline_code", name="uq_pharmacy_guideline_code"),
         )
-        op.create_index("ix_pharmacy_clinical_guidelines_code", "pharmacy_clinical_guidelines", ["guideline_code"])
-        op.create_index("ix_pharmacy_clinical_guidelines_type", "pharmacy_clinical_guidelines", ["guideline_type"])
+        op.create_index(
+            "ix_pharmacy_clinical_guidelines_code",
+            "pharmacy_clinical_guidelines",
+            ["guideline_code"],
+        )
+        op.create_index(
+            "ix_pharmacy_clinical_guidelines_type",
+            "pharmacy_clinical_guidelines",
+            ["guideline_type"],
+        )
 
 
 def downgrade() -> None:

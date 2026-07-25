@@ -144,7 +144,13 @@ def api_list_primary_care_encounters(
     db: Session = Depends(get_db),
 ):
     return list_primary_care_encounters(
-        db, patient_id, facility_id, practitioner_id, _lab_id(current_user), skip, limit,
+        db,
+        patient_id,
+        facility_id,
+        practitioner_id,
+        _lab_id(current_user),
+        skip,
+        limit,
     )
 
 
@@ -160,10 +166,14 @@ def api_update_primary_care_encounter(
 ):
     from ..care_continuum.models.primary_care import PrimaryCareEncounter
 
-    enc = db.query(PrimaryCareEncounter).filter(
-        PrimaryCareEncounter.id == encounter_id,
-        PrimaryCareEncounter.is_deleted.is_(False),
-    ).first()
+    enc = (
+        db.query(PrimaryCareEncounter)
+        .filter(
+            PrimaryCareEncounter.id == encounter_id,
+            PrimaryCareEncounter.is_deleted.is_(False),
+        )
+        .first()
+    )
     if not enc:
         raise HTTPException(status_code=404, detail="Encounter not found")
     for k, v in data.items():
@@ -184,7 +194,8 @@ def api_create_family_medicine_record(
 
 
 @router.get(
-    "/family-medicine-records", summary="List family medicine records",
+    "/family-medicine-records",
+    summary="List family medicine records",
 )
 def api_list_family_medicine_records(
     patient_id: str | None = Query(None),
@@ -206,7 +217,8 @@ def api_create_community_clinic_record(
 
 
 @router.get(
-    "/community-clinic-records", summary="List community clinic records",
+    "/community-clinic-records",
+    summary="List community clinic records",
 )
 def api_list_community_clinic_records(
     patient_id: str | None = Query(None),
@@ -248,7 +260,8 @@ def api_create_preventive_care_record(
 
 
 @router.get(
-    "/preventive-care-records", summary="List preventive care records",
+    "/preventive-care-records",
+    summary="List preventive care records",
 )
 def api_list_preventive_care_records(
     patient_id: str | None = Query(None),
@@ -300,7 +313,8 @@ def api_reject_referral(
 
 
 @router.put(
-    "/referrals/{referral_id}/complete", summary="Complete referral",
+    "/referrals/{referral_id}/complete",
+    summary="Complete referral",
 )
 def api_complete_referral(
     referral_id: str,
@@ -326,8 +340,15 @@ def api_list_referrals(
     db: Session = Depends(get_db),
 ):
     return list_referrals(
-        db, patient_id, referring_facility_id, receiving_facility_id,
-        status, direction, _lab_id(current_user), skip, limit,
+        db,
+        patient_id,
+        referring_facility_id,
+        receiving_facility_id,
+        status,
+        direction,
+        _lab_id(current_user),
+        skip,
+        limit,
     )
 
 
@@ -344,7 +365,8 @@ def api_get_referral_timeline(
 
 
 @router.post(
-    "/referrals/cross-org", summary="Create cross-organization referral",
+    "/referrals/cross-org",
+    summary="Create cross-organization referral",
 )
 def api_create_cross_org_referral(
     data: dict,
@@ -355,7 +377,8 @@ def api_create_cross_org_referral(
 
 
 @router.post(
-    "/referrals/response", summary="Create referral response",
+    "/referrals/response",
+    summary="Create referral response",
 )
 def api_create_referral_response(
     data: dict,
@@ -366,7 +389,8 @@ def api_create_referral_response(
 
 
 @router.get(
-    "/referrals/analytics", summary="Get referral network analytics",
+    "/referrals/analytics",
+    summary="Get referral network analytics",
 )
 def api_get_referral_analytics(
     facility_id: str | None = Query(None),
@@ -504,7 +528,8 @@ def api_create_community_care_record(
 
 
 @router.get(
-    "/community-care-records", summary="List community care records",
+    "/community-care-records",
+    summary="List community care records",
 )
 def api_list_community_care_records(
     patient_id: str | None = Query(None),
@@ -522,7 +547,8 @@ def api_list_community_care_records(
 
 
 @router.post(
-    "/chronic-disease-registry", summary="Add chronic disease registry entry",
+    "/chronic-disease-registry",
+    summary="Add chronic disease registry entry",
 )
 def api_create_chronic_disease_registry(
     data: dict,
@@ -533,7 +559,8 @@ def api_create_chronic_disease_registry(
 
 
 @router.get(
-    "/chronic-disease-registry", summary="List chronic disease registry",
+    "/chronic-disease-registry",
+    summary="List chronic disease registry",
 )
 def api_list_chronic_disease_registry(
     patient_id: str | None = Query(None),
@@ -544,7 +571,12 @@ def api_list_chronic_disease_registry(
     db: Session = Depends(get_db),
 ):
     return list_chronic_disease_registry(
-        db, patient_id, disease_type, _lab_id(current_user), skip, limit,
+        db,
+        patient_id,
+        disease_type,
+        _lab_id(current_user),
+        skip,
+        limit,
     )
 
 
@@ -565,7 +597,8 @@ def api_get_disease_specific_registry(
 
 
 @router.post(
-    "/disease-management-plans", summary="Create disease management plan",
+    "/disease-management-plans",
+    summary="Create disease management plan",
 )
 def api_create_disease_management_plan(
     data: dict,
@@ -576,7 +609,8 @@ def api_create_disease_management_plan(
 
 
 @router.get(
-    "/disease-management-plans", summary="List disease management plans",
+    "/disease-management-plans",
+    summary="List disease management plans",
 )
 def api_list_disease_management_plans(
     patient_id: str | None = Query(None),
@@ -589,7 +623,8 @@ def api_list_disease_management_plans(
 
 
 @router.post(
-    "/risk-stratifications", summary="Create risk stratification",
+    "/risk-stratifications",
+    summary="Create risk stratification",
 )
 def api_create_risk_stratification(
     data: dict,
@@ -600,7 +635,8 @@ def api_create_risk_stratification(
 
 
 @router.get(
-    "/risk-stratifications", summary="List risk stratifications",
+    "/risk-stratifications",
+    summary="List risk stratifications",
 )
 def api_list_risk_stratifications(
     patient_id: str | None = Query(None),
@@ -613,7 +649,8 @@ def api_list_risk_stratifications(
 
 
 @router.post(
-    "/self-monitoring-records", summary="Create self-monitoring record",
+    "/self-monitoring-records",
+    summary="Create self-monitoring record",
 )
 def api_create_self_monitoring_record(
     data: dict,
@@ -664,7 +701,8 @@ def api_list_pregnancy_records(
 
 
 @router.post(
-    "/antenatal-care-visits", summary="Create antenatal care visit",
+    "/antenatal-care-visits",
+    summary="Create antenatal care visit",
 )
 def api_create_antenatal_care_visit(
     data: dict,
@@ -684,7 +722,8 @@ def api_create_delivery_record(
 
 
 @router.post(
-    "/postnatal-care-visits", summary="Create postnatal care visit",
+    "/postnatal-care-visits",
+    summary="Create postnatal care visit",
 )
 def api_create_postnatal_care_visit(
     data: dict,
@@ -704,7 +743,8 @@ def api_create_growth_monitoring(
 
 
 @router.post(
-    "/breastfeeding-records", summary="Create breastfeeding record",
+    "/breastfeeding-records",
+    summary="Create breastfeeding record",
 )
 def api_create_breastfeeding_record(
     data: dict,
@@ -741,7 +781,8 @@ def api_create_vaccination_record(
 
 
 @router.get(
-    "/vaccination-records", summary="List vaccination records",
+    "/vaccination-records",
+    summary="List vaccination records",
 )
 def api_list_vaccination_records(
     patient_id: str | None = Query(None),
@@ -754,7 +795,8 @@ def api_list_vaccination_records(
 
 
 @router.post(
-    "/immunization-schedules", summary="Create immunization schedule",
+    "/immunization-schedules",
+    summary="Create immunization schedule",
 )
 def api_create_immunization_schedule(
     data: dict,
@@ -765,7 +807,8 @@ def api_create_immunization_schedule(
 
 
 @router.get(
-    "/immunization-schedules", summary="List immunization schedules",
+    "/immunization-schedules",
+    summary="List immunization schedules",
 )
 def api_list_immunization_schedules(
     patient_id: str | None = Query(None),
@@ -778,7 +821,8 @@ def api_list_immunization_schedules(
 
 
 @router.get(
-    "/vaccinations/missed", summary="Get missed vaccinations",
+    "/vaccinations/missed",
+    summary="Get missed vaccinations",
 )
 def api_get_missed_vaccinations(
     current_user: LabUser = Depends(get_current_user),
@@ -797,7 +841,8 @@ def api_create_reminder_schedule(
 
 
 @router.get(
-    "/immunization-coverage", summary="Get immunization coverage stats",
+    "/immunization-coverage",
+    summary="Get immunization coverage stats",
 )
 def api_get_immunization_coverage(
     current_user: LabUser = Depends(get_current_user),
@@ -807,7 +852,8 @@ def api_get_immunization_coverage(
 
 
 @router.post(
-    "/cold-chain-monitors", summary="Create cold chain monitor reading",
+    "/cold-chain-monitors",
+    summary="Create cold chain monitor reading",
 )
 def api_create_cold_chain_monitor(
     data: dict,
@@ -842,7 +888,8 @@ def api_list_health_programs(
 
 
 @router.post(
-    "/program-enrollments", summary="Enroll patient in health program",
+    "/program-enrollments",
+    summary="Enroll patient in health program",
 )
 def api_create_program_enrollment(
     data: dict,
@@ -853,7 +900,8 @@ def api_create_program_enrollment(
 
 
 @router.post(
-    "/screening-campaigns", summary="Create screening campaign",
+    "/screening-campaigns",
+    summary="Create screening campaign",
 )
 def api_create_screening_campaign(
     data: dict,
@@ -864,7 +912,8 @@ def api_create_screening_campaign(
 
 
 @router.get(
-    "/screening-campaigns", summary="List screening campaigns",
+    "/screening-campaigns",
+    summary="List screening campaigns",
 )
 def api_list_screening_campaigns(
     skip: int = Query(0, ge=0),
@@ -885,7 +934,8 @@ def api_create_community_visit(
 
 
 @router.post(
-    "/school-health-visits", summary="Create school health visit",
+    "/school-health-visits",
+    summary="Create school health visit",
 )
 def api_create_school_health_visit(
     data: dict,
@@ -944,12 +994,19 @@ def api_list_patient_tasks(
     db: Session = Depends(get_db),
 ):
     return list_patient_tasks(
-        db, patient_id, status, task_type, _lab_id(current_user), skip, limit,
+        db,
+        patient_id,
+        status,
+        task_type,
+        _lab_id(current_user),
+        skip,
+        limit,
     )
 
 
 @router.post(
-    "/self-follow-up-tasks", summary="Create self-follow-up task",
+    "/self-follow-up-tasks",
+    summary="Create self-follow-up task",
 )
 def api_create_self_follow_up_task(
     data: dict,
@@ -1004,10 +1061,14 @@ def api_coordinate_ehr_immunization(
 ):
     from ..ehr.models.immunization import ImmunizationRecord
 
-    ehr_rec = db.query(ImmunizationRecord).filter(
-        ImmunizationRecord.id == ehr_record_id,
-        ImmunizationRecord.is_deleted.is_(False),
-    ).first()
+    ehr_rec = (
+        db.query(ImmunizationRecord)
+        .filter(
+            ImmunizationRecord.id == ehr_record_id,
+            ImmunizationRecord.is_deleted.is_(False),
+        )
+        .first()
+    )
     if not ehr_rec:
         raise HTTPException(
             status_code=404,

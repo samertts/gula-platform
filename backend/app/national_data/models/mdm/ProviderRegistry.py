@@ -6,7 +6,12 @@ from app.national_data.base import BaseEntity
 class ProviderRegistry(BaseEntity):
     __tablename__ = "dp_provider_registry"
 
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     lab_user_id = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True)
 
     national_id_hash = Column(String(255), nullable=True, index=True)

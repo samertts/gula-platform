@@ -28,8 +28,7 @@ class PartitionManager:
             return
         per_worker = self._num_partitions // len(active_workers)
         remainder = self._num_partitions % len(active_workers)
-        idx = 0
-        for partition in range(self._num_partitions):
+        for idx, partition in enumerate(range(self._num_partitions)):
             if idx < remainder:
                 self._partition_assignments[partition] = active_workers[idx]
             else:
@@ -37,7 +36,6 @@ class PartitionManager:
                 self._partition_assignments[partition] = active_workers[
                     min(worker_idx, len(active_workers) - 1)
                 ]
-            idx += 1
 
     @property
     def num_partitions(self) -> int:

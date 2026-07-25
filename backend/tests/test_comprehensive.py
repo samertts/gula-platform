@@ -22,11 +22,13 @@ os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0W
 # 1. CLINICAL INTERPRETATION ENGINE
 # =============================================================================
 
+
 class TestClinicalInterpretationEngine:
     """Test all interpretation rules and edge cases."""
 
     def _interp(self, test_name, value, low=None, high=None):
         from app.services.interpretation import interpret_result
+
         return interpret_result(test_name, value, low, high)
 
     # --- Glucose ---
@@ -119,10 +121,17 @@ class TestClinicalInterpretationEngine:
     def test_all_interpretations_have_arabic(self):
         """Every interpretation must include Arabic text."""
         tests = [
-            ("glucose", 55), ("glucose", 85), ("glucose", 250),
-            ("hemoglobin", 9), ("hemoglobin", 14),
-            ("potassium", 3.0), ("potassium", 4.0), ("potassium", 6.5),
-            ("tsh", 0.1), ("tsh", 2.0), ("tsh", 6.0),
+            ("glucose", 55),
+            ("glucose", 85),
+            ("glucose", 250),
+            ("hemoglobin", 9),
+            ("hemoglobin", 14),
+            ("potassium", 3.0),
+            ("potassium", 4.0),
+            ("potassium", 6.5),
+            ("tsh", 0.1),
+            ("tsh", 2.0),
+            ("tsh", 6.0),
         ]
         for test_name, val in tests:
             r = self._interp(test_name, val)
@@ -146,6 +155,7 @@ class TestClinicalInterpretationEngine:
     # --- Response Structure ---
     def test_response_always_has_required_fields(self):
         from app.services.interpretation import interpret_result
+
         r = interpret_result("glucose", 100)
         required = ["status", "interpretation", "interpretation_ar", "advice", "advice_ar"]
         for field in required:
@@ -156,11 +166,13 @@ class TestClinicalInterpretationEngine:
 # 2. FLAG SYSTEM (Clinical Flags: H, L, critical, normal)
 # =============================================================================
 
+
 class TestFlagSystem:
     """Test the get_flag function used for result labeling."""
 
     def _flag(self, value, low, high, test_name=None):
         from app.services.interpretation import get_flag
+
         return get_flag(value, low, high, test_name)
 
     def test_normal_flag(self):
@@ -195,11 +207,13 @@ class TestFlagSystem:
 # 3. WESTGARD QC RULES ENGINE
 # =============================================================================
 
+
 class TestWestgardRules:
     """Test Westgard multi-rules for QC validation."""
 
     def _eval(self, measured, expected, sd):
         from app.routes.quality_control import evaluate_westgard
+
         return evaluate_westgard(measured, expected, sd)
 
     # --- 1-3s Rule (Reject) ---
@@ -280,12 +294,14 @@ class TestWestgardRules:
 # 4. JWT & AUTH SECURITY
 # =============================================================================
 
+
 class TestJWTSecurity:
     """Advanced JWT security scenarios."""
 
     def test_token_contains_no_password(self):
         """JWT payload must never contain passwords."""
         from app.security.auth import create_token, decode_token
+
         token = create_token({"user_id": 1, "role": "admin"})
         payload = decode_token(token)
         assert "password" not in payload
@@ -294,6 +310,7 @@ class TestJWTSecurity:
     def test_access_token_has_expiry(self):
         """Token must have exp field."""
         from app.security.auth import create_token, decode_token
+
         token = create_token({"user_id": 1})
         payload = decode_token(token)
         assert "exp" in payload
@@ -301,6 +318,7 @@ class TestJWTSecurity:
     def test_token_type_field_present(self):
         """Token must have type field."""
         from app.security.auth import create_token, decode_token
+
         token = create_token({"user_id": 1})
         payload = decode_token(token)
         assert "type" in payload
@@ -309,6 +327,7 @@ class TestJWTSecurity:
     def test_modified_token_rejected(self):
         """Tampered token must be rejected."""
         from app.security.auth import create_token, decode_token
+
         token = create_token({"user_id": 1})
         # Tamper with last character
         tampered = token[:-5] + "XXXXX"
@@ -318,6 +337,7 @@ class TestJWTSecurity:
     def test_empty_payload_token(self):
         """Empty payload token should still work."""
         from app.security.auth import create_token, decode_token
+
         token = create_token({})
         payload = decode_token(token)
         assert payload is not None
@@ -325,6 +345,7 @@ class TestJWTSecurity:
     def test_unicode_in_token_payload(self):
         """Arabic/Unicode values in payload."""
         from app.security.auth import create_token, decode_token
+
         token = create_token({"name": "محمد علي", "lab": "مختبر غولا"})
         payload = decode_token(token)
         assert payload["name"] == "محمد علي"
@@ -332,6 +353,7 @@ class TestJWTSecurity:
     def test_large_payload_token(self):
         """Large payload still produces valid token."""
         from app.security.auth import create_token, decode_token
+
         large_data = {f"field_{i}": f"value_{i}" for i in range(50)}
         token = create_token(large_data)
         payload = decode_token(token)
@@ -342,11 +364,13 @@ class TestJWTSecurity:
 # 5. ENCRYPTION & DATA PROTECTION
 # =============================================================================
 
+
 class TestDataEncryption:
     """Test data encryption for sensitive clinical data."""
 
     def test_patient_name_encrypt_decrypt(self):
         from app.security.encryption import decrypt, encrypt
+
         name = "Ahmed Al-Rashid"
         encrypted = encrypt(name)
         assert encrypted != name
@@ -354,12 +378,14 @@ class TestDataEncryption:
 
     def test_arabic_name_encrypt_decrypt(self):
         from app.security.encryption import decrypt, encrypt
+
         name = "أحمد محمد علي الرشيد"
         encrypted = encrypt(name)
         assert decrypt(encrypted) == name
 
     def test_national_id_encrypt_decrypt(self):
         from app.security.encryption import decrypt, encrypt
+
         nid = "1234567890"
         encrypted = encrypt(nid)
         assert encrypted != nid
@@ -368,11 +394,13 @@ class TestDataEncryption:
     def test_decrypt_invalid_raises(self):
         import pytest
         from app.security.encryption import decrypt
+
         with pytest.raises(ValueError):
             decrypt("not-valid-ciphertext")
 
     def test_empty_string_encrypt(self):
         from app.security.encryption import decrypt, encrypt
+
         encrypted = encrypt("")
         assert decrypt(encrypted) == ""
 
@@ -380,6 +408,7 @@ class TestDataEncryption:
 # =============================================================================
 # 6. INPUT VALIDATION — CLINICAL DATA
 # =============================================================================
+
 
 class TestClinicalInputValidation:
     """Validate clinical data inputs at the model/schema level."""
@@ -395,6 +424,7 @@ class TestClinicalInputValidation:
         """Glucose = 99999 is clinically impossible."""
         # The system should detect this as an impossible value
         from app.services.interpretation import interpret_result
+
         r = interpret_result("glucose", 99999, 70, 100)
         # Should still return a status (critical/high) without crashing
         assert "status" in r
@@ -409,6 +439,7 @@ class TestClinicalInputValidation:
     def test_test_name_cannot_be_empty(self):
         """Test name must not be empty."""
         from app.services.interpretation import interpret_result
+
         # Should handle empty gracefully
         r = interpret_result("", 100, 70, 100)
         assert "status" in r  # Should not crash
@@ -416,6 +447,7 @@ class TestClinicalInputValidation:
     def test_value_zero_valid_for_some_tests(self):
         """Zero is valid for some tests (e.g., urine protein)."""
         from app.services.interpretation import interpret_result
+
         r = interpret_result("unknown_protein", 0, 0, 10)
         assert r["status"] == "normal"
 
@@ -424,11 +456,13 @@ class TestClinicalInputValidation:
 # 7. CRITICAL ALERT SYSTEM
 # =============================================================================
 
+
 class TestCriticalAlertSystem:
     """Test critical value detection for life-threatening results."""
 
     def _check(self, test_name, value):
         from app.services.critical_alerts import check_critical
+
         return check_critical(test_name, value)
 
     def test_potassium_critical_high_detected(self):
@@ -462,12 +496,14 @@ class TestCriticalAlertSystem:
 # 8. RATE LIMITING & ANTI-ABUSE
 # =============================================================================
 
+
 class TestRateLimitingSystem:
     """Test rate limiting for brute force and abuse prevention."""
 
     def test_rate_limiter_blocks_over_limit(self):
         """Rate limiter blocks after max_requests exceeded."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         ip = "192.168.1.200"
         # Allow up to limit
@@ -479,6 +515,7 @@ class TestRateLimitingSystem:
     def test_different_ips_independent_limits(self):
         """Each IP has independent rate limit counter."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         for _ in range(2):
             limiter.check("10.0.0.1", max_requests=2, window_seconds=60)
@@ -489,6 +526,7 @@ class TestRateLimitingSystem:
     def test_concurrent_requests_thread_safe(self):
         """Rate limiter must handle concurrent requests without crash."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         results = []
         lock = threading.Lock()
@@ -510,12 +548,14 @@ class TestRateLimitingSystem:
 # 9. INTRUSION DETECTION
 # =============================================================================
 
+
 class TestIntrusionDetection:
     """Test brute force detection system."""
 
     def test_blocks_after_repeated_failures(self):
         """After N failures, IP should be blocked (detect returns 'blocked')."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=3, window_seconds=300)
         ip = "attacker.ip.1.1"
         for _ in range(3):
@@ -526,6 +566,7 @@ class TestIntrusionDetection:
     def test_different_ips_not_affected(self):
         """Blocking one IP doesn't affect others."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=3, window_seconds=300)
         for _ in range(3):
             detector.detect("bad.ip")
@@ -536,6 +577,7 @@ class TestIntrusionDetection:
     def test_reset_clears_failures(self):
         """Resetting an IP clears its failure count."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=3, window_seconds=300)
         ip = "10.0.0.5"
         for _ in range(3):
@@ -550,18 +592,21 @@ class TestIntrusionDetection:
 # 10. DATA INTEGRITY & HASHING
 # =============================================================================
 
+
 class TestDataIntegrity:
     """Test data integrity mechanisms."""
 
     def test_result_token_unique_per_call(self):
         """Each result token must be unique."""
         import secrets
+
         tokens = [secrets.token_hex(16) for _ in range(100)]
         assert len(set(tokens)) == 100
 
     def test_national_id_hash_deterministic(self):
         """Same national ID always produces same hash."""
         from app.services.identity import hash_national_id
+
         nid = "1234567890123"
         h1 = hash_national_id(nid)
         h2 = hash_national_id(nid)
@@ -570,6 +615,7 @@ class TestDataIntegrity:
     def test_national_id_hash_not_reversible(self):
         """Hash should not contain original ID."""
         from app.services.identity import hash_national_id
+
         nid = "9876543210"
         h = hash_national_id(nid)
         assert nid not in h
@@ -577,6 +623,7 @@ class TestDataIntegrity:
     def test_different_ids_different_hashes(self):
         """Different IDs must produce different hashes."""
         from app.services.identity import hash_national_id
+
         h1 = hash_national_id("111111111")
         h2 = hash_national_id("222222222")
         assert h1 != h2
@@ -584,6 +631,7 @@ class TestDataIntegrity:
     def test_barcode_format_valid(self):
         """Barcode must be hex string."""
         import secrets
+
         barcode = secrets.token_hex(8)
         assert all(c in "0123456789abcdef" for c in barcode)
         assert len(barcode) == 16
@@ -593,12 +641,14 @@ class TestDataIntegrity:
 # 11. PERFORMANCE — INTERPRETATION ENGINE SPEED
 # =============================================================================
 
+
 class TestPerformanceBaseline:
     """Ensure critical functions meet performance requirements."""
 
     def test_interpretation_under_10ms(self):
         """Single interpretation must complete in < 10ms."""
         from app.services.interpretation import interpret_result
+
         times = []
         for _ in range(100):
             start = time.perf_counter()
@@ -611,6 +661,7 @@ class TestPerformanceBaseline:
     def test_westgard_under_5ms(self):
         """Westgard evaluation must complete in < 5ms."""
         from app.routes.quality_control import evaluate_westgard
+
         times = []
         for _ in range(100):
             start = time.perf_counter()
@@ -623,6 +674,7 @@ class TestPerformanceBaseline:
     def test_token_creation_under_50ms(self):
         """JWT token creation must be < 50ms."""
         from app.security.auth import create_token
+
         times = []
         for _ in range(50):
             start = time.perf_counter()
@@ -635,6 +687,7 @@ class TestPerformanceBaseline:
     def test_encryption_under_20ms(self):
         """Encryption + decryption round-trip < 20ms."""
         from app.security.encryption import decrypt, encrypt
+
         times = []
         for _ in range(50):
             start = time.perf_counter()
@@ -649,6 +702,7 @@ class TestPerformanceBaseline:
         """Rate limiter check must be near-instant (measured against in-memory store)."""
         from app.security.rate_limit import RateLimiter
         from app.security.redis_client import _MemoryStore
+
         limiter = RateLimiter()
         times = []
         with patch("app.security.rate_limit.cache", _MemoryStore()):
@@ -665,20 +719,26 @@ class TestPerformanceBaseline:
 # 12. CONFIG & SYSTEM SAFETY
 # =============================================================================
 
+
 class TestSystemConfig:
     """Test configuration safety and completeness."""
 
     def test_production_blocks_without_secret_key(self):
         """Production mode must fail without SECRET_KEY."""
         import subprocess
+
         result = subprocess.run(
-            ["python3", "-c",
-             "import os; os.environ['ENV']='production'; "
-             "os.environ.pop('SECRET_KEY', None); "
-             "os.environ.pop('DATABASE_URL', None); "
-             "from app.config import IS_PRODUCTION"],
+            [
+                "python3",
+                "-c",
+                "import os; os.environ['ENV']='production'; "
+                "os.environ.pop('SECRET_KEY', None); "
+                "os.environ.pop('DATABASE_URL', None); "
+                "from app.config import IS_PRODUCTION",
+            ],
             cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True, text=True
+            capture_output=True,
+            text=True,
         )
         # Should exit with error in production without keys
         assert True
@@ -686,6 +746,7 @@ class TestSystemConfig:
     def test_app_version_semantic(self):
         """App version must follow semantic versioning."""
         from app.config import APP_VERSION
+
         parts = APP_VERSION.split(".")
         assert len(parts) == 3
         for part in parts:
@@ -694,27 +755,32 @@ class TestSystemConfig:
     def test_jwt_expire_reasonable(self):
         """JWT expiry must be between 5 min and 24 hours."""
         from app.config import JWT_EXPIRE_MINUTES
+
         assert 5 <= JWT_EXPIRE_MINUTES <= 1440
 
     def test_refresh_token_expire_reasonable(self):
         """Refresh token must expire within 1–365 days."""
         from app.config import REFRESH_TOKEN_EXPIRE_DAYS
+
         assert 1 <= REFRESH_TOKEN_EXPIRE_DAYS <= 365
 
     def test_platform_name_arabic_present(self):
         """Arabic platform name must be set."""
         from app.config import PLATFORM_NAME_AR
+
         assert "غولا" in PLATFORM_NAME_AR
 
     def test_max_request_body_reasonable(self):
         """Request body limit should be between 1MB and 100MB."""
         from app.config import MAX_REQUEST_BODY_MB
+
         assert 1 <= MAX_REQUEST_BODY_MB <= 100
 
 
 # =============================================================================
 # 13. ROUTE STRUCTURE & API CONTRACTS
 # =============================================================================
+
 
 class TestAPIRouteStructure:
     """Verify all critical routes are registered."""
@@ -740,6 +806,7 @@ class TestAPIRouteStructure:
     def test_results_route_has_test_profiles(self):
         """Results route must define standard test profiles."""
         from app.routes.results import TEST_PROFILES
+
         required_profiles = ["CBC", "Lipid Profile", "Liver Function", "Kidney Function"]
         for profile in required_profiles:
             assert profile in TEST_PROFILES, f"Missing test profile: {profile}"
@@ -747,12 +814,14 @@ class TestAPIRouteStructure:
     def test_cbc_profile_has_hemoglobin(self):
         """CBC profile must include Hemoglobin."""
         from app.routes.results import TEST_PROFILES
+
         cbc_tests = [t["test_name"] for t in TEST_PROFILES["CBC"]]
         assert "Hemoglobin" in cbc_tests
 
     def test_cbc_has_normal_ranges(self):
         """CBC tests must have normal ranges defined."""
         from app.routes.results import TEST_PROFILES
+
         for test in TEST_PROFILES["CBC"]:
             assert "normal_range_low" in test
             assert "normal_range_high" in test
@@ -761,6 +830,7 @@ class TestAPIRouteStructure:
     def test_all_profiles_have_units(self):
         """All test items must have units."""
         from app.routes.results import TEST_PROFILES
+
         for profile_name, tests in TEST_PROFILES.items():
             for test in tests:
                 assert "unit" in test, f"{profile_name}/{test['test_name']} missing unit"
@@ -770,6 +840,7 @@ class TestAPIRouteStructure:
 # =============================================================================
 # 14. SECURITY HEADERS & SQL INJECTION PROTECTION
 # =============================================================================
+
 
 class TestSecurityProtections:
     """Test injection and security attack prevention."""
@@ -790,6 +861,7 @@ class TestSecurityProtections:
     def test_xss_payload_in_test_name(self):
         """XSS payloads must not break interpretation."""
         from app.services.interpretation import interpret_result
+
         xss = "<script>alert('xss')</script>"
         # Should not crash
         r = interpret_result(xss, 100, 70, 100)
@@ -799,6 +871,7 @@ class TestSecurityProtections:
         """Unicode and special chars must not break the system."""
         special_chars = ["∞", "𝕳𝖊𝖑𝖑𝖔", "🔬", "\x00\x01\x02", "A" * 1000]
         from app.services.interpretation import interpret_result
+
         for char in special_chars:
             try:
                 interpret_result(char, 100, 70, 100)
@@ -814,6 +887,7 @@ class TestSecurityProtections:
     def test_negative_result_value_handled(self):
         """Negative result values must not crash interpretation."""
         from app.services.interpretation import interpret_result
+
         r = interpret_result("glucose", -50, 70, 100)
         assert "status" in r
 
@@ -822,12 +896,14 @@ class TestSecurityProtections:
 # 15. MOBILE PERMISSIONS & RBAC
 # =============================================================================
 
+
 class TestMobileRBAC:
     """Test role-based access control for mobile API."""
 
     def test_admin_has_permissions(self):
         """Admin role must have permissions."""
         from app.routes.mobile import _get_permissions
+
         perms = _get_permissions("admin")
         assert isinstance(perms, list)
         assert len(perms) > 0
@@ -835,24 +911,28 @@ class TestMobileRBAC:
     def test_staff_has_permissions(self):
         """Staff role must have some permissions."""
         from app.routes.mobile import _get_permissions
+
         perms = _get_permissions("staff")
         assert isinstance(perms, list)
 
     def test_technician_has_permissions(self):
         """Technician must have permissions."""
         from app.routes.mobile import _get_permissions
+
         perms = _get_permissions("technician")
         assert isinstance(perms, list)
 
     def test_unknown_role_returns_limited_or_empty(self):
         """Unknown role should return no or limited permissions."""
         from app.routes.mobile import _get_permissions
+
         perms = _get_permissions("hacker_role_xyz")
         assert isinstance(perms, list)
 
     def test_arabic_role_names(self):
         """Arabic role translation must be available."""
         from app.routes.mobile import _role_ar
+
         result_admin = _role_ar("admin")
         result_staff = _role_ar("staff")
         assert result_admin is not None

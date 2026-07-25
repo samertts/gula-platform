@@ -6,6 +6,7 @@ Verify that the test runtime stays clean:
   * Edge tables (``edge_*``) cannot be queried from a non-worker process.
   * The runtime config flags resolve to the strict-isolation profile.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -21,6 +22,7 @@ from app.core.runtime_guard import (
 
 # ── 1. Config flags resolve to test/strict profile ───────────────────────────
 
+
 def test_runtime_mode_is_test():
     assert gula_config.RUNTIME_MODE == "test"
     assert gula_config.IS_TEST_RUNTIME is True
@@ -35,14 +37,18 @@ def test_background_tasks_force_disabled_in_tests():
 
 # ── 2. Edge table predicate + guard ──────────────────────────────────────────
 
-@pytest.mark.parametrize("name,expected", [
-    ("edge_outbox",       True),
-    ("edge_signals",      True),
-    ("EDGE_REPLICA",      True),
-    ("lab_orders",        False),
-    ("patients",          False),
-    ("ledger_edge",       False),  # only prefix counts
-])
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("edge_outbox", True),
+        ("edge_signals", True),
+        ("EDGE_REPLICA", True),
+        ("lab_orders", False),
+        ("patients", False),
+        ("ledger_edge", False),  # only prefix counts
+    ],
+)
 def test_is_edge_table(name, expected):
     assert is_edge_table(name) is expected
 
@@ -54,6 +60,7 @@ def test_assert_worker_runtime_blocks_api_tests():
 
 # ── 3. No background tasks spawn when the FastAPI app boots ──────────────────
 
+
 def test_app_startup_does_not_launch_background_loops(client):
     """Boot the API via TestClient and verify zero loops were spawned."""
     from app.main import _bg_tasks
@@ -62,12 +69,12 @@ def test_app_startup_does_not_launch_background_loops(client):
     response = client.get("/health/live")
     assert response.status_code == 200
     assert _bg_tasks == set(), (
-        f"Test runtime spawned background tasks: "
-        f"{[t.get_name() for t in _bg_tasks]}"
+        f"Test runtime spawned background tasks: {[t.get_name() for t in _bg_tasks]}"
     )
 
 
 # ── 4. No new threads beyond the pytest baseline ─────────────────────────────
+
 
 def test_no_unexpected_threads_after_startup(client):
     """The test process must not launch worker threads from app startup."""
@@ -83,13 +90,15 @@ def test_no_unexpected_threads_after_startup(client):
         "adaptive-concurrency",
     )
     offenders = [
-        t.name for t in threading.enumerate()
+        t.name
+        for t in threading.enumerate()
         if any(s in t.name.lower() for s in forbidden_substrings)
     ]
     assert offenders == [], f"Forbidden worker threads alive: {offenders}"
 
 
 # ── 5. Edge access guard rejects raw SQL ─────────────────────────────────────
+
 
 def test_edge_access_guard_blocks_raw_sql():
     """Any statement referencing edge_* must be rejected from the test runtime."""
@@ -116,6 +125,7 @@ def test_edge_access_guard_blocks_raw_sql():
 
 # ── 6. asyncio.all_tasks stays empty after request handling ──────────────────
 
+
 def test_no_asyncio_tasks_after_request(client):
     """Confirm no leftover tasks from a request-response cycle."""
     response = client.get("/health")
@@ -127,6 +137,5 @@ def test_no_asyncio_tasks_after_request(client):
     except RuntimeError:
         leftover = []
     assert leftover == [], (
-        f"Pending asyncio tasks after request: "
-        f"{[t.get_name() for t in leftover]}"
+        f"Pending asyncio tasks after request: {[t.get_name() for t in leftover]}"
     )

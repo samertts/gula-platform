@@ -217,7 +217,12 @@ class NationalLaboratoryCatalog:
 
         common_panels = [
             ("CBC-P", "CBC Panel", "CBC", ["CBC", "HGB", "WBC", "PLT", "RBC", "HCT"]),
-            ("LFT", "Liver Function Test", "وظائف الكبد", ["TBIL", "AST", "ALT", "ALP", "TP", "ALB"]),
+            (
+                "LFT",
+                "Liver Function Test",
+                "وظائف الكبد",
+                ["TBIL", "AST", "ALT", "ALP", "TP", "ALB"],
+            ),
             ("RFT", "Renal Function Test", "وظائف الكلى", ["BUN", "CRE", "NA", "K", "CL", "CA"]),
         ]
         for pcode, pname, pname_ar, tests in common_panels:
@@ -239,28 +244,50 @@ class NationalLaboratoryCatalog:
             ("SWAB", "Swab", "مسحة", "Transport medium", "1 swab"),
         ]
         for scode, sname, sname_ar, container, vol in specimen_types:
-            self.register_specimen_type(SpecimenTypeDef(
-                code=scode, name=sname, name_ar=sname_ar,
-                container_type=container, collection_volume=vol,
-            ))
+            self.register_specimen_type(
+                SpecimenTypeDef(
+                    code=scode,
+                    name=sname,
+                    name_ar=sname_ar,
+                    container_type=container,
+                    collection_volume=vol,
+                )
+            )
 
         logger.info(
             "National Lab Catalog seeded: %d tests, %d panels, %d specimen types",
-            len(self._tests), len(self._panels), len(self._specimen_types),
+            len(self._tests),
+            len(self._panels),
+            len(self._specimen_types),
         )
 
     def _guess_unit(self, code: str) -> str:
         unit_map = {
-            "HGB": "g/dL", "WBC": "cells/uL", "PLT": "cells/uL",
-            "RBC": "cells/uL", "HCT": "%",
-            "GLU": "mg/dL", "BUN": "mg/dL", "CRE": "mg/dL",
-            "NA": "mEq/L", "K": "mEq/L", "CL": "mEq/L", "CA": "mg/dL",
-            "TP": "g/dL", "ALB": "g/dL",
-            "AST": "U/L", "ALT": "U/L", "ALP": "U/L",
+            "HGB": "g/dL",
+            "WBC": "cells/uL",
+            "PLT": "cells/uL",
+            "RBC": "cells/uL",
+            "HCT": "%",
+            "GLU": "mg/dL",
+            "BUN": "mg/dL",
+            "CRE": "mg/dL",
+            "NA": "mEq/L",
+            "K": "mEq/L",
+            "CL": "mEq/L",
+            "CA": "mg/dL",
+            "TP": "g/dL",
+            "ALB": "g/dL",
+            "AST": "U/L",
+            "ALT": "U/L",
+            "ALP": "U/L",
             "TBIL": "mg/dL",
-            "TSH": "mIU/mL", "FT4": "ng/mL",
-            "CRP": "mg/dL", "ESR": "mm/hr",
-            "PT": "sec", "APTT": "sec", "INR": "ratio",
+            "TSH": "mIU/mL",
+            "FT4": "ng/mL",
+            "CRP": "mg/dL",
+            "ESR": "mm/hr",
+            "PT": "sec",
+            "APTT": "sec",
+            "INR": "ratio",
         }
         return unit_map.get(code, "")
 
@@ -323,7 +350,8 @@ class NationalLaboratoryCatalog:
     def search_tests(self, query: str) -> list[LabTestDefinition]:
         q = query.lower()
         return [
-            t for t in self._tests.values()
+            t
+            for t in self._tests.values()
             if q in t.code.lower() or q in t.name.lower() or q in t.name_ar.lower()
         ]
 

@@ -68,9 +68,24 @@ class ESBRouter:
     def list_routes(self) -> list[dict[str, Any]]:
         result = []
         for route in self._routes.values():
-            result.append({"event_name": route.event_name, "handler": route.handler_name, "active": route.active, "priority": route.priority})
+            result.append(
+                {
+                    "event_name": route.event_name,
+                    "handler": route.handler_name,
+                    "active": route.active,
+                    "priority": route.priority,
+                }
+            )
         for route in self._wildcard_routes:
-            result.append({"event_name": route.event_name, "handler": route.handler_name, "active": route.active, "priority": route.priority, "wildcard": True})
+            result.append(
+                {
+                    "event_name": route.event_name,
+                    "handler": route.handler_name,
+                    "active": route.active,
+                    "priority": route.priority,
+                    "wildcard": True,
+                }
+            )
         return result
 
     def route_count(self) -> int:

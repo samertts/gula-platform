@@ -181,7 +181,9 @@ def get_clinical_recommendations(
     }
 
 
-@router.get("/clinical/drug-interaction/{medication_a}/{medication_b}", summary="Check drug interaction")
+@router.get(
+    "/clinical/drug-interaction/{medication_a}/{medication_b}", summary="Check drug interaction",
+)
 def check_drug_interaction(
     medication_a: str = Path(..., description="First medication"),
     medication_b: str = Path(..., description="Second medication"),
@@ -296,12 +298,14 @@ def analyze_turnaround(
     test_code = body.get("test_code", "")
     period = body.get("period", 30)
     tat_data = tat_optimizer.analyze_tat(lab_id, test_code, period)
-    bottlenecks = tat_optimizer.identify_bottlenecks({
-        "avg_tat_minutes": tat_data.avg_tat_minutes,
-        "p50_tat_minutes": tat_data.p50_tat_minutes,
-        "p95_tat_minutes": tat_data.p95_tat_minutes,
-        "sample_count": 0,
-    })
+    bottlenecks = tat_optimizer.identify_bottlenecks(
+        {
+            "avg_tat_minutes": tat_data.avg_tat_minutes,
+            "p50_tat_minutes": tat_data.p50_tat_minutes,
+            "p95_tat_minutes": tat_data.p95_tat_minutes,
+            "sample_count": 0,
+        },
+    )
     recommendations = tat_optimizer.recommend_optimizations(bottlenecks)
     return {
         "lab_id": lab_id,
@@ -338,9 +342,11 @@ def get_queue_prediction(
 ):
     queue_length = queue_predictor.predict_queue_length(department_id, day, hour)
     wait_time = queue_predictor.get_estimated_wait_time(department_id)
-    staffing = queue_predictor.recommend_staffing({
-        "predicted_queue_length": queue_length,
-    })
+    staffing = queue_predictor.recommend_staffing(
+        {
+            "predicted_queue_length": queue_length,
+        },
+    )
     return {
         "department_id": department_id,
         "predicted_queue_length": queue_length,
@@ -469,7 +475,9 @@ def respond_to_approval(
         if decision == "approve":
             result = ai_human_approval.approve_action(approval_id, reviewer=current_user.email)
         elif decision == "reject":
-            result = ai_human_approval.reject_action(approval_id, reason=reason, reviewer=current_user.email)
+            result = ai_human_approval.reject_action(
+                approval_id, reason=reason, reviewer=current_user.email,
+            )
         else:
             raise HTTPException(status_code=400, detail=f"Invalid decision: {decision}")
         return result

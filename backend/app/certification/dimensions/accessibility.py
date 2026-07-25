@@ -172,7 +172,11 @@ class AccessibilityEvaluator(DimensionEvaluator):
             for f in target.rglob(pattern):
                 try:
                     content = f.read_text()
-                    if "direction: rtl" in content or 'dir="rtl"' in content or "rtl" in content.lower():
+                    if (
+                        "direction: rtl" in content
+                        or 'dir="rtl"' in content
+                        or "rtl" in content.lower()
+                    ):
                         return True
                 except Exception:
                     continue
@@ -225,14 +229,19 @@ class AccessibilityEvaluator(DimensionEvaluator):
             for f in target.rglob(pattern):
                 try:
                     content = f.read_text()
-                    if "prefers-color-scheme: dark" in content or "@media (prefers-color-scheme: dark)" in content:
+                    if (
+                        "prefers-color-scheme: dark" in content
+                        or "@media (prefers-color-scheme: dark)" in content
+                    ):
                         return True
                 except Exception:
                     continue
         for f in target.rglob("*.tsx"):
             try:
                 content = f.read_text()
-                if "dark" in content.lower() and ("theme" in content.lower() or "mode" in content.lower()):
+                if "dark" in content.lower() and (
+                    "theme" in content.lower() or "mode" in content.lower()
+                ):
                     return True
             except Exception:
                 continue
@@ -243,7 +252,12 @@ class AccessibilityEvaluator(DimensionEvaluator):
             for f in target.rglob(pattern):
                 try:
                     content = f.read_text()
-                    if "onKeyDown" in content or "onkeydown" in content or "tabIndex" in content or "tabindex" in content:
+                    if (
+                        "onKeyDown" in content
+                        or "onkeydown" in content
+                        or "tabIndex" in content
+                        or "tabindex" in content
+                    ):
                         return True
                 except Exception:
                     continue
@@ -265,7 +279,12 @@ class AccessibilityEvaluator(DimensionEvaluator):
             for f in target.rglob(pattern):
                 try:
                     content = f.read_text()
-                    if "sr-only" in content or "screen-reader" in content or "aria-live" in content or "role=" in content:
+                    if (
+                        "sr-only" in content
+                        or "screen-reader" in content
+                        or "aria-live" in content
+                        or "role=" in content
+                    ):
                         return True
                 except Exception:
                     continue

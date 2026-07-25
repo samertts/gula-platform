@@ -7,4 +7,3 @@ def create_lab_result_message(nhid, test, value, date):
         "value": value,
         "date": date,
     }
-

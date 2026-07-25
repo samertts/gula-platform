@@ -35,8 +35,15 @@ from app.nursing.enums import (
 class NursingShift(NursingBaseEntity):
     __tablename__ = "nursing_shifts"
 
-    nurse_id = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    nurse_id = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True
+    )
+    department_id = Column(
+        Integer,
+        ForeignKey("hospital_departments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     shift_type = Column(SAEnum(ShiftType), nullable=False)
     shift_date = Column(Date, nullable=False, index=True)
     start_time = Column(DateTime(timezone=True), nullable=False)
@@ -55,10 +62,24 @@ class NursingShift(NursingBaseEntity):
 class PatientAssignment(NursingBaseEntity):
     __tablename__ = "nursing_patient_assignments"
 
-    nurse_id = Column(String(26), ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=False, index=True)
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    nurse_id = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    department_id = Column(
+        Integer,
+        ForeignKey("hospital_departments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     assignment_type = Column(SAEnum(AssignmentType), nullable=False, default=AssignmentType.PRIMARY)
     start_date = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=True)
@@ -75,10 +96,21 @@ class PatientAssignment(NursingBaseEntity):
 class NursingTask(NursingBaseEntity):
     __tablename__ = "nursing_tasks"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    assigned_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
-    assigned_to = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assigned_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    assigned_to = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     task_type = Column(SAEnum(NursingTaskType), nullable=False, index=True)
     description = Column(Text, nullable=False)
     priority = Column(SAEnum(TaskPriority), nullable=False, default=TaskPriority.MEDIUM)
@@ -86,7 +118,9 @@ class NursingTask(NursingBaseEntity):
     scheduled_time = Column(DateTime(timezone=True), nullable=True)
     due_time = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    completed_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True)
+    completed_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True
+    )
     is_recurring = Column(Boolean, default=False)
     recurrence_rule = Column(JSON, nullable=True)
     clinical_instruction = Column(Text, nullable=True)
@@ -105,10 +139,21 @@ class NursingTask(NursingBaseEntity):
 class VitalSignsRecord(NursingBaseEntity):
     __tablename__ = "nursing_vital_signs"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    recorded_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
-    recorded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    recorded_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    recorded_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True
+    )
     bp_systolic = Column(Integer, nullable=True)
     bp_diastolic = Column(Integer, nullable=True)
     heart_rate = Column(Integer, nullable=True)
@@ -146,9 +191,18 @@ class VitalSignsRecord(NursingBaseEntity):
 class FluidBalance(NursingBaseEntity):
     __tablename__ = "nursing_fluid_balance"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    recorded_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    recorded_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     recorded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     balance_type = Column(String(20), nullable=False)
     category = Column(SAEnum(FluidCategory), nullable=False)
@@ -172,9 +226,18 @@ class FluidBalance(NursingBaseEntity):
 class PainAssessment(NursingBaseEntity):
     __tablename__ = "nursing_pain_assessments"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    assessed_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assessed_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     assessed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     pain_score = Column(Integer, nullable=False)
     pain_level = Column(SAEnum(PainLevel), nullable=True)
@@ -201,9 +264,18 @@ class PainAssessment(NursingBaseEntity):
 class FallRiskAssessment(NursingBaseEntity):
     __tablename__ = "nursing_fall_risk_assessments"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    assessed_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assessed_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     assessed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     total_score = Column(Integer, nullable=False)
     risk_level = Column(SAEnum(FallRiskLevel), nullable=False)
@@ -229,9 +301,18 @@ class FallRiskAssessment(NursingBaseEntity):
 class PressureInjuryAssessment(NursingBaseEntity):
     __tablename__ = "nursing_pressure_injury_assessments"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    assessed_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assessed_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     assessed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     stage = Column(SAEnum(PressureInjuryStage), nullable=False)
     anatomical_location = Column(String(200), nullable=True)
@@ -261,9 +342,18 @@ class PressureInjuryAssessment(NursingBaseEntity):
 class NutritionAssessment(NursingBaseEntity):
     __tablename__ = "nursing_nutrition_assessments"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    assessed_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assessed_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     assessed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     nutrition_status = Column(SAEnum(NutritionStatus), nullable=False)
     weight_kg = Column(Float, nullable=True)
@@ -294,8 +384,15 @@ class NutritionAssessment(NursingBaseEntity):
 class NursingCarePlan(NursingBaseEntity):
     __tablename__ = "nursing_care_plans"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     nursing_diagnosis = Column(Text, nullable=False)
     goals = Column(JSON, nullable=True)
     interventions = Column(JSON, nullable=True)
@@ -318,11 +415,24 @@ class NursingCarePlan(NursingBaseEntity):
 class NursingNote(NursingBaseEntity):
     __tablename__ = "nursing_notes"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    shift_id = Column(String(26), ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True, index=True)
-    documented_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
-    documentation_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    shift_id = Column(
+        String(26), ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    documented_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    documentation_time = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     note_type = Column(String(50), nullable=False, index=True)
     subjective = Column(Text, nullable=True)
     objective = Column(Text, nullable=True)
@@ -346,10 +456,18 @@ class NursingNote(NursingBaseEntity):
 class ShiftHandover(NursingBaseEntity):
     __tablename__ = "nursing_shift_handovers"
 
-    from_shift_id = Column(String(26), ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True, index=True)
-    to_shift_id = Column(String(26), ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True, index=True)
-    from_nurse_id = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
-    to_nurse_id = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    from_shift_id = Column(
+        String(26), ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    to_shift_id = Column(
+        String(26), ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    from_nurse_id = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    to_nurse_id = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     handover_type = Column(SAEnum(HandoverType), nullable=False)
     shift_date = Column(Date, nullable=False, index=True)
     patient_summaries = Column(JSON, nullable=True)
@@ -372,8 +490,15 @@ class ShiftHandover(NursingBaseEntity):
 class ClinicalChecklist(NursingBaseEntity):
     __tablename__ = "nursing_checklists"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     checklist_type = Column(String(50), nullable=False, index=True)
     items = Column(JSON, nullable=True)
     status = Column(String(50), default="draft", index=True)
@@ -391,10 +516,18 @@ class ClinicalChecklist(NursingBaseEntity):
 class Delegation(NursingBaseEntity):
     __tablename__ = "nursing_delegations"
 
-    task_id = Column(String(26), ForeignKey("nursing_tasks.id", ondelete="SET NULL"), nullable=True, index=True)
-    delegated_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True)
-    delegated_to = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True)
-    delegation_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    task_id = Column(
+        String(26), ForeignKey("nursing_tasks.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    delegated_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True
+    )
+    delegated_to = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True
+    )
+    delegation_time = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     accepted_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(SAEnum(DelegationStatus), nullable=False, default=DelegationStatus.PENDING)
@@ -413,11 +546,24 @@ class Delegation(NursingBaseEntity):
 class EscalationRecord(NursingBaseEntity):
     __tablename__ = "nursing_escalations"
 
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    escalated_by = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True)
-    escalated_to = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
-    escalation_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    escalated_by = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True
+    )
+    escalated_to = Column(
+        String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    escalation_time = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     reason = Column(Text, nullable=False)
     severity = Column(String(50), nullable=False)
     category = Column(String(50), nullable=False)

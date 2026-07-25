@@ -13,7 +13,6 @@ from app.identity.models.audit import AuditAction, IdentityAuditEntry
 
 
 class AuditService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -171,13 +170,15 @@ class AuditService:
         for i, entry in enumerate(entries):
             expected_previous = entries[i - 1].entry_hash if i > 0 else None
             if entry.previous_hash != expected_previous:
-                violations.append({
-                    "id": entry.id,
-                    "uuid": entry.uuid,
-                    "expected_previous": expected_previous,
-                    "actual_previous": entry.previous_hash,
-                    "reason": "previous_hash_mismatch",
-                })
+                violations.append(
+                    {
+                        "id": entry.id,
+                        "uuid": entry.uuid,
+                        "expected_previous": expected_previous,
+                        "actual_previous": entry.previous_hash,
+                        "reason": "previous_hash_mismatch",
+                    }
+                )
             computed = self._compute_hash(
                 entry_id=entry.id,
                 uuid_str=entry.uuid,
@@ -191,11 +192,13 @@ class AuditService:
                 organization_id=entry.organization_id,
             )
             if computed != entry.entry_hash:
-                violations.append({
-                    "id": entry.id,
-                    "uuid": entry.uuid,
-                    "computed": computed,
-                    "stored": entry.entry_hash,
-                    "reason": "hash_mismatch",
-                })
+                violations.append(
+                    {
+                        "id": entry.id,
+                        "uuid": entry.uuid,
+                        "computed": computed,
+                        "stored": entry.entry_hash,
+                        "reason": "hash_mismatch",
+                    }
+                )
         return violations

@@ -27,6 +27,7 @@ class SFTPGateway(MessageGateway):
     async def connect(self) -> bool:
         try:
             import paramiko
+
             self._transport = paramiko.Transport(self.config.endpoint)
             self._transport.connect(
                 username=self.config.options.get("username", ""),
@@ -63,7 +64,11 @@ class SFTPGateway(MessageGateway):
             remote_path = message.destination or self.config.options.get("remote_path", "/inbound")
             filename = message.headers.get("filename", f"{int(time.time())}.json")
             full_path = str(PurePosixPath(remote_path) / filename)
-            content = message.payload if isinstance(message.payload, bytes) else str(message.payload).encode()
+            content = (
+                message.payload
+                if isinstance(message.payload, bytes)
+                else str(message.payload).encode()
+            )
             if self._sftp:
                 with io.BytesIO(content) as f:
                     self._sftp.putfo(f, full_path)

@@ -52,7 +52,9 @@ class DICOMGateway(MessageGateway):
         try:
             resp = await self._client.post(
                 urljoin(self.config.endpoint, "studies"),
-                content=message.payload if isinstance(message.payload, bytes) else json.dumps(message.payload),
+                content=message.payload
+                if isinstance(message.payload, bytes)
+                else json.dumps(message.payload),
             )
             lat = (time.monotonic() - start) * 1000
             return GatewayResult(

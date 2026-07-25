@@ -77,10 +77,12 @@ class AnalyzerHealthPredictor:
     def record_metrics(self, analyzer_id: str, metrics: dict[str, float]) -> None:
         if analyzer_id not in self._health_history:
             self._health_history[analyzer_id] = []
-        self._health_history[analyzer_id].append({
-            "metrics": metrics,
-            "timestamp": time.time(),
-        })
+        self._health_history[analyzer_id].append(
+            {
+                "metrics": metrics,
+                "timestamp": time.time(),
+            },
+        )
         if len(self._health_history[analyzer_id]) > 1000:
             self._health_history[analyzer_id] = self._health_history[analyzer_id][-1000:]
 
@@ -110,7 +112,9 @@ class AnalyzerHealthPredictor:
         score -= vibration_level * 2.0
         return max(0.0, min(1.0, score))
 
-    def _generate_failure_recommendations(self, metrics: dict[str, float], health_score: float) -> list[str]:
+    def _generate_failure_recommendations(
+        self, metrics: dict[str, float], health_score: float,
+    ) -> list[str]:
         recs = []
         if health_score < 0.3:
             recs.append("Immediate maintenance required")
@@ -124,7 +128,9 @@ class AnalyzerHealthPredictor:
             recs.append("Check environmental temperature control")
         return recs
 
-    def recommend_maintenance(self, analyzer_id: str, analyzer_type: str | None = None) -> list[dict[str, Any]]:
+    def recommend_maintenance(
+        self, analyzer_id: str, analyzer_type: str | None = None,
+    ) -> list[dict[str, Any]]:
         upkeep: list[dict[str, Any]] = []
         schedule = _MAINTENANCE_SCHEDULES.get(analyzer_type or "chemistry_analyzer", [])
         history = self._health_history.get(analyzer_id, [])
@@ -135,14 +141,16 @@ class AnalyzerHealthPredictor:
         for item in schedule:
             hours_since_last = total_hours % item["interval_hours"]
             due_in_hours = item["interval_hours"] - hours_since_last
-            upkeep.append({
-                "component": item["component"],
-                "action": item["action"],
-                "interval_hours": item["interval_hours"],
-                "hours_since_last_maintenance": round(hours_since_last, 1),
-                "due_in_hours": round(due_in_hours, 1),
-                "due": due_in_hours < 24,
-            })
+            upkeep.append(
+                {
+                    "component": item["component"],
+                    "action": item["action"],
+                    "interval_hours": item["interval_hours"],
+                    "hours_since_last_maintenance": round(hours_since_last, 1),
+                    "due_in_hours": round(due_in_hours, 1),
+                    "due": due_in_hours < 24,
+                },
+            )
         return upkeep
 
     def get_health_score(self, analyzer_id: str, metrics: dict[str, float] | None = None) -> float:
@@ -172,7 +180,9 @@ class QCPredictor:
     def __init__(self) -> None:
         self._qc_history: dict[str, list[dict[str, Any]]] = {}
 
-    def record_qc_result(self, test_code: str, lot_number: str, instrument: str, value: float) -> None:
+    def record_qc_result(
+        self, test_code: str, lot_number: str, instrument: str, value: float,
+    ) -> None:
         key = f"{test_code}:{lot_number}:{instrument}"
         if key not in self._qc_history:
             self._qc_history[key] = []
@@ -210,7 +220,11 @@ class QCPredictor:
             "std": round(std, 4),
             "cv_percent": round(cv * 100, 2),
             "drift": round(drift, 4),
-            "status": "critical" if failure_probability > 0.7 else "warning" if failure_probability > 0.4 else "stable",
+            "status": "critical"
+            if failure_probability > 0.7
+            else "warning"
+            if failure_probability > 0.4
+            else "stable",
         }
 
     def get_qc_trends(self, test_code: str, days: int = 30) -> list[QCTrend]:
@@ -230,16 +244,24 @@ class QCPredictor:
             half = len(values) // 2
             recent_mean = sum(values[half:]) / len(values[half:])
             early_mean = sum(values[:half]) / len(values[:half])
-            direction = "increasing" if recent_mean > early_mean * 1.05 else "decreasing" if recent_mean < early_mean * 0.95 else "stable"
+            direction = (
+                "increasing"
+                if recent_mean > early_mean * 1.05
+                else "decreasing"
+                if recent_mean < early_mean * 0.95
+                else "stable"
+            )
             outlier_count = sum(1 for v in values if abs(v - mean) > 2 * std)
-            trends.append(QCTrend(
-                test_code=test_code,
-                mean=round(mean, 4),
-                std=round(std, 4),
-                cv_percent=round(cv * 100, 2),
-                trend_direction=direction,
-                outliers=outlier_count,
-            ))
+            trends.append(
+                QCTrend(
+                    test_code=test_code,
+                    mean=round(mean, 4),
+                    std=round(std, 4),
+                    cv_percent=round(cv * 100, 2),
+                    trend_direction=direction,
+                    outliers=outlier_count,
+                ),
+            )
         return trends
 
     def recommend_qc_frequency(self, test_code: str, volume: int) -> str:
@@ -258,19 +280,25 @@ class ReagentPredictor:
     def record_usage(self, test_code: str, quantity: float) -> None:
         if test_code not in self._usage_history:
             self._usage_history[test_code] = []
-        self._usage_history[test_code].append({
-            "quantity": quantity,
-            "timestamp": time.time(),
-        })
+        self._usage_history[test_code].append(
+            {
+                "quantity": quantity,
+                "timestamp": time.time(),
+            },
+        )
 
-    def set_inventory(self, reagent_id: str, current_stock: float, reorder_point: float = 0.0) -> None:
+    def set_inventory(
+        self, reagent_id: str, current_stock: float, reorder_point: float = 0.0,
+    ) -> None:
         self._inventory[reagent_id] = {
             "current_stock": current_stock,
             "reorder_point": reorder_point,
             "updated_at": time.time(),
         }
 
-    def predict_reagent_usage(self, test_code: str, historical_volume: float | None = None) -> dict[str, Any]:
+    def predict_reagent_usage(
+        self, test_code: str, historical_volume: float | None = None,
+    ) -> dict[str, Any]:
         history = self._usage_history.get(test_code, [])
         if not history and historical_volume is None:
             return {
@@ -378,7 +406,14 @@ class TurnaroundOptimizer:
         p50 = tats[n // 2]
         p95_idx = int(n * 0.95)
         p95 = tats[min(p95_idx, n - 1)]
-        bottlenecks = self.identify_bottlenecks({"avg_tat_minutes": avg, "p50_tat_minutes": p50, "p95_tat_minutes": p95, "sample_count": n})
+        bottlenecks = self.identify_bottlenecks(
+            {
+                "avg_tat_minutes": avg,
+                "p50_tat_minutes": p50,
+                "p95_tat_minutes": p95,
+                "sample_count": n,
+            },
+        )
         return TATData(
             lab_id=lab_id,
             test_code=test_code,
@@ -394,28 +429,34 @@ class TurnaroundOptimizer:
         p95 = tat_data.get("p95_tat_minutes", 0)
         avg = tat_data.get("avg_tat_minutes", 0)
         if p95 > 120:
-            bottlenecks.append({
-                "stage": "overall",
-                "severity": "critical",
-                "metric": f"p95={p95}m",
-                "target": "< 120m",
-                "gap": round(p95 - 120, 1),
-            })
+            bottlenecks.append(
+                {
+                    "stage": "overall",
+                    "severity": "critical",
+                    "metric": f"p95={p95}m",
+                    "target": "< 120m",
+                    "gap": round(p95 - 120, 1),
+                },
+            )
         elif p95 > 60:
-            bottlenecks.append({
-                "stage": "overall",
-                "severity": "warning",
-                "metric": f"p95={p95}m",
-                "target": "< 60m",
-                "gap": round(p95 - 60, 1),
-            })
+            bottlenecks.append(
+                {
+                    "stage": "overall",
+                    "severity": "warning",
+                    "metric": f"p95={p95}m",
+                    "target": "< 60m",
+                    "gap": round(p95 - 60, 1),
+                },
+            )
         if avg > 0 and p95 > avg * 3:
-            bottlenecks.append({
-                "stage": "variability",
-                "severity": "warning",
-                "metric": f"p95/avg ratio={round(p95/avg, 1)}",
-                "target": "< 3.0",
-            })
+            bottlenecks.append(
+                {
+                    "stage": "variability",
+                    "severity": "warning",
+                    "metric": f"p95/avg ratio={round(p95 / avg, 1)}",
+                    "target": "< 3.0",
+                },
+            )
         return bottlenecks
 
     def recommend_optimizations(self, bottlenecks: list[dict[str, Any]]) -> list[str]:
@@ -433,7 +474,9 @@ class TurnaroundOptimizer:
 
 
 class WorkloadDistributor:
-    def analyze_workload(self, analyzers: list[dict[str, Any]], queued_tests: list[dict[str, Any]]) -> dict[str, Any]:
+    def analyze_workload(
+        self, analyzers: list[dict[str, Any]], queued_tests: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         analysis: dict[str, Any] = {
             "total_analyzers": len(analyzers),
             "total_queued_tests": len(queued_tests),
@@ -446,14 +489,20 @@ class WorkloadDistributor:
                 1 for t in queued_tests if t.get("preferred_analyzer") == analyzer.get("id")
             )
             load_percent = (current_load / capacity) * 100 if capacity > 0 else 100
-            analysis["analyzer_load"].append({
-                "analyzer_id": analyzer.get("id"),
-                "name": analyzer.get("name", ""),
-                "current_queue": current_load,
-                "hourly_capacity": capacity,
-                "load_percent": round(load_percent, 1),
-                "status": "overloaded" if load_percent > 80 else "optimal" if load_percent > 50 else "underutilized",
-            })
+            analysis["analyzer_load"].append(
+                {
+                    "analyzer_id": analyzer.get("id"),
+                    "name": analyzer.get("name", ""),
+                    "current_queue": current_load,
+                    "hourly_capacity": capacity,
+                    "load_percent": round(load_percent, 1),
+                    "status": "overloaded"
+                    if load_percent > 80
+                    else "optimal"
+                    if load_percent > 50
+                    else "underutilized",
+                },
+            )
         loads = [a["load_percent"] for a in analysis["analyzer_load"]]
         analysis["average_load_percent"] = round(sum(loads) / len(loads), 1) if loads else 0.0
         return analysis
@@ -476,15 +525,19 @@ class WorkloadDistributor:
         for test in sorted_tests:
             best_analyzer = min(
                 analyzer_queue.keys(),
-                key=lambda aid: analyzer_queue[aid]["load"] / max(analyzer_queue[aid]["capacity"], 1),
+                key=lambda aid: (
+                    analyzer_queue[aid]["load"] / max(analyzer_queue[aid]["capacity"], 1)
+                ),
             )
-            assignments.append({
-                "test_id": test.get("id", ""),
-                "test_name": test.get("name", ""),
-                "assigned_analyzer": best_analyzer,
-                "priority": (priorities or {}).get(test.get("id", ""), 0),
-                "estimated_queue_time": analyzer_queue[best_analyzer]["load"],
-            })
+            assignments.append(
+                {
+                    "test_id": test.get("id", ""),
+                    "test_name": test.get("name", ""),
+                    "assigned_analyzer": best_analyzer,
+                    "priority": (priorities or {}).get(test.get("id", ""), 0),
+                    "estimated_queue_time": analyzer_queue[best_analyzer]["load"],
+                },
+            )
             analyzer_queue[best_analyzer]["load"] += 1
         return assignments
 
@@ -513,7 +566,9 @@ class DeltaCheckEngine:
         self._thresholds: dict[str, dict[str, float]] = {}
         self._patient_history: dict[str, list[dict[str, Any]]] = {}
 
-    def set_delta_threshold(self, test_code: str, absolute_change: float, percent_change: float) -> None:
+    def set_delta_threshold(
+        self, test_code: str, absolute_change: float, percent_change: float,
+    ) -> None:
         self._thresholds[test_code] = {
             "absolute_change": absolute_change,
             "percent_change": percent_change,
@@ -526,10 +581,12 @@ class DeltaCheckEngine:
         key = f"{patient_id}:{test_code}"
         if key not in self._patient_history:
             self._patient_history[key] = []
-        self._patient_history[key].append({
-            "value": value,
-            "timestamp": time.time(),
-        })
+        self._patient_history[key].append(
+            {
+                "value": value,
+                "timestamp": time.time(),
+            },
+        )
 
     def evaluate_delta(
         self,
@@ -566,7 +623,9 @@ class DeltaCheckEngine:
             "delta": round(absolute_delta, 4),
             "delta_percent": round(percent_delta, 2),
             "significant": significant,
-            "message": "Significant change detected" if significant else "Within expected variation",
+            "message": "Significant change detected"
+            if significant
+            else "Within expected variation",
         }
 
     def flag_significant_delta(self, delta: dict[str, Any]) -> dict[str, Any]:

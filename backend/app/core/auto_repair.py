@@ -225,7 +225,9 @@ class RepairEngine:
             RepairAction("memory_gc", "Force GC on memory pressure", "warn", cooldown_s=180),
         )
         self._register(
-            RepairAction("circuit_probe", "Force-probe open circuit breaker", "warn", cooldown_s=60),
+            RepairAction(
+                "circuit_probe", "Force-probe open circuit breaker", "warn", cooldown_s=60,
+            ),
         )
         self._register(
             RepairAction("pool_recycle", "Recycle stale DB connections", "warn", cooldown_s=300),

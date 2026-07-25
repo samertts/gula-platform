@@ -3,6 +3,7 @@
 Works in both online mode (direct DB connection) and offline mode (SQL script).
 DATABASE_URL is read from the environment / .env via the app's own config module.
 """
+
 import os
 from logging.config import fileConfig
 
@@ -20,8 +21,16 @@ os.environ.setdefault("REDIS_URL", "")
 # ── Import models so their tables are visible to autogenerate ─────────────────
 from app.database import Base
 from app.models import (
-    Lab, LabUser, User, Patient, TestType,
-    LabOrder, LabResult, AuditLog, Sample, QualityControl,
+    Lab,
+    LabUser,
+    User,
+    Patient,
+    TestType,
+    LabOrder,
+    LabResult,
+    AuditLog,
+    Sample,
+    QualityControl,
 )
 
 # Include NationalBase and other declarative bases so Alembic detects their tables
@@ -39,6 +48,7 @@ from app.care_continuum.base import CareContinuumBase
 # incomplete or have changed names since the migration was written.
 import importlib
 import contextlib
+
 for _mod in [
     "app.ems.infrastructure.models",
     "app.blood_bank.infrastructure.models",
@@ -85,15 +95,13 @@ database_url = os.environ.get("DATABASE_URL")
 if not database_url:
     try:
         from app.config import DATABASE_URL as _app_db_url
+
         database_url = _app_db_url
     except ImportError:
         pass
 
 if not database_url:
-    raise RuntimeError(
-        "DATABASE_URL is not set. "
-        "Export it or ensure backend/.env defines it."
-    )
+    raise RuntimeError("DATABASE_URL is not set. Export it or ensure backend/.env defines it.")
 
 config.set_main_option("sqlalchemy.url", database_url)
 

@@ -89,7 +89,9 @@ class TwinStore:
         }
         filepath.write_text(json.dumps(data, indent=2))
         self._snapshots.append(snapshot)
-        logger.info("Twin snapshot saved", extra={"path": str(filepath), "entities": snapshot.entity_count})
+        logger.info(
+            "Twin snapshot saved", extra={"path": str(filepath), "entities": snapshot.entity_count},
+        )
         return str(filepath)
 
     def load_snapshot(self, snapshot_id: str) -> TwinSnapshot | None:
@@ -109,7 +111,9 @@ class TwinStore:
                 relationships_count=data["relationships_count"],
             )
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            logger.error("Snapshot load failed", extra={"snapshot_id": snapshot_id, "error": str(exc)})
+            logger.error(
+                "Snapshot load failed", extra={"snapshot_id": snapshot_id, "error": str(exc)},
+            )
             return None
 
     def list_snapshots(self) -> list[dict[str, Any]]:
@@ -157,7 +161,8 @@ class TwinQuery:
     def search(self, query: str) -> list[TwinEntity]:
         q = query.lower()
         return [
-            e for e in self._twin._entities.values()
+            e
+            for e in self._twin._entities.values()
             if q in e.name.lower() or q in e.type.lower() or any(q in t.lower() for t in e.tags)
         ]
 
@@ -186,7 +191,9 @@ class RuntimeDigitalTwin:
         tags: list[str] | None = None,
     ) -> TwinEntity:
         if entity_id in self._entities:
-            logger.warning("Entity already registered, updating", extra={"id": entity_id, "type": entity_type})
+            logger.warning(
+                "Entity already registered, updating", extra={"id": entity_id, "type": entity_type},
+            )
         entity = TwinEntity(
             id=entity_id,
             type=entity_type,
@@ -239,7 +246,9 @@ class RuntimeDigitalTwin:
         snapshot = TwinSnapshot(
             entities=dict(self._entities),
             entity_count=len(self._entities),
-            relationships_count=sum(len(rels) for e in self._entities.values() for rels in e.relationships.values()),
+            relationships_count=sum(
+                len(rels) for e in self._entities.values() for rels in e.relationships.values()
+            ),
         )
         self._last_snapshot = time.time()
         return snapshot
@@ -253,7 +262,9 @@ class RuntimeDigitalTwin:
             "timestamp": time.time(),
             "entities": {eid: ent.to_dict() for eid, ent in self._entities.items()},
             "entity_count": len(self._entities),
-            "relationships_count": sum(len(rels) for e in self._entities.values() for rels in e.relationships.values()),
+            "relationships_count": sum(
+                len(rels) for e in self._entities.values() for rels in e.relationships.values()
+            ),
             "update_count": self._update_count,
         }
 

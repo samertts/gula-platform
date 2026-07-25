@@ -15,7 +15,9 @@ class HealthNumberRecord(GovernanceBaseEntity):
     health_number = Column(String(50), unique=True, nullable=False, index=True)
     citizen_ulid = Column(String(26), nullable=False, index=True)
     national_id_hash = Column(String(255), nullable=True, index=True)
-    status = Column(Enum(HealthNumberStatus), nullable=False, default=HealthNumberStatus.ACTIVE, index=True)
+    status = Column(
+        Enum(HealthNumberStatus), nullable=False, default=HealthNumberStatus.ACTIVE, index=True
+    )
     issued_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     activated_at = Column(DateTime(timezone=True), nullable=True)
     last_verified_at = Column(DateTime(timezone=True), nullable=True)
@@ -27,7 +29,11 @@ class HealthNumberRecord(GovernanceBaseEntity):
     merged_into_health_number = Column(String(50), nullable=True, index=True)
     metadata_json = Column(String(1000), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class HealthNumberAudit(GovernanceBaseEntity):

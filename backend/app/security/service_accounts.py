@@ -17,6 +17,7 @@ logger = logging.getLogger("gula.service_accounts")
 
 def _generate_api_key() -> str:
     import uuid as _uuid
+
     ulid_part = str(_uuid.uuid4()).replace("-", "")[:26]
     random_hex = secrets.token_hex(24)
     return f"gula_{ulid_part}_{random_hex}"

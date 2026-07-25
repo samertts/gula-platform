@@ -7,7 +7,9 @@ class ConsentDirective(BaseEntity):
     __tablename__ = "dp_consent_directives"
 
     consent_id = Column(Integer, ForeignKey("consents.id", ondelete="SET NULL"), nullable=True)
-    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     citizen_id = Column(String(26), nullable=True, index=True)
 
     consent_type = Column(String(50), nullable=False)

@@ -67,7 +67,8 @@ class OcrProviderManager:
                 logger.warning("Provider shutdown error: %s — %s", engine, exc)
 
     async def get_best_provider(
-        self, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> OcrProvider:
         available = []
         for engine, provider in self._providers.items():
@@ -115,7 +116,8 @@ class OcrProviderManager:
         }
 
     async def auto_select(
-        self, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> OcrProvider:
         try:
             return await self.get_best_provider(language)
@@ -139,9 +141,7 @@ class OcrProviderManager:
         raise ProviderNotAvailableError("No OCR providers available after failover")
 
     def set_failover_order(self, engines: list[OcrEngine]) -> None:
-        self._failover_order = [
-            e for e in engines if e != self._default_engine
-        ]
+        self._failover_order = [e for e in engines if e != self._default_engine]
         logger.info(
             "OCR failover order: %s → %s",
             self._default_engine,

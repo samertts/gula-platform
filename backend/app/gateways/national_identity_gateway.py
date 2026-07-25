@@ -141,7 +141,8 @@ def verify_national_id(national_id: str) -> ExternalDataResult:
     return gw.call(
         action="verify_national_id",
         cache_key=NationalIdentityGateway._make_cache_key(
-            "national_identity", national_id=national_id,
+            "national_identity",
+            national_id=national_id,
         ),
         fallback={"valid": False, "source": "fallback"},
         national_id=national_id,

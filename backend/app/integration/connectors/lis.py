@@ -139,7 +139,11 @@ class LISConnector(BaseConnector):
                 urljoin(self._base_url, "/api/astm"),
                 json=astm_payload,
             )
-            return {"success": resp.is_success, "status_code": resp.status_code, "response": resp.text}
+            return {
+                "success": resp.is_success,
+                "status_code": resp.status_code,
+                "response": resp.text,
+            }
         except Exception as exc:
             logger.error("LIS ASTM send failed: %s", exc)
             return {"success": False, "error": str(exc)}
@@ -159,7 +163,11 @@ class LISConnector(BaseConnector):
                 urljoin(self._base_url, "/api/hl7"),
                 json=hl7_payload,
             )
-            return {"success": resp.is_success, "status_code": resp.status_code, "response": resp.text}
+            return {
+                "success": resp.is_success,
+                "status_code": resp.status_code,
+                "response": resp.text,
+            }
         except Exception as exc:
             logger.error("LIS HL7 send failed: %s", exc)
             return {"success": False, "error": str(exc)}

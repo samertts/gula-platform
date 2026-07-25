@@ -37,7 +37,9 @@ def upgrade() -> None:
             sa.Column("phone", sa.String(50), nullable=True),
             sa.Column("email", sa.String(200), nullable=True),
             sa.Column("address", sa.Text, nullable=True),
-            sa.Column("identity_type", sa.String(30), nullable=False, default="citizen", index=True),
+            sa.Column(
+                "identity_type", sa.String(30), nullable=False, default="citizen", index=True
+            ),
             sa.Column("identity_status", sa.String(20), nullable=False, default="active"),
             sa.Column("documents_json", JSON, nullable=True),
             sa.Column("relationships_json", JSON, nullable=True),
@@ -46,7 +48,9 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         )
-        op.create_index("ix_gov_identity_health_number", "gov_identity_records", ["health_number"], unique=True)
+        op.create_index(
+            "ix_gov_identity_health_number", "gov_identity_records", ["health_number"], unique=True
+        )
 
     # ── Break Glass Accesses ──
     if not _table_exists("gov_break_glass_accesses"):
@@ -88,7 +92,9 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
         )
-        op.create_index("ix_gov_merge_proposal_key", "gov_merge_proposals", ["proposal_key"], unique=True)
+        op.create_index(
+            "ix_gov_merge_proposal_key", "gov_merge_proposals", ["proposal_key"], unique=True
+        )
         op.create_index("ix_gov_merge_status", "gov_merge_proposals", ["status"])
 
     # ── QR Codes ──

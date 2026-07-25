@@ -28,12 +28,34 @@ FHIR_RESOURCE_TYPES = {
 REQUIRED_FIELDS = {
     "Patient": ["resourceType", "id", "name", "gender", "birthDate"],
     "Encounter": ["resourceType", "id", "status", "class", "subject", "period"],
-    "Observation": ["resourceType", "id", "status", "code", "subject", "effectiveDateTime", "issued"],
+    "Observation": [
+        "resourceType",
+        "id",
+        "status",
+        "code",
+        "subject",
+        "effectiveDateTime",
+        "issued",
+    ],
     "Condition": ["resourceType", "id", "subject", "code"],
-    "MedicationRequest": ["resourceType", "id", "status", "intent", "medicationCodeableConcept", "subject"],
+    "MedicationRequest": [
+        "resourceType",
+        "id",
+        "status",
+        "intent",
+        "medicationCodeableConcept",
+        "subject",
+    ],
     "MedicationStatement": ["resourceType", "id", "status", "medicationCodeableConcept", "subject"],
     "AllergyIntolerance": ["resourceType", "id", "patient", "code"],
-    "Immunization": ["resourceType", "id", "status", "vaccineCode", "patient", "occurrenceDateTime"],
+    "Immunization": [
+        "resourceType",
+        "id",
+        "status",
+        "vaccineCode",
+        "patient",
+        "occurrenceDateTime",
+    ],
     "CarePlan": ["resourceType", "id", "status", "intent", "subject"],
     "DocumentReference": ["resourceType", "id", "status", "type", "subject", "content"],
     "Composition": ["resourceType", "id", "status", "type", "subject", "date", "author", "title"],
@@ -65,9 +87,7 @@ VALID_CODE_SYSTEMS = {
 
 
 def validate_resource_coverage() -> dict:
-    implemented = {
-        k: v for k, v in FHIR_RESOURCE_TYPES.items() if v["status"] == "implemented"
-    }
+    implemented = {k: v for k, v in FHIR_RESOURCE_TYPES.items() if v["status"] == "implemented"}
     stubs = {k: v for k, v in FHIR_RESOURCE_TYPES.items() if v["status"] == "stub"}
     planned = {k: v for k, v in FHIR_RESOURCE_TYPES.items() if v["status"] == "planned"}
 

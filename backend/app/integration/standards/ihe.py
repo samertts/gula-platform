@@ -20,11 +20,25 @@ class IHEService:
         self._profiles: dict[str, IHEProfile] = {}
         self._supported_profiles: dict[str, list[str]] = {
             "PIX": ["Patient Identity Cross-reference", "PDQ", "Patient Demographics Query"],
-            "XDS": ["Cross-Enterprise Document Sharing", "Register Document Set", "Retrieve Document Set"],
+            "XDS": [
+                "Cross-Enterprise Document Sharing",
+                "Register Document Set",
+                "Retrieve Document Set",
+            ],
             "XCA": ["Cross-Community Access", "Cross-Community Query", "Cross-Community Retrieve"],
-            "ATNA": ["Audit Trail and Node Authentication", "Record Audit Event", "Query Audit Event"],
+            "ATNA": [
+                "Audit Trail and Node Authentication",
+                "Record Audit Event",
+                "Query Audit Event",
+            ],
             "CT": ["Consistent Time", "Time Synchronization"],
-            "SWF": ["Scheduled Workflow", "Order Placed", "Order Filled", "Procedure Scheduled", "Procedure Performed"],
+            "SWF": [
+                "Scheduled Workflow",
+                "Order Placed",
+                "Order Filled",
+                "Procedure Scheduled",
+                "Procedure Performed",
+            ],
         }
 
     def get_profile(self, profile_id: str) -> IHEProfile | None:
@@ -48,7 +62,9 @@ class IHEService:
         logger.info("IHE profile registered: %s", profile.name)
 
     def list_profiles(self) -> list[str]:
-        return list(self._supported_profiles.keys()) + [p.name for p in self._profiles.values() if p.name not in self._supported_profiles]
+        return list(self._supported_profiles.keys()) + [
+            p.name for p in self._profiles.values() if p.name not in self._supported_profiles
+        ]
 
     def validate_transaction(self, profile_id: str, transaction: str) -> bool:
         profile = self.get_profile(profile_id)

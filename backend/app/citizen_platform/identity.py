@@ -60,28 +60,37 @@ class HealthIdentityService:
         self._hmac_key = hmac_key
 
     async def verify_identity(
-        self, citizen_id: str, national_id: str,
+        self,
+        citizen_id: str,
+        national_id: str,
     ) -> dict[str, Any]:
         citizen = await self._citizen_service.get_citizen(citizen_id)
         stored_encrypted = citizen.national_id_hash
         if not stored_encrypted:
             return {"verified": False, "reason": "no_national_id_on_file"}
         decrypted = decrypt_national_id(
-            stored_encrypted, self._encryption_key, self._hmac_key,
+            stored_encrypted,
+            self._encryption_key,
+            self._hmac_key,
         )
         if decrypted is None:
             return {"verified": False, "reason": "decryption_failed"}
         return {"verified": decrypted == national_id, "citizen_id": citizen.id}
 
     async def encrypt_and_store_national_id(
-        self, citizen_id: str, national_id: str,
+        self,
+        citizen_id: str,
+        national_id: str,
     ) -> str:
         await self._citizen_service.get_citizen(citizen_id)
         secure_token = encrypt_national_id(
-            national_id, self._encryption_key, self._hmac_key,
+            national_id,
+            self._encryption_key,
+            self._hmac_key,
         )
         await self._citizen_service.update_citizen(
-            citizen_id, {"national_id_hash": secure_token},
+            citizen_id,
+            {"national_id_hash": secure_token},
         )
         return secure_token
 
@@ -136,7 +145,9 @@ class IdentityRecoveryService:
         self._requests: dict[str, IdentityRecoveryRequest] = {}
 
     def create_recovery_request(
-        self, citizen_id: str, method: str,
+        self,
+        citizen_id: str,
+        method: str,
     ) -> IdentityRecoveryRequest:
         req_id = str(uuid.uuid4())
         token = str(uuid.uuid4()).replace("-", "")

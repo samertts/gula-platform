@@ -16,10 +16,10 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
-revision      = "20250323_0005"
+revision = "20250323_0005"
 down_revision = "20250323_0004"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _pg() -> bool:
@@ -33,18 +33,16 @@ def _table_exists(table: str) -> bool:
 def upgrade() -> None:
     # Make users.email nullable so citizens without email can register
     if _table_exists("users") and _pg():
-        op.execute(text(
-            "ALTER TABLE users ALTER COLUMN email DROP NOT NULL"
-        ))
+        op.execute(text("ALTER TABLE users ALTER COLUMN email DROP NOT NULL"))
 
 
 def downgrade() -> None:
     # Restore NOT NULL only if all rows already have a non-null email
     if _table_exists("users") and _pg():
-        op.execute(text(
-            "UPDATE users SET email = 'unknown_' || id || '@placeholder.local' "
-            "WHERE email IS NULL"
-        ))
-        op.execute(text(
-            "ALTER TABLE users ALTER COLUMN email SET NOT NULL"
-        ))
+        op.execute(
+            text(
+                "UPDATE users SET email = 'unknown_' || id || '@placeholder.local' "
+                "WHERE email IS NULL"
+            )
+        )
+        op.execute(text("ALTER TABLE users ALTER COLUMN email SET NOT NULL"))

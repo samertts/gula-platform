@@ -1,4 +1,3 @@
-
 from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy import Enum as SAEnum
 
@@ -9,10 +8,30 @@ from app.ehr.enums import RiskLevel
 class RiskFactorRecord(EHRBaseEntity):
     __tablename__ = "ehr_risk_factors"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     risk_type = Column(String(100), nullable=False, index=True)
     risk_level = Column(SAEnum(RiskLevel), nullable=True)

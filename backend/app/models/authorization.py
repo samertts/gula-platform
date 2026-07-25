@@ -89,17 +89,30 @@ class RolePermission(Base):
     __tablename__ = "role_permissions"
 
     id = Column(Integer, primary_key=True, index=True)
-    role_id = Column(String(100), ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True)
-    permission_id = Column(String(100), ForeignKey("permissions.permission_id", ondelete="CASCADE"), nullable=False, index=True)
+    role_id = Column(
+        String(100), ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    permission_id = Column(
+        String(100),
+        ForeignKey("permissions.permission_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
 
 class RoleAssignment(Base):
     __tablename__ = "role_assignments"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    role_id = Column(String(100), ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    role_id = Column(
+        String(100), ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True,
+    )
     facility_id = Column(Integer, ForeignKey("facilities.id", ondelete="SET NULL"), nullable=True)
     department_id = Column(Integer, nullable=True)
     assigned_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -107,7 +120,9 @@ class RoleAssignment(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     is_primary = Column(Boolean, default=False)
     is_delegated = Column(Boolean, default=False)
-    delegation_id = Column(Integer, ForeignKey("delegations.id", ondelete="SET NULL"), nullable=True)
+    delegation_id = Column(
+        Integer, ForeignKey("delegations.id", ondelete="SET NULL"), nullable=True,
+    )
     status = Column(String(20), default="active")
 
     user = relationship("User", back_populates="role_assignments", foreign_keys=[user_id])
@@ -128,8 +143,15 @@ class RoleGroupMember(Base):
     __tablename__ = "role_group_members"
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(String(100), ForeignKey("role_groups.group_id", ondelete="CASCADE"), nullable=False, index=True)
-    role_id = Column(String(100), ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True)
+    group_id = Column(
+        String(100),
+        ForeignKey("role_groups.group_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role_id = Column(
+        String(100), ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True,
+    )
 
 
 class Policy(Base):
@@ -178,8 +200,12 @@ class Delegation(Base):
     __tablename__ = "delegations"
 
     id = Column(Integer, primary_key=True, index=True)
-    delegator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    delegate_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    delegator_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    delegate_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
     role_id = Column(String(100), ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False)
     delegation_type = Column(String(30), nullable=False)
     scope = Column(JSON, nullable=True)
@@ -196,7 +222,9 @@ class BreakGlassSession(Base):
     __tablename__ = "break_glass_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
     emergency_category = Column(String(50), nullable=False)
     justification = Column(Text, nullable=False)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True)
@@ -214,7 +242,9 @@ class AuthorizationAudit(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     decision_id = Column(String(100), unique=True, nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
     user_role = Column(String(100), nullable=True)
     action = Column(String(100), nullable=False, index=True)
     resource_type = Column(String(50), nullable=False)
@@ -226,5 +256,7 @@ class AuthorizationAudit(Base):
     risk_score = Column(Float, nullable=True)
     justification = Column(Text, nullable=True)
     is_emergency = Column(Boolean, default=False)
-    delegation_id = Column(Integer, ForeignKey("delegations.id", ondelete="SET NULL"), nullable=True)
+    delegation_id = Column(
+        Integer, ForeignKey("delegations.id", ondelete="SET NULL"), nullable=True,
+    )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

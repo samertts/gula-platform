@@ -24,8 +24,18 @@ class SQLAlchemyRuleRepository(RuleRepository):
             model.category = rule.category
             model.severity = rule.severity
             model.status = rule.status
-            model.conditions = [{"field": c.field, "operator": c.operator.value, "value": c.value, "value_type": c.value_type} for c in rule.conditions]
-            model.actions = [{"action_type": a.action_type, "params": a.params} for a in rule.actions]
+            model.conditions = [
+                {
+                    "field": c.field,
+                    "operator": c.operator.value,
+                    "value": c.value,
+                    "value_type": c.value_type,
+                }
+                for c in rule.conditions
+            ]
+            model.actions = [
+                {"action_type": a.action_type, "params": a.params} for a in rule.actions
+            ]
             model.priority = rule.priority
             model.version = rule.version
             model.tags = rule.tags
@@ -40,7 +50,15 @@ class SQLAlchemyRuleRepository(RuleRepository):
                 category=rule.category,
                 severity=rule.severity,
                 status=rule.status,
-                conditions=[{"field": c.field, "operator": c.operator.value, "value": c.value, "value_type": c.value_type} for c in rule.conditions],
+                conditions=[
+                    {
+                        "field": c.field,
+                        "operator": c.operator.value,
+                        "value": c.value,
+                        "value_type": c.value_type,
+                    }
+                    for c in rule.conditions
+                ],
                 actions=[{"action_type": a.action_type, "params": a.params} for a in rule.actions],
                 priority=rule.priority,
                 version=rule.version,
@@ -55,10 +73,14 @@ class SQLAlchemyRuleRepository(RuleRepository):
         return model.to_domain()
 
     async def get(self, rule_id: str) -> RuleDefinition | None:
-        model = self.db.query(RuleModel).filter(
-            RuleModel.id == rule_id,
-            ~RuleModel.is_deleted,
-        ).first()
+        model = (
+            self.db.query(RuleModel)
+            .filter(
+                RuleModel.id == rule_id,
+                ~RuleModel.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -72,10 +94,14 @@ class SQLAlchemyRuleRepository(RuleRepository):
         return [m.to_domain() for m in models]
 
     async def delete(self, rule_id: str, soft: bool = True) -> None:
-        model = self.db.query(RuleModel).filter(
-            RuleModel.id == rule_id,
-            ~RuleModel.is_deleted,
-        ).first()
+        model = (
+            self.db.query(RuleModel)
+            .filter(
+                RuleModel.id == rule_id,
+                ~RuleModel.is_deleted,
+            )
+            .first()
+        )
         if model:
             if soft:
                 model.is_deleted = True
@@ -84,24 +110,51 @@ class SQLAlchemyRuleRepository(RuleRepository):
                 self.db.delete(model)
             self.db.commit()
 
-    async def find_by_category(self, category: RuleCategory, skip: int = 0, limit: int = 100) -> list[RuleDefinition]:
-        models = self.db.query(RuleModel).filter(
-            RuleModel.category == category,
-            ~RuleModel.is_deleted,
-        ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
+    async def find_by_category(
+        self, category: RuleCategory, skip: int = 0, limit: int = 100,
+    ) -> list[RuleDefinition]:
+        models = (
+            self.db.query(RuleModel)
+            .filter(
+                RuleModel.category == category,
+                ~RuleModel.is_deleted,
+            )
+            .order_by(RuleModel.priority.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
-    async def find_by_status(self, status: RuleStatus, skip: int = 0, limit: int = 100) -> list[RuleDefinition]:
-        models = self.db.query(RuleModel).filter(
-            RuleModel.status == status,
-            ~RuleModel.is_deleted,
-        ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
+    async def find_by_status(
+        self, status: RuleStatus, skip: int = 0, limit: int = 100,
+    ) -> list[RuleDefinition]:
+        models = (
+            self.db.query(RuleModel)
+            .filter(
+                RuleModel.status == status,
+                ~RuleModel.is_deleted,
+            )
+            .order_by(RuleModel.priority.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
-    async def find_by_tags(self, tags: list[str], skip: int = 0, limit: int = 100) -> list[RuleDefinition]:
-        models = self.db.query(RuleModel).filter(
-            ~~RuleModel.is_deleted,
-        ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
+    async def find_by_tags(
+        self, tags: list[str], skip: int = 0, limit: int = 100,
+    ) -> list[RuleDefinition]:
+        models = (
+            self.db.query(RuleModel)
+            .filter(
+                ~~RuleModel.is_deleted,
+            )
+            .order_by(RuleModel.priority.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         result: list[RuleDefinition] = []
         for m in models:
             if m.tags and any(t in m.tags for t in tags):
@@ -110,12 +163,19 @@ class SQLAlchemyRuleRepository(RuleRepository):
 
     async def find_active(self, skip: int = 0, limit: int = 100) -> list[RuleDefinition]:
         now = datetime.now(UTC)
-        models = self.db.query(RuleModel).filter(
-            RuleModel.status == RuleStatus.ACTIVE,
-            ~RuleModel.is_deleted,
-            (RuleModel.effective_from is None) | (RuleModel.effective_from <= now),
-            (RuleModel.effective_to is None) | (RuleModel.effective_to >= now),
-        ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(RuleModel)
+            .filter(
+                RuleModel.status == RuleStatus.ACTIVE,
+                ~RuleModel.is_deleted,
+                (RuleModel.effective_from is None) | (RuleModel.effective_from <= now),
+                (RuleModel.effective_to is None) | (RuleModel.effective_to >= now),
+            )
+            .order_by(RuleModel.priority.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def count(self, **filters: Any) -> int:
@@ -135,6 +195,13 @@ class SQLAlchemyRuleRepository(RuleRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[RuleEvaluationLog]:
-        return self.db.query(RuleEvaluationLog).filter(
-            RuleEvaluationLog.rule_id == rule_id,
-        ).order_by(RuleEvaluationLog.triggered_at.desc()).offset(skip).limit(limit).all()
+        return (
+            self.db.query(RuleEvaluationLog)
+            .filter(
+                RuleEvaluationLog.rule_id == rule_id,
+            )
+            .order_by(RuleEvaluationLog.triggered_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )

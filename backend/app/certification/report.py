@@ -43,7 +43,12 @@ class CertificationReport:
                     "percentage": result.percentage,
                     "passed": result.passed,
                     "evidence": [
-                        {"name": e.name, "value": str(e.value) if e.value is not None else None, "source": e.source, "passed": e.passed}
+                        {
+                            "name": e.name,
+                            "value": str(e.value) if e.value is not None else None,
+                            "source": e.source,
+                            "passed": e.passed,
+                        }
                         for e in result.evidence
                     ],
                     "remediations": [
@@ -94,7 +99,7 @@ class CertificationReport:
             <tr>
                 <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{dim.value}</td>
                 <td style="padding:8px;border-bottom:1px solid #e5e7eb;color:{color};font-weight:bold;">{result.score:.1%}</td>
-                <td style="padding:8px;border-bottom:1px solid #e5e7eb;color:{color};">{'PASS' if result.passed else 'FAIL'}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;color:{color};">{"PASS" if result.passed else "FAIL"}</td>
             </tr>"""
 
         remediations_html = ""
@@ -104,7 +109,9 @@ class CertificationReport:
                 <h3 style="color:#374151;margin-top:20px;">{dim.value}</h3>
                 <ul style="color:#6b7280;">"""
                 for r in result.remediations:
-                    remediations_html += f"<li><strong>[{r.severity.upper()}]</strong> {r.message}</li>"
+                    remediations_html += (
+                        f"<li><strong>[{r.severity.upper()}]</strong> {r.message}</li>"
+                    )
                 remediations_html += "</ul>"
 
         level_colors = {
@@ -152,6 +159,7 @@ def generate_pdf_report(report: CertificationReport, output_path: str | Path) ->
     html = report.to_html()
     try:
         import pdfkit
+
         pdfkit.from_string(html, str(output))
         return output
     except ImportError:

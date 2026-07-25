@@ -7,6 +7,7 @@ All fixtures are function-scoped so each test starts with a clean slate.
 The backend/ package is installed via `pip install -e backend/` (or through
 the backend/pyproject.toml). No sys.path manipulation is needed.
 """
+
 from __future__ import annotations
 
 import os
@@ -55,6 +56,7 @@ from sqlalchemy.types import TypeDecorator
 
 class _JSONB_as_JSON(TypeDecorator):
     """JSONB stored as JSON for SQLite."""
+
     impl = _SQLiteJSON
     cache_ok = True
 
@@ -85,12 +87,12 @@ from app.services.mpi.models import Citizen, IdentityClaim
 # We use a session-scoped SQLite temp file and a per-test savepoint-based
 # rollback to achieve both isolation and speed.
 
+
 @pytest.fixture(scope="session")
 def _session_engine():
     """Create engine + all tables once per test session."""
-    _f = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    _db_path = _f.name
-    _f.close()
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as _f:
+        _db_path = _f.name
     engine = create_engine(f"sqlite:///{_db_path}", connect_args={"check_same_thread": False})
     # Import ALL models via app.main — registers Base + NationalBase + all
     # other domain models on their respective metadata namespaces.  This
@@ -117,13 +119,22 @@ def _session_engine():
     from sqlalchemy import MetaData as _CombinedMeta
 
     _all_metas = [
-        Base.metadata, NationalBase.metadata, EHRBase.metadata,
-        CareContinuumBase.metadata, CitizenPlatformBase.metadata,
-        ClinicalBase.metadata, GovernanceBase.metadata,
-        HealthDataBase.metadata, HospitalBase.metadata,
-        DataPlatformBase.metadata, NHDWBase.metadata,
-        NursingBase.metadata, PharmacyBase.metadata,
-        RadiologyBase.metadata, TrustBase.metadata, FinBase.metadata,
+        Base.metadata,
+        NationalBase.metadata,
+        EHRBase.metadata,
+        CareContinuumBase.metadata,
+        CitizenPlatformBase.metadata,
+        ClinicalBase.metadata,
+        GovernanceBase.metadata,
+        HealthDataBase.metadata,
+        HospitalBase.metadata,
+        DataPlatformBase.metadata,
+        NHDWBase.metadata,
+        NursingBase.metadata,
+        PharmacyBase.metadata,
+        RadiologyBase.metadata,
+        TrustBase.metadata,
+        FinBase.metadata,
     ]
     _ddl_meta = _CombinedMeta()
     for _meta in _all_metas:
@@ -178,6 +189,7 @@ def db(db_engine, _savepoint_conn):
 
 # ── FastAPI TestClient ────────────────────────────────────────────────────────
 
+
 @pytest.fixture()
 def client(db, db_engine, monkeypatch):
     """TestClient with the real DB dependency replaced by the test DB session.
@@ -211,6 +223,7 @@ def client(db, db_engine, monkeypatch):
     # immediately, so ReadinessMiddleware allows all requests through the
     # TestClient lifespan. No manual system_ready manipulation needed.
     import asyncio
+
     init_kernel()
     asyncio.run(boot_kernel())
     try:
@@ -223,6 +236,7 @@ def client(db, db_engine, monkeypatch):
 
 
 # ── Test isolation: clear cross-test global state ────────────────────────────
+
 
 @pytest.fixture(autouse=True)
 def _reset_global_caches():
@@ -250,6 +264,7 @@ def _reset_global_caches():
 
 
 # ── Model factories ───────────────────────────────────────────────────────────
+
 
 @pytest.fixture()
 def make_lab(db):
@@ -304,8 +319,12 @@ def make_subscription(db):
     """Return a factory: make_subscription(lab_id=1, tier='growth') → LabSubscription."""
     from app.models.subscription import LabSubscription
 
-    def _factory(lab_id: int, tier: str = "starter",
-                 deployment_mode: str = "single", security_level: str = "standard"):
+    def _factory(
+        lab_id: int,
+        tier: str = "starter",
+        deployment_mode: str = "single",
+        security_level: str = "standard",
+    ):
         sub = LabSubscription(
             lab_id=lab_id,
             tier=tier,
@@ -321,6 +340,7 @@ def make_subscription(db):
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
+
 
 def auth_headers(user_id: int, lab_id: int, role: str = "admin") -> dict:
     """Generate a valid Bearer token header for a given user."""

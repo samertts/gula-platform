@@ -25,6 +25,7 @@ state never leaks (autouse fixture below).
 Blast radius: zero. Each test mutates ``health._degradation_level`` and
 restores it; circuit breakers are reset.
 """
+
 from __future__ import annotations
 
 import os
@@ -101,6 +102,7 @@ class TestCircuitBreakerStateMachine:
     def test_open_transitions_to_half_open_after_timeout(self, monkeypatch):
         """After recovery_timeout elapses, OPEN auto-promotes to HALF_OPEN."""
         import time
+
         cb = CircuitBreaker("test", failure_threshold=1, recovery_timeout=0.0)
         cb.record_failure()
         # recovery_timeout=0.0 → immediate transition on next state read
@@ -163,7 +165,10 @@ class TestDegradedModeHttpBehavior:
         # GET to a non-whitelisted path passes (or 401/403/404; the point
         # is: NOT 503 from degradation middleware)
         get_res = client.get("/tiers")
-        assert get_res.status_code != 503 or get_res.headers.get("X-Degradation-Level") != "L2_READ_ONLY"
+        assert (
+            get_res.status_code != 503
+            or get_res.headers.get("X-Degradation-Level") != "L2_READ_ONLY"
+        )
 
         # POST to a write path → 503 + Retry-After + X-Degradation-Level
         post_res = client.post("/tiers/upgrade", json={"target_tier": "growth"})
@@ -252,6 +257,7 @@ class TestClinicalExemptionFromConcurrencyLimit:
     def test_clinical_paths_documented_in_main(self):
         """Read backend/app/main.py and assert the exempt prefixes are listed."""
         import pathlib
+
         main_path = pathlib.Path(__file__).parent.parent / "app" / "main.py"
         src = main_path.read_text()
 
@@ -276,8 +282,7 @@ class TestDegradedResponseShape:
         res = client.post("/tiers/upgrade", json={"target_tier": "growth"})
         body = res.json()
         # Required fields the mobile app relies on
-        for key in ("detail", "detail_ar", "degraded",
-                    "degradation_level", "retry_after_seconds"):
+        for key in ("detail", "detail_ar", "degraded", "degradation_level", "retry_after_seconds"):
             assert key in body, f"L2 response missing {key!r}"
         assert body["degradation_level"] == "L2_READ_ONLY"
 
@@ -285,8 +290,7 @@ class TestDegradedResponseShape:
         health.enter_degraded_mode("test", DegradationLevel.L3_CRITICAL_ONLY)
         res = client.get("/tiers")
         body = res.json()
-        for key in ("detail", "detail_ar", "degraded",
-                    "degradation_level", "retry_after_seconds"):
+        for key in ("detail", "detail_ar", "degraded", "degradation_level", "retry_after_seconds"):
             assert key in body
         assert body["degradation_level"] == "L3_CRITICAL_ONLY"
 
@@ -301,5 +305,6 @@ class TestRetrySafety:
     def test_idempotency_module_loadable(self):
         """The idempotency module is the foundation of safe retries."""
         from app.core import idempotency
+
         # Module should expose the standard helpers
         assert hasattr(idempotency, "__name__")

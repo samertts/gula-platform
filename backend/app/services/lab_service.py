@@ -97,9 +97,7 @@ def get_lab(db: Session, lab_id: int) -> dict:
     return lab_to_dict(lab)
 
 
-def update_lab(
-    db: Session, lab_id: int, updates: dict, current_user: LabUser
-) -> dict:
+def update_lab(db: Session, lab_id: int, updates: dict, current_user: LabUser) -> dict:
     if current_user.role != "admin":
         raise ForbiddenError("Only admin can update lab info")
 
@@ -108,8 +106,14 @@ def update_lab(
         raise NotFoundError("Lab not found")
 
     allowed_fields = {
-        "name", "city", "address", "phone", "license_number",
-        "lab_type", "director_name", "website",
+        "name",
+        "city",
+        "address",
+        "phone",
+        "license_number",
+        "lab_type",
+        "director_name",
+        "website",
     }
     for field, value in updates.items():
         if field in allowed_fields and value is not None:
@@ -126,10 +130,7 @@ def list_employees(db: Session, lab_id: int, current_user: LabUser) -> list[dict
     if current_user.role not in ("admin", "master_admin"):
         raise ForbiddenError("Admin access required")
     employees = (
-        db.query(LabUser)
-        .filter(LabUser.lab_id == lab_id)
-        .order_by(LabUser.created_at.desc())
-        .all()
+        db.query(LabUser).filter(LabUser.lab_id == lab_id).order_by(LabUser.created_at.desc()).all()
     )
     return [employee_to_dict(u) for u in employees]
 
@@ -175,11 +176,7 @@ def update_employee(
 ) -> dict:
     if current_user.role not in ("admin", "master_admin"):
         raise ForbiddenError("Admin access required")
-    employee = (
-        db.query(LabUser)
-        .filter(LabUser.id == employee_id, LabUser.lab_id == lab_id)
-        .first()
-    )
+    employee = db.query(LabUser).filter(LabUser.id == employee_id, LabUser.lab_id == lab_id).first()
     if not employee:
         raise NotFoundError("Employee not found")
     if employee.id == current_user.id:

@@ -21,6 +21,7 @@ class ValidationResult:
 class ValidationService:
     def validate(self, data: Any, schema: dict) -> ValidationResult:
         import jsonschema
+
         try:
             jsonschema.validate(instance=data, schema=schema)
             return ValidationResult(valid=True)
@@ -29,19 +30,25 @@ class ValidationService:
 
     def validate_model(self, model_name: str, data: dict) -> ValidationResult:
         from ..national.fhir.validation import FHIRValidationEngine
+
         engine = FHIRValidationEngine()
         result = engine.validate(data)
         return ValidationResult(valid=result.valid, errors=result.errors, warnings=result.warnings)
 
     def validate_fhir(self, resource: dict) -> ValidationResult:
         from ..national.fhir.validation import FHIRValidationEngine
+
         engine = FHIRValidationEngine()
         result = engine.validate(resource)
         return ValidationResult(valid=result.valid, errors=result.errors, warnings=result.warnings)
 
 
-PlatformRegistry.register("validation", ValidationService(), capabilities=[
-    {"name": "validate", "description": "Validate data against a JSON Schema"},
-    {"name": "validate_model", "description": "Validate a model against its schema"},
-    {"name": "validate_fhir", "description": "Validate a FHIR R4 resource"},
-])
+PlatformRegistry.register(
+    "validation",
+    ValidationService(),
+    capabilities=[
+        {"name": "validate", "description": "Validate data against a JSON Schema"},
+        {"name": "validate_model", "description": "Validate a model against its schema"},
+        {"name": "validate_fhir", "description": "Validate a FHIR R4 resource"},
+    ],
+)

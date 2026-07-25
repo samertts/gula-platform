@@ -103,7 +103,9 @@ class EmailConnector(BaseConnector):
             return await self._send_via_api(to, subject, body, html_body, cc, bcc)
         return self._send_via_smtp(to, subject, body)
 
-    async def _send_via_api(self, to: str, subject: str, body: str, html_body: str, cc: list[str], bcc: list[str]) -> dict[str, Any]:
+    async def _send_via_api(
+        self, to: str, subject: str, body: str, html_body: str, cc: list[str], bcc: list[str]
+    ) -> dict[str, Any]:
         if not self._client:
             raise RuntimeError("Email connector not connected")
         payload = {
@@ -138,7 +140,11 @@ class EmailConnector(BaseConnector):
                 body=body,
             )
             if result.success:
-                return {"success": True, "channel": "email_smtp", "audit_log_id": result.audit_log_id}
+                return {
+                    "success": True,
+                    "channel": "email_smtp",
+                    "audit_log_id": result.audit_log_id,
+                }
             return {"success": False, "error": result.error, "channel": "email_smtp"}
         except Exception as exc:
             logger.error("Email SMTP send failed: %s", exc)
@@ -158,7 +164,11 @@ class EmailConnector(BaseConnector):
                 data=template_data,
             )
             if result.success:
-                return {"success": True, "channel": "email_template", "audit_log_id": result.audit_log_id}
+                return {
+                    "success": True,
+                    "channel": "email_template",
+                    "audit_log_id": result.audit_log_id,
+                }
             return {"success": False, "error": result.error}
         except Exception as exc:
             logger.error("Email template send failed: %s", exc)
@@ -188,7 +198,11 @@ class EmailConnector(BaseConnector):
                 json=payload,
             )
             if resp.is_success:
-                return {"success": True, "message_id": resp.json().get("id", ""), "attachment_count": len(attachments)}
+                return {
+                    "success": True,
+                    "message_id": resp.json().get("id", ""),
+                    "attachment_count": len(attachments),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Email with attachment failed: %s", exc)

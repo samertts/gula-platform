@@ -63,32 +63,50 @@ class FHIRConnector(BaseConnector):
 
         if action == "read":
             if not resource_type or not resource_id:
-                return self._build_result(False, error="read requires resource_type and resource_id", status_code=400)
+                return self._build_result(
+                    False, error="read requires resource_type and resource_id", status_code=400,
+                )
             return await self._read(resource_type, resource_id)
         if action == "search":
             if not resource_type:
-                return self._build_result(False, error="search requires resource_type", status_code=400)
+                return self._build_result(
+                    False, error="search requires resource_type", status_code=400,
+                )
             return await self._search(resource_type, search_params)
         if action == "create":
             if not resource_type or not resource:
-                return self._build_result(False, error="create requires resource_type and resource", status_code=400)
+                return self._build_result(
+                    False, error="create requires resource_type and resource", status_code=400,
+                )
             return await self._create(resource_type, resource)
         if action == "update":
             if not resource_type or not resource_id or not resource:
-                return self._build_result(False, error="update requires resource_type, resource_id, and resource", status_code=400)
+                return self._build_result(
+                    False,
+                    error="update requires resource_type, resource_id, and resource",
+                    status_code=400,
+                )
             return await self._update(resource_type, resource_id, resource)
         if action == "delete":
             if not resource_type or not resource_id:
-                return self._build_result(False, error="delete requires resource_type and resource_id", status_code=400)
+                return self._build_result(
+                    False, error="delete requires resource_type and resource_id", status_code=400,
+                )
             return await self._delete(resource_type, resource_id)
         if action == "patch":
             if not resource_type or not resource_id or not resource:
-                return self._build_result(False, error="patch requires resource_type, resource_id, and resource", status_code=400)
+                return self._build_result(
+                    False,
+                    error="patch requires resource_type, resource_id, and resource",
+                    status_code=400,
+                )
             return await self._patch(resource_type, resource_id, resource)
         if action == "transaction":
             bundle = data.get("bundle")
             if not bundle:
-                return self._build_result(False, error="transaction requires bundle", status_code=400)
+                return self._build_result(
+                    False, error="transaction requires bundle", status_code=400,
+                )
             return await self._transaction(bundle)
         if action == "batch":
             bundle = data.get("bundle")
@@ -109,13 +127,17 @@ class FHIRConnector(BaseConnector):
     async def _create(self, resource_type: str, resource: dict) -> ConnectorResult:
         return await self._fhir_request("POST", f"/{resource_type}", json=resource)
 
-    async def _update(self, resource_type: str, resource_id: str, resource: dict) -> ConnectorResult:
+    async def _update(
+        self, resource_type: str, resource_id: str, resource: dict,
+    ) -> ConnectorResult:
         return await self._fhir_request("PUT", f"/{resource_type}/{resource_id}", json=resource)
 
     async def _delete(self, resource_type: str, resource_id: str) -> ConnectorResult:
         return await self._fhir_request("DELETE", f"/{resource_type}/{resource_id}")
 
-    async def _patch(self, resource_type: str, resource_id: str, resource: list | dict) -> ConnectorResult:
+    async def _patch(
+        self, resource_type: str, resource_id: str, resource: list | dict,
+    ) -> ConnectorResult:
         return await self._fhir_request("PATCH", f"/{resource_type}/{resource_id}", json=resource)
 
     async def _transaction(self, bundle: dict) -> ConnectorResult:
@@ -150,11 +172,23 @@ class FHIRConnector(BaseConnector):
 
             if response.is_success:
                 self._record_success(duration_ms)
-                return self._build_result(True, data=body, duration_ms=duration_ms, status_code=response.status_code)
+                return self._build_result(
+                    True, data=body, duration_ms=duration_ms, status_code=response.status_code,
+                )
 
-            error_msg = body.get("issue", [{}])[0].get("diagnostics", str(body)) if isinstance(body, dict) else str(body)
+            error_msg = (
+                body.get("issue", [{}])[0].get("diagnostics", str(body))
+                if isinstance(body, dict)
+                else str(body)
+            )
             self._record_failure(error_msg, duration_ms)
-            return self._build_result(False, data=body, error=error_msg, duration_ms=duration_ms, status_code=response.status_code)
+            return self._build_result(
+                False,
+                data=body,
+                error=error_msg,
+                duration_ms=duration_ms,
+                status_code=response.status_code,
+            )
 
         except httpx.TimeoutException as exc:
             duration_ms = int((time.monotonic() - start) * 1000)
@@ -187,6 +221,7 @@ class FHIRConnector(BaseConnector):
             headers[header_name] = creds["api_key"]
         elif auth_type == "basic" and creds.get("username") and creds.get("password"):
             import base64
+
             encoded = base64.b64encode(f"{creds['username']}:{creds['password']}".encode()).decode()
             headers["Authorization"] = f"Basic {encoded}"
         return headers
@@ -197,7 +232,10 @@ class FHIRConnector(BaseConnector):
             try:
                 return response.json()
             except (json.JSONDecodeError, ValueError):
-                return {"resourceType": "OperationOutcome", "issue": [{"diagnostics": response.text}]}
+                return {
+                    "resourceType": "OperationOutcome",
+                    "issue": [{"diagnostics": response.text}],
+                }
         if "application/fhir+xml" in content_type or "application/xml" in content_type:
             return {"resourceType": "Binary", "data": response.text}
         return response.text

@@ -44,23 +44,74 @@ class GovernancePolicyDecision:
 class GovernancePolicyEngine:
     def __init__(self):
         self._policies: dict[GovernanceAction, dict] = {
-            GovernanceAction.CREATE_NODE: {"risk": GovernanceRiskLevel.MEDIUM, "require_approval": False},
-            GovernanceAction.UPDATE_NODE: {"risk": GovernanceRiskLevel.LOW, "require_approval": False},
-            GovernanceAction.DELETE_NODE: {"risk": GovernanceRiskLevel.CRITICAL, "require_approval": True},
-            GovernanceAction.CREATE_DELEGATION: {"risk": GovernanceRiskLevel.MEDIUM, "require_approval": True},
-            GovernanceAction.REVOKE_DELEGATION: {"risk": GovernanceRiskLevel.MEDIUM, "require_approval": True},
-            GovernanceAction.APPOINT_ACTING: {"risk": GovernanceRiskLevel.HIGH, "require_approval": True},
-            GovernanceAction.DECLARE_EMERGENCY: {"risk": GovernanceRiskLevel.HIGH, "require_approval": True},
-            GovernanceAction.ISSUE_HEALTH_NUMBER: {"risk": GovernanceRiskLevel.LOW, "require_approval": False},
-            GovernanceAction.MERGE_IDENTITY: {"risk": GovernanceRiskLevel.CRITICAL, "require_approval": True},
-            GovernanceAction.SPLIT_IDENTITY: {"risk": GovernanceRiskLevel.CRITICAL, "require_approval": True},
-            GovernanceAction.REGISTER_LAB: {"risk": GovernanceRiskLevel.MEDIUM, "require_approval": False},
-            GovernanceAction.DESIGNATE_REFERENCE: {"risk": GovernanceRiskLevel.HIGH, "require_approval": True},
-            GovernanceAction.APPROVE_POLICY: {"risk": GovernanceRiskLevel.HIGH, "require_approval": True},
-            GovernanceAction.CLASSIFY_DATA: {"risk": GovernanceRiskLevel.HIGH, "require_approval": True},
-            GovernanceAction.DEPLOY_AI_MODEL: {"risk": GovernanceRiskLevel.CRITICAL, "require_approval": True},
-            GovernanceAction.REGISTER_CONNECTOR: {"risk": GovernanceRiskLevel.MEDIUM, "require_approval": False},
-            GovernanceAction.MODIFY_INTEROP_PROTOCOL: {"risk": GovernanceRiskLevel.HIGH, "require_approval": True},
+            GovernanceAction.CREATE_NODE: {
+                "risk": GovernanceRiskLevel.MEDIUM,
+                "require_approval": False,
+            },
+            GovernanceAction.UPDATE_NODE: {
+                "risk": GovernanceRiskLevel.LOW,
+                "require_approval": False,
+            },
+            GovernanceAction.DELETE_NODE: {
+                "risk": GovernanceRiskLevel.CRITICAL,
+                "require_approval": True,
+            },
+            GovernanceAction.CREATE_DELEGATION: {
+                "risk": GovernanceRiskLevel.MEDIUM,
+                "require_approval": True,
+            },
+            GovernanceAction.REVOKE_DELEGATION: {
+                "risk": GovernanceRiskLevel.MEDIUM,
+                "require_approval": True,
+            },
+            GovernanceAction.APPOINT_ACTING: {
+                "risk": GovernanceRiskLevel.HIGH,
+                "require_approval": True,
+            },
+            GovernanceAction.DECLARE_EMERGENCY: {
+                "risk": GovernanceRiskLevel.HIGH,
+                "require_approval": True,
+            },
+            GovernanceAction.ISSUE_HEALTH_NUMBER: {
+                "risk": GovernanceRiskLevel.LOW,
+                "require_approval": False,
+            },
+            GovernanceAction.MERGE_IDENTITY: {
+                "risk": GovernanceRiskLevel.CRITICAL,
+                "require_approval": True,
+            },
+            GovernanceAction.SPLIT_IDENTITY: {
+                "risk": GovernanceRiskLevel.CRITICAL,
+                "require_approval": True,
+            },
+            GovernanceAction.REGISTER_LAB: {
+                "risk": GovernanceRiskLevel.MEDIUM,
+                "require_approval": False,
+            },
+            GovernanceAction.DESIGNATE_REFERENCE: {
+                "risk": GovernanceRiskLevel.HIGH,
+                "require_approval": True,
+            },
+            GovernanceAction.APPROVE_POLICY: {
+                "risk": GovernanceRiskLevel.HIGH,
+                "require_approval": True,
+            },
+            GovernanceAction.CLASSIFY_DATA: {
+                "risk": GovernanceRiskLevel.HIGH,
+                "require_approval": True,
+            },
+            GovernanceAction.DEPLOY_AI_MODEL: {
+                "risk": GovernanceRiskLevel.CRITICAL,
+                "require_approval": True,
+            },
+            GovernanceAction.REGISTER_CONNECTOR: {
+                "risk": GovernanceRiskLevel.MEDIUM,
+                "require_approval": False,
+            },
+            GovernanceAction.MODIFY_INTEROP_PROTOCOL: {
+                "risk": GovernanceRiskLevel.HIGH,
+                "require_approval": True,
+            },
         }
 
     def evaluate(
@@ -92,7 +143,9 @@ class GovernancePolicyEngine:
         )
 
     def require_elevated_approval(
-        self, action: GovernanceAction, user_role: str | None = None,
+        self,
+        action: GovernanceAction,
+        user_role: str | None = None,
     ) -> bool:
         policy = self._policies.get(action)
         if not policy:

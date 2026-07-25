@@ -13,9 +13,7 @@ class MergeProposalRepository(GovernanceRepository[MergeProposal]):
 
     def get_by_key(self, proposal_key: str) -> MergeProposal | None:
         return (
-            self._db.query(MergeProposal)
-            .filter(MergeProposal.proposal_key == proposal_key)
-            .first()
+            self._db.query(MergeProposal).filter(MergeProposal.proposal_key == proposal_key).first()
         )
 
     def list_pending(self) -> list[MergeProposal]:

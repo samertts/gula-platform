@@ -65,7 +65,9 @@ class CitizenNotificationService:
         self._notifications[citizen_id].append(alert)
 
         if channel != "in_app":
-            return self._platform.send_notification(channel=channel, to=citizen_id, subject=title, body=message)
+            return self._platform.send_notification(
+                channel=channel, to=citizen_id, subject=title, body=message,
+            )
 
         return NotificationResult(success=True, channel="in_app", recipient=citizen_id)
 

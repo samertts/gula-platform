@@ -77,6 +77,7 @@ class AsyncMemoizer:
             result = await func(*args, **kwargs)
             self._cache.set(key, result)
             return result
+
         return wrapper
 
     def invalidate(self, func: Callable | None = None):

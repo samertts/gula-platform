@@ -74,12 +74,15 @@ class EmergencyAccessService:
             expires_at=datetime.now(UTC).isoformat(),
         )
         from datetime import timedelta
+
         grant.expires_at = (datetime.now(UTC) + timedelta(minutes=expires_minutes)).isoformat()
-        grant.audit_trail.append({
-            "action": "granted",
-            "by": granted_by,
-            "at": grant.granted_at,
-        })
+        grant.audit_trail.append(
+            {
+                "action": "granted",
+                "by": granted_by,
+                "at": grant.granted_at,
+            },
+        )
         if citizen_id not in self._grants:
             self._grants[citizen_id] = []
         self._grants[citizen_id].append(grant)
@@ -90,11 +93,13 @@ class EmergencyAccessService:
             for g in grants:
                 if g.id == grant_id and g.is_active:
                     g.is_active = False
-                    g.audit_trail.append({
-                        "action": "revoked",
-                        "by": revoked_by,
-                        "at": datetime.now(UTC).isoformat(),
-                    })
+                    g.audit_trail.append(
+                        {
+                            "action": "revoked",
+                            "by": revoked_by,
+                            "at": datetime.now(UTC).isoformat(),
+                        },
+                    )
                     return True
         return False
 
@@ -102,10 +107,7 @@ class EmergencyAccessService:
         grants = self._grants.get(citizen_id, [])
         now = datetime.now(UTC).isoformat()
         return any(
-            g.granted_to == accessor_id
-            and g.is_active
-            and g.expires_at >= now
-            for g in grants
+            g.granted_to == accessor_id and g.is_active and g.expires_at >= now for g in grants
         )
 
     def get_access_log(self, citizen_id: str) -> list[EmergencyAccessGrant]:

@@ -29,6 +29,7 @@ def _get_model_class(table_name: str):
         WaitingListEntry,
         WardRound,
     )
+
     mapping = {
         "nhdw_admissions": Admission,
         "nhdw_discharges": Discharge,
@@ -112,7 +113,9 @@ class SyncBatch:
                 entity_id=cd["entity_id"],
                 action=cd["action"],
                 data=cd.get("data"),
-                timestamp=datetime.fromisoformat(cd["timestamp"]) if cd.get("timestamp") else datetime.now(UTC),
+                timestamp=datetime.fromisoformat(cd["timestamp"])
+                if cd.get("timestamp")
+                else datetime.now(UTC),
                 device_id=d["device_id"],
                 sync_status=SyncStatus.PENDING,
             )
@@ -120,13 +123,14 @@ class SyncBatch:
         return cls(
             changes=changes,
             device_id=d["device_id"],
-            last_sync_timestamp=datetime.fromisoformat(d["last_sync_timestamp"]) if d.get("last_sync_timestamp") else None,
+            last_sync_timestamp=datetime.fromisoformat(d["last_sync_timestamp"])
+            if d.get("last_sync_timestamp")
+            else None,
             batch_id=d.get("batch_id"),
         )
 
 
 class OfflineService:
-
     @staticmethod
     def record_change(
         db: Session,
@@ -171,10 +175,14 @@ class OfflineService:
             model = _get_model_class(change.entity_type)
             if model is None:
                 continue
-            existing = db.query(model).filter(
-                model.id == change.entity_id,
-                model.lab_id == lab_id,
-            ).first()
+            existing = (
+                db.query(model)
+                .filter(
+                    model.id == change.entity_id,
+                    model.lab_id == lab_id,
+                )
+                .first()
+            )
             if existing and change.action == "upsert":
                 remote_updated = change.data.get("updated_at", "")
                 local_updated = existing.updated_at.isoformat() if existing.updated_at else ""
@@ -208,11 +216,22 @@ class OfflineService:
                 applied += 1
             change_in_db = db.query(OfflineChange).filter(OfflineChange.id == change.id).first()
             if change_in_db:
-                change_in_db.sync_status = SyncStatus.CONFLICT if conflicts > 0 else SyncStatus.SYNCED
+                change_in_db.sync_status = (
+                    SyncStatus.CONFLICT if conflicts > 0 else SyncStatus.SYNCED
+                )
         db.flush()
-        log_action(db, "nhdw.sync.apply_batch", 0, lab_id, user_id, {
-            "applied": applied, "conflicts": conflicts, "device_id": batch.device_id,
-        })
+        log_action(
+            db,
+            "nhdw.sync.apply_batch",
+            0,
+            lab_id,
+            user_id,
+            {
+                "applied": applied,
+                "conflicts": conflicts,
+                "device_id": batch.device_id,
+            },
+        )
         return {"applied": applied, "conflicts": conflicts}
 
     @staticmethod
@@ -226,12 +245,19 @@ class OfflineService:
         local_ts = local_data.get("updated_at", "")
         remote_ts = remote_data.get("updated_at", "")
         winner = remote_data if remote_ts >= local_ts else local_data
-        log_action(db, "nhdw.sync.resolve_conflict", 0, lab_id, user_id, {
-            "strategy": "last_write_wins",
-            "local_timestamp": local_ts,
-            "remote_timestamp": remote_ts,
-            "winner": "remote" if remote_ts >= local_ts else "local",
-        })
+        log_action(
+            db,
+            "nhdw.sync.resolve_conflict",
+            0,
+            lab_id,
+            user_id,
+            {
+                "strategy": "last_write_wins",
+                "local_timestamp": local_ts,
+                "remote_timestamp": remote_ts,
+                "winner": "remote" if remote_ts >= local_ts else "local",
+            },
+        )
         return winner
 
     @staticmethod
@@ -243,11 +269,18 @@ class OfflineService:
         since: datetime | None = None,
     ) -> SyncBatch:
         tables = entity_types or [
-            "nhdw_admissions", "nhdw_discharges", "nhdw_transfers",
-            "nhdw_queue_entries", "nhdw_waiting_list_entries",
-            "nhdw_clinical_tasks", "nhdw_ward_rounds", "nhdw_care_plans",
-            "nhdw_hospital_alerts", "nhdw_hospital_messages",
-            "nhdw_telemedicine_sessions", "nhdw_resource_schedules",
+            "nhdw_admissions",
+            "nhdw_discharges",
+            "nhdw_transfers",
+            "nhdw_queue_entries",
+            "nhdw_waiting_list_entries",
+            "nhdw_clinical_tasks",
+            "nhdw_ward_rounds",
+            "nhdw_care_plans",
+            "nhdw_hospital_alerts",
+            "nhdw_hospital_messages",
+            "nhdw_telemedicine_sessions",
+            "nhdw_resource_schedules",
             "nhdw_shift_reports",
         ]
         sync_from = since or datetime(2000, 1, 1, tzinfo=UTC)
@@ -256,10 +289,14 @@ class OfflineService:
             model = _get_model_class(table_name)
             if model is None:
                 continue
-            records = db.query(model).filter(
-                model.lab_id == lab_id,
-                model.updated_at >= sync_from,
-            ).all()
+            records = (
+                db.query(model)
+                .filter(
+                    model.lab_id == lab_id,
+                    model.updated_at >= sync_from,
+                )
+                .all()
+            )
             for rec in records:
                 data = {}
                 for col in rec.__table__.columns:

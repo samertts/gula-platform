@@ -1,5 +1,4 @@
-class CommandCenterError(Exception):
-    ...
+class CommandCenterError(Exception): ...
 
 
 class EmergencyNotFoundError(CommandCenterError):

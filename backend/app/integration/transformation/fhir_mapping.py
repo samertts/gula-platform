@@ -89,8 +89,12 @@ class FHIRMappingEngine:
                     current[part] = {}
                 current = current[part]
 
-    def create_bundle(self, resources: list[dict[str, Any]], bundle_type: str = "collection") -> dict[str, Any]:
+    def create_bundle(
+        self, resources: list[dict[str, Any]], bundle_type: str = "collection"
+    ) -> dict[str, Any]:
         return FHIRBundle(
             type=bundle_type,
-            entry=[FHIRBundle(resource=r) for r in resources] if hasattr(FHIRBundle, "entry") else [{"resource": r} for r in resources],
+            entry=[FHIRBundle(resource=r) for r in resources]
+            if hasattr(FHIRBundle, "entry")
+            else [{"resource": r} for r in resources],
         )

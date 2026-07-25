@@ -21,6 +21,7 @@ class TestObservabilityHealth:
     def test_is_ready_after_boot(self):
         import app.kernel.integration as kintegration
         from app.kernel.integration import _kernel_instance as ki
+
         kintegration._kernel_instance = None
         config = KernelConfig(environment="test")
         kernel = init_kernel(config=config)
@@ -46,6 +47,7 @@ class TestObservabilityHealth:
 class TestObservabilityLiveness:
     def test_uptime_increases(self):
         import time
+
         kernel = Kernel()
         assert kernel.uptime == 0.0
         asyncio.run(kernel.boot())
@@ -78,10 +80,18 @@ class TestObservabilityComponents:
         kernel = Kernel()
         asyncio.run(kernel.boot())
         expected = [
-            "application_context", "di_container", "service_registry",
-            "capability_registry", "lifecycle_manager", "module_loader",
-            "plugin_manager", "event_bus", "scheduler", "config_registry",
-            "tenant_registry", "service_discovery",
+            "application_context",
+            "di_container",
+            "service_registry",
+            "capability_registry",
+            "lifecycle_manager",
+            "module_loader",
+            "plugin_manager",
+            "event_bus",
+            "scheduler",
+            "config_registry",
+            "tenant_registry",
+            "service_discovery",
         ]
         for comp in expected:
             assert kernel.get_component(comp) is not None, f"Missing component: {comp}"

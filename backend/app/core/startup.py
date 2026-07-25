@@ -17,6 +17,7 @@ from app.config import RUNTIME_MODE, background_tasks_enabled
 
 logger = logging.getLogger("gula")
 
+
 # ===== HEALTH ALERT WATCHDOG =====
 async def _health_alert_loop():
     """Background coroutine: comprehensive health monitoring with thresholds.
@@ -133,7 +134,11 @@ async def _health_alert_loop():
             if should_alert:
                 import httpx as _hx
 
-                emoji = "\U0001f534" if grade == "RED" else ("\U0001f7e1" if grade == "YELLOW" else "\u2705")
+                emoji = (
+                    "\U0001f534"
+                    if grade == "RED"
+                    else ("\U0001f7e1" if grade == "YELLOW" else "\u2705")
+                )
                 red_dur = ""
                 if grade == "RED" and _red_since > 0:
                     red_dur = f" ({int(now_mono - _red_since)}s in RED)"

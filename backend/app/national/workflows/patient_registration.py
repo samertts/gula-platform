@@ -11,7 +11,14 @@ from app.national.workflows.base import (
 
 class PatientRegistrationWorkflow(WorkflowEngine[dict]):
     STATES = {
-        "initiated": ["identity_verification", "demographics_collection", "contact_info", "guardian_assignment", "consent_obtained", "completed"],
+        "initiated": [
+            "identity_verification",
+            "demographics_collection",
+            "contact_info",
+            "guardian_assignment",
+            "consent_obtained",
+            "completed",
+        ],
         "identity_verification": ["demographics_collection", "failed"],
         "demographics_collection": ["contact_info", "failed"],
         "contact_info": ["guardian_assignment", "failed"],

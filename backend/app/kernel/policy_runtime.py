@@ -103,7 +103,9 @@ class PolicyRuntime:
                 rule=core_action.value if hasattr(core_action, "value") else str(core_action),
                 decision=decision_value,
                 reason=core_decision.reason,
-                risk=core_decision.risk.value if hasattr(core_decision.risk, "value") else str(core_decision.risk),
+                risk=core_decision.risk.value
+                if hasattr(core_decision.risk, "value")
+                else str(core_decision.risk),
             )
             matches.append(match)
             matched_policies.append("core_policy_engine")

@@ -33,7 +33,10 @@ class Claim(Base):
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     order_id = Column(
-        Integer, ForeignKey("lab_orders.id", ondelete="SET NULL"), nullable=True, index=True,
+        Integer,
+        ForeignKey("lab_orders.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     status = Column(String(30), nullable=False, default="draft")
@@ -63,7 +66,10 @@ class ClaimItem(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     claim_id = Column(
-        Integer, ForeignKey("claims.id", ondelete="CASCADE"), nullable=False, index=True,
+        Integer,
+        ForeignKey("claims.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     test_code = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)

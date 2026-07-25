@@ -34,9 +34,13 @@ class ConfigService:
         self._watchers.setdefault(key, []).append(callback)
 
 
-PlatformRegistry.register("config", ConfigService(), capabilities=[
-    {"name": "get", "description": "Get a configuration value by key"},
-    {"name": "set", "description": "Set a configuration value"},
-    {"name": "get_all", "description": "Get all configuration values"},
-    {"name": "watch", "description": "Register a callback for config changes"},
-])
+PlatformRegistry.register(
+    "config",
+    ConfigService(),
+    capabilities=[
+        {"name": "get", "description": "Get a configuration value by key"},
+        {"name": "set", "description": "Set a configuration value"},
+        {"name": "get_all", "description": "Get all configuration values"},
+        {"name": "watch", "description": "Register a callback for config changes"},
+    ],
+)

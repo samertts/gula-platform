@@ -204,7 +204,9 @@ class DemandSignalBody(BaseModel):
 
 
 @router.post(
-    "/tiers/upgrade-demand", status_code=201, summary="Citizen signals demand for lab upgrade",
+    "/tiers/upgrade-demand",
+    status_code=201,
+    summary="Citizen signals demand for lab upgrade",
 )
 def submit_upgrade_demand(
     body: DemandSignalBody,
@@ -455,7 +457,9 @@ def set_feature_flag(
         try:
             expires = datetime.fromisoformat(body.expires_at)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid expires_at format (use ISO 8601)") from None
+            raise HTTPException(
+                status_code=400, detail="Invalid expires_at format (use ISO 8601)"
+            ) from None
 
     # Upsert feature flag
     flag = (

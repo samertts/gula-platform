@@ -20,9 +20,21 @@ class DigitalCertificate(IdentityBaseEntity):
 
     certificate_type = Column(String(50), nullable=False, index=True)
 
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="SET NULL"), nullable=True, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True)
-    machine_id = Column(String(26), ForeignKey("niam_machine_identities.id", ondelete="SET NULL"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    machine_id = Column(
+        String(26),
+        ForeignKey("niam_machine_identities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     public_key = Column(Text, nullable=False)
     private_key_encrypted = Column(Text, nullable=True)
@@ -45,7 +57,9 @@ class DigitalCertificate(IdentityBaseEntity):
     last_rotated_at = Column(DateTime(timezone=True), nullable=True)
     rotation_period_days = Column(Integer, nullable=True)
 
-    issuer_ca_id = Column(String(26), ForeignKey("niam_cert_certificates.id", ondelete="SET NULL"), nullable=True)
+    issuer_ca_id = Column(
+        String(26), ForeignKey("niam_cert_certificates.id", ondelete="SET NULL"), nullable=True
+    )
 
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -59,7 +73,12 @@ class CertificateAuthority(IdentityBaseEntity):
 
     ca_type = Column(String(20), nullable=False, index=True)
 
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     certificate = Column(Text, nullable=False)
     private_key_encrypted = Column(Text, nullable=True)
@@ -80,7 +99,9 @@ class CertificateAuthority(IdentityBaseEntity):
     issued_certificate_count = Column(Integer, default=0, nullable=False)
     revoked_certificate_count = Column(Integer, default=0, nullable=False)
 
-    parent_ca_id = Column(String(26), ForeignKey("niam_cert_authorities.id", ondelete="SET NULL"), nullable=True)
+    parent_ca_id = Column(
+        String(26), ForeignKey("niam_cert_authorities.id", ondelete="SET NULL"), nullable=True
+    )
 
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -91,7 +112,12 @@ class CertificateRevocationList(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     crl_id = Column(String(100), unique=True, nullable=False, index=True)
 
-    ca_id = Column(String(26), ForeignKey("niam_cert_authorities.id", ondelete="CASCADE"), nullable=False, index=True)
+    ca_id = Column(
+        String(26),
+        ForeignKey("niam_cert_authorities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     crl_number = Column(Integer, nullable=False)
     this_update = Column(DateTime(timezone=True), nullable=False)
@@ -116,9 +142,21 @@ class APIKey(IdentityBaseEntity):
 
     name = Column(String(200), nullable=False)
 
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
-    enterprise_account_id = Column(String(26), ForeignKey("niam_enterprise_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    enterprise_account_id = Column(
+        String(26),
+        ForeignKey("niam_enterprise_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     scopes = Column(JSON, nullable=True)
     permissions = Column(JSON, nullable=True)
@@ -128,7 +166,9 @@ class APIKey(IdentityBaseEntity):
 
     rate_limit = Column(Integer, nullable=True)
 
-    created_by = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True
+    )
 
     expires_at = Column(DateTime(timezone=True), nullable=True)
     last_used_at = Column(DateTime(timezone=True), nullable=True)

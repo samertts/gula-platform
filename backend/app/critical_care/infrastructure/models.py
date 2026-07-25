@@ -59,7 +59,9 @@ class ICUBedModel(TenantEntity):
 class ICUAssessmentModel(TenantAuditEntity):
     __tablename__ = "critical_care_assessments"
 
-    admission_id = Column(String(100), ForeignKey("critical_care_admissions.id"), nullable=True, index=True)
+    admission_id = Column(
+        String(100), ForeignKey("critical_care_admissions.id"), nullable=True, index=True,
+    )
     patient_id = Column(String(100), nullable=True)
     assessment_date = Column(DateTime(timezone=True), nullable=False)
     assessed_by = Column(String(200), nullable=True)

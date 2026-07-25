@@ -18,6 +18,7 @@ queries (DHIS2 raw SQL) are exercised via best-effort and skipped with a
 clear marker if dialect support is missing — the test still verifies
 auth + tenant scoping at the route layer.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -72,8 +73,7 @@ def _seed_chain_persisted(db, n: int = 1, **kwargs) -> list:
     base = {"user_id": 1, "user_role": "admin"}
     base.update(kwargs)
     for i in range(n):
-        log_action(db, action=f"seed_{i}", resource_type="patient",
-                   resource_id=i, **base)
+        log_action(db, action=f"seed_{i}", resource_type="patient", resource_id=i, **base)
         db.commit()
 
     entries = db.query(AuditLog).order_by(AuditLog.id.asc()).all()
@@ -89,21 +89,33 @@ def _seed_chain_persisted(db, n: int = 1, **kwargs) -> list:
 @pytest.fixture()
 def lab_with_data(db):
     """Single-lab fixture with patient, order, result, and an audit entry."""
-    lab = Lab(name="Compliance Lab", license_number="LIC-CMP",
-              lab_type="private", city="Baghdad", is_active=True)
+    lab = Lab(
+        name="Compliance Lab",
+        license_number="LIC-CMP",
+        lab_type="private",
+        city="Baghdad",
+        is_active=True,
+    )
     db.add(lab)
     db.flush()
 
     admin = LabUser(
-        lab_id=lab.id, name="Admin", email="admin@cmp.com",
-        password_hash=hash_password("Pa55word"), role="admin", is_active=True,
+        lab_id=lab.id,
+        name="Admin",
+        email="admin@cmp.com",
+        password_hash=hash_password("Pa55word"),
+        role="admin",
+        is_active=True,
     )
     db.add(admin)
     db.flush()
 
     patient = Patient(
-        lab_id=lab.id, full_name="Ahmed Patient", phone="07700111111",
-        health_id="HID-CMP-001", gender="male",
+        lab_id=lab.id,
+        full_name="Ahmed Patient",
+        phone="07700111111",
+        health_id="HID-CMP-001",
+        gender="male",
     )
     db.add(patient)
     db.flush()
@@ -113,15 +125,18 @@ def lab_with_data(db):
     db.flush()
 
     result = LabResult(
-        order_id=order.id, test_name="Glucose", value=120.0,
-        unit="mg/dL", normal_range_low=70.0, normal_range_high=100.0,
+        order_id=order.id,
+        test_name="Glucose",
+        value=120.0,
+        unit="mg/dL",
+        normal_range_low=70.0,
+        normal_range_high=100.0,
         flag="H",
     )
     db.add(result)
     db.commit()
 
-    return {"lab": lab, "admin": admin, "patient": patient,
-            "order": order, "result": result}
+    return {"lab": lab, "admin": admin, "patient": patient, "order": order, "result": result}
 
 
 # ─── Phase 2.A — Audit hash chain ────────────────────────────────────────────
@@ -214,8 +229,9 @@ class TestAuditIntegrityEndpoint:
         admin = lab_with_data["admin"]
         _seed_chain_persisted(db, n=2, user_id=admin.id)
 
-        res = client.get("/compliance/audit-integrity",
-                         headers=_hdr(admin.id, lab_with_data["lab"].id))
+        res = client.get(
+            "/compliance/audit-integrity", headers=_hdr(admin.id, lab_with_data["lab"].id)
+        )
         assert res.status_code == 200
         body = res.json()
         assert body["verified"] is True
@@ -232,8 +248,9 @@ class TestAuditIntegrityEndpoint:
         last.details = "FORGED CONTENT"
         db.commit()
 
-        res = client.get("/compliance/audit-integrity",
-                         headers=_hdr(admin.id, lab_with_data["lab"].id))
+        res = client.get(
+            "/compliance/audit-integrity", headers=_hdr(admin.id, lab_with_data["lab"].id)
+        )
         assert res.status_code == 200
         body = res.json()
         assert body["verified"] is False
@@ -244,14 +261,19 @@ class TestAuditIntegrityEndpoint:
         """Non-admin roles cannot view audit integrity."""
         # Make a technician
         tech = LabUser(
-            lab_id=lab_with_data["lab"].id, name="Tech",
-            email="tech@cmp.com", password_hash=hash_password("Pa55word"),
-            role="technician", is_active=True,
+            lab_id=lab_with_data["lab"].id,
+            name="Tech",
+            email="tech@cmp.com",
+            password_hash=hash_password("Pa55word"),
+            role="technician",
+            is_active=True,
         )
         db.add(tech)
         db.commit()
-        res = client.get("/compliance/audit-integrity",
-                         headers=_hdr(tech.id, lab_with_data["lab"].id, role="technician"))
+        res = client.get(
+            "/compliance/audit-integrity",
+            headers=_hdr(tech.id, lab_with_data["lab"].id, role="technician"),
+        )
         assert res.status_code == 403
 
 
@@ -283,7 +305,9 @@ class TestFhirPatient:
         assert body["gender"] in ("male", "female", "other", "unknown", None)
         # managingOrganization references the lab
         assert "managingOrganization" in body
-        assert body["managingOrganization"]["reference"] == f"Organization/{lab_with_data['lab'].id}"
+        assert (
+            body["managingOrganization"]["reference"] == f"Organization/{lab_with_data['lab'].id}"
+        )
 
     def test_fhir_patient_phone_in_telecom(self, client, lab_with_data):
         admin = lab_with_data["admin"]
@@ -402,6 +426,7 @@ class TestDhis2Aggregate:
         """
         from app.main import app
         from fastapi.testclient import TestClient
+
         with TestClient(app, raise_server_exceptions=False) as c:
             res = c.get("/compliance/dhis2/aggregate")
             assert res.status_code in (401, 403, 503)

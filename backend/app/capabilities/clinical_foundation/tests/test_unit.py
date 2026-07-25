@@ -9,6 +9,7 @@ class TestClinical_foundationCapability:
         from app.capabilities.clinical_foundation.capability import (
             Clinical_foundationCapability,
         )
+
         return Clinical_foundationCapability()
 
     @pytest.mark.asyncio

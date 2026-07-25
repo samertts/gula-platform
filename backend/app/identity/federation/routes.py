@@ -335,7 +335,9 @@ async def terminate_federated_session(
         return {"error": "not_found"}
     return {
         "session_id": fed_session.session_id,
-        "terminated_at": fed_session.terminated_at.isoformat() if fed_session.terminated_at else None,
+        "terminated_at": fed_session.terminated_at.isoformat()
+        if fed_session.terminated_at
+        else None,
     }
 
 

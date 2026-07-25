@@ -10,8 +10,10 @@ class Encounter_managementPermission(Enum):
     ADMIN = "encounter_management:encounter.admin"
 
     def describe(self) -> str:
-        descriptions = {        "encounter_management:encounter.read": "Encounter.Read",
-                "encounter_management:encounter.create": "Encounter.Create",
-                "encounter_management:encounter.update": "Encounter.Update",
-                "encounter_management:encounter.admin": "Encounter.Admin"}
+        descriptions = {
+            "encounter_management:encounter.read": "Encounter.Read",
+            "encounter_management:encounter.create": "Encounter.Create",
+            "encounter_management:encounter.update": "Encounter.Update",
+            "encounter_management:encounter.admin": "Encounter.Admin",
+        }
         return descriptions.get(self, self.value)

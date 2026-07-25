@@ -33,10 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415
         with: { version: 'v1.28.0' }
 
       - name: Configure kubeconfig

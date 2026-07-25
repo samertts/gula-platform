@@ -22,7 +22,9 @@ class ComponentRegistryModel(AuditEntity):
 class ReleaseModel(AuditEntity):
     __tablename__ = "lc_releases"
 
-    component_id = Column(String(26), ForeignKey("lc_component_registry.id"), nullable=False, index=True)
+    component_id = Column(
+        String(26), ForeignKey("lc_component_registry.id"), nullable=False, index=True,
+    )
     version = Column(String(50), nullable=False)
     channel = Column(String(50), default="stable")
     status = Column(String(50), default="draft")
@@ -68,7 +70,9 @@ class UpgradePathModel(AuditEntity):
 class DeprecationNoticeModel(AuditEntity):
     __tablename__ = "lc_deprecation_notices"
 
-    component_id = Column(String(26), ForeignKey("lc_component_registry.id"), nullable=False, index=True)
+    component_id = Column(
+        String(26), ForeignKey("lc_component_registry.id"), nullable=False, index=True,
+    )
     component_name = Column(String(200), nullable=True)
     current_version = Column(String(50), nullable=True)
     deprecation_policy = Column(String(50), default="notice_90_days")

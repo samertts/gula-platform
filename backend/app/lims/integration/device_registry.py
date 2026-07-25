@@ -16,7 +16,7 @@ class DeviceConnection:
 
     instrument_id: int
     instrument_code: str
-    protocol: str                      # astm, hl7, fhir, rest
+    protocol: str  # astm, hl7, fhir, rest
     host: str = ""
     port: int = 0
     connected: bool = False
@@ -38,7 +38,9 @@ class DeviceRegistry:
 
     def register(self, connection: DeviceConnection) -> None:
         self._connections[connection.instrument_id] = connection
-        logger.info("Device registered: %s (protocol=%s)", connection.instrument_code, connection.protocol)
+        logger.info(
+            "Device registered: %s (protocol=%s)", connection.instrument_code, connection.protocol,
+        )
 
     def unregister(self, instrument_id: int) -> None:
         self._connections.pop(instrument_id, None)

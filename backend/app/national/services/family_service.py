@@ -14,12 +14,17 @@ class FamilyService:
         return family
 
     async def add_member(self, family_id: str, member_data: dict[str, Any]) -> FamilyMember:
-        member = FamilyMember(family_id=family_id, **{k: v for k, v in member_data.items() if hasattr(FamilyMember, k)})
+        member = FamilyMember(
+            family_id=family_id,
+            **{k: v for k, v in member_data.items() if hasattr(FamilyMember, k)},
+        )
         events.emit("national.family.member_added", {"family_id": family_id, **member_data})
         return member
 
     async def remove_member(self, family_id: str, member_id: str) -> None:
-        events.emit("national.family.member_removed", {"family_id": family_id, "member_id": member_id})
+        events.emit(
+            "national.family.member_removed", {"family_id": family_id, "member_id": member_id},
+        )
 
     async def get_family(self, family_id: str) -> Family:
         family = Family.query.get(family_id)

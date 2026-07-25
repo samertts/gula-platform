@@ -10,7 +10,12 @@ class HealthCard(TenantAuditEntity):
 
     status = Column(SAEnum(HealthCardStatus), nullable=False, default=HealthCardStatus.ACTIVE)
 
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     health_number = Column(String(20), nullable=False, index=True)
 
     card_number = Column(String(50), nullable=False, unique=True, index=True)

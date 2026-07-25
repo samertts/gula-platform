@@ -3,7 +3,7 @@ name: Blue-Green Deploy (Kubernetes)
 # Triggered after CI build-and-push succeeds on main
 on:
   workflow_run:
-    workflows: ["CI - Build, Test & Security Scan"]
+    workflows: ["CI Pipeline"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       # ── Resolve image tag ─────────────────────────────────────────────────
       - name: Resolve image tag
@@ -84,7 +84,7 @@ jobs:
 
       # ── Setup kubectl ─────────────────────────────────────────────────────
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415
         with:
           version: "v1.28.0"
 
@@ -122,7 +122,7 @@ jobs:
 
       # ── Log in to GHCR ───────────────────────────────────────────────────
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -271,7 +271,7 @@ jobs:
     needs: blue-green-deploy
     steps:
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415
         with:
           version: "v1.28.0"
 

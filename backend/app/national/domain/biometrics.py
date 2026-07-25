@@ -9,7 +9,12 @@ class BiometricRecord(AuditEntity):
     __tablename__ = "national_biometrics"
 
     biometric_type = Column(SAEnum(BiometricType), nullable=False)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
 
     data_hash = Column(String(255), nullable=False)
     data_url = Column(String(1000), nullable=True)

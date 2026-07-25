@@ -32,6 +32,7 @@ class PaddleOcrProvider(OcrProviderBase):
     def version(self) -> str:
         try:
             import paddleocr
+
             return paddleocr.__version__
         except Exception:
             return "unknown"
@@ -39,6 +40,7 @@ class PaddleOcrProvider(OcrProviderBase):
     async def initialize(self) -> None:
         try:
             from paddleocr import PaddleOCR
+
             self._ocr = PaddleOCR(
                 use_angle_cls=True,
                 lang="ar",
@@ -65,7 +67,9 @@ class PaddleOcrProvider(OcrProviderBase):
         ]
 
     async def ocr_image(
-        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        image_data: bytes,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         if not self._initialized:
             await self.initialize()
@@ -93,11 +97,10 @@ class PaddleOcrProvider(OcrProviderBase):
                             confidences.append(float(confidence))
 
                 page.text = " ".join(text_parts)
-                page.confidence = (
-                    sum(confidences) / len(confidences) if confidences else 0.0
-                )
+                page.confidence = sum(confidences) / len(confidences) if confidences else 0.0
             finally:
                 import os
+
                 os.unlink(tmp_path)
 
         except Exception as exc:
@@ -108,6 +111,8 @@ class PaddleOcrProvider(OcrProviderBase):
         return page
 
     async def ocr_image_path(
-        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        image_path: Path,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         return await self.ocr_image(image_path.read_bytes(), language)

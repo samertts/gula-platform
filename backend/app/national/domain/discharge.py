@@ -10,14 +10,44 @@ class Discharge(TenantAuditEntity):
 
     discharge_type = Column(SAEnum(DischargeType), nullable=False)
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    admission_id = Column(String(26), ForeignKey("national_admissions.id", ondelete="RESTRICT"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    admission_id = Column(
+        String(26),
+        ForeignKey("national_admissions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    hospital_id = Column(String(26), ForeignKey("national_hospitals.id", ondelete="RESTRICT"), nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    hospital_id = Column(
+        String(26),
+        ForeignKey("national_hospitals.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    discharging_practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    discharging_practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     discharge_date = Column(DateTime(timezone=True), nullable=False)
 
     discharge_summary = Column(Text, nullable=True)

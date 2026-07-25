@@ -28,7 +28,9 @@ class TestModuleDependencyResolver:
     def test_resolve_order(self):
         resolver = ModuleDependencyResolver()
         m1 = ModuleDescriptor(name="base", version="1.0", path="/tmp")
-        m2 = ModuleDescriptor(name="extended", version="1.0", path="/tmp", dependencies={"base": "1.0"})
+        m2 = ModuleDescriptor(
+            name="extended", version="1.0", path="/tmp", dependencies={"base": "1.0"}
+        )
         ordered = resolver.resolve_order([m2, m1])
         assert ordered[0].name == "base"
         assert ordered[1].name == "extended"
@@ -56,7 +58,9 @@ class TestModuleMetadata:
             mod_dir = os.path.join(tmpdir, "test_mod")
             os.makedirs(mod_dir)
             with open(os.path.join(mod_dir, "module.json"), "w") as f:
-                json.dump({"name": "test_mod", "version": "3.0.0", "dependencies": {"base": "1.0"}}, f)
+                json.dump(
+                    {"name": "test_mod", "version": "3.0.0", "dependencies": {"base": "1.0"}}, f
+                )
             parser = ModuleMetadataParser()
             desc = parser.parse(mod_dir)
             assert desc.name == "test_mod"

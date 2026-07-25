@@ -20,6 +20,7 @@ and common dashboard/reporting queries.
 6. ix_lab_orders_lab_created   — (lab_orders.lab_id, lab_orders.created_at DESC)
    Covers order-count queries by lab scoped to time windows.
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.engine.reflection import Inspector

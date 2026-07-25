@@ -77,7 +77,9 @@ class HealthNumberGovernanceService:
             issued_by,
             f"Reissued as {new_number}",
         )
-        self._audit(new_number, "issued", None, "active", issued_by, f"Replacement for {health_number}")
+        self._audit(
+            new_number, "issued", None, "active", issued_by, f"Replacement for {health_number}"
+        )
         return new_number
 
     def merge_identities(

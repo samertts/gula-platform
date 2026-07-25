@@ -60,9 +60,11 @@ class TestFinancialModels:
 class TestFinancialRoutes:
     def test_router_prefix(self) -> None:
         from app.financial.routes import router
+
         assert router.prefix == "/financial"
         assert len(router.routes) >= 2
 
     def test_register_routes_imports(self) -> None:
         from app.financial import register_routes
+
         assert callable(register_routes)

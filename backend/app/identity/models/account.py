@@ -25,7 +25,9 @@ class Account(IdentityBaseEntity):
     __tablename__ = "niam_accounts"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    identity_id = Column(String(26), ForeignKey("niam_identities.id", ondelete="CASCADE"), nullable=False, index=True)
+    identity_id = Column(
+        String(26), ForeignKey("niam_identities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     account_type = Column(String(20), default="human", nullable=False)
     status = Column(String(30), default="pending_verification", nullable=False, index=True)

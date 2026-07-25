@@ -86,7 +86,8 @@ class TaskQueue:
         while True:
             try:
                 _, _, task = await asyncio.wait_for(
-                    self._queue.get(), timeout=1.0,
+                    self._queue.get(),
+                    timeout=1.0,
                 )
                 _task = asyncio.create_task(self._execute_task(task))
                 self._active_tasks.add(_task)

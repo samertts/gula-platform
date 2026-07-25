@@ -40,8 +40,7 @@ class DimensionEvaluator(ABC):
         self.remediations: list[Remediation] = []
 
     @abstractmethod
-    def evaluate(self, module_path: str | None = None) -> DimensionResult:
-        ...
+    def evaluate(self, module_path: str | None = None) -> DimensionResult: ...
 
     def _add_evidence(
         self,
@@ -52,7 +51,9 @@ class DimensionEvaluator(ABC):
     ) -> None:
         self.evidence.append(Evidence(name=name, value=value, source=source, passed=passed))
 
-    def _add_remediation(self, message: str, severity: str = "medium", effort: str = "medium") -> None:
+    def _add_remediation(
+        self, message: str, severity: str = "medium", effort: str = "medium",
+    ) -> None:
         self.remediations.append(Remediation(severity=severity, message=message, effort=effort))
 
     def _result(self, score: float) -> DimensionResult:

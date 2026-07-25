@@ -41,20 +41,15 @@ def run_server():
     s.bind((HOST, PORT))
     s.listen(5)
 
-
     while True:
-
         conn, _addr = s.accept()
 
         data = conn.recv(1024).decode()
 
-
         parsed = parse_message(data)
 
         if parsed:
-
             send_result(parsed)
-
 
         conn.close()
 

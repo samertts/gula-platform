@@ -25,9 +25,13 @@ def seed_organizations(
     created = 0
     try:
         for odef in orgs:
-            existing = db.query(Organization).filter(
-                Organization.org_id == odef.org_id,
-            ).first()
+            existing = (
+                db.query(Organization)
+                .filter(
+                    Organization.org_id == odef.org_id,
+                )
+                .first()
+            )
             if existing:
                 continue
             org = Organization(

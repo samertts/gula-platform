@@ -9,7 +9,9 @@ from backend.app.integration.connectors import BaseConnector, ConnectorRegistry
 
 logger = logging.getLogger("gula.integration.connectors.barcode")
 
-SUPPORTED_BARCODE_FORMATS = frozenset({"code128", "ean13", "ean8", "upca", "upce", "code39", "qrcode"})
+SUPPORTED_BARCODE_FORMATS = frozenset(
+    {"code128", "ean13", "ean8", "upca", "upce", "code39", "qrcode"}
+)
 
 
 class BarcodeConnector(BaseConnector):
@@ -64,7 +66,10 @@ class BarcodeConnector(BaseConnector):
         if not payload:
             return {"success": False, "error": "data required for barcode generation"}
         if format_type not in SUPPORTED_BARCODE_FORMATS:
-            return {"success": False, "error": f"Unsupported format: {format_type}. Supported: {', '.join(sorted(SUPPORTED_BARCODE_FORMATS))}"}
+            return {
+                "success": False,
+                "error": f"Unsupported format: {format_type}. Supported: {', '.join(sorted(SUPPORTED_BARCODE_FORMATS))}",
+            }
 
         try:
             if format_type == "qrcode":
@@ -104,9 +109,16 @@ class BarcodeConnector(BaseConnector):
             }
         except ImportError:
             logger.warning("qrcode library not installed, returning text representation")
-            return {"success": True, "format": "qrcode_text", "data": payload, "note": "qrcode library not available"}
+            return {
+                "success": True,
+                "format": "qrcode_text",
+                "data": payload,
+                "note": "qrcode library not available",
+            }
 
-    async def _generate_barcode(self, payload: str, format_type: str, width: int, height: int) -> dict[str, Any]:
+    async def _generate_barcode(
+        self, payload: str, format_type: str, width: int, height: int
+    ) -> dict[str, Any]:
         try:
             from io import BytesIO
 
@@ -139,7 +151,12 @@ class BarcodeConnector(BaseConnector):
             }
         except ImportError:
             logger.warning("python-barcode library not installed")
-            return {"success": True, "format": f"{format_type}_text", "data": payload, "note": "python-barcode library not available"}
+            return {
+                "success": True,
+                "format": f"{format_type}_text",
+                "data": payload,
+                "note": "python-barcode library not available",
+            }
 
     async def _scan(self, data: dict[str, Any]) -> dict[str, Any]:
         image_data = data.get("image", "")
@@ -160,20 +177,26 @@ class BarcodeConnector(BaseConnector):
             decoded = pyzbar.decode(image)
             results = []
             for obj in decoded:
-                results.append({
-                    "data": obj.data.decode("utf-8"),
-                    "type": obj.type,
-                    "rect": {
-                        "left": obj.rect.left,
-                        "top": obj.rect.top,
-                        "width": obj.rect.width,
-                        "height": obj.rect.height,
-                    },
-                })
+                results.append(
+                    {
+                        "data": obj.data.decode("utf-8"),
+                        "type": obj.type,
+                        "rect": {
+                            "left": obj.rect.left,
+                            "top": obj.rect.top,
+                            "width": obj.rect.width,
+                            "height": obj.rect.height,
+                        },
+                    }
+                )
             return {"success": True, "results": results, "count": len(results)}
         except ImportError:
             logger.warning("pyzbar or PIL not installed, returning placeholder")
-            return {"success": True, "note": "barcode scanning libraries not available", "results": []}
+            return {
+                "success": True,
+                "note": "barcode scanning libraries not available",
+                "results": [],
+            }
         except Exception as exc:
             logger.error("Barcode scanning failed: %s", exc)
             return {"success": False, "error": str(exc)}

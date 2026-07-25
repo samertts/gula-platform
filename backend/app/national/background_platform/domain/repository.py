@@ -14,7 +14,6 @@ from app.national.background_platform.domain.enums import JobCategory, JobPriori
 
 
 class JobRepository(ABC):
-
     @abstractmethod
     async def save(self, job: JobDefinition) -> JobDefinition: ...
 
@@ -69,7 +68,6 @@ class JobRepository(ABC):
 
 
 class JobScheduleRepository(ABC):
-
     @abstractmethod
     async def save(self, schedule: JobSchedule) -> JobSchedule: ...
 
@@ -105,7 +103,6 @@ class JobScheduleRepository(ABC):
 
 
 class JobExecutionRepository(ABC):
-
     @abstractmethod
     async def save(self, execution: JobExecution) -> JobExecution: ...
 
@@ -140,7 +137,6 @@ class JobExecutionRepository(ABC):
 
 
 class JobDependencyRepository(ABC):
-
     @abstractmethod
     async def save(self, dependency: JobDependency) -> JobDependency: ...
 

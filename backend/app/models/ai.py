@@ -40,10 +40,15 @@ class AIConversation(Base):
     extra_metadata = Column("metadata", JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     updated_at = Column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC),
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
-    messages = relationship("AIConversationMessage", back_populates="conversation", cascade="all, delete-orphan")
+    messages = relationship(
+        "AIConversationMessage", back_populates="conversation", cascade="all, delete-orphan",
+    )
 
 
 class AIConversationMessage(Base):
@@ -124,7 +129,10 @@ class AIModelRegistry(Base):
     cost_per_1k_output = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     updated_at = Column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC),
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 

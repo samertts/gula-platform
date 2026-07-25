@@ -264,7 +264,9 @@ class PerformanceOptimizer:
     def get_cache(self, name: str) -> AdaptiveCache | None:
         return self._caches.get(name)
 
-    def create_scaler(self, name: str, min_workers: int = 1, max_workers: int = 10) -> DynamicScaler:
+    def create_scaler(
+        self, name: str, min_workers: int = 1, max_workers: int = 10,
+    ) -> DynamicScaler:
         scaler = DynamicScaler(name=name, min_workers=min_workers, max_workers=max_workers)
         self._scalers[name] = scaler
         return scaler
@@ -272,7 +274,9 @@ class PerformanceOptimizer:
     def get_scaler(self, name: str) -> DynamicScaler | None:
         return self._scalers.get(name)
 
-    def create_connection_optimizer(self, name: str, min_pool: int = 2, max_pool: int = 20) -> ConnectionOptimizer:
+    def create_connection_optimizer(
+        self, name: str, min_pool: int = 2, max_pool: int = 20,
+    ) -> ConnectionOptimizer:
         opt = ConnectionOptimizer(name=name, min_pool=min_pool, max_pool=max_pool)
         self._connection_optimizers[name] = opt
         return opt

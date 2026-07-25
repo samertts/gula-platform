@@ -6,7 +6,12 @@ from app.national.base import AuditEntity
 class DeathRecord(AuditEntity):
     __tablename__ = "national_death_records"
 
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     deceased_name = Column(String(200), nullable=False)
     national_id_hash = Column(String(255), nullable=True)
     health_number = Column(String(20), nullable=True, index=True)
@@ -20,7 +25,12 @@ class DeathRecord(AuditEntity):
     death_certificate_issuer = Column(String(200), nullable=True)
     death_certificate_issued_at = Column(DateTime(timezone=True), nullable=True)
 
-    attending_practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    attending_practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     attending_practitioner_name = Column(String(200), nullable=True)
 
     is_verified = Column(Boolean, default=False)

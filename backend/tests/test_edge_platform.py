@@ -8,6 +8,7 @@ Covers:
   - Policy upsert + kind allow/deny enforcement
   - Stale task reaper
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -29,6 +30,7 @@ def _auth(user_id: int, lab_id: int, role: str = "admin") -> dict:
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def lab(make_lab):
@@ -53,6 +55,7 @@ def public_key_pem():
 
 # ── identity helpers ─────────────────────────────────────────────────────────
 
+
 def test_new_device_id_is_unique_and_prefixed():
     a = identity.new_device_id()
     b = identity.new_device_id()
@@ -72,17 +75,19 @@ def test_task_signature_round_trip():
     payload = {"text": "hello", "model": "qwen2:1.5b"}
     sig = identity.sign_task(uid, "ai.translate", payload)
     assert identity.verify_task_signature(uid, "ai.translate", payload, sig)
-    assert not identity.verify_task_signature(uid, "ai.translate",
-                                              {"text": "tampered"}, sig)
+    assert not identity.verify_task_signature(uid, "ai.translate", {"text": "tampered"}, sig)
 
 
 # ── registry ─────────────────────────────────────────────────────────────────
 
-def test_register_device_creates_active_after_heartbeat(db, lab, admin_user,
-                                                        public_key_pem):
+
+def test_register_device_creates_active_after_heartbeat(db, lab, admin_user, public_key_pem):
     d = registry.register_device(
-        db, lab_id=lab.id, owner_user_id=admin_user.id,
-        public_key_pem=public_key_pem, role_mode="personal",
+        db,
+        lab_id=lab.id,
+        owner_user_id=admin_user.id,
+        public_key_pem=public_key_pem,
+        role_mode="personal",
     )
     assert d.status == "pending"
     assert d.cert_fingerprint and d.cert_fingerprint.startswith("sha256:")
@@ -95,19 +100,32 @@ def test_register_device_creates_active_after_heartbeat(db, lab, admin_user,
 
 
 def test_register_rejects_duplicate_public_key(db, lab, admin_user, public_key_pem):
-    registry.register_device(db, lab_id=lab.id, owner_user_id=admin_user.id,
-                             public_key_pem=public_key_pem, role_mode="personal")
+    registry.register_device(
+        db,
+        lab_id=lab.id,
+        owner_user_id=admin_user.id,
+        public_key_pem=public_key_pem,
+        role_mode="personal",
+    )
     db.commit()
     with pytest.raises(registry.RegistryError):
-        registry.register_device(db, lab_id=lab.id, owner_user_id=admin_user.id,
-                                 public_key_pem=public_key_pem,
-                                 role_mode="personal")
+        registry.register_device(
+            db,
+            lab_id=lab.id,
+            owner_user_id=admin_user.id,
+            public_key_pem=public_key_pem,
+            role_mode="personal",
+        )
 
 
 def test_quarantine_then_reinstate(db, lab, admin_user, public_key_pem):
-    d = registry.register_device(db, lab_id=lab.id, owner_user_id=admin_user.id,
-                                 public_key_pem=public_key_pem,
-                                 role_mode="personal")
+    d = registry.register_device(
+        db,
+        lab_id=lab.id,
+        owner_user_id=admin_user.id,
+        public_key_pem=public_key_pem,
+        role_mode="personal",
+    )
     registry.heartbeat(db, device_id=d.device_id)
     db.commit()
     registry.quarantine(db, d, reason="manual review", actor_user_id=admin_user.id)
@@ -119,9 +137,13 @@ def test_quarantine_then_reinstate(db, lab, admin_user, public_key_pem):
 
 
 def test_revoked_device_cannot_be_reinstated(db, lab, admin_user, public_key_pem):
-    d = registry.register_device(db, lab_id=lab.id, owner_user_id=admin_user.id,
-                                 public_key_pem=public_key_pem,
-                                 role_mode="personal")
+    d = registry.register_device(
+        db,
+        lab_id=lab.id,
+        owner_user_id=admin_user.id,
+        public_key_pem=public_key_pem,
+        role_mode="personal",
+    )
     registry.heartbeat(db, device_id=d.device_id)
     registry.revoke(db, d, reason="lost device", actor_user_id=admin_user.id)
     db.commit()
@@ -131,10 +153,15 @@ def test_revoked_device_cannot_be_reinstated(db, lab, admin_user, public_key_pem
 
 # ── trust ────────────────────────────────────────────────────────────────────
 
+
 def test_trust_score_clamps_and_logs_event(db, lab, admin_user, public_key_pem):
-    d = registry.register_device(db, lab_id=lab.id, owner_user_id=admin_user.id,
-                                 public_key_pem=public_key_pem,
-                                 role_mode="personal")
+    d = registry.register_device(
+        db,
+        lab_id=lab.id,
+        owner_user_id=admin_user.id,
+        public_key_pem=public_key_pem,
+        role_mode="personal",
+    )
     db.commit()
     starting = d.trust_score
     new = trust_mod.adjust(db, d, reason="task_completed", actor_user_id=None)
@@ -142,9 +169,13 @@ def test_trust_score_clamps_and_logs_event(db, lab, admin_user, public_key_pem):
 
 
 def test_attestation_failure_quarantines(db, lab, admin_user, public_key_pem):
-    d = registry.register_device(db, lab_id=lab.id, owner_user_id=admin_user.id,
-                                 public_key_pem=public_key_pem,
-                                 role_mode="personal")
+    d = registry.register_device(
+        db,
+        lab_id=lab.id,
+        owner_user_id=admin_user.id,
+        public_key_pem=public_key_pem,
+        role_mode="personal",
+    )
     registry.heartbeat(db, device_id=d.device_id)
     db.commit()
     # one big hit
@@ -161,12 +192,16 @@ def test_privacy_floor_blocks_low_trust():
 
 # ── scheduler ────────────────────────────────────────────────────────────────
 
+
 def _make_active_device(db, lab, admin_user, pem_key, *, trust=80.0):
-    d = registry.register_device(db, lab_id=lab.id, owner_user_id=admin_user.id,
-                                 public_key_pem=pem_key,
-                                 role_mode="personal",
-                                 capabilities={"kinds": list(
-                                     edge_config.ALLOWED_TASK_KINDS)})
+    d = registry.register_device(
+        db,
+        lab_id=lab.id,
+        owner_user_id=admin_user.id,
+        public_key_pem=pem_key,
+        role_mode="personal",
+        capabilities={"kinds": list(edge_config.ALLOWED_TASK_KINDS)},
+    )
     registry.heartbeat(db, device_id=d.device_id)
     d.trust_score = trust
     db.commit()
@@ -176,7 +211,9 @@ def _make_active_device(db, lab, admin_user, pem_key, *, trust=80.0):
 def test_submit_and_claim_round_trip(db, lab, admin_user, public_key_pem):
     d = _make_active_device(db, lab, admin_user, public_key_pem)
     t = scheduler.submit_task(
-        db, lab_id=lab.id, kind="ai.translate",
+        db,
+        lab_id=lab.id,
+        kind="ai.translate",
         payload={"text": "hello", "target": "ar"},
         submitted_by_user_id=admin_user.id,
     )
@@ -196,8 +233,11 @@ def test_submit_and_claim_round_trip(db, lab, admin_user, public_key_pem):
 def test_phi_task_blocked_for_low_trust_device(db, lab, admin_user, public_key_pem):
     d = _make_active_device(db, lab, admin_user, public_key_pem, trust=50.0)
     t = scheduler.submit_task(
-        db, lab_id=lab.id, kind="ai.summarize_report",
-        privacy_level="phi", payload={"text": "x"},
+        db,
+        lab_id=lab.id,
+        kind="ai.summarize_report",
+        privacy_level="phi",
+        payload={"text": "x"},
     )
     db.commit()
     claimed = scheduler.claim_next_task(db, d)
@@ -206,15 +246,12 @@ def test_phi_task_blocked_for_low_trust_device(db, lab, admin_user, public_key_p
 
 def test_reject_unknown_kind(db, lab):
     with pytest.raises(scheduler.SchedulerError):
-        scheduler.submit_task(db, lab_id=lab.id, kind="some.evil.kind",
-                              payload={})
+        scheduler.submit_task(db, lab_id=lab.id, kind="some.evil.kind", payload={})
 
 
 def test_idempotency_returns_existing(db, lab, admin_user, public_key_pem):
-    t1 = scheduler.submit_task(db, lab_id=lab.id, kind="diag.ping",
-                               idempotency_key="abc123")
-    t2 = scheduler.submit_task(db, lab_id=lab.id, kind="diag.ping",
-                               idempotency_key="abc123")
+    t1 = scheduler.submit_task(db, lab_id=lab.id, kind="diag.ping", idempotency_key="abc123")
+    t2 = scheduler.submit_task(db, lab_id=lab.id, kind="diag.ping", idempotency_key="abc123")
     db.commit()
     assert t1.task_uid == t2.task_uid
 
@@ -253,8 +290,7 @@ def test_fail_task_requeues_until_max_attempts(db, lab, admin_user, public_key_p
 
 def test_sweep_stale_marks_timeouts(db, lab, admin_user, public_key_pem):
     d = _make_active_device(db, lab, admin_user, public_key_pem)
-    scheduler.submit_task(db, lab_id=lab.id, kind="diag.ping",
-                          timeout_s=5)
+    scheduler.submit_task(db, lab_id=lab.id, kind="diag.ping", timeout_s=5)
     db.commit()
     t = scheduler.claim_next_task(db, d)
     db.commit()
@@ -268,6 +304,7 @@ def test_sweep_stale_marks_timeouts(db, lab, admin_user, public_key_pem):
 
 # ── policy ───────────────────────────────────────────────────────────────────
 
+
 def test_policy_default_when_unset(db, lab):
     pol = policy_mod.get_policy(db, lab.id)
     assert pol.max_concurrent_per_device == 2
@@ -275,8 +312,9 @@ def test_policy_default_when_unset(db, lab):
 
 
 def test_policy_upsert_and_kind_filter(db, lab, admin_user, public_key_pem):
-    policy_mod.upsert_policy(db, lab_id=lab.id, actor_user_id=admin_user.id,
-                             deny_kinds=["ai.embed"])
+    policy_mod.upsert_policy(
+        db, lab_id=lab.id, actor_user_id=admin_user.id, deny_kinds=["ai.embed"]
+    )
     db.commit()
     pol = policy_mod.get_policy(db, lab.id)
     assert pol.deny_kinds == ["ai.embed"]
@@ -289,8 +327,7 @@ def test_policy_upsert_and_kind_filter(db, lab, admin_user, public_key_pem):
 
 
 def test_kill_switch_blocks_submit(db, lab, admin_user):
-    policy_mod.upsert_policy(db, lab_id=lab.id, actor_user_id=admin_user.id,
-                             kill_switch=True)
+    policy_mod.upsert_policy(db, lab_id=lab.id, actor_user_id=admin_user.id, kill_switch=True)
     db.commit()
     with pytest.raises(scheduler.SchedulerError):
         scheduler.submit_task(db, lab_id=lab.id, kind="diag.ping")
@@ -298,14 +335,16 @@ def test_kill_switch_blocks_submit(db, lab, admin_user):
 
 # ── governance / canary rollout ──────────────────────────────────────────────
 
+
 def test_register_model_lifecycle(db, admin_user):
-    m = governance.register_model(db, name="qwen2", version="1.5b-q4",
-                                  size_mb=1024.0, actor_user_id=admin_user.id)
+    m = governance.register_model(
+        db, name="qwen2", version="1.5b-q4", size_mb=1024.0, actor_user_id=admin_user.id
+    )
     db.commit()
     assert m.status == "draft"
-    governance.set_model_status(db, model_uid=m.model_uid,
-                                status="active", rollout_pct=100.0,
-                                actor_user_id=admin_user.id)
+    governance.set_model_status(
+        db, model_uid=m.model_uid, status="active", rollout_pct=100.0, actor_user_id=admin_user.id
+    )
     db.commit()
     assert m.status == "active"
     assert m.rollout_pct == 100.0
@@ -314,8 +353,7 @@ def test_register_model_lifecycle(db, admin_user):
 def test_pick_models_for_active_assignment(db, lab, admin_user, public_key_pem):
     d = _make_active_device(db, lab, admin_user, public_key_pem)
     m = governance.register_model(db, name="qwen2", version="1.5b-q4")
-    governance.set_model_status(db, model_uid=m.model_uid, status="active",
-                                rollout_pct=100.0)
+    governance.set_model_status(db, model_uid=m.model_uid, status="active", rollout_pct=100.0)
     governance.assign_model(db, model_uid=m.model_uid, lab_id=lab.id)
     db.commit()
     picks = governance.pick_models_for(db, d)
@@ -324,15 +362,20 @@ def test_pick_models_for_active_assignment(db, lab, admin_user, public_key_pem):
 
 # ── HTTP — operator API smoke ────────────────────────────────────────────────
 
+
 def test_http_register_and_list(client, db, lab, admin_user, public_key_pem):
 
     headers = _auth(admin_user.id, lab.id, "admin")
 
-    r = client.post("/edge/devices/register", json={
-        "public_key_pem": public_key_pem,
-        "role_mode": "personal",
-        "display_name": "test-pc",
-    }, headers=headers)
+    r = client.post(
+        "/edge/devices/register",
+        json={
+            "public_key_pem": public_key_pem,
+            "role_mode": "personal",
+            "display_name": "test-pc",
+        },
+        headers=headers,
+    )
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["device_id"].startswith("EDG")
@@ -343,16 +386,19 @@ def test_http_register_and_list(client, db, lab, admin_user, public_key_pem):
     assert any(d["device_id"] == body["device_id"] for d in r2.json())
 
 
-def test_http_agent_heartbeat_claims_task(client, db, lab, admin_user,
-                                          public_key_pem):
+def test_http_agent_heartbeat_claims_task(client, db, lab, admin_user, public_key_pem):
 
     headers = _auth(admin_user.id, lab.id, "admin")
 
-    reg = client.post("/edge/devices/register", json={
-        "public_key_pem": public_key_pem,
-        "role_mode": "personal",
-        "capabilities": {"kinds": ["diag.ping"]},
-    }, headers=headers).json()
+    reg = client.post(
+        "/edge/devices/register",
+        json={
+            "public_key_pem": public_key_pem,
+            "role_mode": "personal",
+            "capabilities": {"kinds": ["diag.ping"]},
+        },
+        headers=headers,
+    ).json()
     agent_token = reg["agent_token"]
 
     # Promote trust so default policy.min_trust_score (50) is met
@@ -361,31 +407,43 @@ def test_http_agent_heartbeat_claims_task(client, db, lab, admin_user,
     d.status = "active"
     db.commit()
 
-    sub = client.post("/edge/tasks", json={
-        "kind": "diag.ping",
-        "payload": {"hello": True},
-        "priority": 1,
-    }, headers=headers)
+    sub = client.post(
+        "/edge/tasks",
+        json={
+            "kind": "diag.ping",
+            "payload": {"hello": True},
+            "priority": 1,
+        },
+        headers=headers,
+    )
     assert sub.status_code == 201, sub.text
 
-    hb = client.post("/edge/agent/heartbeat", json={
-        "agent_version": "test", "telemetry": {"cpu_pct": 5.0},
-    }, headers={"Authorization": f"Bearer {agent_token}"})
+    hb = client.post(
+        "/edge/agent/heartbeat",
+        json={
+            "agent_version": "test",
+            "telemetry": {"cpu_pct": 5.0},
+        },
+        headers={"Authorization": f"Bearer {agent_token}"},
+    )
     assert hb.status_code == 200, hb.text
     body = hb.json()
     assert body["task"] is not None
     assert body["task"]["kind"] == "diag.ping"
 
 
-def test_http_agent_token_invalid_signature_rejected(client, db, lab,
-                                                     admin_user, public_key_pem):
+def test_http_agent_token_invalid_signature_rejected(client, db, lab, admin_user, public_key_pem):
 
     headers = _auth(admin_user.id, lab.id, "admin")
-    reg = client.post("/edge/devices/register", json={
-        "public_key_pem": public_key_pem, "role_mode": "personal",
-    }, headers=headers).json()
+    reg = client.post(
+        "/edge/devices/register",
+        json={
+            "public_key_pem": public_key_pem,
+            "role_mode": "personal",
+        },
+        headers=headers,
+    ).json()
 
     bad = reg["device_id"] + ".0000000000000000000000000000000000000000000000000000000000000000"
-    r = client.post("/edge/agent/heartbeat", json={},
-                    headers={"Authorization": f"Bearer {bad}"})
+    r = client.post("/edge/agent/heartbeat", json={}, headers={"Authorization": f"Bearer {bad}"})
     assert r.status_code == 401

@@ -29,5 +29,8 @@ class Lab(Base):
     patients = relationship("Patient", back_populates="lab", cascade="all, delete-orphan")
     orders = relationship("LabOrder", back_populates="lab", cascade="all, delete-orphan")
     subscription = relationship(
-        "LabSubscription", back_populates="lab", uselist=False, cascade="all, delete-orphan",
+        "LabSubscription",
+        back_populates="lab",
+        uselist=False,
+        cascade="all, delete-orphan",
     )

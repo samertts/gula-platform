@@ -65,7 +65,9 @@ class NationalTaskAssignmentModel(BaseEntity, NationalBase):
     assignee_id = Column(String(100), nullable=False, index=True)
     assigned_by = Column(String(100), nullable=True)
     assigned_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
     )
     assignment_strategy = Column(String(50), default="manual", nullable=True)
     accepted_at = Column(DateTime(timezone=True), nullable=True)
@@ -82,7 +84,9 @@ class NationalTaskEscalationModel(BaseEntity, NationalBase):
     escalated_by = Column(String(100), nullable=True)
     reason = Column(Text, nullable=True)
     escalated_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
     )
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(50), default="active", nullable=True)

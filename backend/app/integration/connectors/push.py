@@ -24,7 +24,9 @@ class PushNotificationConnector(BaseConnector):
         super().__init__(name, version, config)
         self._provider = self.config.get("provider", "fcm")
         if self._provider not in SUPPORTED_PROVIDERS:
-            raise ValueError(f"Unsupported push provider: {self._provider}. Supported: {', '.join(sorted(SUPPORTED_PROVIDERS))}")
+            raise ValueError(
+                f"Unsupported push provider: {self._provider}. Supported: {', '.join(sorted(SUPPORTED_PROVIDERS))}"
+            )
         self._fcm_server_key = self.config.get("fcm_server_key", "")
         self._apns_key_id = self.config.get("apns_key_id", "")
         self._apns_team_id = self.config.get("apns_team_id", "")
@@ -110,7 +112,9 @@ class PushNotificationConnector(BaseConnector):
             return await self._send_webpush(token, title, body, extra_data)
         return {"success": False, "error": f"Unsupported provider: {self._provider}"}
 
-    async def _send_fcm(self, token: str, title: str, body: str, extra_data: dict[str, Any]) -> dict[str, Any]:
+    async def _send_fcm(
+        self, token: str, title: str, body: str, extra_data: dict[str, Any]
+    ) -> dict[str, Any]:
         if not self._client:
             raise RuntimeError("Push connector not connected")
         payload = {
@@ -133,7 +137,9 @@ class PushNotificationConnector(BaseConnector):
                 success_count = result.get("success", 0)
                 return {
                     "success": success_count > 0,
-                    "message_id": result.get("results", [{}])[0].get("message_id", "") if result.get("results") else "",
+                    "message_id": result.get("results", [{}])[0].get("message_id", "")
+                    if result.get("results")
+                    else "",
                     "provider": "fcm",
                 }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -141,7 +147,9 @@ class PushNotificationConnector(BaseConnector):
             logger.error("FCM send failed: %s", exc)
             return {"success": False, "error": str(exc)}
 
-    async def _send_apns(self, token: str, title: str, body: str, extra_data: dict[str, Any]) -> dict[str, Any]:
+    async def _send_apns(
+        self, token: str, title: str, body: str, extra_data: dict[str, Any]
+    ) -> dict[str, Any]:
         if not self._client:
             raise RuntimeError("Push connector not connected")
         apns_topic = self.config.get("apns_topic", "")
@@ -174,15 +182,19 @@ class PushNotificationConnector(BaseConnector):
             logger.error("APNS send failed: %s", exc)
             return {"success": False, "error": str(exc)}
 
-    async def _send_webpush(self, endpoint: str, title: str, body: str, extra_data: dict[str, Any]) -> dict[str, Any]:
+    async def _send_webpush(
+        self, endpoint: str, title: str, body: str, extra_data: dict[str, Any]
+    ) -> dict[str, Any]:
         if not self._client:
             raise RuntimeError("Push connector not connected")
-        payload = json.dumps({
-            "title": title,
-            "body": body,
-            "icon": extra_data.get("icon", ""),
-            "data": extra_data,
-        })
+        payload = json.dumps(
+            {
+                "title": title,
+                "body": body,
+                "icon": extra_data.get("icon", ""),
+                "data": extra_data,
+            }
+        )
         headers = {
             "Content-Type": "application/json",
             "TTL": "86400",
@@ -191,7 +203,11 @@ class PushNotificationConnector(BaseConnector):
             headers["Authorization"] = f"vapid t={self._webpush_public_key}"
         try:
             resp = await self._client.post(endpoint, content=payload, headers=headers)
-            return {"success": resp.is_success, "status_code": resp.status_code, "provider": "webpush"}
+            return {
+                "success": resp.is_success,
+                "status_code": resp.status_code,
+                "provider": "webpush",
+            }
         except Exception as exc:
             logger.error("Web push failed: %s", exc)
             return {"success": False, "error": str(exc)}

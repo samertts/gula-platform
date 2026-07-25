@@ -9,7 +9,12 @@ from app.national_data.base import BaseEntity
 class DataQualityCheck(BaseEntity):
     __tablename__ = "dp_data_quality_checks"
 
-    rule_id = Column(Integer, ForeignKey("dp_data_quality_rules.id", ondelete="CASCADE"), nullable=False, index=True)
+    rule_id = Column(
+        Integer,
+        ForeignKey("dp_data_quality_rules.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     check_run_id = Column(String(100), nullable=True, index=True)
 
     entity_type = Column(String(100), nullable=False)

@@ -25,8 +25,11 @@ PHASE C (future):
 from app.config import ENABLE_ADS, ENABLE_FINANCIAL_ENGINE
 
 __all__ = [
-    "ENABLE_ADS", "ENABLE_FINANCIAL_ENGINE",
-    "ads_enabled", "is_enabled", "register_routes",
+    "ENABLE_ADS",
+    "ENABLE_FINANCIAL_ENGINE",
+    "ads_enabled",
+    "is_enabled",
+    "register_routes",
 ]
 
 
@@ -44,9 +47,14 @@ def register_routes(app) -> None:
     """Register Financial Engine routes if the feature flag is enabled."""
     if not is_enabled():
         import logging
-        logging.getLogger("gula.financial").info("Financial Engine disabled — routes not registered")
+
+        logging.getLogger("gula.financial").info(
+            "Financial Engine disabled — routes not registered"
+        )
         return
     from .routes import router as financial_router
+
     app.include_router(financial_router)
     import logging
+
     logging.getLogger("gula.financial").info("Financial Engine routes registered")

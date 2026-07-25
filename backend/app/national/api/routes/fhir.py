@@ -12,7 +12,11 @@ async def get_fhir_patient(patient_id: str):
 
 @router.get("/Practitioner/{practitioner_id}")
 async def get_fhir_practitioner(practitioner_id: str):
-    return {"resourceType": "Practitioner", "id": practitioner_id, "message": "FHIR Practitioner endpoint"}
+    return {
+        "resourceType": "Practitioner",
+        "id": practitioner_id,
+        "message": "FHIR Practitioner endpoint",
+    }
 
 
 @router.get("/Organization/{org_id}")
@@ -27,4 +31,8 @@ async def get_fhir_encounter(encounter_id: str):
 
 @router.get("/{resource_type}")
 async def fhir_search(resource_type: str):
-    return {"resourceType": "Bundle", "type": "searchset", "message": f"FHIR {resource_type} search endpoint"}
+    return {
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "message": f"FHIR {resource_type} search endpoint",
+    }

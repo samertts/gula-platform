@@ -10,7 +10,12 @@ class EnterpriseRegistration(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     reg_id = Column(String(100), unique=True, nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     status = Column(String(50), default="draft", nullable=False, index=True)
     submitted_by = Column(String(100), nullable=True)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
@@ -36,7 +41,12 @@ class EnterpriseRegistrationStep(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     step_id = Column(String(100), unique=True, nullable=False, index=True)
-    reg_id = Column(String(26), ForeignKey("niam_lifecycle_enterprise_reg.id", ondelete="CASCADE"), nullable=False, index=True)
+    reg_id = Column(
+        String(26),
+        ForeignKey("niam_lifecycle_enterprise_reg.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     step_name = Column(String(100), nullable=False)
     status = Column(String(30), default="pending", nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
@@ -53,9 +63,16 @@ class WorkforceRequest(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     request_id = Column(String(100), unique=True, nullable=False, index=True)
     request_type = Column(String(50), nullable=False, index=True)
-    requesting_org_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    requesting_org_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     requested_by = Column(String(100), nullable=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     status = Column(String(50), default="draft", nullable=False, index=True)
     national_id_hash = Column(String(255), nullable=True)
     license_number = Column(String(100), nullable=True)
@@ -77,8 +94,15 @@ class GovernmentAppointment(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     appointment_id = Column(String(100), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     hr_reference = Column(String(100), unique=True, nullable=False, index=True)
     appointment_type = Column(String(30), nullable=False)
     position = Column(String(200), nullable=True)
@@ -104,15 +128,21 @@ class CitizenLifecycle(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     citizen_id = Column(String(100), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
-    identity_id = Column(String(26), ForeignKey("niam_identities.id", ondelete="SET NULL"), nullable=True, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    identity_id = Column(
+        String(26), ForeignKey("niam_identities.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     status = Column(String(30), default="registered", nullable=False, index=True)
     registration_date = Column(DateTime(timezone=True), nullable=True)
     otp_sent_at = Column(DateTime(timezone=True), nullable=True)
     otp_verified_at = Column(DateTime(timezone=True), nullable=True)
     identity_verified_at = Column(DateTime(timezone=True), nullable=True)
     health_id = Column(String(100), unique=True, nullable=True, index=True)
-    guardian_person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True)
+    guardian_person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     family_tree = Column(JSON, nullable=True)
     consent_records = Column(JSON, nullable=True)
     emergency_contacts = Column(JSON, nullable=True)
@@ -132,8 +162,12 @@ class GuardianAccount(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     guardian_id = Column(String(100), unique=True, nullable=False, index=True)
-    guardian_person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
-    dependent_person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
+    guardian_person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    dependent_person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     relationship = Column(String(50), nullable=False)
     guardian_type = Column(String(30), nullable=False)
     start_date = Column(DateTime(timezone=True), nullable=True)
@@ -152,8 +186,12 @@ class FamilyLink(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     link_id = Column(String(100), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
-    relative_person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    relative_person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     relationship = Column(String(30), nullable=False)
     emergency_contact = Column(Boolean, default=False, nullable=False)
     consent_sharing = Column(Boolean, default=False, nullable=False)
@@ -165,9 +203,16 @@ class ConsentRecord(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     consent_id = Column(String(100), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     consent_type = Column(String(50), nullable=False)
-    granted_to = Column(String(26), ForeignKey("niam_organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    granted_to = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     granted_at = Column(DateTime(timezone=True), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
     revoked_at = Column(DateTime(timezone=True), nullable=True)

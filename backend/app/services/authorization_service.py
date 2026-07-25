@@ -38,7 +38,9 @@ class PermissionService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, domain: str | None = None, skip: int = 0, limit: int = 100) -> list[Permission]:
+    def get_all(
+        self, domain: str | None = None, skip: int = 0, limit: int = 100
+    ) -> list[Permission]:
         q = self.db.query(Permission)
         if domain:
             q = q.filter(Permission.domain == domain)
@@ -139,10 +141,14 @@ class RoleAssignmentService:
         self.db = db
 
     def get_for_user(self, user_id: int) -> list[RoleAssignment]:
-        return self.db.query(RoleAssignment).filter(
-            RoleAssignment.user_id == user_id,
-            RoleAssignment.status == "active",
-        ).all()
+        return (
+            self.db.query(RoleAssignment)
+            .filter(
+                RoleAssignment.user_id == user_id,
+                RoleAssignment.status == "active",
+            )
+            .all()
+        )
 
     def get_assigned_roles(self, user_id: int) -> list[Role]:
         assignments = self.get_for_user(user_id)
@@ -154,15 +160,21 @@ class RoleAssignmentService:
         permissions = set()
         mfa_required = False
         for role in roles:
-            role_perms = self.db.query(RolePermission).filter(RolePermission.role_id == role.role_id).all()
+            role_perms = (
+                self.db.query(RolePermission).filter(RolePermission.role_id == role.role_id).all()
+            )
             for rp in role_perms:
                 permissions.add(rp.permission_id)
             if role.requires_mfa:
                 mfa_required = True
             if role.parent_role_id:
-                parent_perms = self.db.query(RolePermission).filter(
-                    RolePermission.role_id == role.parent_role_id,
-                ).all()
+                parent_perms = (
+                    self.db.query(RolePermission)
+                    .filter(
+                        RolePermission.role_id == role.parent_role_id,
+                    )
+                    .all()
+                )
                 for rp in parent_perms:
                     permissions.add(rp.permission_id)
         return {
@@ -180,11 +192,15 @@ class RoleAssignmentService:
         expires_at: datetime | None = None,
         is_primary: bool = True,
     ) -> RoleAssignment:
-        existing = self.db.query(RoleAssignment).filter(
-            RoleAssignment.user_id == user_id,
-            RoleAssignment.role_id == role_id,
-            RoleAssignment.status == "active",
-        ).first()
+        existing = (
+            self.db.query(RoleAssignment)
+            .filter(
+                RoleAssignment.user_id == user_id,
+                RoleAssignment.role_id == role_id,
+                RoleAssignment.status == "active",
+            )
+            .first()
+        )
         if existing:
             return existing
         assignment = RoleAssignment(
@@ -203,11 +219,15 @@ class RoleAssignmentService:
         return assignment
 
     def revoke_role(self, user_id: int, role_id: str) -> bool:
-        assignment = self.db.query(RoleAssignment).filter(
-            RoleAssignment.user_id == user_id,
-            RoleAssignment.role_id == role_id,
-            RoleAssignment.status == "active",
-        ).first()
+        assignment = (
+            self.db.query(RoleAssignment)
+            .filter(
+                RoleAssignment.user_id == user_id,
+                RoleAssignment.role_id == role_id,
+                RoleAssignment.status == "active",
+            )
+            .first()
+        )
         if not assignment:
             return False
         assignment.status = "revoked"
@@ -215,10 +235,14 @@ class RoleAssignmentService:
         return True
 
     def get_users_with_role(self, role_id: str) -> list[User]:
-        assignments = self.db.query(RoleAssignment).filter(
-            RoleAssignment.role_id == role_id,
-            RoleAssignment.status == "active",
-        ).all()
+        assignments = (
+            self.db.query(RoleAssignment)
+            .filter(
+                RoleAssignment.role_id == role_id,
+                RoleAssignment.status == "active",
+            )
+            .all()
+        )
         user_ids = [a.user_id for a in assignments]
         return self.db.query(User).filter(User.id.in_(user_ids)).all() if user_ids else []
 
@@ -229,11 +253,16 @@ class PolicyService:
 
     def get_active_policies(self) -> list[Policy]:
         now = datetime.now(UTC)
-        return self.db.query(Policy).filter(
-            Policy.status == "published",
-            (Policy.validity_start.is_(None) | (Policy.validity_start <= now)),
-            (Policy.validity_end.is_(None) | (Policy.validity_end >= now)),
-        ).order_by(Policy.priority).all()
+        return (
+            self.db.query(Policy)
+            .filter(
+                Policy.status == "published",
+                (Policy.validity_start.is_(None) | (Policy.validity_start <= now)),
+                (Policy.validity_end.is_(None) | (Policy.validity_end >= now)),
+            )
+            .order_by(Policy.priority)
+            .all()
+        )
 
     def evaluate_policies(
         self,
@@ -246,12 +275,16 @@ class PolicyService:
         policies = self.get_active_policies()
         applied = []
         for policy in policies:
-            if self._policy_matches(policy, subject, resource_type, action, resource_attrs, environment):
-                applied.append({
-                    "policy_id": policy.policy_id,
-                    "policy_name": policy.name_en,
-                    "effect": policy.effect,
-                })
+            if self._policy_matches(
+                policy, subject, resource_type, action, resource_attrs, environment
+            ):
+                applied.append(
+                    {
+                        "policy_id": policy.policy_id,
+                        "policy_name": policy.name_en,
+                        "effect": policy.effect,
+                    }
+                )
                 if policy.effect == "deny":
                     return "deny", applied
         if applied:
@@ -271,9 +304,7 @@ class PolicyService:
         conditions = policy.conditions or {}
         if target.get("resource") and resource_type not in target["resource"]:
             resource_patterns = target["resource"]
-            if not any(
-                resource_type.startswith(p.rstrip("*")) for p in resource_patterns
-            ):
+            if not any(resource_type.startswith(p.rstrip("*")) for p in resource_patterns):
                 return False
         if target.get("action") and action not in target["action"]:
             return False
@@ -310,54 +341,142 @@ class AuthorizationCheckService:
 
         perm = self.db.query(Permission).filter(Permission.permission_id == permission_id).first()
         if not perm:
-            self._log_decision(decision_id, user, permission_id, "deny", resource_type="unknown", policies_applied=[], context={"reason": "permission_not_found"})
+            self._log_decision(
+                decision_id,
+                user,
+                permission_id,
+                "deny",
+                resource_type="unknown",
+                policies_applied=[],
+                context={"reason": "permission_not_found"},
+            )
             return self._build_response(decision_id, "deny", "Permission not found", perm)
 
-        roles = self.db.query(RoleAssignment).filter(
-            RoleAssignment.user_id == user.id,
-            RoleAssignment.status == "active",
-        ).all()
+        roles = (
+            self.db.query(RoleAssignment)
+            .filter(
+                RoleAssignment.user_id == user.id,
+                RoleAssignment.status == "active",
+            )
+            .all()
+        )
         if not roles:
-            self._log_decision(decision_id, user, permission_id, "deny", perm.domain, [], resource_attrs, risk_score=perm.is_sensitive)
+            self._log_decision(
+                decision_id,
+                user,
+                permission_id,
+                "deny",
+                perm.domain,
+                [],
+                resource_attrs,
+                risk_score=perm.is_sensitive,
+            )
             return self._build_response(decision_id, "deny", "No roles assigned", perm)
 
         role_ids = [r.role_id for r in roles]
         assigned_perms = (
             self.db.query(RolePermission)
-            .filter(RolePermission.role_id.in_(role_ids), RolePermission.permission_id == permission_id)
+            .filter(
+                RolePermission.role_id.in_(role_ids), RolePermission.permission_id == permission_id
+            )
             .first()
         )
         if not assigned_perms:
-            has_legacy = has_permission_str(user.role if hasattr(user, "role") else "", permission_id)
+            has_legacy = has_permission_str(
+                user.role if hasattr(user, "role") else "", permission_id
+            )
             if not has_legacy:
-                self._log_decision(decision_id, user, permission_id, "deny", perm.domain, [], resource_attrs, risk_score=perm.is_sensitive)
+                self._log_decision(
+                    decision_id,
+                    user,
+                    permission_id,
+                    "deny",
+                    perm.domain,
+                    [],
+                    resource_attrs,
+                    risk_score=perm.is_sensitive,
+                )
                 return self._build_response(decision_id, "deny", "Permission not assigned", perm)
 
-        break_glass = self.db.query(BreakGlassSession).filter(
-            BreakGlassSession.user_id == user.id,
-            BreakGlassSession.status == "active",
-            BreakGlassSession.expires_at > now,
-        ).first()
+        break_glass = (
+            self.db.query(BreakGlassSession)
+            .filter(
+                BreakGlassSession.user_id == user.id,
+                BreakGlassSession.status == "active",
+                BreakGlassSession.expires_at > now,
+            )
+            .first()
+        )
         is_emergency = bool(break_glass)
 
         if perm.requires_mfa and not getattr(user, "mfa_enabled", False):
-            self._log_decision(decision_id, user, permission_id, "deny", perm.domain, [], resource_attrs, risk_score=perm.is_sensitive, is_emergency=is_emergency)
-            return self._build_response(decision_id, "deny", "MFA required for this permission", perm)
+            self._log_decision(
+                decision_id,
+                user,
+                permission_id,
+                "deny",
+                perm.domain,
+                [],
+                resource_attrs,
+                risk_score=perm.is_sensitive,
+                is_emergency=is_emergency,
+            )
+            return self._build_response(
+                decision_id, "deny", "MFA required for this permission", perm
+            )
 
         if perm.requires_justification and not justification:
-            self._log_decision(decision_id, user, permission_id, "deny", perm.domain, [], resource_attrs, risk_score=perm.is_sensitive, is_emergency=is_emergency)
+            self._log_decision(
+                decision_id,
+                user,
+                permission_id,
+                "deny",
+                perm.domain,
+                [],
+                resource_attrs,
+                risk_score=perm.is_sensitive,
+                is_emergency=is_emergency,
+            )
             return self._build_response(decision_id, "deny", "Justification required", perm)
 
         subject = self._build_subject(user)
         abac_decision, applied_policies = self.policy_service.evaluate_policies(
-            subject, perm.domain, perm.action, resource_attrs, environment,
+            subject,
+            perm.domain,
+            perm.action,
+            resource_attrs,
+            environment,
         )
         if abac_decision == "deny" and applied_policies:
-            self._log_decision(decision_id, user, permission_id, "deny", perm.domain, applied_policies, resource_attrs, risk_score=perm.is_sensitive, is_emergency=is_emergency)
-            return self._build_response(decision_id, "deny", "Denied by policy", perm, applied_policies, is_emergency)
+            self._log_decision(
+                decision_id,
+                user,
+                permission_id,
+                "deny",
+                perm.domain,
+                applied_policies,
+                resource_attrs,
+                risk_score=perm.is_sensitive,
+                is_emergency=is_emergency,
+            )
+            return self._build_response(
+                decision_id, "deny", "Denied by policy", perm, applied_policies, is_emergency
+            )
 
-        self._log_decision(decision_id, user, permission_id, "allow", perm.domain, applied_policies, resource_attrs, risk_score=perm.is_sensitive, is_emergency=is_emergency)
-        return self._build_response(decision_id, "allow", "Access granted", perm, applied_policies, is_emergency)
+        self._log_decision(
+            decision_id,
+            user,
+            permission_id,
+            "allow",
+            perm.domain,
+            applied_policies,
+            resource_attrs,
+            risk_score=perm.is_sensitive,
+            is_emergency=is_emergency,
+        )
+        return self._build_response(
+            decision_id, "allow", "Access granted", perm, applied_policies, is_emergency
+        )
 
     def check_many(
         self,
@@ -380,10 +499,14 @@ class AuthorizationCheckService:
         user: User,
         domain: str | None = None,
     ) -> list[str]:
-        roles = self.db.query(RoleAssignment).filter(
-            RoleAssignment.user_id == user.id,
-            RoleAssignment.status == "active",
-        ).all()
+        roles = (
+            self.db.query(RoleAssignment)
+            .filter(
+                RoleAssignment.user_id == user.id,
+                RoleAssignment.status == "active",
+            )
+            .all()
+        )
         role_ids = [r.role_id for r in roles]
         if not role_ids:
             return []
@@ -395,7 +518,11 @@ class AuthorizationCheckService:
             legacy.update(all_legacy)
         combined = assigned | legacy
         if domain:
-            perm_rows = self.db.query(Permission).filter(Permission.permission_id.in_(combined), Permission.domain == domain).all()
+            perm_rows = (
+                self.db.query(Permission)
+                .filter(Permission.permission_id.in_(combined), Permission.domain == domain)
+                .all()
+            )
             return sorted(p.permission_id for p in perm_rows)
         return sorted(combined)
 
@@ -816,7 +943,9 @@ class MenuService:
         return self._filter_menu(structure, perm_set)
 
     def _filter_menu(
-        self, items: list[dict[str, Any]], permissions: set[str],
+        self,
+        items: list[dict[str, Any]],
+        permissions: set[str],
     ) -> list[dict[str, Any]]:
         result = []
         for item in items:
@@ -842,10 +971,14 @@ class FieldSecurityService:
         user_role: str | None = None,
         org_type: str | None = None,
     ) -> dict[str, Any]:
-        field_def = self.db.query(FieldSecurity).filter(
-            FieldSecurity.resource_type == resource_type,
-            FieldSecurity.field_name == field_name,
-        ).first()
+        field_def = (
+            self.db.query(FieldSecurity)
+            .filter(
+                FieldSecurity.resource_type == resource_type,
+                FieldSecurity.field_name == field_name,
+            )
+            .first()
+        )
         if not field_def:
             return {"level": "public", "masked": False, "encrypted": False}
         effective_level = field_def.default_level
@@ -927,11 +1060,15 @@ class DelegationService:
 
     def get_active_for_user(self, user_id: int) -> list[Delegation]:
         now = datetime.now(UTC)
-        return self.db.query(Delegation).filter(
-            (Delegation.delegator_id == user_id) | (Delegation.delegate_id == user_id),
-            Delegation.status == "active",
-            Delegation.expires_at > now,
-        ).all()
+        return (
+            self.db.query(Delegation)
+            .filter(
+                (Delegation.delegator_id == user_id) | (Delegation.delegate_id == user_id),
+                Delegation.status == "active",
+                Delegation.expires_at > now,
+            )
+            .all()
+        )
 
 
 class BreakGlassService:
@@ -962,7 +1099,9 @@ class BreakGlassService:
         return session
 
     def deactivate(self, session_id: int) -> bool:
-        session = self.db.query(BreakGlassSession).filter(BreakGlassSession.id == session_id).first()
+        session = (
+            self.db.query(BreakGlassSession).filter(BreakGlassSession.id == session_id).first()
+        )
         if not session or session.status != "active":
             return False
         session.status = "deactivated"
@@ -972,18 +1111,26 @@ class BreakGlassService:
 
     def get_active(self, user_id: int) -> BreakGlassSession | None:
         now = datetime.now(UTC)
-        return self.db.query(BreakGlassSession).filter(
-            BreakGlassSession.user_id == user_id,
-            BreakGlassSession.status == "active",
-            BreakGlassSession.expires_at > now,
-        ).first()
+        return (
+            self.db.query(BreakGlassSession)
+            .filter(
+                BreakGlassSession.user_id == user_id,
+                BreakGlassSession.status == "active",
+                BreakGlassSession.expires_at > now,
+            )
+            .first()
+        )
 
     def get_all_active(self) -> list[BreakGlassSession]:
         now = datetime.now(UTC)
-        return self.db.query(BreakGlassSession).filter(
-            BreakGlassSession.status == "active",
-            BreakGlassSession.expires_at > now,
-        ).all()
+        return (
+            self.db.query(BreakGlassSession)
+            .filter(
+                BreakGlassSession.status == "active",
+                BreakGlassSession.expires_at > now,
+            )
+            .all()
+        )
 
 
 class AuthorizationAuditService:
@@ -1020,31 +1167,39 @@ class IdentityService:
     def get_identity_context(self, user: User) -> dict[str, Any]:
         org = None
         if user.organization_id:
-            org = self.db.query(Organization).filter(Organization.id == user.organization_id).first()
+            org = (
+                self.db.query(Organization).filter(Organization.id == user.organization_id).first()
+            )
         tenant = None
         if user.tenant_id:
             tenant = self.db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
         facility = None
         if user.facility_id:
             facility = self.db.query(Facility).filter(Facility.id == user.facility_id).first()
-        role_assignments = self.db.query(RoleAssignment).filter(
-            RoleAssignment.user_id == user.id,
-            RoleAssignment.status == "active",
-        ).all()
+        role_assignments = (
+            self.db.query(RoleAssignment)
+            .filter(
+                RoleAssignment.user_id == user.id,
+                RoleAssignment.status == "active",
+            )
+            .all()
+        )
         roles = []
         for ra in role_assignments:
             role = self.db.query(Role).filter(Role.role_id == ra.role_id).first()
             if role:
-                roles.append({
-                    "role_id": role.role_id,
-                    "name_en": role.name_en,
-                    "name_ar": role.name_ar,
-                    "level": role.level,
-                    "organization_id": ra.organization_id,
-                    "facility_id": ra.facility_id,
-                    "is_primary": ra.is_primary,
-                    "scope": self._compute_scope(ra),
-                })
+                roles.append(
+                    {
+                        "role_id": role.role_id,
+                        "name_en": role.name_en,
+                        "name_ar": role.name_ar,
+                        "level": role.level,
+                        "organization_id": ra.organization_id,
+                        "facility_id": ra.facility_id,
+                        "is_primary": ra.is_primary,
+                        "scope": self._compute_scope(ra),
+                    }
+                )
         return {
             "user": {
                 "id": user.id,
@@ -1062,19 +1217,25 @@ class IdentityService:
                 "name_ar": org.name_ar,
                 "org_type": org.org_type,
                 "governorate_id": org.governorate_id,
-            } if org else None,
+            }
+            if org
+            else None,
             "tenant": {
                 "id": tenant.id,
                 "name_en": tenant.name_en,
                 "name_ar": tenant.name_ar,
                 "tenant_type": tenant.tenant_type,
-            } if tenant else None,
+            }
+            if tenant
+            else None,
             "facility": {
                 "id": facility.id,
                 "name_en": facility.name_en,
                 "name_ar": facility.name_ar,
                 "facility_type": facility.facility_type,
-            } if facility else None,
+            }
+            if facility
+            else None,
             "roles": roles,
             "governorate_id": user.governorate_id,
         }

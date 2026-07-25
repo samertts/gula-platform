@@ -17,7 +17,6 @@ PASSWORD_EXPIRY_DAYS = 90
 
 
 class AccountService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.repo = AccountRepository(session)
 
@@ -82,7 +81,9 @@ class AccountService:
                 account.locked_until = datetime.now(UTC) + timedelta(
                     minutes=ACCOUNT_LOCKOUT_DURATION_MINUTES,
                 )
-                account.lock_reason = f"Account locked after {ACCOUNT_LOCKOUT_THRESHOLD} failed attempts"
+                account.lock_reason = (
+                    f"Account locked after {ACCOUNT_LOCKOUT_THRESHOLD} failed attempts"
+                )
             await self.repo.session.flush()
             return None
 

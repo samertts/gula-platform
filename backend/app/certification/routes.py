@@ -71,15 +71,18 @@ async def get_report(
         return report.to_dict()
     if format == "markdown":
         from fastapi.responses import PlainTextResponse
+
         return PlainTextResponse(content=report.to_markdown())
     if format == "html":
         from fastapi.responses import HTMLResponse
+
         return HTMLResponse(content=report.to_html())
     if format == "pdf":
         output_dir = Path(os.environ.get("GULA_TEMP_DIR", tempfile.gettempdir()))
         output = output_dir / f"certification_report_{target.name}.pdf"
         generate_pdf_report(report, output)
         from fastapi.responses import FileResponse
+
         return FileResponse(str(output), media_type="application/pdf", filename=output.name)
     return None
 

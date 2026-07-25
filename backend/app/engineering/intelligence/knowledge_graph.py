@@ -165,7 +165,8 @@ class KnowledgeGraphGenerator:
                     if isinstance(child, ast.Assign):
                         for target in child.targets:
                             if isinstance(target, ast.Attribute) and isinstance(
-                                target.value, ast.Call,
+                                target.value,
+                                ast.Call,
                             ):
                                 if (
                                     hasattr(target.value.func, "attr")

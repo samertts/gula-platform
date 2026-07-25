@@ -247,7 +247,28 @@ def get_simulation(
         simulation_type=sim.simulation_type,
         parameters=sim.parameters,
         status=sim.status.value if hasattr(sim.status, "value") else str(sim.status),
-        result={**(sim.result or {}), "snapshots": [{"timestamp": _format_dt(s.timestamp), "state": s.state_snapshot, "metrics": s.metrics_snapshot} for s in snapshots]} if sim.result else {"snapshots": [{"timestamp": _format_dt(s.timestamp), "state": s.state_snapshot, "metrics": s.metrics_snapshot} for s in snapshots]},
+        result={
+            **(sim.result or {}),
+            "snapshots": [
+                {
+                    "timestamp": _format_dt(s.timestamp),
+                    "state": s.state_snapshot,
+                    "metrics": s.metrics_snapshot,
+                }
+                for s in snapshots
+            ],
+        }
+        if sim.result
+        else {
+            "snapshots": [
+                {
+                    "timestamp": _format_dt(s.timestamp),
+                    "state": s.state_snapshot,
+                    "metrics": s.metrics_snapshot,
+                }
+                for s in snapshots
+            ]
+        },
         started_at=_format_dt(sim.started_at),
         completed_at=_format_dt(sim.completed_at),
         error=sim.error,
@@ -297,9 +318,7 @@ def get_prediction(
     current_user: LabUser = Depends(require_permission("simulation:read")),
     db: Session = Depends(get_db),
 ):
-    prediction = (
-        db.query(Prediction).filter(Prediction.id == prediction_id).first()
-    )
+    prediction = db.query(Prediction).filter(Prediction.id == prediction_id).first()
     if not prediction:
         raise HTTPException(status_code=404, detail="Prediction not found")
     return PredictionResponse(
@@ -364,7 +383,9 @@ def get_dashboard(
         total_simulations += sim_count
         total_predictions += pred_count
 
-        twin_type_key = twin.twin_type.value if hasattr(twin.twin_type, "value") else str(twin.twin_type)
+        twin_type_key = (
+            twin.twin_type.value if hasattr(twin.twin_type, "value") else str(twin.twin_type)
+        )
         by_type[twin_type_key] = by_type.get(twin_type_key, 0) + 1
 
         twin_summaries.append(

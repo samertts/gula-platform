@@ -143,7 +143,9 @@ class RadiomicsService:
         features: list[dict] | None = None,
     ) -> dict[str, Any]:
         results = features or []
-        logger.info("Radiomics features extracted for image: %s (%d features)", image_id, len(results))
+        logger.info(
+            "Radiomics features extracted for image: %s (%d features)", image_id, len(results)
+        )
         return {
             "image_id": image_id,
             "modality": modality,
@@ -157,8 +159,7 @@ class RadiomicsService:
 
     def compare_features(self, image_ids: list[str]) -> list[dict]:
         return [
-            {"image_id": iid, "features": len(self._features.get(iid, []))}
-            for iid in image_ids
+            {"image_id": iid, "features": len(self._features.get(iid, []))} for iid in image_ids
         ]
 
 

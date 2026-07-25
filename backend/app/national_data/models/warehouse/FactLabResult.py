@@ -6,10 +6,18 @@ from app.national_data.base import BaseEntity
 class FactLabResult(BaseEntity):
     __tablename__ = "dw_fact_lab_results"
 
-    dim_patient_id = Column(Integer, ForeignKey("dw_dim_patient.id", ondelete="RESTRICT"), nullable=False, index=True)
-    dim_date_id = Column(Integer, ForeignKey("dw_dim_date.id", ondelete="RESTRICT"), nullable=False, index=True)
-    dim_facility_id = Column(Integer, ForeignKey("dw_dim_facility.id", ondelete="RESTRICT"), nullable=True, index=True)
-    dim_provider_id = Column(Integer, ForeignKey("dw_dim_provider.id", ondelete="RESTRICT"), nullable=True, index=True)
+    dim_patient_id = Column(
+        Integer, ForeignKey("dw_dim_patient.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    dim_date_id = Column(
+        Integer, ForeignKey("dw_dim_date.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    dim_facility_id = Column(
+        Integer, ForeignKey("dw_dim_facility.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    dim_provider_id = Column(
+        Integer, ForeignKey("dw_dim_provider.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     test_name = Column(String(200), nullable=False)
     test_code = Column(String(50), nullable=True, index=True)

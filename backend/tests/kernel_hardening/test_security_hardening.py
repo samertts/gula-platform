@@ -29,6 +29,7 @@ class TestSecurityUnauthorizedAccess:
     def test_service_registry_requires_known_service(self, kernel: Kernel):
         from app.kernel.exceptions import ServiceNotFoundError
         from app.kernel.runtime.service_registry import ServiceRegistry
+
         sr = ServiceRegistry()
         kernel.register_component("service_registry", sr)
         with pytest.raises(ServiceNotFoundError):
@@ -36,6 +37,7 @@ class TestSecurityUnauthorizedAccess:
 
     def test_tenant_cannot_access_other_tenant_data(self):
         from app.kernel.tenant.isolation import TenantIsolation
+
         ti = TenantIsolation()
         ti.isolate("tenant_a")
         assert ti.is_isolated("tenant_a")
@@ -61,6 +63,7 @@ class TestSecurityPrivilegeEscalation:
 class TestSecurityConfigurationTampering:
     def test_config_validator_rejects_type_mismatch(self):
         from app.kernel.config.validation import ConfigurationValidator
+
         cv = ConfigurationValidator()
         cv.register_schema("port", {"type": "int"})
         cv.validate("port", 8080)
@@ -71,6 +74,7 @@ class TestSecurityConfigurationTampering:
         import os
 
         from app.kernel.config.secrets import SecretsLoader
+
         if "MALICIOUS_SECRET" in os.environ:
             del os.environ["MALICIOUS_SECRET"]
         sl = SecretsLoader()
@@ -82,6 +86,7 @@ class TestSecurityConfigurationTampering:
 class TestSecurityRateLimiting:
     def test_rate_limiter_prevents_abuse(self):
         from app.kernel.gateway.rate_limiting import RateLimiter
+
         rl = RateLimiter()
         rl.set_limit("api_key", 3, 60)
         assert rl.check("api_key")
@@ -91,6 +96,7 @@ class TestSecurityRateLimiting:
 
     def test_different_keys_have_independent_limits(self):
         from app.kernel.gateway.rate_limiting import RateLimiter
+
         rl = RateLimiter()
         rl.set_limit("key_a", 2, 60)
         rl.set_limit("key_b", 5, 60)
@@ -103,6 +109,7 @@ class TestSecurityRateLimiting:
 class TestSecurityCircuitBreaker:
     def test_circuit_breaker_prevents_cascading_failures(self):
         from app.kernel.gateway.circuit_breaker import CircuitBreaker, CircuitState
+
         cb = CircuitBreaker("downstream", failure_threshold=2, recovery_timeout=30)
         cb.record_failure()
         cb.record_failure()
@@ -112,6 +119,7 @@ class TestSecurityCircuitBreaker:
         import time
 
         from app.kernel.gateway.circuit_breaker import CircuitBreaker, CircuitState
+
         cb = CircuitBreaker("probe", failure_threshold=1, recovery_timeout=0.01)
         cb.record_failure()
         assert cb.state == CircuitState.OPEN

@@ -8,6 +8,4 @@ class Governorate(ReferenceEntity):
     country_code = Column(String(2), default="IQ", nullable=False)
     governorate_code = Column(String(10), nullable=True)
 
-    __table_args__ = (
-        Index("ix_ref_governorates_country", "country_code"),
-    )
+    __table_args__ = (Index("ix_ref_governorates_country", "country_code"),)

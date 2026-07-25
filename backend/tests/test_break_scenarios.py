@@ -10,6 +10,7 @@ These tests simulate what happens when you:
 
 All scenarios run without a real database or Docker.
 """
+
 import json
 import logging
 import os
@@ -27,9 +28,11 @@ import pytest
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
+
 def _fresh_health():
     """Bypass the singleton to get a clean SystemHealth for each test."""
     from app.core.self_healing import SystemHealth
+
     h = object.__new__(SystemHealth)
     h._init()
     return h
@@ -38,10 +41,11 @@ def _fresh_health():
 async def _middleware_dispatch(health_obj, method: str, path: str):
     """Run DegradedModeMiddleware.dispatch() with a fake call_next."""
     from app.core.self_healing import DegradedModeMiddleware
+
     mw = DegradedModeMiddleware(app=MagicMock())
     req = MagicMock()
     req.url.path = path
-    req.method   = method
+    req.method = method
     passed = []
 
     async def call_next(_req):
@@ -59,12 +63,14 @@ async def _middleware_dispatch(health_obj, method: str, path: str):
 # SCENARIO 1 — Stop Postgres → system escalates to L2_READ_ONLY
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestScenario1_PostgresDown:
     """Simulate: docker stop postgres → N connection-refused errors → L2"""
 
     def test_single_refused_does_not_escalate(self):
         """One refused should NOT trigger escalation (below threshold)."""
         from app.database import _CIRCUIT_OPEN_THRESHOLD, _SlidingWindow
+
         w = _SlidingWindow(max_age_s=300)
         w.record("refused")
         assert w.count("refused") < _CIRCUIT_OPEN_THRESHOLD
@@ -72,6 +78,7 @@ class TestScenario1_PostgresDown:
     def test_refused_storm_hits_circuit_threshold(self):
         """20 refused events in 5min → circuit open threshold reached."""
         from app.database import _CIRCUIT_OPEN_THRESHOLD, _SlidingWindow
+
         w = _SlidingWindow(max_age_s=300)
         for _ in range(_CIRCUIT_OPEN_THRESHOLD):
             w.record("refused")
@@ -81,6 +88,7 @@ class TestScenario1_PostgresDown:
         """Simulates: refused storm → _trigger_circuit_open → L2_READ_ONLY."""
         from app.core.self_healing import CircuitState, DegradationLevel
         from app.database import _CIRCUIT_OPEN_THRESHOLD, _trigger_circuit_open
+
         mock_h = _fresh_health()
         # Simulate circuit is CLOSED (normal state before storm)
         assert mock_h.db_circuit.state == CircuitState.CLOSED
@@ -94,6 +102,7 @@ class TestScenario1_PostgresDown:
     def test_refused_storm_hits_degrade_threshold(self):
         """50 refused events in 5min → system degrade threshold reached."""
         from app.database import _SYSTEM_DEGRADE_THRESHOLD, _SlidingWindow
+
         w = _SlidingWindow(max_age_s=300)
         for _ in range(_SYSTEM_DEGRADE_THRESHOLD):
             w.record("refused")
@@ -103,6 +112,7 @@ class TestScenario1_PostgresDown:
         """Simulates: sustained storm → _trigger_system_degradation → L3."""
         from app.core.self_healing import DegradationLevel
         from app.database import _SYSTEM_DEGRADE_THRESHOLD, _trigger_system_degradation
+
         mock_h = _fresh_health()
         with patch("app.core.self_healing.health", mock_h):
             _trigger_system_degradation(_SYSTEM_DEGRADE_THRESHOLD + 5)
@@ -113,6 +123,7 @@ class TestScenario1_PostgresDown:
     def test_health_response_shows_degradation_level(self):
         """SystemHealth.to_dict() must expose degradation_level for /health."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("postgres down", DegradationLevel.L2_READ_ONLY)
         d = h.to_dict()
@@ -124,12 +135,13 @@ class TestScenario1_PostgresDown:
 # SCENARIO 2 — POST while degraded → must get 503
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestScenario2_WritesBlocked:
 
+class TestScenario2_WritesBlocked:
     @pytest.mark.asyncio
     async def test_post_blocked_in_l2(self):
         """POST /api/test/echo → 503 when system is in L2_READ_ONLY."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("postgres down", DegradationLevel.L2_READ_ONLY)
         resp, passed = await _middleware_dispatch(h, "POST", "/api/test/echo")
@@ -139,6 +151,7 @@ class TestScenario2_WritesBlocked:
     @pytest.mark.asyncio
     async def test_put_blocked_in_l2(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("postgres down", DegradationLevel.L2_READ_ONLY)
         resp, passed = await _middleware_dispatch(h, "PUT", "/api/patients/1")
@@ -148,6 +161,7 @@ class TestScenario2_WritesBlocked:
     @pytest.mark.asyncio
     async def test_delete_blocked_in_l2(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("postgres down", DegradationLevel.L2_READ_ONLY)
         resp, passed = await _middleware_dispatch(h, "DELETE", "/api/orders/5")
@@ -158,6 +172,7 @@ class TestScenario2_WritesBlocked:
     async def test_503_body_includes_level(self):
         """503 body must tell client what level blocked them and why."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("postgres down", DegradationLevel.L2_READ_ONLY)
         resp, _ = await _middleware_dispatch(h, "POST", "/api/orders")
@@ -170,6 +185,7 @@ class TestScenario2_WritesBlocked:
     async def test_retry_after_header_present(self):
         """Retry-After header must be set on 503 so clients back off."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("down", DegradationLevel.L2_READ_ONLY)
         resp, _ = await _middleware_dispatch(h, "POST", "/api/test/echo")
@@ -180,11 +196,12 @@ class TestScenario2_WritesBlocked:
 # SCENARIO 3 — /health stays 200 while degraded (liveness probe must pass)
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestScenario3_HealthAlwaysUp:
 
+class TestScenario3_HealthAlwaysUp:
     @pytest.mark.asyncio
     async def test_health_passes_in_l2(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("down", DegradationLevel.L2_READ_ONLY)
         _, passed = await _middleware_dispatch(h, "GET", "/health")
@@ -193,6 +210,7 @@ class TestScenario3_HealthAlwaysUp:
     @pytest.mark.asyncio
     async def test_health_passes_in_l3(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         _, passed = await _middleware_dispatch(h, "GET", "/health")
@@ -201,6 +219,7 @@ class TestScenario3_HealthAlwaysUp:
     @pytest.mark.asyncio
     async def test_health_ready_passes_in_l2(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("down", DegradationLevel.L2_READ_ONLY)
         _, passed = await _middleware_dispatch(h, "GET", "/health/ready")
@@ -209,6 +228,7 @@ class TestScenario3_HealthAlwaysUp:
     @pytest.mark.asyncio
     async def test_health_ready_passes_in_l3(self):
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         _, passed = await _middleware_dispatch(h, "GET", "/health/ready")
@@ -218,6 +238,7 @@ class TestScenario3_HealthAlwaysUp:
     async def test_metrics_prom_passes_in_l3(self):
         """Prometheus scraping must never be blocked — even in L3."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         _, passed = await _middleware_dispatch(h, "GET", "/metrics/prom")
@@ -226,6 +247,7 @@ class TestScenario3_HealthAlwaysUp:
     def test_health_response_body_has_degradation_level(self):
         """to_dict() exposes degradation_level so /health JSON is informative."""
         from app.core.self_healing import DegradationLevel
+
         h = _fresh_health()
         h.enter_degraded_mode("postgres down", DegradationLevel.L2_READ_ONLY)
         body = h.to_dict()
@@ -237,10 +259,11 @@ class TestScenario3_HealthAlwaysUp:
 # SCENARIO 4 — Restart → Redis restores state (system remembers the disaster)
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestScenario4_RestartPersistence:
 
+class TestScenario4_RestartPersistence:
     def _make_window(self, max_age_s=300):
         from app.database import _SlidingWindow
+
         return _SlidingWindow(max_age_s=max_age_s)
 
     def test_full_cycle_persist_restart_restore(self):
@@ -278,6 +301,7 @@ class TestScenario4_RestartPersistence:
     def test_circuit_threshold_still_reached_after_restore(self):
         """If we restore 20 refused events, circuit escalation should still fire."""
         from app.database import _CIRCUIT_OPEN_THRESHOLD
+
         w1 = self._make_window()
         for _ in range(_CIRCUIT_OPEN_THRESHOLD):
             w1.record("refused")
@@ -299,6 +323,7 @@ class TestScenario4_RestartPersistence:
     def test_expired_events_not_restored(self):
         """Events from before max_age_s must not be loaded — window stays clean."""
         import json
+
         w = self._make_window(max_age_s=60)
         redis = MagicMock()
         # Craft events that are 120s old (beyond the 60s window)
@@ -330,20 +355,22 @@ class TestScenario4_RestartPersistence:
 # SCENARIO 5 — Correlation: user_id + lab_id appear in DB error logs
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestScenario5_CorrelationLogs:
 
+class TestScenario5_CorrelationLogs:
     def test_user_id_lab_id_vars_exist(self):
         from app.database import _lab_id_var, _user_id_var
+
         assert _user_id_var is not None
-        assert _lab_id_var  is not None
+        assert _lab_id_var is not None
 
     def test_correlation_vars_set_before_db_call(self):
         """Simulate: authenticated request → get_current_user sets vars → DB fails."""
         from app.database import _lab_id_var, _user_id_var
+
         t1 = _user_id_var.set(42)
         t2 = _lab_id_var.set(7)
         assert _user_id_var.get(None) == 42
-        assert _lab_id_var.get(None)  == 7
+        assert _lab_id_var.get(None) == 7
         _user_id_var.reset(t1)
         _lab_id_var.reset(t2)
 
@@ -363,15 +390,18 @@ class TestScenario5_CorrelationLogs:
         class CapturingHandler(logging.Handler):
             def emit(self, record):
                 if hasattr(record, "user_id"):
-                    captured.append({
-                        "user_id":    record.user_id,
-                        "lab_id":     record.lab_id,
-                        "request_id": record.request_id,
-                        "endpoint":   record.endpoint,
-                    })
+                    captured.append(
+                        {
+                            "user_id": record.user_id,
+                            "lab_id": record.lab_id,
+                            "request_id": record.request_id,
+                            "endpoint": record.endpoint,
+                        }
+                    )
 
         handler = CapturingHandler()
         import logging as _logging
+
         db_logger = _logging.getLogger("gula.database")
         db_logger.addHandler(handler)
         db_logger.setLevel(_logging.ERROR)
@@ -382,32 +412,35 @@ class TestScenario5_CorrelationLogs:
             from app.database import _lab_id_var as _lv
             from app.database import _request_id_var as _rv
             from app.database import _user_id_var as _uv
-            user_id  = _uv.get(None)
-            lab_id   = _lv.get(None)
-            req_id   = _rv.get("")
+
+            user_id = _uv.get(None)
+            lab_id = _lv.get(None)
+            req_id = _rv.get("")
             endpoint = _ev.get("")
 
             db_logger.error(
                 "[DB] connection %s — action=%s — %s",
-                "refused", "retry", "TCP refused",
+                "refused",
+                "retry",
+                "TCP refused",
                 extra={
-                    "db_host":    "localhost",
-                    "db_port":    5432,
-                    "db_status":  "refused",
-                    "action":     "retry",
-                    "request_id": req_id  or None,
-                    "endpoint":   endpoint or None,
-                    "user_id":    user_id,
-                    "lab_id":     lab_id,
+                    "db_host": "localhost",
+                    "db_port": 5432,
+                    "db_status": "refused",
+                    "action": "retry",
+                    "request_id": req_id or None,
+                    "endpoint": endpoint or None,
+                    "user_id": user_id,
+                    "lab_id": lab_id,
                 },
             )
 
             assert len(captured) == 1, "No log record captured"
             log = captured[0]
-            assert log["user_id"]    == 99,           f"user_id missing: {log}"
-            assert log["lab_id"]     == 3,            f"lab_id missing: {log}"
+            assert log["user_id"] == 99, f"user_id missing: {log}"
+            assert log["lab_id"] == 3, f"lab_id missing: {log}"
             assert log["request_id"] == "req-test-001", f"request_id missing: {log}"
-            assert log["endpoint"]   == "/api/orders",  f"endpoint missing: {log}"
+            assert log["endpoint"] == "/api/orders", f"endpoint missing: {log}"
 
         finally:
             db_logger.removeHandler(handler)
@@ -419,15 +452,17 @@ class TestScenario5_CorrelationLogs:
     def test_unauthenticated_request_has_none_user(self):
         """Requests without auth must have user_id=None (no crash, no leak)."""
         from app.database import _lab_id_var, _user_id_var
+
         # Don't set anything — simulate unauthenticated request
         assert _user_id_var.get(None) is None
-        assert _lab_id_var.get(None)  is None
+        assert _lab_id_var.get(None) is None
 
     def test_correlation_vars_dont_leak_between_requests(self):
         """After request A sets vars, request B must see defaults."""
         import threading
 
         from app.database import _lab_id_var, _user_id_var
+
         results = {}
 
         def request_a():
@@ -440,7 +475,7 @@ class TestScenario5_CorrelationLogs:
         def request_b():
             time.sleep(0.02)  # runs while A is active
             results["user"] = _user_id_var.get(None)
-            results["lab"]  = _lab_id_var.get(None)
+            results["lab"] = _lab_id_var.get(None)
 
         ta = threading.Thread(target=request_a)
         tb = threading.Thread(target=request_b)
@@ -449,9 +484,5 @@ class TestScenario5_CorrelationLogs:
         ta.join()
         tb.join()
 
-        assert results["user"] is None, (
-            f"user_id leaked between requests: {results['user']}"
-        )
-        assert results["lab"] is None, (
-            f"lab_id leaked between requests: {results['lab']}"
-        )
+        assert results["user"] is None, f"user_id leaked between requests: {results['user']}"
+        assert results["lab"] is None, f"lab_id leaked between requests: {results['lab']}"

@@ -71,8 +71,14 @@ class ETLPipeline:
         except Exception as exc:
             logger.error("ETL %s: extract failed: %s", job_name, exc)
             return ETLResult(
-                job_name=job_name, rows_extracted=0, rows_transformed=0, rows_loaded=0,
-                errors=1, duration_ms=0, started_at=started_at, completed_at=datetime.now(UTC),
+                job_name=job_name,
+                rows_extracted=0,
+                rows_transformed=0,
+                rows_loaded=0,
+                errors=1,
+                duration_ms=0,
+                started_at=started_at,
+                completed_at=datetime.now(UTC),
                 error_messages=[f"Extract failed: {exc}"],
             )
 
@@ -83,8 +89,14 @@ class ETLPipeline:
         except Exception as exc:
             logger.error("ETL %s: transform failed: %s", job_name, exc)
             return ETLResult(
-                job_name=job_name, rows_extracted=rows_extracted, rows_transformed=0, rows_loaded=0,
-                errors=1, duration_ms=0, started_at=started_at, completed_at=datetime.now(UTC),
+                job_name=job_name,
+                rows_extracted=rows_extracted,
+                rows_transformed=0,
+                rows_loaded=0,
+                errors=1,
+                duration_ms=0,
+                started_at=started_at,
+                completed_at=datetime.now(UTC),
                 error_messages=[f"Transform failed: {exc}"],
             )
 
@@ -94,9 +106,15 @@ class ETLPipeline:
         except Exception as exc:
             logger.error("ETL %s: load failed: %s", job_name, exc)
             return ETLResult(
-                job_name=job_name, rows_extracted=rows_extracted, rows_transformed=rows_transformed,
-                rows_loaded=0, errors=1, duration_ms=0, started_at=started_at,
-                completed_at=datetime.now(UTC), error_messages=[f"Load failed: {exc}"],
+                job_name=job_name,
+                rows_extracted=rows_extracted,
+                rows_transformed=rows_transformed,
+                rows_loaded=0,
+                errors=1,
+                duration_ms=0,
+                started_at=started_at,
+                completed_at=datetime.now(UTC),
+                error_messages=[f"Load failed: {exc}"],
             )
 
         duration = (time.monotonic() - start) * 1000
@@ -113,7 +131,14 @@ class ETLPipeline:
             error_messages=errors,
         )
 
-        logger.info("ETL %s: %d→%d→%d rows in %.1fms", job_name, rows_extracted, rows_transformed, rows_loaded, duration)
+        logger.info(
+            "ETL %s: %d→%d→%d rows in %.1fms",
+            job_name,
+            rows_extracted,
+            rows_transformed,
+            rows_loaded,
+            duration,
+        )
         return result
 
     async def run_all(self) -> list[ETLResult]:

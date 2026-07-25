@@ -202,7 +202,9 @@ class ClinicalRecommendationEngine:
     def load_guidelines(self, condition: str, guidelines: list[dict[str, Any]]) -> None:
         self._guidelines[condition] = guidelines
 
-    def generate_recommendations(self, patient_id: str, context: dict[str, Any]) -> list[ClinicalRecommendation]:
+    def generate_recommendations(
+        self, patient_id: str, context: dict[str, Any],
+    ) -> list[ClinicalRecommendation]:
         recommendations: list[ClinicalRecommendation] = []
         conditions = context.get("conditions", [])
         for condition in conditions:
@@ -245,7 +247,9 @@ class ClinicalRecommendationEngine:
             ],
         )
 
-    def rank_recommendations(self, recommendations: list[ClinicalRecommendation]) -> list[ClinicalRecommendation]:
+    def rank_recommendations(
+        self, recommendations: list[ClinicalRecommendation],
+    ) -> list[ClinicalRecommendation]:
         priority_map = {"A": 4, "B": 3, "C": 2, "D": 1}
         return sorted(
             recommendations,
@@ -284,7 +288,7 @@ class DrugInteractionEngine:
         interactions: list[DrugInteraction] = []
         for i, med_a in enumerate(medications):
             class_a = _DRUG_CLASSES.get(med_a.lower(), med_a.lower())
-            for med_b in medications[i + 1:]:
+            for med_b in medications[i + 1 :]:
                 class_b = _DRUG_CLASSES.get(med_b.lower(), med_b.lower())
                 key = (class_a, class_b)
                 rev_key = (class_b, class_a)
@@ -327,7 +331,8 @@ class DuplicateTherapyDetector:
         target_class = self.get_therapeutic_class(medication)
         active = self._patient_medications.get(patient_id, [])
         same_class_meds = [
-            m for m in active
+            m
+            for m in active
             if self.get_therapeutic_class(m.get("name", "")) == target_class
             and m.get("name", "").lower() != medication.lower()
             and m.get("status") == "active"
@@ -339,7 +344,11 @@ class DuplicateTherapyDetector:
                 active_medications=[m["name"] for m in same_class_meds],
                 severity=_SEVERITY_MODERATE if len(same_class_meds) > 1 else _SEVERITY_MILD,
                 consolidation_suggestion=self.suggest_consolidation(
-                    {"medication": medication, "therapeutic_class": target_class, "existing": [m["name"] for m in same_class_meds]},
+                    {
+                        "medication": medication,
+                        "therapeutic_class": target_class,
+                        "existing": [m["name"] for m in same_class_meds],
+                    },
                 ),
             )
             duplicates.append(dup)
@@ -356,17 +365,19 @@ class DuplicateTherapyDetector:
 class PreventiveCareEngine:
     def get_age_appropriate_screenings(self, age: int, gender: str) -> list[dict[str, Any]]:
         screenings = _PREVENTIVE_SCREENINGS.get(gender.upper(), _PREVENTIVE_SCREENINGS.get("M", []))
-        return [
-            s for s in screenings
-            if s["age_min"] <= age <= s["age_max"]
-        ]
+        return [s for s in screenings if s["age_min"] <= age <= s["age_max"]]
 
     def get_vaccination_schedule(self, patient: dict[str, Any]) -> list[dict[str, Any]]:
         age = patient.get("age", 0)
         due: list[dict[str, Any]] = []
         for vac in _VACCINATION_SCHEDULE:
             age_group = vac["age_group"]
-            if ("6m+" in age_group and age >= 0.5) or ("65+" in age_group and age >= 65) or ("50+" in age_group and age >= 50) or ("11-64" in age_group and 11 <= age <= 64):
+            if (
+                ("6m+" in age_group and age >= 0.5)
+                or ("65+" in age_group and age >= 65)
+                or ("50+" in age_group and age >= 50)
+                or ("11-64" in age_group and 11 <= age <= 64)
+            ):
                 due.append(vac)
         return due
 
@@ -388,7 +399,9 @@ class PreventiveCareEngine:
 
 
 class CareGapDetector:
-    def detect_care_gaps(self, patient_id: str, guidelines: list[dict[str, Any]] | None = None) -> list[CareGap]:
+    def detect_care_gaps(
+        self, patient_id: str, guidelines: list[dict[str, Any]] | None = None,
+    ) -> list[CareGap]:
         active_guidelines = guidelines or _CARE_GAP_GUIDELINES
         gaps: list[CareGap] = []
         now = time.time()
@@ -463,7 +476,9 @@ class ClinicalAlertEngine:
     def register_alert_rule(self, rule: dict[str, Any]) -> None:
         self._alert_rules.append(rule)
 
-    def evaluate_alerts(self, patient_id: str, context: dict[str, Any] | None = None) -> list[ClinicalAlert]:
+    def evaluate_alerts(
+        self, patient_id: str, context: dict[str, Any] | None = None,
+    ) -> list[ClinicalAlert]:
         generated: list[ClinicalAlert] = []
         for rule in self._alert_rules:
             condition_fn = rule.get("condition")
@@ -476,11 +491,21 @@ class ClinicalAlertEngine:
                 )
                 self._alerts[alert.id] = alert
                 generated.append(alert)
-                logger.info("[ClinicalAlert] generated id=%s type=%s severity=%s", alert.id, alert.alert_type, alert.severity)
+                logger.info(
+                    "[ClinicalAlert] generated id=%s type=%s severity=%s",
+                    alert.id,
+                    alert.alert_type,
+                    alert.severity,
+                )
         return generated
 
     def prioritize_alerts(self, alerts: list[ClinicalAlert]) -> list[ClinicalAlert]:
-        sev_order = {_SEVERITY_CRITICAL: 0, _SEVERITY_SEVERE: 1, _SEVERITY_MODERATE: 2, _SEVERITY_MILD: 3}
+        sev_order = {
+            _SEVERITY_CRITICAL: 0,
+            _SEVERITY_SEVERE: 1,
+            _SEVERITY_MODERATE: 2,
+            _SEVERITY_MILD: 3,
+        }
         return sorted(alerts, key=lambda a: (sev_order.get(a.severity, 99), a.created_at))
 
     def generate_alert_notification(self, alert: ClinicalAlert) -> dict[str, Any]:
@@ -554,7 +579,9 @@ class CriticalResultEscalation:
         }
         return paths.get(criticality, [])
 
-    def notify_clinician(self, result: dict[str, Any], path: list[dict[str, Any]]) -> dict[str, Any]:
+    def notify_clinician(
+        self, result: dict[str, Any], path: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         notification_id = str(uuid.uuid4())
         record = {
             "notification_id": notification_id,

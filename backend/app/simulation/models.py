@@ -55,7 +55,9 @@ class DigitalTwin(Base):
     )
 
     simulations = relationship(
-        "Simulation", back_populates="twin", cascade="all, delete-orphan",
+        "Simulation",
+        back_populates="twin",
+        cascade="all, delete-orphan",
     )
 
 
@@ -64,7 +66,10 @@ class Simulation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     twin_id = Column(
-        Integer, ForeignKey("digital_twins.id", ondelete="CASCADE"), nullable=False, index=True,
+        Integer,
+        ForeignKey("digital_twins.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name = Column(String(200), nullable=False)
     simulation_type = Column(String(100), nullable=False, index=True)
@@ -79,7 +84,9 @@ class Simulation(Base):
 
     twin = relationship("DigitalTwin", back_populates="simulations")
     snapshots = relationship(
-        "SimulationSnapshot", back_populates="simulation", cascade="all, delete-orphan",
+        "SimulationSnapshot",
+        back_populates="simulation",
+        cascade="all, delete-orphan",
     )
 
 
@@ -105,7 +112,10 @@ class Prediction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     twin_id = Column(
-        Integer, ForeignKey("digital_twins.id", ondelete="CASCADE"), nullable=False, index=True,
+        Integer,
+        ForeignKey("digital_twins.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     prediction_type = Column(String(100), nullable=False, index=True)
     target_date = Column(DateTime(timezone=True), nullable=False)
@@ -124,7 +134,10 @@ class CapacityPlan(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     twin_id = Column(
-        Integer, ForeignKey("digital_twins.id", ondelete="CASCADE"), nullable=False, index=True,
+        Integer,
+        ForeignKey("digital_twins.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     plan_date = Column(DateTime(timezone=True), nullable=False)
     metric = Column(String(100), nullable=False)

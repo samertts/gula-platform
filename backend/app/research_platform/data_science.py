@@ -263,7 +263,8 @@ class ExperimentTracker:
             results = [r for r in results if r.get("experiment_id") == experiment_id]
         if metric_filter:
             results = [
-                r for r in results
+                r
+                for r in results
                 if all(r.get("metrics", {}).get(k) == v for k, v in metric_filter.items())
             ]
         return results
@@ -371,9 +372,11 @@ class EvaluationFramework:
             if mv:
                 result = self.get_result(name, mv.version)
                 if result:
-                    comparisons.append({
-                        "model": name,
-                        "version": mv.version,
-                        "metrics": result.metrics,
-                    })
+                    comparisons.append(
+                        {
+                            "model": name,
+                            "version": mv.version,
+                            "metrics": result.metrics,
+                        }
+                    )
         return comparisons

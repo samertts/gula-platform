@@ -75,7 +75,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_incidents_fhir_id", "ems_incidents", ["fhir_id"])
         op.create_index("ix_ems_incidents_lab_id", "ems_incidents", ["lab_id"])
@@ -110,7 +110,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_ambulances_lab_id", "ems_ambulances", ["lab_id"])
         op.create_index("ix_ems_ambulances_vehicle_id", "ems_ambulances", ["vehicle_id"])
@@ -136,7 +136,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_ambulance_crew_lab_id", "ems_ambulance_crew", ["lab_id"])
         op.create_index("ix_ems_ambulance_crew_fhir_id", "ems_ambulance_crew", ["fhir_id"])
@@ -144,7 +144,9 @@ def upgrade() -> None:
     if not _table_exists("ems_crew_shifts"):
         op.create_table(
             "ems_crew_shifts",
-            sa.Column("crew_id", sa.String(), sa.ForeignKey("ems_ambulance_crew.id"), nullable=False),
+            sa.Column(
+                "crew_id", sa.String(), sa.ForeignKey("ems_ambulance_crew.id"), nullable=False
+            ),
             sa.Column("start_time", sa.DateTime(timezone=True)),
             sa.Column("end_time", sa.DateTime(timezone=True)),
             sa.Column("status", sa.String(), default="scheduled"),
@@ -158,7 +160,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_crew_shifts_crew_id", "ems_crew_shifts", ["crew_id"])
         op.create_index("ix_ems_crew_shifts_lab_id", "ems_crew_shifts", ["lab_id"])
@@ -167,7 +169,9 @@ def upgrade() -> None:
     if not _table_exists("ems_dispatch_assignments"):
         op.create_table(
             "ems_dispatch_assignments",
-            sa.Column("incident_id", sa.String(), sa.ForeignKey("ems_incidents.id"), nullable=False),
+            sa.Column(
+                "incident_id", sa.String(), sa.ForeignKey("ems_incidents.id"), nullable=False
+            ),
             sa.Column("ambulance_id", sa.String(), sa.ForeignKey("ems_ambulances.id")),
             sa.Column("status", sa.String(), default="pending"),
             sa.Column("assigned_at", sa.DateTime(timezone=True), nullable=False),
@@ -188,11 +192,17 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_ems_dispatch_assignments_fhir_id", "ems_dispatch_assignments", ["fhir_id"])
-        op.create_index("ix_ems_dispatch_assignments_incident_id", "ems_dispatch_assignments", ["incident_id"])
-        op.create_index("ix_ems_dispatch_assignments_lab_id", "ems_dispatch_assignments", ["lab_id"])
+        op.create_index(
+            "ix_ems_dispatch_assignments_fhir_id", "ems_dispatch_assignments", ["fhir_id"]
+        )
+        op.create_index(
+            "ix_ems_dispatch_assignments_incident_id", "ems_dispatch_assignments", ["incident_id"]
+        )
+        op.create_index(
+            "ix_ems_dispatch_assignments_lab_id", "ems_dispatch_assignments", ["lab_id"]
+        )
 
     if not _table_exists("ems_triage_assessments"):
         op.create_table(
@@ -226,16 +236,20 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_triage_assessments_fhir_id", "ems_triage_assessments", ["fhir_id"])
         op.create_index("ix_ems_triage_assessments_lab_id", "ems_triage_assessments", ["lab_id"])
-        op.create_index("ix_ems_triage_assessments_incident_id", "ems_triage_assessments", ["incident_id"])
+        op.create_index(
+            "ix_ems_triage_assessments_incident_id", "ems_triage_assessments", ["incident_id"]
+        )
 
     if not _table_exists("ems_epcr"):
         op.create_table(
             "ems_epcr",
-            sa.Column("incident_id", sa.String(), sa.ForeignKey("ems_incidents.id"), nullable=False),
+            sa.Column(
+                "incident_id", sa.String(), sa.ForeignKey("ems_incidents.id"), nullable=False
+            ),
             sa.Column("patient_id", sa.String()),
             sa.Column("patient_name", sa.String()),
             sa.Column("patient_dob", sa.String()),
@@ -297,7 +311,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_epcr_fhir_id", "ems_epcr", ["fhir_id"])
         op.create_index("ix_ems_epcr_incident_id", "ems_epcr", ["incident_id"])
@@ -335,7 +349,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_disaster_events_lab_id", "ems_disaster_events", ["lab_id"])
         op.create_index("ix_ems_disaster_events_fhir_id", "ems_disaster_events", ["fhir_id"])
@@ -363,7 +377,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_incident_commands_fhir_id", "ems_incident_commands", ["fhir_id"])
         op.create_index("ix_ems_incident_commands_lab_id", "ems_incident_commands", ["lab_id"])
@@ -395,10 +409,14 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_ems_mass_casualty_incidents_lab_id", "ems_mass_casualty_incidents", ["lab_id"])
-        op.create_index("ix_ems_mass_casualty_incidents_fhir_id", "ems_mass_casualty_incidents", ["fhir_id"])
+        op.create_index(
+            "ix_ems_mass_casualty_incidents_lab_id", "ems_mass_casualty_incidents", ["lab_id"]
+        )
+        op.create_index(
+            "ix_ems_mass_casualty_incidents_fhir_id", "ems_mass_casualty_incidents", ["fhir_id"]
+        )
 
     if not _table_exists("ems_shelters"):
         op.create_table(
@@ -423,7 +441,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_shelters_fhir_id", "ems_shelters", ["fhir_id"])
         op.create_index("ix_ems_shelters_lab_id", "ems_shelters", ["lab_id"])
@@ -454,12 +472,13 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ems_hospital_status_fhir_id", "ems_hospital_status", ["fhir_id"])
-        op.create_index("ix_ems_hospital_status_facility_id", "ems_hospital_status", ["facility_id"])
+        op.create_index(
+            "ix_ems_hospital_status_facility_id", "ems_hospital_status", ["facility_id"]
+        )
         op.create_index("ix_ems_hospital_status_lab_id", "ems_hospital_status", ["lab_id"])
-
 
 
 def downgrade() -> None:

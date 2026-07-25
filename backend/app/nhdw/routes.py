@@ -322,10 +322,17 @@ def list_admissions(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
-    admissions = NHDWService.list_admissions(db, current_user.lab_id, department_id, status, skip, limit)
-    total = db.query(Admission).filter(
-        Admission.lab_id == current_user.lab_id, ~Admission.is_deleted,
-    ).count()
+    admissions = NHDWService.list_admissions(
+        db, current_user.lab_id, department_id, status, skip, limit
+    )
+    total = (
+        db.query(Admission)
+        .filter(
+            Admission.lab_id == current_user.lab_id,
+            ~Admission.is_deleted,
+        )
+        .count()
+    )
     return _paginated_response([_model_to_dict(a) for a in admissions], total, skip, limit)
 
 
@@ -381,7 +388,9 @@ def update_admission(
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     if "metadata" in data:
         data["metadata_"] = data.pop("metadata")
-    admission = NHDWService.update_admission(db, current_user.lab_id, current_user.id, admission_id, data)
+    admission = NHDWService.update_admission(
+        db, current_user.lab_id, current_user.id, admission_id, data
+    )
     return _model_to_dict(admission)
 
 
@@ -396,7 +405,11 @@ def discharge_admission(
     if "medications_at_discharge" in data and isinstance(data["medications_at_discharge"], list):
         data["medications_at_discharge"] = data["medications_at_discharge"]
     discharge = NHDWService.discharge_patient(
-        db, current_user.lab_id, current_user.id, admission_id, data,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        admission_id,
+        data,
     )
     return _model_to_dict(discharge)
 
@@ -409,7 +422,11 @@ def transfer_admission(
     current_user: LabUser = Depends(get_current_user),
 ):
     transfer = NHDWService.transfer_patient(
-        db, current_user.lab_id, current_user.id, admission_id, body.model_dump(exclude_none=True),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        admission_id,
+        body.model_dump(exclude_none=True),
     )
     return _model_to_dict(transfer)
 
@@ -441,12 +458,22 @@ def list_queue(
     current_user: LabUser = Depends(get_current_user),
 ):
     entries = NHDWService.list_queue(
-        db, current_user.lab_id, department_id, queue_date, status, skip, limit,
+        db,
+        current_user.lab_id,
+        department_id,
+        queue_date,
+        status,
+        skip,
+        limit,
     )
-    total = db.query(QueueEntry).filter(
-        QueueEntry.lab_id == current_user.lab_id,
-        ~QueueEntry.is_deleted,
-    ).count()
+    total = (
+        db.query(QueueEntry)
+        .filter(
+            QueueEntry.lab_id == current_user.lab_id,
+            ~QueueEntry.is_deleted,
+        )
+        .count()
+    )
     return _paginated_response([_model_to_dict(e) for e in entries], total, skip, limit)
 
 
@@ -490,12 +517,21 @@ def list_waiting_list(
     current_user: LabUser = Depends(get_current_user),
 ):
     entries = NHDWService.list_waiting_list(
-        db, current_user.lab_id, department_id, status, skip, limit,
+        db,
+        current_user.lab_id,
+        department_id,
+        status,
+        skip,
+        limit,
     )
-    total = db.query(WaitingListEntry).filter(
-        WaitingListEntry.lab_id == current_user.lab_id,
-        ~WaitingListEntry.is_deleted,
-    ).count()
+    total = (
+        db.query(WaitingListEntry)
+        .filter(
+            WaitingListEntry.lab_id == current_user.lab_id,
+            ~WaitingListEntry.is_deleted,
+        )
+        .count()
+    )
     return _paginated_response([_model_to_dict(e) for e in entries], total, skip, limit)
 
 
@@ -520,7 +556,11 @@ def convert_waiting_list(
     current_user: LabUser = Depends(get_current_user),
 ):
     admission = NHDWService.convert_waiting_to_admission(
-        db, current_user.lab_id, current_user.id, entry_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        entry_id,
+        body.model_dump(),
     )
     return _model_to_dict(admission)
 
@@ -536,12 +576,22 @@ def list_clinical_tasks(
     current_user: LabUser = Depends(get_current_user),
 ):
     tasks = NHDWService.list_clinical_tasks(
-        db, current_user.lab_id, assigned_to, status, patient_id, skip, limit,
+        db,
+        current_user.lab_id,
+        assigned_to,
+        status,
+        patient_id,
+        skip,
+        limit,
     )
-    total = db.query(ClinicalTask).filter(
-        ClinicalTask.lab_id == current_user.lab_id,
-        ~ClinicalTask.is_deleted,
-    ).count()
+    total = (
+        db.query(ClinicalTask)
+        .filter(
+            ClinicalTask.lab_id == current_user.lab_id,
+            ~ClinicalTask.is_deleted,
+        )
+        .count()
+    )
     return _paginated_response([_model_to_dict(t) for t in tasks], total, skip, limit)
 
 
@@ -577,7 +627,9 @@ def assign_clinical_task(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
-    task = NHDWService.assign_clinical_task(db, current_user.lab_id, current_user.id, task_id, body.assigned_to)
+    task = NHDWService.assign_clinical_task(
+        db, current_user.lab_id, current_user.id, task_id, body.assigned_to
+    )
     return _model_to_dict(task)
 
 
@@ -616,12 +668,23 @@ def list_ward_rounds(
     current_user: LabUser = Depends(get_current_user),
 ):
     rounds = NHDWService.list_ward_rounds(
-        db, current_user.lab_id, department_id, patient_id, from_date, to_date, skip, limit,
+        db,
+        current_user.lab_id,
+        department_id,
+        patient_id,
+        from_date,
+        to_date,
+        skip,
+        limit,
     )
-    total = db.query(WardRound).filter(
-        WardRound.lab_id == current_user.lab_id,
-        ~WardRound.is_deleted,
-    ).count()
+    total = (
+        db.query(WardRound)
+        .filter(
+            WardRound.lab_id == current_user.lab_id,
+            ~WardRound.is_deleted,
+        )
+        .count()
+    )
     return _paginated_response([_model_to_dict(r) for r in rounds], total, skip, limit)
 
 
@@ -677,7 +740,9 @@ def review_care_plan(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
-    plan = NHDWService.review_care_plan(db, current_user.lab_id, current_user.id, plan_id, body.review_notes)
+    plan = NHDWService.review_care_plan(
+        db, current_user.lab_id, current_user.id, plan_id, body.review_notes
+    )
     return _model_to_dict(plan)
 
 
@@ -816,13 +881,24 @@ def list_messages(
     current_user: LabUser = Depends(get_current_user),
 ):
     messages = NHDWService.list_messages(
-        db, current_user.lab_id, current_user.id, direction, skip, limit,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        direction,
+        skip,
+        limit,
     )
-    total = db.query(HospitalMessage).filter(
-        HospitalMessage.lab_id == current_user.lab_id,
-        ~HospitalMessage.is_deleted,
-        HospitalMessage.recipient_id == current_user.id if direction == "received" else HospitalMessage.sender_id == current_user.id,
-    ).count()
+    total = (
+        db.query(HospitalMessage)
+        .filter(
+            HospitalMessage.lab_id == current_user.lab_id,
+            ~HospitalMessage.is_deleted,
+            HospitalMessage.recipient_id == current_user.id
+            if direction == "received"
+            else HospitalMessage.sender_id == current_user.id,
+        )
+        .count()
+    )
     return _paginated_response([_model_to_dict(m) for m in messages], total, skip, limit)
 
 
@@ -881,10 +957,14 @@ def list_alerts(
     current_user: LabUser = Depends(get_current_user),
 ):
     alerts = NHDWService.list_alerts(db, current_user.lab_id, severity, is_resolved, skip, limit)
-    total = db.query(HospitalAlert).filter(
-        HospitalAlert.lab_id == current_user.lab_id,
-        ~HospitalAlert.is_deleted,
-    ).count()
+    total = (
+        db.query(HospitalAlert)
+        .filter(
+            HospitalAlert.lab_id == current_user.lab_id,
+            ~HospitalAlert.is_deleted,
+        )
+        .count()
+    )
     return _paginated_response([_model_to_dict(a) for a in alerts], total, skip, limit)
 
 
@@ -919,7 +999,13 @@ def list_resource_schedule(
     current_user: LabUser = Depends(get_current_user),
 ):
     schedules = NHDWService.list_resource_schedules(
-        db, current_user.lab_id, resource_type, resource_id, scheduled_date, skip, limit,
+        db,
+        current_user.lab_id,
+        resource_type,
+        resource_id,
+        scheduled_date,
+        skip,
+        limit,
     )
     return [_model_to_dict(s) for s in schedules]
 
@@ -945,7 +1031,9 @@ def update_resource_schedule(
     current_user: LabUser = Depends(get_current_user),
 ):
     data = {k: v for k, v in body.model_dump().items() if v is not None}
-    schedule = NHDWService.update_resource_schedule(db, current_user.lab_id, current_user.id, schedule_id, data)
+    schedule = NHDWService.update_resource_schedule(
+        db, current_user.lab_id, current_user.id, schedule_id, data
+    )
     return _model_to_dict(schedule)
 
 
@@ -960,7 +1048,13 @@ def list_telemedicine_sessions(
     current_user: LabUser = Depends(get_current_user),
 ):
     sessions = NHDWService.list_telemedicine_sessions(
-        db, current_user.lab_id, patient_id, provider_id, status, skip, limit,
+        db,
+        current_user.lab_id,
+        patient_id,
+        provider_id,
+        status,
+        skip,
+        limit,
     )
     return [_model_to_dict(s) for s in sessions]
 
@@ -974,7 +1068,9 @@ def create_telemedicine_session(
     data = body.model_dump(exclude_none=True)
     if "metadata" in data:
         data["metadata_"] = data.pop("metadata")
-    session = NHDWService.create_telemedicine_session(db, current_user.lab_id, current_user.id, data)
+    session = NHDWService.create_telemedicine_session(
+        db, current_user.lab_id, current_user.id, data
+    )
     return _model_to_dict(session)
 
 
@@ -996,7 +1092,10 @@ def end_telemedicine_session(
     current_user: LabUser = Depends(get_current_user),
 ):
     session = NHDWService.end_telemedicine_session(
-        db, current_user.lab_id, session_id, body.model_dump(exclude_none=True),
+        db,
+        current_user.lab_id,
+        session_id,
+        body.model_dump(exclude_none=True),
     )
     return _model_to_dict(session)
 
@@ -1010,7 +1109,8 @@ def get_dashboard_config(
     config = NHDWService.get_dashboard_config(db, current_user.lab_id, role)
     if not config:
         raise HTTPException(
-            status_code=404, detail="Dashboard configuration not found",
+            status_code=404,
+            detail="Dashboard configuration not found",
             detail_ar="لم يتم العثور على تكوين لوحة المعلومات",
         )
     return _model_to_dict(config)
@@ -1038,7 +1138,13 @@ def list_shift_reports(
     current_user: LabUser = Depends(get_current_user),
 ):
     reports = NHDWService.list_shift_reports(
-        db, current_user.lab_id, department_id, shift_type, shift_date, skip, limit,
+        db,
+        current_user.lab_id,
+        department_id,
+        shift_type,
+        shift_date,
+        skip,
+        limit,
     )
     return [_model_to_dict(r) for r in reports]
 

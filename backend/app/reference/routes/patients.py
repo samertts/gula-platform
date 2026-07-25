@@ -91,21 +91,13 @@ def _patient_to_response(patient: PatientDomain) -> dict:
     return {
         "patient_id": patient.patient_id,
         "name": patient.name,
-        "date_of_birth": (
-            patient.date_of_birth.isoformat()
-            if patient.date_of_birth
-            else None
-        ),
+        "date_of_birth": (patient.date_of_birth.isoformat() if patient.date_of_birth else None),
         "gender": patient.gender.value if patient.gender else None,
         "phone": patient.phone,
         "lab_id": patient.lab_id,
         "national_id": patient.national_id,
         "address": patient.address,
         "age": patient.age,
-        "created_at": (
-            patient.created_at.isoformat() if patient.created_at else None
-        ),
-        "updated_at": (
-            patient.updated_at.isoformat() if patient.updated_at else None
-        ),
+        "created_at": (patient.created_at.isoformat() if patient.created_at else None),
+        "updated_at": (patient.updated_at.isoformat() if patient.updated_at else None),
     }

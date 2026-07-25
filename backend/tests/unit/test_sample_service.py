@@ -55,8 +55,12 @@ def lab(db_session):
 @pytest.fixture
 def admin_user(lab, db_session):
     u = LabUser(
-        lab_id=lab.id, name="Admin", email="admin@lab.com",
-        password_hash=hash_password("pw"), role="admin", is_active=True,
+        lab_id=lab.id,
+        name="Admin",
+        email="admin@lab.com",
+        password_hash=hash_password("pw"),
+        role="admin",
+        is_active=True,
     )
     db_session.add(u)
     db_session.commit()
@@ -94,8 +98,14 @@ def sample(lab, order, db_session):
 class TestCreateSample:
     def test_create_sample_success(self, db_session, lab, order, admin_user):
         result = sample_service.create_sample(
-            db_session, lab.id, order.id, "blood",
-            "Tech", "no notes", "fridge A", admin_user,
+            db_session,
+            lab.id,
+            order.id,
+            "blood",
+            "Tech",
+            "no notes",
+            "fridge A",
+            admin_user,
         )
         assert result["sample"]["sample_type"] == "blood"
         assert result["sample"]["order_id"] == order.id
@@ -103,15 +113,27 @@ class TestCreateSample:
     def test_create_sample_invalid_type(self, db_session, lab, order, admin_user):
         with pytest.raises(ValidationError):
             sample_service.create_sample(
-                db_session, lab.id, order.id, "invalid_type",
-                None, None, None, admin_user,
+                db_session,
+                lab.id,
+                order.id,
+                "invalid_type",
+                None,
+                None,
+                None,
+                admin_user,
             )
 
     def test_create_sample_order_not_found(self, db_session, lab, admin_user):
         with pytest.raises(NotFoundError):
             sample_service.create_sample(
-                db_session, lab.id, 99999, "blood",
-                None, None, None, admin_user,
+                db_session,
+                lab.id,
+                99999,
+                "blood",
+                None,
+                None,
+                None,
+                admin_user,
             )
 
     def test_create_sample_other_lab_order(self, db_session, lab, admin_user, patient):
@@ -123,8 +145,14 @@ class TestCreateSample:
         db_session.commit()
         with pytest.raises(NotFoundError):
             sample_service.create_sample(
-                db_session, lab.id, other_order.id, "blood",
-                None, None, None, admin_user,
+                db_session,
+                lab.id,
+                other_order.id,
+                "blood",
+                None,
+                None,
+                None,
+                admin_user,
             )
 
 
@@ -177,9 +205,13 @@ class TestGetSample:
 class TestUpdateSample:
     def test_update_status(self, db_session, lab, sample, admin_user):
         result = sample_service.update_sample(
-            db_session, lab.id, sample.barcode,
-            status="analyzed", rejection_reason=None,
-            notes=None, storage_location=None,
+            db_session,
+            lab.id,
+            sample.barcode,
+            status="analyzed",
+            rejection_reason=None,
+            notes=None,
+            storage_location=None,
             current_user=admin_user,
         )
         assert result["sample"]["status"] == "analyzed"
@@ -187,18 +219,26 @@ class TestUpdateSample:
     def test_update_rejection_requires_reason(self, db_session, lab, sample, admin_user):
         with pytest.raises(ValidationError):
             sample_service.update_sample(
-                db_session, lab.id, sample.barcode,
-                status="rejected", rejection_reason="",
-                notes=None, storage_location=None,
+                db_session,
+                lab.id,
+                sample.barcode,
+                status="rejected",
+                rejection_reason="",
+                notes=None,
+                storage_location=None,
                 current_user=admin_user,
             )
 
     def test_update_sample_not_found(self, db_session, lab, admin_user):
         with pytest.raises(NotFoundError):
             sample_service.update_sample(
-                db_session, lab.id, "NONEXISTENT",
-                status="analyzed", rejection_reason=None,
-                notes=None, storage_location=None,
+                db_session,
+                lab.id,
+                "NONEXISTENT",
+                status="analyzed",
+                rejection_reason=None,
+                notes=None,
+                storage_location=None,
                 current_user=admin_user,
             )
 
@@ -208,17 +248,25 @@ class TestUpdateSample:
         db_session.commit()
         with pytest.raises(NotFoundError):
             sample_service.update_sample(
-                db_session, other_lab.id, sample.barcode,
-                status="analyzed", rejection_reason=None,
-                notes=None, storage_location=None,
+                db_session,
+                other_lab.id,
+                sample.barcode,
+                status="analyzed",
+                rejection_reason=None,
+                notes=None,
+                storage_location=None,
                 current_user=admin_user,
             )
 
     def test_update_notes(self, db_session, lab, sample, admin_user):
         result = sample_service.update_sample(
-            db_session, lab.id, sample.barcode,
-            status=None, rejection_reason=None,
-            notes="Updated notes", storage_location="Fridge B",
+            db_session,
+            lab.id,
+            sample.barcode,
+            status=None,
+            rejection_reason=None,
+            notes="Updated notes",
+            storage_location="Fridge B",
             current_user=admin_user,
         )
         assert result["sample"]["notes"] == "Updated notes"

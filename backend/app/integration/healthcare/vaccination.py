@@ -31,7 +31,9 @@ class VaccinationIntegration(BaseConnector):
             headers = {"Content-Type": "application/json"}
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
-            self._client = httpx.AsyncClient(timeout=self._timeout, verify=self._verify_ssl, headers=headers)
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, verify=self._verify_ssl, headers=headers
+            )
             self._connected = True
             logger.info("Vaccination integration connected")
             return True
@@ -48,7 +50,11 @@ class VaccinationIntegration(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -94,7 +100,9 @@ class VaccinationIntegration(BaseConnector):
             "site": data.get("site", "left_deltoid"),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/vaccinations"), json=record)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/vaccinations"), json=record
+            )
             if resp.is_success:
                 return {"success": True, "vaccination_id": resp.json().get("id", "")}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -115,10 +123,16 @@ class VaccinationIntegration(BaseConnector):
         if national_id:
             params["national_id"] = national_id
         try:
-            resp = await self._client.get(urljoin(self._base_url, "/api/vaccinations"), params=params)
+            resp = await self._client.get(
+                urljoin(self._base_url, "/api/vaccinations"), params=params
+            )
             if resp.is_success:
                 records = resp.json()
-                return {"success": True, "vaccinations": records, "count": len(records) if isinstance(records, list) else 0}
+                return {
+                    "success": True,
+                    "vaccinations": records,
+                    "count": len(records) if isinstance(records, list) else 0,
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Vaccination record fetch failed: %s", exc)
@@ -132,7 +146,9 @@ class VaccinationIntegration(BaseConnector):
             "vaccines": data.get("vaccines", []),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/vaccines/inventory/sync"), json=sync)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/vaccines/inventory/sync"), json=sync
+            )
             if resp.is_success:
                 return {"success": True, "inventory": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -152,7 +168,9 @@ class VaccinationIntegration(BaseConnector):
             "notes": data.get("notes", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/appointments"), json=appointment)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/appointments"), json=appointment
+            )
             if resp.is_success:
                 return {"success": True, "appointment": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -173,7 +191,9 @@ class VaccinationIntegration(BaseConnector):
             "reported_by": data.get("reported_by", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/adverse-events"), json=event)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/adverse-events"), json=event
+            )
             if resp.is_success:
                 return {"success": True, "event_id": resp.json().get("id", "")}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}

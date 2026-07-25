@@ -14,14 +14,14 @@ from collections.abc import Sequence
 
 # Standard Westgard rule identifiers
 WESTGARD_RULES = [
-    "1_2s",    # 1 observation exceeds mean ± 2SD → warning
-    "1_3s",    # 1 observation exceeds mean ± 3SD → out of control
-    "2_2s",    # 2 consecutive observations exceed same mean ± 2SD → out of control
-    "R_4s",    # 2 consecutive observations differ by ≥ 4SD → out of control
-    "4_1s",    # 4 consecutive observations exceed same mean ± 1SD → out of control
-    "10x",     # 10 consecutive observations on same side of mean → systematic error
-    "8x",      # 8 consecutive observations on same side of mean → warning
-    "12x",     # 12 consecutive observations on same side of mean → out of control
+    "1_2s",  # 1 observation exceeds mean ± 2SD → warning
+    "1_3s",  # 1 observation exceeds mean ± 3SD → out of control
+    "2_2s",  # 2 consecutive observations exceed same mean ± 2SD → out of control
+    "R_4s",  # 2 consecutive observations differ by ≥ 4SD → out of control
+    "4_1s",  # 4 consecutive observations exceed same mean ± 1SD → out of control
+    "10x",  # 10 consecutive observations on same side of mean → systematic error
+    "8x",  # 8 consecutive observations on same side of mean → warning
+    "12x",  # 12 consecutive observations on same side of mean → out of control
 ]
 
 
@@ -86,7 +86,13 @@ def evaluate_westgard(
 
     # Determine overall status
     violation = None
-    if "1_3s" in triggered or "2_2s" in triggered or "R_4s" in triggered or "10x" in triggered or "12x" in triggered:
+    if (
+        "1_3s" in triggered
+        or "2_2s" in triggered
+        or "R_4s" in triggered
+        or "10x" in triggered
+        or "12x" in triggered
+    ):
         violation = "out_of_control"
     elif "4_1s" in triggered or "8x" in triggered or "1_2s" in triggered:
         violation = "warning"

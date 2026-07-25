@@ -83,20 +83,16 @@ class BaseConnector(ABC):
         }
 
     @abstractmethod
-    async def connect(self) -> bool:
-        ...
+    async def connect(self) -> bool: ...
 
     @abstractmethod
-    async def disconnect(self) -> bool:
-        ...
+    async def disconnect(self) -> bool: ...
 
     @abstractmethod
-    async def send(self, data: Any) -> ConnectorResult:
-        ...
+    async def send(self, data: Any) -> ConnectorResult: ...
 
     @abstractmethod
-    async def receive(self) -> ConnectorResult:
-        ...
+    async def receive(self) -> ConnectorResult: ...
 
     async def health_check(self) -> bool:
         start = time.monotonic()
@@ -119,7 +115,12 @@ class BaseConnector(ABC):
         return self._status
 
     def get_metrics(self) -> dict:
-        return {**self._metrics, "name": self._config.name, "protocol": self._config.protocol.value, "status": self._status.value}
+        return {
+            **self._metrics,
+            "name": self._config.name,
+            "protocol": self._config.protocol.value,
+            "status": self._status.value,
+        }
 
     def _record_success(self, duration_ms: int) -> None:
         self._metrics["total_calls"] += 1

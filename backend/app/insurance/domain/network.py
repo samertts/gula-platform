@@ -53,7 +53,9 @@ class NetworkProvider(InsBase):
 
     provider_id = Column(Integer, ForeignKey("ins_providers.id"), nullable=False, index=True)
     facility_id = Column(Integer, nullable=False, index=True)
-    contract_id = Column(Integer, ForeignKey("ins_provider_contracts.id"), nullable=True, index=True)
+    contract_id = Column(
+        Integer, ForeignKey("ins_provider_contracts.id"), nullable=True, index=True
+    )
 
     facility_type = Column(String(50), nullable=True)
     network_tier = Column(SAEnum(NetworkTier), nullable=False, default=NetworkTier.TIER2)
@@ -94,7 +96,12 @@ class NetworkService(InsBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, nullable=False, index=True)
 
-    network_provider_id = Column(Integer, ForeignKey("ins_network_providers.id", ondelete="CASCADE"), nullable=False, index=True)
+    network_provider_id = Column(
+        Integer,
+        ForeignKey("ins_network_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     service_code = Column(String(50), nullable=False, index=True)
     service_name = Column(String(255), nullable=True)
 
@@ -134,7 +141,12 @@ class ProviderAvailability(InsBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, nullable=False, index=True)
 
-    network_provider_id = Column(Integer, ForeignKey("ins_network_providers.id", ondelete="CASCADE"), nullable=False, index=True)
+    network_provider_id = Column(
+        Integer,
+        ForeignKey("ins_network_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     day_of_week = Column(Integer, nullable=False)
     time_from = Column(String(10), nullable=False)
@@ -175,7 +187,12 @@ class ProviderAccreditation(InsBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, nullable=False, index=True)
 
-    network_provider_id = Column(Integer, ForeignKey("ins_network_providers.id", ondelete="CASCADE"), nullable=False, index=True)
+    network_provider_id = Column(
+        Integer,
+        ForeignKey("ins_network_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     accreditation_body = Column(String(255), nullable=False)
     license_number = Column(String(100), nullable=False, index=True)
@@ -219,7 +236,12 @@ class GeographicCoverage(InsBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, nullable=False, index=True)
 
-    network_provider_id = Column(Integer, ForeignKey("ins_network_providers.id", ondelete="CASCADE"), nullable=False, index=True)
+    network_provider_id = Column(
+        Integer,
+        ForeignKey("ins_network_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     governorate = Column(String(100), nullable=False, index=True)
     district = Column(String(100), nullable=True)

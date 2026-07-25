@@ -141,8 +141,11 @@ def map_encounter(fhir: dict[str, Any]) -> EncounterCanonical:
         id=fhir.get("id", ""),
         patient_id=_extract_patient_ref(fhir.get("subject")),
         status=fhir.get("status", "planned"),
-        encounter_class=fhir.get("class", {}).get("code") if isinstance(fhir.get("class"), dict) else None,
-        encounter_type=_get_display(fhir, ["type", "coding"]) or _get_code(fhir, ["type", "coding"]),
+        encounter_class=fhir.get("class", {}).get("code")
+        if isinstance(fhir.get("class"), dict)
+        else None,
+        encounter_type=_get_display(fhir, ["type", "coding"])
+        or _get_code(fhir, ["type", "coding"]),
         period_start=_parse_datetime(period.get("start")),
         period_end=_parse_datetime(period.get("end")),
         service_provider=_extract_ref(fhir.get("serviceProvider")),
@@ -195,7 +198,9 @@ def map_condition(fhir: dict[str, Any]) -> ConditionCanonical:
     body_site = None
     body_sites = fhir.get("bodySite", [])
     if body_sites:
-        body_site = _get_display(body_sites[0], ["coding"]) if isinstance(body_sites[0], dict) else None
+        body_site = (
+            _get_display(body_sites[0], ["coding"]) if isinstance(body_sites[0], dict) else None
+        )
 
     severity = None
     sev = fhir.get("severity")
@@ -207,7 +212,8 @@ def map_condition(fhir: dict[str, Any]) -> ConditionCanonical:
         patient_id=_extract_ref(fhir.get("subject")),
         encounter_id=_extract_ref(fhir.get("encounter")),
         status=fhir.get("clinicalStatus", {}).get("coding", [{}])[0].get("code", "active")
-        if isinstance(fhir.get("clinicalStatus"), dict) else "active",
+        if isinstance(fhir.get("clinicalStatus"), dict)
+        else "active",
         severity=severity,
         code=code,
         code_display=display,
@@ -216,9 +222,11 @@ def map_condition(fhir: dict[str, Any]) -> ConditionCanonical:
         abatement_datetime=_parse_datetime(fhir.get("abatementDateTime")),
         recorded_date=_parse_datetime(fhir.get("recordedDate")),
         clinical_status=fhir.get("clinicalStatus", {}).get("coding", [{}])[0].get("code")
-        if isinstance(fhir.get("clinicalStatus"), dict) else None,
+        if isinstance(fhir.get("clinicalStatus"), dict)
+        else None,
         verification_status=fhir.get("verificationStatus", {}).get("coding", [{}])[0].get("code")
-        if isinstance(fhir.get("verificationStatus"), dict) else None,
+        if isinstance(fhir.get("verificationStatus"), dict)
+        else None,
         source_system="fhir",
         source_id=fhir.get("id"),
     )

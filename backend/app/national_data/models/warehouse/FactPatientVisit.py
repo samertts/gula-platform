@@ -6,11 +6,21 @@ from app.national_data.base import BaseEntity
 class FactPatientVisit(BaseEntity):
     __tablename__ = "dw_fact_patient_visits"
 
-    dim_patient_id = Column(Integer, ForeignKey("dw_dim_patient.id", ondelete="RESTRICT"), nullable=False, index=True)
-    dim_date_id = Column(Integer, ForeignKey("dw_dim_date.id", ondelete="RESTRICT"), nullable=False, index=True)
-    dim_facility_id = Column(Integer, ForeignKey("dw_dim_facility.id", ondelete="RESTRICT"), nullable=True, index=True)
-    dim_provider_id = Column(Integer, ForeignKey("dw_dim_provider.id", ondelete="RESTRICT"), nullable=True, index=True)
-    dim_diagnosis_id = Column(Integer, ForeignKey("dw_dim_diagnosis.id", ondelete="RESTRICT"), nullable=True, index=True)
+    dim_patient_id = Column(
+        Integer, ForeignKey("dw_dim_patient.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    dim_date_id = Column(
+        Integer, ForeignKey("dw_dim_date.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    dim_facility_id = Column(
+        Integer, ForeignKey("dw_dim_facility.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    dim_provider_id = Column(
+        Integer, ForeignKey("dw_dim_provider.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    dim_diagnosis_id = Column(
+        Integer, ForeignKey("dw_dim_diagnosis.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     encounter_type = Column(String(50), nullable=False)
     visit_status = Column(String(20), nullable=False)

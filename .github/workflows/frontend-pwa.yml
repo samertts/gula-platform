@@ -48,17 +48,17 @@ jobs:
         working-directory: frontend-v2
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: frontend-v2/package-lock.json
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: frontend-v2/node_modules
           key: node-modules-${{ hashFiles('frontend-v2/package-lock.json') }}
@@ -92,7 +92,7 @@ jobs:
           REACT_APP_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: pwa-build
           path: frontend-v2/build/
@@ -100,7 +100,7 @@ jobs:
           retention-days: 7
 
       - name: Upload source maps
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: pwa-source-maps
           path: frontend-v2/build/static/js/*.map
@@ -118,15 +118,15 @@ jobs:
         working-directory: frontend-v2
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Download build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: pwa-build
           path: build/
@@ -147,10 +147,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -158,7 +158,7 @@ jobs:
         run: npm install -g vercel@latest
 
       - name: Download build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: pwa-build
           path: frontend-v2/build/
@@ -172,7 +172,7 @@ jobs:
           echo "VERCEL_URL=$(cat vercel-url.txt)" >> $GITHUB_ENV
 
       - name: Comment PR with preview URL
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
           script: |
             github.rest.issues.createComment({
@@ -190,10 +190,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -201,7 +201,7 @@ jobs:
         run: npm install -g vercel@latest
 
       - name: Download build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: pwa-build
           path: frontend-v2/build/

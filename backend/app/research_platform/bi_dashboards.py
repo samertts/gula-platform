@@ -218,7 +218,10 @@ class ClinicalDashboard:
         }
 
     def _clinical_indicators(self, facility_id: str) -> dict:
-        return {"title": "Clinical Indicators", "note": "Requires clinical data warehouse integration"}
+        return {
+            "title": "Clinical Indicators",
+            "note": "Requires clinical data warehouse integration",
+        }
 
     def _patient_safety(self, facility_id: str) -> dict:
         return {"title": "Patient Safety", "adverse_events": None}

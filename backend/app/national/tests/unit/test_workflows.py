@@ -81,4 +81,6 @@ async def test_workflow_compensation():
 async def test_workflow_can_transition():
     workflow = PatientRegistrationWorkflow()
     assert await workflow.can_transition(WorkflowState.INITIATED, WorkflowState.IN_PROGRESS) is True
-    assert await workflow.can_transition(WorkflowState.COMPLETED, WorkflowState.IN_PROGRESS) is False
+    assert (
+        await workflow.can_transition(WorkflowState.COMPLETED, WorkflowState.IN_PROGRESS) is False
+    )

@@ -17,10 +17,10 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
-revision      = "20260324_0007"
+revision = "20260324_0007"
 down_revision = "20260324_0006"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _col_exists(table: str, col: str) -> bool:

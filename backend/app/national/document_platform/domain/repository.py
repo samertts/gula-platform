@@ -15,7 +15,6 @@ from app.national.document_platform.domain.enums import DocumentCategory, Docume
 
 
 class DocumentRepository(ABC):
-
     @abstractmethod
     async def save(self, document: Document) -> Document: ...
 
@@ -62,7 +61,6 @@ class DocumentRepository(ABC):
 
 
 class DocumentVersionRepository(ABC):
-
     @abstractmethod
     async def save(self, version: DocumentVersion) -> DocumentVersion: ...
 
@@ -82,7 +80,6 @@ class DocumentVersionRepository(ABC):
 
 
 class ElectronicSignatureRepository(ABC):
-
     @abstractmethod
     async def save(self, signature: ElectronicSignature) -> ElectronicSignature: ...
 
@@ -107,7 +104,6 @@ class ElectronicSignatureRepository(ABC):
 
 
 class DocumentQRCodeRepository(ABC):
-
     @abstractmethod
     async def save(self, qr_code: DocumentQRCode) -> DocumentQRCode: ...
 
@@ -125,7 +121,6 @@ class DocumentQRCodeRepository(ABC):
 
 
 class DocumentAttachmentRepository(ABC):
-
     @abstractmethod
     async def save(self, attachment: DocumentAttachment) -> DocumentAttachment: ...
 
@@ -145,7 +140,6 @@ class DocumentAttachmentRepository(ABC):
 
 
 class RetentionRuleRepository(ABC):
-
     @abstractmethod
     async def save(self, rule: RetentionRule) -> RetentionRule: ...
 

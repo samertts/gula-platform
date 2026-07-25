@@ -122,7 +122,9 @@ def generate_health_id(national_id: str) -> str:
         from ..config import NID_HMAC_KEY  # type: ignore
 
         digest = hmac.new(
-            NID_HMAC_KEY.encode("utf-8"), cleaned.encode("utf-8"), hashlib.sha256,
+            NID_HMAC_KEY.encode("utf-8"),
+            cleaned.encode("utf-8"),
+            hashlib.sha256,
         ).hexdigest()
     except Exception:
         digest = hashlib.sha256(cleaned.encode("utf-8")).hexdigest()
@@ -242,7 +244,9 @@ def calculate_match_score(citizen1: Any, citizen2: Any) -> float:
 
     dob = _dob_score(_get(citizen1, "birth_date"), _get(citizen2, "birth_date"))
     mother = _equal_score(
-        _get(citizen1, "mother_name"), _get(citizen2, "mother_name"), normalize=True,
+        _get(citizen1, "mother_name"),
+        _get(citizen2, "mother_name"),
+        normalize=True,
     )
     gov = _equal_score(_get(citizen1, "governorate"), _get(citizen2, "governorate"), normalize=True)
 

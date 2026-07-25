@@ -32,7 +32,9 @@ class InsuranceIntegration(BaseConnector):
             headers = {"Content-Type": "application/json", "X-Provider-ID": self._provider_id}
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
-            self._client = httpx.AsyncClient(timeout=self._timeout, verify=self._verify_ssl, headers=headers)
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, verify=self._verify_ssl, headers=headers
+            )
             self._connected = True
             logger.info("Insurance integration connected")
             return True
@@ -49,7 +51,11 @@ class InsuranceIntegration(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -89,7 +95,9 @@ class InsuranceIntegration(BaseConnector):
             "service_code": data.get("service_code", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/coverage/verify"), json=coverage)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/coverage/verify"), json=coverage
+            )
             if resp.is_success:
                 return {"success": True, "coverage": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -146,7 +154,9 @@ class InsuranceIntegration(BaseConnector):
             "estimated_cost": data.get("estimated_cost", 0),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/authorizations"), json=authorization)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/authorizations"), json=authorization
+            )
             if resp.is_success:
                 return {"success": True, "authorization": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -164,9 +174,15 @@ class InsuranceIntegration(BaseConnector):
             "service_type": data.get("service_type", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/eligibility"), json=eligibility)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/eligibility"), json=eligibility
+            )
             if resp.is_success:
-                return {"success": True, "eligible": resp.json().get("eligible", False), "details": resp.json()}
+                return {
+                    "success": True,
+                    "eligible": resp.json().get("eligible", False),
+                    "details": resp.json(),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Eligibility check failed: %s", exc)

@@ -29,10 +29,16 @@ class TrustFramework(IdentityBaseEntity):
     status = Column(String(20), nullable=False, default="draft", index=True)
     effective_date = Column(DateTime(timezone=True), nullable=True)
     supersedes_framework_id = Column(
-        String(26), ForeignKey("niam_trust_frameworks.id", ondelete="SET NULL"), nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_trust_frameworks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     authority_id = Column(
-        String(26), ForeignKey("niam_identity_authorities.id", ondelete="SET NULL"), nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_identity_authorities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     scope = Column(JSON, nullable=True)
     assurance_policies = Column(JSON, nullable=True)
@@ -43,9 +49,14 @@ class IdentityAssuranceProfile(IdentityBaseEntity):
     __tablename__ = "niam_trust_assurance_profiles"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     identity_id = Column(
-        String(26), ForeignKey("niam_identities.id", ondelete="CASCADE"), nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_identities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     ial = Column(String(10), nullable=False)
     aal = Column(String(10), nullable=False)
@@ -79,7 +90,10 @@ class TrustAnchor(IdentityBaseEntity):
     revoked_at = Column(DateTime(timezone=True), nullable=True)
     revocation_reason = Column(String(500), nullable=True)
     signed_by = Column(
-        String(26), ForeignKey("niam_trust_anchors.id", ondelete="SET NULL"), nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_trust_anchors.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -90,10 +104,16 @@ class FederationTrust(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     trust_id = Column(String(100), unique=True, nullable=False, index=True)
     source_org_id = Column(
-        String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     target_org_id = Column(
-        String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     trust_type = Column(String(20), nullable=False, index=True)
     trust_level = Column(String(20), nullable=False)
@@ -112,9 +132,14 @@ class IdentityProofing(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     proofing_id = Column(String(100), unique=True, nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     identity_id = Column(
-        String(26), ForeignKey("niam_identities.id", ondelete="CASCADE"), nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_identities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     proofing_level = Column(String(10), nullable=False)
     method = Column(String(30), nullable=False)
@@ -123,7 +148,10 @@ class IdentityProofing(IdentityBaseEntity):
     verified_by = Column(String(200), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
     authority_id = Column(
-        String(26), ForeignKey("niam_identity_authorities.id", ondelete="SET NULL"), nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_identity_authorities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     status = Column(String(20), nullable=False, default="pending", index=True)
     rejection_reason = Column(Text, nullable=True)

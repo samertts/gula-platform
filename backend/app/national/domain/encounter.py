@@ -11,15 +11,50 @@ class Encounter(TenantAuditEntity):
     encounter_type = Column(SAEnum(EncounterType), nullable=False)
     status = Column(SAEnum(EncounterStatus), nullable=False, default=EncounterStatus.PLANNED)
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    department_id = Column(String(26), ForeignKey("national_departments.id", ondelete="RESTRICT"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("national_organizations.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    department_id = Column(
+        String(26),
+        ForeignKey("national_departments.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
-    referral_id = Column(String(26), ForeignKey("national_referrals.id", ondelete="SET NULL"), nullable=True, index=True)
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    referral_id = Column(
+        String(26),
+        ForeignKey("national_referrals.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     period_start = Column(DateTime(timezone=True), nullable=False)
     period_end = Column(DateTime(timezone=True), nullable=True)

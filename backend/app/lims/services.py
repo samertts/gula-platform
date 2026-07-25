@@ -75,7 +75,15 @@ class SpecimenService:
         )
         db.add(specimen)
         db.flush()
-        log_action(db, "create", "lims_specimen", specimen.id, user_id, "lab_tech", f"Specimen {barcode} registered")
+        log_action(
+            db,
+            "create",
+            "lims_specimen",
+            specimen.id,
+            user_id,
+            "lab_tech",
+            f"Specimen {barcode} registered",
+        )
         return specimen
 
     @staticmethod
@@ -120,8 +128,15 @@ class SpecimenService:
             specimen.released_by = user_id
 
         db.flush()
-        log_action(db, "transition", "lims_specimen", specimen.id, user_id, "lab_tech",
-                    f"Specimen {specimen.barcode}: {specimen.status} → {target_status}")
+        log_action(
+            db,
+            "transition",
+            "lims_specimen",
+            specimen.id,
+            user_id,
+            "lab_tech",
+            f"Specimen {specimen.barcode}: {specimen.status} → {target_status}",
+        )
         return specimen
 
     @staticmethod
@@ -191,8 +206,15 @@ class OrderService:
         )
         db.add(lims_order)
         db.flush()
-        log_action(db, "create", "lims_order", lims_order.id, user_id, "lab_tech",
-                    f"LIMS order {accession_number} created")
+        log_action(
+            db,
+            "create",
+            "lims_order",
+            lims_order.id,
+            user_id,
+            "lab_tech",
+            f"LIMS order {accession_number} created",
+        )
         return lims_order
 
     @staticmethod
@@ -272,8 +294,15 @@ class ResultService:
             result.flag = validation["flags"][0] if validation["flags"] else None
 
         db.flush()
-        log_action(db, "create", "lims_result", result.id, user_id, "lab_tech",
-                    f"Result {test_code}: {value_numeric} {unit or ''}".strip())
+        log_action(
+            db,
+            "create",
+            "lims_result",
+            result.id,
+            user_id,
+            "lab_tech",
+            f"Result {test_code}: {value_numeric} {unit or ''}".strip(),
+        )
         return result
 
     @staticmethod
@@ -358,11 +387,17 @@ class QCService:
         notes: str | None = None,
     ) -> dict[str, Any]:
         # Get recent IQC history for Westgard evaluation
-        recent_iqc = db.query(IQC).filter(
-            IQC.test_code == test_code,
-            IQC.lab_id == lab_id,
-            IQC.program_id == program_id,
-        ).order_by(IQC.performed_at.desc()).limit(12).all()
+        recent_iqc = (
+            db.query(IQC)
+            .filter(
+                IQC.test_code == test_code,
+                IQC.lab_id == lab_id,
+                IQC.program_id == program_id,
+            )
+            .order_by(IQC.performed_at.desc())
+            .limit(12)
+            .all()
+        )
 
         history = [r.measured_value for r in reversed(recent_iqc)]
 

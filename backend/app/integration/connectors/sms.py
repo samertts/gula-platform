@@ -24,7 +24,9 @@ class SMSConnector(BaseConnector):
         super().__init__(name, version, config)
         self._provider = self.config.get("provider", "custom")
         if self._provider not in SUPPORTED_PROVIDERS:
-            raise ValueError(f"Unsupported SMS provider: {self._provider}. Supported: {', '.join(sorted(SUPPORTED_PROVIDERS))}")
+            raise ValueError(
+                f"Unsupported SMS provider: {self._provider}. Supported: {', '.join(sorted(SUPPORTED_PROVIDERS))}"
+            )
         self._base_url = self.config.get("base_url", "")
         self._api_key = self.config.get("api_key", "")
         self._api_secret = self.config.get("api_secret", "")
@@ -165,7 +167,9 @@ class SMSConnector(BaseConnector):
             return {"success": False, "error": "recipients and message required"}
         results = []
         for recipient in recipients:
-            result = await self._send_sms({"to": recipient, "message": message, "sender_id": data.get("sender_id")})
+            result = await self._send_sms(
+                {"to": recipient, "message": message, "sender_id": data.get("sender_id")}
+            )
             results.append(result)
         successful = sum(1 for r in results if r.get("success"))
         return {
@@ -185,7 +189,9 @@ class SMSConnector(BaseConnector):
         message = self._render_template(template_id, variables)
         if not message:
             return {"success": False, "error": f"Template not found: {template_id}"}
-        return await self._send_sms({"to": to, "message": message, "sender_id": data.get("sender_id")})
+        return await self._send_sms(
+            {"to": to, "message": message, "sender_id": data.get("sender_id")}
+        )
 
     async def _track_delivery(self, data: dict[str, Any]) -> dict[str, Any]:
         if not self._client:

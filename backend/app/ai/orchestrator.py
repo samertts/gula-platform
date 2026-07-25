@@ -29,7 +29,6 @@ class OrchestrationTask:
 
 
 class AIOrchestrator:
-
     def __init__(self, agent: AgentRuntime | None = None):
         self.agent = agent or agent_runtime
         self._tasks: dict[str, OrchestrationTask] = {}
@@ -43,7 +42,14 @@ class AIOrchestrator:
     ) -> dict[str, Any]:
         intent = await self._classify_intent(query)
         task_id = str(uuid.uuid4())
-        task = OrchestrationTask(id=task_id, type=intent, query=query, lab_id=lab_id, user_id=user_id, session_id=session_id)
+        task = OrchestrationTask(
+            id=task_id,
+            type=intent,
+            query=query,
+            lab_id=lab_id,
+            user_id=user_id,
+            session_id=session_id,
+        )
         self._tasks[task_id] = task
 
         try:
@@ -61,9 +67,43 @@ class AIOrchestrator:
 
     async def _classify_intent(self, query: str) -> str:
         q = query.lower().strip()
-        clinical_keywords = ["test", "result", "lab", "analyze", "interpret", "normal", "abnormal", "high", "low", "تحليل", "نتيجة", "فحص"]
-        patient_keywords = ["patient", "find", "lookup", "search", "name", "phone", "مريض", "اسم", "هاتف"]
-        knowledge_keywords = ["what is", "explain", "meaning", "difference", "compare", "condition", "medication", "ما هو", "شرح", "معنى"]
+        clinical_keywords = [
+            "test",
+            "result",
+            "lab",
+            "analyze",
+            "interpret",
+            "normal",
+            "abnormal",
+            "high",
+            "low",
+            "تحليل",
+            "نتيجة",
+            "فحص",
+        ]
+        patient_keywords = [
+            "patient",
+            "find",
+            "lookup",
+            "search",
+            "name",
+            "phone",
+            "مريض",
+            "اسم",
+            "هاتف",
+        ]
+        knowledge_keywords = [
+            "what is",
+            "explain",
+            "meaning",
+            "difference",
+            "compare",
+            "condition",
+            "medication",
+            "ما هو",
+            "شرح",
+            "معنى",
+        ]
         agent_keywords = ["execute", "run", "plan", "do", "perform", "نفذ", "اعمل", "خطط"]
 
         score = {"clinical": 0, "patient": 0, "knowledge": 0, "agent": 0, "chat": 1}
@@ -126,7 +166,11 @@ class AIOrchestrator:
         }
 
     async def _handle_agent(
-        self, query: str, lab_id: int | None, user_id: int | None, session_id: str | None,
+        self,
+        query: str,
+        lab_id: int | None,
+        user_id: int | None,
+        session_id: str | None,
     ) -> dict[str, Any]:
         if not session_id:
             session_id = str(uuid.uuid4())
@@ -135,7 +179,12 @@ class AIOrchestrator:
             "type": "agent_execution",
             "session_id": session_id,
             "steps": [
-                {"agent": r.agent_name, "success": r.success, "output": str(r.output)[:300], "duration_ms": r.duration_ms}
+                {
+                    "agent": r.agent_name,
+                    "success": r.success,
+                    "output": str(r.output)[:300],
+                    "duration_ms": r.duration_ms,
+                }
                 for r in results
             ],
         }
@@ -156,7 +205,14 @@ class AIOrchestrator:
             tasks = [t for t in tasks if t.status == status]
         tasks.sort(key=lambda t: t.started_at, reverse=True)
         return [
-            {"id": t.id, "type": t.type, "status": t.status, "query": t.query[:100], "started_at": t.started_at, "completed_at": t.completed_at}
+            {
+                "id": t.id,
+                "type": t.type,
+                "status": t.status,
+                "query": t.query[:100],
+                "started_at": t.started_at,
+                "completed_at": t.completed_at,
+            }
             for t in tasks[:limit]
         ]
 

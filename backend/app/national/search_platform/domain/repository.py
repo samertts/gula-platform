@@ -7,7 +7,6 @@ from app.national.search_platform.domain.entities import SavedSearch, SearchResu
 
 
 class SavedSearchRepository(ABC):
-
     @abstractmethod
     async def save(self, saved: SavedSearch) -> SavedSearch: ...
 
@@ -30,7 +29,6 @@ class SavedSearchRepository(ABC):
 
 
 class SearchResultRepository(ABC):
-
     @abstractmethod
     async def save_result(self, result: SearchResult) -> SearchResult: ...
 

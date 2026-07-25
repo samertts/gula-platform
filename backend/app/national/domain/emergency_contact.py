@@ -8,8 +8,18 @@ from app.national.enums import FamilyRelationshipType
 class EmergencyContact(TenantAuditEntity):
     __tablename__ = "national_emergency_contacts"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     full_name = Column(String(200), nullable=False)
     relationship = Column(SAEnum(FamilyRelationshipType), nullable=True)

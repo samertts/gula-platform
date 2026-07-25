@@ -7,7 +7,6 @@ from app.identity.repositories.organization_repository import OrganizationReposi
 
 
 class AuthorizationService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.assignment_repo = AssignmentRepository(session)

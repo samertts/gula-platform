@@ -1,5 +1,4 @@
-class PublicHealthError(Exception):
-    ...
+class PublicHealthError(Exception): ...
 
 
 class DiseaseCaseNotFoundError(PublicHealthError):

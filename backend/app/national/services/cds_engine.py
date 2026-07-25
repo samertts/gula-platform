@@ -21,16 +21,24 @@ class ClinicalDecisionSupportEngine:
         medication_code_a: str,
         medication_code_b: str,
     ) -> dict[str, Any]:
-        medication_a = db.query(MedicationCatalog).filter(
-            MedicationCatalog.medication_code == medication_code_a,
-            MedicationCatalog.is_active,
-            ~MedicationCatalog.is_deleted,
-        ).first()
-        medication_b = db.query(MedicationCatalog).filter(
-            MedicationCatalog.medication_code == medication_code_b,
-            MedicationCatalog.is_active,
-            ~MedicationCatalog.is_deleted,
-        ).first()
+        medication_a = (
+            db.query(MedicationCatalog)
+            .filter(
+                MedicationCatalog.medication_code == medication_code_a,
+                MedicationCatalog.is_active,
+                ~MedicationCatalog.is_deleted,
+            )
+            .first()
+        )
+        medication_b = (
+            db.query(MedicationCatalog)
+            .filter(
+                MedicationCatalog.medication_code == medication_code_b,
+                MedicationCatalog.is_active,
+                ~MedicationCatalog.is_deleted,
+            )
+            .first()
+        )
 
         if not medication_a or not medication_b:
             return {
@@ -65,8 +73,11 @@ class ClinicalDecisionSupportEngine:
                         "mechanism": interaction.get("mechanism"),
                     }
 
-        if (medication_a.therapeutic_class and medication_b.therapeutic_class
-                and medication_a.therapeutic_class == medication_b.therapeutic_class):
+        if (
+            medication_a.therapeutic_class
+            and medication_b.therapeutic_class
+            and medication_a.therapeutic_class == medication_b.therapeutic_class
+        ):
             return {
                 "has_interaction": True,
                 "severity": "moderate",
@@ -87,19 +98,27 @@ class ClinicalDecisionSupportEngine:
         patient_id: str,
         medication_code: str,
     ) -> list[dict[str, Any]]:
-        medication = db.query(MedicationCatalog).filter(
-            MedicationCatalog.medication_code == medication_code,
-            MedicationCatalog.is_active,
-            ~MedicationCatalog.is_deleted,
-        ).first()
+        medication = (
+            db.query(MedicationCatalog)
+            .filter(
+                MedicationCatalog.medication_code == medication_code,
+                MedicationCatalog.is_active,
+                ~MedicationCatalog.is_deleted,
+            )
+            .first()
+        )
         if not medication:
             return []
 
-        allergy_observations = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            Observation.category == "allergy",
-            ~Observation.is_deleted,
-        ).all()
+        allergy_observations = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                Observation.category == "allergy",
+                ~Observation.is_deleted,
+            )
+            .all()
+        )
 
         medication_ingredients = set()
         if medication.ingredients:
@@ -121,15 +140,17 @@ class ClinicalDecisionSupportEngine:
             allergy_display = (allergy.code_display or "").lower()
 
             if allergy_code in medication_ingredients or allergy_display in medication_ingredients:
-                conflicts.append({
-                    "has_conflict": True,
-                    "allergen": allergy.code_display or allergy.code,
-                    "allergy_code": allergy.code,
-                    "medication_code": medication_code,
-                    "medication_name": medication.medication_name,
-                    "severity": allergy.interpretation or "unknown",
-                    "reaction": allergy.value_text or "",
-                })
+                conflicts.append(
+                    {
+                        "has_conflict": True,
+                        "allergen": allergy.code_display or allergy.code,
+                        "allergy_code": allergy.code,
+                        "medication_code": medication_code,
+                        "medication_name": medication.medication_name,
+                        "severity": allergy.interpretation or "unknown",
+                        "reaction": allergy.value_text or "",
+                    },
+                )
 
         return conflicts
 
@@ -140,11 +161,15 @@ class ClinicalDecisionSupportEngine:
         medication_code: str,
         therapeutic_class: str | None = None,
     ) -> list[dict[str, Any]]:
-        medication = db.query(MedicationCatalog).filter(
-            MedicationCatalog.medication_code == medication_code,
-            MedicationCatalog.is_active,
-            ~MedicationCatalog.is_deleted,
-        ).first()
+        medication = (
+            db.query(MedicationCatalog)
+            .filter(
+                MedicationCatalog.medication_code == medication_code,
+                MedicationCatalog.is_active,
+                ~MedicationCatalog.is_deleted,
+            )
+            .first()
+        )
         if not medication:
             return []
 
@@ -152,35 +177,45 @@ class ClinicalDecisionSupportEngine:
         if not target_class:
             return []
 
-        active_medications = db.query(MedicationCatalog).filter(
-            MedicationCatalog.therapeutic_class == target_class,
-            MedicationCatalog.is_active,
-            ~MedicationCatalog.is_deleted,
-            MedicationCatalog.medication_code != medication_code,
-        ).all()
+        active_medications = (
+            db.query(MedicationCatalog)
+            .filter(
+                MedicationCatalog.therapeutic_class == target_class,
+                MedicationCatalog.is_active,
+                ~MedicationCatalog.is_deleted,
+                MedicationCatalog.medication_code != medication_code,
+            )
+            .all()
+        )
 
-        medication_statements = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            Observation.category == "medication",
-            ~Observation.is_deleted,
-            Observation.status.in_(["active", "intended"]),
-        ).all()
+        medication_statements = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                Observation.category == "medication",
+                ~Observation.is_deleted,
+                Observation.status.in_(["active", "intended"]),
+            )
+            .all()
+        )
 
         active_codes = {obs.code for obs in medication_statements if obs.code}
 
         duplicates: list[dict[str, Any]] = []
         for active_med in active_medications:
             if active_med.medication_code in active_codes:
-                duplicates.append({
-                    "is_duplicate": True,
-                    "existing_medication_code": active_med.medication_code,
-                    "existing_medication_name": active_med.medication_name,
-                    "new_medication_code": medication_code,
-                    "new_medication_name": medication.medication_name,
-                    "therapeutic_class": target_class,
-                    "severity": "warning",
-                    "recommendation": f"Patient already on {active_med.medication_name} in class {target_class}",
-                })
+                duplicates.append(
+                    {
+                        "is_duplicate": True,
+                        "existing_medication_code": active_med.medication_code,
+                        "existing_medication_name": active_med.medication_name,
+                        "new_medication_code": medication_code,
+                        "new_medication_name": medication.medication_name,
+                        "therapeutic_class": target_class,
+                        "severity": "warning",
+                        "recommendation": f"Patient already on {active_med.medication_name} in class {target_class}",
+                    },
+                )
 
         return duplicates
 
@@ -190,18 +225,26 @@ class ClinicalDecisionSupportEngine:
         patient_id: str,
         medication_code: str,
     ) -> list[dict[str, Any]]:
-        medication = db.query(MedicationCatalog).filter(
-            MedicationCatalog.medication_code == medication_code,
-            MedicationCatalog.is_active,
-            ~MedicationCatalog.is_deleted,
-        ).first()
+        medication = (
+            db.query(MedicationCatalog)
+            .filter(
+                MedicationCatalog.medication_code == medication_code,
+                MedicationCatalog.is_active,
+                ~MedicationCatalog.is_deleted,
+            )
+            .first()
+        )
         if not medication:
             return []
 
-        patient = db.query(Patient).filter(
-            Patient.id == patient_id,
-            ~Patient.is_deleted,
-        ).first()
+        patient = (
+            db.query(Patient)
+            .filter(
+                Patient.id == patient_id,
+                ~Patient.is_deleted,
+            )
+            .first()
+        )
 
         contraindications: list[dict[str, Any]] = []
 
@@ -212,77 +255,102 @@ class ClinicalDecisionSupportEngine:
                 ci_code = ci.get("code", "")
 
                 if ci_type == "condition":
-                    condition_obs = db.query(Observation).filter(
-                        Observation.patient_id == patient_id,
-                        Observation.category == "condition",
-                        Observation.code == ci_code,
-                        ~Observation.is_deleted,
-                    ).first()
+                    condition_obs = (
+                        db.query(Observation)
+                        .filter(
+                            Observation.patient_id == patient_id,
+                            Observation.category == "condition",
+                            Observation.code == ci_code,
+                            ~Observation.is_deleted,
+                        )
+                        .first()
+                    )
                     if condition_obs:
-                        contraindications.append({
-                            "has_contraindication": True,
-                            "type": "condition",
-                            "code": ci_code,
-                            "description": ci.get("description", ""),
-                            "severity": ci.get("severity", "contraindicated"),
-                            "details": condition_obs.code_display or ci_code,
-                        })
+                        contraindications.append(
+                            {
+                                "has_contraindication": True,
+                                "type": "condition",
+                                "code": ci_code,
+                                "description": ci.get("description", ""),
+                                "severity": ci.get("severity", "contraindicated"),
+                                "details": condition_obs.code_display or ci_code,
+                            },
+                        )
 
                 elif ci_type == "age":
                     if patient and patient.date_of_birth:
                         today = datetime.now().date()
                         age = today.year - patient.date_of_birth.year
-                        if ((today.month, today.day) <
-                                (patient.date_of_birth.month, patient.date_of_birth.day)):
+                        if (today.month, today.day) < (
+                            patient.date_of_birth.month,
+                            patient.date_of_birth.day,
+                        ):
                             age -= 1
                         min_age = ci.get("min_age") or medication.min_age_years
                         if min_age is not None and age < min_age:
-                            contraindications.append({
-                                "has_contraindication": True,
-                                "type": "age",
-                                "code": "age_restriction",
-                                "description": ci.get("description", f"Minimum age: {min_age}"),
-                                "severity": ci.get("severity", "contraindicated"),
-                                "details": f"Patient age {age} is below minimum {min_age}",
-                            })
+                            contraindications.append(
+                                {
+                                    "has_contraindication": True,
+                                    "type": "age",
+                                    "code": "age_restriction",
+                                    "description": ci.get("description", f"Minimum age: {min_age}"),
+                                    "severity": ci.get("severity", "contraindicated"),
+                                    "details": f"Patient age {age} is below minimum {min_age}",
+                                },
+                            )
 
                 elif ci_type == "pregnancy":
                     if medication.pregnancy_category in ("X", "D"):
-                        contraindications.append({
-                            "has_contraindication": True,
-                            "type": "pregnancy",
-                            "code": "pregnancy_category",
-                            "description": medication.pregnancy_category_description if hasattr(medication, "pregnancy_category_description") else f"Pregnancy category {medication.pregnancy_category}",
-                            "severity": "contraindicated" if medication.pregnancy_category == "X" else "warning",
-                            "details": f"Medication is pregnancy category {medication.pregnancy_category}",
-                        })
+                        contraindications.append(
+                            {
+                                "has_contraindication": True,
+                                "type": "pregnancy",
+                                "code": "pregnancy_category",
+                                "description": medication.pregnancy_category_description
+                                if hasattr(medication, "pregnancy_category_description")
+                                else f"Pregnancy category {medication.pregnancy_category}",
+                                "severity": "contraindicated"
+                                if medication.pregnancy_category == "X"
+                                else "warning",
+                                "details": f"Medication is pregnancy category {medication.pregnancy_category}",
+                            },
+                        )
 
                 elif ci_type == "observation":
-                    obs = db.query(Observation).filter(
-                        Observation.patient_id == patient_id,
-                        Observation.category == ci.get("observation_category", "laboratory"),
-                        Observation.code == ci_code,
-                        ~Observation.is_deleted,
-                    ).order_by(Observation.effective_datetime.desc()).first()
+                    obs = (
+                        db.query(Observation)
+                        .filter(
+                            Observation.patient_id == patient_id,
+                            Observation.category == ci.get("observation_category", "laboratory"),
+                            Observation.code == ci_code,
+                            ~Observation.is_deleted,
+                        )
+                        .order_by(Observation.effective_datetime.desc())
+                        .first()
+                    )
                     if obs:
-                        contraindications.append({
-                            "has_contraindication": True,
-                            "type": "observation",
-                            "code": ci_code,
-                            "description": ci.get("description", ""),
-                            "severity": ci.get("severity", "warning"),
-                            "details": f"{obs.code_display or ci_code}: {obs.value_quantity or obs.value_text}",
-                        })
+                        contraindications.append(
+                            {
+                                "has_contraindication": True,
+                                "type": "observation",
+                                "code": ci_code,
+                                "description": ci.get("description", ""),
+                                "severity": ci.get("severity", "warning"),
+                                "details": f"{obs.code_display or ci_code}: {obs.value_quantity or obs.value_text}",
+                            },
+                        )
 
                 else:
-                    contraindications.append({
-                        "has_contraindication": True,
-                        "type": ci_type,
-                        "code": ci_code,
-                        "description": ci.get("description", "Known contraindication"),
-                        "severity": ci.get("severity", "contraindicated"),
-                        "details": ci.get("details", ""),
-                    })
+                    contraindications.append(
+                        {
+                            "has_contraindication": True,
+                            "type": ci_type,
+                            "code": ci_code,
+                            "description": ci.get("description", "Known contraindication"),
+                            "severity": ci.get("severity", "contraindicated"),
+                            "details": ci.get("details", ""),
+                        },
+                    )
 
         return contraindications
 
@@ -296,54 +364,69 @@ class ClinicalDecisionSupportEngine:
     ) -> list[dict[str, Any]]:
         cutoff = datetime.now() - timedelta(hours=time_window_hours)
 
-        recent_observations = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            Observation.category == order_type,
-            Observation.code == order_code,
-            ~Observation.is_deleted,
-            Observation.effective_datetime >= cutoff,
-        ).order_by(
-            Observation.effective_datetime.desc(),
-        ).all()
+        recent_observations = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                Observation.category == order_type,
+                Observation.code == order_code,
+                ~Observation.is_deleted,
+                Observation.effective_datetime >= cutoff,
+            )
+            .order_by(
+                Observation.effective_datetime.desc(),
+            )
+            .all()
+        )
 
         duplicates: list[dict[str, Any]] = []
         for obs in recent_observations:
-            duplicates.append({
-                "is_duplicate": True,
-                "existing_observation_id": obs.id,
-                "order_type": order_type,
-                "order_code": obs.code,
-                "order_display": obs.code_display or obs.code,
-                "ordered_at": obs.effective_datetime.isoformat() if obs.effective_datetime else None,
-                "time_window_hours": time_window_hours,
-                "status": obs.status,
-                "severity": "info",
-                "recommendation": f"Similar order already exists within {time_window_hours}h window",
-            })
+            duplicates.append(
+                {
+                    "is_duplicate": True,
+                    "existing_observation_id": obs.id,
+                    "order_type": order_type,
+                    "order_code": obs.code,
+                    "order_display": obs.code_display or obs.code,
+                    "ordered_at": obs.effective_datetime.isoformat()
+                    if obs.effective_datetime
+                    else None,
+                    "time_window_hours": time_window_hours,
+                    "status": obs.status,
+                    "severity": "info",
+                    "recommendation": f"Similar order already exists within {time_window_hours}h window",
+                },
+            )
 
         if not duplicates:
-            recent_encounters = db.query(Encounter).filter(
-                Encounter.patient_id == patient_id,
-                ~Encounter.is_deleted,
-                or_(
-                    Encounter.period_start >= cutoff,
-                    Encounter.period_end >= cutoff,
-                ),
-            ).all()
+            recent_encounters = (
+                db.query(Encounter)
+                .filter(
+                    Encounter.patient_id == patient_id,
+                    ~Encounter.is_deleted,
+                    or_(
+                        Encounter.period_start >= cutoff,
+                        Encounter.period_end >= cutoff,
+                    ),
+                )
+                .all()
+            )
 
             for enc in recent_encounters:
                 if enc.reason_code == order_code:
-                    duplicates.append({
-                        "is_duplicate": True,
-                        "source": "encounter",
-                        "encounter_id": enc.id,
-                        "order_type": order_type,
-                        "order_code": enc.reason_code,
-                        "order_display": enc.reason_description or enc.reason_code,
-                        "time_window_hours": time_window_hours,
-                        "severity": "info",
-                        "recommendation": f"Recent encounter with same reason code within {time_window_hours}h",
-                    })
+                    duplicates.append(
+                        {
+                            "is_duplicate": True,
+                            "source": "encounter",
+                            "encounter_id": enc.id,
+                            "order_type": order_type,
+                            "order_code": enc.reason_code,
+                            "order_display": enc.reason_description or enc.reason_code,
+                            "time_window_hours": time_window_hours,
+                            "severity": "info",
+                            "recommendation": f"Recent encounter with same reason code within {time_window_hours}h",
+                        },
+                    )
 
         return duplicates
 
@@ -354,43 +437,64 @@ class ClinicalDecisionSupportEngine:
     ) -> list[dict[str, Any]]:
         alerts: list[dict[str, Any]] = []
 
-        recent_observations = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            ~Observation.is_deleted,
-            Observation.interpretation.in_(["critical high", "critical low", "critical", "panic"]),
-        ).order_by(
-            Observation.effective_datetime.desc(),
-        ).limit(20).all()
+        recent_observations = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                ~Observation.is_deleted,
+                Observation.interpretation.in_(
+                    ["critical high", "critical low", "critical", "panic"],
+                ),
+            )
+            .order_by(
+                Observation.effective_datetime.desc(),
+            )
+            .limit(20)
+            .all()
+        )
 
         for obs in recent_observations:
-            alerts.append({
-                "alert_type": "critical_observation",
-                "severity": "critical",
-                "code": obs.code,
-                "display": obs.code_display or obs.code,
-                "value": obs.value_quantity or obs.value_text,
-                "interpretation": obs.interpretation,
-                "reference_range": f"{obs.reference_range_low} - {obs.reference_range_high}" if obs.reference_range_low else None,
-                "effective_datetime": obs.effective_datetime.isoformat() if obs.effective_datetime else None,
-            })
+            alerts.append(
+                {
+                    "alert_type": "critical_observation",
+                    "severity": "critical",
+                    "code": obs.code,
+                    "display": obs.code_display or obs.code,
+                    "value": obs.value_quantity or obs.value_text,
+                    "interpretation": obs.interpretation,
+                    "reference_range": f"{obs.reference_range_low} - {obs.reference_range_high}"
+                    if obs.reference_range_low
+                    else None,
+                    "effective_datetime": obs.effective_datetime.isoformat()
+                    if obs.effective_datetime
+                    else None,
+                },
+            )
 
-        recent_allergies = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            Observation.category == "allergy",
-            ~Observation.is_deleted,
-            Observation.status == "active",
-            Observation.interpretation.in_(["severe", "life-threatening"]),
-        ).limit(10).all()
+        recent_allergies = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                Observation.category == "allergy",
+                ~Observation.is_deleted,
+                Observation.status == "active",
+                Observation.interpretation.in_(["severe", "life-threatening"]),
+            )
+            .limit(10)
+            .all()
+        )
 
         for allergy in recent_allergies:
-            alerts.append({
-                "alert_type": "severe_allergy",
-                "severity": "warning",
-                "code": allergy.code,
-                "display": allergy.code_display or allergy.code,
-                "reaction": allergy.value_text,
-                "interpretation": allergy.interpretation,
-            })
+            alerts.append(
+                {
+                    "alert_type": "severe_allergy",
+                    "severity": "warning",
+                    "code": allergy.code,
+                    "display": allergy.code_display or allergy.code,
+                    "reaction": allergy.value_text,
+                    "interpretation": allergy.interpretation,
+                },
+            )
 
         return alerts
 
@@ -400,28 +504,42 @@ class ClinicalDecisionSupportEngine:
         patient_id: str,
         guideline_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        patient = db.query(Patient).filter(
-            Patient.id == patient_id,
-            ~Patient.is_deleted,
-        ).first()
+        patient = (
+            db.query(Patient)
+            .filter(
+                Patient.id == patient_id,
+                ~Patient.is_deleted,
+            )
+            .first()
+        )
         if not patient:
             return []
 
         evaluations: list[dict[str, Any]] = []
 
-        condition_observations = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            Observation.category == "condition",
-            ~Observation.is_deleted,
-        ).all()
+        condition_observations = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                Observation.category == "condition",
+                ~Observation.is_deleted,
+            )
+            .all()
+        )
         condition_codes = {obs.code for obs in condition_observations if obs.code}
 
-        recent_observations = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            ~Observation.is_deleted,
-        ).order_by(
-            Observation.effective_datetime.desc(),
-        ).limit(50).all()
+        recent_observations = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                ~Observation.is_deleted,
+            )
+            .order_by(
+                Observation.effective_datetime.desc(),
+            )
+            .limit(50)
+            .all()
+        )
 
         obs_by_code: dict[str, list[Observation]] = {}
         for obs in recent_observations:
@@ -453,45 +571,53 @@ class ClinicalDecisionSupportEngine:
                         step_comparison,
                     )
                     if not met:
-                        recommendations.append({
-                            "guideline_id": guideline.get("id"),
-                            "guideline_name": guideline.get("name"),
-                            "step": step.get("name", ""),
-                            "observation_code": step_code,
-                            "current_value": latest.value_quantity,
-                            "target_value": step_value,
-                            "recommendation": step.get("recommendation", ""),
-                            "is_met": False,
-                        })
+                        recommendations.append(
+                            {
+                                "guideline_id": guideline.get("id"),
+                                "guideline_name": guideline.get("name"),
+                                "step": step.get("name", ""),
+                                "observation_code": step_code,
+                                "current_value": latest.value_quantity,
+                                "target_value": step_value,
+                                "recommendation": step.get("recommendation", ""),
+                                "is_met": False,
+                            },
+                        )
                     else:
-                        recommendations.append({
-                            "guideline_id": guideline.get("id"),
-                            "guideline_name": guideline.get("name"),
-                            "step": step.get("name", ""),
-                            "observation_code": step_code,
-                            "current_value": latest.value_quantity,
-                            "target_value": step_value,
-                            "recommendation": "Target met",
-                            "is_met": True,
-                        })
+                        recommendations.append(
+                            {
+                                "guideline_id": guideline.get("id"),
+                                "guideline_name": guideline.get("name"),
+                                "step": step.get("name", ""),
+                                "observation_code": step_code,
+                                "current_value": latest.value_quantity,
+                                "target_value": step_value,
+                                "recommendation": "Target met",
+                                "is_met": True,
+                            },
+                        )
 
             if recommendations:
-                evaluations.append({
-                    "guideline_id": guideline.get("id"),
-                    "guideline_name": guideline.get("name"),
-                    "guideline_description": guideline.get("description", ""),
-                    "recommendations": recommendations,
-                    "overall_status": all(r["is_met"] for r in recommendations),
-                })
+                evaluations.append(
+                    {
+                        "guideline_id": guideline.get("id"),
+                        "guideline_name": guideline.get("name"),
+                        "guideline_description": guideline.get("description", ""),
+                        "recommendations": recommendations,
+                        "overall_status": all(r["is_met"] for r in recommendations),
+                    },
+                )
 
         if not evaluations:
-            evaluations.append({
-                "guideline_id": guideline_id or "general",
-                "guideline_name": "No applicable guidelines",
-                "guideline_description": "No matching clinical guidelines found for this patient",
-                "recommendations": [],
-                "overall_status": None,
-            })
+            evaluations.append(
+                {
+                    "guideline_id": guideline_id or "general",
+                    "guideline_name": "No applicable guidelines",
+                    "guideline_description": "No matching clinical guidelines found for this patient",
+                    "recommendations": [],
+                    "overall_status": None,
+                },
+            )
 
         return evaluations
 
@@ -501,10 +627,14 @@ class ClinicalDecisionSupportEngine:
         patient_id: str,
         risk_type: str,
     ) -> dict[str, Any]:
-        patient = db.query(Patient).filter(
-            Patient.id == patient_id,
-            ~Patient.is_deleted,
-        ).first()
+        patient = (
+            db.query(Patient)
+            .filter(
+                Patient.id == patient_id,
+                ~Patient.is_deleted,
+            )
+            .first()
+        )
         if not patient:
             return {"risk_type": risk_type, "score": None, "risk_level": "unknown", "factors": []}
 
@@ -518,7 +648,12 @@ class ClinicalDecisionSupportEngine:
         elif risk_type == "readmission":
             score, factors = self._calculate_readmission_risk(db, patient)
         else:
-            return {"risk_type": risk_type, "score": None, "risk_level": "unknown", "factors": factors}
+            return {
+                "risk_type": risk_type,
+                "score": None,
+                "risk_level": "unknown",
+                "factors": factors,
+            }
 
         risk_level = "low"
         if score >= 0.3:
@@ -542,10 +677,14 @@ class ClinicalDecisionSupportEngine:
         db: Session,
         patient_id: str,
     ) -> list[dict[str, Any]]:
-        patient = db.query(Patient).filter(
-            Patient.id == patient_id,
-            ~Patient.is_deleted,
-        ).first()
+        patient = (
+            db.query(Patient)
+            .filter(
+                Patient.id == patient_id,
+                ~Patient.is_deleted,
+            )
+            .first()
+        )
         if not patient:
             return []
 
@@ -555,18 +694,24 @@ class ClinicalDecisionSupportEngine:
         age = None
         if patient.date_of_birth:
             age = today.year - patient.date_of_birth.year
-            if ((today.month, today.day) <
-                    (patient.date_of_birth.month, patient.date_of_birth.day)):
+            if (today.month, today.day) < (patient.date_of_birth.month, patient.date_of_birth.day):
                 age -= 1
 
-        gender = patient.gender.value if hasattr(patient.gender, "value") else str(patient.gender or "")
+        gender = (
+            patient.gender.value if hasattr(patient.gender, "value") else str(patient.gender or "")
+        )
 
-        recent_obs = db.query(Observation).filter(
-            Observation.patient_id == patient_id,
-            ~Observation.is_deleted,
-        ).order_by(
-            Observation.effective_datetime.desc(),
-        ).all()
+        recent_obs = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient_id,
+                ~Observation.is_deleted,
+            )
+            .order_by(
+                Observation.effective_datetime.desc(),
+            )
+            .all()
+        )
 
         performed_codes = {obs.code for obs in recent_obs if obs.code}
 
@@ -591,22 +736,23 @@ class ClinicalDecisionSupportEngine:
             conditions_required = item.get("conditions_required", [])
             if conditions_required:
                 patient_conditions = {
-                    obs.code for obs in recent_obs
-                    if obs.category == "condition" and obs.code
+                    obs.code for obs in recent_obs if obs.category == "condition" and obs.code
                 }
                 if not conditions_required.intersection(patient_conditions):
                     continue
 
-            recommendations.append({
-                "code": item.get("code"),
-                "name": item.get("name"),
-                "name_ar": item.get("name_ar"),
-                "category": item.get("category"),
-                "frequency": item.get("frequency"),
-                "reason": item.get("reason"),
-                "priority": item.get("priority", "routine"),
-                "due": True,
-            })
+            recommendations.append(
+                {
+                    "code": item.get("code"),
+                    "name": item.get("name"),
+                    "name_ar": item.get("name_ar"),
+                    "category": item.get("category"),
+                    "frequency": item.get("frequency"),
+                    "reason": item.get("reason"),
+                    "priority": item.get("priority", "routine"),
+                    "due": True,
+                },
+            )
 
         return recommendations
 
@@ -644,13 +790,19 @@ class ClinicalDecisionSupportEngine:
         score = 0.0
 
         obs_by_code: dict[str, str | None] = {}
-        observations = db.query(Observation).filter(
-            Observation.patient_id == patient.id,
-            Observation.category.in_(["vital-signs", "laboratory"]),
-            ~Observation.is_deleted,
-        ).order_by(
-            Observation.effective_datetime.desc(),
-        ).limit(100).all()
+        observations = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient.id,
+                Observation.category.in_(["vital-signs", "laboratory"]),
+                ~Observation.is_deleted,
+            )
+            .order_by(
+                Observation.effective_datetime.desc(),
+            )
+            .limit(100)
+            .all()
+        )
         for obs in observations:
             if obs.code and obs.code not in obs_by_code:
                 obs_by_code[obs.code] = obs.value_quantity
@@ -661,10 +813,24 @@ class ClinicalDecisionSupportEngine:
                 sbp = float(bp_systolic)
                 if sbp > 140:
                     score += 0.15
-                    factors.append({"name": "systolic_bp", "value": sbp, "contribution": 0.15, "risk": "elevated"})
+                    factors.append(
+                        {
+                            "name": "systolic_bp",
+                            "value": sbp,
+                            "contribution": 0.15,
+                            "risk": "elevated",
+                        },
+                    )
                 elif sbp > 120:
                     score += 0.05
-                    factors.append({"name": "systolic_bp", "value": sbp, "contribution": 0.05, "risk": "pre_elevated"})
+                    factors.append(
+                        {
+                            "name": "systolic_bp",
+                            "value": sbp,
+                            "contribution": 0.05,
+                            "risk": "pre_elevated",
+                        },
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -674,7 +840,14 @@ class ClinicalDecisionSupportEngine:
                 tc = float(cholesterol)
                 if tc > 240:
                     score += 0.1
-                    factors.append({"name": "total_cholesterol", "value": tc, "contribution": 0.1, "risk": "elevated"})
+                    factors.append(
+                        {
+                            "name": "total_cholesterol",
+                            "value": tc,
+                            "contribution": 0.1,
+                            "risk": "elevated",
+                        },
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -684,7 +857,14 @@ class ClinicalDecisionSupportEngine:
                 ldl_val = float(ldl)
                 if ldl_val > 160:
                     score += 0.1
-                    factors.append({"name": "ldl_cholesterol", "value": ldl_val, "contribution": 0.1, "risk": "elevated"})
+                    factors.append(
+                        {
+                            "name": "ldl_cholesterol",
+                            "value": ldl_val,
+                            "contribution": 0.1,
+                            "risk": "elevated",
+                        },
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -694,31 +874,52 @@ class ClinicalDecisionSupportEngine:
                 h = float(hdl)
                 if h < 40:
                     score += 0.05
-                    factors.append({"name": "hdl_cholesterol", "value": h, "contribution": 0.05, "risk": "low"})
+                    factors.append(
+                        {"name": "hdl_cholesterol", "value": h, "contribution": 0.05, "risk": "low"},
+                    )
             except (ValueError, TypeError):
                 pass
 
         if patient.date_of_birth:
-            age = (datetime.now().date() - patient.date_of_birth.date()).days / 365.25 if hasattr(patient.date_of_birth, "date") else 0
+            age = (
+                (datetime.now().date() - patient.date_of_birth.date()).days / 365.25
+                if hasattr(patient.date_of_birth, "date")
+                else 0
+            )
             if age > 45:
                 age_factor = min((age - 45) * 0.005, 0.15)
                 score += age_factor
-                factors.append({"name": "age", "value": round(age, 1), "contribution": round(age_factor, 4), "risk": "age_related"})
+                factors.append(
+                    {
+                        "name": "age",
+                        "value": round(age, 1),
+                        "contribution": round(age_factor, 4),
+                        "risk": "age_related",
+                    },
+                )
 
         smoking = obs_by_code.get("72166-2") or obs_by_code.get("smoking_status")
         if smoking:
             score += 0.1
-            factors.append({"name": "smoking", "value": smoking, "contribution": 0.1, "risk": "smoker"})
+            factors.append(
+                {"name": "smoking", "value": smoking, "contribution": 0.1, "risk": "smoker"},
+            )
 
-        diabetes_obs = db.query(Observation).filter(
-            Observation.patient_id == patient.id,
-            Observation.category == "condition",
-            Observation.code.in_(["44054006", "E11", "E10", "250.0"]),
-            ~Observation.is_deleted,
-        ).first()
+        diabetes_obs = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient.id,
+                Observation.category == "condition",
+                Observation.code.in_(["44054006", "E11", "E10", "250.0"]),
+                ~Observation.is_deleted,
+            )
+            .first()
+        )
         if diabetes_obs:
             score += 0.15
-            factors.append({"name": "diabetes", "value": True, "contribution": 0.15, "risk": "diabetic"})
+            factors.append(
+                {"name": "diabetes", "value": True, "contribution": 0.15, "risk": "diabetic"},
+            )
 
         return min(score, 1.0), factors
 
@@ -731,13 +932,19 @@ class ClinicalDecisionSupportEngine:
         score = 0.0
 
         obs_by_code: dict[str, str | None] = {}
-        observations = db.query(Observation).filter(
-            Observation.patient_id == patient.id,
-            Observation.category.in_(["vital-signs", "laboratory"]),
-            ~Observation.is_deleted,
-        ).order_by(
-            Observation.effective_datetime.desc(),
-        ).limit(100).all()
+        observations = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient.id,
+                Observation.category.in_(["vital-signs", "laboratory"]),
+                ~Observation.is_deleted,
+            )
+            .order_by(
+                Observation.effective_datetime.desc(),
+            )
+            .limit(100)
+            .all()
+        )
         for obs in observations:
             if obs.code and obs.code not in obs_by_code:
                 obs_by_code[obs.code] = obs.value_quantity
@@ -748,10 +955,24 @@ class ClinicalDecisionSupportEngine:
                 fg = float(fasting_glucose)
                 if fg >= 126:
                     score += 0.3
-                    factors.append({"name": "fasting_glucose", "value": fg, "contribution": 0.3, "risk": "diabetic_range"})
+                    factors.append(
+                        {
+                            "name": "fasting_glucose",
+                            "value": fg,
+                            "contribution": 0.3,
+                            "risk": "diabetic_range",
+                        },
+                    )
                 elif fg >= 100:
                     score += 0.1
-                    factors.append({"name": "fasting_glucose", "value": fg, "contribution": 0.1, "risk": "pre_diabetic"})
+                    factors.append(
+                        {
+                            "name": "fasting_glucose",
+                            "value": fg,
+                            "contribution": 0.1,
+                            "risk": "pre_diabetic",
+                        },
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -761,10 +982,19 @@ class ClinicalDecisionSupportEngine:
                 a1c = float(hba1c)
                 if a1c >= 6.5:
                     score += 0.3
-                    factors.append({"name": "hba1c", "value": a1c, "contribution": 0.3, "risk": "diabetic_range"})
+                    factors.append(
+                        {
+                            "name": "hba1c",
+                            "value": a1c,
+                            "contribution": 0.3,
+                            "risk": "diabetic_range",
+                        },
+                    )
                 elif a1c >= 5.7:
                     score += 0.1
-                    factors.append({"name": "hba1c", "value": a1c, "contribution": 0.1, "risk": "pre_diabetic"})
+                    factors.append(
+                        {"name": "hba1c", "value": a1c, "contribution": 0.1, "risk": "pre_diabetic"},
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -774,10 +1004,14 @@ class ClinicalDecisionSupportEngine:
                 bmi = float(bmi_obs)
                 if bmi >= 30:
                     score += 0.15
-                    factors.append({"name": "bmi", "value": bmi, "contribution": 0.15, "risk": "obese"})
+                    factors.append(
+                        {"name": "bmi", "value": bmi, "contribution": 0.15, "risk": "obese"},
+                    )
                 elif bmi >= 25:
                     score += 0.05
-                    factors.append({"name": "bmi", "value": bmi, "contribution": 0.05, "risk": "overweight"})
+                    factors.append(
+                        {"name": "bmi", "value": bmi, "contribution": 0.05, "risk": "overweight"},
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -785,7 +1019,14 @@ class ClinicalDecisionSupportEngine:
             age = (datetime.now().date() - patient.date_of_birth).days / 365.25
             if age > 45:
                 score += 0.05
-                factors.append({"name": "age", "value": round(age, 1), "contribution": 0.05, "risk": "age_risk"})
+                factors.append(
+                    {
+                        "name": "age",
+                        "value": round(age, 1),
+                        "contribution": 0.05,
+                        "risk": "age_risk",
+                    },
+                )
 
         hypertension = obs_by_code.get("8480-6") or obs_by_code.get("systolic_blood_pressure")
         if hypertension:
@@ -793,7 +1034,14 @@ class ClinicalDecisionSupportEngine:
                 bp = float(hypertension)
                 if bp > 140:
                     score += 0.05
-                    factors.append({"name": "hypertension", "value": bp, "contribution": 0.05, "risk": "hypertensive"})
+                    factors.append(
+                        {
+                            "name": "hypertension",
+                            "value": bp,
+                            "contribution": 0.05,
+                            "risk": "hypertensive",
+                        },
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -807,12 +1055,18 @@ class ClinicalDecisionSupportEngine:
         factors: list[dict[str, Any]] = []
         score = 0.0
 
-        recent_encounters = db.query(Encounter).filter(
-            Encounter.patient_id == patient.id,
-            ~Encounter.is_deleted,
-        ).order_by(
-            Encounter.period_start.desc(),
-        ).limit(10).all()
+        recent_encounters = (
+            db.query(Encounter)
+            .filter(
+                Encounter.patient_id == patient.id,
+                ~Encounter.is_deleted,
+            )
+            .order_by(
+                Encounter.period_start.desc(),
+            )
+            .limit(10)
+            .all()
+        )
 
         encounter_count_90d = 0
         cutoff_90d = datetime.now() - timedelta(days=90)
@@ -822,32 +1076,68 @@ class ClinicalDecisionSupportEngine:
 
         if encounter_count_90d >= 3:
             score += 0.2
-            factors.append({"name": "encounter_frequency", "value": encounter_count_90d, "contribution": 0.2, "risk": "high_utilization"})
+            factors.append(
+                {
+                    "name": "encounter_frequency",
+                    "value": encounter_count_90d,
+                    "contribution": 0.2,
+                    "risk": "high_utilization",
+                },
+            )
         elif encounter_count_90d >= 2:
             score += 0.1
-            factors.append({"name": "encounter_frequency", "value": encounter_count_90d, "contribution": 0.1, "risk": "moderate_utilization"})
+            factors.append(
+                {
+                    "name": "encounter_frequency",
+                    "value": encounter_count_90d,
+                    "contribution": 0.1,
+                    "risk": "moderate_utilization",
+                },
+            )
 
         age = 0
         if patient.date_of_birth:
             age = (datetime.now().date() - patient.date_of_birth).days / 365.25
             if age > 75:
                 score += 0.15
-                factors.append({"name": "age", "value": round(age, 1), "contribution": 0.15, "risk": "elderly"})
+                factors.append(
+                    {"name": "age", "value": round(age, 1), "contribution": 0.15, "risk": "elderly"},
+                )
             elif age > 65:
                 score += 0.1
-                factors.append({"name": "age", "value": round(age, 1), "contribution": 0.1, "risk": "senior"})
+                factors.append(
+                    {"name": "age", "value": round(age, 1), "contribution": 0.1, "risk": "senior"},
+                )
 
-        chronic_conditions = db.query(Observation).filter(
-            Observation.patient_id == patient.id,
-            Observation.category == "condition",
-            ~Observation.is_deleted,
-        ).count()
+        chronic_conditions = (
+            db.query(Observation)
+            .filter(
+                Observation.patient_id == patient.id,
+                Observation.category == "condition",
+                ~Observation.is_deleted,
+            )
+            .count()
+        )
         if chronic_conditions >= 3:
             score += 0.15
-            factors.append({"name": "chronic_conditions", "value": chronic_conditions, "contribution": 0.15, "risk": "multimorbidity"})
+            factors.append(
+                {
+                    "name": "chronic_conditions",
+                    "value": chronic_conditions,
+                    "contribution": 0.15,
+                    "risk": "multimorbidity",
+                },
+            )
         elif chronic_conditions >= 1:
             score += 0.05
-            factors.append({"name": "chronic_conditions", "value": chronic_conditions, "contribution": 0.05, "risk": "has_condition"})
+            factors.append(
+                {
+                    "name": "chronic_conditions",
+                    "value": chronic_conditions,
+                    "contribution": 0.05,
+                    "risk": "has_condition",
+                },
+            )
 
         return min(score, 1.0), factors
 
@@ -857,7 +1147,10 @@ class ClinicalDecisionSupportEngine:
                 "id": "htn_management",
                 "name": "Hypertension Management",
                 "description": "Guideline for managing hypertension based on JNC 8",
-                "conditions": [{"code": "38341003", "system": "SNOMED"}, {"code": "I10", "system": "ICD10"}],
+                "conditions": [
+                    {"code": "38341003", "system": "SNOMED"},
+                    {"code": "I10", "system": "ICD10"},
+                ],
                 "steps": [
                     {
                         "name": "Blood Pressure Control",
@@ -872,7 +1165,10 @@ class ClinicalDecisionSupportEngine:
                 "id": "dm_management",
                 "name": "Diabetes Mellitus Management",
                 "description": "Guideline for glycemic control in type 2 diabetes",
-                "conditions": [{"code": "44054006", "system": "SNOMED"}, {"code": "E11", "system": "ICD10"}],
+                "conditions": [
+                    {"code": "44054006", "system": "SNOMED"},
+                    {"code": "E11", "system": "ICD10"},
+                ],
                 "steps": [
                     {
                         "name": "HbA1c Control",
@@ -887,7 +1183,10 @@ class ClinicalDecisionSupportEngine:
                 "id": "hyperlipidemia",
                 "name": "Hyperlipidemia Management",
                 "description": "Lipid management for cardiovascular risk reduction",
-                "conditions": [{"code": "55822004", "system": "SNOMED"}, {"code": "E78", "system": "ICD10"}],
+                "conditions": [
+                    {"code": "55822004", "system": "SNOMED"},
+                    {"code": "E78", "system": "ICD10"},
+                ],
                 "steps": [
                     {
                         "name": "LDL Cholesterol Control",

@@ -25,7 +25,6 @@ def _now() -> datetime:
 
 
 class GovernanceService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -209,7 +208,6 @@ class GovernanceService:
 
 
 class PolicyApprovalService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -252,12 +250,14 @@ class PolicyApprovalService:
             reviewers.append(reviewer)
         workflow.reviewers = reviewers
         review_comments = workflow.review_comments or []
-        review_comments.append({
-            "reviewer": reviewer,
-            "decision": decision,
-            "comments": comments,
-            "at": _now().isoformat(),
-        })
+        review_comments.append(
+            {
+                "reviewer": reviewer,
+                "decision": decision,
+                "comments": comments,
+                "at": _now().isoformat(),
+            }
+        )
         workflow.review_comments = review_comments
         workflow.status = "review"
         workflow.updated_at = _now()
@@ -342,7 +342,6 @@ class PolicyApprovalService:
 
 
 class AppealService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -451,7 +450,6 @@ class AppealService:
 
 
 class SuspensionService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -551,7 +549,6 @@ class SuspensionService:
 
 
 class RegistryService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -620,7 +617,8 @@ class RegistryService:
             organization_id=organization_id,
             certifying_authority_id=certifying_authority_id or "",
             certification_type=certification_type or "",
-            certification_number=certification_number or str(uuid.uuid4()).replace("-", "").upper()[:20],
+            certification_number=certification_number
+            or str(uuid.uuid4()).replace("-", "").upper()[:20],
             issue_date=issue_date or _now(),
             expiry_date=expiry_date,
             verified_by=verified_by,

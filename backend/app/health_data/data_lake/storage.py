@@ -31,7 +31,11 @@ class StorageBackend(ABC):
 
 class LocalStorageBackend(StorageBackend):
     def __init__(self, base_path: str | None = None):
-        self.base_path = base_path or os.environ.get("GULA_DATA_LAKE_PATH") or os.path.join(tempfile.gettempdir(), "gula", "data", "lake")
+        self.base_path = (
+            base_path
+            or os.environ.get("GULA_DATA_LAKE_PATH")
+            or os.path.join(tempfile.gettempdir(), "gula", "data", "lake")
+        )
         os.makedirs(self.base_path, exist_ok=True)
 
     def _resolve(self, path: str) -> str:
@@ -124,7 +128,7 @@ class S3StorageBackend(StorageBackend):
             for obj in page.get("Contents", []):
                 key = obj["Key"]
                 if self.prefix:
-                    key = key[len(self.prefix) + 1:]
+                    key = key[len(self.prefix) + 1 :]
                 keys.append(key)
         return keys
 

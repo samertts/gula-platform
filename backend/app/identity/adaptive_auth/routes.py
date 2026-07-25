@@ -76,12 +76,7 @@ async def list_risk_policies(
 ):
     from sqlalchemy import select
 
-    stmt = (
-        select(RiskPolicy)
-        .where(RiskPolicy.is_active.is_(True))
-        .offset(skip)
-        .limit(limit)
-    )
+    stmt = select(RiskPolicy).where(RiskPolicy.is_active.is_(True)).offset(skip).limit(limit)
     result = await db.execute(stmt)
     policies = list(result.scalars().all())
     return [p.to_dict() for p in policies]
@@ -151,12 +146,7 @@ async def list_session_policies(
 ):
     from sqlalchemy import select
 
-    stmt = (
-        select(SessionPolicy)
-        .where(SessionPolicy.is_active.is_(True))
-        .offset(skip)
-        .limit(limit)
-    )
+    stmt = select(SessionPolicy).where(SessionPolicy.is_active.is_(True)).offset(skip).limit(limit)
     result = await db.execute(stmt)
     policies = list(result.scalars().all())
     return [p.to_dict() for p in policies]

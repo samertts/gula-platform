@@ -9,7 +9,9 @@ from app.national_data.base import BaseEntity
 class FeatureValue(BaseEntity):
     __tablename__ = "dp_feature_values"
 
-    feature_id = Column(Integer, ForeignKey("dp_feature_store.id", ondelete="CASCADE"), nullable=False, index=True)
+    feature_id = Column(
+        Integer, ForeignKey("dp_feature_store.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     entity_type = Column(String(100), nullable=False)
     entity_id = Column(String(100), nullable=False, index=True)
 

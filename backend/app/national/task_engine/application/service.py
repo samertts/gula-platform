@@ -83,7 +83,10 @@ class TaskEngineService:
         return await self._task_repo.get(task_id)
 
     async def list_tasks(
-        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        filters: dict | None = None,
     ) -> list[NationalTask]:
         return await self._task_repo.list(skip=skip, limit=limit, filters=filters)
 
@@ -111,7 +114,10 @@ class TaskEngineService:
         return await self._task_repo.delete(task_id)
 
     async def assign_task(
-        self, task_id: str, assignee_id: str, assigned_by: str | None = None,
+        self,
+        task_id: str,
+        assignee_id: str,
+        assigned_by: str | None = None,
     ) -> NationalTask:
         task = await self._task_repo.get(task_id)
         if not task:
@@ -186,7 +192,10 @@ class TaskEngineService:
         return result
 
     async def escalate_task(
-        self, task_id: str, reason: str, escalated_to: str | None = None,
+        self,
+        task_id: str,
+        reason: str,
+        escalated_to: str | None = None,
     ) -> NationalTask:
         task = await self._task_repo.get(task_id)
         if not task:
@@ -206,7 +215,10 @@ class TaskEngineService:
         return result
 
     async def delegate_task(
-        self, task_id: str, to_user: str, reason: str | None = None,
+        self,
+        task_id: str,
+        to_user: str,
+        reason: str | None = None,
     ) -> NationalTask:
         task = await self._task_repo.get(task_id)
         if not task:
@@ -242,7 +254,11 @@ class TaskEngineService:
         return result
 
     async def add_comment(
-        self, task_id: str, author_id: str, author_name: str, content: str,
+        self,
+        task_id: str,
+        author_id: str,
+        author_name: str,
+        content: str,
     ) -> TaskComment:
         comment = TaskComment(
             id=str(uuid.uuid4()),
@@ -321,7 +337,11 @@ class TaskEngineService:
                 await self._task_repo.save(task)
 
     async def _audit(
-        self, action: str, task: NationalTask, previous: str | None, new: str | None,
+        self,
+        action: str,
+        task: NationalTask,
+        previous: str | None,
+        new: str | None,
     ) -> None:
         log = TaskAuditLog(
             id=str(uuid.uuid4()),

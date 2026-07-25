@@ -68,7 +68,9 @@ class HashMismatchError(NationalDomainError):
         self.document_id = document_id
         self.expected = expected
         self.actual = actual
-        super().__init__(f"Hash mismatch for document {document_id}: expected {expected}, got {actual}")
+        super().__init__(
+            f"Hash mismatch for document {document_id}: expected {expected}, got {actual}",
+        )
 
 
 class StorageError(NationalDomainError):

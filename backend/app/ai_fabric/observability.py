@@ -66,7 +66,13 @@ class AIObserver:
         if len(self._records) > 100_000:
             self._records = self._records[-50_000:]
 
-    def record_inference(self, request: InferenceRequest, response: InferenceResponse, endpoint: str = "", user_id: str = "") -> None:
+    def record_inference(
+        self,
+        request: InferenceRequest,
+        response: InferenceResponse,
+        endpoint: str = "",
+        user_id: str = "",
+    ) -> None:
         self.record(
             model=response.model or request.model,
             provider=response.provider,
@@ -108,9 +114,15 @@ class AIObserver:
             "error_count": len(errors),
             "error_rate": round(len(errors) / total * 100, 2) if total else 0.0,
             "avg_latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else 0.0,
-            "p50_latency_ms": round(sorted(latencies)[len(latencies) // 2], 2) if latencies else 0.0,
-            "p95_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.95)], 2) if latencies else 0.0,
-            "p99_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.99)], 2) if latencies else 0.0,
+            "p50_latency_ms": round(sorted(latencies)[len(latencies) // 2], 2)
+            if latencies
+            else 0.0,
+            "p95_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.95)], 2)
+            if latencies
+            else 0.0,
+            "p99_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.99)], 2)
+            if latencies
+            else 0.0,
             "total_tokens": total_tokens,
             "total_cost": round(sum(costs), 6),
             "avg_cost_per_request": round(sum(costs) / total, 6) if total else 0.0,
@@ -135,9 +147,13 @@ class AIObserver:
             "model": model,
             "requests": len(model_records),
             "avg_latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else 0.0,
-            "error_rate": round(len(errors) / len(model_records) * 100, 2) if model_records else 0.0,
+            "error_rate": round(len(errors) / len(model_records) * 100, 2)
+            if model_records
+            else 0.0,
             "total_cost": round(sum(costs), 6),
-            "avg_cost_per_request": round(sum(costs) / len(model_records), 6) if model_records else 0.0,
+            "avg_cost_per_request": round(sum(costs) / len(model_records), 6)
+            if model_records
+            else 0.0,
         }
 
     def get_recent_errors(self, limit: int = 50) -> list[dict[str, Any]]:
@@ -149,7 +165,8 @@ class AIObserver:
                 "endpoint": r.endpoint,
                 "error": r.error,
             }
-            for r in self._records if not r.success
+            for r in self._records
+            if not r.success
         ][-limit:]
 
     def get_daily_usage(self, days: int = 30) -> list[dict[str, Any]]:

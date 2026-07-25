@@ -56,7 +56,6 @@ def _now() -> datetime:
 
 
 class CertificateService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -111,7 +110,9 @@ class CertificateService:
         await self.session.flush()
         return cert
 
-    async def revoke_certificate(self, certificate_id: str, reason: str) -> DigitalCertificate | None:
+    async def revoke_certificate(
+        self, certificate_id: str, reason: str
+    ) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.certificate_id == certificate_id,
             DigitalCertificate.is_active.is_(True),
@@ -170,10 +171,19 @@ class CertificateService:
             return {"valid": False, "reason": "inactive"}
         now = _now()
         if cert.status == "revoked":
-            return {"valid": False, "reason": "revoked", "revoked_at": cert.revoked_at.isoformat() if cert.revoked_at else None}
+            return {
+                "valid": False,
+                "reason": "revoked",
+                "revoked_at": cert.revoked_at.isoformat() if cert.revoked_at else None,
+            }
         if cert.expires_at and now > cert.expires_at:
             return {"valid": False, "reason": "expired", "expires_at": cert.expires_at.isoformat()}
-        return {"valid": True, "subject": cert.subject, "certificate_type": cert.certificate_type, "expires_at": cert.expires_at.isoformat() if cert.expires_at else None}
+        return {
+            "valid": True,
+            "subject": cert.subject,
+            "certificate_type": cert.certificate_type,
+            "expires_at": cert.expires_at.isoformat() if cert.expires_at else None,
+        }
 
     async def get_certificate(self, thumbprint: str) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(DigitalCertificate.thumbprint == thumbprint)
@@ -213,7 +223,6 @@ class CertificateService:
 
 
 class CertificateAuthorityService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -294,17 +303,22 @@ class CertificateAuthorityService:
 
         revoked_list = []
         for rc in revoked_certs:
-            revoked_list.append({
-                "serial_number": rc.serial_number,
-                "revocation_date": rc.revocation_date.isoformat() if rc.revocation_date else None,
-                "reason": rc.revocation_reason,
-            })
+            revoked_list.append(
+                {
+                    "serial_number": rc.serial_number,
+                    "revocation_date": rc.revocation_date.isoformat()
+                    if rc.revocation_date
+                    else None,
+                    "reason": rc.revocation_reason,
+                }
+            )
 
         now = _now()
         next_update = now + timedelta(days=7)
         crl_id = f"crl-{uuid.uuid4().hex[:16]}"
 
         import json
+
         crl_pem = json.dumps({"crl_id": crl_id, "ca_id": ca_id, "issued": now.isoformat()})
 
         crl = CertificateRevocationList(
@@ -346,7 +360,6 @@ class CertificateAuthorityService:
 
 
 class APIKeyService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 

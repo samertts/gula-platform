@@ -39,4 +39,7 @@ class SensitiveRecordService:
         sensitivity = self.get_sensitivity(condition)
         if sensitivity == SensitivityLevel.RESTRICTED:
             return True
-        return bool(sensitivity == SensitivityLevel.HIGHLY_SENSITIVE and user_role not in {"system_admin", "national_admin"})
+        return bool(
+            sensitivity == SensitivityLevel.HIGHLY_SENSITIVE
+            and user_role not in {"system_admin", "national_admin"},
+        )

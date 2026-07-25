@@ -70,6 +70,7 @@ class HealthCertificateService:
         metadata: dict[str, Any] | None = None,
     ) -> HealthCertificate:
         from datetime import timedelta
+
         now = datetime.now(UTC)
         cert = HealthCertificate(
             id=str(uuid.uuid4()),
@@ -142,6 +143,7 @@ class MedicalLeaveService:
         notes: str = "",
     ) -> MedicalLeaveDocument:
         from datetime import date
+
         try:
             f = date.fromisoformat(from_date)
             t = date.fromisoformat(to_date)

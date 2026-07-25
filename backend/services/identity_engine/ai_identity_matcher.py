@@ -8,7 +8,6 @@ def find_similar(name, phone):
     matches = []
 
     for c in db:
-
         if name.lower() in c["name"].lower() or phone == c["phone"]:
             matches.append(c)
 

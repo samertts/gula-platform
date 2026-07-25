@@ -34,7 +34,6 @@ class Conversation:
 
 
 class MemoryStore:
-
     def __init__(self):
         self._sessions: dict[str, Conversation] = {}
 
@@ -59,8 +58,16 @@ class MemoryStore:
             try:
                 meta_json = json.dumps(metadata or {}, ensure_ascii=False)
                 db.execute(
-                    text("INSERT INTO ai_conversations (lab_id, user_id, session_id, title, metadata) VALUES (:lab, :uid, :sid, :title, :meta::jsonb) RETURNING id"),
-                    {"lab": lab_id, "uid": user_id, "sid": session_id, "title": title, "meta": meta_json},
+                    text(
+                        "INSERT INTO ai_conversations (lab_id, user_id, session_id, title, metadata) VALUES (:lab, :uid, :sid, :title, :meta::jsonb) RETURNING id",
+                    ),
+                    {
+                        "lab": lab_id,
+                        "uid": user_id,
+                        "sid": session_id,
+                        "title": title,
+                        "meta": meta_json,
+                    },
                 )
                 db.commit()
             except Exception as exc:
@@ -99,8 +106,16 @@ class MemoryStore:
             try:
                 meta_json = json.dumps(metadata or {}, ensure_ascii=False)
                 db.execute(
-                    text("INSERT INTO ai_conversation_messages (conversation_id, role, content, metadata, token_count) VALUES ((SELECT id FROM ai_conversations WHERE session_id = :sid), :role, :content, :meta::jsonb, :tokens)"),
-                    {"sid": session_id, "role": role, "content": content, "meta": meta_json, "tokens": token_count},
+                    text(
+                        "INSERT INTO ai_conversation_messages (conversation_id, role, content, metadata, token_count) VALUES ((SELECT id FROM ai_conversations WHERE session_id = :sid), :role, :content, :meta::jsonb, :tokens)",
+                    ),
+                    {
+                        "sid": session_id,
+                        "role": role,
+                        "content": content,
+                        "meta": meta_json,
+                        "tokens": token_count,
+                    },
                 )
                 db.commit()
             except Exception as exc:
@@ -121,12 +136,16 @@ class MemoryStore:
             return None
         try:
             row = db.execute(
-                text("SELECT id, lab_id, user_id, session_id, title, metadata FROM ai_conversations WHERE session_id = :sid"),
+                text(
+                    "SELECT id, lab_id, user_id, session_id, title, metadata FROM ai_conversations WHERE session_id = :sid",
+                ),
                 {"sid": session_id},
             ).fetchone()
             if row is None:
                 return None
-            meta = row.metadata if isinstance(row.metadata, dict) else json.loads(row.metadata or "{}")
+            meta = (
+                row.metadata if isinstance(row.metadata, dict) else json.loads(row.metadata or "{}")
+            )
             conv = Conversation(
                 session_id=row.session_id,
                 lab_id=row.lab_id,
@@ -135,16 +154,26 @@ class MemoryStore:
                 metadata=meta,
             )
             msg_rows = db.execute(
-                text("SELECT role, content, metadata, token_count, created_at FROM ai_conversation_messages WHERE conversation_id = :cid ORDER BY created_at ASC"),
+                text(
+                    "SELECT role, content, metadata, token_count, created_at FROM ai_conversation_messages WHERE conversation_id = :cid ORDER BY created_at ASC",
+                ),
                 {"cid": row.id},
             ).fetchall()
             for m in msg_rows:
-                m_meta = m.metadata if isinstance(m.metadata, dict) else json.loads(m.metadata or "{}")
-                conv.messages.append(Message(
-                    role=m.role, content=m.content, metadata=m_meta,
-                    token_count=m.token_count,
-                    created_at=m.created_at.timestamp() if hasattr(m.created_at, "timestamp") else time.time(),
-                ))
+                m_meta = (
+                    m.metadata if isinstance(m.metadata, dict) else json.loads(m.metadata or "{}")
+                )
+                conv.messages.append(
+                    Message(
+                        role=m.role,
+                        content=m.content,
+                        metadata=m_meta,
+                        token_count=m.token_count,
+                        created_at=m.created_at.timestamp()
+                        if hasattr(m.created_at, "timestamp")
+                        else time.time(),
+                    ),
+                )
             self._sessions[session_id] = conv
             return conv
         except Exception as exc:
@@ -179,15 +208,17 @@ class MemoryStore:
         for conv in self._sessions.values():
             if lab_id is not None and conv.lab_id != lab_id:
                 continue
-            sessions.append({
-                "session_id": conv.session_id,
-                "lab_id": conv.lab_id,
-                "user_id": conv.user_id,
-                "title": conv.title,
-                "message_count": len(conv.messages),
-                "last_message": conv.messages[-1].content[:100] if conv.messages else None,
-                "created_at": conv.messages[0].created_at if conv.messages else None,
-            })
+            sessions.append(
+                {
+                    "session_id": conv.session_id,
+                    "lab_id": conv.lab_id,
+                    "user_id": conv.user_id,
+                    "title": conv.title,
+                    "message_count": len(conv.messages),
+                    "last_message": conv.messages[-1].content[:100] if conv.messages else None,
+                    "created_at": conv.messages[0].created_at if conv.messages else None,
+                },
+            )
         return sessions[:limit]
 
     def delete_session(self, session_id: str) -> bool:
@@ -195,7 +226,10 @@ class MemoryStore:
         try:
             db = next(get_db())
             try:
-                db.execute(text("DELETE FROM ai_conversations WHERE session_id = :sid"), {"sid": session_id})
+                db.execute(
+                    text("DELETE FROM ai_conversations WHERE session_id = :sid"),
+                    {"sid": session_id},
+                )
                 db.commit()
             except Exception:
                 db.rollback()

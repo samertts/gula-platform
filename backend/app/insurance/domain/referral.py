@@ -55,7 +55,9 @@ class InsuranceReferral(InsBase):
 
     coverage_id = Column(Integer, ForeignKey("ins_coverages.id"), nullable=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
-    authorization_id = Column(Integer, ForeignKey("ins_authorizations.id"), nullable=True, index=True)
+    authorization_id = Column(
+        Integer, ForeignKey("ins_authorizations.id"), nullable=True, index=True
+    )
 
     from_practitioner_id = Column(Integer, nullable=True, index=True)
     to_practitioner_id = Column(Integer, nullable=True, index=True)
@@ -106,8 +108,12 @@ class InsuranceReferral(InsBase):
     )
 
     coverage = relationship("Coverage", backref="referrals")
-    history = relationship("ReferralHistory", back_populates="referral", cascade="all, delete-orphan")
-    validations = relationship("ReferralValidation", back_populates="referral", cascade="all, delete-orphan")
+    history = relationship(
+        "ReferralHistory", back_populates="referral", cascade="all, delete-orphan"
+    )
+    validations = relationship(
+        "ReferralValidation", back_populates="referral", cascade="all, delete-orphan"
+    )
 
 
 class ReferralHistory(InsBase):
@@ -122,7 +128,9 @@ class ReferralHistory(InsBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, nullable=False, index=True)
 
-    referral_id = Column(Integer, ForeignKey("ins_referrals.id", ondelete="CASCADE"), nullable=False, index=True)
+    referral_id = Column(
+        Integer, ForeignKey("ins_referrals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     from_status = Column(SAEnum(ReferralStatus), nullable=True)
     to_status = Column(SAEnum(ReferralStatus), nullable=False)
@@ -154,10 +162,14 @@ class ReferralValidation(InsBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, nullable=False, index=True)
 
-    referral_id = Column(Integer, ForeignKey("ins_referrals.id", ondelete="CASCADE"), nullable=False, index=True)
+    referral_id = Column(
+        Integer, ForeignKey("ins_referrals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     validated_by = Column(Integer, nullable=True, index=True)
-    validation_method = Column(SAEnum(ValidationMethod), nullable=False, default=ValidationMethod.QR_SCAN)
+    validation_method = Column(
+        SAEnum(ValidationMethod), nullable=False, default=ValidationMethod.QR_SCAN
+    )
 
     qr_verified = Column(Boolean, default=False)
     signature_verified = Column(Boolean, default=False)

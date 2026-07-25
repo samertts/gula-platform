@@ -31,7 +31,9 @@ class HospitalIntegration(BaseConnector):
             headers = {"Content-Type": "application/json"}
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
-            self._client = httpx.AsyncClient(timeout=self._timeout, verify=self._verify_ssl, headers=headers)
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, verify=self._verify_ssl, headers=headers
+            )
             self._connected = True
             logger.info("Hospital integration connected")
             return True
@@ -48,7 +50,11 @@ class HospitalIntegration(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -94,7 +100,9 @@ class HospitalIntegration(BaseConnector):
             "referring_facility": data.get("referring_facility", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/admissions"), json=admission)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/admissions"), json=admission
+            )
             if resp.is_success:
                 return {"success": True, "admission": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -133,7 +141,9 @@ class HospitalIntegration(BaseConnector):
             "discharging_doctor": data.get("discharging_doctor", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/discharges"), json=discharge)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/discharges"), json=discharge
+            )
             if resp.is_success:
                 return {"success": True, "discharge": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -147,7 +157,9 @@ class HospitalIntegration(BaseConnector):
         ward = data.get("ward", "")
         params = {"ward": ward} if ward else {}
         try:
-            resp = await self._client.get(urljoin(self._base_url, "/api/wards/occupancy"), params=params)
+            resp = await self._client.get(
+                urljoin(self._base_url, "/api/wards/occupancy"), params=params
+            )
             if resp.is_success:
                 return {"success": True, "occupancy": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -183,7 +195,9 @@ class HospitalIntegration(BaseConnector):
         if not patient_id:
             return {"success": False, "error": "patient_id required"}
         try:
-            resp = await self._client.get(urljoin(self._base_url, f"/api/patients/{patient_id}/history"))
+            resp = await self._client.get(
+                urljoin(self._base_url, f"/api/patients/{patient_id}/history")
+            )
             if resp.is_success:
                 return {"success": True, "history": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}

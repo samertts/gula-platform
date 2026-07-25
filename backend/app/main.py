@@ -236,6 +236,7 @@ def health_deep():
     active_requests = 0
     with suppress(Exception):
         from .middleware import ConcurrencyLimitMiddleware
+
         active_requests = ConcurrencyLimitMiddleware._active
 
     # ── 8. Determine health grade ─────────────────────────────────────────────

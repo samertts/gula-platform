@@ -13,8 +13,18 @@ class Facility(AuditEntity):
     name_ar = Column(String(200), nullable=True)
     code = Column(String(20), nullable=True, unique=True, index=True)
 
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
-    directorate_id = Column(String(26), ForeignKey("national_directorates.id", ondelete="RESTRICT"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("national_organizations.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    directorate_id = Column(
+        String(26),
+        ForeignKey("national_directorates.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     parent_facility_id = Column(String(26), nullable=True, index=True)
 
     phone = Column(String(20), nullable=True)

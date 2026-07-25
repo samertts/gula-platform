@@ -115,7 +115,9 @@ class CoverageEngine:
         if coverage.start_date and service_date < coverage.start_date:
             return self._not_covered_result(request, "Coverage period has not started")
 
-        benefit = self._find_matching_benefit(policy.id, request.service_code, request.service_category)
+        benefit = self._find_matching_benefit(
+            policy.id, request.service_code, request.service_category
+        )
         if not benefit:
             return self._not_covered_result(request, "Service not found in benefit package")
 
@@ -150,8 +152,12 @@ class CoverageEngine:
         billed * quantity
         total_allowed = allowed * quantity
 
-        copay_pct = benefit.copay_percentage or coverage.copay_percentage or policy.copay_percentage or 0.0
-        deduct_applies = benefit.deductible_applies if benefit.deductible_applies is not None else True
+        copay_pct = (
+            benefit.copay_percentage or coverage.copay_percentage or policy.copay_percentage or 0.0
+        )
+        deduct_applies = (
+            benefit.deductible_applies if benefit.deductible_applies is not None else True
+        )
 
         deductible_remaining_val = coverage.deductible_remaining or Decimal(0)
         coverage.deductible_total or Decimal(0)
@@ -172,11 +178,21 @@ class CoverageEngine:
             copay_amount = (total_allowed_after_deductible * Decimal(str(copay_pct))) / Decimal(100)
 
         coverage_pct = benefit.coverage_percentage or 100.0
-        insurance_payment = (total_allowed_after_deductible - copay_amount) * Decimal(str(coverage_pct)) / Decimal(100)
-        patient_responsibility = (total_allowed_after_deductible - insurance_payment) + copay_amount + deductible_amount
+        insurance_payment = (
+            (total_allowed_after_deductible - copay_amount)
+            * Decimal(str(coverage_pct))
+            / Decimal(100)
+        )
+        patient_responsibility = (
+            (total_allowed_after_deductible - insurance_payment) + copay_amount + deductible_amount
+        )
 
         copay_amount_val = min(copay_amount, total_allowed_after_deductible)
-        total_insurance_payment = min(insurance_payment, benefit_remaining_val) if benefit_remaining_val > 0 else insurance_payment
+        total_insurance_payment = (
+            min(insurance_payment, benefit_remaining_val)
+            if benefit_remaining_val > 0
+            else insurance_payment
+        )
 
         messages = [
             f"Service {request.service_code} is covered",
@@ -197,7 +213,9 @@ class CoverageEngine:
 
         if benefit.max_benefit_per_claim and total_allowed > benefit.max_benefit_per_claim:
             if total_allowed > benefit.max_benefit_per_claim:
-                messages.append(f"Service exceeds max per-claim benefit: {benefit.max_benefit_per_claim}")
+                messages.append(
+                    f"Service exceeds max per-claim benefit: {benefit.max_benefit_per_claim}"
+                )
                 determination = CoverageDetermination.PARTIAL
 
         if benefit.max_visits_per_year:
@@ -208,7 +226,11 @@ class CoverageEngine:
             is_covered = False
             messages.append("Lifetime benefit exhausted")
 
-        limited_benefit = min(total_insurance_payment, benefit_remaining_val) if benefit_remaining_val > 0 else total_insurance_payment
+        limited_benefit = (
+            min(total_insurance_payment, benefit_remaining_val)
+            if benefit_remaining_val > 0
+            else total_insurance_payment
+        )
 
         return CoverageResult(
             coverage_id=coverage.id,
@@ -233,7 +255,9 @@ class CoverageEngine:
             estimated_insurance_payment=limited_benefit,
             requires_pre_auth=benefit.requires_pre_auth,
             requires_referral=benefit.requires_referral,
-            pre_existing_wait=benefit.pre_existing_wait_period if hasattr(benefit, "pre_existing_wait_period") else False,
+            pre_existing_wait=benefit.pre_existing_wait_period
+            if hasattr(benefit, "pre_existing_wait_period")
+            else False,
             network_status=coverage.network_status or "in_network",
             denial_reason=None,
             clinical_rules=clinical_result.get("rules", []),
@@ -291,9 +315,15 @@ class CoverageEngine:
         age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
         if benefit.age_min is not None and age < benefit.age_min:
-            return {"passes": False, "reason": f"Patient age {age} is below minimum {benefit.age_min}"}
+            return {
+                "passes": False,
+                "reason": f"Patient age {age} is below minimum {benefit.age_min}",
+            }
         if benefit.age_max is not None and age > benefit.age_max:
-            return {"passes": False, "reason": f"Patient age {age} exceeds maximum {benefit.age_max}"}
+            return {
+                "passes": False,
+                "reason": f"Patient age {age} exceeds maximum {benefit.age_max}",
+            }
         return {"passes": True, "reason": ""}
 
     def _check_gender_rules(self, benefit: BenefitPackage, patient_id: int) -> dict[str, Any]:
@@ -303,7 +333,10 @@ class CoverageEngine:
         ).first()
         if patient and patient.gender and benefit.gender_restriction:
             if patient.gender.lower() != benefit.gender_restriction.lower():
-                return {"passes": False, "reason": f"Gender restriction: {benefit.gender_restriction}"}
+                return {
+                    "passes": False,
+                    "reason": f"Gender restriction: {benefit.gender_restriction}",
+                }
         return {"passes": True, "reason": ""}
 
     def _check_clinical_rules(
@@ -347,7 +380,9 @@ class CoverageValidator:
     def __init__(self, db_session: Any) -> None:
         self._db = db_session
 
-    def validate_coverage(self, coverage_id: int, service_date: date | None = None) -> dict[str, Any]:
+    def validate_coverage(
+        self, coverage_id: int, service_date: date | None = None
+    ) -> dict[str, Any]:
         svc_date = service_date or date.today()
         coverage = self._db.query(Coverage).filter(Coverage.id == coverage_id).first()
         if not coverage:
@@ -362,7 +397,9 @@ class CoverageValidator:
         if svc_date < coverage.start_date:
             return {"valid": False, "reason": "Coverage not yet active"}
 
-        policy = self._db.query(InsurancePolicy).filter(InsurancePolicy.id == coverage.policy_id).first()
+        policy = (
+            self._db.query(InsurancePolicy).filter(InsurancePolicy.id == coverage.policy_id).first()
+        )
         if not policy:
             return {"valid": False, "reason": "Policy not found"}
 

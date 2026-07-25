@@ -1,4 +1,5 @@
 """Financial Platform - Pricing & Ranking Tests"""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -68,8 +69,13 @@ class TestPricing:
 class TestRanking:
     def test_compute_score_perfect_lab(self):
         ranking = LabRanking(
-            lab_id=1, quality_score=1.0, avg_rating=5.0, review_count=100,
-            distance_km=1.0, price_level=1, monthly_volume=1000,
+            lab_id=1,
+            quality_score=1.0,
+            avg_rating=5.0,
+            review_count=100,
+            distance_km=1.0,
+            price_level=1,
+            monthly_volume=1000,
             accredited=True,
         )
         score = compute_score(ranking)
@@ -77,16 +83,26 @@ class TestRanking:
 
     def test_compute_score_poor_lab(self):
         ranking = LabRanking(
-            lab_id=2, quality_score=0.0, avg_rating=0.0, review_count=0,
-            distance_km=50.0, price_level=3, monthly_volume=0,
+            lab_id=2,
+            quality_score=0.0,
+            avg_rating=0.0,
+            review_count=0,
+            distance_km=50.0,
+            price_level=3,
+            monthly_volume=0,
         )
         score = compute_score(ranking)
         assert score < 0.5
 
     def test_compute_score_mid_range(self):
         ranking = LabRanking(
-            lab_id=3, quality_score=0.5, avg_rating=3.0, review_count=10,
-            distance_km=10.0, price_level=2, monthly_volume=50,
+            lab_id=3,
+            quality_score=0.5,
+            avg_rating=3.0,
+            review_count=10,
+            distance_km=10.0,
+            price_level=2,
+            monthly_volume=50,
         )
         score = compute_score(ranking)
         assert 0.3 <= score <= 0.8
@@ -124,6 +140,10 @@ class TestRanking:
         assert 1004 not in [lab.lab_id for lab in filtered]  # 4th from owner 1 excluded
 
     def test_distance_normalization(self):
-        close_lab = LabRanking(lab_id=1, quality_score=0.5, avg_rating=3.0, distance_km=1.0, monthly_volume=50)
-        far_lab = LabRanking(lab_id=2, quality_score=0.5, avg_rating=3.0, distance_km=40.0, monthly_volume=50)
+        close_lab = LabRanking(
+            lab_id=1, quality_score=0.5, avg_rating=3.0, distance_km=1.0, monthly_volume=50
+        )
+        far_lab = LabRanking(
+            lab_id=2, quality_score=0.5, avg_rating=3.0, distance_km=40.0, monthly_volume=50
+        )
         assert compute_score(close_lab) > compute_score(far_lab)

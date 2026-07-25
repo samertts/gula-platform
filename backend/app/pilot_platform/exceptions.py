@@ -1,5 +1,4 @@
-class PilotPlatformError(Exception):
-    ...
+class PilotPlatformError(Exception): ...
 
 
 class PilotNotFoundError(PilotPlatformError):

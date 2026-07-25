@@ -31,55 +31,50 @@ depends_on = None
 def _idx(name: str, table: str, columns: str, unique: bool = False) -> None:
     """Create index if it does not exist — idempotent."""
     unique_kw = "UNIQUE " if unique else ""
-    op.execute(
-        text(
-            f"CREATE {unique_kw}INDEX IF NOT EXISTS {name} "
-            f"ON {table} ({columns})"
-        )
-    )
+    op.execute(text(f"CREATE {unique_kw}INDEX IF NOT EXISTS {name} ON {table} ({columns})"))
 
 
 def upgrade() -> None:
     # ── Patients ─────────────────────────────────────────────────────────────
     # Public /history/{phone} lookup
-    _idx("ix_patients_phone_lookup",   "patients",    "phone")
+    _idx("ix_patients_phone_lookup", "patients", "phone")
     # Per-lab patient search / worklist
-    _idx("ix_patients_lab_name",       "patients",    "lab_id, full_name")
+    _idx("ix_patients_lab_name", "patients", "lab_id, full_name")
     # National ID hash — used for uniqueness checks and lookups
-    _idx("ix_patients_nid_hash",       "patients",    "national_id_hash")
+    _idx("ix_patients_nid_hash", "patients", "national_id_hash")
 
     # ── Lab Orders ────────────────────────────────────────────────────────────
     # Worklist: list orders per lab filtered by status, sorted by date
-    _idx("ix_lab_orders_lab_status_date",  "lab_orders", "lab_id, status, created_at DESC")
+    _idx("ix_lab_orders_lab_status_date", "lab_orders", "lab_id, status, created_at DESC")
     # Patient order history
-    _idx("ix_lab_orders_patient_lab",      "lab_orders", "patient_id, lab_id")
+    _idx("ix_lab_orders_patient_lab", "lab_orders", "patient_id, lab_id")
 
     # ── Lab Results ───────────────────────────────────────────────────────────
     # Result retrieval by order
-    _idx("ix_lab_results_order_test",  "lab_results", "order_id, test_name")
+    _idx("ix_lab_results_order_test", "lab_results", "order_id, test_name")
     # Public result link — token_hash lookup (should be unique)
-    _idx("ix_lab_results_token_hash",  "lab_results", "token_hash", unique=True)
+    _idx("ix_lab_results_token_hash", "lab_results", "token_hash", unique=True)
     # Results by creation time for compliance / batch exports
-    _idx("ix_lab_results_created_at",  "lab_results", "created_at DESC")
+    _idx("ix_lab_results_created_at", "lab_results", "created_at DESC")
 
     # ── Audit Logs ────────────────────────────────────────────────────────────
     # Compliance reporting: filter by time range and action
-    _idx("ix_audit_logs_created_action",   "audit_logs", "created_at DESC, action")
+    _idx("ix_audit_logs_created_action", "audit_logs", "created_at DESC, action")
     # Note: audit_logs has no lab_id column — per-lab filtering uses user_id join
     # Chain hash verification
-    _idx("ix_audit_logs_chain_hash",       "audit_logs", "chain_hash")
+    _idx("ix_audit_logs_chain_hash", "audit_logs", "chain_hash")
 
     # ── Lab Users ─────────────────────────────────────────────────────────────
     # Login lookup: email is already unique but ensure the index exists
-    _idx("ix_lab_users_email",   "lab_users",   "email")
+    _idx("ix_lab_users_email", "lab_users", "email")
     # Active users per lab
     _idx("ix_lab_users_lab_active", "lab_users", "lab_id, is_active")
 
     # ── Users (citizens) ─────────────────────────────────────────────────────
     # Citizen login / registration duplicate check
-    _idx("ix_users_email",   "users",   "email")
-    _idx("ix_users_phone",   "users",   "phone")
-    _idx("ix_users_nid",     "users",   "national_id_hash")
+    _idx("ix_users_email", "users", "email")
+    _idx("ix_users_phone", "users", "phone")
+    _idx("ix_users_nid", "users", "national_id_hash")
 
     # ── Samples ───────────────────────────────────────────────────────────────
     # Barcode scan lookup (samples has no lab_id — barcode is globally unique)
@@ -87,17 +82,26 @@ def upgrade() -> None:
 
     # ── Labs ─────────────────────────────────────────────────────────────────
     # Active lab lookup
-    _idx("ix_labs_active",   "labs",   "is_active")
+    _idx("ix_labs_active", "labs", "is_active")
 
 
 def downgrade() -> None:
     indexes = [
-        "ix_patients_phone_lookup", "ix_patients_lab_name", "ix_patients_nid_hash",
-        "ix_lab_orders_lab_status_date", "ix_lab_orders_patient_lab",
-        "ix_lab_results_order_test", "ix_lab_results_token_hash", "ix_lab_results_created_at",
-        "ix_audit_logs_created_action", "ix_audit_logs_chain_hash",
-        "ix_lab_users_email", "ix_lab_users_lab_active",
-        "ix_users_email", "ix_users_phone", "ix_users_nid",
+        "ix_patients_phone_lookup",
+        "ix_patients_lab_name",
+        "ix_patients_nid_hash",
+        "ix_lab_orders_lab_status_date",
+        "ix_lab_orders_patient_lab",
+        "ix_lab_results_order_test",
+        "ix_lab_results_token_hash",
+        "ix_lab_results_created_at",
+        "ix_audit_logs_created_action",
+        "ix_audit_logs_chain_hash",
+        "ix_lab_users_email",
+        "ix_lab_users_lab_active",
+        "ix_users_email",
+        "ix_users_phone",
+        "ix_users_nid",
         "ix_samples_order_status",
         "ix_labs_active",
     ]

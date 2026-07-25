@@ -157,12 +157,13 @@ class SecurityGovernanceService:
         return incident
 
     def update_incident_status(
-        self, incident_id: str, status: IncidentStatus, resolution: str | None = None,
+        self,
+        incident_id: str,
+        status: IncidentStatus,
+        resolution: str | None = None,
     ) -> IncidentRecord | None:
         incident = (
-            self.db.query(IncidentRecord)
-            .filter(IncidentRecord.incident_id == incident_id)
-            .first()
+            self.db.query(IncidentRecord).filter(IncidentRecord.incident_id == incident_id).first()
         )
         if not incident:
             return None
@@ -250,7 +251,9 @@ class SecurityGovernanceService:
         return cert
 
     def revoke_certificate(
-        self, certificate_id: str, reason: str | None = None,
+        self,
+        certificate_id: str,
+        reason: str | None = None,
     ) -> DigitalCertificate | None:
         cert = (
             self.db.query(DigitalCertificate)

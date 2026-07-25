@@ -37,7 +37,9 @@ class PilotPlatformService:
     # ── Pilot Programs ──
 
     def create_pilot(self, data: dict[str, Any]) -> PilotProgram:
-        model = PilotProgramModel(**{k: v for k, v in data.items() if hasattr(PilotProgramModel, k)})
+        model = PilotProgramModel(
+            **{k: v for k, v in data.items() if hasattr(PilotProgramModel, k)}
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
@@ -49,8 +51,13 @@ class PilotPlatformService:
             raise PilotNotFoundError()
         return self._program_from_model(model)
 
-    def list_pilots(self, status: str | None = None, module_name: str | None = None,
-                    skip: int = 0, limit: int = 100) -> list[PilotProgram]:
+    def list_pilots(
+        self,
+        status: str | None = None,
+        module_name: str | None = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> list[PilotProgram]:
         query = self.db.query(PilotProgramModel).filter(PilotProgramModel.is_deleted.isnot(True))
         if status:
             query = query.filter_by(status=status)
@@ -71,17 +78,26 @@ class PilotPlatformService:
     # ── Pilot Facilities ──
 
     def enroll_facility(self, data: dict[str, Any]) -> PilotFacility:
-        model = PilotFacilityModel(**{k: v for k, v in data.items() if hasattr(PilotFacilityModel, k)})
+        model = PilotFacilityModel(
+            **{k: v for k, v in data.items() if hasattr(PilotFacilityModel, k)}
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
         return self._facility_from_model(model)
 
-    def list_pilot_facilities(self, pilot_id: str, skip: int = 0, limit: int = 100) -> list[PilotFacility]:
-        query = self.db.query(PilotFacilityModel).filter(
-            PilotFacilityModel.pilot_id == pilot_id,
-            PilotFacilityModel.is_deleted.isnot(True),
-        ).offset(skip).limit(limit)
+    def list_pilot_facilities(
+        self, pilot_id: str, skip: int = 0, limit: int = 100
+    ) -> list[PilotFacility]:
+        query = (
+            self.db.query(PilotFacilityModel)
+            .filter(
+                PilotFacilityModel.pilot_id == pilot_id,
+                PilotFacilityModel.is_deleted.isnot(True),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
         return [self._facility_from_model(m) for m in query.all()]
 
     # ── Readiness Assessments ──
@@ -114,30 +130,43 @@ class PilotPlatformService:
         self.db.commit()
         self.db.refresh(model)
 
-        fac = self.db.query(PilotFacilityModel).filter_by(
-            pilot_id=data.get("pilot_id", ""),
-            facility_id=data.get("facility_id", ""),
-        ).first()
+        fac = (
+            self.db.query(PilotFacilityModel)
+            .filter_by(
+                pilot_id=data.get("pilot_id", ""),
+                facility_id=data.get("facility_id", ""),
+            )
+            .first()
+        )
         if fac:
             fac.readiness_level = level
             fac.readiness_score = overall_score
             self.db.commit()
 
         return ReadinessChecklist(
-            id=model.id, pilot_id=model.pilot_id or "",
+            id=model.id,
+            pilot_id=model.pilot_id or "",
             facility_id=model.facility_id or "",
-            overall_score=overall_score, level=level,
+            overall_score=overall_score,
+            level=level,
             assessed_by=model.assessed_by or "",
         )
 
     def get_facility_readiness(self, facility_id: str, pilot_id: str) -> ReadinessChecklist:
-        model = self.db.query(ReadinessChecklistModel).filter_by(
-            facility_id=facility_id, pilot_id=pilot_id,
-        ).order_by(ReadinessChecklistModel.assessed_at.desc()).first()
+        model = (
+            self.db.query(ReadinessChecklistModel)
+            .filter_by(
+                facility_id=facility_id,
+                pilot_id=pilot_id,
+            )
+            .order_by(ReadinessChecklistModel.assessed_at.desc())
+            .first()
+        )
         if not model:
             raise ReadinessAssessmentNotFoundError()
         return ReadinessChecklist(
-            id=model.id, pilot_id=model.pilot_id or "",
+            id=model.id,
+            pilot_id=model.pilot_id or "",
             facility_id=model.facility_id or "",
             overall_score=model.overall_score or 0.0,
             level=model.level or "not_ready",
@@ -152,10 +181,14 @@ class PilotPlatformService:
         self.db.add(model)
 
         if data.get("result") == "passed" and data.get("facility_id"):
-            fac = self.db.query(PilotFacilityModel).filter_by(
-                pilot_id=data.get("pilot_id", ""),
-                facility_id=data.get("facility_id", ""),
-            ).first()
+            fac = (
+                self.db.query(PilotFacilityModel)
+                .filter_by(
+                    pilot_id=data.get("pilot_id", ""),
+                    facility_id=data.get("facility_id", ""),
+                )
+                .first()
+            )
             if fac:
                 fac.go_no_go_approved = True
                 self.db.commit()
@@ -163,10 +196,13 @@ class PilotPlatformService:
         self.db.commit()
         self.db.refresh(model)
         return GoNoGoGate(
-            id=model.id, pilot_id=model.pilot_id or "",
+            id=model.id,
+            pilot_id=model.pilot_id or "",
             facility_id=model.facility_id or "",
-            gate_name=model.gate_name, result=model.result or "not_run",
-            approver=model.approver or "", comments=model.comments or "",
+            gate_name=model.gate_name,
+            result=model.result or "not_run",
+            approver=model.approver or "",
+            comments=model.comments or "",
         )
 
     def list_gates(self, pilot_id: str, facility_id: str | None = None) -> list[GoNoGoGate]:
@@ -176,40 +212,60 @@ class PilotPlatformService:
         )
         if facility_id:
             query = query.filter_by(facility_id=facility_id)
-        return [GoNoGoGate(id=m.id, pilot_id=m.pilot_id or "", facility_id=m.facility_id or "",
-                            gate_name=m.gate_name, result=m.result or "not_run",
-                            approver=m.approver or "", comments=m.comments or "")
-                for m in query.all()]
+        return [
+            GoNoGoGate(
+                id=m.id,
+                pilot_id=m.pilot_id or "",
+                facility_id=m.facility_id or "",
+                gate_name=m.gate_name,
+                result=m.result or "not_run",
+                approver=m.approver or "",
+                comments=m.comments or "",
+            )
+            for m in query.all()
+        ]
 
     # ── Deployment Records ──
 
     def record_deployment(self, data: dict[str, Any]) -> DeploymentRecord:
-        model = DeploymentRecordModel(**{k: v for k, v in data.items() if hasattr(DeploymentRecordModel, k)})
+        model = DeploymentRecordModel(
+            **{k: v for k, v in data.items() if hasattr(DeploymentRecordModel, k)}
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
         return self._deployment_from_model(model)
 
-    def list_deployments(self, pilot_id: str | None = None,
-                         facility_id: str | None = None) -> list[DeploymentRecord]:
-        query = self.db.query(DeploymentRecordModel).filter(DeploymentRecordModel.is_deleted.isnot(True))
+    def list_deployments(
+        self, pilot_id: str | None = None, facility_id: str | None = None
+    ) -> list[DeploymentRecord]:
+        query = self.db.query(DeploymentRecordModel).filter(
+            DeploymentRecordModel.is_deleted.isnot(True)
+        )
         if pilot_id:
             query = query.filter_by(pilot_id=pilot_id)
         if facility_id:
             query = query.filter_by(facility_id=facility_id)
-        return [self._deployment_from_model(m) for m in query.order_by(
-            DeploymentRecordModel.deployed_at.desc()).all()]
+        return [
+            self._deployment_from_model(m)
+            for m in query.order_by(DeploymentRecordModel.deployed_at.desc()).all()
+        ]
 
     # ── Certification Integration ──
 
     def evaluate_with_certification(self, module_path: str, pilot_id: str) -> dict[str, Any]:
         try:
             from app.certification.engine import CertificationEngine
+
             engine = CertificationEngine(self.db)
             result = engine.evaluate(module_path)
             level = result.get("overall_level", "bronze")
-            return {"module": module_path, "certification_level": level,
-                    "score": result.get("overall_score", 0), "dimensions": result.get("dimensions", [])}
+            return {
+                "module": module_path,
+                "certification_level": level,
+                "score": result.get("overall_score", 0),
+                "dimensions": result.get("dimensions", []),
+            }
         except Exception as e:
             logger.warning("Certification evaluation failed: %s", e)
             return {"module": module_path, "certification_level": "unknown", "error": str(e)}
@@ -217,39 +273,72 @@ class PilotPlatformService:
     # ── Dashboard ──
 
     def get_dashboard(self) -> dict[str, Any]:
-        total_pilots = self.db.query(PilotProgramModel).filter(
-            PilotProgramModel.is_deleted.isnot(True)).count()
-        active_pilots = self.db.query(PilotProgramModel).filter_by(
-            status="in_progress", is_deleted=False).count()
-        completed = self.db.query(PilotProgramModel).filter_by(
-            status="completed", is_deleted=False).count()
-        facilities_enrolled = self.db.query(PilotFacilityModel).filter(
-            PilotFacilityModel.is_deleted.isnot(True)).count()
-        facilities_certified = self.db.query(PilotFacilityModel).filter(
-            PilotFacilityModel.readiness_level == "certified",
-            PilotFacilityModel.is_deleted.isnot(True)).count()
+        total_pilots = (
+            self.db.query(PilotProgramModel)
+            .filter(PilotProgramModel.is_deleted.isnot(True))
+            .count()
+        )
+        active_pilots = (
+            self.db.query(PilotProgramModel)
+            .filter_by(status="in_progress", is_deleted=False)
+            .count()
+        )
+        completed = (
+            self.db.query(PilotProgramModel).filter_by(status="completed", is_deleted=False).count()
+        )
+        facilities_enrolled = (
+            self.db.query(PilotFacilityModel)
+            .filter(PilotFacilityModel.is_deleted.isnot(True))
+            .count()
+        )
+        facilities_certified = (
+            self.db.query(PilotFacilityModel)
+            .filter(
+                PilotFacilityModel.readiness_level == "certified",
+                PilotFacilityModel.is_deleted.isnot(True),
+            )
+            .count()
+        )
 
         return {
-            "total_pilots": total_pilots, "active_pilots": active_pilots,
-            "completed_pilots": completed, "facilities_enrolled": facilities_enrolled,
+            "total_pilots": total_pilots,
+            "active_pilots": active_pilots,
+            "completed_pilots": completed,
+            "facilities_enrolled": facilities_enrolled,
             "facilities_certified": facilities_certified,
         }
 
     def _program_from_model(self, m: PilotProgramModel) -> PilotProgram:
-        return PilotProgram(id=m.id, module_name=m.module_name, version=m.version,
-                             current_phase=m.current_phase or "planned",
-                             status=m.status or "planned", strategy=m.strategy or "canary",
-                             pilot_lead=m.pilot_lead or "", description=m.description or "")
+        return PilotProgram(
+            id=m.id,
+            module_name=m.module_name,
+            version=m.version,
+            current_phase=m.current_phase or "planned",
+            status=m.status or "planned",
+            strategy=m.strategy or "canary",
+            pilot_lead=m.pilot_lead or "",
+            description=m.description or "",
+        )
 
     def _facility_from_model(self, m: PilotFacilityModel) -> PilotFacility:
-        return PilotFacility(id=m.id, pilot_id=m.pilot_id, facility_id=m.facility_id,
-                              facility_name=m.facility_name or "",
-                              readiness_level=m.readiness_level or "not_ready",
-                              readiness_score=m.readiness_score or 0.0)
+        return PilotFacility(
+            id=m.id,
+            pilot_id=m.pilot_id,
+            facility_id=m.facility_id,
+            facility_name=m.facility_name or "",
+            readiness_level=m.readiness_level or "not_ready",
+            readiness_score=m.readiness_score or 0.0,
+        )
 
     def _deployment_from_model(self, m: DeploymentRecordModel) -> DeploymentRecord:
-        return DeploymentRecord(id=m.id, pilot_id=m.pilot_id, module=m.module or "",
-                                 version=m.version or "", facility_id=m.facility_id or "",
-                                 strategy=m.strategy or "", status=m.status or "pending",
-                                 deployed_by=m.deployed_by or "",
-                                 health_check_passed=m.health_check_passed or False)
+        return DeploymentRecord(
+            id=m.id,
+            pilot_id=m.pilot_id,
+            module=m.module or "",
+            version=m.version or "",
+            facility_id=m.facility_id or "",
+            strategy=m.strategy or "",
+            status=m.status or "pending",
+            deployed_by=m.deployed_by or "",
+            health_check_passed=m.health_check_passed or False,
+        )

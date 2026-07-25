@@ -41,7 +41,9 @@ class OperationsCenter:
                 "components": self._registry.count(),
                 "by_type": {
                     t.value: len(self._registry.list(t))
-                    for t in __import__("app.control_plane.enums", fromlist=["PlatformComponent"]).PlatformComponent
+                    for t in __import__(
+                        "app.control_plane.enums", fromlist=["PlatformComponent"],
+                    ).PlatformComponent
                 },
                 "circuit_breakers": circuits,
                 "health_grade": health_data.get("grade", "UNKNOWN"),

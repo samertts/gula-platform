@@ -116,6 +116,7 @@ from httpx import ASGITransport, AsyncClient
 # DOMAIN ENTITY TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestScannedDocument:
     def test_create(self):
         doc = ScannedDocument(filename="test.pdf", mime_type="application/pdf")
@@ -227,6 +228,7 @@ class TestSemanticQuery:
 # ENUM TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestEnums:
     def test_document_categories(self):
         cats = [e.value for e in DocumentCategory]
@@ -265,18 +267,25 @@ class TestEnums:
 # CLASSIFIER TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestDefaultClassifier:
     @pytest.fixture
     def classifier(self):
         return DefaultDocumentClassifier()
 
-    @pytest.mark.parametrize("text,expected_cat", [
-        ("Hemoglobin: 14.2 g/dL, WBC: 7500, Glucose: 110 mg/dL", DocumentCategory.laboratory_report),
-        ("X-ray chest PA view shows clear lung fields", DocumentCategory.radiology_report),
-        ("Take Amoxicillin 500mg three times daily for 7 days", DocumentCategory.prescription),
-        ("National ID Number: 123456789012", DocumentCategory.national_id),
-        ("شهادة طبية تفيد بأن المريض بحاجة إلى راحة", DocumentCategory.medical_certificate),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected_cat",
+        [
+            (
+                "Hemoglobin: 14.2 g/dL, WBC: 7500, Glucose: 110 mg/dL",
+                DocumentCategory.laboratory_report,
+            ),
+            ("X-ray chest PA view shows clear lung fields", DocumentCategory.radiology_report),
+            ("Take Amoxicillin 500mg three times daily for 7 days", DocumentCategory.prescription),
+            ("National ID Number: 123456789012", DocumentCategory.national_id),
+            ("شهادة طبية تفيد بأن المريض بحاجة إلى راحة", DocumentCategory.medical_certificate),
+        ],
+    )
     @pytest.mark.asyncio
     async def test_classify(self, classifier, text, expected_cat):
         result = await classifier.classify(text)
@@ -299,10 +308,12 @@ class TestDefaultClassifier:
 # ENTITY EXTRACTOR TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestDefaultEntityExtractor:
     @pytest.fixture
     def extractor(self):
         from app.document_intelligence.application.wiring import DefaultEntityExtractor
+
         return DefaultEntityExtractor()
 
     @pytest.mark.asyncio
@@ -326,7 +337,9 @@ class TestDefaultEntityExtractor:
 
     @pytest.mark.asyncio
     async def test_extract_entities_of_type(self, extractor):
-        result = await extractor.extract_entities_of_type("Call 07712345678", [EntityType.phone_number])
+        result = await extractor.extract_entities_of_type(
+            "Call 07712345678", [EntityType.phone_number]
+        )
         assert len(result) > 0
 
 
@@ -334,10 +347,12 @@ class TestDefaultEntityExtractor:
 # FHIR MAPPER TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestDefaultFhirMapper:
     @pytest.fixture
     def mapper(self):
         from app.document_intelligence.application.wiring import DefaultFhirMapper
+
         return DefaultFhirMapper()
 
     @pytest.mark.asyncio
@@ -381,10 +396,12 @@ class TestDefaultFhirMapper:
 # KNOWLEDGE EXTRACTOR TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestDefaultKnowledgeExtractor:
     @pytest.fixture
     def extractor(self):
         from app.document_intelligence.application.wiring import DefaultKnowledgeExtractor
+
         return DefaultKnowledgeExtractor()
 
     @pytest.mark.asyncio
@@ -410,6 +427,7 @@ class TestDefaultKnowledgeExtractor:
 # ═══════════════════════════════════════════════════════════════════
 # ORCHESTRATOR TESTS (UNIT)
 # ═══════════════════════════════════════════════════════════════════
+
 
 class MockRepo:
     def __init__(self):
@@ -680,7 +698,9 @@ class TestDocumentIntelligenceOrchestrator:
 
     @pytest.mark.asyncio
     async def test_register_webhook(self, orchestrator):
-        result = await orchestrator.register_webhook("http://example.com/hook", [EventChannel.document_ingested])
+        result = await orchestrator.register_webhook(
+            "http://example.com/hook", [EventChannel.document_ingested]
+        )
         assert result is not None
 
     @pytest.mark.asyncio
@@ -697,6 +717,7 @@ class TestDocumentIntelligenceOrchestrator:
 # ═══════════════════════════════════════════════════════════════════
 # GOVERNMENT RECORDS SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
+
 
 class TestGovernmentRecordsService:
     @pytest.fixture
@@ -718,6 +739,7 @@ class TestGovernmentRecordsService:
 # ═══════════════════════════════════════════════════════════════════
 # COLLABORATION SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
+
 
 class TestCollaborationService:
     @pytest.fixture
@@ -741,6 +763,7 @@ class TestCollaborationService:
 # GOVERNANCE SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestGovernanceService:
     @pytest.fixture
     def service(self):
@@ -755,6 +778,7 @@ class TestGovernanceService:
 # ═══════════════════════════════════════════════════════════════════
 # NATIONAL ARCHIVE SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
+
 
 class TestNationalArchiveService:
     @pytest.fixture
@@ -777,6 +801,7 @@ class TestNationalArchiveService:
 # KNOWLEDGE GRAPH SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestKnowledgeGraphService:
     @pytest.fixture
     def service(self):
@@ -791,6 +816,7 @@ class TestKnowledgeGraphService:
 # ═══════════════════════════════════════════════════════════════════
 # WEBHOOK SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
+
 
 class TestWebhookService:
     @pytest.fixture
@@ -809,6 +835,7 @@ class TestWebhookService:
 # ═══════════════════════════════════════════════════════════════════
 # OBSERVABILITY SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
+
 
 class TestObservabilityService:
     @pytest.fixture
@@ -830,6 +857,7 @@ class TestObservabilityService:
 # ACCESS CONTROL SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestAccessControlService:
     @pytest.fixture
     def service(self):
@@ -850,6 +878,7 @@ class TestAccessControlService:
 # EVENT BUS SERVICE TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestEventBusService:
     @pytest.fixture
     def service(self):
@@ -858,10 +887,14 @@ class TestEventBusService:
     @pytest.mark.asyncio
     async def test_publish_subscribe(self, service):
         received = []
+
         async def handler(event):
             received.append(event)
+
         await service.subscribe(EventChannel.document_ingested, handler)
-        event = DocumentEvent(document_id=uuid4(), channel=EventChannel.document_ingested, actor_id="system")
+        event = DocumentEvent(
+            document_id=uuid4(), channel=EventChannel.document_ingested, actor_id="system"
+        )
         await service.publish(event)
         assert len(received) == 1
 
@@ -870,10 +903,13 @@ class TestEventBusService:
 # VERSIONING & LIFECYCLE MANAGER TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestInfrastructureDocumentLifecycleManager:
     @pytest.fixture
     def manager(self):
-        return InfrastructureDocumentLifecycleManager(MockRepo(), MockRepo(), MockRepo(), MockRepo())
+        return InfrastructureDocumentLifecycleManager(
+            MockRepo(), MockRepo(), MockRepo(), MockRepo()
+        )
 
     @pytest.mark.asyncio
     async def test_apply_retention(self, manager):

@@ -14,12 +14,18 @@ class RiskEvent(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     event_id = Column(String(100), unique=True, nullable=False, index=True)
 
-    person_id = Column(String(100), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True)
-    account_id = Column(String(100), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    person_id = Column(
+        String(100), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    account_id = Column(
+        String(100), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     session_id = Column(String(100), nullable=True, index=True)
 
     event_type = Column(
-        String(50), nullable=False, index=True,
+        String(50),
+        nullable=False,
+        index=True,
     )
 
     severity = Column(String(20), nullable=False, index=True)
@@ -71,8 +77,15 @@ class AdaptiveMFASession(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     mfa_id = Column(String(100), unique=True, nullable=False, index=True)
 
-    account_id = Column(String(100), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
-    session_id = Column(String(100), ForeignKey("niam_user_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    account_id = Column(
+        String(100), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    session_id = Column(
+        String(100),
+        ForeignKey("niam_user_sessions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     mfa_type = Column(String(30), nullable=False)
 
@@ -96,7 +109,9 @@ class ImpossibleTravelEvent(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     travel_id = Column(String(100), unique=True, nullable=False, index=True)
 
-    account_id = Column(String(100), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=False, index=True)
+    account_id = Column(
+        String(100), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=False, index=True
+    )
     session_id = Column(String(100), nullable=True, index=True)
 
     previous_ip = Column(String(45), nullable=True)

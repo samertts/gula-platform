@@ -25,6 +25,4 @@ class DataClassification(BaseEntity):
 
     notes = Column(Text, nullable=True)
 
-    __table_args__ = (
-        {"extend_existing": True},
-    )
+    __table_args__ = ({"extend_existing": True},)

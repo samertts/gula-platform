@@ -35,7 +35,9 @@ class TestEmbeddingBenchmarks:
         elapsed = time.perf_counter() - start
         rate = len(texts) / elapsed
         assert rate > 500, f"Embedding rate {rate:.0f}/s < 500/s"
-        print(f"\n  Embed throughput: {rate:.0f} vectors/s ({elapsed*1000:.1f}ms for {len(texts)})")
+        print(
+            f"\n  Embed throughput: {rate:.0f} vectors/s ({elapsed * 1000:.1f}ms for {len(texts)})"
+        )
 
     def test_cosine_similarity_throughput(self):
         from app.ai.embeddings import _embed_fallback, cosine_similarity
@@ -47,7 +49,7 @@ class TestEmbeddingBenchmarks:
         elapsed = time.perf_counter() - start
         rate = 99 / elapsed
         assert rate > 1000, f"Cosine similarity rate {rate:.0f}/s < 1000/s"
-        print(f"\n  Cosine similarity throughput: {rate:.0f} ops/s ({elapsed*1000:.1f}ms for 99)")
+        print(f"\n  Cosine similarity throughput: {rate:.0f} ops/s ({elapsed * 1000:.1f}ms for 99)")
 
 
 class TestKnowledgeGraphBenchmarks:
@@ -60,8 +62,23 @@ class TestKnowledgeGraphBenchmarks:
         self.kg.initialize(force=True)
 
     def test_node_search_throughput(self):
-        queries = ["hemoglobin", "glucose", "potassium", "cbc", "thyroid", "lipid", "ALT", "AST",
-                    "sodium", "calcium", "anemia", "diabetes", "insulin", "warfarin", "cholesterol"]
+        queries = [
+            "hemoglobin",
+            "glucose",
+            "potassium",
+            "cbc",
+            "thyroid",
+            "lipid",
+            "ALT",
+            "AST",
+            "sodium",
+            "calcium",
+            "anemia",
+            "diabetes",
+            "insulin",
+            "warfarin",
+            "cholesterol",
+        ]
         start = time.perf_counter()
         for _ in range(20):
             for q in queries:
@@ -70,7 +87,9 @@ class TestKnowledgeGraphBenchmarks:
         count = 20 * len(queries)
         rate = count / elapsed
         assert rate > 100, f"KG search rate {rate:.0f}/s < 100/s"
-        print(f"\n  KG search throughput: {rate:.0f} queries/s ({elapsed*1000:.1f}ms for {count})")
+        print(
+            f"\n  KG search throughput: {rate:.0f} queries/s ({elapsed * 1000:.1f}ms for {count})"
+        )
 
     def test_shortest_path_throughput(self):
         start = time.perf_counter()
@@ -81,7 +100,7 @@ class TestKnowledgeGraphBenchmarks:
         elapsed = time.perf_counter() - start
         rate = 300 / elapsed
         assert rate > 500, f"KG pathfinding rate {rate:.0f}/s < 500/s"
-        print(f"\n  KG pathfinding throughput: {rate:.0f} paths/s ({elapsed*1000:.1f}ms for 300)")
+        print(f"\n  KG pathfinding throughput: {rate:.0f} paths/s ({elapsed * 1000:.1f}ms for 300)")
 
     def test_neighbor_lookup_throughput(self):
         start = time.perf_counter()
@@ -92,7 +111,9 @@ class TestKnowledgeGraphBenchmarks:
         count = 500
         rate = count / elapsed
         assert rate > 1000, f"KG neighbor rate {rate:.0f}/s < 1000/s"
-        print(f"\n  KG neighbor throughput: {rate:.0f} lookups/s ({elapsed*1000:.1f}ms for {count})")
+        print(
+            f"\n  KG neighbor throughput: {rate:.0f} lookups/s ({elapsed * 1000:.1f}ms for {count})"
+        )
 
 
 class TestCDSBenchmarks:
@@ -118,7 +139,10 @@ class TestCDSBenchmarks:
             for case in cases:
                 args = list(case)
                 cds.evaluate_result(
-                    args[0], float(args[1]), "unit", float(args[2]) if args[2] else None,
+                    args[0],
+                    float(args[1]),
+                    "unit",
+                    float(args[2]) if args[2] else None,
                     float(args[3]) if args[3] else None,
                     patient_age=int(args[4]) if len(args) > 4 else None,
                     patient_gender=str(args[5]) if len(args) > 5 else None,
@@ -127,7 +151,9 @@ class TestCDSBenchmarks:
         count = 50 * len(cases)
         rate = count / elapsed
         assert rate > 500, f"CDS eval rate {rate:.0f}/s < 500/s"
-        print(f"\n  CDS eval throughput: {rate:.0f} evaluations/s ({elapsed*1000:.1f}ms for {count})")
+        print(
+            f"\n  CDS eval throughput: {rate:.0f} evaluations/s ({elapsed * 1000:.1f}ms for {count})"
+        )
 
 
 class TestSecurityBenchmarks:
@@ -150,7 +176,7 @@ class TestSecurityBenchmarks:
         count = len(texts)
         rate = count / elapsed
         assert rate > 500, f"PII scan rate {rate:.0f}/s < 500/s"
-        print(f"\n  PII scan throughput: {rate:.0f} scans/s ({elapsed*1000:.1f}ms for {count})")
+        print(f"\n  PII scan throughput: {rate:.0f} scans/s ({elapsed * 1000:.1f}ms for {count})")
 
     def test_prompt_injection_scan_throughput(self):
         from app.ai.security import scan_prompt_injection
@@ -172,7 +198,9 @@ class TestSecurityBenchmarks:
         count = len(texts)
         rate = count / elapsed
         assert rate > 500, f"Prompt injection scan rate {rate:.0f}/s < 500/s"
-        print(f"\n  Prompt injection scan throughput: {rate:.0f} scans/s ({elapsed*1000:.1f}ms for {count})")
+        print(
+            f"\n  Prompt injection scan throughput: {rate:.0f} scans/s ({elapsed * 1000:.1f}ms for {count})"
+        )
 
 
 class TestObservabilityBenchmarks:
@@ -189,7 +217,9 @@ class TestObservabilityBenchmarks:
         rate = 10000 / elapsed
         assert rate > 50000, f"Metrics rate {rate:.0f}/s < 50000/s"
         assert get_metrics()["requests"]["total"] == 10000
-        print(f"\n  Metrics tracking throughput: {rate:.0f} ops/s ({elapsed*1000:.1f}ms for 10000)")
+        print(
+            f"\n  Metrics tracking throughput: {rate:.0f} ops/s ({elapsed * 1000:.1f}ms for 10000)"
+        )
 
 
 class TestRAGBenchmarks:
@@ -199,25 +229,41 @@ class TestRAGBenchmarks:
         from app.ai.rag_pipeline import rag
         from app.ai.vector_store import VectorSearchResult
 
-        docs = [VectorSearchResult(id=i, content_type="test", content_id=i, text=f"Test document number {i} with medical content about labs", score=0.9 - i * 0.01) for i in range(50)]
+        docs = [
+            VectorSearchResult(
+                id=i,
+                content_type="test",
+                content_id=i,
+                text=f"Test document number {i} with medical content about labs",
+                score=0.9 - i * 0.01,
+            )
+            for i in range(50)
+        ]
         start = time.perf_counter()
         for _ in range(100):
             rag.rerank("medical test labs", docs, top_k=5)
         elapsed = time.perf_counter() - start
         rate = 100 / elapsed
         assert rate > 200, f"Rerank rate {rate:.0f}/s < 200/s"
-        print(f"\n  Rerank throughput: {rate:.0f} ops/s ({elapsed*1000:.1f}ms for 100)")
+        print(f"\n  Rerank throughput: {rate:.0f} ops/s ({elapsed * 1000:.1f}ms for 100)")
 
     def test_hallucination_detection_throughput(self):
         from app.ai.rag_pipeline import rag
         from app.ai.vector_store import VectorSearchResult
 
-        doc = VectorSearchResult(id=1, content_type="test", content_id=1, text="hemoglobin is a protein in red blood cells that carries oxygen", score=0.95)
+        doc = VectorSearchResult(
+            id=1,
+            content_type="test",
+            content_id=1,
+            text="hemoglobin is a protein in red blood cells that carries oxygen",
+            score=0.95,
+        )
         responses = [
             "Hemoglobin is a protein in red blood cells",
             "Glucose is a type of sugar found in blood",
             "The patient has diabetes and needs insulin",
-            "Complete blood count includes hemoglobin and white cells", "Potassium levels indicate kidney function",
+            "Complete blood count includes hemoglobin and white cells",
+            "Potassium levels indicate kidney function",
         ]
         start = time.perf_counter()
         for _ in range(200):
@@ -227,4 +273,6 @@ class TestRAGBenchmarks:
         count = 200 * len(responses)
         rate = count / elapsed
         assert rate > 1000, f"Hallucination detection rate {rate:.0f}/s < 1000/s"
-        print(f"\n  Hallucination detection throughput: {rate:.0f} ops/s ({elapsed*1000:.1f}ms for {count})")
+        print(
+            f"\n  Hallucination detection throughput: {rate:.0f} ops/s ({elapsed * 1000:.1f}ms for {count})"
+        )

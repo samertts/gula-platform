@@ -46,7 +46,9 @@ class TestAIEvaluationHarness:
     def test_scoring(self) -> None:
         harness = AIEvaluationHarness()
         examples = [
-            EvalExample(input="what is hemoglobin", expected_output="completely unrelated answer here"),
+            EvalExample(
+                input="what is hemoglobin", expected_output="completely unrelated answer here"
+            ),
             EvalExample(input="test2", expected_output=""),
         ]
         harness.register_suite("scoring", examples)

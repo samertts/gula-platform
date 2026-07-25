@@ -95,7 +95,12 @@ class BenefitPackageItem(InsBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, nullable=False, index=True)
 
-    package_id = Column(Integer, ForeignKey("ins_benefit_packages.id", ondelete="CASCADE"), nullable=False, index=True)
+    package_id = Column(
+        Integer,
+        ForeignKey("ins_benefit_packages.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     service_code = Column(String(50), nullable=False, index=True)
 
     coverage_percentage = Column(Float, nullable=True)

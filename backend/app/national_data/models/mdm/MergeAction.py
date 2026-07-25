@@ -9,7 +9,9 @@ from app.national_data.base import BaseEntity
 class MergeAction(BaseEntity):
     __tablename__ = "dp_merge_actions"
 
-    golden_record_id = Column(Integer, ForeignKey("dp_golden_records.id", ondelete="CASCADE"), nullable=False, index=True)
+    golden_record_id = Column(
+        Integer, ForeignKey("dp_golden_records.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     source_patient_id = Column(Integer, nullable=True)
     target_patient_id = Column(Integer, nullable=True)
 

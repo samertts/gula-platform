@@ -12,6 +12,7 @@ Production invariants asserted:
 
 Blast radius: zero (regression tests only).
 """
+
 from __future__ import annotations
 
 import os
@@ -64,16 +65,23 @@ class TestPublicCatalog:
         """The catalog is descriptive only — must not include lab_id, billing, etc."""
         body = client.get("/tiers").json()
         import json as _json
+
         blob = _json.dumps(body)
-        for _forbidden in ("lab_id", "subscription_id", "is_active", "expires_at",
-                          "monthly_price_usd"):
+        for _forbidden in (
+            "lab_id",
+            "subscription_id",
+            "is_active",
+            "expires_at",
+            "monthly_price_usd",
+        ):
             # monthly_price_usd is fine in the catalog; ensure nothing else
             # leaks
             pass
         # Spot-check that the response shape is the documented one
         for tier in body["tiers"]:
-            assert {"id", "name", "name_ar", "monthly_price_usd",
-                    "limits", "features"} <= set(tier.keys())
+            assert {"id", "name", "name_ar", "monthly_price_usd", "limits", "features"} <= set(
+                tier.keys()
+            )
 
 
 # ─── Phase 4.B — `/tiers/my` requires auth & is per-lab ──────────────────────
@@ -94,7 +102,9 @@ class TestMySubscription:
         body = res.json()
         assert body["tier"] == "starter"
 
-    def test_subscription_does_not_expose_other_labs(self, client, tier_lab, db, make_lab, make_lab_user, make_subscription):
+    def test_subscription_does_not_expose_other_labs(
+        self, client, tier_lab, db, make_lab, make_lab_user, make_subscription
+    ):
         """Even if another lab exists, ``/tiers/my`` returns only the caller's."""
         lab_b = make_lab(name="Other Lab")
         admin_b = make_lab_user(lab_id=lab_b.id, role="admin", email="b@x.com")
@@ -129,8 +139,7 @@ class TestUpgradeRequestPrivilege:
 
     def test_technician_cannot_request_upgrade(self, client, tier_lab, db, make_lab_user):
         """A non-admin role attempting upgrade → 403."""
-        tech = make_lab_user(lab_id=tier_lab["lab"].id, role="technician",
-                             email="tech_t@x.com")
+        tech = make_lab_user(lab_id=tier_lab["lab"].id, role="technician", email="tech_t@x.com")
         db.commit()
         res = client.post(
             "/tiers/upgrade",
@@ -148,7 +157,9 @@ class TestUpgradeRequestPrivilege:
         )
         assert res.status_code in (400, 422)
 
-    def test_downgrade_request_rejected(self, client, db, make_lab, make_lab_user, make_subscription):
+    def test_downgrade_request_rejected(
+        self, client, db, make_lab, make_lab_user, make_subscription
+    ):
         """Downgrades must go through admin approval — direct downgrade
         request must 400 (is_upgrade_valid returns False)."""
         lab = make_lab(name="Enterprise Lab")
@@ -190,8 +201,7 @@ class TestPlatformAdminTier:
         assert res.status_code == 403
 
     def test_set_tier_blocked_for_technician(self, client, tier_lab, db, make_lab_user):
-        tech = make_lab_user(lab_id=tier_lab["lab"].id, role="technician",
-                             email="tech_pa@x.com")
+        tech = make_lab_user(lab_id=tier_lab["lab"].id, role="technician", email="tech_pa@x.com")
         db.commit()
         res = client.put(
             f"/admin/tiers/{tier_lab['lab'].id}",
@@ -228,17 +238,31 @@ class TestTierFeatureMatrix:
 
     def test_growth_includes_all_starter_base_features(self):
         from app.core.feature_flags import _TIER_FEATURES
+
         # All 'core' features that starter has must remain in growth
-        starter_core = {"patient_management", "basic_results", "sample_tracking",
-                        "pdf_reports", "qr_codes", "audit_log"}
+        starter_core = {
+            "patient_management",
+            "basic_results",
+            "sample_tracking",
+            "pdf_reports",
+            "qr_codes",
+            "audit_log",
+        }
         assert starter_core <= _TIER_FEATURES["growth"]
 
     def test_enterprise_includes_all_growth_features(self):
         from app.core.feature_flags import _TIER_FEATURES
+
         # Enterprise must contain at minimum every documented growth feature
-        growth_core = {"patient_management", "basic_results", "sample_tracking",
-                       "quality_control", "batch_import", "ehr_integration",
-                       "advanced_analytics"}
+        growth_core = {
+            "patient_management",
+            "basic_results",
+            "sample_tracking",
+            "quality_control",
+            "batch_import",
+            "ehr_integration",
+            "advanced_analytics",
+        }
         assert growth_core <= _TIER_FEATURES["enterprise"]
 
     def test_air_gapped_mode_strips_external_features(self):
@@ -246,6 +270,7 @@ class TestTierFeatureMatrix:
         external services — regardless of tier. This is a hard contract:
         an enterprise lab in air-gapped mode does NOT regain ai_interpretation."""
         from app.core.feature_flags import _AIR_GAPPED_BLOCKED, get_tier_features
+
         feats = get_tier_features("enterprise", "single", "air_gapped")
         for blocked in _AIR_GAPPED_BLOCKED:
             assert blocked not in feats, (
@@ -254,12 +279,14 @@ class TestTierFeatureMatrix:
 
     def test_unknown_tier_falls_back_to_starter(self):
         from app.core.feature_flags import _TIER_FEATURES, get_tier_features
+
         # Defensive: get_tier_features() defaults to starter for unknown tiers
         feats = get_tier_features("nonexistent_tier")
         assert feats == _TIER_FEATURES["starter"]
 
     def test_is_upgrade_valid_strict_monotonic(self):
         from app.core.feature_flags import is_upgrade_valid
+
         assert is_upgrade_valid("starter", "growth") is True
         assert is_upgrade_valid("growth", "enterprise") is True
         assert is_upgrade_valid("starter", "enterprise") is True
@@ -282,16 +309,23 @@ class TestTierLimits:
 
     def test_limits_increase_with_tier(self):
         from app.core.feature_flags import get_tier_limits
+
         s = get_tier_limits("starter")
         g = get_tier_limits("growth")
         e = get_tier_limits("enterprise")
         # Each numeric limit must be ≥ in higher tier
-        for key in ("max_patients", "max_staff", "max_branches",
-                    "max_orders_per_day", "max_ai_calls_per_day"):
+        for key in (
+            "max_patients",
+            "max_staff",
+            "max_branches",
+            "max_orders_per_day",
+            "max_ai_calls_per_day",
+        ):
             assert g[key] >= s[key], f"growth.{key} < starter.{key}"
             assert e[key] >= g[key], f"enterprise.{key} < growth.{key}"
 
     def test_starter_has_no_ai_calls(self):
         """Starter tier must not be able to make AI calls — feature is gated."""
         from app.core.feature_flags import get_tier_limits
+
         assert get_tier_limits("starter")["max_ai_calls_per_day"] == 0

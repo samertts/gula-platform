@@ -29,7 +29,9 @@ class AIAnalysisJob(RadiologyBaseEntity):
     model_version = Column(String(32), nullable=True)
     status = Column(String(20), default="pending")
     requested_by = Column(String(26), nullable=True)
-    requested_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    requested_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     findings = Column(JSON, default=dict)
@@ -131,7 +133,9 @@ class ModelRegistryHook:
     def get_model(self, model_id: str) -> dict[str, Any] | None:
         return self.MODELS.get(model_id)
 
-    def list_models(self, modality: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+    def list_models(
+        self, modality: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
         results = []
         for mid, info in self.MODELS.items():
             if modality and modality not in info.get("modalities", []):
@@ -195,7 +199,9 @@ class TriageService:
                 critical_findings.append(cf)
                 logger.warning(
                     "AI triage flagged critical finding on exam %s: %s (confidence=%.2f)",
-                    exam_id, finding_type, confidence,
+                    exam_id,
+                    finding_type,
+                    confidence,
                 )
 
         if critical_findings:
@@ -213,7 +219,9 @@ class TriageService:
             exam.extra_metadata["has_ai_critical_finding"] = True
             self.db.commit()
 
-    def get_critical_exams(self, date_from: datetime | None = None, date_to: datetime | None = None) -> list[RadiologyExam]:
+    def get_critical_exams(
+        self, date_from: datetime | None = None, date_to: datetime | None = None
+    ) -> list[RadiologyExam]:
         q = self.db.query(RadiologyExam).filter(
             ~~RadiologyExam.is_deleted,
             RadiologyExam.extra_metadata["has_ai_critical_finding"].astext == "true",
@@ -243,8 +251,16 @@ class QualityDetectionService:
         if not exam:
             return {"exam_id": exam_id, "quality": "unknown", "issues": ["Exam not found"]}
 
-        modalities = self.db.query(RadiologyExam.modality).filter(RadiologyExam.id == exam_id).first()
-        modality = modalities[0].value if modalities and hasattr(modalities[0], "value") else str(modalities[0]) if modalities else ""
+        modalities = (
+            self.db.query(RadiologyExam.modality).filter(RadiologyExam.id == exam_id).first()
+        )
+        modality = (
+            modalities[0].value
+            if modalities and hasattr(modalities[0], "value")
+            else str(modalities[0])
+            if modalities
+            else ""
+        )
 
         issues: list[str] = []
         score = 100.0
@@ -261,7 +277,12 @@ class QualityDetectionService:
                 "poor": -40,
                 "non_diagnostic": -60,
             }
-            penalty = quality_map.get(exam.image_quality.value if hasattr(exam.image_quality, "value") else str(exam.image_quality), 0)
+            penalty = quality_map.get(
+                exam.image_quality.value
+                if hasattr(exam.image_quality, "value")
+                else str(exam.image_quality),
+                0,
+            )
             score += penalty
             if penalty < -30:
                 issues.append(f"Image quality rated as {exam.image_quality}")
@@ -291,7 +312,9 @@ class QualityDetectionService:
         return {
             "exam_id": exam_id,
             "reject": assessment["quality_score"] < 40,
-            "reason": "; ".join(assessment["issues"]) if assessment["issues"] else "Meets quality standards",
+            "reason": "; ".join(assessment["issues"])
+            if assessment["issues"]
+            else "Meets quality standards",
             "quality_score": assessment["quality_score"],
         }
 
@@ -317,7 +340,9 @@ class HumanApprovalService:
             "approved": False,
         }
 
-    def approve_findings(self, job_id: str, approved_by: str, modifications: dict[str, Any] | None = None) -> dict[str, Any]:
+    def approve_findings(
+        self, job_id: str, approved_by: str, modifications: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         job = self.db.query(AIAnalysisJob).filter(AIAnalysisJob.id == job_id).first()
         if not job:
             return {"success": False, "error": "Job not found"}

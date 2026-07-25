@@ -85,10 +85,17 @@ class AppointmentService:
         return [self._to_citizen_appointment(a) for a in appointments]
 
     async def reschedule_appointment(
-        self, appointment_id: str, new_start: datetime, new_end: datetime, reason: str = "",
+        self,
+        appointment_id: str,
+        new_start: datetime,
+        new_end: datetime,
+        reason: str = "",
     ) -> CitizenAppointment:
         appointment = await self._scheduling.reschedule_appointment(
-            appointment_id, new_start, new_end, reason,
+            appointment_id,
+            new_start,
+            new_end,
+            reason,
         )
         return self._to_citizen_appointment(appointment)
 
@@ -180,10 +187,15 @@ class WaitingListManager:
         await self._scheduling.remove_from_waiting_list(entry_id)
 
     async def get_waiting_list_status(
-        self, resource_id: str | None = None, skip: int = 0, limit: int = 100,
+        self,
+        resource_id: str | None = None,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[NationalWaitingList]:
         return await self._scheduling.list_waiting_list(
-            resource_id=resource_id, skip=skip, limit=limit,
+            resource_id=resource_id,
+            skip=skip,
+            limit=limit,
         )
 
 
@@ -195,7 +207,10 @@ class AppointmentReminderService:
         return await self._scheduling.send_reminders()
 
     async def schedule_reminder(
-        self, appointment_id: str, channel: str = "sms", minutes_before: int = 60,
+        self,
+        appointment_id: str,
+        channel: str = "sms",
+        minutes_before: int = 60,
     ) -> None:
         await self._scheduling.reschedule_appointment(
             appointment_id,

@@ -19,12 +19,37 @@ from app.care_continuum.enums import CareProgramStatus, FollowUpStatus
 class CareJourney(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_care_journeys"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    episode_of_care_id = Column(String(26), ForeignKey("national_episodes_of_care.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    episode_of_care_id = Column(
+        String(26),
+        ForeignKey("national_episodes_of_care.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    care_coordinator_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
+    care_coordinator_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    organization_id = Column(
+        String(26),
+        ForeignKey("national_organizations.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=True)
@@ -59,13 +84,43 @@ class CareJourney(CareContinuumTenantAuditEntity):
 class FollowUpPlan(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_follow_up_plans"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    care_journey_id = Column(String(26), ForeignKey("cc_care_journeys.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    care_journey_id = Column(
+        String(26),
+        ForeignKey("cc_care_journeys.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     plan_date = Column(DateTime(timezone=True), nullable=False)
     follow_up_date = Column(DateTime(timezone=True), nullable=False)
@@ -105,12 +160,37 @@ class FollowUpPlan(CareContinuumTenantAuditEntity):
 class CareCoordination(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_care_coordination"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    care_journey_id = Column(String(26), ForeignKey("cc_care_journeys.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    care_journey_id = Column(
+        String(26),
+        ForeignKey("cc_care_journeys.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    coordinator_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
+    coordinator_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    organization_id = Column(
+        String(26),
+        ForeignKey("national_organizations.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     coordination_type = Column(String(100), nullable=False)
     start_date = Column(DateTime(timezone=True), nullable=False)
@@ -145,28 +225,79 @@ class CareCoordination(CareContinuumTenantAuditEntity):
 class TransitionsOfCare(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_transitions_of_care"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    admission_id = Column(String(26), ForeignKey("national_admissions.id", ondelete="SET NULL"), nullable=True, index=True)
-    discharge_id = Column(String(26), ForeignKey("national_discharges.id", ondelete="SET NULL"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    admission_id = Column(
+        String(26),
+        ForeignKey("national_admissions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    discharge_id = Column(
+        String(26),
+        ForeignKey("national_discharges.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     transition_type = Column(String(100), nullable=False)
     transition_date = Column(DateTime(timezone=True), nullable=False)
     status = Column(String(50), nullable=False, default="pending")
 
-    from_facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    from_department_id = Column(String(26), ForeignKey("national_departments.id", ondelete="SET NULL"), nullable=True)
-    from_practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    from_facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    from_department_id = Column(
+        String(26), ForeignKey("national_departments.id", ondelete="SET NULL"), nullable=True,
+    )
+    from_practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    to_facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    to_department_id = Column(String(26), ForeignKey("national_departments.id", ondelete="SET NULL"), nullable=True)
-    to_practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    to_facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    to_department_id = Column(
+        String(26), ForeignKey("national_departments.id", ondelete="SET NULL"), nullable=True,
+    )
+    to_practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     discharge_summary_id = Column(String(26), nullable=True)
     medication_reconciliation_done = Column(Boolean, default=False)
     follow_up_appointment_made = Column(Boolean, default=False)
-    follow_up_appointment_id = Column(String(26), ForeignKey("national_appointments.id", ondelete="SET NULL"), nullable=True)
+    follow_up_appointment_id = Column(
+        String(26), ForeignKey("national_appointments.id", ondelete="SET NULL"), nullable=True,
+    )
 
     handover_documents = Column(JSON, nullable=True)
     care_plan_transferred = Column(Boolean, default=False)
@@ -192,16 +323,46 @@ class TransitionsOfCare(CareContinuumTenantAuditEntity):
 class ClinicalHandover(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_clinical_handovers"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    transition_id = Column(String(26), ForeignKey("cc_transitions_of_care.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    transition_id = Column(
+        String(26),
+        ForeignKey("cc_transitions_of_care.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     handover_date = Column(DateTime(timezone=True), nullable=False)
     handover_type = Column(String(100), nullable=False)
 
-    from_practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
-    to_practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
+    from_practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    to_practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
 
     clinical_summary = Column(Text, nullable=True)
     medications = Column(JSON, nullable=True)
@@ -212,7 +373,9 @@ class ClinicalHandover(CareContinuumTenantAuditEntity):
     allergies = Column(JSON, nullable=True)
 
     is_verified = Column(Boolean, default=False)
-    verified_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    verified_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     verified_at = Column(DateTime(timezone=True), nullable=True)
 
     duration_minutes = Column(Integer, nullable=True)
@@ -232,12 +395,37 @@ class ClinicalHandover(CareContinuumTenantAuditEntity):
 class HomeCarePlan(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_home_care_plans"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    care_journey_id = Column(String(26), ForeignKey("cc_care_journeys.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    care_journey_id = Column(
+        String(26),
+        ForeignKey("cc_care_journeys.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     plan_date = Column(DateTime(timezone=True), nullable=False)
     status = Column(SAEnum(CareProgramStatus), nullable=False, default=CareProgramStatus.ACTIVE)
@@ -247,7 +435,9 @@ class HomeCarePlan(CareContinuumTenantAuditEntity):
     icd10_code = Column(String(20), nullable=True)
 
     visit_frequency = Column(String(100), nullable=True)
-    visiting_practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    visiting_practitioner_id = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     caregiver_instructions = Column(Text, nullable=True)
 
     medications = Column(JSON, nullable=True)
@@ -279,10 +469,30 @@ class HomeCarePlan(CareContinuumTenantAuditEntity):
 class CommunityCareRecord(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_community_care_records"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     visit_date = Column(DateTime(timezone=True), nullable=False)
     visit_type = Column(String(100), nullable=False)
@@ -294,7 +504,9 @@ class CommunityCareRecord(CareContinuumTenantAuditEntity):
     catchment_area = Column(String(200), nullable=True)
 
     household_visit = Column(Boolean, default=False)
-    household_id = Column(String(26), ForeignKey("national_families.id", ondelete="SET NULL"), nullable=True)
+    household_id = Column(
+        String(26), ForeignKey("national_families.id", ondelete="SET NULL"), nullable=True,
+    )
 
     services_provided = Column(JSON, nullable=True)
     health_education_provided = Column(JSON, nullable=True)

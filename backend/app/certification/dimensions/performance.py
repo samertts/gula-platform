@@ -152,6 +152,7 @@ class PerformanceEvaluator(DimensionEvaluator):
                 content = py_file.read_text()
                 if "for" in content and "query" in content.lower():
                     import ast
+
                     try:
                         tree = ast.parse(content)
                         for node in ast.walk(tree):

@@ -100,7 +100,10 @@ class AIRetrievalRef(Base):
 
     id = _uuid_pk()
     interaction_id = Column(
-        _UUID, ForeignKey("ai_interactions.id", ondelete="CASCADE"), nullable=False, index=True,
+        _UUID,
+        ForeignKey("ai_interactions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     source = Column(String(64), nullable=True)
     doc_id = Column(String(128), nullable=True)
@@ -118,7 +121,10 @@ class AIFeedback(Base):
 
     id = _uuid_pk()
     interaction_id = Column(
-        _UUID, ForeignKey("ai_interactions.id", ondelete="CASCADE"), nullable=False, index=True,
+        _UUID,
+        ForeignKey("ai_interactions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
     anonymous_session_id = Column(String(128), nullable=False)
@@ -134,7 +140,9 @@ class AIUnresolvedQuestion(Base):
 
     id = _uuid_pk()
     interaction_id = Column(
-        _UUID, ForeignKey("ai_interactions.id", ondelete="SET NULL"), nullable=True,
+        _UUID,
+        ForeignKey("ai_interactions.id", ondelete="SET NULL"),
+        nullable=True,
     )
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
     anonymous_session_id = Column(String(128), nullable=True)

@@ -13,6 +13,7 @@ Covers:
   - EventBus: handler isolation (one failing handler does not block others)
   - EventBus: emit returns handler count
 """
+
 from __future__ import annotations
 
 import json
@@ -40,14 +41,17 @@ from sqlalchemy.orm import sessionmaker
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture()
 def db():
     import app.models.lab
     import app.models.lab_user
     import app.models.outbox
     from app.services.mpi.models import Citizen, IdentityClaim
+
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     import app.national.domain
+
     NationalBase.metadata.create_all(engine)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -68,6 +72,7 @@ def _all_events(db) -> list:
 
 
 # ── emit_to_outbox ────────────────────────────────────────────────────────────
+
 
 class TestEmitToOutbox:
     def test_event_is_persisted_after_commit(self, db):
@@ -99,13 +104,13 @@ class TestEmitToOutbox:
 
     def test_rollback_removes_event(self, db):
         emit_to_outbox(db, event_type="order.created", payload={"order_id": 99})
-        db.rollback()   # simulates business operation failure
+        db.rollback()  # simulates business operation failure
         assert _pending_count(db) == 0
 
     def test_multiple_events_in_same_transaction(self, db):
-        emit_to_outbox(db, event_type="order.created",    payload={"n": 1})
-        emit_to_outbox(db, event_type="order.validated",  payload={"n": 2})
-        emit_to_outbox(db, event_type="result.critical",  payload={"n": 3})
+        emit_to_outbox(db, event_type="order.created", payload={"n": 1})
+        emit_to_outbox(db, event_type="order.validated", payload={"n": 2})
+        emit_to_outbox(db, event_type="result.critical", payload={"n": 3})
         db.commit()
         assert db.query(OutboxEvent).count() == 3
 
@@ -117,6 +122,7 @@ class TestEmitToOutbox:
 
 
 # ── OutboxWorker.run_once ─────────────────────────────────────────────────────
+
 
 class TestOutboxWorkerRunOnce:
     def test_dispatches_pending_event_and_marks_done(self, db):
@@ -158,7 +164,7 @@ class TestOutboxWorkerRunOnce:
             event_type="result.critical",
             payload='{"x": 1}',
             status="pending",
-            attempts=MAX_ATTEMPTS - 1,   # one away from limit
+            attempts=MAX_ATTEMPTS - 1,  # one away from limit
             created_at=datetime.now(UTC),
         )
         db.add(ev)
@@ -200,7 +206,7 @@ class TestOutboxWorkerRunOnce:
             event_type="order.created",
             payload="{}",
             status="failed",
-            attempts=MAX_ATTEMPTS,   # already exhausted
+            attempts=MAX_ATTEMPTS,  # already exhausted
             created_at=datetime.now(UTC),
         )
         db.add(ev)
@@ -251,6 +257,7 @@ class TestOutboxWorkerRunOnce:
 
 # ── purge_old_events ──────────────────────────────────────────────────────────
 
+
 class TestPurgeOldEvents:
     def test_purges_old_done_events(self, db):
         old_done = OutboxEvent(
@@ -279,10 +286,11 @@ class TestPurgeOldEvents:
         db.add(recent)
         db.commit()
         count = db.query(OutboxEvent).filter(OutboxEvent.status == "done").count()
-        assert count == 1   # still there
+        assert count == 1  # still there
 
 
 # ── EventBus isolation ────────────────────────────────────────────────────────
+
 
 class TestEventBus:
     def test_failing_handler_does_not_block_other_handlers(self):
@@ -293,7 +301,7 @@ class TestEventBus:
         bus.subscribe("test.event", lambda p: results.append(p["val"]))
 
         ok = bus.emit("test.event", {"val": 42})
-        assert ok == 1      # second handler succeeded
+        assert ok == 1  # second handler succeeded
         assert results == [42]
 
     def test_emit_returns_count_of_successful_handlers(self):

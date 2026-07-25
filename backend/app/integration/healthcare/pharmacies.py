@@ -31,7 +31,9 @@ class PharmacyIntegration(BaseConnector):
             headers = {"Content-Type": "application/json"}
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
-            self._client = httpx.AsyncClient(timeout=self._timeout, verify=self._verify_ssl, headers=headers)
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, verify=self._verify_ssl, headers=headers
+            )
             self._connected = True
             logger.info("Pharmacy integration connected")
             return True
@@ -48,7 +50,11 @@ class PharmacyIntegration(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -91,7 +97,9 @@ class PharmacyIntegration(BaseConnector):
             "notes": data.get("notes", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/dispense"), json=dispensing)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/dispense"), json=dispensing
+            )
             if resp.is_success:
                 return {"success": True, "dispensing": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -107,7 +115,9 @@ class PharmacyIntegration(BaseConnector):
             "patient_id": data.get("patient_id", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/interactions/check"), json=check)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/interactions/check"), json=check
+            )
             if resp.is_success:
                 return {"success": True, "interactions": resp.json().get("interactions", [])}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -123,7 +133,9 @@ class PharmacyIntegration(BaseConnector):
             "facility_id": data.get("facility_id", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/inventory/sync"), json=inventory)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/inventory/sync"), json=inventory
+            )
             if resp.is_success:
                 return {"success": True, "sync_result": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -142,9 +154,15 @@ class PharmacyIntegration(BaseConnector):
             "issue_date": data.get("issue_date", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/prescriptions/verify"), json=prescription)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/prescriptions/verify"), json=prescription
+            )
             if resp.is_success:
-                return {"success": True, "verified": resp.json().get("verified", False), "details": resp.json()}
+                return {
+                    "success": True,
+                    "verified": resp.json().get("verified", False),
+                    "details": resp.json(),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Prescription verification failed: %s", exc)

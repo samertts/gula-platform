@@ -70,7 +70,9 @@ class RuntimeGovernor:
             },
         )
 
-        if policy_decision.allowed or (context.action in ("db_write", "ai_decision") and context.environment != "production"):
+        if policy_decision.allowed or (
+            context.action in ("db_write", "ai_decision") and context.environment != "production"
+        ):
             decision = GovernanceDecision.ALLOW
         else:
             decision = GovernanceDecision.DENY
@@ -86,7 +88,9 @@ class RuntimeGovernor:
             matched_policies=["core_policy_engine"],
             execution_time_ms=duration_ms,
             details={
-                "risk": policy_decision.risk.value if hasattr(policy_decision.risk, "value") else str(policy_decision.risk),
+                "risk": policy_decision.risk.value
+                if hasattr(policy_decision.risk, "value")
+                else str(policy_decision.risk),
                 "environment": context.environment,
             },
         )
@@ -103,7 +107,9 @@ class RuntimeGovernor:
         )
         return record
 
-    def validate(self, operation: str, resource: str, context: dict[str, Any] | None = None) -> bool:
+    def validate(
+        self, operation: str, resource: str, context: dict[str, Any] | None = None,
+    ) -> bool:
         ctx = GovernanceContext(
             action=operation,
             resource=resource,

@@ -22,10 +22,30 @@ from app.ehr.enums import MedicationAdministrationStatus, MedicationOrderStatus
 class MedicationStatement(EHRBaseEntity):
     __tablename__ = "ehr_medication_statements"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     medication_code = Column(String(50), nullable=True, index=True)
     medication_code_system = Column(String(20), nullable=True)
@@ -47,7 +67,9 @@ class MedicationStatement(EHRBaseEntity):
 
     date_started = Column(Date, nullable=True)
     date_ended = Column(Date, nullable=True)
-    date_recorded = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
+    date_recorded = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True,
+    )
 
     reason_code = Column(String(50), nullable=True)
     reason_description = Column(String(500), nullable=True)
@@ -67,10 +89,30 @@ class MedicationStatement(EHRBaseEntity):
 class MedicationRequest(EHRBaseEntity):
     __tablename__ = "ehr_medication_requests"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    prescriber_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    prescriber_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     medication_code = Column(String(50), nullable=True, index=True)
     medication_code_system = Column(String(20), nullable=True)
@@ -79,7 +121,9 @@ class MedicationRequest(EHRBaseEntity):
     medication_brand = Column(String(200), nullable=True)
     medication_form = Column(String(100), nullable=True)
 
-    status = Column(SAEnum(MedicationOrderStatus), nullable=False, default=MedicationOrderStatus.DRAFT)
+    status = Column(
+        SAEnum(MedicationOrderStatus), nullable=False, default=MedicationOrderStatus.DRAFT,
+    )
     intent = Column(String(50), nullable=False, default="order")
     priority = Column(String(20), default="routine")
     category = Column(String(50), nullable=True)
@@ -120,10 +164,30 @@ class MedicationRequest(EHRBaseEntity):
 class MedicationDispense(EHRBaseEntity):
     __tablename__ = "ehr_medication_dispenses"
 
-    medication_request_id = Column(String(26), ForeignKey("ehr_medication_requests.id", ondelete="SET NULL"), nullable=True, index=True)
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    dispenser_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    medication_request_id = Column(
+        String(26),
+        ForeignKey("ehr_medication_requests.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    dispenser_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     medication_code = Column(String(50), nullable=True, index=True)
     medication_code_system = Column(String(20), nullable=True)
@@ -142,9 +206,13 @@ class MedicationDispense(EHRBaseEntity):
     route = Column(String(100), nullable=True)
     frequency = Column(String(200), nullable=True)
 
-    prepared_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    prepared_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     prepared_at = Column(DateTime(timezone=True), nullable=True)
-    verified_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    verified_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     verified_at = Column(DateTime(timezone=True), nullable=True)
     dispensed_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -168,18 +236,47 @@ class MedicationDispense(EHRBaseEntity):
 class MedicationAdministration(EHRBaseEntity):
     __tablename__ = "ehr_medication_administrations"
 
-    medication_request_id = Column(String(26), ForeignKey("ehr_medication_requests.id", ondelete="SET NULL"), nullable=True, index=True)
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    administrator_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    medication_request_id = Column(
+        String(26),
+        ForeignKey("ehr_medication_requests.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    administrator_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     medication_code = Column(String(50), nullable=True, index=True)
     medication_code_system = Column(String(20), nullable=True)
     medication_name = Column(String(300), nullable=False)
     medication_name_ar = Column(String(300), nullable=True)
 
-    status = Column(SAEnum(MedicationAdministrationStatus), nullable=False, default=MedicationAdministrationStatus.COMPLETED)
+    status = Column(
+        SAEnum(MedicationAdministrationStatus),
+        nullable=False,
+        default=MedicationAdministrationStatus.COMPLETED,
+    )
     category = Column(String(50), nullable=True)
 
     dose_value = Column(String(50), nullable=True)
@@ -189,7 +286,9 @@ class MedicationAdministration(EHRBaseEntity):
     method = Column(String(100), nullable=True)
 
     administration_time = Column(DateTime(timezone=True), nullable=False)
-    recorded_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
+    recorded_time = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True,
+    )
 
     reason_not_given = Column(String(500), nullable=True)
 

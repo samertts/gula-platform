@@ -21,6 +21,7 @@ router = APIRouter(prefix="/ems", tags=["National EMS Platform"])
 def _get_service(db: Session = Depends(get_db)) -> EMSService:
     try:
         from app.kernel import Kernel
+
         kernel = Kernel.get_instance()
         event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
     except Exception:
@@ -29,6 +30,7 @@ def _get_service(db: Session = Depends(get_db)) -> EMSService:
 
 
 # ---- Emergency Call Intake / Incidents ----
+
 
 @router.post("/incidents", status_code=status.HTTP_201_CREATED)
 async def create_incident(
@@ -58,7 +60,9 @@ async def get_incident(
     try:
         return _incident_to_dict(service.get_incident(incident_id))
     except IncidentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.put("/incidents/{incident_id}/status")
@@ -68,14 +72,19 @@ async def update_incident_status(
     service: EMSService = Depends(_get_service),
 ) -> dict[str, Any]:
     try:
-        return _incident_to_dict(service.update_incident_status(incident_id, body.get("status", "")))
+        return _incident_to_dict(
+            service.update_incident_status(incident_id, body.get("status", "")),
+        )
     except IncidentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except InvalidIncidentStateError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 # ---- Dispatch ----
+
 
 @router.post("/dispatch", status_code=status.HTTP_201_CREATED)
 async def dispatch_incident(
@@ -90,12 +99,15 @@ async def dispatch_incident(
         )
         return _dispatch_to_dict(dispatch)
     except IncidentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except AmbulanceNotAvailableError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
 # ---- Ambulances ----
+
 
 @router.post("/ambulances", status_code=status.HTTP_201_CREATED)
 async def register_ambulance(
@@ -124,7 +136,9 @@ async def get_ambulance(
     try:
         return _ambulance_to_dict(service.get_ambulance(ambulance_id))
     except AmbulanceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.put("/ambulances/{ambulance_id}/location")
@@ -134,11 +148,17 @@ async def update_ambulance_location(
     service: EMSService = Depends(_get_service),
 ) -> dict[str, Any]:
     try:
-        return _ambulance_to_dict(service.update_ambulance_location(
-            ambulance_id, body.get("lat", 0.0), body.get("lng", 0.0),
-        ))
+        return _ambulance_to_dict(
+            service.update_ambulance_location(
+                ambulance_id,
+                body.get("lat", 0.0),
+                body.get("lng", 0.0),
+            ),
+        )
     except AmbulanceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.put("/ambulances/{ambulance_id}/status")
@@ -148,14 +168,21 @@ async def update_ambulance_status(
     service: EMSService = Depends(_get_service),
 ) -> dict[str, Any]:
     try:
-        return _ambulance_to_dict(service.update_ambulance_status(
-            ambulance_id, body.get("status", ""), body.get("reason", ""),
-        ))
+        return _ambulance_to_dict(
+            service.update_ambulance_status(
+                ambulance_id,
+                body.get("status", ""),
+                body.get("reason", ""),
+            ),
+        )
     except AmbulanceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ---- Crew ----
+
 
 @router.post("/crew", status_code=status.HTTP_201_CREATED)
 async def register_crew(
@@ -177,6 +204,7 @@ async def list_crew(
 
 # ---- Triage ----
 
+
 @router.post("/triage", status_code=status.HTTP_201_CREATED)
 async def record_triage(
     body: dict[str, Any],
@@ -194,6 +222,7 @@ async def get_triage(
 
 
 # ---- ePCR ----
+
 
 @router.post("/epcr", status_code=status.HTTP_201_CREATED)
 async def create_epcr(
@@ -221,7 +250,9 @@ async def get_epcr(
     try:
         return _epcr_to_dict(service.get_epcr(epcr_id))
     except ePCRNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/epcr/{epcr_id}/submit")
@@ -232,10 +263,13 @@ async def submit_epcr(
     try:
         return _epcr_to_dict(service.submit_epcr(epcr_id))
     except ePCRNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ---- Hospital Status ----
+
 
 @router.post("/hospitals/status", status_code=status.HTTP_201_CREATED)
 async def update_hospital_status(
@@ -257,6 +291,7 @@ async def get_nearest_hospitals(
 
 # ---- Disaster Management ----
 
+
 @router.post("/disasters", status_code=status.HTTP_201_CREATED)
 async def declare_disaster(
     body: dict[str, Any],
@@ -277,6 +312,7 @@ async def list_disasters(
 
 # ---- ICS ----
 
+
 @router.post("/incident-command", status_code=status.HTTP_201_CREATED)
 async def create_incident_command(
     body: dict[str, Any],
@@ -287,6 +323,7 @@ async def create_incident_command(
 
 # ---- Shelters ----
 
+
 @router.post("/shelters", status_code=status.HTTP_201_CREATED)
 async def create_shelter(
     body: dict[str, Any],
@@ -296,6 +333,7 @@ async def create_shelter(
 
 
 # ---- Dashboard ----
+
 
 @router.get("/dashboard")
 async def get_dashboard(
@@ -310,6 +348,7 @@ async def health() -> dict[str, Any]:
 
 
 # ---- Response Serializers ----
+
 
 def _incident_to_dict(i: Any) -> dict[str, Any]:
     return {
@@ -336,7 +375,9 @@ def _incident_to_dict(i: Any) -> dict[str, Any]:
         "dispatcher_notes": i.dispatcher_notes,
         "dispatch_time": i.dispatch_time.isoformat() if i.dispatch_time else None,
         "scene_arrival_time": i.scene_arrival_time.isoformat() if i.scene_arrival_time else None,
-        "destination_arrival_time": i.destination_arrival_time.isoformat() if i.destination_arrival_time else None,
+        "destination_arrival_time": i.destination_arrival_time.isoformat()
+        if i.destination_arrival_time
+        else None,
         "destination_facility_id": i.destination_facility_id,
         "destination_facility_name": i.destination_facility_name,
         "destination_type": i.destination_type,
@@ -347,80 +388,135 @@ def _incident_to_dict(i: Any) -> dict[str, Any]:
 
 
 def _dispatch_to_dict(d: Any) -> dict[str, Any]:
-    return {"id": d.id, "incident_id": d.incident_id, "ambulance_id": d.ambulance_id, "status": d.status.value if hasattr(d.status, "value") else d.status}
+    return {
+        "id": d.id,
+        "incident_id": d.incident_id,
+        "ambulance_id": d.ambulance_id,
+        "status": d.status.value if hasattr(d.status, "value") else d.status,
+    }
 
 
 def _ambulance_to_dict(a: Any) -> dict[str, Any]:
     return {
-        "id": a.id, "vehicle_id": a.vehicle_id, "registration_number": a.registration_number,
-        "call_sign": a.call_sign, "type": a.type, "status": a.status,
-        "current_location_lat": a.current_location_lat, "current_location_lng": a.current_location_lng,
-        "station_id": a.station_id, "station_name": a.station_name, "facility_id": a.facility_id,
-        "fuel_level": a.fuel_level, "mileage_km": a.mileage_km, "vehicle_status": a.vehicle_status,
-        "last_maintenance_date": a.last_maintenance_date.isoformat() if a.last_maintenance_date else None,
-        "next_maintenance_due": a.next_maintenance_due.isoformat() if a.next_maintenance_due else None,
+        "id": a.id,
+        "vehicle_id": a.vehicle_id,
+        "registration_number": a.registration_number,
+        "call_sign": a.call_sign,
+        "type": a.type,
+        "status": a.status,
+        "current_location_lat": a.current_location_lat,
+        "current_location_lng": a.current_location_lng,
+        "station_id": a.station_id,
+        "station_name": a.station_name,
+        "facility_id": a.facility_id,
+        "fuel_level": a.fuel_level,
+        "mileage_km": a.mileage_km,
+        "vehicle_status": a.vehicle_status,
+        "last_maintenance_date": a.last_maintenance_date.isoformat()
+        if a.last_maintenance_date
+        else None,
+        "next_maintenance_due": a.next_maintenance_due.isoformat()
+        if a.next_maintenance_due
+        else None,
     }
 
 
 def _crew_to_dict(c: Any) -> dict[str, Any]:
     return {
-        "id": c.id, "user_id": c.user_id, "full_name": c.full_name, "role": c.role,
-        "is_available": c.is_available, "station_id": c.station_id, "phone": c.phone,
+        "id": c.id,
+        "user_id": c.user_id,
+        "full_name": c.full_name,
+        "role": c.role,
+        "is_available": c.is_available,
+        "station_id": c.station_id,
+        "phone": c.phone,
         "certifications": c.certifications,
     }
 
 
 def _triage_to_dict(t: Any) -> dict[str, Any]:
     return {
-        "id": t.id, "incident_id": t.incident_id, "patient_name": t.patient_name,
-        "category": t.category, "system": t.system,
-        "respiratory_rate": t.respiratory_rate, "heart_rate": t.heart_rate,
-        "systolic_bp": t.systolic_bp, "ambulatory": t.ambulatory,
-        "glasgow_coma_scale": t.glasgow_coma_scale, "priority_score": t.priority_score,
+        "id": t.id,
+        "incident_id": t.incident_id,
+        "patient_name": t.patient_name,
+        "category": t.category,
+        "system": t.system,
+        "respiratory_rate": t.respiratory_rate,
+        "heart_rate": t.heart_rate,
+        "systolic_bp": t.systolic_bp,
+        "ambulatory": t.ambulatory,
+        "glasgow_coma_scale": t.glasgow_coma_scale,
+        "priority_score": t.priority_score,
         "assessed_at": t.assessed_at.isoformat() if t.assessed_at else None,
     }
 
 
 def _epcr_to_dict(e: Any) -> dict[str, Any]:
     return {
-        "id": e.id, "incident_id": e.incident_id, "patient_name": e.patient_name,
-        "chief_complaint": e.chief_complaint, "status": e.status,
-        "narrative": e.narrative, "created_at": e.created_at.isoformat() if e.created_at else None,
+        "id": e.id,
+        "incident_id": e.incident_id,
+        "patient_name": e.patient_name,
+        "chief_complaint": e.chief_complaint,
+        "status": e.status,
+        "narrative": e.narrative,
+        "created_at": e.created_at.isoformat() if e.created_at else None,
     }
 
 
 def _disaster_to_dict(d: Any) -> dict[str, Any]:
     return {
-        "id": d.id, "event_name": d.event_name, "disaster_type": d.disaster_type,
-        "phase": d.phase, "severity_level": d.severity_level,
-        "location_address": d.location_address, "region": d.region, "governorate": d.governorate,
-        "description": d.description, "casualties_count": d.casualties_count,
-        "fatalities_count": d.fatalities_count, "missing_count": d.missing_count,
-        "displaced_count": d.displaced_count, "declared_state_of_emergency": d.declared_state_of_emergency,
+        "id": d.id,
+        "event_name": d.event_name,
+        "disaster_type": d.disaster_type,
+        "phase": d.phase,
+        "severity_level": d.severity_level,
+        "location_address": d.location_address,
+        "region": d.region,
+        "governorate": d.governorate,
+        "description": d.description,
+        "casualties_count": d.casualties_count,
+        "fatalities_count": d.fatalities_count,
+        "missing_count": d.missing_count,
+        "displaced_count": d.displaced_count,
+        "declared_state_of_emergency": d.declared_state_of_emergency,
         "declared_at": d.declared_at.isoformat() if d.declared_at else None,
     }
 
 
 def _ics_to_dict(ics: Any) -> dict[str, Any]:
-    return {"id": ics.id, "incident_name": ics.incident_name, "status": ics.status, "command_staff": ics.command_staff}
+    return {
+        "id": ics.id,
+        "incident_name": ics.incident_name,
+        "status": ics.status,
+        "command_staff": ics.command_staff,
+    }
 
 
 def _shelter_to_dict(s: Any) -> dict[str, Any]:
     return {
-        "id": s.id, "name": s.name, "capacity": s.capacity,
-        "current_occupants": s.current_occupants, "status": s.status,
+        "id": s.id,
+        "name": s.name,
+        "capacity": s.capacity,
+        "current_occupants": s.current_occupants,
+        "status": s.status,
     }
 
 
 def _hospital_status_to_dict(h: Any) -> dict[str, Any]:
     return {
-        "id": h.id, "facility_id": h.facility_id, "facility_name": h.facility_name,
-        "total_beds": h.total_beds, "available_beds": h.available_beds,
-        "icu_beds": h.icu_beds, "available_icu_beds": h.available_icu_beds,
-        "ventilators_total": h.ventilators_total, "ventilators_available": h.ventilators_available,
+        "id": h.id,
+        "facility_id": h.facility_id,
+        "facility_name": h.facility_name,
+        "total_beds": h.total_beds,
+        "available_beds": h.available_beds,
+        "icu_beds": h.icu_beds,
+        "available_icu_beds": h.available_icu_beds,
+        "ventilators_total": h.ventilators_total,
+        "ventilators_available": h.ventilators_available,
         "emergency_room_status": h.emergency_room_status,
         "trauma_bays_available": h.trauma_bays_available,
         "operating_rooms_available": h.operating_rooms_available,
-        "diversion_status": h.diversion_status, "diversion_reason": h.diversion_reason,
+        "diversion_status": h.diversion_status,
+        "diversion_reason": h.diversion_reason,
         "last_updated": h.last_updated.isoformat() if h.last_updated else None,
     }

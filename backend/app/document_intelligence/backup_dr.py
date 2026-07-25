@@ -43,7 +43,9 @@ class BackupScheduler:
         self._task: asyncio.Task | None = None
         os.makedirs(backup_dir, exist_ok=True)
 
-    def add_schedule(self, name: str, interval_seconds: int, backup_fn: Callable, backup_type: str = "full"):
+    def add_schedule(
+        self, name: str, interval_seconds: int, backup_fn: Callable, backup_type: str = "full",
+    ):
         self._schedules[name] = {
             "interval": interval_seconds,
             "fn": backup_fn,
@@ -93,7 +95,9 @@ class BackupService:
         self._manifests: dict[str, BackupManifest] = {}
         os.makedirs(backup_dir, exist_ok=True)
 
-    async def create_backup(self, entries: list[BackupEntry], backup_type: str = "full") -> BackupManifest:
+    async def create_backup(
+        self, entries: list[BackupEntry], backup_type: str = "full",
+    ) -> BackupManifest:
         manifest = BackupManifest(backup_type=backup_type)
         manifest.entries = len(entries)
 
@@ -122,6 +126,7 @@ class BackupService:
             raise ValueError(f"Backup manifest not found: {manifest_id}")
 
         import glob
+
         matches = glob.glob(os.path.join(self._backup_dir, f"backup_{manifest.id}_*.json"))
         if not matches:
             raise FileNotFoundError(f"Backup file not found for: {manifest_id}")
@@ -131,11 +136,13 @@ class BackupService:
 
         result = []
         for entry in data:
-            result.append(BackupEntry(
-                key=entry["key"],
-                data=bytes.fromhex(entry["data"]),
-                checksum=entry["checksum"],
-            ))
+            result.append(
+                BackupEntry(
+                    key=entry["key"],
+                    data=bytes.fromhex(entry["data"]),
+                    checksum=entry["checksum"],
+                ),
+            )
         return result
 
     def list_backups(self) -> list[BackupManifest]:
@@ -167,6 +174,7 @@ class BackupService:
         for mid in to_remove:
             self._manifests.pop(mid, None)
             import glob
+
             for f in glob.glob(os.path.join(self._backup_dir, f"backup_{mid}_*.json")):
                 os.remove(f)
         if to_remove:

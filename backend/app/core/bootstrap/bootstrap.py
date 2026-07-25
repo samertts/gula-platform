@@ -77,7 +77,9 @@ def run_bootstrap(db: Session | None = None) -> dict[str, int]:
             results["laboratory_types"] = True
             logger.info("Step 7/10: Laboratory Types — %d created", lab_type_count)
         else:
-            logger.info("Steps 4-7: National bootstrap disabled via ENABLE_NATIONAL_BOOTSTRAP=false")
+            logger.info(
+                "Steps 4-7: National bootstrap disabled via ENABLE_NATIONAL_BOOTSTRAP=false",
+            )
 
         dept_count = seed_departments(db=db)
         counts["departments"] = dept_count

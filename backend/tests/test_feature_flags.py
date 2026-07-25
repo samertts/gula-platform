@@ -15,6 +15,7 @@ Covers:
   - require_feature: passes when feature available
   - can_lab_access: non-raising version
 """
+
 from __future__ import annotations
 
 import os
@@ -46,14 +47,17 @@ from sqlalchemy.orm import sessionmaker
 
 # ── Shared DB fixture (subscription model needed) ─────────────────────────────
 
+
 @pytest.fixture()
 def db():
     import app.models.lab
     import app.models.lab_user
     import app.models.subscription
     from app.services.mpi.models import Citizen, IdentityClaim
+
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     import app.national.domain
+
     NationalBase.metadata.create_all(engine)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -66,6 +70,7 @@ def db():
 
 
 # ── get_tier_features ─────────────────────────────────────────────────────────
+
 
 class TestGetTierFeatures:
     def test_starter_includes_basic_features(self):
@@ -110,9 +115,9 @@ class TestGetTierFeatures:
         assert "government_reporting" in features
 
     def test_unknown_tier_falls_back_to_starter(self):
-        features = get_tier_features("platinum")   # nonexistent tier
+        features = get_tier_features("platinum")  # nonexistent tier
         assert "patient_management" in features
-        assert "quality_control" not in features   # not in starter
+        assert "quality_control" not in features  # not in starter
 
     def test_government_deployment_adds_government_features(self):
         features = get_tier_features("starter", deployment_mode="government")
@@ -148,6 +153,7 @@ class TestGetTierFeatures:
 
 # ── is_upgrade_valid ──────────────────────────────────────────────────────────
 
+
 class TestIsUpgradeValid:
     def test_starter_to_growth_is_valid(self):
         assert is_upgrade_valid("starter", "growth") is True
@@ -175,6 +181,7 @@ class TestIsUpgradeValid:
 
 
 # ── get_tier_limits ───────────────────────────────────────────────────────────
+
 
 class TestGetTierLimits:
     def test_starter_limits(self):
@@ -206,6 +213,7 @@ class TestGetTierLimits:
 
 
 # ── resolve_lab_features ──────────────────────────────────────────────────────
+
 
 class TestResolveLabFeatures:
     def test_no_subscription_defaults_to_starter(self, db):
@@ -318,10 +326,11 @@ class TestResolveLabFeatures:
         db.flush()
 
         features = resolve_lab_features(lab.id, db)
-        assert "ai_interpretation" not in features   # expired, ignored
+        assert "ai_interpretation" not in features  # expired, ignored
 
 
 # ── require_feature / can_lab_access ─────────────────────────────────────────
+
 
 class TestRequireFeature:
     def test_raises_403_when_feature_not_in_tier(self, db):

@@ -137,7 +137,9 @@ class DataDictionary:
                     if mapper_.persist_selectable and mapper_.persist_selectable.name == table_name:
                         model_class = mapper_.class_
                         break
-                class_name = model_class.__name__ if model_class else table_name.title().replace("_", "")
+                class_name = (
+                    model_class.__name__ if model_class else table_name.title().replace("_", "")
+                )
                 module = getattr(model_class, "__module__", "") if model_class else ""
                 doc = getattr(model_class, "__doc__", "") if model_class else ""
                 entity = DataEntityEntry(
@@ -150,7 +152,11 @@ class DataDictionary:
                     col_type = str(col.type)
                     fk = None
                     if col.foreign_keys:
-                        fk = next(iter(col.foreign_keys)).column.fullname if col.foreign_keys else None
+                        fk = (
+                            next(iter(col.foreign_keys)).column.fullname
+                            if col.foreign_keys
+                            else None
+                        )
                     is_pii = bool(_PII_PATTERNS.search(col.name))
                     is_phi = bool(_PHI_PATTERNS.search(col.name))
                     classification = "phi" if is_phi else ("pii" if is_pii else "public")
@@ -160,19 +166,23 @@ class DataDictionary:
                     enum_vals = None
                     if hasattr(col.type, "enums"):
                         enum_vals = list(col.type.enums)
-                    entity.fields.append(FieldEntry(
-                        name=col.name,
-                        type=col_type,
-                        nullable=col.nullable,
-                        primary_key=col.primary_key,
-                        foreign_key=fk,
-                        default=col.default.arg if col.default and hasattr(col.default, "arg") else None,
-                        classification=classification,
-                        is_pii=is_pii,
-                        is_phi=is_phi,
-                        fhir_mapping=fhir_map,
-                        enum_values=enum_vals,
-                    ))
+                    entity.fields.append(
+                        FieldEntry(
+                            name=col.name,
+                            type=col_type,
+                            nullable=col.nullable,
+                            primary_key=col.primary_key,
+                            foreign_key=fk,
+                            default=col.default.arg
+                            if col.default and hasattr(col.default, "arg")
+                            else None,
+                            classification=classification,
+                            is_pii=is_pii,
+                            is_phi=is_phi,
+                            fhir_mapping=fhir_map,
+                            enum_values=enum_vals,
+                        ),
+                    )
                 entity.fhir_resource = _FHIR_MAP.get(table_name)
                 self._entities[table_name] = entity
             fk_lineage: list[DataLineageEntry] = []
@@ -183,16 +193,22 @@ class DataDictionary:
                         if len(parts) == 2:
                             target_entity = parts[0]
                             target_field = parts[1]
-                            fk_lineage.append(DataLineageEntry(
-                                source_entity=entity.table_name,
-                                source_field=f.name,
-                                target_entity=target_entity,
-                                target_field=target_field,
-                                transformation="foreign_key",
-                                description=f"FK from {entity.table_name}.{f.name} to {target_entity}.{target_field}",
-                            ))
+                            fk_lineage.append(
+                                DataLineageEntry(
+                                    source_entity=entity.table_name,
+                                    source_field=f.name,
+                                    target_entity=target_entity,
+                                    target_field=target_field,
+                                    transformation="foreign_key",
+                                    description=f"FK from {entity.table_name}.{f.name} to {target_entity}.{target_field}",
+                                ),
+                            )
             self._lineage = fk_lineage
-            logger.info("Discovered %d data entities with %d fields", len(self._entities), sum(len(e.fields) for e in self._entities.values()))
+            logger.info(
+                "Discovered %d data entities with %d fields",
+                len(self._entities),
+                sum(len(e.fields) for e in self._entities.values()),
+            )
         except Exception as exc:
             logger.warning("Failed to discover entities: %s", exc)
         return list(self._entities.values())
@@ -221,15 +237,17 @@ class DataDictionary:
         for entity in self._entities.values():
             for f in entity.fields:
                 if f.is_pii or f.is_phi:
-                    inventory.append({
-                        "table": entity.table_name,
-                        "entity": entity.name,
-                        "field": f.name,
-                        "type": f.type,
-                        "classification": f.classification,
-                        "nullable": f.nullable,
-                        "encrypted": "encrypted" in f.type.lower() if f.type else False,
-                    })
+                    inventory.append(
+                        {
+                            "table": entity.table_name,
+                            "entity": entity.name,
+                            "field": f.name,
+                            "type": f.type,
+                            "classification": f.classification,
+                            "nullable": f.nullable,
+                            "encrypted": "encrypted" in f.type.lower() if f.type else False,
+                        },
+                    )
         return inventory
 
     def get_data_lineage(self) -> list[dict]:

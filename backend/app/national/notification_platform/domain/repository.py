@@ -15,7 +15,6 @@ from .enums import NotificationCategory, NotificationChannel, NotificationStatus
 
 
 class NotificationRepository(ABC):
-
     @abstractmethod
     async def save(self, notification: Notification) -> Notification: ...
 
@@ -75,7 +74,6 @@ class NotificationRepository(ABC):
 
 
 class NotificationTemplateRepository(ABC):
-
     @abstractmethod
     async def save(self, template: NotificationTemplate) -> NotificationTemplate: ...
 
@@ -119,7 +117,6 @@ class NotificationTemplateRepository(ABC):
 
 
 class DeliveryReportRepository(ABC):
-
     @abstractmethod
     async def save(self, report: DeliveryReport) -> DeliveryReport: ...
 
@@ -134,12 +131,13 @@ class DeliveryReportRepository(ABC):
 
 
 class NotificationPreferenceRepository(ABC):
-
     @abstractmethod
     async def save(self, preference: NotificationPreference) -> NotificationPreference: ...
 
     @abstractmethod
-    async def get(self, user_id: str, channel: NotificationChannel) -> NotificationPreference | None: ...
+    async def get(
+        self, user_id: str, channel: NotificationChannel,
+    ) -> NotificationPreference | None: ...
 
     @abstractmethod
     async def find_by_user(self, user_id: str) -> list[NotificationPreference]: ...
@@ -153,7 +151,6 @@ class NotificationPreferenceRepository(ABC):
 
 
 class NotificationBatchRepository(ABC):
-
     @abstractmethod
     async def save(self, batch: NotificationBatch) -> NotificationBatch: ...
 

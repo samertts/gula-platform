@@ -24,6 +24,7 @@ Invariants asserted:
 
 Blast radius: zero. No production code touched.
 """
+
 from __future__ import annotations
 
 import json
@@ -41,9 +42,7 @@ os.environ.setdefault("REDIS_URL", "")
 
 import pytest
 
-_UUID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 # ─── Phase 9.A — X-Request-ID propagation ────────────────────────────────────
@@ -95,6 +94,7 @@ class TestResponseTimingHeader:
 
     def test_api_version_matches_config(self, client):
         from app.config import APP_VERSION
+
         res = client.get("/health")
         assert res.headers.get("X-API-Version") == APP_VERSION
 
@@ -109,6 +109,7 @@ class TestCorsTraceHeaderExposure:
     def test_main_module_exposes_trace_headers(self):
         """The CORS middleware in app/main.py must list expose_headers."""
         import pathlib
+
         main_path = pathlib.Path(__file__).parent.parent / "app" / "main.py"
         src = main_path.read_text()
         # Must list the three observability headers in expose_headers
@@ -128,11 +129,13 @@ class TestStructuredLogging:
 
     def test_bind_log_context_accepts_documented_kwargs(self):
         from app.core.logging_config import bind_log_context
+
         # Must not raise
         bind_log_context(request_id="rid-1", user_id=42, lab_id=7)
 
     def test_get_request_id_returns_string(self):
         from app.core.logging_config import bind_log_context, get_request_id
+
         bind_log_context(request_id="explicit-trace-id")
         rid = get_request_id()
         assert isinstance(rid, str)
@@ -141,6 +144,7 @@ class TestStructuredLogging:
         """Smoke: configure_logging accepts (is_production, log_level)
         and does not raise on import."""
         from app.core.logging_config import configure_logging
+
         # Should be idempotent in tests — must not raise
         configure_logging(is_production=False, log_level="WARNING")
 
@@ -149,6 +153,7 @@ class TestStructuredLogging:
         import logging
 
         from app.core.logging_config import _JSONFormatter
+
         formatter = _JSONFormatter()
         record = logging.LogRecord(
             name="gula.test",
@@ -175,14 +180,14 @@ class TestDbCorrelationContextVars:
 
     def test_database_module_exports_correlation_vars(self):
         from app import database
+
         for var in ("_request_id_var", "_endpoint_var"):
-            assert hasattr(database, var), (
-                f"database.{var} missing — DB error correlation broken"
-            )
+            assert hasattr(database, var), f"database.{var} missing — DB error correlation broken"
 
     def test_correlation_vars_have_default_none(self):
         """Default value must be safe (None) so unbound contexts don't crash."""
         from app.database import _endpoint_var, _request_id_var
+
         # Reading without a binding should not raise
         try:
             rid = _request_id_var.get()
@@ -225,6 +230,7 @@ class TestErrorClassificationContract:
 
     def test_self_healing_exposes_circuit_states(self):
         from app.core.self_healing import CircuitState
+
         # The three documented states
         assert CircuitState.CLOSED.value == "closed"
         assert CircuitState.OPEN.value == "open"
@@ -232,6 +238,7 @@ class TestErrorClassificationContract:
 
     def test_self_healing_exposes_degradation_levels(self):
         from app.core.self_healing import DegradationLevel
+
         # Ordered enum: NONE < L1 < L2 < L3
         levels = [
             DegradationLevel.NONE,
@@ -246,6 +253,7 @@ class TestErrorClassificationContract:
         """AI capability violations have their own exception class so they
         can be filtered in observability dashboards."""
         from app.ai.guardrails import AIGuardrailViolation
+
         assert issubclass(AIGuardrailViolation, RuntimeError)
 
 

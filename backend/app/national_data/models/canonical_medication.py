@@ -38,7 +38,14 @@ class CanonicalMedication(DataPlatformBase):
     lab_id: int | None
 
     @classmethod
-    def query_all(cls, db: Session, lab_id: int | None = None, patient_lims_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:
+    def query_all(
+        cls,
+        db: Session,
+        lab_id: int | None = None,
+        patient_lims_id: int | None = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
         np_sub = db.query(NationalPatient).subquery()
 
         stmt_q = db.query(
@@ -60,7 +67,8 @@ class CanonicalMedication(DataPlatformBase):
             MedicationStatement.date_recorded.label("recorded_at"),
             np_sub.c.lab_id,
         ).outerjoin(
-            np_sub, np_sub.c.id == MedicationStatement.patient_id,
+            np_sub,
+            np_sub.c.id == MedicationStatement.patient_id,
         )
 
         req_q = db.query(
@@ -82,7 +90,8 @@ class CanonicalMedication(DataPlatformBase):
             MedicationRequest.authored_on.label("recorded_at"),
             np_sub.c.lab_id,
         ).outerjoin(
-            np_sub, np_sub.c.id == MedicationRequest.patient_id,
+            np_sub,
+            np_sub.c.id == MedicationRequest.patient_id,
         )
 
         disp_q = db.query(
@@ -104,7 +113,8 @@ class CanonicalMedication(DataPlatformBase):
             MedicationDispense.dispensed_at.label("recorded_at"),
             np_sub.c.lab_id,
         ).outerjoin(
-            np_sub, np_sub.c.id == MedicationDispense.patient_id,
+            np_sub,
+            np_sub.c.id == MedicationDispense.patient_id,
         )
 
         admin_q = db.query(
@@ -126,7 +136,8 @@ class CanonicalMedication(DataPlatformBase):
             MedicationAdministration.recorded_time.label("recorded_at"),
             np_sub.c.lab_id,
         ).outerjoin(
-            np_sub, np_sub.c.id == MedicationAdministration.patient_id,
+            np_sub,
+            np_sub.c.id == MedicationAdministration.patient_id,
         )
 
         union_q = stmt_q.union_all(req_q, disp_q, admin_q).subquery()
@@ -136,5 +147,7 @@ class CanonicalMedication(DataPlatformBase):
         if lab_id is not None:
             query = query.filter(union_q.c.lab_id == lab_id)
 
-        rows = query.order_by(union_q.c.recorded_at.desc().nullslast()).offset(skip).limit(limit).all()
+        rows = (
+            query.order_by(union_q.c.recorded_at.desc().nullslast()).offset(skip).limit(limit).all()
+        )
         return [dict(row._mapping) for row in rows]

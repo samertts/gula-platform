@@ -8,7 +8,12 @@ from app.national.enums import Gender, MaritalStatus
 class Patient(TenantAuditEntity):
     __tablename__ = "national_patients"
 
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     health_number = Column(String(20), nullable=False, index=True)
     lab_patient_id = Column(Integer, nullable=True)
 
@@ -40,7 +45,12 @@ class Patient(TenantAuditEntity):
 
     is_active = Column(Boolean, default=True)
     has_guardian = Column(Boolean, default=False)
-    guardian_id = Column(String(26), ForeignKey("national_guardians.id", ondelete="SET NULL"), nullable=True, index=True)
+    guardian_id = Column(
+        String(26),
+        ForeignKey("national_guardians.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     is_merged = Column(Boolean, default=False)
     merged_into_patient_id = Column(String(26), nullable=True)
 

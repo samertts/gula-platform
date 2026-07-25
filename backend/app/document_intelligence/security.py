@@ -16,16 +16,19 @@ logger = logging.getLogger(__name__)
 class EncryptionService:
     def __init__(self, key: bytes | None = None):
         import base64
+
         raw = key or os.urandom(32)
         self._key = base64.urlsafe_b64encode(raw[:32])
 
     def encrypt(self, data: bytes) -> bytes:
         from cryptography.fernet import Fernet
+
         f = Fernet(self._key)
         return f.encrypt(data)
 
     def decrypt(self, data: bytes) -> bytes:
         from cryptography.fernet import Fernet
+
         f = Fernet(self._key)
         return f.decrypt(data)
 
@@ -35,7 +38,9 @@ class InputValidator:
     MAX_LIST_SIZE = 1000
     MAX_DICT_DEPTH = 10
 
-    _UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+    _UUID_PATTERN = re.compile(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE,
+    )
 
     @staticmethod
     def sanitize_string(value: str, max_length: int = MAX_STRING_LENGTH) -> str:
@@ -73,10 +78,11 @@ class InputValidator:
             if isinstance(obj, dict):
                 return {str(k)[:200]: _sanitize(v, depth + 1) for k, v in obj.items()}
             if isinstance(obj, list):
-                return [_sanitize(item, depth + 1) for item in obj[:InputValidator.MAX_LIST_SIZE]]
+                return [_sanitize(item, depth + 1) for item in obj[: InputValidator.MAX_LIST_SIZE]]
             if isinstance(obj, str):
-                return obj[:InputValidator.MAX_STRING_LENGTH]
+                return obj[: InputValidator.MAX_STRING_LENGTH]
             return obj
+
         return _sanitize(data, 0)
 
     @staticmethod
@@ -182,7 +188,9 @@ class IntegrityChecker:
             expected_prev_hash = prev["hash"]
             if current["previous_hash"] != expected_prev_hash:
                 return False
-            entry_data = {k: v for k, v in current.items() if k not in ("previous_hash", "hash", "timestamp")}
+            entry_data = {
+                k: v for k, v in current.items() if k not in ("previous_hash", "hash", "timestamp")
+            }
             combined = json.dumps(entry_data, sort_keys=True, default=str) + expected_prev_hash
             expected_hash = hashlib.sha256(combined.encode()).hexdigest()
             if current["hash"] != expected_hash:

@@ -129,12 +129,18 @@ class ContraindicationDetailResponse(BaseModel):
 
 
 def _get_medication_or_404(db: Session, medication_id: str) -> MedicationCatalog:
-    med = db.query(MedicationCatalog).filter(
-        MedicationCatalog.id == medication_id,
-        ~MedicationCatalog.is_deleted,
-    ).first()
+    med = (
+        db.query(MedicationCatalog)
+        .filter(
+            MedicationCatalog.id == medication_id,
+            ~MedicationCatalog.is_deleted,
+        )
+        .first()
+    )
     if not med:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Medication not found: {medication_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Medication not found: {medication_id}",
+        )
     return med
 
 
@@ -248,7 +254,9 @@ async def get_medication_interactions(
     ]
 
 
-@router.get("/{medication_id}/contraindications", response_model=list[ContraindicationDetailResponse])
+@router.get(
+    "/{medication_id}/contraindications", response_model=list[ContraindicationDetailResponse],
+)
 async def get_medication_contraindications(
     medication_id: str,
     db: Session = Depends(get_db),
@@ -257,6 +265,8 @@ async def get_medication_contraindications(
     med = _get_medication_or_404(db, medication_id)
     raw = med.contraindications or []
     return [
-        ContraindicationDetailResponse(**item) if isinstance(item, dict) else ContraindicationDetailResponse(type="unknown")
+        ContraindicationDetailResponse(**item)
+        if isinstance(item, dict)
+        else ContraindicationDetailResponse(type="unknown")
         for item in raw
     ]

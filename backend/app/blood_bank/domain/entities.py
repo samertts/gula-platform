@@ -60,7 +60,11 @@ class BloodDonor:
 
     @property
     def is_eligible(self) -> bool:
-        return self.status == DonorStatus.ACTIVE and self.next_eligible_date and datetime.now(UTC) >= self.next_eligible_date
+        return (
+            self.status == DonorStatus.ACTIVE
+            and self.next_eligible_date
+            and datetime.now(UTC) >= self.next_eligible_date
+        )
 
 
 @dataclass

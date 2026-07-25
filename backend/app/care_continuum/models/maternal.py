@@ -20,13 +20,35 @@ from app.care_continuum.enums import PregnancyStatus
 class PregnancyRecord(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_pregnancy_records"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    status = Column(SAEnum(PregnancyStatus), nullable=False, default=PregnancyStatus.FIRST_TRIMESTER)
+    status = Column(
+        SAEnum(PregnancyStatus), nullable=False, default=PregnancyStatus.FIRST_TRIMESTER,
+    )
     parity = Column(Integer, nullable=True)
     gravida = Column(Integer, nullable=True)
     live_births = Column(Integer, nullable=True)
@@ -50,7 +72,9 @@ class PregnancyRecord(CareContinuumTenantAuditEntity):
 
     registration_date = Column(DateTime(timezone=True), nullable=False)
     booked_for_delivery = Column(Boolean, default=False)
-    delivery_facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True)
+    delivery_facility_id = Column(
+        String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True,
+    )
 
     expected_delivery_place = Column(String(200), nullable=True)
     birth_plan = Column(JSON, nullable=True)
@@ -78,13 +102,43 @@ class PregnancyRecord(CareContinuumTenantAuditEntity):
 class AntenatalCareVisit(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_antenatal_care_visits"
 
-    pregnancy_id = Column(String(26), ForeignKey("cc_pregnancy_records.id", ondelete="CASCADE"), nullable=False, index=True)
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    pregnancy_id = Column(
+        String(26),
+        ForeignKey("cc_pregnancy_records.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     visit_number = Column(Integer, nullable=False)
     visit_date = Column(DateTime(timezone=True), nullable=False)
@@ -142,14 +196,46 @@ class AntenatalCareVisit(CareContinuumTenantAuditEntity):
 class DeliveryRecord(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_delivery_records"
 
-    pregnancy_id = Column(String(26), ForeignKey("cc_pregnancy_records.id", ondelete="CASCADE"), nullable=False, index=True)
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    pregnancy_id = Column(
+        String(26),
+        ForeignKey("cc_pregnancy_records.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=False, index=True)
-    attending_practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
-    midwife_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    attending_practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    midwife_id = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
 
     delivery_date = Column(DateTime(timezone=True), nullable=False)
     delivery_type = Column(String(50), nullable=False)
@@ -182,14 +268,49 @@ class DeliveryRecord(CareContinuumTenantAuditEntity):
 class PostnatalCareVisit(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_postnatal_care_visits"
 
-    pregnancy_id = Column(String(26), ForeignKey("cc_pregnancy_records.id", ondelete="CASCADE"), nullable=True, index=True)
-    delivery_id = Column(String(26), ForeignKey("cc_delivery_records.id", ondelete="SET NULL"), nullable=True, index=True)
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    pregnancy_id = Column(
+        String(26),
+        ForeignKey("cc_pregnancy_records.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    delivery_id = Column(
+        String(26),
+        ForeignKey("cc_delivery_records.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     visit_number = Column(Integer, nullable=False)
     visit_date = Column(DateTime(timezone=True), nullable=False)
@@ -238,12 +359,37 @@ class PostnatalCareVisit(CareContinuumTenantAuditEntity):
 class GrowthMonitoring(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_growth_monitoring"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     measurement_date = Column(DateTime(timezone=True), nullable=False)
     age_months = Column(Integer, nullable=True)
@@ -292,12 +438,37 @@ class GrowthMonitoring(CareContinuumTenantAuditEntity):
 class BreastfeedingRecord(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_breastfeeding_records"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    pregnancy_id = Column(String(26), ForeignKey("cc_pregnancy_records.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    pregnancy_id = Column(
+        String(26),
+        ForeignKey("cc_pregnancy_records.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     assessment_date = Column(DateTime(timezone=True), nullable=False)
     is_currently_breastfeeding = Column(Boolean, nullable=True)
@@ -337,13 +508,43 @@ class BreastfeedingRecord(CareContinuumTenantAuditEntity):
 class ChildDevelopmentRecord(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_child_development_records"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    pregnancy_id = Column(String(26), ForeignKey("cc_pregnancy_records.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    pregnancy_id = Column(
+        String(26),
+        ForeignKey("cc_pregnancy_records.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     assessment_date = Column(DateTime(timezone=True), nullable=False)
     age_months = Column(Integer, nullable=True)

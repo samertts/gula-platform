@@ -34,6 +34,7 @@ class TesseractProvider(OcrProviderBase):
     def version(self) -> str:
         try:
             import pytesseract
+
             return pytesseract.get_tesseract_version()
         except Exception:
             return "unknown"
@@ -41,6 +42,7 @@ class TesseractProvider(OcrProviderBase):
     async def initialize(self) -> None:
         try:
             import pytesseract
+
             self._pytesseract = pytesseract
             self._tesseract_available = True
             logger.info("Tesseract OCR initialized (version: %s)", self.version)
@@ -51,12 +53,14 @@ class TesseractProvider(OcrProviderBase):
 
         try:
             import cv2
+
             self._cv2 = cv2
         except ImportError:
             logger.warning("opencv-python not installed — image preprocessing disabled")
 
         try:
             import numpy
+
             self._numpy = numpy
         except ImportError:
             pass
@@ -76,7 +80,9 @@ class TesseractProvider(OcrProviderBase):
         ]
 
     async def ocr_image(
-        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        image_data: bytes,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         if not self._initialized:
             await self.initialize()
@@ -126,9 +132,7 @@ class TesseractProvider(OcrProviderBase):
                         confidences.append(conf / 100.0)
 
             page.text = " ".join(text_parts)
-            page.confidence = (
-                sum(confidences) / len(confidences) if confidences else 0.0
-            )
+            page.confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
         except Exception as exc:
             logger.error("Tesseract OCR failed: %s", exc)
@@ -138,7 +142,9 @@ class TesseractProvider(OcrProviderBase):
         return page
 
     async def ocr_image_path(
-        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        image_path: Path,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         data = image_path.read_bytes()
         return await self.ocr_image(data, language)

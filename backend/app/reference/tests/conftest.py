@@ -3,6 +3,7 @@
 Sets environment to 'test' mode so app.config doesn't hard-exit,
 and provides a minimal DATABASE_URL to satisfy config validation.
 """
+
 from __future__ import annotations
 
 import os

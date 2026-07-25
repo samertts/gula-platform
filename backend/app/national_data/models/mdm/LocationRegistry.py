@@ -6,7 +6,9 @@ from app.national_data.base import BaseEntity
 class LocationRegistry(BaseEntity):
     __tablename__ = "dp_location_registry"
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True)
+    facility_id = Column(
+        String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True
+    )
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="SET NULL"), nullable=True)
 
     location_code = Column(String(20), nullable=False, unique=True, index=True)

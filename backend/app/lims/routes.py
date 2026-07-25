@@ -91,7 +91,7 @@ class ResultCreateRequest(BaseModel):
 class ResultValidateRequest(BaseModel):
     notes: str | None = None
     signature_hash: str | None = None
-    action: str = "validate"   # validate, reject, flag
+    action: str = "validate"  # validate, reject, flag
 
 
 class IQCRunRequest(BaseModel):
@@ -173,7 +173,14 @@ def _lab_id(current_user: LabUser) -> int:
 
 
 def _list_to_dict(qs, exclude: set | None = None) -> list[dict]:
-    return [{k: v for k, v in row.__dict__.items() if not k.startswith("_") and (exclude is None or k not in exclude)} for row in qs]
+    return [
+        {
+            k: v
+            for k, v in row.__dict__.items()
+            if not k.startswith("_") and (exclude is None or k not in exclude)
+        }
+        for row in qs
+    ]
 
 
 # ===========================================================================
@@ -186,10 +193,15 @@ def list_departments(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    depts = db.query(lims_models.Department).filter(
-        lims_models.Department.lab_id == _lab_id(current_user),
-        not lims_models.Department.is_deleted,
-    ).order_by(lims_models.Department.sort_order).all()
+    depts = (
+        db.query(lims_models.Department)
+        .filter(
+            lims_models.Department.lab_id == _lab_id(current_user),
+            not lims_models.Department.is_deleted,
+        )
+        .order_by(lims_models.Department.sort_order)
+        .all()
+    )
     return {"departments": _list_to_dict(depts)}
 
 
@@ -210,7 +222,15 @@ def create_department(
     )
     db.add(dept)
     db.flush()
-    log_action(db, "create", "lims_department", dept.id, current_user.id, current_user.role, f"Department {dept.code} created")
+    log_action(
+        db,
+        "create",
+        "lims_department",
+        dept.id,
+        current_user.id,
+        current_user.role,
+        f"Department {dept.code} created",
+    )
     db.commit()
     db.refresh(dept)
     return dept
@@ -276,10 +296,14 @@ def create_instrument(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    existing = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.lab_id == _lab_id(current_user),
-        lims_models.Instrument.instrument_code == data.instrument_code,
-    ).first()
+    existing = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.lab_id == _lab_id(current_user),
+            lims_models.Instrument.instrument_code == data.instrument_code,
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(409, detail="Instrument code already exists")
 
@@ -305,10 +329,14 @@ def get_instrument(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    inst = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.id == instrument_id,
-        lims_models.Instrument.lab_id == _lab_id(current_user),
-    ).first()
+    inst = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.id == instrument_id,
+            lims_models.Instrument.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not inst:
         raise HTTPException(404, detail="Instrument not found")
     return inst
@@ -348,15 +376,22 @@ def record_maintenance(
     db: Session = Depends(get_db),
 ):
     # Verify instrument belongs to lab
-    inst = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.id == instrument_id,
-        lims_models.Instrument.lab_id == _lab_id(current_user),
-    ).first()
+    inst = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.id == instrument_id,
+            lims_models.Instrument.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not inst:
         raise HTTPException(404, detail="Instrument not found")
 
     maint = InstrumentService.record_maintenance(
-        db, instrument_id, data.maintenance_type, data.title,
+        db,
+        instrument_id,
+        data.maintenance_type,
+        data.title,
         performed_by=current_user.id,
         description=data.description,
         cost=data.cost,
@@ -374,15 +409,21 @@ def record_calibration(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    inst = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.id == instrument_id,
-        lims_models.Instrument.lab_id == _lab_id(current_user),
-    ).first()
+    inst = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.id == instrument_id,
+            lims_models.Instrument.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not inst:
         raise HTTPException(404, detail="Instrument not found")
 
     cal = InstrumentService.record_calibration(
-        db, instrument_id, data.calibration_type,
+        db,
+        instrument_id,
+        data.calibration_type,
         performed_by=current_user.id,
         passed=data.passed,
         calibrator_lot=data.calibrator_lot,
@@ -399,10 +440,14 @@ def instrument_fhir(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    inst = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.id == instrument_id,
-        lims_models.Instrument.lab_id == _lab_id(current_user),
-    ).first()
+    inst = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.id == instrument_id,
+            lims_models.Instrument.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not inst:
         raise HTTPException(404, detail="Instrument not found")
     return instrument_to_fhir_device(inst)
@@ -418,9 +463,14 @@ def list_manufacturers(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    mfrs = db.query(lims_models.Manufacturer).filter(
-        not lims_models.Manufacturer.is_deleted,
-    ).order_by(lims_models.Manufacturer.name).all()
+    mfrs = (
+        db.query(lims_models.Manufacturer)
+        .filter(
+            not lims_models.Manufacturer.is_deleted,
+        )
+        .order_by(lims_models.Manufacturer.name)
+        .all()
+    )
     return {"manufacturers": _list_to_dict(mfrs)}
 
 
@@ -477,8 +527,12 @@ def register_specimen(
 ):
     try:
         specimen = SpecimenService.register(
-            db, data.order_id, _lab_id(current_user),
-            data.specimen_type, data.barcode, current_user.id,
+            db,
+            data.order_id,
+            _lab_id(current_user),
+            data.specimen_type,
+            data.barcode,
+            current_user.id,
             container_type=data.container_type,
             volume_ml=data.volume_ml,
             clinical_info=data.clinical_info,
@@ -520,10 +574,14 @@ def get_specimen_by_barcode(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    specimen = db.query(lims_models.Specimen).filter(
-        lims_models.Specimen.barcode == barcode,
-        lims_models.Specimen.lab_id == _lab_id(current_user),
-    ).first()
+    specimen = (
+        db.query(lims_models.Specimen)
+        .filter(
+            lims_models.Specimen.barcode == barcode,
+            lims_models.Specimen.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not specimen:
         raise HTTPException(404, detail="Specimen not found")
     return specimen
@@ -536,10 +594,14 @@ def transition_specimen(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    specimen = db.query(lims_models.Specimen).filter(
-        lims_models.Specimen.id == specimen_id,
-        lims_models.Specimen.lab_id == _lab_id(current_user),
-    ).first()
+    specimen = (
+        db.query(lims_models.Specimen)
+        .filter(
+            lims_models.Specimen.id == specimen_id,
+            lims_models.Specimen.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not specimen:
         raise HTTPException(404, detail="Specimen not found")
 
@@ -547,7 +609,9 @@ def transition_specimen(
         if data.rejection_reason:
             specimen = SpecimenService.reject(db, specimen, data.rejection_reason, current_user.id)
         else:
-            specimen = SpecimenService.transition(db, specimen, data.target_status, current_user.id, data.notes)
+            specimen = SpecimenService.transition(
+                db, specimen, data.target_status, current_user.id, data.notes,
+            )
     except HTTPException:
         raise
     except Exception as e:
@@ -564,10 +628,14 @@ def specimen_fhir(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    specimen = db.query(lims_models.Specimen).filter(
-        lims_models.Specimen.id == specimen_id,
-        lims_models.Specimen.lab_id == _lab_id(current_user),
-    ).first()
+    specimen = (
+        db.query(lims_models.Specimen)
+        .filter(
+            lims_models.Specimen.id == specimen_id,
+            lims_models.Specimen.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not specimen:
         raise HTTPException(404, detail="Specimen not found")
     return specimen_to_fhir(specimen)
@@ -585,17 +653,25 @@ def create_lims_order(
     db: Session = Depends(get_db),
 ):
     # Verify base order exists
-    base_order = db.query(LabOrder).filter(
-        LabOrder.id == data.order_id,
-        LabOrder.lab_id == _lab_id(current_user),
-    ).first()
+    base_order = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == data.order_id,
+            LabOrder.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not base_order:
         raise HTTPException(404, detail="Base order not found")
 
     try:
         lims_order = OrderService.create_lims_order(
-            db, data.order_id, _lab_id(current_user), current_user.id,
-            data.accession_number, data.priority,
+            db,
+            data.order_id,
+            _lab_id(current_user),
+            current_user.id,
+            data.accession_number,
+            data.priority,
             clinical_note=data.clinical_note,
             diagnosis_code=data.diagnosis_code,
         )
@@ -633,10 +709,14 @@ def get_lims_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    lims_order = db.query(lims_models.Order).filter(
-        lims_models.Order.id == order_id,
-        lims_models.Order.lab_id == _lab_id(current_user),
-    ).first()
+    lims_order = (
+        db.query(lims_models.Order)
+        .filter(
+            lims_models.Order.id == order_id,
+            lims_models.Order.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not lims_order:
         raise HTTPException(404, detail="LIMS order not found")
     return lims_order
@@ -649,10 +729,14 @@ def transition_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    lims_order = db.query(lims_models.Order).filter(
-        lims_models.Order.id == order_id,
-        lims_models.Order.lab_id == _lab_id(current_user),
-    ).first()
+    lims_order = (
+        db.query(lims_models.Order)
+        .filter(
+            lims_models.Order.id == order_id,
+            lims_models.Order.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not lims_order:
         raise HTTPException(404, detail="LIMS order not found")
 
@@ -674,10 +758,14 @@ def order_fhir(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    lims_order = db.query(lims_models.Order).filter(
-        lims_models.Order.id == order_id,
-        lims_models.Order.lab_id == _lab_id(current_user),
-    ).first()
+    lims_order = (
+        db.query(lims_models.Order)
+        .filter(
+            lims_models.Order.id == order_id,
+            lims_models.Order.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not lims_order:
         raise HTTPException(404, detail="LIMS order not found")
     return order_to_fhir_service_request(lims_order)
@@ -705,9 +793,14 @@ def list_panels(
     result = []
     for p in panels:
         d = {k: v for k, v in p.__dict__.items() if not k.startswith("_")}
-        tests = db.query(lims_models.PanelTest).filter(
-            lims_models.PanelTest.panel_id == p.id,
-        ).order_by(lims_models.PanelTest.display_order).all()
+        tests = (
+            db.query(lims_models.PanelTest)
+            .filter(
+                lims_models.PanelTest.panel_id == p.id,
+            )
+            .order_by(lims_models.PanelTest.display_order)
+            .all()
+        )
         d["tests"] = [{"test_code": t.test_code, "display_order": t.display_order} for t in tests]
         result.append(d)
     return {"panels": result}
@@ -759,16 +852,24 @@ def create_result(
     db: Session = Depends(get_db),
 ):
     # Verify specimen belongs to lab
-    specimen = db.query(lims_models.Specimen).filter(
-        lims_models.Specimen.id == data.specimen_id,
-        lims_models.Specimen.lab_id == _lab_id(current_user),
-    ).first()
+    specimen = (
+        db.query(lims_models.Specimen)
+        .filter(
+            lims_models.Specimen.id == data.specimen_id,
+            lims_models.Specimen.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not specimen:
         raise HTTPException(404, detail="Specimen not found")
 
     result = ResultService.create_result(
-        db, data.specimen_id, specimen.order_id,
-        _lab_id(current_user), data.test_code, data.test_name,
+        db,
+        data.specimen_id,
+        specimen.order_id,
+        _lab_id(current_user),
+        data.test_code,
+        data.test_name,
         current_user.id,
         value_numeric=data.value_numeric,
         value_text=data.value_text,
@@ -823,10 +924,14 @@ def get_result(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = db.query(lims_models.Result).filter(
-        lims_models.Result.id == result_id,
-        lims_models.Result.lab_id == _lab_id(current_user),
-    ).first()
+    result = (
+        db.query(lims_models.Result)
+        .filter(
+            lims_models.Result.id == result_id,
+            lims_models.Result.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not result:
         raise HTTPException(404, detail="Result not found")
     return result
@@ -839,16 +944,24 @@ def validate_result(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = db.query(lims_models.Result).filter(
-        lims_models.Result.id == result_id,
-        lims_models.Result.lab_id == _lab_id(current_user),
-    ).first()
+    result = (
+        db.query(lims_models.Result)
+        .filter(
+            lims_models.Result.id == result_id,
+            lims_models.Result.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not result:
         raise HTTPException(404, detail="Result not found")
 
     if data.action == "validate":
         result = ResultService.validate_manually(
-            db, result, current_user.id, data.notes, data.signature_hash,
+            db,
+            result,
+            current_user.id,
+            data.notes,
+            data.signature_hash,
         )
     elif data.action == "reject":
         result.validation_status = "rejected"
@@ -868,18 +981,26 @@ def release_result(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = db.query(lims_models.Result).filter(
-        lims_models.Result.id == result_id,
-        lims_models.Result.lab_id == _lab_id(current_user),
-    ).first()
+    result = (
+        db.query(lims_models.Result)
+        .filter(
+            lims_models.Result.id == result_id,
+            lims_models.Result.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not result:
         raise HTTPException(404, detail="Result not found")
 
     release = ResultService.release(db, result, current_user.id)
     # Update the specimen status to released
-    specimen = db.query(lims_models.Specimen).filter(
-        lims_models.Specimen.id == result.specimen_id,
-    ).first()
+    specimen = (
+        db.query(lims_models.Specimen)
+        .filter(
+            lims_models.Specimen.id == result.specimen_id,
+        )
+        .first()
+    )
     if specimen:
         with contextlib.suppress(Exception):
             SpecimenService.transition(db, specimen, "released", current_user.id)
@@ -894,10 +1015,14 @@ def result_fhir(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = db.query(lims_models.Result).filter(
-        lims_models.Result.id == result_id,
-        lims_models.Result.lab_id == _lab_id(current_user),
-    ).first()
+    result = (
+        db.query(lims_models.Result)
+        .filter(
+            lims_models.Result.id == result_id,
+            lims_models.Result.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not result:
         raise HTTPException(404, detail="Result not found")
     return result_to_fhir(result)
@@ -915,10 +1040,18 @@ def run_iqc(
     db: Session = Depends(get_db),
 ):
     result = QCService.run_iqc(
-        db, _lab_id(current_user), data.program_id, data.test_code,
-        data.measured_value, data.expected_value, data.sd,
-        current_user.id, data.level, data.lot_number,
-        data.instrument_id, data.notes,
+        db,
+        _lab_id(current_user),
+        data.program_id,
+        data.test_code,
+        data.measured_value,
+        data.expected_value,
+        data.sd,
+        current_user.id,
+        data.level,
+        data.lot_number,
+        data.instrument_id,
+        data.notes,
     )
     db.commit()
     return result
@@ -952,10 +1085,14 @@ def list_qc_programs(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    programs = db.query(lims_models.QCProgram).filter(
-        lims_models.QCProgram.lab_id == _lab_id(current_user),
-        not lims_models.QCProgram.is_deleted,
-    ).all()
+    programs = (
+        db.query(lims_models.QCProgram)
+        .filter(
+            lims_models.QCProgram.lab_id == _lab_id(current_user),
+            not lims_models.QCProgram.is_deleted,
+        )
+        .all()
+    )
     return {"programs": _list_to_dict(programs)}
 
 
@@ -995,6 +1132,7 @@ def qc_statistics(
     db: Session = Depends(get_db),
 ):
     from datetime import timedelta
+
     cutoff = datetime.now(UTC) - timedelta(days=days)
 
     q = db.query(lims_models.IQC).filter(
@@ -1009,6 +1147,7 @@ def qc_statistics(
     values = [r.measured_value for r in iqc_results if r.measured_value is not None]
 
     from .quality import calculate_lj_limits, calculate_lj_statistics
+
     stats = calculate_lj_statistics(values)
     limits = calculate_lj_limits(stats["mean"], stats["sd"]) if stats["n"] > 1 else {}
 
@@ -1017,7 +1156,11 @@ def qc_statistics(
         "statistics": stats,
         "limits": limits,
         "data_points": [
-            {"value": r.measured_value, "performed_at": r.performed_at.isoformat(), "status": r.status}
+            {
+                "value": r.measured_value,
+                "performed_at": r.performed_at.isoformat(),
+                "status": r.status,
+            }
             for r in iqc_results
         ],
     }
@@ -1033,12 +1176,8 @@ def list_quality_indicators():
     from .quality import CAP_INDICATORS, ISO_15189_INDICATORS
 
     return {
-        "iso_15189": [
-            {"id": k, **v} for k, v in ISO_15189_INDICATORS.items()
-        ],
-        "cap": [
-            {"id": k, **v} for k, v in CAP_INDICATORS.items()
-        ],
+        "iso_15189": [{"id": k, **v} for k, v in ISO_15189_INDICATORS.items()],
+        "cap": [{"id": k, **v} for k, v in CAP_INDICATORS.items()],
     }
 
 
@@ -1048,6 +1187,7 @@ def evaluate_indicator(
     value: float = Query(...),
 ):
     from .quality import evaluate_iso_15189_indicator
+
     try:
         return evaluate_iso_15189_indicator(indicator_id, value)
     except ValueError as e:
@@ -1107,10 +1247,14 @@ def update_reagent_stock(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    reagent = db.query(lims_models.Reagent).filter(
-        lims_models.Reagent.id == reagent_id,
-        lims_models.Reagent.lab_id == _lab_id(current_user),
-    ).first()
+    reagent = (
+        db.query(lims_models.Reagent)
+        .filter(
+            lims_models.Reagent.id == reagent_id,
+            lims_models.Reagent.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not reagent:
         raise HTTPException(404, detail="Reagent not found")
 
@@ -1133,7 +1277,9 @@ def list_consumables(
         not lims_models.Consumable.is_deleted,
     )
     if low_stock:
-        q = q.filter(lims_models.Consumable.current_quantity <= lims_models.Consumable.minimum_quantity)
+        q = q.filter(
+            lims_models.Consumable.current_quantity <= lims_models.Consumable.minimum_quantity,
+        )
     return {"consumables": _list_to_dict(q.all())}
 
 
@@ -1145,6 +1291,7 @@ def list_lots(
     db: Session = Depends(get_db),
 ):
     from datetime import timedelta
+
     q = db.query(lims_models.Lot).filter(
         lims_models.Lot.lab_id == _lab_id(current_user),
         not lims_models.Lot.is_deleted,
@@ -1153,7 +1300,10 @@ def list_lots(
         q = q.filter(lims_models.Lot.item_type == item_type)
     if expiring_within_days:
         cutoff = datetime.now(UTC).date() + timedelta(days=expiring_within_days)
-        q = q.filter(lims_models.Lot.expiry_at <= cutoff, lims_models.Lot.expiry_at >= datetime.now(UTC).date())
+        q = q.filter(
+            lims_models.Lot.expiry_at <= cutoff,
+            lims_models.Lot.expiry_at >= datetime.now(UTC).date(),
+        )
 
     return {"lots": _list_to_dict(q.all())}
 
@@ -1163,10 +1313,14 @@ def list_suppliers(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    suppliers = db.query(lims_models.Supplier).filter(
-        lims_models.Supplier.lab_id == _lab_id(current_user),
-        not lims_models.Supplier.is_deleted,
-    ).all()
+    suppliers = (
+        db.query(lims_models.Supplier)
+        .filter(
+            lims_models.Supplier.lab_id == _lab_id(current_user),
+            not lims_models.Supplier.is_deleted,
+        )
+        .all()
+    )
     return {"suppliers": _list_to_dict(suppliers)}
 
 
@@ -1175,10 +1329,14 @@ def list_storage(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    storage = db.query(lims_models.Storage).filter(
-        lims_models.Storage.lab_id == _lab_id(current_user),
-        not lims_models.Storage.is_deleted,
-    ).all()
+    storage = (
+        db.query(lims_models.Storage)
+        .filter(
+            lims_models.Storage.lab_id == _lab_id(current_user),
+            not lims_models.Storage.is_deleted,
+        )
+        .all()
+    )
     return {"storage": _list_to_dict(storage)}
 
 
@@ -1292,10 +1450,14 @@ def list_delta_check_rules(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    rules = db.query(lims_models.DeltaCheckRule).filter(
-        lims_models.DeltaCheckRule.lab_id == _lab_id(current_user),
-        not lims_models.DeltaCheckRule.is_deleted,
-    ).all()
+    rules = (
+        db.query(lims_models.DeltaCheckRule)
+        .filter(
+            lims_models.DeltaCheckRule.lab_id == _lab_id(current_user),
+            not lims_models.DeltaCheckRule.is_deleted,
+        )
+        .all()
+    )
     return {"rules": _list_to_dict(rules)}
 
 
@@ -1311,9 +1473,14 @@ def generate_report(
     db: Session = Depends(get_db),
 ):
     report = ReportService.generate_report(
-        db, data.order_id, _lab_id(current_user), data.report_number,
-        current_user.id, data.locale,
-        title=data.title, title_ar=data.title_ar,
+        db,
+        data.order_id,
+        _lab_id(current_user),
+        data.report_number,
+        current_user.id,
+        data.locale,
+        title=data.title,
+        title_ar=data.title_ar,
     )
     db.commit()
     db.refresh(report)
@@ -1344,10 +1511,14 @@ def get_report(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    report = db.query(lims_models.LabReport).filter(
-        lims_models.LabReport.id == report_id,
-        lims_models.LabReport.lab_id == _lab_id(current_user),
-    ).first()
+    report = (
+        db.query(lims_models.LabReport)
+        .filter(
+            lims_models.LabReport.id == report_id,
+            lims_models.LabReport.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not report:
         raise HTTPException(404, detail="Report not found")
     return report
@@ -1359,10 +1530,14 @@ def finalize_report(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    report = db.query(lims_models.LabReport).filter(
-        lims_models.LabReport.id == report_id,
-        lims_models.LabReport.lab_id == _lab_id(current_user),
-    ).first()
+    report = (
+        db.query(lims_models.LabReport)
+        .filter(
+            lims_models.LabReport.id == report_id,
+            lims_models.LabReport.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not report:
         raise HTTPException(404, detail="Report not found")
 
@@ -1379,10 +1554,14 @@ def correct_report(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    report = db.query(lims_models.LabReport).filter(
-        lims_models.LabReport.id == report_id,
-        lims_models.LabReport.lab_id == _lab_id(current_user),
-    ).first()
+    report = (
+        db.query(lims_models.LabReport)
+        .filter(
+            lims_models.LabReport.id == report_id,
+            lims_models.LabReport.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not report:
         raise HTTPException(404, detail="Report not found")
 
@@ -1398,18 +1577,26 @@ def report_fhir(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    report = db.query(lims_models.LabReport).filter(
-        lims_models.LabReport.id == report_id,
-        lims_models.LabReport.lab_id == _lab_id(current_user),
-    ).first()
+    report = (
+        db.query(lims_models.LabReport)
+        .filter(
+            lims_models.LabReport.id == report_id,
+            lims_models.LabReport.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not report:
         raise HTTPException(404, detail="Report not found")
 
     # Get associated results
-    results = db.query(lims_models.Result).filter(
-        lims_models.Result.order_id == report.order_id,
-        lims_models.Result.lab_id == _lab_id(current_user),
-    ).all()
+    results = (
+        db.query(lims_models.Result)
+        .filter(
+            lims_models.Result.order_id == report.order_id,
+            lims_models.Result.lab_id == _lab_id(current_user),
+        )
+        .all()
+    )
 
     return report_to_fhir_diagnostic(report, results)
 
@@ -1426,18 +1613,27 @@ def receive_astm(
     db: Session = Depends(get_db),
 ):
     """Receive and parse an ASTM E1394 message from an instrument."""
-    inst = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.id == data.instrument_id,
-        lims_models.Instrument.lab_id == _lab_id(current_user),
-    ).first()
+    inst = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.id == data.instrument_id,
+            lims_models.Instrument.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not inst:
         raise HTTPException(404, detail="Instrument not found")
 
     results = parse_astm_message(data.raw_message)
     return {
         "parsed_results": [
-            {"specimen_id": r.specimen_id, "test_code": r.test_code,
-             "value": r.value, "unit": r.unit, "flag": r.flag}
+            {
+                "specimen_id": r.specimen_id,
+                "test_code": r.test_code,
+                "value": r.value,
+                "unit": r.unit,
+                "flag": r.flag,
+            }
             for r in results
         ],
         "count": len(results),
@@ -1451,18 +1647,27 @@ def receive_hl7(
     db: Session = Depends(get_db),
 ):
     """Receive and parse an HL7 ORU^R01 message from an instrument."""
-    inst = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.id == data.instrument_id,
-        lims_models.Instrument.lab_id == _lab_id(current_user),
-    ).first()
+    inst = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.id == data.instrument_id,
+            lims_models.Instrument.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not inst:
         raise HTTPException(404, detail="Instrument not found")
 
     results = parse_oru_message(data.raw_message)
     return {
         "parsed_results": [
-            {"specimen_id": r.specimen_id, "test_code": r.test_code,
-             "value": r.value, "unit": r.unit, "abnormal_flag": r.abnormal_flag}
+            {
+                "specimen_id": r.specimen_id,
+                "test_code": r.test_code,
+                "value": r.value,
+                "unit": r.unit,
+                "abnormal_flag": r.abnormal_flag,
+            }
             for r in results
         ],
         "count": len(results),
@@ -1479,10 +1684,14 @@ def simulate_device_message(
     db: Session = Depends(get_db),
 ):
     """Simulate a device message for testing."""
-    inst = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.id == instrument_id,
-        lims_models.Instrument.lab_id == _lab_id(current_user),
-    ).first()
+    inst = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.id == instrument_id,
+            lims_models.Instrument.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not inst:
         raise HTTPException(404, detail="Instrument not found")
 
@@ -1503,8 +1712,13 @@ def simulate_device_message(
         "protocol": protocol,
         "raw_message": raw,
         "parsed": [
-            {"specimen_id": r.specimen_id if hasattr(r, "specimen_id") else getattr(r, "specimen_id", ""),
-             "test_code": r.test_code, "value": r.value}
+            {
+                "specimen_id": r.specimen_id
+                if hasattr(r, "specimen_id")
+                else getattr(r, "specimen_id", ""),
+                "test_code": r.test_code,
+                "value": r.value,
+            }
             for r in parsed
         ],
     }
@@ -1522,16 +1736,23 @@ def run_auto_validation(
     db: Session = Depends(get_db),
 ):
     """Manually trigger auto-validation workflow for a result."""
-    result = db.query(lims_models.Result).filter(
-        lims_models.Result.id == result_id,
-        lims_models.Result.lab_id == _lab_id(current_user),
-    ).first()
+    result = (
+        db.query(lims_models.Result)
+        .filter(
+            lims_models.Result.id == result_id,
+            lims_models.Result.lab_id == _lab_id(current_user),
+        )
+        .first()
+    )
     if not result:
         raise HTTPException(404, detail="Result not found")
 
     from .workflows import auto_validate_result
+
     validation = auto_validate_result(
-        db, result.value_numeric, result.test_code,
+        db,
+        result.value_numeric,
+        result.test_code,
         lab_id=result.lab_id,
         instrument_id=result.instrument_id,
     )
@@ -1553,6 +1774,7 @@ def process_critical_alert(
 ):
     """Process a critical result alert."""
     from .workflows import process_critical_result
+
     return process_critical_result(db, result_id, _lab_id(current_user), current_user.id)
 
 
@@ -1621,47 +1843,79 @@ def lims_dashboard(
 ):
     lab_id = _lab_id(current_user)
 
-    specimens_total = db.query(lims_models.Specimen).filter(
-        lims_models.Specimen.lab_id == lab_id,
-        not lims_models.Specimen.is_deleted,
-    ).count()
+    specimens_total = (
+        db.query(lims_models.Specimen)
+        .filter(
+            lims_models.Specimen.lab_id == lab_id,
+            not lims_models.Specimen.is_deleted,
+        )
+        .count()
+    )
 
     specimens_by_status = {}
     for status_val in ["collected", "received", "processing", "analyzing", "analyzed", "released"]:
-        specimens_by_status[status_val] = db.query(lims_models.Specimen).filter(
-            lims_models.Specimen.lab_id == lab_id,
-            lims_models.Specimen.status == status_val,
-        ).count()
+        specimens_by_status[status_val] = (
+            db.query(lims_models.Specimen)
+            .filter(
+                lims_models.Specimen.lab_id == lab_id,
+                lims_models.Specimen.status == status_val,
+            )
+            .count()
+        )
 
-    results_pending_validation = db.query(lims_models.Result).filter(
-        lims_models.Result.lab_id == lab_id,
-        lims_models.Result.validation_status == "pending",
-    ).count()
+    results_pending_validation = (
+        db.query(lims_models.Result)
+        .filter(
+            lims_models.Result.lab_id == lab_id,
+            lims_models.Result.validation_status == "pending",
+        )
+        .count()
+    )
 
-    results_critical = db.query(lims_models.Result).filter(
-        lims_models.Result.lab_id == lab_id,
-        lims_models.Result.is_critical,
-    ).count()
+    results_critical = (
+        db.query(lims_models.Result)
+        .filter(
+            lims_models.Result.lab_id == lab_id,
+            lims_models.Result.is_critical,
+        )
+        .count()
+    )
 
-    instruments_online = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.lab_id == lab_id,
-        lims_models.Instrument.status == "online",
-    ).count()
+    instruments_online = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.lab_id == lab_id,
+            lims_models.Instrument.status == "online",
+        )
+        .count()
+    )
 
-    instruments_total = db.query(lims_models.Instrument).filter(
-        lims_models.Instrument.lab_id == lab_id,
-        not lims_models.Instrument.is_deleted,
-    ).count()
+    instruments_total = (
+        db.query(lims_models.Instrument)
+        .filter(
+            lims_models.Instrument.lab_id == lab_id,
+            not lims_models.Instrument.is_deleted,
+        )
+        .count()
+    )
 
-    qc_warnings = db.query(lims_models.IQC).filter(
-        lims_models.IQC.lab_id == lab_id,
-        lims_models.IQC.status.in_(["warning", "out_of_control"]),
-    ).count()
+    qc_warnings = (
+        db.query(lims_models.IQC)
+        .filter(
+            lims_models.IQC.lab_id == lab_id,
+            lims_models.IQC.status.in_(["warning", "out_of_control"]),
+        )
+        .count()
+    )
 
-    low_stock = db.query(lims_models.Reagent).filter(
-        lims_models.Reagent.lab_id == lab_id,
-        lims_models.Reagent.current_quantity <= lims_models.Reagent.minimum_quantity,
-    ).count()
+    low_stock = (
+        db.query(lims_models.Reagent)
+        .filter(
+            lims_models.Reagent.lab_id == lab_id,
+            lims_models.Reagent.current_quantity <= lims_models.Reagent.minimum_quantity,
+        )
+        .count()
+    )
 
     return {
         "specimens": {

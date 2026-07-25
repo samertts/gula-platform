@@ -9,9 +9,24 @@ from app.ehr.base import EHRBaseEntity
 class FamilyHistoryRecord(EHRBaseEntity):
     __tablename__ = "ehr_family_history"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     relationship = Column(String(50), nullable=False)
     relationship_detail = Column(String(200), nullable=True)
@@ -34,7 +49,9 @@ class FamilyHistoryRecord(EHRBaseEntity):
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
 
-    recorded_date = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
+    recorded_date = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True,
+    )
 
     __table_args__ = (
         Index("ix_ehr_famhist_patient", "patient_id"),

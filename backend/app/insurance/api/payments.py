@@ -140,10 +140,14 @@ def get_payment(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payment = db.query(InsurancePayment).filter(
-        InsurancePayment.id == payment_id,
-        InsurancePayment.lab_id == current_user.lab_id,
-    ).first()
+    payment = (
+        db.query(InsurancePayment)
+        .filter(
+            InsurancePayment.id == payment_id,
+            InsurancePayment.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     return payment
@@ -155,17 +159,25 @@ def record_payment(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == data.claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == data.claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    payer = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == data.payer_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    payer = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == data.payer_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not payer:
         raise HTTPException(status_code=404, detail="Payer not found")
 
@@ -202,10 +214,14 @@ def reverse_payment(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payment = db.query(InsurancePayment).filter(
-        InsurancePayment.id == payment_id,
-        InsurancePayment.lab_id == current_user.lab_id,
-    ).first()
+    payment = (
+        db.query(InsurancePayment)
+        .filter(
+            InsurancePayment.id == payment_id,
+            InsurancePayment.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     if payment.status == PaymentStatus.REVERSED:
@@ -236,10 +252,14 @@ def reconcile_payment(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payment = db.query(InsurancePayment).filter(
-        InsurancePayment.id == payment_id,
-        InsurancePayment.lab_id == current_user.lab_id,
-    ).first()
+    payment = (
+        db.query(InsurancePayment)
+        .filter(
+            InsurancePayment.id == payment_id,
+            InsurancePayment.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     if payment.status == PaymentStatus.REVERSED:
@@ -295,30 +315,42 @@ def create_settlement(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == data.provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == data.provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
-    existing = db.query(Settlement).filter(
-        Settlement.lab_id == current_user.lab_id,
-        Settlement.provider_id == data.provider_id,
-        Settlement.period_start == data.period_start,
-        Settlement.period_end == data.period_end,
-        Settlement.status != SettlementStatus.CANCELLED,
-    ).first()
+    existing = (
+        db.query(Settlement)
+        .filter(
+            Settlement.lab_id == current_user.lab_id,
+            Settlement.provider_id == data.provider_id,
+            Settlement.period_start == data.period_start,
+            Settlement.period_end == data.period_end,
+            Settlement.status != SettlementStatus.CANCELLED,
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail="Settlement already exists for this period")
 
-    claims = db.query(InsuranceClaim).filter(
-        InsuranceClaim.lab_id == current_user.lab_id,
-        InsuranceClaim.provider_id == data.provider_id,
-        InsuranceClaim.status.in_(["paid", "partially_paid"]),
-        InsuranceClaim.paid_date >= data.period_start,
-        InsuranceClaim.paid_date <= data.period_end,
-    ).all()
+    claims = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.lab_id == current_user.lab_id,
+            InsuranceClaim.provider_id == data.provider_id,
+            InsuranceClaim.status.in_(["paid", "partially_paid"]),
+            InsuranceClaim.paid_date >= data.period_start,
+            InsuranceClaim.paid_date <= data.period_end,
+        )
+        .all()
+    )
 
     total_billed = sum(c.total_billed for c in claims)
     total_paid = sum(c.total_paid or Decimal(0) for c in claims)
@@ -358,20 +390,28 @@ def calculate_settlement(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    settlement = db.query(Settlement).filter(
-        Settlement.id == settlement_id,
-        Settlement.lab_id == current_user.lab_id,
-    ).first()
+    settlement = (
+        db.query(Settlement)
+        .filter(
+            Settlement.id == settlement_id,
+            Settlement.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not settlement:
         raise HTTPException(status_code=404, detail="Settlement not found")
 
-    claims = db.query(InsuranceClaim).filter(
-        InsuranceClaim.lab_id == current_user.lab_id,
-        InsuranceClaim.provider_id == settlement.provider_id,
-        InsuranceClaim.status.in_(["paid", "partially_paid"]),
-        InsuranceClaim.paid_date >= settlement.period_start,
-        InsuranceClaim.paid_date <= settlement.period_end,
-    ).all()
+    claims = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.lab_id == current_user.lab_id,
+            InsuranceClaim.provider_id == settlement.provider_id,
+            InsuranceClaim.status.in_(["paid", "partially_paid"]),
+            InsuranceClaim.paid_date >= settlement.period_start,
+            InsuranceClaim.paid_date <= settlement.period_end,
+        )
+        .all()
+    )
 
     settlement.total_claims = len(claims)
     settlement.total_billed = sum(c.total_billed for c in claims)
@@ -401,14 +441,20 @@ def reconcile_settlement(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    settlement = db.query(Settlement).filter(
-        Settlement.id == settlement_id,
-        Settlement.lab_id == current_user.lab_id,
-    ).first()
+    settlement = (
+        db.query(Settlement)
+        .filter(
+            Settlement.id == settlement_id,
+            Settlement.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not settlement:
         raise HTTPException(status_code=404, detail="Settlement not found")
     if settlement.status in (SettlementStatus.COMPLETED, SettlementStatus.CANCELLED):
-        raise HTTPException(status_code=400, detail=f"Settlement is already {settlement.status.value}")
+        raise HTTPException(
+            status_code=400, detail=f"Settlement is already {settlement.status.value}"
+        )
 
     settlement.status = SettlementStatus.RECONCILED
     settlement.reconciled_at = datetime.now(UTC)
@@ -434,17 +480,25 @@ def close_settlement(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    settlement = db.query(Settlement).filter(
-        Settlement.id == settlement_id,
-        Settlement.lab_id == current_user.lab_id,
-    ).first()
+    settlement = (
+        db.query(Settlement)
+        .filter(
+            Settlement.id == settlement_id,
+            Settlement.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not settlement:
         raise HTTPException(status_code=404, detail="Settlement not found")
     if settlement.status == SettlementStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="Settlement is already closed")
 
     settlement.status = SettlementStatus.COMPLETED
-    settlement.paid_at = datetime.combine(paid_at or date.today(), datetime.min.time()) if paid_at else datetime.now(UTC)
+    settlement.paid_at = (
+        datetime.combine(paid_at or date.today(), datetime.min.time())
+        if paid_at
+        else datetime.now(UTC)
+    )
 
     log_action(
         db=db,
@@ -466,20 +520,28 @@ def settlement_report(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    settlement = db.query(Settlement).filter(
-        Settlement.id == settlement_id,
-        Settlement.lab_id == current_user.lab_id,
-    ).first()
+    settlement = (
+        db.query(Settlement)
+        .filter(
+            Settlement.id == settlement_id,
+            Settlement.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not settlement:
         raise HTTPException(status_code=404, detail="Settlement not found")
 
-    claims = db.query(InsuranceClaim).filter(
-        InsuranceClaim.lab_id == current_user.lab_id,
-        InsuranceClaim.provider_id == settlement.provider_id,
-        InsuranceClaim.status.in_(["paid", "partially_paid"]),
-        InsuranceClaim.paid_date >= settlement.period_start,
-        InsuranceClaim.paid_date <= settlement.period_end,
-    ).all()
+    claims = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.lab_id == current_user.lab_id,
+            InsuranceClaim.provider_id == settlement.provider_id,
+            InsuranceClaim.status.in_(["paid", "partially_paid"]),
+            InsuranceClaim.paid_date >= settlement.period_start,
+            InsuranceClaim.paid_date <= settlement.period_end,
+        )
+        .all()
+    )
 
     return {
         "settlement_id": settlement.id,
@@ -569,10 +631,14 @@ def create_budget(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == data.provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == data.provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
@@ -746,16 +812,24 @@ def trial_balance(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payments = db.query(InsurancePayment).filter(
-        InsurancePayment.lab_id == current_user.lab_id,
-        InsurancePayment.status == PaymentStatus.COMPLETED,
-        InsurancePayment.payment_date <= as_of_date,
-    ).all()
+    payments = (
+        db.query(InsurancePayment)
+        .filter(
+            InsurancePayment.lab_id == current_user.lab_id,
+            InsurancePayment.status == PaymentStatus.COMPLETED,
+            InsurancePayment.payment_date <= as_of_date,
+        )
+        .all()
+    )
 
-    settlements = db.query(Settlement).filter(
-        Settlement.lab_id == current_user.lab_id,
-        Settlement.status.in_([SettlementStatus.RECONCILED, SettlementStatus.COMPLETED]),
-    ).all()
+    settlements = (
+        db.query(Settlement)
+        .filter(
+            Settlement.lab_id == current_user.lab_id,
+            Settlement.status.in_([SettlementStatus.RECONCILED, SettlementStatus.COMPLETED]),
+        )
+        .all()
+    )
 
     total_payments = sum(p.amount for p in payments)
     total_adjustments = sum(p.adjustment_amount or Decimal(0) for p in payments)
@@ -783,10 +857,14 @@ def aging_analysis(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claims = db.query(InsuranceClaim).filter(
-        InsuranceClaim.lab_id == current_user.lab_id,
-        InsuranceClaim.status.in_(["submitted", "adjudicated", "accepted"]),
-    ).all()
+    claims = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.lab_id == current_user.lab_id,
+            InsuranceClaim.status.in_(["submitted", "adjudicated", "accepted"]),
+        )
+        .all()
+    )
 
     buckets = {
         "0-30": [],
@@ -808,16 +886,22 @@ def aging_analysis(
         else:
             bucket = "91+"
 
-        buckets[bucket].append({
-            "claim_id": claim.id,
-            "claim_number": claim.claim_number,
-            "status": claim.status.value,
-            "total_billed": float(claim.total_billed),
-            "total_paid": float(claim.total_paid or 0),
-            "outstanding": float((claim.total_allowed or claim.total_billed) - (claim.total_paid or 0)),
-            "days_outstanding": days,
-            "submitted_date": claim.submitted_date.isoformat() if claim.submitted_date else None,
-        })
+        buckets[bucket].append(
+            {
+                "claim_id": claim.id,
+                "claim_number": claim.claim_number,
+                "status": claim.status.value,
+                "total_billed": float(claim.total_billed),
+                "total_paid": float(claim.total_paid or 0),
+                "outstanding": float(
+                    (claim.total_allowed or claim.total_billed) - (claim.total_paid or 0)
+                ),
+                "days_outstanding": days,
+                "submitted_date": claim.submitted_date.isoformat()
+                if claim.submitted_date
+                else None,
+            }
+        )
 
     return {
         "as_of_date": as_of_date.isoformat(),

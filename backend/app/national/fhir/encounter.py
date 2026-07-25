@@ -15,26 +15,45 @@ class FHIREncounterMapper:
             "id": encounter.fhir_id or encounter.id,
             "status": encounter.status.value if encounter.status else "unknown",
             "class": cls._build_class(encounter),
-            "type": [{"coding": [{"code": encounter.encounter_type.value}]}] if encounter.encounter_type else [],
+            "type": [{"coding": [{"code": encounter.encounter_type.value}]}]
+            if encounter.encounter_type
+            else [],
             "subject": {"reference": f"Patient/{encounter.patient_id}"},
             "participant": cls._build_participants(encounter),
             "period": cls._build_period(encounter),
-            "reasonCode": [{"text": encounter.reason_description}] if encounter.reason_description else [],
+            "reasonCode": [{"text": encounter.reason_description}]
+            if encounter.reason_description
+            else [],
             "diagnosis": cls._build_diagnosis(encounter),
-            "serviceProvider": {"reference": f"Organization/{encounter.organization_id}"} if encounter.organization_id else None,
-            "location": [{"location": {"reference": f"Location/{encounter.facility_id}"}}] if encounter.facility_id else [],
+            "serviceProvider": {"reference": f"Organization/{encounter.organization_id}"}
+            if encounter.organization_id
+            else None,
+            "location": [{"location": {"reference": f"Location/{encounter.facility_id}"}}]
+            if encounter.facility_id
+            else [],
         }
         return {k: v for k, v in resource.items() if v is not None}
 
     @classmethod
     def _build_class(cls, encounter: Encounter) -> dict:
         class_map = {
-            "outpatient": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"},
-            "inpatient": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "IMP"},
-            "emergency": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "EMER"},
+            "outpatient": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code": "AMB",
+            },
+            "inpatient": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code": "IMP",
+            },
+            "emergency": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code": "EMER",
+            },
             "virtual": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "VR"},
         }
-        return class_map.get(encounter.encounter_type.value if encounter.encounter_type else "", {"code": "OTH"})
+        return class_map.get(
+            encounter.encounter_type.value if encounter.encounter_type else "", {"code": "OTH"},
+        )
 
     @classmethod
     def _build_participants(cls, encounter: Encounter) -> list[dict]:
@@ -54,8 +73,10 @@ class FHIREncounterMapper:
     @classmethod
     def _build_diagnosis(cls, encounter: Encounter) -> list[dict]:
         if encounter.diagnosis_code:
-            return [{
-                "condition": {"coding": [{"code": encounter.diagnosis_code}]},
-                "use": {"coding": [{"code": "DD"}]},
-            }]
+            return [
+                {
+                    "condition": {"coding": [{"code": encounter.diagnosis_code}]},
+                    "use": {"coding": [{"code": "DD"}]},
+                },
+            ]
         return []

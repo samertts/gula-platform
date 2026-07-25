@@ -79,7 +79,9 @@ class HealthEventStore:
             )
             self._kernel_store.save(kernel_event)
 
-        logger.debug("Event appended: %s for %s/%s v%d", event_name, aggregate_type, aggregate_id, version)
+        logger.debug(
+            "Event appended: %s for %s/%s v%d", event_name, aggregate_type, aggregate_id, version
+        )
         return stored
 
     def get(self, event_id: str) -> StoredEvent | None:
@@ -94,10 +96,7 @@ class HealthEventStore:
         return [self._events[eid] for eid in event_ids if eid in self._events]
 
     def replay_by_time_range(self, start: datetime, end: datetime) -> list[StoredEvent]:
-        return [
-            e for e in self._events.values()
-            if start <= e.timestamp <= end
-        ]
+        return [e for e in self._events.values() if start <= e.timestamp <= end]
 
     def replay_all(self, after_version: int = 0) -> list[StoredEvent]:
         return list(self._events.values())

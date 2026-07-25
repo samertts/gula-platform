@@ -46,7 +46,9 @@ class WorkflowTimeoutError(WorkflowRuntimeError):
         self.execution_id = execution_id
         self.step_id = step_id
         self.timeout_s = timeout_s
-        super().__init__(f"Workflow step timed out: {execution_id} step {step_id} after {timeout_s}s")
+        super().__init__(
+            f"Workflow step timed out: {execution_id} step {step_id} after {timeout_s}s"
+        )
 
 
 class WorkflowVersionError(WorkflowRuntimeError):

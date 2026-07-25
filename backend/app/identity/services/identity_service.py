@@ -11,7 +11,6 @@ from app.identity.repositories.identity_repository import IdentityRepository
 
 
 class IdentityService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.repo = IdentityRepository(session)
 

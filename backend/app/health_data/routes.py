@@ -171,7 +171,9 @@ async def create_policy(policy_data: dict[str, Any]) -> dict:
         description=policy_data.get("description", ""),
         scope=policy_data.get("scope", "global"),
         effect=policy_data.get("effect", "audit"),
-        classification=DataClassification(policy_data["classification"]) if policy_data.get("classification") else None,
+        classification=DataClassification(policy_data["classification"])
+        if policy_data.get("classification")
+        else None,
         priority=policy_data.get("priority", 100),
         enabled=policy_data.get("enabled", True),
     )

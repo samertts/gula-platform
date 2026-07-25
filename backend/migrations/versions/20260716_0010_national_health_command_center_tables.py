@@ -53,11 +53,17 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_cc_emergency_declarations_lab_id", "cc_emergency_declarations", ["lab_id"])
-        op.create_index("ix_cc_emergency_declarations_region", "cc_emergency_declarations", ["region"])
-        op.create_index("ix_cc_emergency_declarations_fhir_id", "cc_emergency_declarations", ["fhir_id"])
+        op.create_index(
+            "ix_cc_emergency_declarations_lab_id", "cc_emergency_declarations", ["lab_id"]
+        )
+        op.create_index(
+            "ix_cc_emergency_declarations_region", "cc_emergency_declarations", ["region"]
+        )
+        op.create_index(
+            "ix_cc_emergency_declarations_fhir_id", "cc_emergency_declarations", ["fhir_id"]
+        )
 
     if not _table_exists("cc_resource_requests"):
         op.create_table(
@@ -84,10 +90,12 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_cc_resource_requests_fhir_id", "cc_resource_requests", ["fhir_id"])
-        op.create_index("ix_cc_resource_requests_emergency_id", "cc_resource_requests", ["emergency_id"])
+        op.create_index(
+            "ix_cc_resource_requests_emergency_id", "cc_resource_requests", ["emergency_id"]
+        )
         op.create_index("ix_cc_resource_requests_lab_id", "cc_resource_requests", ["lab_id"])
 
     if not _table_exists("cc_situation_reports"):
@@ -112,9 +120,11 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_cc_situation_reports_emergency_id", "cc_situation_reports", ["emergency_id"])
+        op.create_index(
+            "ix_cc_situation_reports_emergency_id", "cc_situation_reports", ["emergency_id"]
+        )
         op.create_index("ix_cc_situation_reports_fhir_id", "cc_situation_reports", ["fhir_id"])
         op.create_index("ix_cc_situation_reports_lab_id", "cc_situation_reports", ["lab_id"])
 
@@ -142,11 +152,12 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_cc_after_action_reports_lab_id", "cc_after_action_reports", ["lab_id"])
-        op.create_index("ix_cc_after_action_reports_fhir_id", "cc_after_action_reports", ["fhir_id"])
-
+        op.create_index(
+            "ix_cc_after_action_reports_fhir_id", "cc_after_action_reports", ["fhir_id"]
+        )
 
 
 def downgrade() -> None:

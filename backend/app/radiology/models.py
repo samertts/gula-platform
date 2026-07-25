@@ -51,7 +51,9 @@ class RadiologyOrder(RadiologyBaseEntity):
     diagnosis_system = Column(String(32), nullable=True)
     priority = Column(String(16), default="routine")
     status = Column(String(20), default="pending")
-    requested_date = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    requested_date = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     scheduled_date = Column(DateTime(timezone=True), nullable=True)
     ordering_department_id = Column(String(26), nullable=True)
     notes = Column(Text, nullable=True)
@@ -251,7 +253,9 @@ class CriticalFinding(RadiologyBaseEntity):
     notification_time = Column(DateTime(timezone=True), nullable=True)
     acknowledgement_time = Column(DateTime(timezone=True), nullable=True)
     acknowledged_by = Column(String(26), nullable=True)
-    status = Column(Enum(CriticalFindingStatus), default=CriticalFindingStatus.PENDING, nullable=False)
+    status = Column(
+        Enum(CriticalFindingStatus), default=CriticalFindingStatus.PENDING, nullable=False
+    )
     notes = Column(Text, nullable=True)
     extra_metadata = Column(JSON, default=dict)
 
@@ -299,7 +303,9 @@ class ModalityDevice(RadiologyBaseEntity):
 class WorklistEntry(RadiologyBaseEntity):
     __tablename__ = "radiology_worklist_entries"
 
-    modality_device_id = Column(String(26), ForeignKey("radiology_modality_devices.id"), nullable=True)
+    modality_device_id = Column(
+        String(26), ForeignKey("radiology_modality_devices.id"), nullable=True
+    )
     exam_id = Column(String(26), ForeignKey("radiology_exams.id"), nullable=True)
     accession_number = Column(String(64), nullable=False, index=True)
     patient_id = Column(String(26), nullable=False)
@@ -311,14 +317,21 @@ class WorklistEntry(RadiologyBaseEntity):
     scheduled_step = Column(String(64), nullable=True)
     scheduled_datetime = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(20), default="scheduled")
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
     extra_metadata = Column(JSON, default=dict)
 
 
 class MPPS(RadiologyBaseEntity):
     __tablename__ = "radiology_mpps"
 
-    worklist_entry_id = Column(String(26), ForeignKey("radiology_worklist_entries.id"), nullable=True)
+    worklist_entry_id = Column(
+        String(26), ForeignKey("radiology_worklist_entries.id"), nullable=True
+    )
     exam_id = Column(String(26), ForeignKey("radiology_exams.id"), nullable=True)
     status = Column(String(20), nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
@@ -346,7 +359,9 @@ class DICOMStorage(RadiologyBaseEntity):
     file_path = Column(String(512), nullable=False)
     file_size = Column(Integer, nullable=True)
     checksum = Column(String(128), nullable=True)
-    storage_date = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    storage_date = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     storage_tier = Column(Enum(ArchiveTier), default=ArchiveTier.HOT)
     compression_type = Column(Enum(StorageCompressionType), default=StorageCompressionType.NONE)
     retention_days = Column(Integer, nullable=True)

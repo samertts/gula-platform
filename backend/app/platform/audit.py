@@ -59,6 +59,7 @@ class AuditService:
         limit: int = 100,
     ) -> list[dict]:
         from ..models.audit_log import AuditLog
+
         q = self._db.query(AuditLog)
         if resource_type:
             q = q.filter(AuditLog.resource_type == resource_type)
@@ -69,9 +70,13 @@ class AuditService:
         entries = q.order_by(AuditLog.id.desc()).offset(skip).limit(limit).all()
         return [
             {
-                "id": e.id, "user_id": e.user_id, "user_role": e.user_role,
-                "action": e.action, "resource_type": e.resource_type,
-                "resource_id": e.resource_id, "details": e.details,
+                "id": e.id,
+                "user_id": e.user_id,
+                "user_role": e.user_role,
+                "action": e.action,
+                "resource_type": e.resource_type,
+                "resource_id": e.resource_id,
+                "details": e.details,
                 "ip_address": e.ip_address,
                 "created_at": e.created_at.isoformat() if e.created_at else None,
                 "chain_hash": e.chain_hash,
@@ -81,6 +86,7 @@ class AuditService:
 
     def get_trail(self, resource_type: str, resource_id: int) -> list[dict]:
         from ..models.audit_log import AuditLog
+
         entries = (
             self._db.query(AuditLog)
             .filter(AuditLog.resource_type == resource_type, AuditLog.resource_id == resource_id)
@@ -89,8 +95,11 @@ class AuditService:
         )
         return [
             {
-                "id": e.id, "user_id": e.user_id, "user_role": e.user_role,
-                "action": e.action, "details": e.details,
+                "id": e.id,
+                "user_id": e.user_id,
+                "user_role": e.user_role,
+                "action": e.action,
+                "details": e.details,
                 "created_at": e.created_at.isoformat() if e.created_at else None,
                 "chain_hash": e.chain_hash,
             }
@@ -98,8 +107,12 @@ class AuditService:
         ]
 
 
-PlatformRegistry.register("audit", AuditService, capabilities=[
-    {"name": "create_entry", "description": "Create a tamper-evident audit log entry"},
-    {"name": "query_entries", "description": "Query audit log entries with filters"},
-    {"name": "get_trail", "description": "Get the full audit trail for a resource"},
-])
+PlatformRegistry.register(
+    "audit",
+    AuditService,
+    capabilities=[
+        {"name": "create_entry", "description": "Create a tamper-evident audit log entry"},
+        {"name": "query_entries", "description": "Query audit log entries with filters"},
+        {"name": "get_trail", "description": "Get the full audit trail for a resource"},
+    ],
+)

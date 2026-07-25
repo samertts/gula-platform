@@ -11,9 +11,11 @@ class Document_managementPermission(Enum):
     ADMIN = "document_management:document.admin"
 
     def describe(self) -> str:
-        descriptions = {        "document_management:document.read": "Document.Read",
-                "document_management:document.write": "Document.Write",
-                "document_management:document.delete": "Document.Delete",
-                "document_management:document.sign": "Document.Sign",
-                "document_management:document.admin": "Document.Admin"}
+        descriptions = {
+            "document_management:document.read": "Document.Read",
+            "document_management:document.write": "Document.Write",
+            "document_management:document.delete": "Document.Delete",
+            "document_management:document.sign": "Document.Sign",
+            "document_management:document.admin": "Document.Admin",
+        }
         return descriptions.get(self, self.value)

@@ -45,13 +45,18 @@ class WorkflowStateMachine:
     }
 
     def validate_transition(
-        self, current: WorkflowExecutionStatus, target: WorkflowExecutionStatus,
+        self,
+        current: WorkflowExecutionStatus,
+        target: WorkflowExecutionStatus,
     ) -> bool:
         allowed = self._VALID_TRANSITIONS.get(current, [])
         return target in allowed
 
     def transition(
-        self, execution_id: str, current: WorkflowExecutionStatus, target: WorkflowExecutionStatus,
+        self,
+        execution_id: str,
+        current: WorkflowExecutionStatus,
+        target: WorkflowExecutionStatus,
     ) -> WorkflowExecutionStatus:
         if not self.validate_transition(current, target):
             raise WorkflowInvalidTransitionError(execution_id, current.value, target.value)

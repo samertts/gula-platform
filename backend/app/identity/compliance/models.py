@@ -26,13 +26,20 @@ class ComplianceCheck(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     check_id = Column(String(100), unique=True, nullable=False, index=True)
-    framework_id = Column(String(26), ForeignKey("niam_comp_frameworks.id", ondelete="CASCADE"), nullable=False, index=True)
+    framework_id = Column(
+        String(26),
+        ForeignKey("niam_comp_frameworks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     requirement_id = Column(String(100), nullable=False)
     target_type = Column(String(50), nullable=False)
     target_id = Column(String(100), nullable=False)
     check_type = Column(String(20), nullable=False)
     status = Column(String(20), default="not_checked", nullable=False)
-    checked_by = Column(String(26), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True)
+    checked_by = Column(
+        String(26), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True
+    )
     checked_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
     evidence = Column(JSON, nullable=True)
     finding = Column(Text, nullable=True)
@@ -45,8 +52,18 @@ class ComplianceReport(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     report_id = Column(String(100), unique=True, nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=True, index=True)
-    framework_id = Column(String(26), ForeignKey("niam_comp_frameworks.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    framework_id = Column(
+        String(26),
+        ForeignKey("niam_comp_frameworks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     report_type = Column(String(20), nullable=False)
     overall_score = Column(Integer, nullable=True)
     passed_count = Column(Integer, default=0, nullable=False)
@@ -55,8 +72,12 @@ class ComplianceReport(IdentityBaseEntity):
     not_applicable_count = Column(Integer, default=0, nullable=False)
     findings = Column(JSON, nullable=True)
     recommendations = Column(JSON, nullable=True)
-    generated_by = Column(String(26), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True)
-    generated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    generated_by = Column(
+        String(26), ForeignKey("niam_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    generated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     valid_until = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(20), default="draft", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

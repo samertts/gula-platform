@@ -47,7 +47,9 @@ class Consent(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     revoked_at = Column(DateTime(timezone=True), nullable=True)
     created_by_user_id = Column(
-        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True,
+        Integer,
+        ForeignKey("lab_users.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
     def is_valid_now(self) -> bool:

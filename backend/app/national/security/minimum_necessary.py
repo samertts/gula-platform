@@ -23,7 +23,15 @@ class DataField:
 
 
 MINIMUM_NECESSARY_FIELDS: dict[str, list[str]] = {
-    "treatment": ["name", "date_of_birth", "gender", "blood_group", "allergies", "diagnoses", "medications"],
+    "treatment": [
+        "name",
+        "date_of_birth",
+        "gender",
+        "blood_group",
+        "allergies",
+        "diagnoses",
+        "medications",
+    ],
     "registration": ["name", "date_of_birth", "gender", "phone", "address", "nationality"],
     "billing": ["name", "health_number", "coverage_info", "service_codes"],
     "research": ["age_group", "gender", "diagnosis_code", "outcome"],

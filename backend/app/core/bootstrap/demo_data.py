@@ -93,7 +93,9 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
 
         existing_patients = db.query(Patient).count()
         if existing_patients > 5:
-            logger.info("Demo data appears to already exist (%d patients) — skipping", existing_patients)
+            logger.info(
+                "Demo data appears to already exist (%d patients) — skipping", existing_patients,
+            )
             return counts
 
         for pd in DEMO_PATIENTS:
@@ -145,11 +147,15 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
 
         for i, patient in enumerate(patients):
             test = TEST_TYPES_POOL[i % len(TEST_TYPES_POOL)]
-            order_ref = f"DEMO-ORD-{i+1:04d}"
+            order_ref = f"DEMO-ORD-{i + 1:04d}"
 
-            existing_order = db.query(LabOrder).filter(
-                LabOrder.order_id == order_ref,
-            ).first()
+            existing_order = (
+                db.query(LabOrder)
+                .filter(
+                    LabOrder.order_id == order_ref,
+                )
+                .first()
+            )
             if existing_order:
                 continue
 
@@ -180,8 +186,10 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
             counts["samples"] += 1
 
             import random
+
             result_value = round(
-                random.uniform(test["low"] * 0.8, test["high"] * 1.2), 1,
+                random.uniform(test["low"] * 0.8, test["high"] * 1.2),
+                1,
             )
             result = LabResult(
                 lab_id=lab.id,

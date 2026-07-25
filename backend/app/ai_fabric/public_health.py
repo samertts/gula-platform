@@ -102,7 +102,9 @@ class DiseaseSurveillance:
         signal.threshold = baseline["threshold_z"]
 
         if baseline["standard_deviation"] > 0:
-            signal.z_score = (case_count - baseline["expected_daily"]) / baseline["standard_deviation"]
+            signal.z_score = (case_count - baseline["expected_daily"]) / baseline[
+                "standard_deviation"
+            ]
 
         if signal.z_score >= 5.0:
             signal.alert_level = AlertLevel.CRITICAL
@@ -123,7 +125,9 @@ class DiseaseSurveillance:
         self._signals.append(signal)
         return signal
 
-    def get_recent_alerts(self, min_level: AlertLevel = AlertLevel.WARNING) -> list[SurveillanceSignal]:
+    def get_recent_alerts(
+        self, min_level: AlertLevel = AlertLevel.WARNING,
+    ) -> list[SurveillanceSignal]:
         levels = {
             AlertLevel.INFORMATION: 0,
             AlertLevel.SURVEILLANCE: 1,
@@ -263,7 +267,11 @@ class PopulationHealthAnalytics:
             "total_population": total_population,
             "diagnosed_cases": diagnosed_cases,
             "prevalence_per_100k": round(prevalence_rate, 2),
-            "severity": "high" if prevalence_rate > 1000 else "moderate" if prevalence_rate > 100 else "low",
+            "severity": "high"
+            if prevalence_rate > 1000
+            else "moderate"
+            if prevalence_rate > 100
+            else "low",
         }
 
     def immunization_coverage(

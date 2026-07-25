@@ -122,7 +122,7 @@ class ClaimAdjudicator:
         total_patient_resp = Decimal(0)
         all_notes: list[str] = []
 
-        for item in (claim.items or []):
+        for item in claim.items or []:
             billed = item.billed_amount or Decimal(0)
             total_billed += billed
 
@@ -161,19 +161,21 @@ class ClaimAdjudicator:
                 patient_resp = billed
                 all_notes.append(pre_existing.get("reason", "Pre-existing condition exclusion"))
 
-            line_items.append({
-                "item_id": item.id,
-                "service_code": item.service_code,
-                "billed_amount": billed,
-                "allowed_amount": allowed,
-                "deductible_amount": deductible,
-                "copay_amount": copay,
-                "coinsurance_amount": coinsurance,
-                "net_payment": net_payment,
-                "patient_responsibility": patient_resp,
-                "adjudication_status": benefit_check.get("status", "adjudicated"),
-                "adjudication_reason": pre_existing.get("reason"),
-            })
+            line_items.append(
+                {
+                    "item_id": item.id,
+                    "service_code": item.service_code,
+                    "billed_amount": billed,
+                    "allowed_amount": allowed,
+                    "deductible_amount": deductible,
+                    "copay_amount": copay,
+                    "coinsurance_amount": coinsurance,
+                    "net_payment": net_payment,
+                    "patient_responsibility": patient_resp,
+                    "adjudication_status": benefit_check.get("status", "adjudicated"),
+                    "adjudication_reason": pre_existing.get("reason"),
+                }
+            )
 
         net_payment_total = total_allowed - total_deductible - total_copay - total_coinsurance
         net_payment_total = max(net_payment_total, Decimal(0))
@@ -186,19 +188,21 @@ class ClaimAdjudicator:
         claim.status = ClaimStatus.ADJUDICATED
         self._db.commit()
 
-        notes = self.generate_adjudication_notes(AdjudicationResult(
-            claim_id=claim_id,
-            status="adjudicated",
-            total_billed=total_billed,
-            total_allowed=total_allowed,
-            total_deductible=total_deductible,
-            total_copay=total_copay,
-            total_coinsurance=total_coinsurance,
-            total_net_payment=net_payment_total,
-            total_patient_responsibility=total_patient_resp,
-            adjudication_notes=[],
-            line_items=line_items,
-        ))
+        notes = self.generate_adjudication_notes(
+            AdjudicationResult(
+                claim_id=claim_id,
+                status="adjudicated",
+                total_billed=total_billed,
+                total_allowed=total_allowed,
+                total_deductible=total_deductible,
+                total_copay=total_copay,
+                total_coinsurance=total_coinsurance,
+                total_net_payment=net_payment_total,
+                total_patient_responsibility=total_patient_resp,
+                adjudication_notes=[],
+                line_items=line_items,
+            )
+        )
 
         return AdjudicationResult(
             claim_id=claim_id,
@@ -225,9 +229,13 @@ class ClaimAdjudicator:
         if coverage.status != "active":
             return {"eligible": False, "reason": f"Coverage status is {coverage.status}"}
 
-        policy = self._db.query(InsurancePolicy).filter(
-            InsurancePolicy.id == coverage.policy_id,
-        ).first()
+        policy = (
+            self._db.query(InsurancePolicy)
+            .filter(
+                InsurancePolicy.id == coverage.policy_id,
+            )
+            .first()
+        )
         if not policy or policy.status != "active":
             return {"eligible": False, "reason": "Policy not active"}
 
@@ -242,10 +250,14 @@ class ClaimAdjudicator:
         return {"eligible": True, "coverage_id": coverage.id, "policy_id": policy.id}
 
     def calculate_allowed_amounts(self, item: InsuranceClaimItem) -> dict[str, Any]:
-        fee = self._db.query(FeeScheduleItem).filter(
-            FeeScheduleItem.service_code == item.service_code,
-            FeeScheduleItem.is_active,
-        ).first()
+        fee = (
+            self._db.query(FeeScheduleItem)
+            .filter(
+                FeeScheduleItem.service_code == item.service_code,
+                FeeScheduleItem.is_active,
+            )
+            .first()
+        )
 
         if fee and fee.allowed_amount:
             allowed = fee.allowed_amount * (item.quantity or 1)
@@ -260,7 +272,9 @@ class ClaimAdjudicator:
             "negotiated_price": fee.negotiated_price if fee else None,
         }
 
-    def apply_deductible(self, item: InsuranceClaimItem, coverage: Coverage, allowed_amount: Decimal) -> dict[str, Any]:
+    def apply_deductible(
+        self, item: InsuranceClaimItem, coverage: Coverage, allowed_amount: Decimal
+    ) -> dict[str, Any]:
         deduct_remaining = coverage.deductible_remaining or Decimal(0)
         if deduct_remaining <= Decimal(0):
             return {"deductible_amount": Decimal(0), "deductible_remaining": deduct_remaining}
@@ -276,13 +290,19 @@ class ClaimAdjudicator:
             "deductible_remaining": new_remaining,
         }
 
-    def apply_copay(self, item: InsuranceClaimItem, coverage: Coverage, amount_after_deductible: Decimal) -> dict[str, Any]:
+    def apply_copay(
+        self, item: InsuranceClaimItem, coverage: Coverage, amount_after_deductible: Decimal
+    ) -> dict[str, Any]:
         copay_pct = coverage.copay_percentage or 0.0
         if copay_pct <= 0:
-            fee_item = self._db.query(FeeScheduleItem).filter(
-                FeeScheduleItem.service_code == item.service_code,
-                FeeScheduleItem.is_active,
-            ).first()
+            fee_item = (
+                self._db.query(FeeScheduleItem)
+                .filter(
+                    FeeScheduleItem.service_code == item.service_code,
+                    FeeScheduleItem.is_active,
+                )
+                .first()
+            )
             if fee_item and fee_item.copay_amount:
                 copay = min(fee_item.copay_amount, amount_after_deductible)
                 return {"copay_amount": copay, "copay_percentage": 0.0, "copay_fixed": float(copay)}
@@ -294,13 +314,21 @@ class ClaimAdjudicator:
 
         return {"copay_amount": copay, "copay_percentage": copay_pct, "copay_fixed": None}
 
-    def apply_coinsurance(self, item: InsuranceClaimItem, coverage: Coverage, amount_after_copay: Decimal) -> dict[str, Any]:
-        fee_item = self._db.query(FeeScheduleItem).filter(
-            FeeScheduleItem.service_code == item.service_code,
-            FeeScheduleItem.is_active,
-        ).first()
+    def apply_coinsurance(
+        self, item: InsuranceClaimItem, coverage: Coverage, amount_after_copay: Decimal
+    ) -> dict[str, Any]:
+        fee_item = (
+            self._db.query(FeeScheduleItem)
+            .filter(
+                FeeScheduleItem.service_code == item.service_code,
+                FeeScheduleItem.is_active,
+            )
+            .first()
+        )
 
-        coinsurance_pct = fee_item.coinsurance_percentage if fee_item and fee_item.coinsurance_percentage else 0.0
+        coinsurance_pct = (
+            fee_item.coinsurance_percentage if fee_item and fee_item.coinsurance_percentage else 0.0
+        )
         if coinsurance_pct <= 0:
             return {"coinsurance_amount": Decimal(0), "coinsurance_percentage": 0.0}
 
@@ -309,10 +337,21 @@ class ClaimAdjudicator:
 
         return {"coinsurance_amount": coinsurance, "coinsurance_percentage": coinsurance_pct}
 
-    def check_benefit_limits(self, item: InsuranceClaimItem, coverage: Coverage, net_payment: Decimal) -> dict[str, Any]:
+    def check_benefit_limits(
+        self, item: InsuranceClaimItem, coverage: Coverage, net_payment: Decimal
+    ) -> dict[str, Any]:
         benefit_remaining = coverage.benefit_remaining or Decimal(0)
-        if benefit_remaining <= Decimal(0) and coverage.benefit_total and coverage.benefit_total > 0:
-            return {"limited": True, "adjusted_amount": Decimal(0), "status": "denied", "note": "Benefit limit exhausted"}
+        if (
+            benefit_remaining <= Decimal(0)
+            and coverage.benefit_total
+            and coverage.benefit_total > 0
+        ):
+            return {
+                "limited": True,
+                "adjusted_amount": Decimal(0),
+                "status": "denied",
+                "note": "Benefit limit exhausted",
+            }
 
         if benefit_remaining > Decimal(0) and net_payment > benefit_remaining:
             return {
@@ -326,9 +365,13 @@ class ClaimAdjudicator:
 
     def check_pre_existing(self, item: InsuranceClaimItem, coverage: Coverage) -> dict[str, Any]:
         if coverage.pre_existing_wait_period:
-            policy = self._db.query(InsurancePolicy).filter(
-                InsurancePolicy.id == coverage.policy_id,
-            ).first()
+            policy = (
+                self._db.query(InsurancePolicy)
+                .filter(
+                    InsurancePolicy.id == coverage.policy_id,
+                )
+                .first()
+            )
             if policy and policy.start_date:
                 days_since_start = (date.today() - policy.start_date).days
                 if days_since_start < 180:
@@ -341,7 +384,7 @@ class ClaimAdjudicator:
 
     def calculate_net_payment(self, claim: InsuranceClaim) -> Decimal:
         total = Decimal(0)
-        for item in (claim.items or []):
+        for item in claim.items or []:
             allowed = item.allowed_amount or item.billed_amount or Decimal(0)
             deductible = item.deductible_amount or Decimal(0)
             copay = item.copay_amount or Decimal(0)
@@ -371,9 +414,13 @@ class ClaimAdjudicator:
     # ------------------------------------------------------------------
 
     def _get_coverage_for_claim(self, claim: InsuranceClaim) -> Coverage | None:
-        return self._db.query(Coverage).filter(
-            Coverage.id == claim.coverage_id,
-        ).first()
+        return (
+            self._db.query(Coverage)
+            .filter(
+                Coverage.id == claim.coverage_id,
+            )
+            .first()
+        )
 
 
 # =========================================================================
@@ -391,11 +438,18 @@ class PaymentProcessor:
         self._db = db_session
 
     def process_payment(
-        self, claim_id: int, amount: Decimal, method: str,
+        self,
+        claim_id: int,
+        amount: Decimal,
+        method: str,
     ) -> InsurancePayment:
-        claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == claim_id,
-        ).first()
+        claim = (
+            self._db.query(InsuranceClaim)
+            .filter(
+                InsuranceClaim.id == claim_id,
+            )
+            .first()
+        )
         if not claim:
             raise ValueError(f"Claim {claim_id} not found")
 
@@ -431,32 +485,43 @@ class PaymentProcessor:
 
         logger.info(
             "[PAYMENT] Processed payment_id=%d claim_id=%d amount=%s method=%s",
-            payment.id, claim_id, amount, method,
+            payment.id,
+            claim_id,
+            amount,
+            method,
         )
         return payment
 
     def batch_process(self, claim_ids: list[int]) -> list[InsurancePayment]:
         payments: list[InsurancePayment] = []
         for cid in claim_ids:
-            claim = self._db.query(InsuranceClaim).filter(
-                InsuranceClaim.id == cid,
-            ).first()
+            claim = (
+                self._db.query(InsuranceClaim)
+                .filter(
+                    InsuranceClaim.id == cid,
+                )
+                .first()
+            )
             if not claim:
                 logger.warning("[PAYMENT] Skipping missing claim %d in batch", cid)
                 continue
 
-            net = (claim.total_allowed or Decimal(0)
-                   - (claim.total_deductible or Decimal(0))
-                   - (claim.total_copay or Decimal(0)))
+            net = claim.total_allowed or Decimal(0) - (claim.total_deductible or Decimal(0)) - (
+                claim.total_copay or Decimal(0)
+            )
             if net > Decimal(0):
                 payment = self.process_payment(cid, net, "batch_eft")
                 payments.append(payment)
         return payments
 
     def reverse_payment(self, payment_id: int, reason: str) -> InsurancePayment:
-        payment = self._db.query(InsurancePayment).filter(
-            InsurancePayment.id == payment_id,
-        ).first()
+        payment = (
+            self._db.query(InsurancePayment)
+            .filter(
+                InsurancePayment.id == payment_id,
+            )
+            .first()
+        )
         if not payment:
             raise ValueError(f"Payment {payment_id} not found")
         if payment.status == PaymentStatus.REVERSED:
@@ -466,9 +531,13 @@ class PaymentProcessor:
         payment.adjustment_reason = reason
         payment.adjustment_amount = payment.amount
 
-        claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == payment.claim_id,
-        ).first()
+        claim = (
+            self._db.query(InsuranceClaim)
+            .filter(
+                InsuranceClaim.id == payment.claim_id,
+            )
+            .first()
+        )
         if claim:
             claim.total_paid = (claim.total_paid or Decimal(0)) - payment.amount
             if claim.total_paid <= Decimal(0):
@@ -479,14 +548,20 @@ class PaymentProcessor:
         self._db.refresh(payment)
         logger.info(
             "[PAYMENT] Reversed payment_id=%d claim_id=%d reason=%s",
-            payment_id, payment.claim_id, reason,
+            payment_id,
+            payment.claim_id,
+            reason,
         )
         return payment
 
     def reconcile_payment(self, payment_id: int, reference: str) -> dict[str, Any]:
-        payment = self._db.query(InsurancePayment).filter(
-            InsurancePayment.id == payment_id,
-        ).first()
+        payment = (
+            self._db.query(InsurancePayment)
+            .filter(
+                InsurancePayment.id == payment_id,
+            )
+            .first()
+        )
         if not payment:
             raise ValueError(f"Payment {payment_id} not found")
 
@@ -505,42 +580,59 @@ class PaymentProcessor:
 
     def generate_payment_file(self, payment_ids: list[int], format: str = "csv") -> str:
         payments = (
-            self._db.query(InsurancePayment)
-            .filter(InsurancePayment.id.in_(payment_ids))
-            .all()
+            self._db.query(InsurancePayment).filter(InsurancePayment.id.in_(payment_ids)).all()
         )
 
         if format == "csv":
             output = io.StringIO()
             writer = csv.writer(output)
-            writer.writerow([
-                "payment_id", "claim_id", "amount", "currency",
-                "payment_method", "payment_number", "reference",
-            ])
+            writer.writerow(
+                [
+                    "payment_id",
+                    "claim_id",
+                    "amount",
+                    "currency",
+                    "payment_method",
+                    "payment_number",
+                    "reference",
+                ]
+            )
             for p in payments:
-                writer.writerow([
-                    p.id, p.claim_id, str(p.amount), p.currency,
-                    p.payment_method, p.payment_number, p.reference_number or "",
-                ])
+                writer.writerow(
+                    [
+                        p.id,
+                        p.claim_id,
+                        str(p.amount),
+                        p.currency,
+                        p.payment_method,
+                        p.payment_number,
+                        p.reference_number or "",
+                    ]
+                )
             return output.getvalue()
 
         if format == "json":
-            return json.dumps([
-                {
-                    "payment_id": p.id,
-                    "claim_id": p.claim_id,
-                    "amount": str(p.amount),
-                    "currency": p.currency,
-                    "payment_method": p.payment_method,
-                    "payment_number": p.payment_number,
-                    "reference": p.reference_number,
-                }
-                for p in payments
-            ], indent=2)
+            return json.dumps(
+                [
+                    {
+                        "payment_id": p.id,
+                        "claim_id": p.claim_id,
+                        "amount": str(p.amount),
+                        "currency": p.currency,
+                        "payment_method": p.payment_method,
+                        "payment_number": p.payment_number,
+                        "reference": p.reference_number,
+                    }
+                    for p in payments
+                ],
+                indent=2,
+            )
 
         raise ValueError(f"Unsupported format: {format}")
 
-    def calculate_withholding(self, payment: InsurancePayment, tax_rules: dict[str, Any]) -> Decimal:
+    def calculate_withholding(
+        self, payment: InsurancePayment, tax_rules: dict[str, Any]
+    ) -> Decimal:
         rate = Decimal(str(tax_rules.get("withholding_rate", 0)))
         if rate <= 0:
             return Decimal(0)
@@ -566,7 +658,10 @@ class SettlementEngine:
         self._db = db_session
 
     def create_settlement(
-        self, provider_id: int, start: date, end: date,
+        self,
+        provider_id: int,
+        start: date,
+        end: date,
     ) -> Settlement:
         datetime.now(UTC)
         settlement_number = f"STL-{provider_id}-{start.strftime('%Y%m%d')}-{end.strftime('%Y%m%d')}"
@@ -584,9 +679,13 @@ class SettlementEngine:
         return settlement
 
     def calculate_settlement_amounts(self, settlement_id: int) -> dict[str, Any]:
-        settlement = self._db.query(Settlement).filter(
-            Settlement.id == settlement_id,
-        ).first()
+        settlement = (
+            self._db.query(Settlement)
+            .filter(
+                Settlement.id == settlement_id,
+            )
+            .first()
+        )
         if not settlement:
             raise ValueError(f"Settlement {settlement_id} not found")
 
@@ -596,10 +695,14 @@ class SettlementEngine:
                 InsuranceClaim.provider_id == settlement.provider_id,
                 InsuranceClaim.service_start_date >= settlement.period_start,
                 InsuranceClaim.service_start_date <= settlement.period_end,
-                InsuranceClaim.status.in_([
-                    ClaimStatus.ADJUDICATED, ClaimStatus.PAID,
-                    ClaimStatus.PARTIALLY_PAID, ClaimStatus.ACCEPTED,
-                ]),
+                InsuranceClaim.status.in_(
+                    [
+                        ClaimStatus.ADJUDICATED,
+                        ClaimStatus.PAID,
+                        ClaimStatus.PARTIALLY_PAID,
+                        ClaimStatus.ACCEPTED,
+                    ]
+                ),
             )
             .all()
         )
@@ -633,9 +736,13 @@ class SettlementEngine:
         }
 
     def reconcile_settlement(self, settlement_id: int) -> dict[str, Any]:
-        settlement = self._db.query(Settlement).filter(
-            Settlement.id == settlement_id,
-        ).first()
+        settlement = (
+            self._db.query(Settlement)
+            .filter(
+                Settlement.id == settlement_id,
+            )
+            .first()
+        )
         if not settlement:
             raise ValueError(f"Settlement {settlement_id} not found")
 
@@ -655,12 +762,14 @@ class SettlementEngine:
         if settlement.total_paid and amounts["total_paid"]:
             diff = settlement.total_paid - amounts["total_paid"]
             if diff != 0:
-                discrepancies.append({
-                    "type": "paid_amount_mismatch",
-                    "expected": float(amounts["total_paid"]),
-                    "actual": float(settlement.total_paid),
-                    "difference": float(diff),
-                })
+                discrepancies.append(
+                    {
+                        "type": "paid_amount_mismatch",
+                        "expected": float(amounts["total_paid"]),
+                        "actual": float(settlement.total_paid),
+                        "difference": float(diff),
+                    }
+                )
 
         settlement.reconciled_at = datetime.now(UTC)
         self._db.commit()
@@ -674,9 +783,13 @@ class SettlementEngine:
         }
 
     def close_settlement(self, settlement_id: int) -> Settlement:
-        settlement = self._db.query(Settlement).filter(
-            Settlement.id == settlement_id,
-        ).first()
+        settlement = (
+            self._db.query(Settlement)
+            .filter(
+                Settlement.id == settlement_id,
+            )
+            .first()
+        )
         if not settlement:
             raise ValueError(f"Settlement {settlement_id} not found")
 
@@ -687,9 +800,13 @@ class SettlementEngine:
         return settlement
 
     def generate_settlement_report(self, settlement_id: int) -> dict[str, Any]:
-        settlement = self._db.query(Settlement).filter(
-            Settlement.id == settlement_id,
-        ).first()
+        settlement = (
+            self._db.query(Settlement)
+            .filter(
+                Settlement.id == settlement_id,
+            )
+            .first()
+        )
         if not settlement:
             raise ValueError(f"Settlement {settlement_id} not found")
 
@@ -709,9 +826,13 @@ class SettlementEngine:
             key = c.status.value if hasattr(c.status, "value") else str(c.status)
             status_breakdown[key] = status_breakdown.get(key, 0) + 1
 
-        provider = self._db.query(InsuranceProvider).filter(
-            InsuranceProvider.id == settlement.provider_id,
-        ).first()
+        provider = (
+            self._db.query(InsuranceProvider)
+            .filter(
+                InsuranceProvider.id == settlement.provider_id,
+            )
+            .first()
+        )
 
         return {
             "settlement_number": settlement.settlement_number,
@@ -725,9 +846,13 @@ class SettlementEngine:
             },
             "amounts": amounts,
             "status_breakdown": status_breakdown,
-            "reconciled_at": settlement.reconciled_at.isoformat() if settlement.reconciled_at else None,
+            "reconciled_at": settlement.reconciled_at.isoformat()
+            if settlement.reconciled_at
+            else None,
             "paid_at": settlement.paid_at.isoformat() if settlement.paid_at else None,
-            "status": settlement.status.value if hasattr(settlement.status, "value") else str(settlement.status),
+            "status": settlement.status.value
+            if hasattr(settlement.status, "value")
+            else str(settlement.status),
         }
 
     def age_analysis(self, provider_id: int) -> dict[str, Any]:
@@ -744,10 +869,13 @@ class SettlementEngine:
             self._db.query(InsuranceClaim)
             .filter(
                 InsuranceClaim.provider_id == provider_id,
-                InsuranceClaim.status.in_([
-                    ClaimStatus.SUBMITTED, ClaimStatus.ADJUDICATED,
-                    ClaimStatus.UNDER_REVIEW,
-                ]),
+                InsuranceClaim.status.in_(
+                    [
+                        ClaimStatus.SUBMITTED,
+                        ClaimStatus.ADJUDICATED,
+                        ClaimStatus.UNDER_REVIEW,
+                    ]
+                ),
             )
             .all()
         )
@@ -757,7 +885,7 @@ class SettlementEngine:
             if isinstance(ref, datetime):
                 ref = ref.date()
             age = (today - ref).days
-            amount = (c.total_allowed or c.total_billed or Decimal(0))
+            amount = c.total_allowed or c.total_billed or Decimal(0)
 
             for _bucket_name, bucket in buckets.items():
                 if bucket["min"] <= age and (bucket["max"] is None or age <= bucket["max"]):
@@ -769,8 +897,7 @@ class SettlementEngine:
             "provider_id": provider_id,
             "analysis_date": today.isoformat(),
             "buckets": {
-                k: {"count": v["count"], "amount": str(v["amount"])}
-                for k, v in buckets.items()
+                k: {"count": v["count"], "amount": str(v["amount"])} for k, v in buckets.items()
             },
             "total_pending": sum(v["count"] for v in buckets.values()),
             "total_pending_amount": str(sum(v["amount"] for v in buckets.values())),
@@ -796,9 +923,13 @@ class InvoiceGenerator:
         self._db = db_session
 
     def generate_invoice(self, claim_id: int) -> dict[str, Any]:
-        claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == claim_id,
-        ).first()
+        claim = (
+            self._db.query(InsuranceClaim)
+            .filter(
+                InsuranceClaim.id == claim_id,
+            )
+            .first()
+        )
         if not claim:
             raise ValueError(f"Claim {claim_id} not found")
 
@@ -807,15 +938,17 @@ class InvoiceGenerator:
         total_with_tax = (claim.total_allowed or Decimal(0)) + tax
 
         items = []
-        for item in (claim.items or []):
-            items.append({
-                "service_code": item.service_code,
-                "service_name": item.service_name,
-                "quantity": item.quantity,
-                "unit_price": str(item.unit_price),
-                "billed_amount": str(item.billed_amount),
-                "allowed_amount": str(item.allowed_amount or item.billed_amount),
-            })
+        for item in claim.items or []:
+            items.append(
+                {
+                    "service_code": item.service_code,
+                    "service_name": item.service_name,
+                    "quantity": item.quantity,
+                    "unit_price": str(item.unit_price),
+                    "billed_amount": str(item.billed_amount),
+                    "allowed_amount": str(item.allowed_amount or item.billed_amount),
+                }
+            )
 
         invoice = {
             "invoice_number": invoice_number,
@@ -877,7 +1010,11 @@ class InvoiceGenerator:
     def generate_invoice_pdf(self, invoice_id: str) -> str:
         filename = f"/tmp/invoice_{invoice_id}.pdf"
         with open(filename, "w") as f:
-            f.write(json.dumps({"invoice_id": invoice_id, "generated_at": datetime.now(UTC).isoformat()}))
+            f.write(
+                json.dumps(
+                    {"invoice_id": invoice_id, "generated_at": datetime.now(UTC).isoformat()}
+                )
+            )
         return filename
 
 
@@ -994,12 +1131,10 @@ class MonthlyClosingEngine:
 
         claim_count = len(claims)
         paid_count = sum(
-            1 for c in claims
-            if c.status in (ClaimStatus.PAID, ClaimStatus.PARTIALLY_PAID)
+            1 for c in claims if c.status in (ClaimStatus.PAID, ClaimStatus.PARTIALLY_PAID)
         )
         denied_count = sum(
-            1 for c in claims
-            if c.status in (ClaimStatus.DENIED, ClaimStatus.REJECTED)
+            1 for c in claims if c.status in (ClaimStatus.DENIED, ClaimStatus.REJECTED)
         )
 
         settlements = (
@@ -1094,8 +1229,7 @@ class MonthlyClosingEngine:
 
         revenue = sum(c.total_allowed or Decimal(0) for c in claims)
         deductions = sum(
-            (c.total_deductible or Decimal(0)) + (c.total_copay or Decimal(0))
-            for c in claims
+            (c.total_deductible or Decimal(0)) + (c.total_copay or Decimal(0)) for c in claims
         )
         net_revenue = revenue - deductions
 
@@ -1116,10 +1250,14 @@ class MonthlyClosingEngine:
         total_receivables = (
             self._db.query(func.coalesce(func.sum(InsuranceClaim.total_allowed), 0))
             .filter(
-                InsuranceClaim.status.notin_([
-                    ClaimStatus.PAID, ClaimStatus.DENIED,
-                    ClaimStatus.REJECTED, ClaimStatus.CANCELLED,
-                ]),
+                InsuranceClaim.status.notin_(
+                    [
+                        ClaimStatus.PAID,
+                        ClaimStatus.DENIED,
+                        ClaimStatus.REJECTED,
+                        ClaimStatus.CANCELLED,
+                    ]
+                ),
             )
             .scalar()
         ) or Decimal(0)
@@ -1127,9 +1265,12 @@ class MonthlyClosingEngine:
         total_payables = (
             self._db.query(func.coalesce(func.sum(Settlement.net_amount), 0))
             .filter(
-                Settlement.status.in_([
-                    SettlementStatus.PENDING, SettlementStatus.RECONCILED,
-                ]),
+                Settlement.status.in_(
+                    [
+                        SettlementStatus.PENDING,
+                        SettlementStatus.RECONCILED,
+                    ]
+                ),
             )
             .scalar()
         ) or Decimal(0)
@@ -1175,22 +1316,22 @@ class FinancialAuditor:
         self._db = db_session
 
     def audit_claim_payment(self, claim_id: int) -> dict[str, Any]:
-        claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == claim_id,
-        ).first()
+        claim = (
+            self._db.query(InsuranceClaim)
+            .filter(
+                InsuranceClaim.id == claim_id,
+            )
+            .first()
+        )
         if not claim:
             raise ValueError(f"Claim {claim_id} not found")
 
         payments = (
-            self._db.query(InsurancePayment)
-            .filter(InsurancePayment.claim_id == claim_id)
-            .all()
+            self._db.query(InsurancePayment).filter(InsurancePayment.claim_id == claim_id).all()
         )
 
         total_paid = sum(p.amount for p in payments if p.status != PaymentStatus.REVERSED)
-        total_reversed = sum(
-            p.amount for p in payments if p.status == PaymentStatus.REVERSED
-        )
+        total_reversed = sum(p.amount for p in payments if p.status == PaymentStatus.REVERSED)
 
         reconciliation_status = "matched"
         if claim.total_allowed and total_paid != claim.total_allowed:
@@ -1200,16 +1341,20 @@ class FinancialAuditor:
 
         findings: list[dict[str, Any]] = []
         if reconciliation_status == "mismatched":
-            findings.append({
-                "severity": "warning",
-                "message": f"Claim allowed {claim.total_allowed} but paid {total_paid}",
-                "difference": float((claim.total_allowed or Decimal(0)) - total_paid),
-            })
+            findings.append(
+                {
+                    "severity": "warning",
+                    "message": f"Claim allowed {claim.total_allowed} but paid {total_paid}",
+                    "difference": float((claim.total_allowed or Decimal(0)) - total_paid),
+                }
+            )
 
         return {
             "claim_id": claim_id,
             "claim_number": claim.claim_number,
-            "claim_status": claim.status.value if hasattr(claim.status, "value") else str(claim.status),
+            "claim_status": claim.status.value
+            if hasattr(claim.status, "value")
+            else str(claim.status),
             "total_billed": str(claim.total_billed or 0),
             "total_allowed": str(claim.total_allowed or 0),
             "total_paid_from_claim": str(claim.total_paid or 0),
@@ -1269,8 +1414,7 @@ class FinancialAuditor:
             "total_paid": str(total_paid),
             "payments_count": payments_count,
             "payment_efficiency_pct": float(
-                (total_paid / total_allowed * Decimal(100))
-                if total_allowed > 0 else 0,
+                (total_paid / total_allowed * Decimal(100)) if total_allowed > 0 else 0,
             ),
             "audited_at": datetime.now(UTC).isoformat(),
         }
@@ -1302,10 +1446,7 @@ class FinancialAuditor:
 
     def detect_anomalies(self, transactions: list[dict[str, Any]]) -> list[dict[str, Any]]:
         anomalies: list[dict[str, Any]] = []
-        amounts = [
-            Decimal(str(t.get("amount", 0)))
-            for t in transactions
-        ]
+        amounts = [Decimal(str(t.get("amount", 0))) for t in transactions]
         if not amounts:
             return anomalies
 
@@ -1317,78 +1458,92 @@ class FinancialAuditor:
         for t in transactions:
             amt = Decimal(str(t.get("amount", 0)))
             if amt > threshold:
-                anomalies.append({
-                    "transaction_id": t.get("id"),
-                    "type": "amount_outlier",
-                    "amount": str(amt),
-                    "expected_max": str(threshold.quantize(Decimal("0.01"))),
-                    "severity": "high" if amt > mean + (Decimal(3) * std_dev) else "medium",
-                    "description": f"Amount {amt} exceeds expected threshold {threshold.quantize(Decimal('0.01'))}",
-                })
+                anomalies.append(
+                    {
+                        "transaction_id": t.get("id"),
+                        "type": "amount_outlier",
+                        "amount": str(amt),
+                        "expected_max": str(threshold.quantize(Decimal("0.01"))),
+                        "severity": "high" if amt > mean + (Decimal(3) * std_dev) else "medium",
+                        "description": f"Amount {amt} exceeds expected threshold {threshold.quantize(Decimal('0.01'))}",
+                    }
+                )
 
             if t.get("duplicate") is True:
-                anomalies.append({
-                    "transaction_id": t.get("id"),
-                    "type": "duplicate",
-                    "severity": "high",
-                    "description": "Duplicate transaction detected",
-                })
+                anomalies.append(
+                    {
+                        "transaction_id": t.get("id"),
+                        "type": "duplicate",
+                        "severity": "high",
+                        "description": "Duplicate transaction detected",
+                    }
+                )
 
         return anomalies
 
     def generate_audit_trail(self, claim_id: int) -> list[dict[str, Any]]:
         trail: list[dict[str, Any]] = []
-        claim = self._db.query(InsuranceClaim).filter(
-            InsuranceClaim.id == claim_id,
-        ).first()
+        claim = (
+            self._db.query(InsuranceClaim)
+            .filter(
+                InsuranceClaim.id == claim_id,
+            )
+            .first()
+        )
         if not claim:
             return trail
 
-        trail.append({
-            "timestamp": claim.created_at.isoformat(),
-            "action": "claim_created",
-            "entity": "InsuranceClaim",
-            "entity_id": claim.id,
-            "details": {"status": str(claim.status), "amount": str(claim.total_billed)},
-        })
+        trail.append(
+            {
+                "timestamp": claim.created_at.isoformat(),
+                "action": "claim_created",
+                "entity": "InsuranceClaim",
+                "entity_id": claim.id,
+                "details": {"status": str(claim.status), "amount": str(claim.total_billed)},
+            }
+        )
 
         if claim.submitted_at:
-            trail.append({
-                "timestamp": claim.submitted_at.isoformat(),
-                "action": "claim_submitted",
-                "entity": "InsuranceClaim",
-                "entity_id": claim.id,
-            })
+            trail.append(
+                {
+                    "timestamp": claim.submitted_at.isoformat(),
+                    "action": "claim_submitted",
+                    "entity": "InsuranceClaim",
+                    "entity_id": claim.id,
+                }
+            )
 
         if claim.adjudicated_date:
-            trail.append({
-                "timestamp": claim.adjudicated_date.isoformat(),
-                "action": "claim_adjudicated",
-                "entity": "InsuranceClaim",
-                "entity_id": claim.id,
-                "details": {
-                    "allowed": str(claim.total_allowed),
-                    "deductible": str(claim.total_deductible),
-                },
-            })
+            trail.append(
+                {
+                    "timestamp": claim.adjudicated_date.isoformat(),
+                    "action": "claim_adjudicated",
+                    "entity": "InsuranceClaim",
+                    "entity_id": claim.id,
+                    "details": {
+                        "allowed": str(claim.total_allowed),
+                        "deductible": str(claim.total_deductible),
+                    },
+                }
+            )
 
         payments = (
-            self._db.query(InsurancePayment)
-            .filter(InsurancePayment.claim_id == claim_id)
-            .all()
+            self._db.query(InsurancePayment).filter(InsurancePayment.claim_id == claim_id).all()
         )
         for p in payments:
-            trail.append({
-                "timestamp": p.created_at.isoformat(),
-                "action": f"payment_{p.status.value if hasattr(p.status, 'value') else str(p.status)}",
-                "entity": "InsurancePayment",
-                "entity_id": p.id,
-                "details": {
-                    "amount": str(p.amount),
-                    "method": p.payment_method,
-                    "reference": p.reference_number,
-                },
-            })
+            trail.append(
+                {
+                    "timestamp": p.created_at.isoformat(),
+                    "action": f"payment_{p.status.value if hasattr(p.status, 'value') else str(p.status)}",
+                    "entity": "InsurancePayment",
+                    "entity_id": p.id,
+                    "details": {
+                        "amount": str(p.amount),
+                        "method": p.payment_method,
+                        "reference": p.reference_number,
+                    },
+                }
+            )
 
         trail.sort(key=lambda x: x["timestamp"])
         return trail
@@ -1403,11 +1558,13 @@ class FinancialAuditor:
             .count()
         )
         if orphan_payments > 0:
-            issues.append({
-                "severity": "critical",
-                "entity": "InsurancePayment",
-                "message": f"{orphan_payments} orphaned payment(s) without claims",
-            })
+            issues.append(
+                {
+                    "severity": "critical",
+                    "entity": "InsurancePayment",
+                    "message": f"{orphan_payments} orphaned payment(s) without claims",
+                }
+            )
 
         missing_allowed = (
             self._db.query(InsuranceClaim)
@@ -1418,11 +1575,13 @@ class FinancialAuditor:
             .count()
         )
         if missing_allowed > 0:
-            issues.append({
-                "severity": "warning",
-                "entity": "InsuranceClaim",
-                "message": f"{missing_allowed} adjudicated claims without allowed amounts",
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "entity": "InsuranceClaim",
+                    "message": f"{missing_allowed} adjudicated claims without allowed amounts",
+                }
+            )
 
         mismatched = (
             self._db.query(InsuranceClaim)
@@ -1433,18 +1592,23 @@ class FinancialAuditor:
             .count()
         )
         if mismatched > 0:
-            issues.append({
-                "severity": "warning",
-                "entity": "InsuranceClaim",
-                "message": f"{mismatched} paid claims without total_paid recorded",
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "entity": "InsuranceClaim",
+                    "message": f"{mismatched} paid claims without total_paid recorded",
+                }
+            )
 
         integrity_hash = hashlib.sha256(
-            json.dumps({
-                "orphan_payments": orphan_payments,
-                "missing_allowed": missing_allowed,
-                "mismatched_paid": mismatched,
-            }, sort_keys=True).encode(),
+            json.dumps(
+                {
+                    "orphan_payments": orphan_payments,
+                    "missing_allowed": missing_allowed,
+                    "mismatched_paid": mismatched,
+                },
+                sort_keys=True,
+            ).encode(),
         ).hexdigest()
 
         return {

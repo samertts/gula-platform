@@ -58,7 +58,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_blood_bank_donors_citizen_id", "blood_bank_donors", ["citizen_id"])
         op.create_index("ix_blood_bank_donors_lab_id", "blood_bank_donors", ["lab_id"])
@@ -67,7 +67,9 @@ def upgrade() -> None:
     if not _table_exists("blood_bank_donor_deferrals"):
         op.create_table(
             "blood_bank_donor_deferrals",
-            sa.Column("donor_id", sa.String(), sa.ForeignKey("blood_bank_donors.id"), nullable=False),
+            sa.Column(
+                "donor_id", sa.String(), sa.ForeignKey("blood_bank_donors.id"), nullable=False
+            ),
             sa.Column("deferral_type", sa.String(), default="temporary"),
             sa.Column("reason", sa.String(), default="other"),
             sa.Column("reason_detail", sa.Text()),
@@ -85,16 +87,24 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_blood_bank_donor_deferrals_donor_id", "blood_bank_donor_deferrals", ["donor_id"])
-        op.create_index("ix_blood_bank_donor_deferrals_fhir_id", "blood_bank_donor_deferrals", ["fhir_id"])
-        op.create_index("ix_blood_bank_donor_deferrals_lab_id", "blood_bank_donor_deferrals", ["lab_id"])
+        op.create_index(
+            "ix_blood_bank_donor_deferrals_donor_id", "blood_bank_donor_deferrals", ["donor_id"]
+        )
+        op.create_index(
+            "ix_blood_bank_donor_deferrals_fhir_id", "blood_bank_donor_deferrals", ["fhir_id"]
+        )
+        op.create_index(
+            "ix_blood_bank_donor_deferrals_lab_id", "blood_bank_donor_deferrals", ["lab_id"]
+        )
 
     if not _table_exists("blood_bank_donations"):
         op.create_table(
             "blood_bank_donations",
-            sa.Column("donor_id", sa.String(), sa.ForeignKey("blood_bank_donors.id"), nullable=False),
+            sa.Column(
+                "donor_id", sa.String(), sa.ForeignKey("blood_bank_donors.id"), nullable=False
+            ),
             sa.Column("donation_type", sa.String(), default="whole_blood"),
             sa.Column("collection_method", sa.String(), default="manual"),
             sa.Column("status", sa.String(), default="registered"),
@@ -124,7 +134,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_blood_bank_donations_donor_id", "blood_bank_donations", ["donor_id"])
         op.create_index("ix_blood_bank_donations_lab_id", "blood_bank_donations", ["lab_id"])
@@ -133,7 +143,9 @@ def upgrade() -> None:
     if not _table_exists("blood_bank_screening_results"):
         op.create_table(
             "blood_bank_screening_results",
-            sa.Column("donation_id", sa.String(), sa.ForeignKey("blood_bank_donations.id"), nullable=False),
+            sa.Column(
+                "donation_id", sa.String(), sa.ForeignKey("blood_bank_donations.id"), nullable=False
+            ),
             sa.Column("test", sa.String(), nullable=False),
             sa.Column("result", sa.String(), default="pending"),
             sa.Column("result_value", sa.String()),
@@ -153,16 +165,26 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_blood_bank_screening_results_lab_id", "blood_bank_screening_results", ["lab_id"])
-        op.create_index("ix_blood_bank_screening_results_donation_id", "blood_bank_screening_results", ["donation_id"])
-        op.create_index("ix_blood_bank_screening_results_fhir_id", "blood_bank_screening_results", ["fhir_id"])
+        op.create_index(
+            "ix_blood_bank_screening_results_lab_id", "blood_bank_screening_results", ["lab_id"]
+        )
+        op.create_index(
+            "ix_blood_bank_screening_results_donation_id",
+            "blood_bank_screening_results",
+            ["donation_id"],
+        )
+        op.create_index(
+            "ix_blood_bank_screening_results_fhir_id", "blood_bank_screening_results", ["fhir_id"]
+        )
 
     if not _table_exists("blood_bank_components"):
         op.create_table(
             "blood_bank_components",
-            sa.Column("donation_id", sa.String(), sa.ForeignKey("blood_bank_donations.id"), nullable=False),
+            sa.Column(
+                "donation_id", sa.String(), sa.ForeignKey("blood_bank_donations.id"), nullable=False
+            ),
             sa.Column("component", sa.String(), default="packed_rbc"),
             sa.Column("status", sa.String(), default="pending_processing"),
             sa.Column("volume_ml", sa.Float()),
@@ -187,10 +209,12 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_blood_bank_components_fhir_id", "blood_bank_components", ["fhir_id"])
-        op.create_index("ix_blood_bank_components_donation_id", "blood_bank_components", ["donation_id"])
+        op.create_index(
+            "ix_blood_bank_components_donation_id", "blood_bank_components", ["donation_id"]
+        )
         op.create_index("ix_blood_bank_components_lab_id", "blood_bank_components", ["lab_id"])
 
     if not _table_exists("blood_bank_inventory"):
@@ -215,11 +239,13 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_blood_bank_inventory_lab_id", "blood_bank_inventory", ["lab_id"])
         op.create_index("ix_blood_bank_inventory_fhir_id", "blood_bank_inventory", ["fhir_id"])
-        op.create_index("ix_blood_bank_inventory_facility_id", "blood_bank_inventory", ["facility_id"])
+        op.create_index(
+            "ix_blood_bank_inventory_facility_id", "blood_bank_inventory", ["facility_id"]
+        )
 
     if not _table_exists("blood_bank_units"):
         op.create_table(
@@ -258,7 +284,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_blood_bank_units_fhir_id", "blood_bank_units", ["fhir_id"])
         op.create_index("ix_blood_bank_units_expiry_date", "blood_bank_units", ["expiry_date"])
@@ -293,10 +319,14 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_blood_bank_crossmatches_fhir_id", "blood_bank_crossmatches", ["fhir_id"])
-        op.create_index("ix_blood_bank_crossmatches_patient_id", "blood_bank_crossmatches", ["patient_id"])
+        op.create_index(
+            "ix_blood_bank_crossmatches_fhir_id", "blood_bank_crossmatches", ["fhir_id"]
+        )
+        op.create_index(
+            "ix_blood_bank_crossmatches_patient_id", "blood_bank_crossmatches", ["patient_id"]
+        )
         op.create_index("ix_blood_bank_crossmatches_lab_id", "blood_bank_crossmatches", ["lab_id"])
 
     if not _table_exists("blood_bank_transfusions"):
@@ -348,10 +378,14 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_blood_bank_transfusions_fhir_id", "blood_bank_transfusions", ["fhir_id"])
-        op.create_index("ix_blood_bank_transfusions_patient_id", "blood_bank_transfusions", ["patient_id"])
+        op.create_index(
+            "ix_blood_bank_transfusions_fhir_id", "blood_bank_transfusions", ["fhir_id"]
+        )
+        op.create_index(
+            "ix_blood_bank_transfusions_patient_id", "blood_bank_transfusions", ["patient_id"]
+        )
         op.create_index("ix_blood_bank_transfusions_lab_id", "blood_bank_transfusions", ["lab_id"])
 
     if not _table_exists("blood_bank_requests"):
@@ -383,7 +417,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_blood_bank_requests_fhir_id", "blood_bank_requests", ["fhir_id"])
         op.create_index("ix_blood_bank_requests_lab_id", "blood_bank_requests", ["lab_id"])
@@ -407,11 +441,16 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_blood_bank_inventory_movements_fhir_id", "blood_bank_inventory_movements", ["fhir_id"])
-        op.create_index("ix_blood_bank_inventory_movements_lab_id", "blood_bank_inventory_movements", ["lab_id"])
-
+        op.create_index(
+            "ix_blood_bank_inventory_movements_fhir_id",
+            "blood_bank_inventory_movements",
+            ["fhir_id"],
+        )
+        op.create_index(
+            "ix_blood_bank_inventory_movements_lab_id", "blood_bank_inventory_movements", ["lab_id"]
+        )
 
 
 def downgrade() -> None:

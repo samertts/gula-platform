@@ -9,7 +9,12 @@ class MachineIdentity(IdentityBaseEntity):
     __tablename__ = "niam_machine_identities"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     machine_name = Column(String(200), nullable=False)
     machine_type = Column(String(50), nullable=False)
@@ -28,7 +33,9 @@ class MachineIdentity(IdentityBaseEntity):
     certificate = Column(Text, nullable=True)
     certificate_expires = Column(DateTime(timezone=True), nullable=True)
 
-    assigned_to_person = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True)
+    assigned_to_person = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True
+    )
     assigned_at = Column(DateTime(timezone=True), nullable=True)
     location = Column(String(200), nullable=True)
 

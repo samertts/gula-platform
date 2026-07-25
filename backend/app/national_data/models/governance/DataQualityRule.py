@@ -23,6 +23,4 @@ class DataQualityRule(BaseEntity):
     threshold_warning = Column(Integer, default=95, nullable=True)
     threshold_error = Column(Integer, default=90, nullable=True)
 
-    __table_args__ = (
-        {"extend_existing": True},
-    )
+    __table_args__ = ({"extend_existing": True},)

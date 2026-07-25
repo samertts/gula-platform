@@ -47,23 +47,31 @@ class LocalAIEngine:
     def _probe_gpus(self) -> None:
         try:
             import subprocess
+
             result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=index,name,memory.total,memory.free,utilization.gpu,temperature.gpu",
-                 "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=5,
+                [
+                    "nvidia-smi",
+                    "--query-gpu=index,name,memory.total,memory.free,utilization.gpu,temperature.gpu",
+                    "--format=csv,noheader,nounits",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode == 0:
                 for line in result.stdout.strip().split("\n"):
                     parts = [p.strip() for p in line.split(",")]
                     if len(parts) >= 6:
-                        self._gpus.append(GPUInfo(
-                            index=int(parts[0]),
-                            name=parts[1],
-                            memory_total_mb=int(float(parts[2])),
-                            memory_free_mb=int(float(parts[3])),
-                            utilization_pct=float(parts[4]),
-                            temperature_c=float(parts[5]),
-                        ))
+                        self._gpus.append(
+                            GPUInfo(
+                                index=int(parts[0]),
+                                name=parts[1],
+                                memory_total_mb=int(float(parts[2])),
+                                memory_free_mb=int(float(parts[3])),
+                                utilization_pct=float(parts[4]),
+                                temperature_c=float(parts[5]),
+                            ),
+                        )
         except Exception:
             logger.info("No NVIDIA GPUs detected — running CPU-only mode")
 
@@ -107,8 +115,15 @@ class LocalAIEngine:
     def get_status(self) -> dict[str, Any]:
         return {
             "total_gpus": len(self._gpus),
-            "gpus": [{"index": g.index, "name": g.name, "memory_free_mb": g.memory_free_mb,
-                       "utilization_pct": g.utilization_pct} for g in self._gpus],
+            "gpus": [
+                {
+                    "index": g.index,
+                    "name": g.name,
+                    "memory_free_mb": g.memory_free_mb,
+                    "utilization_pct": g.utilization_pct,
+                }
+                for g in self._gpus
+            ],
             "pool_size": self._pool_size,
             "available_slots": self._available_slots,
             "active_jobs": len(self._active_jobs),
@@ -161,8 +176,11 @@ class ModelRegistry(KernelModelRegistry):
         self._approvals[name] = True
 
     def list_production(self) -> list[ModelCapability]:
-        return [m for m in self.list_models()
-                if self._lifecycles.get(m.name) == ModelLifecycle.PRODUCTION]
+        return [
+            m
+            for m in self.list_models()
+            if self._lifecycles.get(m.name) == ModelLifecycle.PRODUCTION
+        ]
 
 
 class EmbeddingService:
@@ -172,6 +190,7 @@ class EmbeddingService:
 
     def embed(self, texts: list[str], model: str = "default") -> list[list[float]]:
         from shared.ai.provider import AIProvider
+
         provider = AIProvider()
         results: list[list[float]] = []
         for text in texts:
@@ -193,6 +212,7 @@ class EmbeddingService:
 class RerankingService:
     def __init__(self) -> None:
         from shared.ai.provider import AIProvider
+
         self._provider = AIProvider()
 
     def rerank(

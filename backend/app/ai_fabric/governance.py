@@ -97,7 +97,9 @@ class PromptRegistry:
             }
         return list(summary.values())
 
-    def promote(self, name: str, version: str, target: PromptStatus, by: str = "") -> PromptVersion | None:
+    def promote(
+        self, name: str, version: str, target: PromptStatus, by: str = "",
+    ) -> PromptVersion | None:
         prompt = self.get(name, version)
         if not prompt:
             return None
@@ -131,7 +133,13 @@ class ModelApproval:
     def __init__(self) -> None:
         self._approvals: dict[str, dict[str, Any]] = {}
 
-    def submit(self, model_name: str, version: str, submitted_by: str, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
+    def submit(
+        self,
+        model_name: str,
+        version: str,
+        submitted_by: str,
+        evidence: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         record = {
             "id": str(uuid.uuid4()),
             "model_name": model_name,
@@ -149,7 +157,9 @@ class ModelApproval:
         logger.info("Model approval submitted: %s v%s by %s", model_name, version, submitted_by)
         return record
 
-    def approve(self, model_name: str, version: str, reviewer: str, comments: str = "") -> dict[str, Any] | None:
+    def approve(
+        self, model_name: str, version: str, reviewer: str, comments: str = "",
+    ) -> dict[str, Any] | None:
         record = self._approvals.get(f"{model_name}:{version}")
         if not record:
             return None
@@ -159,7 +169,9 @@ class ModelApproval:
         record["comments"] = comments
         return record
 
-    def reject(self, model_name: str, version: str, reviewer: str, reason: str = "") -> dict[str, Any] | None:
+    def reject(
+        self, model_name: str, version: str, reviewer: str, reason: str = "",
+    ) -> dict[str, Any] | None:
         record = self._approvals.get(f"{model_name}:{version}")
         if not record:
             return None
@@ -178,8 +190,7 @@ class ModelApproval:
 
     def list_pending(self) -> list[dict[str, Any]]:
         return [
-            r for r in self._approvals.values()
-            if r["status"] == ModelApprovalStatus.PENDING.value
+            r for r in self._approvals.values() if r["status"] == ModelApprovalStatus.PENDING.value
         ]
 
     def list_all(self) -> list[dict[str, Any]]:
@@ -215,9 +226,26 @@ class EvaluationFramework:
     def set_threshold(self, dimension: EvaluationDimension, threshold: float) -> None:
         self._thresholds[dimension] = threshold
 
-    def evaluate(self, model: str, version: str, dimension: EvaluationDimension, score: float, details: dict[str, Any] | None = None) -> EvaluationResult:
+    def evaluate(
+        self,
+        model: str,
+        version: str,
+        dimension: EvaluationDimension,
+        score: float,
+        details: dict[str, Any] | None = None,
+    ) -> EvaluationResult:
         threshold = self._thresholds.get(dimension, 0.5)
-        passed = score >= threshold if dimension in (EvaluationDimension.ACCURACY, EvaluationDimension.SAFETY, EvaluationDimension.FAIRNESS, EvaluationDimension.ROBUSTNESS) else score <= threshold
+        passed = (
+            score >= threshold
+            if dimension
+            in (
+                EvaluationDimension.ACCURACY,
+                EvaluationDimension.SAFETY,
+                EvaluationDimension.FAIRNESS,
+                EvaluationDimension.ROBUSTNESS,
+            )
+            else score <= threshold
+        )
         result = EvaluationResult(
             model=model,
             version=version,
@@ -230,16 +258,32 @@ class EvaluationFramework:
         self._results.append(result)
         return result
 
-    def evaluate_accuracy(self, model: str, version: str, correct: int, total: int) -> EvaluationResult:
+    def evaluate_accuracy(
+        self, model: str, version: str, correct: int, total: int,
+    ) -> EvaluationResult:
         score = correct / total if total else 0.0
-        return self.evaluate(model, version, EvaluationDimension.ACCURACY, score, {"correct": correct, "total": total})
+        return self.evaluate(
+            model,
+            version,
+            EvaluationDimension.ACCURACY,
+            score,
+            {"correct": correct, "total": total},
+        )
 
     def evaluate_bias(self, model: str, version: str, bias_score: float) -> EvaluationResult:
         return self.evaluate(model, version, EvaluationDimension.BIAS, bias_score)
 
-    def evaluate_safety(self, model: str, version: str, safe_responses: int, total: int) -> EvaluationResult:
+    def evaluate_safety(
+        self, model: str, version: str, safe_responses: int, total: int,
+    ) -> EvaluationResult:
         score = safe_responses / total if total else 1.0
-        return self.evaluate(model, version, EvaluationDimension.SAFETY, score, {"safe": safe_responses, "total": total})
+        return self.evaluate(
+            model,
+            version,
+            EvaluationDimension.SAFETY,
+            score,
+            {"safe": safe_responses, "total": total},
+        )
 
     def get_results(self, model: str, version: str) -> list[EvaluationResult]:
         return [r for r in self._results if r.model == model and r.version == version]
@@ -257,7 +301,10 @@ class EvaluationFramework:
             "version": version,
             "dimensions_evaluated": len(results),
             "all_passed": all(r.passed for r in results),
-            "results": {r.dimension.value: {"score": r.score, "passed": r.passed, "threshold": r.threshold} for r in results},
+            "results": {
+                r.dimension.value: {"score": r.score, "passed": r.passed, "threshold": r.threshold}
+                for r in results
+            },
         }
 
 
@@ -321,7 +368,14 @@ class AIConstitution:
         for article in defaults:
             self.add_article(**article)
 
-    def add_article(self, id: str, title: str, principle: str, severity: str = "medium", enforceable: bool = True) -> dict[str, Any]:
+    def add_article(
+        self,
+        id: str,
+        title: str,
+        principle: str,
+        severity: str = "medium",
+        enforceable: bool = True,
+    ) -> dict[str, Any]:
         article = {
             "id": id,
             "title": title,
@@ -340,28 +394,37 @@ class AIConstitution:
         articles = list(self._articles.values())
         if severity:
             articles = [a for a in articles if a["severity"] == severity]
-        return sorted(articles, key=lambda a: {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(a["severity"], 99))
+        return sorted(
+            articles,
+            key=lambda a: {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(a["severity"], 99),
+        )
 
     def check_compliance(self, action: dict[str, Any]) -> list[dict[str, Any]]:
         violations: list[dict[str, Any]] = []
         if action.get("bypasses_human"):
-            violations.append({
-                "article": "ART-003",
-                "message": "Action bypasses human oversight",
-                "severity": "high",
-            })
+            violations.append(
+                {
+                    "article": "ART-003",
+                    "message": "Action bypasses human oversight",
+                    "severity": "high",
+                },
+            )
         if action.get("contains_pii"):
-            violations.append({
-                "article": "ART-002",
-                "message": "Action may expose patient data",
-                "severity": "critical",
-            })
+            violations.append(
+                {
+                    "article": "ART-002",
+                    "message": "Action may expose patient data",
+                    "severity": "critical",
+                },
+            )
         return violations
 
     def get_compliance_report(self) -> dict[str, Any]:
         return {
             "total_articles": len(self._articles),
-            "critical_count": len([a for a in self._articles.values() if a["severity"] == "critical"]),
+            "critical_count": len(
+                [a for a in self._articles.values() if a["severity"] == "critical"],
+            ),
             "high_count": len([a for a in self._articles.values() if a["severity"] == "high"]),
             "medium_count": len([a for a in self._articles.values() if a["severity"] == "medium"]),
             "enforceable_count": len([a for a in self._articles.values() if a["enforceable"]]),

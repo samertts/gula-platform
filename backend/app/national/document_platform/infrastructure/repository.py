@@ -35,12 +35,15 @@ from app.national.document_platform.infrastructure.models import (
 
 
 class SQLAlchemyDocumentRepository(DocumentRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, document: Document) -> Document:
-        model = self.db.query(NationalDocumentModel).filter(NationalDocumentModel.id == document.id).first()
+        model = (
+            self.db.query(NationalDocumentModel)
+            .filter(NationalDocumentModel.id == document.id)
+            .first()
+        )
         if model:
             model.filename = document.filename
             model.original_name = document.original_name
@@ -82,10 +85,14 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         return model.to_domain()
 
     async def get(self, document_id: str) -> Document | None:
-        model = self.db.query(NationalDocumentModel).filter(
-            NationalDocumentModel.id == document_id,
-            ~NationalDocumentModel.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentModel)
+            .filter(
+                NationalDocumentModel.id == document_id,
+                ~NationalDocumentModel.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -100,14 +107,20 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         for key, value in filters.items():
             if hasattr(NationalDocumentModel, key) and value is not None:
                 query = query.filter(getattr(NationalDocumentModel, key) == value)
-        models = query.order_by(NationalDocumentModel.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            query.order_by(NationalDocumentModel.created_at.desc()).offset(skip).limit(limit).all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, document_id: str, soft: bool = True) -> None:
-        model = self.db.query(NationalDocumentModel).filter(
-            NationalDocumentModel.id == document_id,
-            ~NationalDocumentModel.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentModel)
+            .filter(
+                NationalDocumentModel.id == document_id,
+                ~NationalDocumentModel.is_deleted,
+            )
+            .first()
+        )
         if model:
             if soft:
                 model.is_deleted = True
@@ -122,10 +135,17 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[Document]:
-        models = self.db.query(NationalDocumentModel).filter(
-            NationalDocumentModel.status == status,
-            ~NationalDocumentModel.is_deleted,
-        ).order_by(NationalDocumentModel.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalDocumentModel)
+            .filter(
+                NationalDocumentModel.status == status,
+                ~NationalDocumentModel.is_deleted,
+            )
+            .order_by(NationalDocumentModel.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_by_category(
@@ -134,10 +154,17 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[Document]:
-        models = self.db.query(NationalDocumentModel).filter(
-            NationalDocumentModel.category == category,
-            ~NationalDocumentModel.is_deleted,
-        ).order_by(NationalDocumentModel.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalDocumentModel)
+            .filter(
+                NationalDocumentModel.category == category,
+                ~NationalDocumentModel.is_deleted,
+            )
+            .order_by(NationalDocumentModel.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def search(
@@ -147,13 +174,20 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         limit: int = 100,
     ) -> list[Document]:
         search_term = f"%{query}%"
-        models = self.db.query(NationalDocumentModel).filter(
-            ~~NationalDocumentModel.is_deleted,
-            or_(
-                NationalDocumentModel.filename.ilike(search_term),
-                NationalDocumentModel.original_name.ilike(search_term),
-            ),
-        ).order_by(NationalDocumentModel.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalDocumentModel)
+            .filter(
+                ~~NationalDocumentModel.is_deleted,
+                or_(
+                    NationalDocumentModel.filename.ilike(search_term),
+                    NationalDocumentModel.original_name.ilike(search_term),
+                ),
+            )
+            .order_by(NationalDocumentModel.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def count(self, **filters: Any) -> int:
@@ -165,12 +199,15 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
 
 
 class SQLAlchemyDocumentVersionRepository(DocumentVersionRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, version: DocumentVersion) -> DocumentVersion:
-        model = self.db.query(NationalDocumentVersionModel).filter(NationalDocumentVersionModel.id == version.id).first()
+        model = (
+            self.db.query(NationalDocumentVersionModel)
+            .filter(NationalDocumentVersionModel.id == version.id)
+            .first()
+        )
         if model:
             model.document_id = version.document_id
             model.version_number = version.version_number
@@ -196,9 +233,13 @@ class SQLAlchemyDocumentVersionRepository(DocumentVersionRepository):
         return model.to_domain()
 
     async def get(self, version_id: str) -> DocumentVersion | None:
-        model = self.db.query(NationalDocumentVersionModel).filter(
-            NationalDocumentVersionModel.id == version_id,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentVersionModel)
+            .filter(
+                NationalDocumentVersionModel.id == version_id,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -209,27 +250,41 @@ class SQLAlchemyDocumentVersionRepository(DocumentVersionRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[DocumentVersion]:
-        models = self.db.query(NationalDocumentVersionModel).filter(
-            NationalDocumentVersionModel.document_id == document_id,
-        ).order_by(NationalDocumentVersionModel.version_number.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalDocumentVersionModel)
+            .filter(
+                NationalDocumentVersionModel.document_id == document_id,
+            )
+            .order_by(NationalDocumentVersionModel.version_number.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, version_id: str) -> None:
-        model = self.db.query(NationalDocumentVersionModel).filter(
-            NationalDocumentVersionModel.id == version_id,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentVersionModel)
+            .filter(
+                NationalDocumentVersionModel.id == version_id,
+            )
+            .first()
+        )
         if model:
             self.db.delete(model)
             self.db.commit()
 
 
 class SQLAlchemyElectronicSignatureRepository(ElectronicSignatureRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, signature: ElectronicSignature) -> ElectronicSignature:
-        model = self.db.query(NationalElectronicSignatureModel).filter(NationalElectronicSignatureModel.id == signature.id).first()
+        model = (
+            self.db.query(NationalElectronicSignatureModel)
+            .filter(NationalElectronicSignatureModel.id == signature.id)
+            .first()
+        )
         if model:
             model.document_id = signature.document_id
             model.signer_id = signature.signer_id
@@ -267,9 +322,13 @@ class SQLAlchemyElectronicSignatureRepository(ElectronicSignatureRepository):
         return model.to_domain()
 
     async def get(self, signature_id: str) -> ElectronicSignature | None:
-        model = self.db.query(NationalElectronicSignatureModel).filter(
-            NationalElectronicSignatureModel.id == signature_id,
-        ).first()
+        model = (
+            self.db.query(NationalElectronicSignatureModel)
+            .filter(
+                NationalElectronicSignatureModel.id == signature_id,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -280,9 +339,16 @@ class SQLAlchemyElectronicSignatureRepository(ElectronicSignatureRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[ElectronicSignature]:
-        models = self.db.query(NationalElectronicSignatureModel).filter(
-            NationalElectronicSignatureModel.document_id == document_id,
-        ).order_by(NationalElectronicSignatureModel.signed_at.desc().nullslast()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalElectronicSignatureModel)
+            .filter(
+                NationalElectronicSignatureModel.document_id == document_id,
+            )
+            .order_by(NationalElectronicSignatureModel.signed_at.desc().nullslast())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def find_by_signer(
@@ -291,19 +357,29 @@ class SQLAlchemyElectronicSignatureRepository(ElectronicSignatureRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[ElectronicSignature]:
-        models = self.db.query(NationalElectronicSignatureModel).filter(
-            NationalElectronicSignatureModel.signer_id == signer_id,
-        ).order_by(NationalElectronicSignatureModel.signed_at.desc().nullslast()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalElectronicSignatureModel)
+            .filter(
+                NationalElectronicSignatureModel.signer_id == signer_id,
+            )
+            .order_by(NationalElectronicSignatureModel.signed_at.desc().nullslast())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
 
 class SQLAlchemyDocumentQRCodeRepository(DocumentQRCodeRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, qr_code: DocumentQRCode) -> DocumentQRCode:
-        model = self.db.query(NationalDocumentQRCodeModel).filter(NationalDocumentQRCodeModel.id == qr_code.id).first()
+        model = (
+            self.db.query(NationalDocumentQRCodeModel)
+            .filter(NationalDocumentQRCodeModel.id == qr_code.id)
+            .first()
+        )
         if model:
             model.document_id = qr_code.document_id
             model.qr_data = qr_code.qr_data
@@ -327,37 +403,52 @@ class SQLAlchemyDocumentQRCodeRepository(DocumentQRCodeRepository):
         return model.to_domain()
 
     async def get(self, qr_code_id: str) -> DocumentQRCode | None:
-        model = self.db.query(NationalDocumentQRCodeModel).filter(
-            NationalDocumentQRCodeModel.id == qr_code_id,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentQRCodeModel)
+            .filter(
+                NationalDocumentQRCodeModel.id == qr_code_id,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
 
     async def get_by_document(self, document_id: str) -> DocumentQRCode | None:
-        model = self.db.query(NationalDocumentQRCodeModel).filter(
-            NationalDocumentQRCodeModel.document_id == document_id,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentQRCodeModel)
+            .filter(
+                NationalDocumentQRCodeModel.document_id == document_id,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
 
     async def increment_scanned(self, qr_code_id: str) -> None:
-        model = self.db.query(NationalDocumentQRCodeModel).filter(
-            NationalDocumentQRCodeModel.id == qr_code_id,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentQRCodeModel)
+            .filter(
+                NationalDocumentQRCodeModel.id == qr_code_id,
+            )
+            .first()
+        )
         if model:
             model.scanned_count = (model.scanned_count or 0) + 1
             self.db.commit()
 
 
 class SQLAlchemyDocumentAttachmentRepository(DocumentAttachmentRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, attachment: DocumentAttachment) -> DocumentAttachment:
-        model = self.db.query(NationalDocumentAttachmentModel).filter(NationalDocumentAttachmentModel.id == attachment.id).first()
+        model = (
+            self.db.query(NationalDocumentAttachmentModel)
+            .filter(NationalDocumentAttachmentModel.id == attachment.id)
+            .first()
+        )
         if model:
             model.document_id = attachment.document_id
             model.filename = attachment.filename
@@ -379,9 +470,13 @@ class SQLAlchemyDocumentAttachmentRepository(DocumentAttachmentRepository):
         return model.to_domain()
 
     async def get(self, attachment_id: str) -> DocumentAttachment | None:
-        model = self.db.query(NationalDocumentAttachmentModel).filter(
-            NationalDocumentAttachmentModel.id == attachment_id,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentAttachmentModel)
+            .filter(
+                NationalDocumentAttachmentModel.id == attachment_id,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -392,27 +487,41 @@ class SQLAlchemyDocumentAttachmentRepository(DocumentAttachmentRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[DocumentAttachment]:
-        models = self.db.query(NationalDocumentAttachmentModel).filter(
-            NationalDocumentAttachmentModel.document_id == document_id,
-        ).order_by(NationalDocumentAttachmentModel.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalDocumentAttachmentModel)
+            .filter(
+                NationalDocumentAttachmentModel.document_id == document_id,
+            )
+            .order_by(NationalDocumentAttachmentModel.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, attachment_id: str) -> None:
-        model = self.db.query(NationalDocumentAttachmentModel).filter(
-            NationalDocumentAttachmentModel.id == attachment_id,
-        ).first()
+        model = (
+            self.db.query(NationalDocumentAttachmentModel)
+            .filter(
+                NationalDocumentAttachmentModel.id == attachment_id,
+            )
+            .first()
+        )
         if model:
             self.db.delete(model)
             self.db.commit()
 
 
 class SQLAlchemyRetentionRuleRepository(RetentionRuleRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, rule: RetentionRule) -> RetentionRule:
-        model = self.db.query(NationalRetentionRuleModel).filter(NationalRetentionRuleModel.id == rule.id).first()
+        model = (
+            self.db.query(NationalRetentionRuleModel)
+            .filter(NationalRetentionRuleModel.id == rule.id)
+            .first()
+        )
         if model:
             model.category = rule.category
             model.policy = rule.policy
@@ -434,17 +543,25 @@ class SQLAlchemyRetentionRuleRepository(RetentionRuleRepository):
         return model.to_domain()
 
     async def get(self, rule_id: str) -> RetentionRule | None:
-        model = self.db.query(NationalRetentionRuleModel).filter(
-            NationalRetentionRuleModel.id == rule_id,
-        ).first()
+        model = (
+            self.db.query(NationalRetentionRuleModel)
+            .filter(
+                NationalRetentionRuleModel.id == rule_id,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
 
     async def find_by_category(self, category: DocumentCategory) -> RetentionRule | None:
-        model = self.db.query(NationalRetentionRuleModel).filter(
-            NationalRetentionRuleModel.category == category,
-        ).first()
+        model = (
+            self.db.query(NationalRetentionRuleModel)
+            .filter(
+                NationalRetentionRuleModel.category == category,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -454,15 +571,25 @@ class SQLAlchemyRetentionRuleRepository(RetentionRuleRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[RetentionRule]:
-        models = self.db.query(NationalRetentionRuleModel).order_by(
-            NationalRetentionRuleModel.category,
-        ).offset(skip).limit(limit).all()
+        models = (
+            self.db.query(NationalRetentionRuleModel)
+            .order_by(
+                NationalRetentionRuleModel.category,
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, rule_id: str) -> None:
-        model = self.db.query(NationalRetentionRuleModel).filter(
-            NationalRetentionRuleModel.id == rule_id,
-        ).first()
+        model = (
+            self.db.query(NationalRetentionRuleModel)
+            .filter(
+                NationalRetentionRuleModel.id == rule_id,
+            )
+            .first()
+        )
         if model:
             self.db.delete(model)
             self.db.commit()

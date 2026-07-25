@@ -53,7 +53,9 @@ class WebhookConnector(BaseConnector):
 
     async def send(self, data: Any) -> ConnectorResult:
         if not isinstance(data, dict):
-            return self._build_result(False, error="data must be a dict with 'event' and 'payload'", status_code=400)
+            return self._build_result(
+                False, error="data must be a dict with 'event' and 'payload'", status_code=400,
+            )
 
         event = data.get("event", "")
         payload = data.get("payload", {})
@@ -71,7 +73,11 @@ class WebhookConnector(BaseConnector):
 
             if not urls:
                 duration_ms = int((time.monotonic() - start) * 1000)
-                return self._build_result(True, data={"delivered": 0, "message": "no subscribers"}, duration_ms=duration_ms)
+                return self._build_result(
+                    True,
+                    data={"delivered": 0, "message": "no subscribers"},
+                    duration_ms=duration_ms,
+                )
 
             results = []
             for url in urls:
@@ -93,7 +99,9 @@ class WebhookConnector(BaseConnector):
             return self._build_result(False, error=str(exc), duration_ms=duration_ms)
 
     async def receive(self) -> ConnectorResult:
-        return self._build_result(False, error="use register_webhook() for receiving webhooks", status_code=400)
+        return self._build_result(
+            False, error="use register_webhook() for receiving webhooks", status_code=400,
+        )
 
     async def register_webhook(self, webhook_id: str, config: dict) -> None:
         self._registrations[webhook_id] = {
@@ -114,7 +122,9 @@ class WebhookConnector(BaseConnector):
     def list_webhooks(self) -> list[dict]:
         return list(self._registrations.values())
 
-    def verify_signature(self, payload: bytes, signature_header: str, secret: str | None = None) -> bool:
+    def verify_signature(
+        self, payload: bytes, signature_header: str, secret: str | None = None,
+    ) -> bool:
         secret = secret or self._hmac_secret
         if not secret:
             return True
@@ -133,14 +143,24 @@ class WebhookConnector(BaseConnector):
         }
 
         webhook_config = self._find_registration(url)
-        retry_count = webhook_config.get("retry_count", self._config.retry_count) if webhook_config else self._config.retry_count
-        retry_delay = webhook_config.get("retry_delay", self._config.retry_delay_seconds) if webhook_config else self._config.retry_delay_seconds
+        retry_count = (
+            webhook_config.get("retry_count", self._config.retry_count)
+            if webhook_config
+            else self._config.retry_count
+        )
+        retry_delay = (
+            webhook_config.get("retry_delay", self._config.retry_delay_seconds)
+            if webhook_config
+            else self._config.retry_delay_seconds
+        )
         secret = webhook_config.get("secret", "") if webhook_config else ""
 
         start = time.monotonic()
         for attempt in range(retry_count + 1):
             try:
-                body = json.dumps({"event": event, "payload": payload, "timestamp": time.time()}).encode()
+                body = json.dumps(
+                    {"event": event, "payload": payload, "timestamp": time.time()},
+                ).encode()
                 headers = {"Content-Type": "application/json"}
 
                 sig = webhook_config.get("headers", {}).copy() if webhook_config else {}
@@ -171,7 +191,7 @@ class WebhookConnector(BaseConnector):
                 delivery["error"] = str(exc)
 
             if attempt < retry_count:
-                await asyncio.sleep(retry_delay * (2 ** attempt))
+                await asyncio.sleep(retry_delay * (2**attempt))
 
         if not delivery["duration_ms"]:
             delivery["duration_ms"] = int((time.monotonic() - start) * 1000)

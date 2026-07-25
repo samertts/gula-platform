@@ -97,7 +97,9 @@ class WorkforceGovernanceService:
         return license
 
     def verify_license(self, license_id: int, verified_by: str) -> ProfessionalLicense | None:
-        lic = self.db.query(ProfessionalLicense).filter(ProfessionalLicense.id == license_id).first()
+        lic = (
+            self.db.query(ProfessionalLicense).filter(ProfessionalLicense.id == license_id).first()
+        )
         if lic:
             lic.verified_at = datetime.now(UTC)
             lic.verified_by = verified_by
@@ -277,11 +279,18 @@ class WorkforceGovernanceService:
         period_start: date,
         period_end: date,
     ) -> None:
-        q = self.db.query(ProductivityRecord).filter(
-            ProductivityRecord.period == period,
-            ProductivityRecord.period_start == period_start,
-            ProductivityRecord.period_end == period_end,
-        ).order_by(ProductivityRecord.quality_score.desc().nullslast(), ProductivityRecord.tests_performed.desc())
+        q = (
+            self.db.query(ProductivityRecord)
+            .filter(
+                ProductivityRecord.period == period,
+                ProductivityRecord.period_start == period_start,
+                ProductivityRecord.period_end == period_end,
+            )
+            .order_by(
+                ProductivityRecord.quality_score.desc().nullslast(),
+                ProductivityRecord.tests_performed.desc(),
+            )
+        )
 
         ranked = q.all()
         for i, r in enumerate(ranked, 1):
@@ -302,18 +311,22 @@ class WorkforceGovernanceService:
             record.lab_rank = other_lab + 1
 
     def get_productivity(
-        self, worker_id: int, period: ProductivityPeriod | None = None, limit: int = 12,
+        self,
+        worker_id: int,
+        period: ProductivityPeriod | None = None,
+        limit: int = 12,
     ) -> list[ProductivityRecord]:
-        q = (
-            self.db.query(ProductivityRecord)
-            .filter(ProductivityRecord.worker_id == worker_id)
-        )
+        q = self.db.query(ProductivityRecord).filter(ProductivityRecord.worker_id == worker_id)
         if period:
             q = q.filter(ProductivityRecord.period == period)
         return q.order_by(ProductivityRecord.period_start.desc()).limit(limit).all()
 
     def get_national_ranking(
-        self, period: ProductivityPeriod, period_start: date, period_end: date, limit: int = 100,
+        self,
+        period: ProductivityPeriod,
+        period_start: date,
+        period_end: date,
+        limit: int = 100,
     ) -> list[ProductivityRecord]:
         return (
             self.db.query(ProductivityRecord)
@@ -331,13 +344,22 @@ class WorkforceGovernanceService:
         worker = self.get_worker(worker_id)
         if not worker:
             return {}
-        licenses = self.db.query(ProfessionalLicense).filter(
-            ProfessionalLicense.worker_id == worker_id,
-            ProfessionalLicense.status == LicenseStatus.ACTIVE,
-        ).count()
-        trainings = self.db.query(TrainingRecord).filter(
-            TrainingRecord.worker_id == worker_id, TrainingRecord.completed.is_(True),
-        ).count()
+        licenses = (
+            self.db.query(ProfessionalLicense)
+            .filter(
+                ProfessionalLicense.worker_id == worker_id,
+                ProfessionalLicense.status == LicenseStatus.ACTIVE,
+            )
+            .count()
+        )
+        trainings = (
+            self.db.query(TrainingRecord)
+            .filter(
+                TrainingRecord.worker_id == worker_id,
+                TrainingRecord.completed.is_(True),
+            )
+            .count()
+        )
         latest_productivity = (
             self.db.query(ProductivityRecord)
             .filter(ProductivityRecord.worker_id == worker_id)
@@ -351,6 +373,10 @@ class WorkforceGovernanceService:
             "profession": worker.profession,
             "active_licenses": licenses,
             "completed_trainings": trainings,
-            "latest_quality_score": latest_productivity.quality_score if latest_productivity else None,
-            "latest_national_rank": latest_productivity.national_rank if latest_productivity else None,
+            "latest_quality_score": latest_productivity.quality_score
+            if latest_productivity
+            else None,
+            "latest_national_rank": latest_productivity.national_rank
+            if latest_productivity
+            else None,
         }

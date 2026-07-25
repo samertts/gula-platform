@@ -78,7 +78,9 @@ class MultiTenantController:
             td = TenantDescriptor(id=tenant_id, name=name, slug=name.lower().replace(" ", "-"))
             tr.register(td)
 
-        logger.info("Tenant registered: %s (%s) under %s", tenant_id, level.value, parent_id or "root")
+        logger.info(
+            "Tenant registered: %s (%s) under %s", tenant_id, level.value, parent_id or "root",
+        )
         return node
 
     def get_tenant(self, tenant_id: str) -> TenantNode | None:
@@ -115,7 +117,9 @@ class MultiTenantController:
         for child_id in node.children:
             child_node = self._nodes.get(child_id)
             if child_node:
-                result.append({"id": child_node.id, "name": child_node.name, "level": child_node.level.value})
+                result.append(
+                    {"id": child_node.id, "name": child_node.name, "level": child_node.level.value},
+                )
         return result
 
     def tenant_isolation_policy(self, tenant_id: str) -> dict[str, Any]:
@@ -135,6 +139,9 @@ class MultiTenantController:
     def summary(self) -> dict[str, Any]:
         return {
             "total": len(self._nodes),
-            "by_level": {level.value: sum(1 for n in self._nodes.values() if n.level == level) for level in TenantLevel},
+            "by_level": {
+                level.value: sum(1 for n in self._nodes.values() if n.level == level)
+                for level in TenantLevel
+            },
             "root_count": sum(1 for n in self._nodes.values() if n.parent_id is None),
         }

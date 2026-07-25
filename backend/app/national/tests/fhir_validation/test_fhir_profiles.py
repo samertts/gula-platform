@@ -12,7 +12,12 @@ class TestFHIRProfiles:
 
     def test_encounter_profile_required_fields(self):
         engine = FHIRValidationEngine()
-        encounter = {"resourceType": "Encounter", "id": "ENC001", "status": "in-progress", "class": {"code": "AMB"}}
+        encounter = {
+            "resourceType": "Encounter",
+            "id": "ENC001",
+            "status": "in-progress",
+            "class": {"code": "AMB"},
+        }
         result = engine.validate(encounter)
         assert result.valid is True
 

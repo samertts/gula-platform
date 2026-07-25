@@ -10,8 +10,10 @@ class Reporting_servicePermission(Enum):
     ADMIN = "reporting_service:report.admin"
 
     def describe(self) -> str:
-        descriptions = {        "reporting_service:report.read": "Report.Read",
-                "reporting_service:report.create": "Report.Create",
-                "reporting_service:report.schedule": "Report.Schedule",
-                "reporting_service:report.admin": "Report.Admin"}
+        descriptions = {
+            "reporting_service:report.read": "Report.Read",
+            "reporting_service:report.create": "Report.Create",
+            "reporting_service:report.schedule": "Report.Schedule",
+            "reporting_service:report.admin": "Report.Admin",
+        }
         return descriptions.get(self, self.value)

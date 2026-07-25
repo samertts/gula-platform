@@ -28,12 +28,10 @@ class ConnectorAdapter(ABC):
         self.mode = mode
 
     @abstractmethod
-    def lookup(self, query: dict[str, Any]) -> ConnectorResponse:
-        ...
+    def lookup(self, query: dict[str, Any]) -> ConnectorResponse: ...
 
     @abstractmethod
-    def verify(self, identity: dict[str, Any]) -> ConnectorResponse:
-        ...
+    def verify(self, identity: dict[str, Any]) -> ConnectorResponse: ...
 
 
 class StubNationalIDAdapter(ConnectorAdapter):
@@ -333,6 +331,8 @@ class CitizenRegistryConnectorService:
         return adapter.verify(identity)
 
     def register_adapter(
-        self, connector_type: ConnectorType, adapter: ConnectorAdapter,
+        self,
+        connector_type: ConnectorType,
+        adapter: ConnectorAdapter,
     ) -> None:
         self._adapters[connector_type] = adapter

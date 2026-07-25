@@ -24,6 +24,7 @@ True multi-thread races against PG locks require integration tests; the
 SQLite path is sufficient to catch logic regressions in the CAS pattern
 (``UPDATE ... WHERE`` returning rows_updated).
 """
+
 from __future__ import annotations
 
 import os
@@ -58,24 +59,36 @@ def lab_with_completed_order(db):
     """Set up a lab with an order in 'completed' state with one result, ready
     to be validated. The order has no locked_at, so two validators racing
     should both initially see it as unlocked."""
-    lab = Lab(name="Concurrency Lab", license_number="LIC-CON",
-              lab_type="private", city="Baghdad", is_active=True)
+    lab = Lab(
+        name="Concurrency Lab",
+        license_number="LIC-CON",
+        lab_type="private",
+        city="Baghdad",
+        is_active=True,
+    )
     db.add(lab)
     db.flush()
 
     admin1 = LabUser(
-        lab_id=lab.id, name="Admin1", email="a1@con.com",
-        password_hash=hash_password("Pa55word"), role="admin", is_active=True,
+        lab_id=lab.id,
+        name="Admin1",
+        email="a1@con.com",
+        password_hash=hash_password("Pa55word"),
+        role="admin",
+        is_active=True,
     )
     admin2 = LabUser(
-        lab_id=lab.id, name="Admin2", email="a2@con.com",
-        password_hash=hash_password("Pa55word"), role="admin", is_active=True,
+        lab_id=lab.id,
+        name="Admin2",
+        email="a2@con.com",
+        password_hash=hash_password("Pa55word"),
+        role="admin",
+        is_active=True,
     )
     db.add_all([admin1, admin2])
     db.flush()
 
-    patient = Patient(lab_id=lab.id, full_name="P", phone="07700123123",
-                      health_id="HID-CON-001")
+    patient = Patient(lab_id=lab.id, full_name="P", phone="07700123123", health_id="HID-CON-001")
     db.add(patient)
     db.flush()
 
@@ -84,13 +97,20 @@ def lab_with_completed_order(db):
     db.add(order)
     db.flush()
 
-    result = LabResult(order_id=order.id, test_name="Glucose", value=95.0,
-                       unit="mg/dL", flag="normal")
+    result = LabResult(
+        order_id=order.id, test_name="Glucose", value=95.0, unit="mg/dL", flag="normal"
+    )
     db.add(result)
     db.commit()
 
-    return {"lab": lab, "admin1": admin1, "admin2": admin2,
-            "patient": patient, "order": order, "result": result}
+    return {
+        "lab": lab,
+        "admin1": admin1,
+        "admin2": admin2,
+        "patient": patient,
+        "order": order,
+        "result": result,
+    }
 
 
 # ─── Phase 3.A — Order validation compare-and-swap ───────────────────────────
@@ -193,8 +213,9 @@ class TestLockedOrderImmutability:
         order = lab_with_completed_order["order"]
 
         # Attach a sample BEFORE locking so we have something to mutate
-        sample = Sample(order_id=order.id, sample_type="blood",
-                        barcode="BC-LOCK-001", status="collected")
+        sample = Sample(
+            order_id=order.id, sample_type="blood", barcode="BC-LOCK-001", status="collected"
+        )
         db.add(sample)
         db.commit()
 
@@ -223,14 +244,17 @@ class TestStateMachineRegressions:
 
     def test_pending_can_transition_to_completed(self):
         from app.domain.order_state import can_transition
+
         assert can_transition("pending", "completed") is True
 
     def test_completed_can_transition_to_validated(self):
         from app.domain.order_state import can_transition
+
         assert can_transition("completed", "validated") is True
 
     def test_validated_is_terminal(self):
         from app.domain.order_state import can_transition
+
         for target in ("pending", "completed", "cancelled"):
             assert can_transition("validated", target) is False, (
                 f"validated must be terminal; transition to {target} should be denied"
@@ -238,6 +262,7 @@ class TestStateMachineRegressions:
 
     def test_cancelled_is_terminal(self):
         from app.domain.order_state import can_transition
+
         for target in ("pending", "completed", "validated"):
             assert can_transition("cancelled", target) is False
 
@@ -245,6 +270,7 @@ class TestStateMachineRegressions:
         """Skipping completed → validated for a still-pending order is
         a privilege escalation if allowed."""
         from app.domain.order_state import can_transition
+
         assert can_transition("pending", "validated") is False
 
 
@@ -283,12 +309,10 @@ class TestLabResultOptimisticLockInvariant:
 
     def test_new_result_starts_at_version_one(self, db):
         """Newly created results start at version=1, ready for CAS."""
-        lab = Lab(name="V Lab", license_number="LIC-V",
-                  lab_type="private", city="Baghdad")
+        lab = Lab(name="V Lab", license_number="LIC-V", lab_type="private", city="Baghdad")
         db.add(lab)
         db.flush()
-        patient = Patient(lab_id=lab.id, full_name="P", phone="07700111111",
-                          health_id="HID-V-1")
+        patient = Patient(lab_id=lab.id, full_name="P", phone="07700111111", health_id="HID-V-1")
         db.add(patient)
         db.flush()
         order = LabOrder(lab_id=lab.id, patient_id=patient.id, status="pending")
@@ -310,6 +334,7 @@ class TestAuditHistoryConcurrency:
 
     def test_two_distinct_mutations_produce_two_audits(self, client, db, lab_with_completed_order):
         from app.models.audit_log import AuditLog
+
         admin = lab_with_completed_order["admin1"]
         patient = lab_with_completed_order["patient"]
 
@@ -332,6 +357,7 @@ class TestAuditHistoryConcurrency:
         audit log records facts, not failed attempts. (If this changes,
         update both the test and the security report's ledger semantics.)"""
         from app.models.audit_log import AuditLog
+
         admin1 = lab_with_completed_order["admin1"]
         admin2 = lab_with_completed_order["admin2"]
         order = lab_with_completed_order["order"]

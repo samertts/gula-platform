@@ -114,7 +114,9 @@ def _apply_lab_filter(query, model, lab_id: int | None):
 
 
 def create_primary_care_encounter(
-    db: Session, data: dict, lab_id: int | None = None,
+    db: Session,
+    data: dict,
+    lab_id: int | None = None,
 ) -> dict:
     enc = PrimaryCareEncounter(**data)
     db.add(enc)
@@ -124,16 +126,25 @@ def create_primary_care_encounter(
 
 
 def get_primary_care_encounter(db: Session, encounter_id: str) -> dict | None:
-    enc = db.query(PrimaryCareEncounter).filter(
-        PrimaryCareEncounter.id == encounter_id, PrimaryCareEncounter.is_deleted.is_(False),
-    ).first()
+    enc = (
+        db.query(PrimaryCareEncounter)
+        .filter(
+            PrimaryCareEncounter.id == encounter_id,
+            PrimaryCareEncounter.is_deleted.is_(False),
+        )
+        .first()
+    )
     return enc.to_dict() if enc else None
 
 
 def list_primary_care_encounters(
-    db: Session, patient_id: str | None = None, facility_id: str | None = None,
-    practitioner_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    facility_id: str | None = None,
+    practitioner_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(PrimaryCareEncounter).filter(PrimaryCareEncounter.is_deleted.is_(False))
     if patient_id:
@@ -155,8 +166,11 @@ def create_family_medicine_record(db: Session, data: dict) -> dict:
 
 
 def list_family_medicine_records(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(FamilyMedicineRecord).filter(FamilyMedicineRecord.is_deleted.is_(False))
     if patient_id:
@@ -174,8 +188,11 @@ def create_community_clinic_record(db: Session, data: dict) -> dict:
 
 
 def list_community_clinic_records(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(CommunityClinicRecord).filter(CommunityClinicRecord.is_deleted.is_(False))
     if patient_id:
@@ -193,8 +210,11 @@ def create_health_assessment(db: Session, data: dict) -> dict:
 
 
 def list_health_assessments(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(HealthAssessment).filter(HealthAssessment.is_deleted.is_(False))
     if patient_id:
@@ -212,8 +232,11 @@ def create_preventive_care_record(db: Session, data: dict) -> dict:
 
 
 def list_preventive_care_records(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(PreventiveCareRecord).filter(PreventiveCareRecord.is_deleted.is_(False))
     if patient_id:
@@ -296,6 +319,7 @@ def list_referrals(
         q = q.filter(ReferralRequest.status == ReferralStatus(status))
     if direction:
         from app.care_continuum.enums import ReferralDirection
+
         q = q.filter(ReferralRequest.direction == ReferralDirection(direction))
     q = _apply_lab_filter(q, ReferralRequest, lab_id)
     return _paginated_query(q, skip, limit)
@@ -315,7 +339,11 @@ def get_referral_timeline(db: Session, referral_id: str) -> list[dict]:
 
 
 def _add_referral_timeline(
-    db: Session, referral_id: str, event_type: str, description: str, **extra,
+    db: Session,
+    referral_id: str,
+    event_type: str,
+    description: str,
+    **extra,
 ) -> ReferralTimeline:
     entry = ReferralTimeline(
         referral_request_id=referral_id,
@@ -343,9 +371,13 @@ def create_referral_response(db: Session, data: dict) -> dict:
     db.commit()
     db.refresh(resp)
 
-    ref = db.query(ReferralRequest).filter(
-        ReferralRequest.id == resp.referral_request_id,
-    ).first()
+    ref = (
+        db.query(ReferralRequest)
+        .filter(
+            ReferralRequest.id == resp.referral_request_id,
+        )
+        .first()
+    )
     if ref and resp.decision == "accepted":
         ref.status = ReferralStatus.ACCEPTED
         ref.accepted_at = _now()
@@ -427,15 +459,23 @@ def create_care_journey(db: Session, data: dict) -> dict:
 
 
 def get_care_journey(db: Session, journey_id: str) -> dict | None:
-    cj = db.query(CareJourney).filter(
-        CareJourney.id == journey_id, CareJourney.is_deleted.is_(False),
-    ).first()
+    cj = (
+        db.query(CareJourney)
+        .filter(
+            CareJourney.id == journey_id,
+            CareJourney.is_deleted.is_(False),
+        )
+        .first()
+    )
     return cj.to_dict() if cj else None
 
 
 def list_care_journeys(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(CareJourney).filter(CareJourney.is_deleted.is_(False))
     if patient_id:
@@ -453,8 +493,11 @@ def create_follow_up_plan(db: Session, data: dict) -> dict:
 
 
 def list_follow_up_plans(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(FollowUpPlan).filter(FollowUpPlan.is_deleted.is_(False))
     if patient_id:
@@ -472,8 +515,11 @@ def create_care_coordination(db: Session, data: dict) -> dict:
 
 
 def list_care_coordination(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(CareCoordination).filter(CareCoordination.is_deleted.is_(False))
     if patient_id:
@@ -507,8 +553,11 @@ def create_home_care_plan(db: Session, data: dict) -> dict:
 
 
 def list_home_care_plans(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(HomeCarePlan).filter(HomeCarePlan.is_deleted.is_(False))
     if patient_id:
@@ -526,8 +575,11 @@ def create_community_care_record(db: Session, data: dict) -> dict:
 
 
 def list_community_care_records(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(CommunityCareRecord).filter(CommunityCareRecord.is_deleted.is_(False))
     if patient_id:
@@ -590,8 +642,11 @@ def create_disease_management_plan(db: Session, data: dict) -> dict:
 
 
 def list_disease_management_plans(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(DiseaseManagementPlan).filter(DiseaseManagementPlan.is_deleted.is_(False))
     if patient_id:
@@ -609,8 +664,11 @@ def create_risk_stratification(db: Session, data: dict) -> dict:
 
 
 def list_risk_stratifications(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(RiskStratification).filter(RiskStratification.is_deleted.is_(False))
     if patient_id:
@@ -641,15 +699,23 @@ def create_pregnancy_record(db: Session, data: dict) -> dict:
 
 
 def get_pregnancy_record(db: Session, pregnancy_id: str) -> dict | None:
-    pr = db.query(PregnancyRecord).filter(
-        PregnancyRecord.id == pregnancy_id, PregnancyRecord.is_deleted.is_(False),
-    ).first()
+    pr = (
+        db.query(PregnancyRecord)
+        .filter(
+            PregnancyRecord.id == pregnancy_id,
+            PregnancyRecord.is_deleted.is_(False),
+        )
+        .first()
+    )
     return pr.to_dict() if pr else None
 
 
 def list_pregnancy_records(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(PregnancyRecord).filter(PregnancyRecord.is_deleted.is_(False))
     if patient_id:
@@ -663,9 +729,13 @@ def create_antenatal_care_visit(db: Session, data: dict) -> dict:
     db.add(anc)
     db.commit()
 
-    pregnancy = db.query(PregnancyRecord).filter(
-        PregnancyRecord.id == anc.pregnancy_id,
-    ).first()
+    pregnancy = (
+        db.query(PregnancyRecord)
+        .filter(
+            PregnancyRecord.id == anc.pregnancy_id,
+        )
+        .first()
+    )
     if pregnancy:
         pregnancy.anc_visits_completed = (pregnancy.anc_visits_completed or 0) + 1
         db.commit()
@@ -679,9 +749,13 @@ def create_delivery_record(db: Session, data: dict) -> dict:
     db.add(dr)
     db.commit()
 
-    pregnancy = db.query(PregnancyRecord).filter(
-        PregnancyRecord.id == dr.pregnancy_id,
-    ).first()
+    pregnancy = (
+        db.query(PregnancyRecord)
+        .filter(
+            PregnancyRecord.id == dr.pregnancy_id,
+        )
+        .first()
+    )
     if pregnancy:
         pregnancy.status = PregnancyStatus.POSTPARTUM
         pregnancy.delivery_date = dr.delivery_date
@@ -735,17 +809,29 @@ def create_vaccination_record(db: Session, data: dict) -> dict:
     db.commit()
     db.refresh(vr)
 
-    schedule = db.query(ImmunizationSchedule).filter(
-        ImmunizationSchedule.id == vr.schedule_id,
-    ).first() if vr.schedule_id else None
+    schedule = (
+        db.query(ImmunizationSchedule)
+        .filter(
+            ImmunizationSchedule.id == vr.schedule_id,
+        )
+        .first()
+        if vr.schedule_id
+        else None
+    )
     if schedule:
         schedule.status = VaccinationStatus.GIVEN
         schedule.administered_at = vr.administration_date
         db.commit()
 
-    inventory = db.query(VaccineInventory).filter(
-        VaccineInventory.id == vr.vaccine_stock_id,
-    ).first() if vr.vaccine_stock_id else None
+    inventory = (
+        db.query(VaccineInventory)
+        .filter(
+            VaccineInventory.id == vr.vaccine_stock_id,
+        )
+        .first()
+        if vr.vaccine_stock_id
+        else None
+    )
     if inventory:
         inventory.quantity_available = max(0, (inventory.quantity_available or 0) - 1)
         inventory.quantity_administered = (inventory.quantity_administered or 0) + 1
@@ -755,8 +841,11 @@ def create_vaccination_record(db: Session, data: dict) -> dict:
 
 
 def list_vaccination_records(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(VaccinationRecord).filter(VaccinationRecord.is_deleted.is_(False))
     if patient_id:
@@ -774,8 +863,11 @@ def create_immunization_schedule(db: Session, data: dict) -> dict:
 
 
 def list_immunization_schedules(
-    db: Session, patient_id: str | None = None, lab_id: int | None = None,
-    skip: int = 0, limit: int = 50,
+    db: Session,
+    patient_id: str | None = None,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(ImmunizationSchedule).filter(ImmunizationSchedule.is_deleted.is_(False))
     if patient_id:
@@ -816,9 +908,8 @@ def get_immunization_coverage(db: Session, lab_id: int | None = None) -> dict:
         code = vr.vaccine_code or "unknown"
         by_vaccine[code] = by_vaccine.get(code, 0) + 1
 
-    unique_patients = (
-        db.query(func.count(func.distinct(VaccinationRecord.patient_id)))
-        .filter(VaccinationRecord.is_deleted.is_(False))
+    unique_patients = db.query(func.count(func.distinct(VaccinationRecord.patient_id))).filter(
+        VaccinationRecord.is_deleted.is_(False)
     )
     q_pat = _apply_lab_filter(unique_patients, VaccinationRecord, lab_id)
     patients_vaccinated = q_pat.scalar() or 0
@@ -852,7 +943,10 @@ def create_health_program(db: Session, data: dict) -> dict:
 
 
 def list_health_programs(
-    db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 50,
+    db: Session,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(HealthProgram).filter(HealthProgram.is_deleted.is_(False))
     q = _apply_lab_filter(q, HealthProgram, lab_id)
@@ -876,7 +970,10 @@ def create_screening_campaign(db: Session, data: dict) -> dict:
 
 
 def list_screening_campaigns(
-    db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 50,
+    db: Session,
+    lab_id: int | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     q = db.query(ScreeningCampaign).filter(ScreeningCampaign.is_deleted.is_(False))
     q = _apply_lab_filter(q, ScreeningCampaign, lab_id)
@@ -972,76 +1069,108 @@ def create_educational_material_assignment(db: Session, data: dict) -> dict:
 def detect_care_gaps(db: Session, patient_id: str, lab_id: int | None = None) -> dict:
     gaps = []
 
-    overdue_follow_ups = db.query(FollowUpPlan).filter(
-        FollowUpPlan.patient_id == patient_id,
-        FollowUpPlan.is_deleted.is_(False),
-        FollowUpPlan.status == FollowUpStatus.SCHEDULED,
-        FollowUpPlan.follow_up_date < _now(),
-    ).count()
+    overdue_follow_ups = (
+        db.query(FollowUpPlan)
+        .filter(
+            FollowUpPlan.patient_id == patient_id,
+            FollowUpPlan.is_deleted.is_(False),
+            FollowUpPlan.status == FollowUpStatus.SCHEDULED,
+            FollowUpPlan.follow_up_date < _now(),
+        )
+        .count()
+    )
     if overdue_follow_ups > 0:
-        gaps.append({
-            "type": "overdue_follow_up",
-            "severity": "moderate",
-            "count": overdue_follow_ups,
-            "description": f"{overdue_follow_ups} follow-up plan(s) past due date",
-        })
+        gaps.append(
+            {
+                "type": "overdue_follow_up",
+                "severity": "moderate",
+                "count": overdue_follow_ups,
+                "description": f"{overdue_follow_ups} follow-up plan(s) past due date",
+            }
+        )
 
-    missed_vaccinations = db.query(ImmunizationSchedule).filter(
-        ImmunizationSchedule.patient_id == patient_id,
-        ImmunizationSchedule.is_deleted.is_(False),
-        ImmunizationSchedule.due_date < _today(),
-        ImmunizationSchedule.status.in_([VaccinationStatus.SCHEDULED, VaccinationStatus.OVERDUE]),
-    ).count()
+    missed_vaccinations = (
+        db.query(ImmunizationSchedule)
+        .filter(
+            ImmunizationSchedule.patient_id == patient_id,
+            ImmunizationSchedule.is_deleted.is_(False),
+            ImmunizationSchedule.due_date < _today(),
+            ImmunizationSchedule.status.in_(
+                [VaccinationStatus.SCHEDULED, VaccinationStatus.OVERDUE]
+            ),
+        )
+        .count()
+    )
     if missed_vaccinations > 0:
-        gaps.append({
-            "type": "missed_vaccination",
-            "severity": "high",
-            "count": missed_vaccinations,
-            "description": f"{missed_vaccinations} vaccination(s) overdue",
-        })
+        gaps.append(
+            {
+                "type": "missed_vaccination",
+                "severity": "high",
+                "count": missed_vaccinations,
+                "description": f"{missed_vaccinations} vaccination(s) overdue",
+            }
+        )
 
-    uncontrolled_chronic = db.query(ChronicDiseaseRegistry).filter(
-        ChronicDiseaseRegistry.patient_id == patient_id,
-        ChronicDiseaseRegistry.is_deleted.is_(False),
-        ChronicDiseaseRegistry.is_controlled.is_(False),
-        ChronicDiseaseRegistry.status == CareProgramStatus.ACTIVE,
-    ).count()
+    uncontrolled_chronic = (
+        db.query(ChronicDiseaseRegistry)
+        .filter(
+            ChronicDiseaseRegistry.patient_id == patient_id,
+            ChronicDiseaseRegistry.is_deleted.is_(False),
+            ChronicDiseaseRegistry.is_controlled.is_(False),
+            ChronicDiseaseRegistry.status == CareProgramStatus.ACTIVE,
+        )
+        .count()
+    )
     if uncontrolled_chronic > 0:
-        gaps.append({
-            "type": "uncontrolled_chronic_disease",
-            "severity": "high",
-            "count": uncontrolled_chronic,
-            "description": f"{uncontrolled_chronic} uncontrolled chronic condition(s) requiring review",
-        })
+        gaps.append(
+            {
+                "type": "uncontrolled_chronic_disease",
+                "severity": "high",
+                "count": uncontrolled_chronic,
+                "description": f"{uncontrolled_chronic} uncontrolled chronic condition(s) requiring review",
+            }
+        )
 
-    overdue_anc = db.query(PregnancyRecord).filter(
-        PregnancyRecord.patient_id == patient_id,
-        PregnancyRecord.is_deleted.is_(False),
-        PregnancyRecord.status.notin_([PregnancyStatus.POSTPARTUM]),
-        PregnancyRecord.anc_visits_completed < PregnancyRecord.anc_visits_required,
-    ).count()
+    overdue_anc = (
+        db.query(PregnancyRecord)
+        .filter(
+            PregnancyRecord.patient_id == patient_id,
+            PregnancyRecord.is_deleted.is_(False),
+            PregnancyRecord.status.notin_([PregnancyStatus.POSTPARTUM]),
+            PregnancyRecord.anc_visits_completed < PregnancyRecord.anc_visits_required,
+        )
+        .count()
+    )
     if overdue_anc > 0:
-        gaps.append({
-            "type": "incomplete_anc_visits",
-            "severity": "high",
-            "count": overdue_anc,
-            "description": "Antenatal care visits incomplete",
-        })
+        gaps.append(
+            {
+                "type": "incomplete_anc_visits",
+                "severity": "high",
+                "count": overdue_anc,
+                "description": "Antenatal care visits incomplete",
+            }
+        )
 
-    overdue_tasks = db.query(PatientTask).filter(
-        PatientTask.patient_id == patient_id,
-        PatientTask.is_deleted.is_(False),
-        PatientTask.status == FollowUpStatus.SCHEDULED,
-        PatientTask.due_date.isnot(None),
-        PatientTask.due_date < _now(),
-    ).count()
+    overdue_tasks = (
+        db.query(PatientTask)
+        .filter(
+            PatientTask.patient_id == patient_id,
+            PatientTask.is_deleted.is_(False),
+            PatientTask.status == FollowUpStatus.SCHEDULED,
+            PatientTask.due_date.isnot(None),
+            PatientTask.due_date < _now(),
+        )
+        .count()
+    )
     if overdue_tasks > 0:
-        gaps.append({
-            "type": "overdue_patient_tasks",
-            "severity": "moderate",
-            "count": overdue_tasks,
-            "description": f"{overdue_tasks} patient task(s) past due",
-        })
+        gaps.append(
+            {
+                "type": "overdue_patient_tasks",
+                "severity": "moderate",
+                "count": overdue_tasks,
+                "description": f"{overdue_tasks} patient task(s) past due",
+            }
+        )
 
     return {
         "patient_id": patient_id,
@@ -1056,7 +1185,8 @@ def detect_care_gaps(db: Session, patient_id: str, lab_id: int | None = None) ->
 
 
 def coordinate_ehr_immunization(
-    db: Session, ehr_immunization_record: Any,
+    db: Session,
+    ehr_immunization_record: Any,
 ) -> dict:
     """Create a care-continuum VaccinationRecord from an EHR ImmunizationRecord."""
     data = {
@@ -1064,7 +1194,8 @@ def coordinate_ehr_immunization(
         "citizen_id": ehr_immunization_record.citizen_id,
         "encounter_id": ehr_immunization_record.encounter_id,
         "facility_id": ehr_immunization_record.facility_id,
-        "administered_by": ehr_immunization_record.administrator_id or ehr_immunization_record.practitioner_id,
+        "administered_by": ehr_immunization_record.administrator_id
+        or ehr_immunization_record.practitioner_id,
         "vaccine_name": ehr_immunization_record.vaccine_name,
         "vaccine_code": ehr_immunization_record.vaccine_code,
         "dose_number": ehr_immunization_record.dose_number,

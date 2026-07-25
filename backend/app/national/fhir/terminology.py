@@ -19,7 +19,16 @@ COMMON_VALUE_SETS: dict[str, ValueSet] = {
     "encounter-status": ValueSet(
         url="http://hl7.org/fhir/ValueSet/encounter-status",
         name="EncounterStatus",
-        codes=[{"code": "planned"}, {"code": "in-progress"}, {"code": "onhold"}, {"code": "discharged"}, {"code": "completed"}, {"code": "cancelled"}, {"code": "entered-in-error"}, {"code": "unknown"}],
+        codes=[
+            {"code": "planned"},
+            {"code": "in-progress"},
+            {"code": "onhold"},
+            {"code": "discharged"},
+            {"code": "completed"},
+            {"code": "cancelled"},
+            {"code": "entered-in-error"},
+            {"code": "unknown"},
+        ],
     ),
 }
 

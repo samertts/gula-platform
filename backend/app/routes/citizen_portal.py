@@ -224,7 +224,11 @@ def citizen_login(
 
     cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": IS_PRODUCTION}
     response.set_cookie(
-        "access_token", access_token, max_age=JWT_EXPIRE_MINUTES * 60, path="/", **cookie_kwargs,
+        "access_token",
+        access_token,
+        max_age=JWT_EXPIRE_MINUTES * 60,
+        path="/",
+        **cookie_kwargs,
     )
     response.set_cookie(
         "refresh_token",

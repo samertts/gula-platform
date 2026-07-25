@@ -79,7 +79,9 @@ class CapacityIntelligence(Base):
     trend = Column(String(20), nullable=True)
     forecast = Column(JSON, default=dict)
     recommendation = Column(Text, nullable=True)
-    generated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    generated_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC),
+    )
 
 
 class AIRecommendation(Base):
@@ -94,10 +96,14 @@ class AIRecommendation(Base):
     risk_assessment = Column(JSON, default=dict)
     status = Column(String(20), nullable=False, default="pending", index=True)
     created_by = Column(
-        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True,
+        Integer,
+        ForeignKey("lab_users.id", ondelete="SET NULL"),
+        nullable=True,
     )
     reviewed_by = Column(
-        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True,
+        Integer,
+        ForeignKey("lab_users.id", ondelete="SET NULL"),
+        nullable=True,
     )
     implemented_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

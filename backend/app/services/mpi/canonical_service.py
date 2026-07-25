@@ -103,6 +103,7 @@ def merge_canonicals(
     """
     if target_id == source_id:
         from app.domain.exceptions import ConflictError, NotFoundError
+
         raise ConflictError("cannot merge a canonical into itself")
 
     target = db.query(CanonicalPatient).filter(CanonicalPatient.id == target_id).first()
@@ -135,11 +136,7 @@ def merge_canonicals(
 
 def get_canonical_by_patient(db: Session, patient_id: int) -> CanonicalPatient | None:
     """Return the canonical record linked to the given patient ID."""
-    link = (
-        db.query(PatientLink)
-        .filter(PatientLink.patient_id == patient_id)
-        .first()
-    )
+    link = db.query(PatientLink).filter(PatientLink.patient_id == patient_id).first()
     if link is None:
         return None
     return db.query(CanonicalPatient).filter(CanonicalPatient.id == link.canonical_id).first()
@@ -147,11 +144,7 @@ def get_canonical_by_patient(db: Session, patient_id: int) -> CanonicalPatient |
 
 def get_canonical_by_citizen(db: Session, citizen_id: int) -> CanonicalPatient | None:
     """Return the canonical record linked to the given citizen ID."""
-    link = (
-        db.query(CitizenLink)
-        .filter(CitizenLink.citizen_id == citizen_id)
-        .first()
-    )
+    link = db.query(CitizenLink).filter(CitizenLink.citizen_id == citizen_id).first()
     if link is None:
         return None
     return db.query(CanonicalPatient).filter(CanonicalPatient.id == link.canonical_id).first()

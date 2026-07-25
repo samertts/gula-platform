@@ -120,6 +120,7 @@ class ServiceManager:
             return {"service": name, "status": "not_found"}
         try:
             import httpx
+
             url = f"{svc.protocol}://{svc.host}:{svc.port}{svc.health_path}"
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(url)

@@ -46,8 +46,15 @@ def upgrade() -> None:
         op.create_table(
             "nursing_shifts",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("nurse_id", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "nurse_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("shift_type", sa.String(30), nullable=False),
             sa.Column("shift_date", sa.Date(), nullable=False),
             sa.Column("start_time", sa.Time(), nullable=False),
@@ -73,17 +80,36 @@ def upgrade() -> None:
         op.create_index("ix_nursing_shifts_lab_id", "nursing_shifts", ["lab_id"])
         op.create_index("ix_nursing_shifts_nurse_id", "nursing_shifts", ["nurse_id"])
         op.create_index("ix_nursing_shifts_date", "nursing_shifts", ["shift_date"])
-        op.create_index("ix_nursing_shifts_lab_date", "nursing_shifts", ["lab_id", "shift_date", "shift_type"])
+        op.create_index(
+            "ix_nursing_shifts_lab_date", "nursing_shifts", ["lab_id", "shift_date", "shift_type"]
+        )
 
     # ── Patient Assignments ───────────────────────────────────────────────────
     if not _table_exists("nursing_patient_assignments"):
         op.create_table(
             "nursing_patient_assignments",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("nurse_id", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("shift_id", sa.Integer(), sa.ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "nurse_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "shift_id",
+                sa.Integer(),
+                sa.ForeignKey("nursing_shifts.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("assignment_type", sa.String(30), default="primary"),
             sa.Column("ward", sa.String(100), nullable=True),
             sa.Column("bed_number", sa.String(20), nullable=True),
@@ -103,23 +129,57 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
-            sa.UniqueConstraint("nurse_id", "patient_id", "shift_id", name="uq_nursing_patient_assignment"),
+            sa.UniqueConstraint(
+                "nurse_id", "patient_id", "shift_id", name="uq_nursing_patient_assignment"
+            ),
         )
-        op.create_index("ix_nursing_patient_assignments_lab_id", "nursing_patient_assignments", ["lab_id"])
-        op.create_index("ix_nursing_patient_assignments_nurse_id", "nursing_patient_assignments", ["nurse_id"])
-        op.create_index("ix_nursing_patient_assignments_patient_id", "nursing_patient_assignments", ["patient_id"])
-        op.create_index("ix_nursing_patient_assignments_shift_id", "nursing_patient_assignments", ["shift_id"])
+        op.create_index(
+            "ix_nursing_patient_assignments_lab_id", "nursing_patient_assignments", ["lab_id"]
+        )
+        op.create_index(
+            "ix_nursing_patient_assignments_nurse_id", "nursing_patient_assignments", ["nurse_id"]
+        )
+        op.create_index(
+            "ix_nursing_patient_assignments_patient_id",
+            "nursing_patient_assignments",
+            ["patient_id"],
+        )
+        op.create_index(
+            "ix_nursing_patient_assignments_shift_id", "nursing_patient_assignments", ["shift_id"]
+        )
 
     # ── Nursing Tasks ─────────────────────────────────────────────────────────
     if not _table_exists("nursing_tasks"):
         op.create_table(
             "nursing_tasks",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("assigned_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("assigned_to", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("shift_id", sa.Integer(), sa.ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "assigned_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "assigned_to",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "shift_id",
+                sa.Integer(),
+                sa.ForeignKey("nursing_shifts.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("task_type", sa.String(50), nullable=False),
             sa.Column("title", sa.String(300), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -128,10 +188,20 @@ def upgrade() -> None:
             sa.Column("due_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("completed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "completed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("cancelled_reason", sa.Text(), nullable=True),
             sa.Column("requires_witness", sa.Boolean(), default=False),
-            sa.Column("witnessed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "witnessed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("witnessed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("outcome", sa.Text(), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
@@ -151,18 +221,37 @@ def upgrade() -> None:
         op.create_index("ix_nursing_tasks_patient_id", "nursing_tasks", ["patient_id"])
         op.create_index("ix_nursing_tasks_assigned_to", "nursing_tasks", ["assigned_to"])
         op.create_index("ix_nursing_tasks_shift_id", "nursing_tasks", ["shift_id"])
-        op.create_index("ix_nursing_tasks_lab_status", "nursing_tasks", ["lab_id", "status", "due_at"])
+        op.create_index(
+            "ix_nursing_tasks_lab_status", "nursing_tasks", ["lab_id", "status", "due_at"]
+        )
 
     # ── Vital Signs ───────────────────────────────────────────────────────────
     if not _table_exists("nursing_vital_signs"):
         op.create_table(
             "nursing_vital_signs",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("recorded_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "recorded_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("temperature", sa.Float(), nullable=True),
             sa.Column("temperature_unit", sa.String(10), default="celsius"),
             sa.Column("heart_rate", sa.Integer(), nullable=True),
@@ -206,19 +295,42 @@ def upgrade() -> None:
         )
         op.create_index("ix_nursing_vital_signs_lab_id", "nursing_vital_signs", ["lab_id"])
         op.create_index("ix_nursing_vital_signs_patient_id", "nursing_vital_signs", ["patient_id"])
-        op.create_index("ix_nursing_vital_signs_admission_id", "nursing_vital_signs", ["admission_id"])
-        op.create_index("ix_nursing_vital_signs_recorded_at", "nursing_vital_signs", ["patient_id", "recorded_at"])
+        op.create_index(
+            "ix_nursing_vital_signs_admission_id", "nursing_vital_signs", ["admission_id"]
+        )
+        op.create_index(
+            "ix_nursing_vital_signs_recorded_at",
+            "nursing_vital_signs",
+            ["patient_id", "recorded_at"],
+        )
 
     # ── Fluid Balance ─────────────────────────────────────────────────────────
     if not _table_exists("nursing_fluid_balance"):
         op.create_table(
             "nursing_fluid_balance",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("recorded_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "recorded_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("fluid_type", sa.String(50), nullable=False),
             sa.Column("category", sa.String(20), nullable=False),
             sa.Column("route", sa.String(30), nullable=True),
@@ -229,7 +341,12 @@ def upgrade() -> None:
             sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("balance_type", sa.String(20), nullable=False),
             sa.Column("batch_number", sa.String(100), nullable=True),
-            sa.Column("witnessed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "witnessed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
@@ -244,19 +361,42 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nursing_fluid_balance_lab_id", "nursing_fluid_balance", ["lab_id"])
-        op.create_index("ix_nursing_fluid_balance_patient_id", "nursing_fluid_balance", ["patient_id"])
-        op.create_index("ix_nursing_fluid_balance_recorded_at", "nursing_fluid_balance", ["patient_id", "recorded_at"])
+        op.create_index(
+            "ix_nursing_fluid_balance_patient_id", "nursing_fluid_balance", ["patient_id"]
+        )
+        op.create_index(
+            "ix_nursing_fluid_balance_recorded_at",
+            "nursing_fluid_balance",
+            ["patient_id", "recorded_at"],
+        )
 
     # ── Pain Assessments ──────────────────────────────────────────────────────
     if not _table_exists("nursing_pain_assessments"):
         op.create_table(
             "nursing_pain_assessments",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("assessed_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("assessed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "assessed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("pain_score", sa.Integer(), nullable=False),
             sa.Column("pain_scale", sa.String(30), default="numeric"),
             sa.Column("pain_location", sa.String(200), nullable=True),
@@ -283,20 +423,45 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_nursing_pain_assessments_lab_id", "nursing_pain_assessments", ["lab_id"])
-        op.create_index("ix_nursing_pain_assessments_patient_id", "nursing_pain_assessments", ["patient_id"])
-        op.create_index("ix_nursing_pain_assessments_assessed_at", "nursing_pain_assessments", ["patient_id", "assessed_at"])
+        op.create_index(
+            "ix_nursing_pain_assessments_lab_id", "nursing_pain_assessments", ["lab_id"]
+        )
+        op.create_index(
+            "ix_nursing_pain_assessments_patient_id", "nursing_pain_assessments", ["patient_id"]
+        )
+        op.create_index(
+            "ix_nursing_pain_assessments_assessed_at",
+            "nursing_pain_assessments",
+            ["patient_id", "assessed_at"],
+        )
 
     # ── Fall Risk Assessments ─────────────────────────────────────────────────
     if not _table_exists("nursing_fall_risk_assessments"):
         op.create_table(
             "nursing_fall_risk_assessments",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("assessed_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("assessed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "assessed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("assessment_tool", sa.String(50), default="morse"),
             sa.Column("total_score", sa.Float(), nullable=False),
             sa.Column("risk_level", sa.String(20), nullable=False),
@@ -324,19 +489,42 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nursing_fall_risk_lab_id", "nursing_fall_risk_assessments", ["lab_id"])
-        op.create_index("ix_nursing_fall_risk_patient_id", "nursing_fall_risk_assessments", ["patient_id"])
-        op.create_index("ix_nursing_fall_risk_patient_date", "nursing_fall_risk_assessments", ["patient_id", "assessed_at"])
+        op.create_index(
+            "ix_nursing_fall_risk_patient_id", "nursing_fall_risk_assessments", ["patient_id"]
+        )
+        op.create_index(
+            "ix_nursing_fall_risk_patient_date",
+            "nursing_fall_risk_assessments",
+            ["patient_id", "assessed_at"],
+        )
 
     # ── Pressure Injury Assessments ───────────────────────────────────────────
     if not _table_exists("nursing_pressure_injury_assessments"):
         op.create_table(
             "nursing_pressure_injury_assessments",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("assessed_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("assessed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "assessed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("assessment_tool", sa.String(50), default="braden"),
             sa.Column("total_score", sa.Integer(), nullable=False),
             sa.Column("risk_level", sa.String(20), nullable=False),
@@ -362,20 +550,47 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_nursing_pressure_injury_lab_id", "nursing_pressure_injury_assessments", ["lab_id"])
-        op.create_index("ix_nursing_pressure_injury_patient_id", "nursing_pressure_injury_assessments", ["patient_id"])
-        op.create_index("ix_nursing_pressure_injury_date", "nursing_pressure_injury_assessments", ["patient_id", "assessed_at"])
+        op.create_index(
+            "ix_nursing_pressure_injury_lab_id", "nursing_pressure_injury_assessments", ["lab_id"]
+        )
+        op.create_index(
+            "ix_nursing_pressure_injury_patient_id",
+            "nursing_pressure_injury_assessments",
+            ["patient_id"],
+        )
+        op.create_index(
+            "ix_nursing_pressure_injury_date",
+            "nursing_pressure_injury_assessments",
+            ["patient_id", "assessed_at"],
+        )
 
     # ── Nutrition Assessments ─────────────────────────────────────────────────
     if not _table_exists("nursing_nutrition_assessments"):
         op.create_table(
             "nursing_nutrition_assessments",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("assessed_at", sa.DateTime(timezone=True), nullable=False),
-            sa.Column("assessed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "assessed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("assessment_tool", sa.String(50), default="must"),
             sa.Column("total_score", sa.Float(), nullable=False),
             sa.Column("risk_level", sa.String(20), nullable=False),
@@ -403,17 +618,35 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nursing_nutrition_lab_id", "nursing_nutrition_assessments", ["lab_id"])
-        op.create_index("ix_nursing_nutrition_patient_id", "nursing_nutrition_assessments", ["patient_id"])
-        op.create_index("ix_nursing_nutrition_date", "nursing_nutrition_assessments", ["patient_id", "assessed_at"])
+        op.create_index(
+            "ix_nursing_nutrition_patient_id", "nursing_nutrition_assessments", ["patient_id"]
+        )
+        op.create_index(
+            "ix_nursing_nutrition_date",
+            "nursing_nutrition_assessments",
+            ["patient_id", "assessed_at"],
+        )
 
     # ── Care Plans (Nursing) ──────────────────────────────────────────────────
     if not _table_exists("nursing_care_plans"):
         op.create_table(
             "nursing_care_plans",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("care_plan_type", sa.String(50), nullable=False),
             sa.Column("title", sa.String(300), nullable=False),
             sa.Column("nursing_diagnosis", sa.Text(), nullable=True),
@@ -424,7 +657,12 @@ def upgrade() -> None:
             sa.Column("review_date", sa.DateTime(timezone=True), nullable=True),
             sa.Column("status", sa.String(20), nullable=False, server_default="active"),
             sa.Column("outcome", sa.Text(), nullable=True),
-            sa.Column("reviewed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "reviewed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
@@ -440,24 +678,50 @@ def upgrade() -> None:
         )
         op.create_index("ix_nursing_care_plans_lab_id", "nursing_care_plans", ["lab_id"])
         op.create_index("ix_nursing_care_plans_patient_id", "nursing_care_plans", ["patient_id"])
-        op.create_index("ix_nursing_care_plans_admission_id", "nursing_care_plans", ["admission_id"])
-        op.create_index("ix_nursing_care_plans_lab_status", "nursing_care_plans", ["lab_id", "status"])
+        op.create_index(
+            "ix_nursing_care_plans_admission_id", "nursing_care_plans", ["admission_id"]
+        )
+        op.create_index(
+            "ix_nursing_care_plans_lab_status", "nursing_care_plans", ["lab_id", "status"]
+        )
 
     # ── Nursing Notes ─────────────────────────────────────────────────────────
     if not _table_exists("nursing_notes"):
         op.create_table(
             "nursing_notes",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("note_type", sa.String(50), nullable=False),
             sa.Column("title", sa.String(300), nullable=True),
             sa.Column("content", sa.Text(), nullable=False),
-            sa.Column("written_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "written_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("written_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_signed", sa.Boolean(), default=False),
-            sa.Column("signed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "signed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("signed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("is_confidential", sa.Boolean(), default=False),
             sa.Column("tags", JSON(), nullable=True),
@@ -477,18 +741,42 @@ def upgrade() -> None:
         op.create_index("ix_nursing_notes_patient_id", "nursing_notes", ["patient_id"])
         op.create_index("ix_nursing_notes_admission_id", "nursing_notes", ["admission_id"])
         op.create_index("ix_nursing_notes_written_by", "nursing_notes", ["written_by"])
-        op.create_index("ix_nursing_notes_patient_date", "nursing_notes", ["patient_id", "written_at"])
+        op.create_index(
+            "ix_nursing_notes_patient_date", "nursing_notes", ["patient_id", "written_at"]
+        )
 
     # ── Shift Handovers ───────────────────────────────────────────────────────
     if not _table_exists("nursing_shift_handovers"):
         op.create_table(
             "nursing_shift_handovers",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("from_shift_id", sa.Integer(), sa.ForeignKey("nursing_shifts.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("to_shift_id", sa.Integer(), sa.ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("from_nurse_id", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("to_nurse_id", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "from_shift_id",
+                sa.Integer(),
+                sa.ForeignKey("nursing_shifts.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "to_shift_id",
+                sa.Integer(),
+                sa.ForeignKey("nursing_shifts.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "from_nurse_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "to_nurse_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("handover_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("patient_summary", sa.Text(), nullable=True),
             sa.Column("critical_events", JSON(), nullable=True),
@@ -510,18 +798,36 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nursing_shift_handovers_lab_id", "nursing_shift_handovers", ["lab_id"])
-        op.create_index("ix_nursing_shift_handovers_from_shift", "nursing_shift_handovers", ["from_shift_id"])
-        op.create_index("ix_nursing_shift_handovers_to_shift", "nursing_shift_handovers", ["to_shift_id"])
-        op.create_index("ix_nursing_shift_handovers_date", "nursing_shift_handovers", ["handover_at"])
+        op.create_index(
+            "ix_nursing_shift_handovers_from_shift", "nursing_shift_handovers", ["from_shift_id"]
+        )
+        op.create_index(
+            "ix_nursing_shift_handovers_to_shift", "nursing_shift_handovers", ["to_shift_id"]
+        )
+        op.create_index(
+            "ix_nursing_shift_handovers_date", "nursing_shift_handovers", ["handover_at"]
+        )
 
     # ── Clinical Checklists ───────────────────────────────────────────────────
     if not _table_exists("nursing_clinical_checklists"):
         op.create_table(
             "nursing_clinical_checklists",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("shift_id", sa.Integer(), sa.ForeignKey("nursing_shifts.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "shift_id",
+                sa.Integer(),
+                sa.ForeignKey("nursing_shifts.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("checklist_type", sa.String(50), nullable=False),
             sa.Column("title", sa.String(300), nullable=False),
             sa.Column("items", JSON(), nullable=False),
@@ -529,10 +835,25 @@ def upgrade() -> None:
             sa.Column("total_items", sa.Integer(), nullable=False),
             sa.Column("completed_count", sa.Integer(), default=0),
             sa.Column("status", sa.String(20), nullable=False, server_default="in_progress"),
-            sa.Column("assigned_to", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("completed_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "assigned_to",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "completed_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("verified_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "verified_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -548,19 +869,44 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nursing_checklists_lab_id", "nursing_clinical_checklists", ["lab_id"])
-        op.create_index("ix_nursing_checklists_patient_id", "nursing_clinical_checklists", ["patient_id"])
-        op.create_index("ix_nursing_checklists_shift_id", "nursing_clinical_checklists", ["shift_id"])
-        op.create_index("ix_nursing_checklists_lab_type_status", "nursing_clinical_checklists", ["lab_id", "checklist_type", "status"])
+        op.create_index(
+            "ix_nursing_checklists_patient_id", "nursing_clinical_checklists", ["patient_id"]
+        )
+        op.create_index(
+            "ix_nursing_checklists_shift_id", "nursing_clinical_checklists", ["shift_id"]
+        )
+        op.create_index(
+            "ix_nursing_checklists_lab_type_status",
+            "nursing_clinical_checklists",
+            ["lab_id", "checklist_type", "status"],
+        )
 
     # ── Delegations ───────────────────────────────────────────────────────────
     if not _table_exists("nursing_delegations"):
         op.create_table(
             "nursing_delegations",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("delegated_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("delegated_to", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=False),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "delegated_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "delegated_to",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("task_type", sa.String(50), nullable=False),
             sa.Column("description", sa.Text(), nullable=False),
             sa.Column("status", sa.String(20), nullable=False, server_default="pending"),
@@ -570,7 +916,12 @@ def upgrade() -> None:
             sa.Column("cancelled_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("cancellation_reason", sa.Text(), nullable=True),
             sa.Column("requires_supervision", sa.Boolean(), default=False),
-            sa.Column("supervised_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "supervised_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("outcome", sa.Text(), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -584,20 +935,48 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nursing_delegations_lab_id", "nursing_delegations", ["lab_id"])
-        op.create_index("ix_nursing_delegations_delegated_by", "nursing_delegations", ["delegated_by"])
-        op.create_index("ix_nursing_delegations_delegated_to", "nursing_delegations", ["delegated_to"])
-        op.create_index("ix_nursing_delegations_status", "nursing_delegations", ["delegated_to", "status"])
+        op.create_index(
+            "ix_nursing_delegations_delegated_by", "nursing_delegations", ["delegated_by"]
+        )
+        op.create_index(
+            "ix_nursing_delegations_delegated_to", "nursing_delegations", ["delegated_to"]
+        )
+        op.create_index(
+            "ix_nursing_delegations_status", "nursing_delegations", ["delegated_to", "status"]
+        )
 
     # ── Escalation Records ────────────────────────────────────────────────────
     if not _table_exists("nursing_escalation_records"):
         op.create_table(
             "nursing_escalation_records",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("admission_id", sa.Integer(), sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("escalated_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False),
-            sa.Column("escalated_to", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "admission_id",
+                sa.Integer(),
+                sa.ForeignKey("nhdw_admissions.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column(
+                "escalated_by",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=False,
+            ),
+            sa.Column(
+                "escalated_to",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
             sa.Column("escalation_level", sa.String(30), nullable=False),
             sa.Column("reason", sa.Text(), nullable=False),
             sa.Column("clinical_context", sa.Text(), nullable=True),
@@ -622,10 +1001,20 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_nursing_escalation_lab_id", "nursing_escalation_records", ["lab_id"])
-        op.create_index("ix_nursing_escalation_patient_id", "nursing_escalation_records", ["patient_id"])
-        op.create_index("ix_nursing_escalation_escalated_by", "nursing_escalation_records", ["escalated_by"])
-        op.create_index("ix_nursing_escalation_escalated_to", "nursing_escalation_records", ["escalated_to"])
-        op.create_index("ix_nursing_escalation_lab_status", "nursing_escalation_records", ["lab_id", "status", "escalated_at"])
+        op.create_index(
+            "ix_nursing_escalation_patient_id", "nursing_escalation_records", ["patient_id"]
+        )
+        op.create_index(
+            "ix_nursing_escalation_escalated_by", "nursing_escalation_records", ["escalated_by"]
+        )
+        op.create_index(
+            "ix_nursing_escalation_escalated_to", "nursing_escalation_records", ["escalated_to"]
+        )
+        op.create_index(
+            "ix_nursing_escalation_lab_status",
+            "nursing_escalation_records",
+            ["lab_id", "status", "escalated_at"],
+        )
 
 
 def downgrade() -> None:

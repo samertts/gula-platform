@@ -20,10 +20,30 @@ from app.care_continuum.enums import VaccinationStatus
 class ImmunizationSchedule(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_immunization_schedules"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    practitioner_id = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     vaccine_name = Column(String(200), nullable=False)
     vaccine_code = Column(String(50), nullable=False, index=True)
@@ -37,12 +57,18 @@ class ImmunizationSchedule(CareContinuumTenantAuditEntity):
     due_date = Column(Date, nullable=False)
     status = Column(SAEnum(VaccinationStatus), nullable=False, default=VaccinationStatus.SCHEDULED)
 
-    contraindication_id = Column(String(26), ForeignKey("cc_contraindications.id", ondelete="SET NULL"), nullable=True)
+    contraindication_id = Column(
+        String(26), ForeignKey("cc_contraindications.id", ondelete="SET NULL"), nullable=True,
+    )
     contraindication_note = Column(Text, nullable=True)
 
     administered_at = Column(DateTime(timezone=True), nullable=True)
-    administered_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
-    administration_facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True)
+    administered_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
+    administration_facility_id = Column(
+        String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True,
+    )
 
     lot_number = Column(String(50), nullable=True)
     manufacturer = Column(String(100), nullable=True)
@@ -60,7 +86,13 @@ class ImmunizationSchedule(CareContinuumTenantAuditEntity):
         Index("ix_cc_immunization_sched_vaccine", "vaccine_code"),
         Index("ix_cc_immunization_sched_due", "due_date"),
         Index("ix_cc_immunization_sched_status", "status"),
-        Index("ix_cc_immunization_sched_patient_vaccine", "patient_id", "vaccine_code", "dose_number", unique=True),
+        Index(
+            "ix_cc_immunization_sched_patient_vaccine",
+            "patient_id",
+            "vaccine_code",
+            "dose_number",
+            unique=True,
+        ),
         {"extend_existing": True},
     )
 
@@ -68,13 +100,43 @@ class ImmunizationSchedule(CareContinuumTenantAuditEntity):
 class VaccinationRecord(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_vaccination_records"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    schedule_id = Column(String(26), ForeignKey("cc_immunization_schedules.id", ondelete="SET NULL"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    schedule_id = Column(
+        String(26),
+        ForeignKey("cc_immunization_schedules.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
-    administered_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
+    encounter_id = Column(
+        String(26),
+        ForeignKey("national_encounters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    administered_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
 
     vaccine_name = Column(String(200), nullable=False)
     vaccine_code = Column(String(50), nullable=False, index=True)
@@ -102,7 +164,9 @@ class VaccinationRecord(CareContinuumTenantAuditEntity):
     anaphylaxis_observed = Column(Boolean, default=False)
     observation_period_minutes = Column(Integer, nullable=True)
 
-    vaccine_stock_id = Column(String(26), ForeignKey("cc_vaccine_inventory.id", ondelete="SET NULL"), nullable=True)
+    vaccine_stock_id = Column(
+        String(26), ForeignKey("cc_vaccine_inventory.id", ondelete="SET NULL"), nullable=True,
+    )
     status = Column(SAEnum(VaccinationStatus), nullable=False, default=VaccinationStatus.GIVEN)
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
@@ -119,8 +183,18 @@ class VaccinationRecord(CareContinuumTenantAuditEntity):
 class Contraindication(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_contraindications"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     vaccine_code = Column(String(50), nullable=False, index=True)
     vaccine_name = Column(String(200), nullable=True)
@@ -128,16 +202,25 @@ class Contraindication(CareContinuumTenantAuditEntity):
 
     is_permanent = Column(Boolean, default=False)
     severity = Column(String(50), nullable=False, default="moderate")
-    recorded_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=False, index=True)
+    recorded_by = Column(
+        String(26),
+        ForeignKey("national_practitioners.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     recorded_at = Column(DateTime(timezone=True), nullable=False)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True)
+    facility_id = Column(
+        String(26), ForeignKey("national_facilities.id", ondelete="SET NULL"), nullable=True,
+    )
 
     condition = Column(Text, nullable=False)
     icd10_code = Column(String(20), nullable=True)
     details = Column(Text, nullable=True)
 
     resolved_at = Column(DateTime(timezone=True), nullable=True)
-    resolved_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    resolved_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
     is_active = Column(Boolean, default=True)
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
@@ -167,7 +250,12 @@ class VaccineInventory(CareContinuumTenantAuditEntity):
     quantity_returns = Column(Integer, nullable=False, default=0)
     unit = Column(String(20), default="dose")
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=False, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     storage_location = Column(String(100), nullable=True)
 
     received_date = Column(Date, nullable=True)
@@ -179,7 +267,9 @@ class VaccineInventory(CareContinuumTenantAuditEntity):
     is_quarantined = Column(Boolean, default=False)
     quarantine_reason = Column(Text, nullable=True)
 
-    cold_chain_monitor_id = Column(String(26), ForeignKey("cc_cold_chain_monitors.id", ondelete="SET NULL"), nullable=True)
+    cold_chain_monitor_id = Column(
+        String(26), ForeignKey("cc_cold_chain_monitors.id", ondelete="SET NULL"), nullable=True,
+    )
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
@@ -195,7 +285,12 @@ class VaccineInventory(CareContinuumTenantAuditEntity):
 class ColdChainMonitor(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_cold_chain_monitors"
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=False, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     equipment_type = Column(String(100), nullable=False)
     equipment_name = Column(String(200), nullable=True)
     equipment_identifier = Column(String(100), nullable=True)
@@ -206,7 +301,9 @@ class ColdChainMonitor(CareContinuumTenantAuditEntity):
     humidity_percent = Column(Float, nullable=True)
 
     reading_time = Column(DateTime(timezone=True), nullable=False)
-    recorded_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    recorded_by = Column(
+        String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True,
+    )
 
     is_within_range = Column(Boolean, default=True)
     breach_alert = Column(Boolean, default=False)
@@ -233,8 +330,18 @@ class ColdChainMonitor(CareContinuumTenantAuditEntity):
 class ReminderSchedule(CareContinuumTenantAuditEntity):
     __tablename__ = "cc_reminder_schedules"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    patient_id = Column(
+        String(26),
+        ForeignKey("national_patients.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     vaccine_code = Column(String(50), nullable=True, index=True)
     due_date = Column(Date, nullable=False)

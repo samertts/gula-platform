@@ -55,7 +55,6 @@ logger = logging.getLogger("gula.clinical_service")
 
 
 class TerminologyService:
-
     @staticmethod
     def search_codes(
         db: Session,
@@ -79,21 +78,19 @@ class TerminologyService:
         if status:
             filters.append(TerminologyCode.status == status)
         total = db.query(TerminologyCode).filter(*filters).count()
-        items = (
-            db.query(TerminologyCode)
-            .filter(*filters)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = db.query(TerminologyCode).filter(*filters).offset(skip).limit(limit).all()
         return items, total
 
     @staticmethod
     def get_code(db: Session, code_id: str) -> TerminologyCode | None:
-        return db.query(TerminologyCode).filter(
-            TerminologyCode.id == code_id,
-            TerminologyCode.is_deleted.is_(False),
-        ).first()
+        return (
+            db.query(TerminologyCode)
+            .filter(
+                TerminologyCode.id == code_id,
+                TerminologyCode.is_deleted.is_(False),
+            )
+            .first()
+        )
 
     @staticmethod
     def create_code(db: Session, data: dict[str, Any]) -> TerminologyCode:
@@ -105,12 +102,18 @@ class TerminologyService:
 
     @staticmethod
     def update_code(
-        db: Session, code_id: str, data: dict[str, Any],
+        db: Session,
+        code_id: str,
+        data: dict[str, Any],
     ) -> TerminologyCode | None:
-        obj = db.query(TerminologyCode).filter(
-            TerminologyCode.id == code_id,
-            TerminologyCode.is_deleted.is_(False),
-        ).first()
+        obj = (
+            db.query(TerminologyCode)
+            .filter(
+                TerminologyCode.id == code_id,
+                TerminologyCode.is_deleted.is_(False),
+            )
+            .first()
+        )
         if not obj:
             return None
         for key, val in data.items():
@@ -122,10 +125,14 @@ class TerminologyService:
 
     @staticmethod
     def delete_code(db: Session, code_id: str) -> bool:
-        obj = db.query(TerminologyCode).filter(
-            TerminologyCode.id == code_id,
-            TerminologyCode.is_deleted.is_(False),
-        ).first()
+        obj = (
+            db.query(TerminologyCode)
+            .filter(
+                TerminologyCode.id == code_id,
+                TerminologyCode.is_deleted.is_(False),
+            )
+            .first()
+        )
         if not obj:
             return False
         obj.soft_delete()
@@ -190,13 +197,7 @@ class TerminologyService:
         if name:
             filters.append(ValueSet.name.ilike(f"%{name}%"))
         total = db.query(ValueSet).filter(*filters).count()
-        items = (
-            db.query(ValueSet)
-            .filter(*filters)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = db.query(ValueSet).filter(*filters).offset(skip).limit(limit).all()
         return items, total
 
     @staticmethod
@@ -224,13 +225,7 @@ class TerminologyService:
     ) -> tuple[list[CodeSystem], int]:
         filters = [CodeSystem.is_deleted.is_(False)]
         total = db.query(CodeSystem).filter(*filters).count()
-        items = (
-            db.query(CodeSystem)
-            .filter(*filters)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = db.query(CodeSystem).filter(*filters).offset(skip).limit(limit).all()
         return items, total
 
     @staticmethod
@@ -254,13 +249,7 @@ class TerminologyService:
         if chapter:
             filters.append(ICD10Code.chapter == chapter)
         total = db.query(ICD10Code).filter(*filters).count()
-        items = (
-            db.query(ICD10Code)
-            .filter(*filters)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = db.query(ICD10Code).filter(*filters).offset(skip).limit(limit).all()
         return items, total
 
     @staticmethod
@@ -285,13 +274,7 @@ class TerminologyService:
         if class_name:
             filters.append(LOINCCode.class_name == class_name)
         total = db.query(LOINCCode).filter(*filters).count()
-        items = (
-            db.query(LOINCCode)
-            .filter(*filters)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = db.query(LOINCCode).filter(*filters).offset(skip).limit(limit).all()
         return items, total
 
     @staticmethod
@@ -312,13 +295,7 @@ class TerminologyService:
                 ),
             )
         total = db.query(SNOMEDCTCode).filter(*filters).count()
-        items = (
-            db.query(SNOMEDCTCode)
-            .filter(*filters)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = db.query(SNOMEDCTCode).filter(*filters).offset(skip).limit(limit).all()
         return items, total
 
 
@@ -328,7 +305,6 @@ class TerminologyService:
 
 
 class ClinicalKnowledgeService:
-
     @staticmethod
     def create_guideline(db: Session, data: dict[str, Any]) -> ClinicalGuideline:
         obj = ClinicalGuideline(**data)
@@ -339,10 +315,14 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def get_guideline(db: Session, guideline_id: str) -> ClinicalGuideline | None:
-        return db.query(ClinicalGuideline).filter(
-            ClinicalGuideline.id == guideline_id,
-            ClinicalGuideline.is_deleted.is_(False),
-        ).first()
+        return (
+            db.query(ClinicalGuideline)
+            .filter(
+                ClinicalGuideline.id == guideline_id,
+                ClinicalGuideline.is_deleted.is_(False),
+            )
+            .first()
+        )
 
     @staticmethod
     def list_guidelines(
@@ -371,12 +351,18 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def update_guideline(
-        db: Session, guideline_id: str, data: dict[str, Any],
+        db: Session,
+        guideline_id: str,
+        data: dict[str, Any],
     ) -> ClinicalGuideline | None:
-        obj = db.query(ClinicalGuideline).filter(
-            ClinicalGuideline.id == guideline_id,
-            ClinicalGuideline.is_deleted.is_(False),
-        ).first()
+        obj = (
+            db.query(ClinicalGuideline)
+            .filter(
+                ClinicalGuideline.id == guideline_id,
+                ClinicalGuideline.is_deleted.is_(False),
+            )
+            .first()
+        )
         if not obj:
             return None
         for key, val in data.items():
@@ -396,10 +382,14 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def get_protocol(db: Session, protocol_id: str) -> ClinicalProtocol | None:
-        return db.query(ClinicalProtocol).filter(
-            ClinicalProtocol.id == protocol_id,
-            ClinicalProtocol.is_deleted.is_(False),
-        ).first()
+        return (
+            db.query(ClinicalProtocol)
+            .filter(
+                ClinicalProtocol.id == protocol_id,
+                ClinicalProtocol.is_deleted.is_(False),
+            )
+            .first()
+        )
 
     @staticmethod
     def list_protocols(
@@ -428,12 +418,18 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def update_protocol(
-        db: Session, protocol_id: str, data: dict[str, Any],
+        db: Session,
+        protocol_id: str,
+        data: dict[str, Any],
     ) -> ClinicalProtocol | None:
-        obj = db.query(ClinicalProtocol).filter(
-            ClinicalProtocol.id == protocol_id,
-            ClinicalProtocol.is_deleted.is_(False),
-        ).first()
+        obj = (
+            db.query(ClinicalProtocol)
+            .filter(
+                ClinicalProtocol.id == protocol_id,
+                ClinicalProtocol.is_deleted.is_(False),
+            )
+            .first()
+        )
         if not obj:
             return None
         for key, val in data.items():
@@ -453,10 +449,14 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def get_pathway(db: Session, pathway_id: str) -> ClinicalPathway | None:
-        return db.query(ClinicalPathway).filter(
-            ClinicalPathway.id == pathway_id,
-            ClinicalPathway.is_deleted.is_(False),
-        ).first()
+        return (
+            db.query(ClinicalPathway)
+            .filter(
+                ClinicalPathway.id == pathway_id,
+                ClinicalPathway.is_deleted.is_(False),
+            )
+            .first()
+        )
 
     @staticmethod
     def list_pathways(
@@ -485,12 +485,18 @@ class ClinicalKnowledgeService:
 
     @staticmethod
     def update_pathway(
-        db: Session, pathway_id: str, data: dict[str, Any],
+        db: Session,
+        pathway_id: str,
+        data: dict[str, Any],
     ) -> ClinicalPathway | None:
-        obj = db.query(ClinicalPathway).filter(
-            ClinicalPathway.id == pathway_id,
-            ClinicalPathway.is_deleted.is_(False),
-        ).first()
+        obj = (
+            db.query(ClinicalPathway)
+            .filter(
+                ClinicalPathway.id == pathway_id,
+                ClinicalPathway.is_deleted.is_(False),
+            )
+            .first()
+        )
         if not obj:
             return None
         for key, val in data.items():
@@ -573,7 +579,6 @@ class ClinicalKnowledgeService:
 
 
 class CDSService:
-
     @staticmethod
     def get_order_set_recommendations(
         db: Session,
@@ -604,14 +609,16 @@ class CDSService:
                 }
                 for item in os_obj.items
             ]
-            results.append({
-                "id": os_obj.id,
-                "name": os_obj.name,
-                "description": os_obj.description,
-                "department": os_obj.department,
-                "condition": os_obj.condition,
-                "items": items,
-            })
+            results.append(
+                {
+                    "id": os_obj.id,
+                    "name": os_obj.name,
+                    "description": os_obj.description,
+                    "department": os_obj.department,
+                    "condition": os_obj.condition,
+                    "items": items,
+                }
+            )
         return results
 
     @staticmethod
@@ -661,17 +668,19 @@ class CDSService:
         rules = db.query(DuplicateOrderRule).filter(*filters).all()
         alerts = []
         for rule in rules:
-            alerts.append({
-                "rule_id": rule.id,
-                "rule_name": rule.rule_name,
-                "description": rule.description,
-                "time_window_hours": rule.time_window_hours,
-                "same_encounter_only": rule.same_encounter_only,
-                "severity": rule.severity,
-                "action": rule.action,
-                "notification_message": rule.notification_message,
-                "override_requires_approval": rule.override_requires_approval,
-            })
+            alerts.append(
+                {
+                    "rule_id": rule.id,
+                    "rule_name": rule.rule_name,
+                    "description": rule.description,
+                    "time_window_hours": rule.time_window_hours,
+                    "same_encounter_only": rule.same_encounter_only,
+                    "severity": rule.severity,
+                    "action": rule.action,
+                    "notification_message": rule.notification_message,
+                    "override_requires_approval": rule.override_requires_approval,
+                }
+            )
         return alerts
 
     @staticmethod
@@ -682,7 +691,7 @@ class CDSService:
     ) -> list[dict[str, Any]]:
         results = []
         for i, med1 in enumerate(medications):
-            for med2 in medications[i + 1:]:
+            for med2 in medications[i + 1 :]:
                 filters = [
                     Contraindication.is_deleted.is_(False),
                     Contraindication.is_active.is_(True),
@@ -694,15 +703,17 @@ class CDSService:
                 ]
                 interactions = db.query(Contraindication).filter(*filters).all()
                 for interaction in interactions:
-                    results.append({
-                        "medication_a": med1,
-                        "medication_b": med2,
-                        "severity": interaction.severity,
-                        "evidence": interaction.evidence,
-                        "mechanism": interaction.mechanism,
-                        "management": interaction.management,
-                        "is_absolute": interaction.is_absolute,
-                    })
+                    results.append(
+                        {
+                            "medication_a": med1,
+                            "medication_b": med2,
+                            "severity": interaction.severity,
+                            "evidence": interaction.evidence,
+                            "mechanism": interaction.mechanism,
+                            "management": interaction.management,
+                            "is_absolute": interaction.is_absolute,
+                        }
+                    )
         return results
 
     @staticmethod
@@ -746,12 +757,18 @@ class CDSService:
 
     @staticmethod
     def acknowledge_alert(
-        db: Session, alert_id: str, user_id: str,
+        db: Session,
+        alert_id: str,
+        user_id: str,
     ) -> ClinicalAlert | None:
-        obj = db.query(ClinicalAlert).filter(
-            ClinicalAlert.id == alert_id,
-            ClinicalAlert.is_deleted.is_(False),
-        ).first()
+        obj = (
+            db.query(ClinicalAlert)
+            .filter(
+                ClinicalAlert.id == alert_id,
+                ClinicalAlert.is_deleted.is_(False),
+            )
+            .first()
+        )
         if not obj:
             return None
         obj.acknowledged = True
@@ -792,10 +809,14 @@ class CDSService:
         bundle_id: str,
         completed_elements: list[str],
     ) -> dict[str, Any]:
-        bundle = db.query(CareBundle).filter(
-            CareBundle.id == bundle_id,
-            CareBundle.is_deleted.is_(False),
-        ).first()
+        bundle = (
+            db.query(CareBundle)
+            .filter(
+                CareBundle.id == bundle_id,
+                CareBundle.is_deleted.is_(False),
+            )
+            .first()
+        )
         if not bundle:
             return {"error": "Care bundle not found"}
         total_elements = len(bundle.elements)
@@ -808,9 +829,7 @@ class CDSService:
                 "completed": 0,
                 "total": 0,
             }
-        completed_count = sum(
-            1 for e in bundle.elements if e.element_code in completed_elements
-        )
+        completed_count = sum(1 for e in bundle.elements if e.element_code in completed_elements)
         percentage = round((completed_count / total_elements) * 100, 2)
         return {
             "bundle_id": bundle_id,
@@ -829,7 +848,6 @@ class CDSService:
 
 
 class QualityService:
-
     @staticmethod
     def create_indicator(db: Session, data: dict[str, Any]) -> QualityIndicator:
         obj = QualityIndicator(**data)
@@ -871,13 +889,18 @@ class QualityService:
         obj = IndicatorMeasurement(**data)
         if obj.denominator_value and obj.denominator_value > 0:
             obj.percentage = round(
-                (obj.numerator_value / obj.denominator_value) * 100, 2,
+                (obj.numerator_value / obj.denominator_value) * 100,
+                2,
             )
         db.add(obj)
 
-        indicator = db.query(QualityIndicator).filter(
-            QualityIndicator.id == obj.indicator_id,
-        ).first()
+        indicator = (
+            db.query(QualityIndicator)
+            .filter(
+                QualityIndicator.id == obj.indicator_id,
+            )
+            .first()
+        )
         if indicator and indicator.target_value is not None:
             if obj.percentage is not None:
                 if indicator.direction == "lower_is_better":
@@ -924,7 +947,9 @@ class QualityService:
 
     @staticmethod
     def create_audit_record(
-        db: Session, data: dict[str, Any], audited_by: str,
+        db: Session,
+        data: dict[str, Any],
+        audited_by: str,
     ) -> ClinicalAuditRecord:
         data["audited_by"] = audited_by
         obj = ClinicalAuditRecord(**data)
@@ -935,7 +960,9 @@ class QualityService:
 
     @staticmethod
     def create_compliance_check(
-        db: Session, data: dict[str, Any], checked_by: str,
+        db: Session,
+        data: dict[str, Any],
+        checked_by: str,
     ) -> ComplianceCheck:
         data["checked_by"] = checked_by
         obj = ComplianceCheck(**data)
@@ -996,7 +1023,9 @@ class QualityService:
 
     @staticmethod
     def create_mortality_review(
-        db: Session, data: dict[str, Any], reviewer: str,
+        db: Session,
+        data: dict[str, Any],
+        reviewer: str,
     ) -> MortalityReview:
         data["reviewer"] = reviewer
         obj = MortalityReview(**data)
@@ -1007,7 +1036,9 @@ class QualityService:
 
     @staticmethod
     def create_incident_report(
-        db: Session, data: dict[str, Any], reporter_id: str,
+        db: Session,
+        data: dict[str, Any],
+        reporter_id: str,
     ) -> IncidentReport:
         data["reporter_id"] = reporter_id
         obj = IncidentReport(**data)
@@ -1018,7 +1049,9 @@ class QualityService:
 
     @staticmethod
     def create_safety_event(
-        db: Session, data: dict[str, Any], reported_by: str,
+        db: Session,
+        data: dict[str, Any],
+        reported_by: str,
     ) -> PatientSafetyEvent:
         data["reported_by"] = reported_by
         obj = PatientSafetyEvent(**data)
@@ -1051,22 +1084,24 @@ class QualityService:
                 .order_by(IndicatorMeasurement.measurement_date.desc())
                 .first()
             )
-            results.append({
-                "indicator_id": ind.id,
-                "name": ind.name,
-                "code": ind.code,
-                "type": ind.indicator_type.value if ind.indicator_type else None,
-                "department": ind.department,
-                "target_value": ind.target_value,
-                "benchmark_value": ind.benchmark_value,
-                "latest_value": latest_measurement.percentage if latest_measurement else None,
-                "latest_date": (
-                    latest_measurement.measurement_date.isoformat()
-                    if latest_measurement and latest_measurement.measurement_date
-                    else None
-                ),
-                "met_target": latest_measurement.met_target if latest_measurement else None,
-            })
+            results.append(
+                {
+                    "indicator_id": ind.id,
+                    "name": ind.name,
+                    "code": ind.code,
+                    "type": ind.indicator_type.value if ind.indicator_type else None,
+                    "department": ind.department,
+                    "target_value": ind.target_value,
+                    "benchmark_value": ind.benchmark_value,
+                    "latest_value": latest_measurement.percentage if latest_measurement else None,
+                    "latest_date": (
+                        latest_measurement.measurement_date.isoformat()
+                        if latest_measurement and latest_measurement.measurement_date
+                        else None
+                    ),
+                    "met_target": latest_measurement.met_target if latest_measurement else None,
+                }
+            )
         return results
 
     @staticmethod
@@ -1099,10 +1134,10 @@ class QualityService:
 
 
 class ResearchService:
-
     @staticmethod
     def create_registry(
-        db: Session, data: dict[str, Any],
+        db: Session,
+        data: dict[str, Any],
     ) -> dict[str, Any]:
         from app.clinical.research import models as research_models
 
@@ -1144,18 +1179,13 @@ class ResearchService:
         if registry_type:
             filters.append(cls.registry_type == registry_type)
         total = db.query(cls).filter(*filters).count()
-        items = (
-            db.query(cls)
-            .filter(*filters)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = db.query(cls).filter(*filters).offset(skip).limit(limit).all()
         return items, total
 
     @staticmethod
     def create_cohort(
-        db: Session, data: dict[str, Any],
+        db: Session,
+        data: dict[str, Any],
     ) -> dict[str, Any]:
         from app.clinical.research import models as research_models
 
@@ -1191,13 +1221,7 @@ class ResearchService:
         if cls is None:
             return [], 0
         total = db.query(cls).filter().count()
-        items = (
-            db.query(cls)
-            .filter()
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = db.query(cls).filter().offset(skip).limit(limit).all()
         return items, total
 
     @staticmethod
@@ -1210,7 +1234,7 @@ class ResearchService:
         return {
             "status": "stub",
             "message": "De-identified dataset export is not yet implemented. "
-                       "This is a placeholder for future functionality.",
+            "This is a placeholder for future functionality.",
             "cohort_id": cohort_id,
             "registry_id": registry_id,
             "format": "FHIR NDJSON",
@@ -1224,7 +1248,6 @@ class ResearchService:
 
 
 class ClinicalAIService:
-
     @staticmethod
     def clinical_copilot(
         db: Session,
@@ -1238,9 +1261,10 @@ class ClinicalAIService:
             "differential_diagnoses": [],
             "recommended_orders": [],
             "message": "Clinical copilot is a stub. "
-                       "Integrate with AI provider (Gemini/Groq/Ollama) for real suggestions.",
+            "Integrate with AI provider (Gemini/Groq/Ollama) for real suggestions.",
             "patient_context_summary": {
-                k: v for k, v in patient_context.items()
+                k: v
+                for k, v in patient_context.items()
                 if k in ("age", "gender", "chief_complaint")
             },
         }
@@ -1262,7 +1286,7 @@ class ClinicalAIService:
             "contributing_factors": [],
             "recommendations": [],
             "message": "Risk prediction is a stub. "
-                       "Integrate with ML model serving infrastructure for real predictions.",
+            "Integrate with ML model serving infrastructure for real predictions.",
         }
 
     @staticmethod
@@ -1283,21 +1307,23 @@ class ClinicalAIService:
             .all()
         )
         for rec in preventive:
-            gaps.append({
-                "type": "preventive",
-                "recommendation": rec.title,
-                "description": rec.description,
-                "intervention": rec.intervention,
-                "priority": rec.priority,
-                "evidence_level": rec.evidence_level.value if rec.evidence_level else None,
-            })
+            gaps.append(
+                {
+                    "type": "preventive",
+                    "recommendation": rec.title,
+                    "description": rec.description,
+                    "intervention": rec.intervention,
+                    "priority": rec.priority,
+                    "evidence_level": rec.evidence_level.value if rec.evidence_level else None,
+                }
+            )
 
         return {
             "status": "stub",
             "patient_id": patient_id,
             "care_gaps": gaps,
             "message": "Care gap detection is based on active preventive recommendations. "
-                       "Enhance with ML-based gap analysis for production use.",
+            "Enhance with ML-based gap analysis for production use.",
         }
 
     @staticmethod
@@ -1314,7 +1340,7 @@ class ClinicalAIService:
             "suggested_workup": [],
             "differential_discussion": "",
             "message": "Diagnostic assistant is a stub. "
-                       "Integrate with AI provider (Gemini/Groq/Ollama) for real suggestions.",
+            "Integrate with AI provider (Gemini/Groq/Ollama) for real suggestions.",
         }
 
     @staticmethod
@@ -1329,8 +1355,8 @@ class ClinicalAIService:
             "recommendation_id": recommendation_id,
             "recommendation_type": recommendation_type,
             "explanation": "Explainability is not yet implemented. "
-                           "This endpoint will provide human-readable explanations "
-                           "for AI-generated recommendations.",
+            "This endpoint will provide human-readable explanations "
+            "for AI-generated recommendations.",
             "evidence_sources": [],
             "confidence": None,
         }

@@ -37,6 +37,7 @@ class RecoveryJob:
     def __post_init__(self):
         if not self.id:
             import uuid
+
             self.id = str(uuid.uuid4())
         if not self.started_at:
             self.started_at = time.time()
@@ -61,7 +62,9 @@ class RecoveryEngine:
         self._batch_size = 100
 
     def register_handler(
-        self, event_name: str, handler: Callable,
+        self,
+        event_name: str,
+        handler: Callable,
     ) -> None:
         if event_name not in self._recovery_handlers:
             self._recovery_handlers[event_name] = []
@@ -136,6 +139,7 @@ class RecoveryEngine:
 
     async def _execute_parallel(self, job: RecoveryJob) -> None:
         import asyncio
+
         tasks = [self._replay_event(event, job) for event in job.events]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for result in results:
@@ -147,6 +151,7 @@ class RecoveryEngine:
 
     async def _execute_batched(self, job: RecoveryJob) -> None:
         import asyncio
+
         for i in range(0, len(job.events), self._batch_size):
             batch = job.events[i : i + self._batch_size]
             tasks = [self._replay_event(event, job) for event in batch]
@@ -185,7 +190,8 @@ class RecoveryEngine:
                 )
                 if attempt < self._max_retries - 1:
                     import asyncio
-                    await asyncio.sleep(2 ** attempt)
+
+                    await asyncio.sleep(2**attempt)
         return False
 
     def get_job(self, job_id: str) -> RecoveryJob | None:

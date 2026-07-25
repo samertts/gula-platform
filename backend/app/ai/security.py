@@ -15,7 +15,10 @@ _PII_PATTERNS: list[tuple[str, str, re.Pattern]] = [
 ]
 
 _PROMPT_INJECTION_PATTERNS: list[re.Pattern] = [
-    re.compile(r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|commands|directions)", re.IGNORECASE),
+    re.compile(
+        r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|commands|directions)",
+        re.IGNORECASE,
+    ),
     re.compile(r"forget\s+(all\s+)?(previous|above)\s+(instructions|context)", re.IGNORECASE),
     re.compile(r"you\s+are\s+(now|free|no\s+longer)", re.IGNORECASE),
     re.compile(r"system\s+(prompt|message|instruction)", re.IGNORECASE),
@@ -26,7 +29,10 @@ _PROMPT_INJECTION_PATTERNS: list[re.Pattern] = [
 ]
 
 _UNSAFE_CONTENT = [
-    re.compile(r"(hack|crack|exploit|vulnerability|0day)\s*(the\s+)?(system|server|database)", re.IGNORECASE),
+    re.compile(
+        r"(hack|crack|exploit|vulnerability|0day)\s*(the\s+)?(system|server|database)",
+        re.IGNORECASE,
+    ),
     re.compile(r"(sql|nosql|ldap|command)\s*injection", re.IGNORECASE),
     re.compile(r"steal|exfiltrat|unauthorized\s*access", re.IGNORECASE),
     re.compile(r"delete\s+(all\s+)?(data|records|tables|database)", re.IGNORECASE),
@@ -48,7 +54,14 @@ def scan_pii(text: str) -> list[dict[str, Any]]:
     for pii_type, label, pattern in _PII_PATTERNS:
         matches = pattern.findall(text)
         for m in matches:
-            found.append({"type": pii_type, "label": label, "value": _mask(m), "position": text.index(m) if m in text else -1})
+            found.append(
+                {
+                    "type": pii_type,
+                    "label": label,
+                    "value": _mask(m),
+                    "position": text.index(m) if m in text else -1,
+                },
+            )
     return found
 
 
@@ -65,7 +78,9 @@ def scan_prompt_injection(text: str) -> tuple[float, list[dict[str, Any]]]:
         matches = pattern.findall(text)
         if matches:
             score += 0.2 * len(matches)
-            issues.append({"pattern": pattern.pattern[:60], "matches": len(matches), "severity": "high"})
+            issues.append(
+                {"pattern": pattern.pattern[:60], "matches": len(matches), "severity": "high"},
+            )
     return min(score, 1.0), issues
 
 
@@ -76,7 +91,9 @@ def scan_unsafe_content(text: str) -> tuple[float, list[dict[str, Any]]]:
         matches = pattern.findall(text)
         if matches:
             score += 0.25 * len(matches)
-            issues.append({"pattern": pattern.pattern[:60], "matches": len(matches), "severity": "critical"})
+            issues.append(
+                {"pattern": pattern.pattern[:60], "matches": len(matches), "severity": "critical"},
+            )
     return min(score, 1.0), issues
 
 
@@ -86,7 +103,9 @@ async def scan_input(text: str) -> AISecurityScanResult:
     pii = scan_pii(text)
     if pii:
         result.pii_found = pii
-        result.issues.extend({"type": "pii", "detail": p["label"], "severity": "medium"} for p in pii)
+        result.issues.extend(
+            {"type": "pii", "detail": p["label"], "severity": "medium"} for p in pii
+        )
 
     inj_score, inj_issues = scan_prompt_injection(text)
     if inj_issues:

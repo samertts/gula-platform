@@ -27,7 +27,13 @@ class EncounterWorkflow(WorkflowEngine[dict]):
         return context
 
     async def _handle_outpatient_encounter(self, context: WorkflowContext, data: dict) -> None:
-        for step_name in ["registration_check", "vital_signs", "consultation", "diagnosis", "disposition"]:
+        for step_name in [
+            "registration_check",
+            "vital_signs",
+            "consultation",
+            "diagnosis",
+            "disposition",
+        ]:
             step = WorkflowStep(name=step_name)
             step.status = WorkflowStepStatus.SUCCEEDED
             self.add_step(step)
@@ -39,7 +45,13 @@ class EncounterWorkflow(WorkflowEngine[dict]):
             self.add_step(step)
 
     async def _handle_inpatient_encounter(self, context: WorkflowContext, data: dict) -> None:
-        for step_name in ["admission", "ward_assignment", "care_plan", "daily_rounds", "discharge_planning"]:
+        for step_name in [
+            "admission",
+            "ward_assignment",
+            "care_plan",
+            "daily_rounds",
+            "discharge_planning",
+        ]:
             step = WorkflowStep(name=step_name)
             step.status = WorkflowStepStatus.SUCCEEDED
             self.add_step(step)

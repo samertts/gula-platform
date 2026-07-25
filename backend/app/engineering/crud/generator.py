@@ -50,7 +50,11 @@ class CRUDGenerator(BaseGenerator):
         return self._result
 
     def _generate_entity(
-        self, module: str, spec: EntitySpec, table: str, fields: list[EntityField],
+        self,
+        module: str,
+        spec: EntitySpec,
+        table: str,
+        fields: list[EntityField],
     ) -> None:
         lines = [
             "from __future__ import annotations",

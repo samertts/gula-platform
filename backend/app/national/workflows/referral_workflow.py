@@ -13,7 +13,13 @@ class ReferralWorkflow(WorkflowEngine[dict]):
     async def execute(self, context: WorkflowContext, input_data: dict) -> WorkflowContext:
         context.state = WorkflowState.IN_PROGRESS
         try:
-            for step_name in ["referral_initiation", "clinical_review", "facility_selection", "notification", "acceptance"]:
+            for step_name in [
+                "referral_initiation",
+                "clinical_review",
+                "facility_selection",
+                "notification",
+                "acceptance",
+            ]:
                 step = WorkflowStep(name=step_name)
                 step.status = WorkflowStepStatus.SUCCEEDED
                 self.add_step(step)

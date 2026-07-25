@@ -112,9 +112,13 @@ class ReferralHistoryResponse(BaseModel):
 
 
 def _generate_referral_number(db: Session, lab_id: int) -> str:
-    count = db.query(InsuranceReferral).filter(
-        InsuranceReferral.lab_id == lab_id,
-    ).count()
+    count = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.lab_id == lab_id,
+        )
+        .count()
+    )
     return f"REF-{lab_id}-{count + 1:06d}"
 
 
@@ -208,10 +212,14 @@ def get_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
     return referral
@@ -224,14 +232,21 @@ def update_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
     if referral.status != ReferralStatus.DRAFT:
-        raise HTTPException(status_code=400, detail=f"Only draft referrals can be updated, current status: {referral.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only draft referrals can be updated, current status: {referral.status.value}",
+        )
 
     update_data = data.model_dump(exclude_unset=True)
     if not update_data:
@@ -259,21 +274,32 @@ def send_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
     if referral.status != ReferralStatus.DRAFT:
-        raise HTTPException(status_code=400, detail=f"Only draft referrals can be sent, current status: {referral.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only draft referrals can be sent, current status: {referral.status.value}",
+        )
 
     old_status = referral.status
     referral.status = ReferralStatus.SENT
     _record_history(
-        db=db, referral_id=referral.id, lab_id=current_user.lab_id,
-        to_status=ReferralStatus.SENT, from_status=old_status,
-        changed_by=current_user.id, change_reason="Referral sent",
+        db=db,
+        referral_id=referral.id,
+        lab_id=current_user.lab_id,
+        to_status=ReferralStatus.SENT,
+        from_status=old_status,
+        changed_by=current_user.id,
+        change_reason="Referral sent",
     )
 
     log_action(
@@ -296,21 +322,32 @@ def accept_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
     if referral.status not in (ReferralStatus.SENT, ReferralStatus.RECEIVED):
-        raise HTTPException(status_code=400, detail=f"Referral cannot be accepted in status: {referral.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Referral cannot be accepted in status: {referral.status.value}",
+        )
 
     old_status = referral.status
     referral.status = ReferralStatus.ACCEPTED
     _record_history(
-        db=db, referral_id=referral.id, lab_id=current_user.lab_id,
-        to_status=ReferralStatus.ACCEPTED, from_status=old_status,
-        changed_by=current_user.id, change_reason="Referral accepted",
+        db=db,
+        referral_id=referral.id,
+        lab_id=current_user.lab_id,
+        to_status=ReferralStatus.ACCEPTED,
+        from_status=old_status,
+        changed_by=current_user.id,
+        change_reason="Referral accepted",
     )
 
     log_action(
@@ -334,21 +371,32 @@ def decline_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
     if referral.status not in (ReferralStatus.SENT, ReferralStatus.RECEIVED):
-        raise HTTPException(status_code=400, detail=f"Referral cannot be declined in status: {referral.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Referral cannot be declined in status: {referral.status.value}",
+        )
 
     old_status = referral.status
     referral.status = ReferralStatus.DECLINED
     _record_history(
-        db=db, referral_id=referral.id, lab_id=current_user.lab_id,
-        to_status=ReferralStatus.DECLINED, from_status=old_status,
-        changed_by=current_user.id, change_reason=reason,
+        db=db,
+        referral_id=referral.id,
+        lab_id=current_user.lab_id,
+        to_status=ReferralStatus.DECLINED,
+        from_status=old_status,
+        changed_by=current_user.id,
+        change_reason=reason,
     )
 
     log_action(
@@ -372,23 +420,34 @@ def complete_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
     if referral.status != ReferralStatus.ACCEPTED:
-        raise HTTPException(status_code=400, detail=f"Only accepted referrals can be completed, current status: {referral.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only accepted referrals can be completed, current status: {referral.status.value}",
+        )
 
     old_status = referral.status
     referral.status = ReferralStatus.COMPLETED
     referral.completed_at = datetime.now(UTC)
     referral.completed_notes = completed_notes
     _record_history(
-        db=db, referral_id=referral.id, lab_id=current_user.lab_id,
-        to_status=ReferralStatus.COMPLETED, from_status=old_status,
-        changed_by=current_user.id, change_reason=completed_notes or "Referral completed",
+        db=db,
+        referral_id=referral.id,
+        lab_id=current_user.lab_id,
+        to_status=ReferralStatus.COMPLETED,
+        from_status=old_status,
+        changed_by=current_user.id,
+        change_reason=completed_notes or "Referral completed",
     )
 
     log_action(
@@ -412,23 +471,38 @@ def cancel_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
-    if referral.status in (ReferralStatus.COMPLETED, ReferralStatus.CANCELLED, ReferralStatus.EXPIRED):
-        raise HTTPException(status_code=400, detail=f"Referral cannot be cancelled in status: {referral.status.value}")
+    if referral.status in (
+        ReferralStatus.COMPLETED,
+        ReferralStatus.CANCELLED,
+        ReferralStatus.EXPIRED,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Referral cannot be cancelled in status: {referral.status.value}",
+        )
 
     old_status = referral.status
     referral.status = ReferralStatus.CANCELLED
     referral.cancelled_at = datetime.now(UTC)
     referral.cancellation_reason = reason
     _record_history(
-        db=db, referral_id=referral.id, lab_id=current_user.lab_id,
-        to_status=ReferralStatus.CANCELLED, from_status=old_status,
-        changed_by=current_user.id, change_reason=reason,
+        db=db,
+        referral_id=referral.id,
+        lab_id=current_user.lab_id,
+        to_status=ReferralStatus.CANCELLED,
+        from_status=old_status,
+        changed_by=current_user.id,
+        change_reason=reason,
     )
 
     log_action(
@@ -453,14 +527,25 @@ def validate_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
-    if referral.status not in (ReferralStatus.SENT, ReferralStatus.RECEIVED, ReferralStatus.ACCEPTED):
-        raise HTTPException(status_code=400, detail=f"Referral cannot be validated in status: {referral.status.value}")
+    if referral.status not in (
+        ReferralStatus.SENT,
+        ReferralStatus.RECEIVED,
+        ReferralStatus.ACCEPTED,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Referral cannot be validated in status: {referral.status.value}",
+        )
 
     validation = ReferralValidation(
         lab_id=current_user.lab_id,
@@ -504,16 +589,25 @@ def referral_status_history(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
 
-    return db.query(ReferralHistory).filter(
-        ReferralHistory.referral_id == referral_id,
-    ).order_by(ReferralHistory.created_at.asc()).all()
+    return (
+        db.query(ReferralHistory)
+        .filter(
+            ReferralHistory.referral_id == referral_id,
+        )
+        .order_by(ReferralHistory.created_at.asc())
+        .all()
+    )
 
 
 @router.get("/{referral_id}/qr", response_model=dict)
@@ -522,10 +616,14 @@ def get_referral_qr(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    referral = db.query(InsuranceReferral).filter(
-        InsuranceReferral.id == referral_id,
-        InsuranceReferral.lab_id == current_user.lab_id,
-    ).first()
+    referral = (
+        db.query(InsuranceReferral)
+        .filter(
+            InsuranceReferral.id == referral_id,
+            InsuranceReferral.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not referral:
         raise HTTPException(status_code=404, detail="Referral not found")
 

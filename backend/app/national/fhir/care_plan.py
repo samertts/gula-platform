@@ -9,7 +9,12 @@ class FHIRCarePlanMapper:
     RESOURCE_TYPE = "CarePlan"
 
     @classmethod
-    def from_model(cls, care_plan: CarePlan, goals: list[CarePlanGoal] | None = None, activities: list[CarePlanActivity] | None = None) -> dict[str, Any]:
+    def from_model(
+        cls,
+        care_plan: CarePlan,
+        goals: list[CarePlanGoal] | None = None,
+        activities: list[CarePlanActivity] | None = None,
+    ) -> dict[str, Any]:
         resource = {
             "resourceType": cls.RESOURCE_TYPE,
             "id": care_plan.fhir_id or care_plan.id,
@@ -19,8 +24,12 @@ class FHIRCarePlanMapper:
             "title": care_plan.title_ar or care_plan.title,
             "description": care_plan.description,
             "subject": {"reference": f"Patient/{care_plan.patient_id}"},
-            "encounter": {"reference": f"Encounter/{care_plan.encounter_id}"} if care_plan.encounter_id else None,
-            "author": {"reference": f"Practitioner/{care_plan.practitioner_id}"} if care_plan.practitioner_id else None,
+            "encounter": {"reference": f"Encounter/{care_plan.encounter_id}"}
+            if care_plan.encounter_id
+            else None,
+            "author": {"reference": f"Practitioner/{care_plan.practitioner_id}"}
+            if care_plan.practitioner_id
+            else None,
             "period": cls._build_period(care_plan),
             "goal": cls._build_goal_refs(goals),
             "activity": cls._build_activities(activities, goals),
@@ -45,7 +54,14 @@ class FHIRCarePlanMapper:
 
     @classmethod
     def _build_status(cls, status: str) -> str:
-        mapping = {"draft": "draft", "active": "active", "completed": "completed", "revised": "revised", "cancelled": "cancelled", "entered_in_error": "entered-in-error"}
+        mapping = {
+            "draft": "draft",
+            "active": "active",
+            "completed": "completed",
+            "revised": "revised",
+            "cancelled": "cancelled",
+            "entered_in_error": "entered-in-error",
+        }
         return mapping.get(status, "unknown")
 
     @classmethod
@@ -66,7 +82,9 @@ class FHIRCarePlanMapper:
         return [{"reference": f"Goal/{g.fhir_id or g.id}"} for g in goals if g.id]
 
     @classmethod
-    def _build_activities(cls, activities: list[CarePlanActivity] | None, goals: list[CarePlanGoal] | None) -> list[dict]:
+    def _build_activities(
+        cls, activities: list[CarePlanActivity] | None, goals: list[CarePlanGoal] | None,
+    ) -> list[dict]:
         if not activities:
             return []
         goal_map = {g.id: g for g in (goals or [])}
@@ -82,13 +100,24 @@ class FHIRCarePlanMapper:
             "status": activity.status or "not-started",
             "description": activity.description_ar or activity.description,
             "scheduledPeriod": cls._build_activity_schedule(activity),
-            "performer": [{"actor": {"reference": f"Practitioner/{activity.performer_id}"}, "display": activity.performer or ""}] if activity.performer_id else [],
+            "performer": [
+                {
+                    "actor": {"reference": f"Practitioner/{activity.performer_id}"},
+                    "display": activity.performer or "",
+                },
+            ]
+            if activity.performer_id
+            else [],
             "location": {"display": activity.location} if activity.location else None,
             "outcomeCodeableConcept": [{"text": activity.outcome}] if activity.outcome else [],
             "progress": [{"text": activity.progress_notes}] if activity.progress_notes else [],
         }
         if activity.activity_code and activity.activity_code_system:
-            detail["code"] = {"coding": [{"system": activity.activity_code_system, "code": activity.activity_code}]}
+            detail["code"] = {
+                "coding": [
+                    {"system": activity.activity_code_system, "code": activity.activity_code},
+                ],
+            }
         if goal:
             detail["goal"] = [{"reference": f"Goal/{goal.fhir_id or goal.id}"}]
         ref["detail"] = {k: v for k, v in detail.items() if v is not None and v != []}
@@ -123,5 +152,8 @@ class FHIRCarePlanMapper:
         if not care_plan.supporting_info:
             return None
         if isinstance(care_plan.supporting_info, list):
-            return [{"reference": item} if isinstance(item, str) else item for item in care_plan.supporting_info]
+            return [
+                {"reference": item} if isinstance(item, str) else item
+                for item in care_plan.supporting_info
+            ]
         return [care_plan.supporting_info]

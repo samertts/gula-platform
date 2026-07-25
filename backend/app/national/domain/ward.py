@@ -10,8 +10,18 @@ class Ward(AuditEntity):
     name_ar = Column(String(200), nullable=True)
     code = Column(String(20), nullable=True, index=True)
 
-    hospital_id = Column(String(26), ForeignKey("national_hospitals.id", ondelete="CASCADE"), nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    hospital_id = Column(
+        String(26),
+        ForeignKey("national_hospitals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     ward_type = Column(String(50), nullable=False)
     bed_count = Column(Integer, default=0)

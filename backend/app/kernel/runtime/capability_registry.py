@@ -194,20 +194,22 @@ class CapabilityRegistry:
             return
         data = []
         for cap in self._capabilities.values():
-            data.append({
-                "capability_id": cap.capability_id,
-                "name": cap.name,
-                "version": cap.version,
-                "description": cap.description,
-                "owner": cap.owner,
-                "status": cap.status.value,
-                "domain": cap.domain,
-                "layer": cap.layer,
-                "dependencies": cap.dependencies,
-                "enabled": cap.enabled,
-                "required": cap.required,
-                "tags": cap.tags,
-            })
+            data.append(
+                {
+                    "capability_id": cap.capability_id,
+                    "name": cap.name,
+                    "version": cap.version,
+                    "description": cap.description,
+                    "owner": cap.owner,
+                    "status": cap.status.value,
+                    "domain": cap.domain,
+                    "layer": cap.layer,
+                    "dependencies": cap.dependencies,
+                    "enabled": cap.enabled,
+                    "required": cap.required,
+                    "tags": cap.tags,
+                },
+            )
         Path(store).parent.mkdir(parents=True, exist_ok=True)
         Path(store).write_text(json.dumps(data, indent=2))
         logger.info("Capability registry saved", extra={"path": store, "count": len(data)})

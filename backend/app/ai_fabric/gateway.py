@@ -147,11 +147,19 @@ class FailoverStrategy:
         primary = self._router.select_for_model(request.model)
         if not primary:
             return InferenceResponse(
-                text="", model=request.model, provider="", request_id=request.request_id,
+                text="",
+                model=request.model,
+                provider="",
+                request_id=request.request_id,
                 error="No provider available",
             )
 
-        providers_to_try = [primary, *[p for p in self._router.list_available() if p.name != primary.name][:self._max_retries]]
+        providers_to_try = [
+            primary,
+            *[p for p in self._router.list_available() if p.name != primary.name][
+                : self._max_retries
+            ],
+        ]
 
         last_error = ""
         for provider in providers_to_try:
@@ -165,8 +173,11 @@ class FailoverStrategy:
                 logger.warning("Failover from %s: %s", provider.name.value, last_error)
 
         return InferenceResponse(
-            text="", model=request.model, provider="",
-            request_id=request.request_id, error=f"All providers failed: {last_error}",
+            text="",
+            model=request.model,
+            provider="",
+            request_id=request.request_id,
+            error=f"All providers failed: {last_error}",
         )
 
 
@@ -230,14 +241,20 @@ class AIGateway:
             client = self._clients.get(provider_name)
             if not client:
                 return InferenceResponse(
-                    text="", model=req.model, provider=provider_name,
-                    request_id=req.request_id, error=f"Provider {provider_name} not initialized",
+                    text="",
+                    model=req.model,
+                    provider=provider_name,
+                    request_id=req.request_id,
+                    error=f"Provider {provider_name} not initialized",
                 )
             result = client.analyze(req.prompt, temperature=req.temperature)
             elapsed = (time.monotonic() - start) * 1000
             return InferenceResponse(
-                text=result, model=req.model, provider=provider_name,
-                request_id=req.request_id, latency_ms=elapsed,
+                text=result,
+                model=req.model,
+                provider=provider_name,
+                request_id=req.request_id,
+                latency_ms=elapsed,
             )
 
         response = self._failover.execute(request, _call)

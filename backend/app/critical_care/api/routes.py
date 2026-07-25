@@ -20,6 +20,7 @@ router = APIRouter(prefix="/critical-care", tags=["National Critical Care Platfo
 def _get_service(db: Session = Depends(get_db)) -> CriticalCareService:
     try:
         from app.kernel import Kernel
+
         kernel = Kernel.get_instance()
         event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
     except Exception:
@@ -28,6 +29,7 @@ def _get_service(db: Session = Depends(get_db)) -> CriticalCareService:
 
 
 # ---- Admissions ----
+
 
 @router.post("/admissions", status_code=status.HTTP_201_CREATED)
 async def admit_patient(
@@ -60,7 +62,9 @@ async def get_admission(
     try:
         return _admission_to_dict(service.get_admission(admission_id))
     except ICUAdmissionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/admissions/{admission_id}/discharge")
@@ -72,10 +76,13 @@ async def discharge_patient(
     try:
         return _admission_to_dict(service.discharge_patient(admission_id, body))
     except ICUAdmissionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ---- Beds ----
+
 
 @router.post("/beds", status_code=status.HTTP_201_CREATED)
 async def register_bed(
@@ -94,6 +101,7 @@ async def get_bed_availability(
 
 
 # ---- Vital Signs ----
+
 
 @router.post("/vitals", status_code=status.HTTP_201_CREATED)
 async def record_vitals(
@@ -114,6 +122,7 @@ async def get_vitals(
 
 # ---- Ventilator ----
 
+
 @router.post("/ventilator", status_code=status.HTTP_201_CREATED)
 async def set_ventilator(
     body: dict[str, Any],
@@ -133,6 +142,7 @@ async def get_ventilator_settings(
 
 # ---- Early Warning Scores ----
 
+
 @router.post("/ews/{patient_id}")
 async def calculate_ews(
     patient_id: str,
@@ -143,7 +153,9 @@ async def calculate_ews(
         ews = service.calculate_ews(patient_id, body.get("admission_id", ""), body.get("vitals_id"))
         return _ews_to_dict(ews)
     except MonitoringRecordNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/sofa/{patient_id}")
@@ -157,6 +169,7 @@ async def calculate_sofa(
 
 
 # ---- Infusions ----
+
 
 @router.post("/infusions", status_code=status.HTTP_201_CREATED)
 async def start_infusion(
@@ -174,10 +187,13 @@ async def stop_infusion(
     try:
         return _infusion_to_dict(service.stop_infusion(infusion_id))
     except InfusionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ---- Fluid Balance ----
+
 
 @router.post("/fluid-balance", status_code=status.HTTP_201_CREATED)
 async def record_fluid_balance(
@@ -188,6 +204,7 @@ async def record_fluid_balance(
 
 
 # ---- Alerts ----
+
 
 @router.post("/alerts", status_code=status.HTTP_201_CREATED)
 async def raise_alert(
@@ -208,6 +225,7 @@ async def acknowledge_alert(
 
 # ---- Rounds ----
 
+
 @router.post("/rounds", status_code=status.HTTP_201_CREATED)
 async def record_round(
     body: dict[str, Any],
@@ -217,6 +235,7 @@ async def record_round(
 
 
 # ---- Dashboard ----
+
 
 @router.get("/dashboard")
 async def get_dashboard(
@@ -232,36 +251,50 @@ async def health() -> dict[str, Any]:
 
 # ---- Serializers ----
 
+
 def _admission_to_dict(a: Any) -> dict[str, Any]:
     return {
-        "id": a.id, "patient_id": a.patient_id, "patient_name": getattr(a, "patient_name", ""),
+        "id": a.id,
+        "patient_id": a.patient_id,
+        "patient_name": getattr(a, "patient_name", ""),
         "icu_type": a.icu_type if not hasattr(a.icu_type, "value") else a.icu_type.value,
         "admission_type": getattr(a, "admission_type", ""),
         "admission_diagnosis": getattr(a, "admission_diagnosis", ""),
         "status": a.status if not hasattr(a.status, "value") else a.status.value,
-        "bed_id": getattr(a, "bed_id", ""), "facility_id": getattr(a, "facility_id", ""),
+        "bed_id": getattr(a, "bed_id", ""),
+        "facility_id": getattr(a, "facility_id", ""),
         "created_at": getattr(a, "created_at", None),
         "discharged_at": getattr(a, "discharged_at", None),
     }
 
 
 def _bed_to_dict(b: Any) -> dict[str, Any]:
-    return {"id": b.id, "bed_label": b.bed_label, "icu_type": b.icu_type if not hasattr(b.icu_type, "value") else b.icu_type.value}
+    return {
+        "id": b.id,
+        "bed_label": b.bed_label,
+        "icu_type": b.icu_type if not hasattr(b.icu_type, "value") else b.icu_type.value,
+    }
 
 
 def _vitals_to_dict(v: Any) -> dict[str, Any]:
     return {
-        "id": v.id, "patient_id": v.patient_id, "heart_rate": v.heart_rate,
-        "respiratory_rate": v.respiratory_rate, "systolic_bp": v.systolic_bp,
-        "diastolic_bp": v.diastolic_bp, "temperature": v.temperature,
-        "oxygen_saturation": v.oxygen_saturation, "gcs_total": v.gcs_total,
+        "id": v.id,
+        "patient_id": v.patient_id,
+        "heart_rate": v.heart_rate,
+        "respiratory_rate": v.respiratory_rate,
+        "systolic_bp": v.systolic_bp,
+        "diastolic_bp": v.diastolic_bp,
+        "temperature": v.temperature,
+        "oxygen_saturation": v.oxygen_saturation,
+        "gcs_total": v.gcs_total,
         "recorded_at": v.recorded_at.isoformat() if v.recorded_at else None,
     }
 
 
 def _ventilator_to_dict(v: Any) -> dict[str, Any]:
     return {
-        "id": v.id, "patient_id": v.patient_id,
+        "id": v.id,
+        "patient_id": v.patient_id,
         "mode": v.mode if not hasattr(v.mode, "value") else v.mode.value,
         "tidal_volume_ml": getattr(v, "tidal_volume_ml", None),
         "peep_cmh2o": getattr(v, "peep_cmh2o", None),
@@ -272,8 +305,11 @@ def _ventilator_to_dict(v: Any) -> dict[str, Any]:
 
 def _ews_to_dict(e: Any) -> dict[str, Any]:
     return {
-        "id": e.id, "patient_id": e.patient_id, "score_system": e.score_system,
-        "score_value": e.score_value, "risk_category": e.risk_category,
+        "id": e.id,
+        "patient_id": e.patient_id,
+        "score_system": e.score_system,
+        "score_value": e.score_value,
+        "risk_category": e.risk_category,
         "recommended_frequency": e.recommended_frequency,
         "triggers_escalation": e.triggers_escalation,
     }
@@ -281,29 +317,39 @@ def _ews_to_dict(e: Any) -> dict[str, Any]:
 
 def _score_to_dict(s: Any) -> dict[str, Any]:
     return {
-        "id": s.id, "patient_id": s.patient_id, "score_type": s.score_type,
-        "score_value": s.score_value, "mortality_prediction": s.mortality_prediction,
+        "id": s.id,
+        "patient_id": s.patient_id,
+        "score_type": s.score_type,
+        "score_value": s.score_value,
+        "mortality_prediction": s.mortality_prediction,
     }
 
 
 def _infusion_to_dict(i: Any) -> dict[str, Any]:
     return {
-        "id": i.id, "patient_id": i.patient_id, "medication": i.medication,
-        "rate": getattr(i, "rate", ""), "status": i.status,
+        "id": i.id,
+        "patient_id": i.patient_id,
+        "medication": i.medication,
+        "rate": getattr(i, "rate", ""),
+        "status": i.status,
     }
 
 
 def _fluid_to_dict(f: Any) -> dict[str, Any]:
     return {
-        "id": f.id, "patient_id": f.patient_id,
-        "total_intake_ml": f.total_intake_ml, "total_output_ml": f.total_output_ml,
+        "id": f.id,
+        "patient_id": f.patient_id,
+        "total_intake_ml": f.total_intake_ml,
+        "total_output_ml": f.total_output_ml,
         "net_balance_ml": f.net_balance_ml,
     }
 
 
 def _alert_to_dict(a: Any) -> dict[str, Any]:
     return {
-        "id": a.id, "patient_id": a.patient_id, "alert_type": a.alert_type,
+        "id": a.id,
+        "patient_id": a.patient_id,
+        "alert_type": a.alert_type,
         "severity": a.severity if not hasattr(a.severity, "value") else a.severity.value,
         "alert_message": getattr(a, "alert_message", ""),
         "is_active": a.is_active if hasattr(a, "is_active") else True,
@@ -312,6 +358,7 @@ def _alert_to_dict(a: Any) -> dict[str, Any]:
 
 def _round_to_dict(r: Any) -> dict[str, Any]:
     return {
-        "id": r.id, "patient_id": r.patient_id,
+        "id": r.id,
+        "patient_id": r.patient_id,
         "attending_physician": getattr(r, "attending_physician", ""),
     }

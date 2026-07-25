@@ -30,7 +30,9 @@ class AccessibilityService:
         self._preferences: dict[str, AccessibilityPreference] = {}
 
     def set_preferences(
-        self, citizen_id: str, prefs: AccessibilityPreference,
+        self,
+        citizen_id: str,
+        prefs: AccessibilityPreference,
     ) -> AccessibilityPreference:
         self._preferences[citizen_id] = prefs
         return prefs
@@ -42,7 +44,10 @@ class AccessibilityService:
         )
 
     def update_preference(
-        self, citizen_id: str, key: str, value: Any,
+        self,
+        citizen_id: str,
+        key: str,
+        value: Any,
     ) -> AccessibilityPreference | None:
         prefs = self._preferences.get(citizen_id)
         if not prefs:
@@ -52,7 +57,9 @@ class AccessibilityService:
         return prefs
 
     def apply_accessibility_transform(
-        self, citizen_id: str, content: dict[str, Any],
+        self,
+        citizen_id: str,
+        content: dict[str, Any],
     ) -> dict[str, Any]:
         prefs = self.get_preferences(citizen_id)
         transformed = dict(content)
@@ -109,9 +116,18 @@ class LocalizationService:
         try:
             dt = datetime.strptime(date_str[:10], "%Y-%m-%d")
             months_ar = [
-                "كانون الثاني", "شباط", "آذار", "نيسان",
-                "أيار", "حزيران", "تموز", "آب",
-                "أيلول", "تشرين الأول", "تشرين الثاني", "كانون الأول",
+                "كانون الثاني",
+                "شباط",
+                "آذار",
+                "نيسان",
+                "أيار",
+                "حزيران",
+                "تموز",
+                "آب",
+                "أيلول",
+                "تشرين الأول",
+                "تشرين الثاني",
+                "كانون الأول",
             ]
             if locale == "ar":
                 return f"{dt.day} {months_ar[dt.month - 1]} {dt.year}"

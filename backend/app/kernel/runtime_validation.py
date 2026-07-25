@@ -134,7 +134,8 @@ class ArchitectureValidator:
             if cr:
                 for cap in cr.list_capabilities():
                     if cap.layer == "infrastructure" and any(
-                        d for d in cap.dependencies
+                        d
+                        for d in cap.dependencies
                         if cr.get(d) and cr.get(d).layer == "presentation"
                     ):
                         issues.append(f"{cap.name} depends on presentation layer")
@@ -145,7 +146,9 @@ class ArchitectureValidator:
             severity=ValidationSeverity.WARNING,
             category="architecture",
             status=ValidationStatus.FAILED if issues else ValidationStatus.PASSED,
-            message=f"{len(issues)} dependency direction issues" if issues else "Dependency direction clean",
+            message=f"{len(issues)} dependency direction issues"
+            if issues
+            else "Dependency direction clean",
             details={"issues": issues},
             duration_ms=duration_ms,
         )

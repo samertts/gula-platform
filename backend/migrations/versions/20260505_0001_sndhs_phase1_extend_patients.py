@@ -32,19 +32,21 @@ Operational properties
 Revision ID : 20260505_0001
 Revises     : 20260503_0001
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
 
 
-revision      = "20260505_0001"
+revision = "20260505_0001"
 down_revision = "20260503_0001"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _has_column(table: str, column: str) -> bool:
     insp = inspect(op.get_bind())
@@ -56,6 +58,7 @@ def _pg() -> bool:
 
 
 # ── Upgrade ───────────────────────────────────────────────────────────────────
+
 
 def upgrade() -> None:
     if _pg():
@@ -122,6 +125,7 @@ def upgrade() -> None:
 
 
 # ── Downgrade ─────────────────────────────────────────────────────────────────
+
 
 def downgrade() -> None:
     """Reverse only the additions made above. Pure metadata DDL — no data

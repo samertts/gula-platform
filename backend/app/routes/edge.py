@@ -326,7 +326,9 @@ def _resolve_agent_device(
 
 
 @router.post(
-    "/devices/register", response_model=RegisterDeviceResponse, status_code=status.HTTP_201_CREATED,
+    "/devices/register",
+    response_model=RegisterDeviceResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 def register_device_endpoint(
     body: RegisterDeviceRequest,

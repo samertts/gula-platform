@@ -32,7 +32,9 @@ class TestDomainEvents:
         assert complete.event_type == "national.workflow.completed"
 
     def test_identity_events(self):
-        merge = IdentityMergeApproved(aggregate_id="MERGE001", payload={"primary": "CIT001", "secondary": "CIT002"})
+        merge = IdentityMergeApproved(
+            aggregate_id="MERGE001", payload={"primary": "CIT001", "secondary": "CIT002"},
+        )
         assert merge.event_type == "national.identity.merge_approved"
 
     def test_event_correlation(self):

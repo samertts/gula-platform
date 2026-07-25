@@ -88,7 +88,8 @@ class EventCatalog:
             import ast as _ast
 
             backend_app = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "app",
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                "app",
             )
             for root, _dirs, files in os.walk(backend_app):
                 for fname in files:
@@ -104,16 +105,28 @@ class EventCatalog:
                         if isinstance(node, _ast.Call) and isinstance(node.func, _ast.Attribute):
                             if node.func.attr in ("publish", "emit", "dispatch"):
                                 for arg in node.args:
-                                    if isinstance(arg, _ast.Constant) and isinstance(arg.value, str):
-                                        producers.setdefault(arg.value, set()).add(os.path.relpath(fpath, backend_app))
+                                    if isinstance(arg, _ast.Constant) and isinstance(
+                                        arg.value, str,
+                                    ):
+                                        producers.setdefault(arg.value, set()).add(
+                                            os.path.relpath(fpath, backend_app),
+                                        )
                                     elif isinstance(arg, _ast.Name):
-                                        producers.setdefault(arg.id, set()).add(os.path.relpath(fpath, backend_app))
+                                        producers.setdefault(arg.id, set()).add(
+                                            os.path.relpath(fpath, backend_app),
+                                        )
                             elif node.func.attr in ("subscribe", "on", "listen", "handle"):
                                 for arg in node.args:
-                                    if isinstance(arg, _ast.Constant) and isinstance(arg.value, str):
-                                        consumers.setdefault(arg.value, set()).add(os.path.relpath(fpath, backend_app))
+                                    if isinstance(arg, _ast.Constant) and isinstance(
+                                        arg.value, str,
+                                    ):
+                                        consumers.setdefault(arg.value, set()).add(
+                                            os.path.relpath(fpath, backend_app),
+                                        )
                                     elif isinstance(arg, _ast.Name):
-                                        consumers.setdefault(arg.id, set()).add(os.path.relpath(fpath, backend_app))
+                                        consumers.setdefault(arg.id, set()).add(
+                                            os.path.relpath(fpath, backend_app),
+                                        )
         except Exception as exc:
             logger.debug("Error scanning event flow: %s", exc)
 
@@ -121,11 +134,13 @@ class EventCatalog:
         for name, entry in self._events.items():
             if event_name and name != event_name:
                 continue
-            flows.append(EventFlowEntry(
-                event=entry,
-                producers=sorted(producers.get(name, [])),
-                consumers=sorted(consumers.get(name, [])),
-            ))
+            flows.append(
+                EventFlowEntry(
+                    event=entry,
+                    producers=sorted(producers.get(name, [])),
+                    consumers=sorted(consumers.get(name, [])),
+                ),
+            )
         return flows
 
     def get_event(self, name: str) -> EventEntry | None:
@@ -134,8 +149,11 @@ class EventCatalog:
     def search(self, query: str) -> list[EventEntry]:
         q = query.lower()
         return [
-            e for e in self._events.values()
-            if q in e.name.lower() or q in e.description.lower() or q in e.summary.lower()
+            e
+            for e in self._events.values()
+            if q in e.name.lower()
+            or q in e.description.lower()
+            or q in e.summary.lower()
             or any(q in t.lower() for t in e.tags)
         ]
 
@@ -147,7 +165,8 @@ class EventCatalog:
 
     def _scan_event_modules(self) -> None:
         backend_app = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "app",
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "app",
         )
         for root, _dirs, files in os.walk(backend_app):
             for fname in files:
@@ -157,6 +176,7 @@ class EventCatalog:
                     fpath = os.path.join(root, fname)
                     try:
                         import ast
+
                         with open(fpath, encoding="utf-8", errors="replace") as f:
                             tree = ast.parse(f.read())
                         for node in ast.walk(tree):
@@ -176,6 +196,7 @@ class EventCatalog:
     def _scan_kernel_events(self) -> None:
         try:
             from app.kernel.event_bus.events import Event
+
             if hasattr(Event, "__subclasses__"):
                 for subclass in Event.__subclasses__():
                     name = subclass.__name__
@@ -192,6 +213,7 @@ class EventCatalog:
     def _class_to_schema(self, node: Any) -> dict:
         try:
             import ast
+
             props: dict[str, str] = {}
             for item in node.body:
                 if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):

@@ -1,4 +1,5 @@
 """Notification Platform - Sender Tests"""
+
 from __future__ import annotations
 
 import logging
@@ -69,7 +70,9 @@ class TestNotificationSender:
         with patch("shared.notifications.sender.smtplib.SMTP") as mock_smtp:
             mock_instance = MagicMock()
             mock_smtp.return_enter.return_value = mock_instance
-            result = sender.send_email("test@example.com", "Subject", "<html><body>Hi</body></html>")
+            result = sender.send_email(
+                "test@example.com", "Subject", "<html><body>Hi</body></html>"
+            )
         assert result is True
 
     def test_send_email_handles_html_content(self):
@@ -82,7 +85,9 @@ class TestNotificationSender:
         with patch("shared.notifications.sender.smtplib.SMTP") as mock_smtp:
             mock_instance = MagicMock()
             mock_smtp.return_enter.return_value = mock_instance
-            result = sender.send_email("test@example.com", "Subject", "<html><body>Hi</body></html>")
+            result = sender.send_email(
+                "test@example.com", "Subject", "<html><body>Hi</body></html>"
+            )
         assert result is True
 
     def test_send_sms_api_not_configured_logs_only(self, caplog):

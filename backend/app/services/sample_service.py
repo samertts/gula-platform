@@ -11,7 +11,15 @@ from ..models.sample import Sample
 from ..services.audit_service import log_action
 
 VALID_SAMPLE_TYPES = [
-    "blood", "urine", "stool", "swab", "serum", "plasma", "csf", "sputum", "other",
+    "blood",
+    "urine",
+    "stool",
+    "swab",
+    "serum",
+    "plasma",
+    "csf",
+    "sputum",
+    "other",
 ]
 VALID_STATUSES = ["collected", "received", "processing", "analyzed", "rejected"]
 
@@ -73,11 +81,7 @@ def create_sample(
     current_user,
     ip_address: str | None = None,
 ) -> dict:
-    order = (
-        db.query(LabOrder)
-        .filter(LabOrder.id == order_id, LabOrder.lab_id == lab_id)
-        .first()
-    )
+    order = db.query(LabOrder).filter(LabOrder.id == order_id, LabOrder.lab_id == lab_id).first()
     if not order:
         raise NotFoundError("Order not found")
     assert_not_locked(order)

@@ -86,10 +86,15 @@ class GracefulShutdown:
                     await asyncio.wait_for(result, timeout=task.timeout)
                 elapsed = time.monotonic() - start
                 results[task.name] = {"status": "completed", "duration_ms": round(elapsed * 1000)}
-                logger.info("Shutdown task completed", extra={"task": task.name, "duration_ms": round(elapsed * 1000)})
+                logger.info(
+                    "Shutdown task completed",
+                    extra={"task": task.name, "duration_ms": round(elapsed * 1000)},
+                )
             except TimeoutError:
                 results[task.name] = {"status": "timeout", "duration_ms": task.timeout * 1000}
-                logger.warning("Shutdown task timed out", extra={"task": task.name, "timeout": task.timeout})
+                logger.warning(
+                    "Shutdown task timed out", extra={"task": task.name, "timeout": task.timeout},
+                )
             except Exception as exc:
                 results[task.name] = {"status": "error", "error": str(exc)}
                 logger.error("Shutdown task failed", extra={"task": task.name, "error": str(exc)})
@@ -116,10 +121,22 @@ class StateRecovery:
         self._checkpoints[component] = cp
         filepath = self._checkpoint_dir / f"{component}_{cp.id}.ckpt"
         try:
-            filepath.write_text(json.dumps({"id": cp.id, "component": cp.component, "state": cp.state, "version": cp.version}, default=str))
+            filepath.write_text(
+                json.dumps(
+                    {
+                        "id": cp.id,
+                        "component": cp.component,
+                        "state": cp.state,
+                        "version": cp.version,
+                    },
+                    default=str,
+                ),
+            )
             logger.info("Checkpoint saved", extra={"component": component, "path": str(filepath)})
         except Exception as exc:
-            logger.error("Checkpoint write failed", extra={"component": component, "error": str(exc)})
+            logger.error(
+                "Checkpoint write failed", extra={"component": component, "error": str(exc)},
+            )
         return cp
 
     def load_checkpoint(self, component: str) -> Checkpoint | None:
@@ -128,17 +145,28 @@ class StateRecovery:
             return cp
         pattern = f"{component}_*.ckpt"
         try:
-            files = sorted(self._checkpoint_dir.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True)
+            files = sorted(
+                self._checkpoint_dir.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True,
+            )
             if files:
                 data = json.loads(files[0].read_text())
-                cp = Checkpoint(id=data["id"], component=data["component"], state=data["state"], version=data.get("version", 1))
+                cp = Checkpoint(
+                    id=data["id"],
+                    component=data["component"],
+                    state=data["state"],
+                    version=data.get("version", 1),
+                )
                 self._checkpoints[component] = cp
                 return cp
         except Exception as exc:
-            logger.error("Checkpoint load failed", extra={"component": component, "error": str(exc)})
+            logger.error(
+                "Checkpoint load failed", extra={"component": component, "error": str(exc)},
+            )
         return None
 
-    def recover(self, component: str, replay_events: list[dict[str, Any]] | None = None) -> RecoveredState:
+    def recover(
+        self, component: str, replay_events: list[dict[str, Any]] | None = None,
+    ) -> RecoveredState:
         start = time.monotonic()
         cp = self.load_checkpoint(component)
         if not cp:
@@ -154,7 +182,9 @@ class StateRecovery:
             if event.get("target") == component:
                 events_replayed.append(event)
         duration_ms = (time.monotonic() - start) * 1000
-        logger.info("State recovered", extra={"component": component, "duration_ms": round(duration_ms, 1)})
+        logger.info(
+            "State recovered", extra={"component": component, "duration_ms": round(duration_ms, 1)},
+        )
         return RecoveredState(
             component=component,
             checkpoint=cp,
@@ -191,7 +221,9 @@ class QueueRecovery:
         if len(self._lost_messages[queue]) > 10000:
             self._lost_messages[queue].pop(0)
 
-    def recover_queue(self, queue: str, replay_fn: Callable[[dict[str, Any]], bool] | None = None) -> dict[str, Any]:
+    def recover_queue(
+        self, queue: str, replay_fn: Callable[[dict[str, Any]], bool] | None = None,
+    ) -> dict[str, Any]:
         lost = self._lost_messages.get(queue, [])
         if not lost:
             return {"queue": queue, "recovered": 0, "failed": 0, "total": 0}
@@ -211,7 +243,10 @@ class QueueRecovery:
             recovered = len(lost)
 
         self._recovered_messages[queue] = recovered
-        logger.info("Queue recovered", extra={"queue": queue, "recovered": recovered, "failed": failed, "total": len(lost)})
+        logger.info(
+            "Queue recovered",
+            extra={"queue": queue, "recovered": recovered, "failed": failed, "total": len(lost)},
+        )
         return {"queue": queue, "recovered": recovered, "failed": failed, "total": len(lost)}
 
     def get_pending_recovery(self, queue: str | None = None) -> dict[str, int]:
@@ -239,18 +274,24 @@ class ReliabilityEngine:
         self._started_at: float = time.time()
         self._recovery_count: int = 0
 
-    def attempt_recovery(self, component: str, context: dict[str, Any] | None = None) -> RecoveredState:
+    def attempt_recovery(
+        self, component: str, context: dict[str, Any] | None = None,
+    ) -> RecoveredState:
         self._recovery_count += 1
         state = self.state_recovery.recover(component)
-        self._recovery_history.append({
-            "timestamp": time.time(),
-            "component": component,
-            "recovered": state.recovered,
-            "duration_ms": round(state.recovery_time_ms, 1),
-        })
+        self._recovery_history.append(
+            {
+                "timestamp": time.time(),
+                "component": component,
+                "recovered": state.recovered,
+                "duration_ms": round(state.recovery_time_ms, 1),
+            },
+        )
         if len(self._recovery_history) > 200:
             self._recovery_history.pop(0)
-        logger.info("Recovery attempted", extra={"component": component, "success": state.recovered})
+        logger.info(
+            "Recovery attempted", extra={"component": component, "success": state.recovered},
+        )
         return state
 
     def get_stats(self) -> dict[str, Any]:

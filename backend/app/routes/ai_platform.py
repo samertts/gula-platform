@@ -38,7 +38,9 @@ _DOCTOR_ROLES = {"doctor", "admin", "lab_admin", "province_admin", "ministry_adm
 
 def _require_doctor(user) -> None:
     if user.role not in _DOCTOR_ROLES:
-        raise HTTPException(status_code=403, detail="Only doctors and administrators may access this.")
+        raise HTTPException(
+            status_code=403, detail="Only doctors and administrators may access this."
+        )
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -121,7 +123,13 @@ async def semantic_search(
     return {
         "count": len(results),
         "results": [
-            {"id": r.id, "content_type": r.content_type, "text": r.text[:200], "score": r.score, "metadata": r.metadata}
+            {
+                "id": r.id,
+                "content_type": r.content_type,
+                "text": r.text[:200],
+                "score": r.score,
+                "metadata": r.metadata,
+            }
             for r in results
         ],
         "duration_ms": round((time.monotonic() - start) * 1000, 1),
@@ -188,11 +196,20 @@ def kg_info(current_user=Depends(get_current_user)):
 @router.post("/knowledge-graph/search", summary="Search knowledge graph")
 def kg_search(body: KGSearchRequest, current_user=Depends(get_current_user)):
     knowledge_graph.initialize()
-    nodes = knowledge_graph.search_nodes(query=body.query, node_type=body.node_type, limit=body.limit)
+    nodes = knowledge_graph.search_nodes(
+        query=body.query, node_type=body.node_type, limit=body.limit
+    )
     return {
         "count": len(nodes),
         "results": [
-            {"id": n.id, "type": n.node_type, "label": n.label, "description": n.description, "aliases": n.aliases, "external_id": n.external_id}
+            {
+                "id": n.id,
+                "type": n.node_type,
+                "label": n.label,
+                "description": n.description,
+                "aliases": n.aliases,
+                "external_id": n.external_id,
+            }
             for n in nodes
         ],
     }
@@ -206,13 +223,25 @@ def kg_node(node_id: int, current_user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Node not found")
     neighbors = knowledge_graph.get_neighbors(node_id)
     return {
-        "node": {"id": node.id, "type": node.node_type, "label": node.label, "description": node.description, "aliases": node.aliases, "external_id": node.external_id},
-        "neighbors": [{"id": n.id, "label": n.label, "type": n.node_type, "relationship": rel, "weight": w} for n, rel, w in neighbors],
+        "node": {
+            "id": node.id,
+            "type": node.node_type,
+            "label": node.label,
+            "description": node.description,
+            "aliases": node.aliases,
+            "external_id": node.external_id,
+        },
+        "neighbors": [
+            {"id": n.id, "label": n.label, "type": n.node_type, "relationship": rel, "weight": w}
+            for n, rel, w in neighbors
+        ],
     }
 
 
 @router.get("/knowledge-graph/path", summary="Shortest path between two nodes")
-def kg_path(source: int = Query(...), target: int = Query(...), current_user=Depends(get_current_user)):
+def kg_path(
+    source: int = Query(...), target: int = Query(...), current_user=Depends(get_current_user)
+):
     knowledge_graph.initialize()
     path = knowledge_graph.shortest_path(source, target)
     if path is None:
@@ -291,7 +320,10 @@ async def create_session(current_user=Depends(get_current_user)):
         lab_id=current_user.lab_id,
         user_id=current_user.id,
     )
-    return {"session_id": conv.session_id, "created_at": conv.messages[0].created_at if conv.messages else None}
+    return {
+        "session_id": conv.session_id,
+        "created_at": conv.messages[0].created_at if conv.messages else None,
+    }
 
 
 @router.post("/sessions/message", summary="Add message to session")
@@ -314,7 +346,10 @@ async def get_session(
     return {
         "session_id": conv.session_id,
         "message_count": len(conv.messages),
-        "messages": [{"role": m.role, "content": m.content[:500], "created_at": m.created_at} for m in conv.messages[-50:]],
+        "messages": [
+            {"role": m.role, "content": m.content[:500], "created_at": m.created_at}
+            for m in conv.messages[-50:]
+        ],
     }
 
 

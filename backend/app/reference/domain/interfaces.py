@@ -7,14 +7,11 @@ from .models import LabOrderDomain, LabResultDomain, PatientDomain
 
 
 class PatientRepository(ABC):
+    @abstractmethod
+    async def save(self, patient: PatientDomain) -> PatientDomain: ...
 
     @abstractmethod
-    async def save(self, patient: PatientDomain) -> PatientDomain:
-        ...
-
-    @abstractmethod
-    async def get_by_id(self, patient_id: str) -> PatientDomain | None:
-        ...
+    async def get_by_id(self, patient_id: str) -> PatientDomain | None: ...
 
     @abstractmethod
     async def search(
@@ -26,8 +23,7 @@ class PatientRepository(ABC):
         national_id: str | None = None,
         limit: int = 20,
         offset: int = 0,
-    ) -> tuple[Sequence[PatientDomain], int]:
-        ...
+    ) -> tuple[Sequence[PatientDomain], int]: ...
 
     @abstractmethod
     async def find_duplicate(
@@ -35,19 +31,15 @@ class PatientRepository(ABC):
         name: str,
         phone: str,
         lab_id: str,
-    ) -> PatientDomain | None:
-        ...
+    ) -> PatientDomain | None: ...
 
 
 class OrderRepository(ABC):
+    @abstractmethod
+    async def save(self, order: LabOrderDomain) -> LabOrderDomain: ...
 
     @abstractmethod
-    async def save(self, order: LabOrderDomain) -> LabOrderDomain:
-        ...
-
-    @abstractmethod
-    async def get_by_id(self, order_id: str) -> LabOrderDomain | None:
-        ...
+    async def get_by_id(self, order_id: str) -> LabOrderDomain | None: ...
 
     @abstractmethod
     async def list_by_patient(
@@ -55,26 +47,21 @@ class OrderRepository(ABC):
         patient_id: str,
         limit: int = 20,
         offset: int = 0,
-    ) -> tuple[Sequence[LabOrderDomain], int]:
-        ...
+    ) -> tuple[Sequence[LabOrderDomain], int]: ...
 
 
 class ResultRepository(ABC):
+    @abstractmethod
+    async def save(self, result: LabResultDomain) -> LabResultDomain: ...
 
     @abstractmethod
-    async def save(self, result: LabResultDomain) -> LabResultDomain:
-        ...
-
-    @abstractmethod
-    async def get_by_id(self, result_id: str) -> LabResultDomain | None:
-        ...
+    async def get_by_id(self, result_id: str) -> LabResultDomain | None: ...
 
     @abstractmethod
     async def list_by_order(
         self,
         order_id: str,
-    ) -> Sequence[LabResultDomain]:
-        ...
+    ) -> Sequence[LabResultDomain]: ...
 
     @abstractmethod
     async def list_critical(
@@ -82,5 +69,4 @@ class ResultRepository(ABC):
         lab_id: str,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[Sequence[LabResultDomain], int]:
-        ...
+    ) -> tuple[Sequence[LabResultDomain], int]: ...

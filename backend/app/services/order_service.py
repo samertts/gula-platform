@@ -182,7 +182,10 @@ def result_to_dict(r: LabResult) -> dict:
     interpretation = None
     if r.value is not None:
         interpretation = interpret_result(
-            r.test_name, r.value, r.normal_range_low, r.normal_range_high,
+            r.test_name,
+            r.value,
+            r.normal_range_low,
+            r.normal_range_high,
         )
 
     return {
@@ -238,7 +241,9 @@ def _generate_unique_token(db: Session) -> tuple[str, str]:
 
 
 def _build_sharing_links(
-    patient_phone: str | None, patient_name: str | None, result_links: list,
+    patient_phone: str | None,
+    patient_name: str | None,
+    result_links: list,
 ) -> dict:
     """Build WhatsApp and SMS sharing links."""
     whatsapp_link = None
@@ -437,14 +442,23 @@ def create_order(
 
     # Emit events
     _emit_order_events(
-        order, patient.full_name, patient.phone, len(results_data), user_id, critical_alerts,
+        order,
+        patient.full_name,
+        patient.phone,
+        len(results_data),
+        user_id,
+        critical_alerts,
     )
 
     return response_body
 
 
 def get_order_by_id(
-    db: Session, order_id: int, lab_id: int, user_role: str, user_id: int,
+    db: Session,
+    order_id: int,
+    lab_id: int,
+    user_role: str,
+    user_id: int,
 ) -> dict | None:
     """Get a single order by ID."""
     order = (
@@ -610,7 +624,9 @@ def get_public_result(db: Session, token: str, ip_address: str | None = None) ->
     order = (
         db.query(LabOrder)
         .options(
-            joinedload(LabOrder.patient), joinedload(LabOrder.lab), joinedload(LabOrder.results),
+            joinedload(LabOrder.patient),
+            joinedload(LabOrder.lab),
+            joinedload(LabOrder.results),
         )
         .filter(LabOrder.id == result.order_id)
         .first()
@@ -689,7 +705,9 @@ def download_result_pdf(db: Session, token: str, ip_address: str | None = None) 
     order = (
         db.query(LabOrder)
         .options(
-            joinedload(LabOrder.patient), joinedload(LabOrder.lab), joinedload(LabOrder.results),
+            joinedload(LabOrder.patient),
+            joinedload(LabOrder.lab),
+            joinedload(LabOrder.results),
         )
         .filter(LabOrder.id == result.order_id)
         .first()

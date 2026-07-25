@@ -14,18 +14,20 @@ All three are idempotent (guarded by `_has_table`) so re-running is safe.
 Partial unique index on `citizens.nid_hash` (WHERE nid_hash IS NOT NULL)
 is created via raw DDL for PostgreSQL portability.
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
 
-revision      = "20260413_0001"
+revision = "20260413_0001"
 down_revision = "20260407_0001"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 # ─── Idempotency helpers (copied from 20260407_0001_claims_tables.py) ─────────
+
 
 def _has_table(name: str) -> bool:
     bind = op.get_bind()
@@ -56,35 +58,41 @@ def _is_postgres() -> bool:
 
 # ─── Upgrade ─────────────────────────────────────────────────────────────────
 
+
 def upgrade() -> None:
 
     # ── 1. citizens ──────────────────────────────────────────────────────────
     if not _has_table("citizens"):
         op.create_table(
             "citizens",
-            sa.Column("id",                 sa.BigInteger(),        primary_key=True, autoincrement=True),
-            sa.Column("citizen_ulid",       sa.String(26),          nullable=False, unique=True),
-            sa.Column("nid_hash",           sa.String(255),         nullable=True),
-            sa.Column("nid_verified",       sa.Boolean(),           nullable=False, server_default=sa.false()),
-            sa.Column("phone_last10",       sa.String(10),          nullable=True),
-            sa.Column("birth_year",         sa.SmallInteger(),      nullable=True),
-            sa.Column("birth_month",        sa.SmallInteger(),      nullable=True),
-            sa.Column("birth_day",          sa.SmallInteger(),      nullable=True),
-            sa.Column("gender",             sa.String(1),           nullable=True),
-            sa.Column("name_canonical",     sa.String(255),         nullable=False),
-            sa.Column("name_blocking_key",  sa.String(20),          nullable=False),
-            sa.Column("family_id_hash",     sa.String(255),         nullable=True),
-            sa.Column("merged_into_id",     sa.BigInteger(),
-                      sa.ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True),
-            sa.Column("status",             sa.String(20),          nullable=False, server_default="active"),
-            sa.Column("version",            sa.Integer(),           nullable=False, server_default="1"),
-            sa.Column("created_at",         sa.DateTime(timezone=True), server_default=sa.func.now()),
-            sa.Column("updated_at",         sa.DateTime(timezone=True), server_default=sa.func.now()),
+            sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
+            sa.Column("citizen_ulid", sa.String(26), nullable=False, unique=True),
+            sa.Column("nid_hash", sa.String(255), nullable=True),
+            sa.Column("nid_verified", sa.Boolean(), nullable=False, server_default=sa.false()),
+            sa.Column("phone_last10", sa.String(10), nullable=True),
+            sa.Column("birth_year", sa.SmallInteger(), nullable=True),
+            sa.Column("birth_month", sa.SmallInteger(), nullable=True),
+            sa.Column("birth_day", sa.SmallInteger(), nullable=True),
+            sa.Column("gender", sa.String(1), nullable=True),
+            sa.Column("name_canonical", sa.String(255), nullable=False),
+            sa.Column("name_blocking_key", sa.String(20), nullable=False),
+            sa.Column("family_id_hash", sa.String(255), nullable=True),
+            sa.Column(
+                "merged_into_id",
+                sa.BigInteger(),
+                sa.ForeignKey("citizens.id", ondelete="RESTRICT"),
+                nullable=True,
+            ),
+            sa.Column("status", sa.String(20), nullable=False, server_default="active"),
+            sa.Column("version", sa.Integer(), nullable=False, server_default="1"),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         )
 
     if not _index_exists("ix_citizens_blocking"):
-        op.create_index("ix_citizens_blocking", "citizens",
-                        ["name_blocking_key", "birth_year", "gender"])
+        op.create_index(
+            "ix_citizens_blocking", "citizens", ["name_blocking_key", "birth_year", "gender"]
+        )
     if not _index_exists("ix_citizens_phone"):
         op.create_index("ix_citizens_phone", "citizens", ["phone_last10"])
     if not _index_exists("ix_citizens_family"):
@@ -111,28 +119,43 @@ def upgrade() -> None:
     if not _has_table("identity_claims"):
         op.create_table(
             "identity_claims",
-            sa.Column("id",                 sa.BigInteger(),   primary_key=True, autoincrement=True),
-            sa.Column("citizen_id",         sa.BigInteger(),
-                      sa.ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("lab_id",             sa.Integer(),
-                      sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("local_patient_id",   sa.Integer(),
-                      sa.ForeignKey("patients.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("match_method",       sa.String(20),     nullable=False),
-            sa.Column("match_score",        sa.Numeric(4, 3),  nullable=True),
-            sa.Column("match_features",     sa.JSON(),         nullable=True),
-            sa.Column("claimed_by_user_id", sa.Integer(),
-                      sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("created_at",         sa.DateTime(timezone=True), server_default=sa.func.now()),
-            sa.UniqueConstraint("lab_id", "local_patient_id",
-                                name="uq_identity_claims_lab_patient"),
+            sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
+            sa.Column(
+                "citizen_id",
+                sa.BigInteger(),
+                sa.ForeignKey("citizens.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False
+            ),
+            sa.Column(
+                "local_patient_id",
+                sa.Integer(),
+                sa.ForeignKey("patients.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column("match_method", sa.String(20), nullable=False),
+            sa.Column("match_score", sa.Numeric(4, 3), nullable=True),
+            sa.Column("match_features", sa.JSON(), nullable=True),
+            sa.Column(
+                "claimed_by_user_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+            sa.UniqueConstraint(
+                "lab_id", "local_patient_id", name="uq_identity_claims_lab_patient"
+            ),
         )
 
     if not _index_exists("ix_identity_claims_citizen"):
         op.create_index("ix_identity_claims_citizen", "identity_claims", ["citizen_id"])
     if not _index_exists("ix_identity_claims_lab_patient"):
-        op.create_index("ix_identity_claims_lab_patient", "identity_claims",
-                        ["lab_id", "local_patient_id"])
+        op.create_index(
+            "ix_identity_claims_lab_patient", "identity_claims", ["lab_id", "local_patient_id"]
+        )
     if not _index_exists("ix_identity_claims_method"):
         op.create_index("ix_identity_claims_method", "identity_claims", ["match_method"])
 
@@ -140,20 +163,32 @@ def upgrade() -> None:
     if not _has_table("mpi_merge_audit"):
         op.create_table(
             "mpi_merge_audit",
-            sa.Column("id",                   sa.BigInteger(),  primary_key=True, autoincrement=True),
-            sa.Column("event_type",           sa.String(20),    nullable=False),
-            sa.Column("primary_citizen_id",   sa.BigInteger(),
-                      sa.ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=False),
-            sa.Column("secondary_citizen_id", sa.BigInteger(),
-                      sa.ForeignKey("citizens.id", ondelete="RESTRICT"), nullable=True),
-            sa.Column("match_score",          sa.Numeric(4, 3), nullable=True),
-            sa.Column("match_features",       sa.JSON(),        nullable=True),
-            sa.Column("decision_reason",      sa.String(500),   nullable=True),
-            sa.Column("decided_by_user_id",   sa.Integer(),
-                      sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("occurred_at",          sa.DateTime(timezone=True), server_default=sa.func.now()),
-            sa.Column("prev_hash",            sa.String(64),    nullable=False),
-            sa.Column("entry_hash",           sa.String(64),    nullable=False, unique=True),
+            sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
+            sa.Column("event_type", sa.String(20), nullable=False),
+            sa.Column(
+                "primary_citizen_id",
+                sa.BigInteger(),
+                sa.ForeignKey("citizens.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column(
+                "secondary_citizen_id",
+                sa.BigInteger(),
+                sa.ForeignKey("citizens.id", ondelete="RESTRICT"),
+                nullable=True,
+            ),
+            sa.Column("match_score", sa.Numeric(4, 3), nullable=True),
+            sa.Column("match_features", sa.JSON(), nullable=True),
+            sa.Column("decision_reason", sa.String(500), nullable=True),
+            sa.Column(
+                "decided_by_user_id",
+                sa.Integer(),
+                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+            sa.Column("occurred_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+            sa.Column("prev_hash", sa.String(64), nullable=False),
+            sa.Column("entry_hash", sa.String(64), nullable=False, unique=True),
         )
 
     if not _index_exists("ix_merge_audit_primary"):
@@ -165,6 +200,7 @@ def upgrade() -> None:
 
 
 # ─── Downgrade ───────────────────────────────────────────────────────────────
+
 
 def downgrade() -> None:
     """Reverse order to respect foreign-key dependencies."""

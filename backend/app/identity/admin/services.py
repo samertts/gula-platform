@@ -25,7 +25,6 @@ class _AdminRepository(IdentityRepositoryBase[EnterprisePortal]):
 
 
 class EnterprisePortalService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -64,12 +63,9 @@ class EnterprisePortalService:
         return result.scalar_one_or_none()
 
     async def get_portals_for_org(self, org_id: str) -> list[EnterprisePortal]:
-        stmt = (
-            select(EnterprisePortal)
-            .where(
-                EnterprisePortal.organization_id == org_id,
-                EnterprisePortal.is_active.is_(True),
-            )
+        stmt = select(EnterprisePortal).where(
+            EnterprisePortal.organization_id == org_id,
+            EnterprisePortal.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -235,12 +231,9 @@ class EnterprisePortalService:
         return sub
 
     async def get_subscription(self, org_id: str) -> PortalSubscription | None:
-        stmt = (
-            select(PortalSubscription)
-            .where(
-                PortalSubscription.organization_id == org_id,
-                PortalSubscription.is_active.is_(True),
-            )
+        stmt = select(PortalSubscription).where(
+            PortalSubscription.organization_id == org_id,
+            PortalSubscription.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -288,12 +281,9 @@ class EnterprisePortalService:
         return conn
 
     async def get_fhir_connections_for_org(self, org_id: str) -> list[FHIRConnection]:
-        stmt = (
-            select(FHIRConnection)
-            .where(
-                FHIRConnection.organization_id == org_id,
-                FHIRConnection.is_active.is_(True),
-            )
+        stmt = select(FHIRConnection).where(
+            FHIRConnection.organization_id == org_id,
+            FHIRConnection.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

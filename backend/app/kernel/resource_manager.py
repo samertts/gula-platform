@@ -63,7 +63,9 @@ class ResourceMetrics:
         if self.limits.max_threads > 0:
             result["threads"] = round((self.usage.threads / self.limits.max_threads) * 100, 1)
         if self.limits.max_gpu_vram_mb > 0:
-            result["gpu_vram"] = round((self.usage.gpu_vram_mb / self.limits.max_gpu_vram_mb) * 100, 1)
+            result["gpu_vram"] = round(
+                (self.usage.gpu_vram_mb / self.limits.max_gpu_vram_mb) * 100, 1
+            )
         self.utilization_percent = result
         return result
 
@@ -142,7 +144,9 @@ class ResourcePool:
             "min_size": self.min_size,
             "max_size": self.max_size,
             "target_size": self.target_size,
-            "hit_rate": round(self._hit_count / max(1, self._hit_count + self._miss_count) * 100, 1),
+            "hit_rate": round(
+                self._hit_count / max(1, self._hit_count + self._miss_count) * 100, 1
+            ),
             "healthy": self.total <= self.max_size,
         }
 
@@ -193,6 +197,7 @@ class ResourceManager:
     def collect_metrics(self) -> ResourceMetrics:
         try:
             import psutil
+
             process = psutil.Process(os.getpid())
             usage = ResourceUsage(
                 cpu_percent=process.cpu_percent(interval=0.1),

@@ -87,14 +87,18 @@ class ValidationService:
             result.add_error("Invalid email format")
         return result
 
-    def validate_required_fields(self, data: dict[str, Any], required: list[str]) -> ValidationResult:
+    def validate_required_fields(
+        self, data: dict[str, Any], required: list[str]
+    ) -> ValidationResult:
         result = ValidationResult()
         for field_name in required:
             if field_name not in data or data[field_name] is None or data[field_name] == "":
                 result.add_error(f"Required field '{field_name}' is missing")
         return result
 
-    def validate_range(self, value: float, field_name: str, low: float | None = None, high: float | None = None) -> ValidationResult:
+    def validate_range(
+        self, value: float, field_name: str, low: float | None = None, high: float | None = None
+    ) -> ValidationResult:
         result = ValidationResult()
         if low is not None and value < low:
             result.add_error(f"{field_name} ({value}) is below minimum ({low})")

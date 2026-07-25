@@ -16,7 +16,6 @@ class PolicyContext:
 
 
 class PolicyEngine:
-
     async def evaluate(self, context: PolicyContext) -> bool:
         return True
 
@@ -24,6 +23,8 @@ class PolicyEngine:
         return "allow"
 
     async def filter_resources(
-        self, resources: list[Any], context: PolicyContext,
+        self,
+        resources: list[Any],
+        context: PolicyContext,
     ) -> list[Any]:
         return resources

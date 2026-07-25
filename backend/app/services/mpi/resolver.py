@@ -247,7 +247,8 @@ def resolve_identity(
                 or_(
                     Citizen.birth_year.is_(None),
                     and_(
-                        Citizen.birth_year >= birth_year - 1, Citizen.birth_year <= birth_year + 1,
+                        Citizen.birth_year >= birth_year - 1,
+                        Citizen.birth_year <= birth_year + 1,
                     ),
                 ),
             )
@@ -261,7 +262,8 @@ def resolve_identity(
             candidates = (
                 db.query(Citizen)
                 .filter(
-                    Citizen.status.in_(("active", "review")), Citizen.phone_last10 == phone_norm,
+                    Citizen.status.in_(("active", "review")),
+                    Citizen.phone_last10 == phone_norm,
                 )
                 .limit(_MAX_CANDIDATES)
                 .all()

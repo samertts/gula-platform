@@ -361,8 +361,12 @@ def query_registry(
     try:
         rt = RegistryType(registry_type)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid registry type: {registry_type}") from e
-    return sdk.registries.query(rt, governorate=governorate, diagnosis_code=diagnosis_code, limit=limit)
+        raise HTTPException(
+            status_code=400, detail=f"Invalid registry type: {registry_type}"
+        ) from e
+    return sdk.registries.query(
+        rt, governorate=governorate, diagnosis_code=diagnosis_code, limit=limit
+    )
 
 
 # ── GIS ─────────────────────────────────────────────────────────────────────────

@@ -54,7 +54,9 @@ class SearchMode(StrEnum):
 
 
 class VectorStore:
-    def __init__(self, db_type: VectorDBType = VectorDBType.PGVECTOR, config: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, db_type: VectorDBType = VectorDBType.PGVECTOR, config: dict[str, Any] | None = None,
+    ) -> None:
         self._db_type = db_type
         self._config = config or {}
         self._dimension: int = self._config.get("dimension", 384)
@@ -184,7 +186,10 @@ class SemanticSearch:
             return await self._keyword_search(query, collection, top_k)
 
         semantic_results = await self._vector_store.search(
-            collection, query_embedding, top_k=top_k * 2, threshold=threshold,
+            collection,
+            query_embedding,
+            top_k=top_k * 2,
+            threshold=threshold,
         )
 
         if mode == SearchMode.SEMANTIC:
@@ -200,7 +205,9 @@ class SemanticSearch:
         embeddings = self._gateway.embed([query])
         return embeddings[0] if embeddings else [0.0] * 384
 
-    async def _keyword_search(self, query: str, collection: str, top_k: int) -> list[RetrievedDocument]:
+    async def _keyword_search(
+        self, query: str, collection: str, top_k: int,
+    ) -> list[RetrievedDocument]:
         docs = self._vector_store._collections.get(collection, [])
         if not docs:
             return []
@@ -224,7 +231,9 @@ class SemanticSearch:
         for chunk in semantic:
             if chunk.id not in seen:
                 seen.add(chunk.id)
-                fused.append(RetrievedDocument(chunk=chunk, relevance_score=chunk.score, rank=len(fused)))
+                fused.append(
+                    RetrievedDocument(chunk=chunk, relevance_score=chunk.score, rank=len(fused)),
+                )
         for rd in keyword:
             if rd.chunk.id not in seen:
                 seen.add(rd.chunk.id)
@@ -263,12 +272,19 @@ class CitationEngine:
     def format_citations(self, citations: list[Citation], format: str = "text") -> str:
         if format == "json":
             import json
-            return json.dumps([{
-                "id": c.id,
-                "source": c.source,
-                "relevance_score": c.relevance_score,
-                "text": c.text,
-            } for c in citations], ensure_ascii=False)
+
+            return json.dumps(
+                [
+                    {
+                        "id": c.id,
+                        "source": c.source,
+                        "relevance_score": c.relevance_score,
+                        "text": c.text,
+                    }
+                    for c in citations
+                ],
+                ensure_ascii=False,
+            )
 
         lines = []
         for i, c in enumerate(citations, 1):
@@ -276,13 +292,14 @@ class CitationEngine:
             lines.append(f"    {c.text}")
         return "\n".join(lines)
 
-    def score_coverage(self, citations: list[Citation], num_docs_used: int, total_docs: int) -> float:
+    def score_coverage(
+        self, citations: list[Citation], num_docs_used: int, total_docs: int,
+    ) -> float:
         if not total_docs:
             return 0.0
         coverage = num_docs_used / total_docs
         avg_relevance = (
-            sum(c.relevance_score for c in citations) / len(citations)
-            if citations else 0.0
+            sum(c.relevance_score for c in citations) / len(citations) if citations else 0.0
         )
         return round(coverage * 0.4 + avg_relevance * 0.6, 4)
 
@@ -300,7 +317,11 @@ class ContextBuilder:
     ) -> str:
         selected = documents[:max_docs]
         parts: list[str] = []
-        token_budget = self._max_tokens - self._estimate_tokens(query) - self._estimate_tokens(system_instruction)
+        token_budget = (
+            self._max_tokens
+            - self._estimate_tokens(query)
+            - self._estimate_tokens(system_instruction)
+        )
         token_budget = max(token_budget, 512)
 
         for doc in selected:
@@ -330,11 +351,13 @@ class ContextBuilder:
                 cat = "general"
             if cat not in sections:
                 sections[cat] = []
-            sections[cat].append({
-                "source": doc.chunk.source,
-                "text": doc.chunk.text[:500],
-                "score": doc.relevance_score,
-            })
+            sections[cat].append(
+                {
+                    "source": doc.chunk.source,
+                    "text": doc.chunk.text[:500],
+                    "score": doc.relevance_score,
+                },
+            )
         return {
             "query": query,
             "sections": sections,
@@ -373,7 +396,10 @@ class RAGEngine:
     ) -> dict[str, Any]:
         start = time.monotonic()
         documents = await self._semantic_search.search(
-            query=query_text, collection=collection, top_k=top_k, mode=search_mode,
+            query=query_text,
+            collection=collection,
+            top_k=top_k,
+            mode=search_mode,
         )
 
         if not documents:
@@ -392,7 +418,8 @@ class RAGEngine:
             model=model,
             temperature=temperature,
             max_tokens=2048,
-            system_prompt=system_prompt or "You are a helpful medical AI assistant. Answer based only on the provided context.",
+            system_prompt=system_prompt
+            or "You are a helpful medical AI assistant. Answer based only on the provided context.",
         )
         response = self._gateway.chat(request)
 
@@ -426,7 +453,9 @@ class RAGEngine:
             "latency_ms": round(elapsed, 2),
             "document_count": len(documents),
             "citation_coverage": self._citation_engine.score_coverage(
-                citations, len(citations), len(documents),
+                citations,
+                len(citations),
+                len(documents),
             ),
         }
 

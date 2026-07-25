@@ -10,7 +10,12 @@ class Department(AuditEntity):
     name_ar = Column(String(200), nullable=True)
     code = Column(String(20), nullable=True, index=True)
 
-    facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="CASCADE"), nullable=False, index=True)
+    facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     parent_department_id = Column(String(26), nullable=True, index=True)
 
     department_type = Column(String(50), nullable=True)

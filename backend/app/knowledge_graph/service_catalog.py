@@ -118,9 +118,20 @@ class ServiceCatalog:
                     required=desc.required,
                     dependencies=list(desc.dependencies),
                     tags=list(desc.tags),
-                    api_endpoints=[e.__dict__ if hasattr(e, "__dict__") else {"path": e.path, "method": e.method} for e in getattr(desc, "api_endpoints", [])],
-                    events=[e.__dict__ if hasattr(e, "__dict__") else {"name": e.name} for e in getattr(desc, "events", [])],
-                    entities=[e.__dict__ if hasattr(e, "__dict__") else {"name": e.name} for e in getattr(desc, "entities", [])],
+                    api_endpoints=[
+                        e.__dict__
+                        if hasattr(e, "__dict__")
+                        else {"path": e.path, "method": e.method}
+                        for e in getattr(desc, "api_endpoints", [])
+                    ],
+                    events=[
+                        e.__dict__ if hasattr(e, "__dict__") else {"name": e.name}
+                        for e in getattr(desc, "events", [])
+                    ],
+                    entities=[
+                        e.__dict__ if hasattr(e, "__dict__") else {"name": e.name}
+                        for e in getattr(desc, "entities", [])
+                    ],
                 )
             logger.info("Discovered %d capabilities from kernel", len(self._capabilities))
         except Exception as exc:
@@ -135,6 +146,7 @@ class ServiceCatalog:
             graph[f"capability:{name}"] = list(cap.dependencies)
         try:
             from app.kernel.integration import get_kernel
+
             kernel = get_kernel()
             cr = kernel.get_component("capability_registry")
             if cr and hasattr(cr, "get_dependency_graph"):

@@ -1,4 +1,3 @@
-
 from sqlalchemy import select
 
 from app.identity.models.person import Person
@@ -6,7 +5,6 @@ from app.identity.repositories.base import IdentityRepositoryBase
 
 
 class PersonRepository(IdentityRepositoryBase[Person]):
-
     model_class = Person
 
     async def find_by_national_id_hash(self, hash_value: str) -> Person | None:

@@ -138,11 +138,13 @@ class OfflineSyncEngine:
         if not op:
             return False
         op.status = SyncStatus.SYNCED
-        self._sync_log.append({
-            "type": "synced",
-            "operation_id": operation_id,
-            "timestamp": time.time(),
-        })
+        self._sync_log.append(
+            {
+                "type": "synced",
+                "operation_id": operation_id,
+                "timestamp": time.time(),
+            }
+        )
         return True
 
     def resolve_conflict(
@@ -189,13 +191,15 @@ class OfflineSyncEngine:
         conflict.resolved_by = resolver
         conflict.merged_data = result
 
-        self._sync_log.append({
-            "type": "conflict_resolved",
-            "conflict_id": conflict_id,
-            "resolution": resolution.value,
-            "resolver": resolver,
-            "timestamp": time.time(),
-        })
+        self._sync_log.append(
+            {
+                "type": "conflict_resolved",
+                "conflict_id": conflict_id,
+                "resolution": resolution.value,
+                "resolver": resolver,
+                "timestamp": time.time(),
+            }
+        )
 
         return result
 
@@ -301,6 +305,7 @@ class EncryptedSyncStore:
         if not self._key:
             return data
         from cryptography.fernet import Fernet
+
         key = self._derive_key()
         f = Fernet(key)
         return f.encrypt(data)
@@ -309,6 +314,7 @@ class EncryptedSyncStore:
         if not self._key:
             return data
         from cryptography.fernet import Fernet
+
         key = self._derive_key()
         f = Fernet(key)
         return f.decrypt(data)
@@ -316,4 +322,5 @@ class EncryptedSyncStore:
     def _derive_key(self) -> bytes:
         raw = hashlib.sha256(self._key.encode()).digest()
         import base64
+
         return base64.urlsafe_b64encode(raw)

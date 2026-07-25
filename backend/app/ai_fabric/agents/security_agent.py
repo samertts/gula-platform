@@ -13,24 +13,30 @@ class SecurityAgent(AIAgent):
         super().__init__(agent_id=agent_id, name=name)
 
     def _register_default_tools(self) -> None:
-        self.register_tool(AgentTool(
-            name="detect_intrusion",
-            description="Detect intrusion patterns from request data",
-            fn=self._tool_detect_intrusion,
-            parameters={"ip": "str", "endpoint": "str", "method": "str"},
-        ))
-        self.register_tool(AgentTool(
-            name="analyze_access_pattern",
-            description="Analyze user access patterns for anomalies",
-            fn=self._tool_analyze_access,
-            parameters={"user_id": "str", "actions": "list"},
-        ))
-        self.register_tool(AgentTool(
-            name="check_prompt_injection",
-            description="Check text for prompt injection attempts",
-            fn=self._tool_check_injection,
-            parameters={"text": "str"},
-        ))
+        self.register_tool(
+            AgentTool(
+                name="detect_intrusion",
+                description="Detect intrusion patterns from request data",
+                fn=self._tool_detect_intrusion,
+                parameters={"ip": "str", "endpoint": "str", "method": "str"},
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="analyze_access_pattern",
+                description="Analyze user access patterns for anomalies",
+                fn=self._tool_analyze_access,
+                parameters={"user_id": "str", "actions": "list"},
+            ),
+        )
+        self.register_tool(
+            AgentTool(
+                name="check_prompt_injection",
+                description="Check text for prompt injection attempts",
+                fn=self._tool_check_injection,
+                parameters={"text": "str"},
+            ),
+        )
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ("security", "intrusion", "access_control", "monitoring")
@@ -50,6 +56,7 @@ class SecurityAgent(AIAgent):
         endpoint = data.get("endpoint", "")
         method = data.get("method", "")
         from app.security.intrusion_detection import detector
+
         status = detector.detect(ip)
         return {
             "ip": ip,
@@ -66,7 +73,9 @@ class SecurityAgent(AIAgent):
         anomalies: list[str] = []
         if len(actions) > 100:
             anomalies.append("High volume of actions detected")
-        sensitive_actions = [a for a in actions if a in ("export_patient_data", "change_role", "delete_patient")]
+        sensitive_actions = [
+            a for a in actions if a in ("export_patient_data", "change_role", "delete_patient")
+        ]
         if sensitive_actions:
             anomalies.append(f"Sensitive actions detected: {sensitive_actions}")
         return {

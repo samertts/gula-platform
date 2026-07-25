@@ -26,9 +26,15 @@ class EmergencyAccessService:
         self._records: list[EmergencyAccessRecord] = []
 
     def grant_access(
-        self, user_id: str, patient_id: str, resource_type: str, resource_id: str, reason: str,
+        self,
+        user_id: str,
+        patient_id: str,
+        resource_type: str,
+        resource_id: str,
+        reason: str,
     ) -> EmergencyAccessRecord:
         import uuid
+
         record = EmergencyAccessRecord(
             access_id=str(uuid.uuid4()),
             user_id=user_id,

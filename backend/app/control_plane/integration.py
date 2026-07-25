@@ -44,10 +44,15 @@ def connect_to_kernel(kernel: Kernel) -> None:
     cp = init_control_plane()
     sr = kernel.get_component("service_registry")
     if sr:
-        sr.register("control_plane", cp, singleton=True, metadata={
-            "version": "1.0.0",
-            "description": "Enterprise Control Plane",
-        })
+        sr.register(
+            "control_plane",
+            cp,
+            singleton=True,
+            metadata={
+                "version": "1.0.0",
+                "description": "Enterprise Control Plane",
+            },
+        )
         logger.info("ControlPlane registered with kernel service registry")
 
     sdk = cp.sdk

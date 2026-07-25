@@ -174,7 +174,12 @@ class NationalAlertEvent(BaseEntity):
     __tablename__ = "national_observability_alert_events"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    rule_id = Column(String(26), ForeignKey("national_observability_alert_rules.id", ondelete="CASCADE"), nullable=False, index=True)
+    rule_id = Column(
+        String(26),
+        ForeignKey("national_observability_alert_rules.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     metric_value = Column(Float, nullable=False, default=0.0)
     severity = Column(SAEnum(AlertSeverity), nullable=False, default=AlertSeverity.WARNING)
     status = Column(SAEnum(AlertStatus), nullable=False, default=AlertStatus.FIRING, index=True)
@@ -237,7 +242,12 @@ class NationalDashboardPanel(BaseEntity):
     __tablename__ = "national_observability_dashboard_panels"
 
     id = Column(String(26), primary_key=True, default=_ulid)
-    dashboard_id = Column(String(26), ForeignKey("national_observability_dashboards.id", ondelete="CASCADE"), nullable=False, index=True)
+    dashboard_id = Column(
+        String(26),
+        ForeignKey("national_observability_dashboards.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     title = Column(String(255), nullable=True, default="")
     metric_names = Column(JSON, nullable=True, default=list)
     chart_type = Column(String(50), nullable=False, default="line")
@@ -280,15 +290,17 @@ class NationalServiceGraph(BaseEntity):
         from app.national.observability.domain.entities import ServiceDependency, ServiceGraph
 
         deps = []
-        for d in (self.dependencies or []):
-            deps.append(ServiceDependency(
-                source=d.get("source", ""),
-                target=d.get("target", ""),
-                type=d.get("type", "http"),
-                latency_p50=d.get("latency_p50", 0.0),
-                latency_p99=d.get("latency_p99", 0.0),
-                error_rate=d.get("error_rate", 0.0),
-            ))
+        for d in self.dependencies or []:
+            deps.append(
+                ServiceDependency(
+                    source=d.get("source", ""),
+                    target=d.get("target", ""),
+                    type=d.get("type", "http"),
+                    latency_p50=d.get("latency_p50", 0.0),
+                    latency_p99=d.get("latency_p99", 0.0),
+                    error_rate=d.get("error_rate", 0.0),
+                ),
+            )
         return ServiceGraph(
             id=self.id,
             service_name=self.service_name,

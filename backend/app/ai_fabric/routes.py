@@ -26,7 +26,9 @@ async def fabric_health():
 
 
 @router.post("/chat")
-async def fabric_chat(prompt: str = Query(..., min_length=1), model: str = "gpt-4o-mini", temperature: float = 0.3):
+async def fabric_chat(
+    prompt: str = Query(..., min_length=1), model: str = "gpt-4o-mini", temperature: float = 0.3,
+):
     text = await sdk.chat(prompt, model=model, temperature=temperature)
     return {"response": text, "model": model}
 
@@ -39,12 +41,19 @@ async def fabric_embed(texts: list[str]):
 
 @router.get("/gateway/providers")
 async def list_providers():
-    return {"providers": [{"name": p.name.value, "models": p.models} for p in sdk.gateway.router.list_available()]}
+    return {
+        "providers": [
+            {"name": p.name.value, "models": p.models} for p in sdk.gateway.router.list_available()
+        ],
+    }
 
 
 @router.get("/gateway/cost")
 async def gateway_cost():
-    return {"total_spent": sdk.gateway.cost_optimizer.total_spent, "avg_cost": sdk.gateway.cost_optimizer.average_cost}
+    return {
+        "total_spent": sdk.gateway.cost_optimizer.total_spent,
+        "avg_cost": sdk.gateway.cost_optimizer.average_cost,
+    }
 
 
 @router.get("/local-ai/status")
@@ -53,15 +62,28 @@ async def local_ai_status():
 
 
 @router.post("/rag/query")
-async def rag_query(query: str = Query(..., min_length=1), collection: str = "default", top_k: int = 10, search_mode: str = "hybrid"):
-    mode = SearchMode(search_mode) if search_mode in ("semantic", "keyword", "hybrid") else SearchMode.HYBRID
+async def rag_query(
+    query: str = Query(..., min_length=1),
+    collection: str = "default",
+    top_k: int = 10,
+    search_mode: str = "hybrid",
+):
+    mode = (
+        SearchMode(search_mode)
+        if search_mode in ("semantic", "keyword", "hybrid")
+        else SearchMode.HYBRID
+    )
     return await sdk.rag.query(query, collection=collection, top_k=top_k, search_mode=mode)
 
 
 @router.post("/rag/index")
 async def rag_index(collection: str, texts: list[str], sources: list[str] | None = None):
     from app.ai_fabric.rag import Chunk
-    chunks = [Chunk(text=text, source=sources[i] if sources and i < len(sources) else "") for i, text in enumerate(texts)]
+
+    chunks = [
+        Chunk(text=text, source=sources[i] if sources and i < len(sources) else "")
+        for i, text in enumerate(texts)
+    ]
     count = await sdk.rag.index_documents(collection, chunks)
     return {"indexed": count, "collection": collection}
 
@@ -91,7 +113,11 @@ async def kg_statistics():
 
 @router.get("/knowledge-graph/traverse")
 async def kg_traverse(start: str, strategy: str = "bfs", max_depth: int = 3):
-    strat = TraversalStrategy(strategy) if strategy in ("bfs", "dfs", "shortest_path") else TraversalStrategy.BFS
+    strat = (
+        TraversalStrategy(strategy)
+        if strategy in ("bfs", "dfs", "shortest_path")
+        else TraversalStrategy.BFS
+    )
     return await sdk.knowledge_graph.traverse(start, strategy=strat, max_depth=max_depth)
 
 
@@ -100,7 +126,13 @@ async def clinical_analyze(results: list[dict[str, Any]]):
     recommendations = await sdk.clinical.analyze_results(results)
     return {
         "recommendations": [
-            {"type": r.type, "severity": r.severity, "title": r.title, "description": r.description, "action": r.action}
+            {
+                "type": r.type,
+                "severity": r.severity,
+                "title": r.title,
+                "description": r.description,
+                "action": r.action,
+            }
             for r in recommendations
         ],
     }
@@ -117,7 +149,12 @@ async def drug_interaction(medications: list[dict[str, Any]]):
     interactions = sdk.drug_interaction.check_prescription(medications)
     return {
         "interactions": [
-            {"drug_a": i.drug_a, "drug_b": i.drug_b, "severity": i.severity, "description": i.description}
+            {
+                "drug_a": i.drug_a,
+                "drug_b": i.drug_b,
+                "severity": i.severity,
+                "description": i.description,
+            }
             for i in interactions
         ],
     }
@@ -128,7 +165,12 @@ async def lab_delta_check(patient_results: list[dict[str, Any]]):
     results = sdk.delta_checker.batch_check(patient_results)
     return {
         "results": [
-            {"test": r.test_name, "delta_pct": r.delta_pct, "significant": r.significant, "flag": r.flag}
+            {
+                "test": r.test_name,
+                "delta_pct": r.delta_pct,
+                "significant": r.significant,
+                "flag": r.flag,
+            }
             for r in results
         ],
     }
@@ -139,7 +181,12 @@ async def lab_critical_detector(results: list[dict[str, Any]]):
     criticals = sdk.critical_detector.batch_detect(results)
     return {
         "criticals": [
-            {"test": c.test_name, "value": c.value, "direction": c.direction, "severity": c.severity}
+            {
+                "test": c.test_name,
+                "value": c.value,
+                "direction": c.direction,
+                "severity": c.severity,
+            }
             for c in criticals
         ],
     }
@@ -172,9 +219,18 @@ async def ph_surveillance(disease: str, location: str, case_count: int):
 
 @router.get("/public-health/alerts")
 async def ph_alerts(min_level: str = "warning"):
-    level = AlertLevel(min_level) if min_level in ("information", "surveillance", "warning", "outbreak", "critical") else AlertLevel.WARNING
+    level = (
+        AlertLevel(min_level)
+        if min_level in ("information", "surveillance", "warning", "outbreak", "critical")
+        else AlertLevel.WARNING
+    )
     signals = sdk.surveillance.get_recent_alerts(level)
-    return {"signals": [{"disease": s.disease, "location": s.location, "alert_level": s.alert_level.value} for s in signals]}
+    return {
+        "signals": [
+            {"disease": s.disease, "location": s.location, "alert_level": s.alert_level.value}
+            for s in signals
+        ],
+    }
 
 
 @router.post("/public-health/outbreak-detect")
@@ -195,12 +251,21 @@ async def gov_prompt_get(name: str, version: str | None = None):
     prompt = sdk.governance.prompt_registry.get(name, version)
     if not prompt:
         raise HTTPException(404, f"Prompt {name} v{version or 'latest'} not found")
-    return {"name": prompt.name, "version": prompt.version, "content": prompt.content, "status": prompt.status.value}
+    return {
+        "name": prompt.name,
+        "version": prompt.version,
+        "content": prompt.content,
+        "status": prompt.status.value,
+    }
 
 
 @router.post("/governance/promote")
 async def gov_prompt_promote(name: str, version: str, status: str):
-    target = PromptStatus(status) if status in ("draft", "review", "approved", "active", "deprecated", "retired") else PromptStatus.ACTIVE
+    target = (
+        PromptStatus(status)
+        if status in ("draft", "review", "approved", "active", "deprecated", "retired")
+        else PromptStatus.ACTIVE
+    )
     prompt = sdk.governance.prompt_registry.promote(name, version, target)
     if not prompt:
         raise HTTPException(404, f"Prompt {name} v{version} not found")
@@ -222,7 +287,12 @@ async def gov_model_approve(model_name: str, version: str, reviewer: str):
 
 @router.post("/governance/evaluate")
 async def gov_evaluate(model: str, version: str, dimension: str, score: float):
-    dim = EvaluationDimension(dimension) if dimension in ("accuracy", "bias", "safety", "hallucination", "toxicity", "fairness", "robustness") else EvaluationDimension.ACCURACY
+    dim = (
+        EvaluationDimension(dimension)
+        if dimension
+        in ("accuracy", "bias", "safety", "hallucination", "toxicity", "fairness", "robustness")
+        else EvaluationDimension.ACCURACY
+    )
     result = sdk.governance.evaluation_framework.evaluate(model, version, dim, score)
     return {"model": model, "dimension": dim.value, "score": result.score, "passed": result.passed}
 
@@ -265,7 +335,11 @@ async def sec_inspect_output(text: str):
 @router.post("/security/redact")
 async def sec_redact(text: str):
     result = sdk.firewall.pii.redact(text)
-    return {"redacted": result.redacted_text, "pii_types": result.pii_types_found, "count": result.count}
+    return {
+        "redacted": result.redacted_text,
+        "pii_types": result.pii_types_found,
+        "count": result.count,
+    }
 
 
 @router.get("/agents")
@@ -279,9 +353,15 @@ async def agent_statistics():
 
 
 @router.post("/agents/run")
-async def run_agent(agent_name: str, action: str, user_id: str = "", lab_id: str = "", **kwargs: Any):
+async def run_agent(
+    agent_name: str, action: str, user_id: str = "", lab_id: str = "", **kwargs: Any,
+):
     context = AgentContext(user_id=user_id, lab_id=lab_id)
-    return sdk.agent_registry.get_by_name(agent_name).run(context, kwargs | {"action": action}) if sdk.agent_registry.get_by_name(agent_name) else {"error": f"Agent {agent_name} not found"}
+    return (
+        sdk.agent_registry.get_by_name(agent_name).run(context, kwargs | {"action": action})
+        if sdk.agent_registry.get_by_name(agent_name)
+        else {"error": f"Agent {agent_name} not found"}
+    )
 
 
 @router.post("/agents/initialize-all")
@@ -292,4 +372,9 @@ async def initialize_agents():
 
 @router.get("/gateway/providers/available")
 async def available_providers():
-    return {"providers": [{"name": p.name.value, "base_url": p.base_url, "models": p.models} for p in sdk.gateway.router.list_available()]}
+    return {
+        "providers": [
+            {"name": p.name.value, "base_url": p.base_url, "models": p.models}
+            for p in sdk.gateway.router.list_available()
+        ],
+    }

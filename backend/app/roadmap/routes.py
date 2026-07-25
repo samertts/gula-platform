@@ -24,6 +24,7 @@ router = APIRouter(prefix="/roadmap", tags=["roadmap"])
 
 # ── Pydantic schemas ────────────────────────────────────────────────────────
 
+
 class ProgramCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     code: str = Field(..., min_length=1, max_length=50)
@@ -117,11 +118,13 @@ class ADRCreate(BaseModel):
 
 # ── Helper ──────────────────────────────────────────────────────────────────
 
+
 def _engine(db: Session, current_user=None) -> RoadmapEngine:
     return RoadmapEngine(db=db, current_user=current_user)
 
 
 # ── Program endpoints ───────────────────────────────────────────────────────
+
 
 @router.post("/programs", status_code=201)
 def create_program(
@@ -172,6 +175,7 @@ def update_program_status(
 
 
 # ── Mission endpoints ───────────────────────────────────────────────────────
+
 
 @router.post("/programs/{program_id}/missions", status_code=201)
 def create_mission(
@@ -237,6 +241,7 @@ def update_mission_status(
 
 # ── Epic & Task endpoints ───────────────────────────────────────────────────
 
+
 @router.post("/missions/{mission_id}/epics", status_code=201)
 def create_epic(
     mission_id: int,
@@ -275,6 +280,7 @@ def update_task_status(
 
 # ── Critical path & dependency graph ────────────────────────────────────────
 
+
 @router.get("/missions/{mission_id}/critical-path")
 def get_critical_path(
     mission_id: int,
@@ -296,6 +302,7 @@ def get_dependency_graph(
 
 
 # ── Milestone endpoints ─────────────────────────────────────────────────────
+
 
 @router.post("/missions/{mission_id}/milestones", status_code=201)
 def create_milestone(
@@ -320,6 +327,7 @@ def get_upcoming_milestones(
 
 # ── Risk endpoints ──────────────────────────────────────────────────────────
 
+
 @router.post("/missions/{mission_id}/risks", status_code=201)
 def create_risk(
     mission_id: int,
@@ -342,6 +350,7 @@ def get_risk_matrix(
 
 
 # ── Technical debt endpoints ────────────────────────────────────────────────
+
 
 @router.post("/technical-debt", status_code=201)
 def create_technical_debt(
@@ -374,6 +383,7 @@ def get_technical_debt_summary(
 
 # ── ADR endpoints ───────────────────────────────────────────────────────────
 
+
 @router.post("/adrs", status_code=201)
 def create_adr(
     body: ADRCreate,
@@ -395,6 +405,7 @@ def list_adrs(
 
 
 # ── Executive dashboard ─────────────────────────────────────────────────────
+
 
 @router.get("/executive-dashboard")
 def get_executive_dashboard(

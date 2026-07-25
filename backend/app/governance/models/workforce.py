@@ -30,7 +30,9 @@ class HealthcareWorker(GovernanceBaseEntity):
     national_id_hash = Column(String(255), nullable=True, index=True)
     profession = Column(String(100), nullable=False, index=True)
     specialization = Column(String(200), nullable=True, index=True)
-    organization_node_id = Column(Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=True, index=True)
+    organization_node_id = Column(
+        Integer, ForeignKey("gov_hierarchy_nodes.id"), nullable=True, index=True
+    )
     department = Column(String(200), nullable=True)
     unit = Column(String(200), nullable=True)
     is_active = Column(Boolean, default=True, index=True)
@@ -39,7 +41,11 @@ class HealthcareWorker(GovernanceBaseEntity):
     contact_email = Column(String(200), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class ProfessionalLicense(GovernanceBaseEntity):
@@ -106,7 +112,11 @@ class CompetencyAssessment(GovernanceBaseEntity):
     score = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class WorkerPrivilege(GovernanceBaseEntity):
@@ -172,4 +182,8 @@ class ProductivityRecord(GovernanceBaseEntity):
     governorate_rank = Column(Integer, nullable=True)
     lab_rank = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )

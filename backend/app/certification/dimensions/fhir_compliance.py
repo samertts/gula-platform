@@ -172,7 +172,9 @@ class FHIRComplianceEvaluator(DimensionEvaluator):
         for f in files:
             try:
                 content = f.read_text()
-                if "validate" in content.lower() and ("fhir" in content.lower() or "resource" in content.lower()):
+                if "validate" in content.lower() and (
+                    "fhir" in content.lower() or "resource" in content.lower()
+                ):
                     return True
             except Exception:
                 continue

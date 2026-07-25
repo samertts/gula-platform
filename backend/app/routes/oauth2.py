@@ -90,10 +90,14 @@ def authorize(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    client = db.query(OAuth2Client).filter(
-        OAuth2Client.client_id == client_id,
-        OAuth2Client.is_active == 1,
-    ).first()
+    client = (
+        db.query(OAuth2Client)
+        .filter(
+            OAuth2Client.client_id == client_id,
+            OAuth2Client.is_active == 1,
+        )
+        .first()
+    )
     if not client:
         raise HTTPException(status_code=400, detail="Invalid client_id")
 
@@ -112,9 +116,13 @@ def authorize(
         redirect_uri = allowed[0]
 
     if not code_challenge or not code_challenge_method:
-        raise HTTPException(status_code=400, detail="PKCE is required (code_challenge and code_challenge_method)")
+        raise HTTPException(
+            status_code=400, detail="PKCE is required (code_challenge and code_challenge_method)"
+        )
     if code_challenge_method not in ("S256",):
-        raise HTTPException(status_code=400, detail="Invalid code_challenge_method, only S256 is supported")
+        raise HTTPException(
+            status_code=400, detail="Invalid code_challenge_method, only S256 is supported"
+        )
 
     auth_code = generate_auth_code()
     token = OAuth2Token(
@@ -165,10 +173,14 @@ def introspect(
     db: Session = Depends(get_db),
 ):
     token_hash = hash_token(data.token)
-    token_record = db.query(OAuth2Token).filter(
-        OAuth2Token.token_hash == token_hash,
-        OAuth2Token.is_revoked == 0,
-    ).first()
+    token_record = (
+        db.query(OAuth2Token)
+        .filter(
+            OAuth2Token.token_hash == token_hash,
+            OAuth2Token.is_revoked == 0,
+        )
+        .first()
+    )
     if not token_record:
         return {"active": False}
 
@@ -193,10 +205,14 @@ def revoke(
     db: Session = Depends(get_db),
 ):
     token_hash = hash_token(data.token)
-    token_record = db.query(OAuth2Token).filter(
-        OAuth2Token.token_hash == token_hash,
-        OAuth2Token.is_revoked == 0,
-    ).first()
+    token_record = (
+        db.query(OAuth2Token)
+        .filter(
+            OAuth2Token.token_hash == token_hash,
+            OAuth2Token.is_revoked == 0,
+        )
+        .first()
+    )
     if token_record:
         token_record.is_revoked = 1
         db.commit()
@@ -213,7 +229,9 @@ def jwks_json():
     return {"keys": get_jwks()}
 
 
-def _authenticate_client(request: Request, data: OAuth2TokenRequest, db: Session) -> OAuth2Client | None:
+def _authenticate_client(
+    request: Request, data: OAuth2TokenRequest, db: Session
+) -> OAuth2Client | None:
     client_id = data.client_id
     client_secret = data.client_secret
 
@@ -226,10 +244,14 @@ def _authenticate_client(request: Request, data: OAuth2TokenRequest, db: Session
     if not client_id:
         return None
 
-    client = db.query(OAuth2Client).filter(
-        OAuth2Client.client_id == client_id,
-        OAuth2Client.is_active == 1,
-    ).first()
+    client = (
+        db.query(OAuth2Client)
+        .filter(
+            OAuth2Client.client_id == client_id,
+            OAuth2Client.is_active == 1,
+        )
+        .first()
+    )
     if not client:
         return None
 
@@ -249,12 +271,16 @@ def _handle_auth_code_grant(data: OAuth2TokenRequest, client: OAuth2Client, db: 
         raise HTTPException(status_code=400, detail="Missing authorization code")
 
     code_hash = hash_token(data.code)
-    token_record = db.query(OAuth2Token).filter(
-        OAuth2Token.token_hash == code_hash,
-        OAuth2Token.client_id == client.client_id,
-        OAuth2Token.token_type == "authorization_code",
-        OAuth2Token.is_revoked == 0,
-    ).first()
+    token_record = (
+        db.query(OAuth2Token)
+        .filter(
+            OAuth2Token.token_hash == code_hash,
+            OAuth2Token.client_id == client.client_id,
+            OAuth2Token.token_type == "authorization_code",
+            OAuth2Token.is_revoked == 0,
+        )
+        .first()
+    )
     if not token_record:
         raise HTTPException(status_code=400, detail="Invalid authorization code")
 
@@ -265,7 +291,9 @@ def _handle_auth_code_grant(data: OAuth2TokenRequest, client: OAuth2Client, db: 
     if token_record.code_challenge and token_record.code_challenge_method:
         if not data.code_verifier:
             raise HTTPException(status_code=400, detail="Code verifier required")
-        if not verify_pkce(data.code_verifier, token_record.code_challenge, token_record.code_challenge_method):
+        if not verify_pkce(
+            data.code_verifier, token_record.code_challenge, token_record.code_challenge_method
+        ):
             raise HTTPException(status_code=400, detail="PKCE verification failed")
 
     token_record.is_revoked = 1
@@ -282,8 +310,24 @@ def _handle_auth_code_grant(data: OAuth2TokenRequest, client: OAuth2Client, db: 
         scope=token_record.scope,
     )
 
-    _store_token(db, client.client_id, token_record.user_id, "access", access_token, token_record.scope, expires_in)
-    _store_token(db, client.client_id, token_record.user_id, "refresh", refresh_token, token_record.scope, 86400 * 30)
+    _store_token(
+        db,
+        client.client_id,
+        token_record.user_id,
+        "access",
+        access_token,
+        token_record.scope,
+        expires_in,
+    )
+    _store_token(
+        db,
+        client.client_id,
+        token_record.user_id,
+        "refresh",
+        refresh_token,
+        token_record.scope,
+        86400 * 30,
+    )
 
     result = {
         "access_token": access_token,
@@ -303,7 +347,9 @@ def _handle_auth_code_grant(data: OAuth2TokenRequest, client: OAuth2Client, db: 
     return result
 
 
-def _handle_client_credentials_grant(data: OAuth2TokenRequest, client: OAuth2Client, db: Session) -> dict:
+def _handle_client_credentials_grant(
+    data: OAuth2TokenRequest, client: OAuth2Client, db: Session
+) -> dict:
     scope = data.scope
     if scope and client.allowed_scopes:
         allowed = json.loads(client.allowed_scopes)
@@ -326,7 +372,9 @@ def _handle_client_credentials_grant(data: OAuth2TokenRequest, client: OAuth2Cli
     }
 
 
-def _handle_refresh_token_grant(data: OAuth2TokenRequest, client: OAuth2Client, db: Session) -> dict:
+def _handle_refresh_token_grant(
+    data: OAuth2TokenRequest, client: OAuth2Client, db: Session
+) -> dict:
     if not data.refresh_token:
         raise HTTPException(status_code=400, detail="Missing refresh_token")
 
@@ -338,10 +386,14 @@ def _handle_refresh_token_grant(data: OAuth2TokenRequest, client: OAuth2Client, 
         raise HTTPException(status_code=400, detail="Client mismatch")
 
     old_hash = hash_token(data.refresh_token)
-    old_record = db.query(OAuth2Token).filter(
-        OAuth2Token.token_hash == old_hash,
-        OAuth2Token.is_revoked == 0,
-    ).first()
+    old_record = (
+        db.query(OAuth2Token)
+        .filter(
+            OAuth2Token.token_hash == old_hash,
+            OAuth2Token.is_revoked == 0,
+        )
+        .first()
+    )
     if old_record:
         old_record.is_revoked = 1
         db.commit()

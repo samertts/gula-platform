@@ -72,8 +72,19 @@ class PartnerManager:
 
     def update_partner(self, partner_id: str, data: dict) -> Partner:
         partner = self.get_partner(partner_id)
-        for field in ("name", "org_type", "contact_name", "contact_email", "contact_phone", "tier",
-                      "agreement_date", "agreement_version", "api_quota", "rate_limit", "metadata_"):
+        for field in (
+            "name",
+            "org_type",
+            "contact_name",
+            "contact_email",
+            "contact_phone",
+            "tier",
+            "agreement_date",
+            "agreement_version",
+            "api_quota",
+            "rate_limit",
+            "metadata_",
+        ):
             if field in data:
                 setattr(partner, field, data[field])
         partner.updated_at = datetime.now(UTC)
@@ -108,7 +119,9 @@ class PartnerManager:
         return partner
 
     def get_partner(self, partner_id: str) -> Partner:
-        partner = self._db.query(Partner).filter(Partner.id == partner_id, ~Partner.is_deleted).first()
+        partner = (
+            self._db.query(Partner).filter(Partner.id == partner_id, ~Partner.is_deleted).first()
+        )
         if not partner:
             raise PartnerNotFoundError(partner_id)
         return partner
@@ -141,13 +154,17 @@ class CredentialManager:
     def __init__(self, db: Session) -> None:
         self._db = db
 
-    def issue_api_key(self, partner_id: str, name: str, expires_in_days: int | None = None) -> PartnerCredential:
+    def issue_api_key(
+        self, partner_id: str, name: str, expires_in_days: int | None = None,
+    ) -> PartnerCredential:
         partner = self._db.query(Partner).filter(Partner.id == partner_id).first()
         if not partner:
             raise PartnerNotFoundError(partner_id)
 
         api_key = f"gula_{secrets.token_urlsafe(32)}"
-        expires_at = datetime.now(UTC) + timedelta(days=expires_in_days) if expires_in_days else None
+        expires_at = (
+            datetime.now(UTC) + timedelta(days=expires_in_days) if expires_in_days else None
+        )
 
         credential = PartnerCredential(
             partner_id=partner_id,
@@ -164,7 +181,9 @@ class CredentialManager:
         return api_key
 
     def revoke_credential(self, credential_id: int) -> None:
-        credential = self._db.query(PartnerCredential).filter(PartnerCredential.id == credential_id).first()
+        credential = (
+            self._db.query(PartnerCredential).filter(PartnerCredential.id == credential_id).first()
+        )
         if not credential:
             raise CredentialNotFoundError(credential_id)
         credential.status = "revoked"
@@ -172,17 +191,23 @@ class CredentialManager:
         self._db.commit()
 
     def rotate_credential(self, credential_id: int, expires_in_days: int | None = None) -> str:
-        credential = self._db.query(PartnerCredential).filter(PartnerCredential.id == credential_id).first()
+        credential = (
+            self._db.query(PartnerCredential).filter(PartnerCredential.id == credential_id).first()
+        )
         if not credential:
             raise CredentialNotFoundError(credential_id)
         new_api_key = f"gula_{secrets.token_urlsafe(32)}"
         credential.credential_value = self._hash_api_key(new_api_key)
-        credential.expires_at = datetime.now(UTC) + timedelta(days=expires_in_days) if expires_in_days else None
+        credential.expires_at = (
+            datetime.now(UTC) + timedelta(days=expires_in_days) if expires_in_days else None
+        )
         credential.updated_at = datetime.now(UTC)
         self._db.commit()
         return new_api_key
 
-    def validate_credential(self, partner_id: str, credential_type: str, credential_value: str) -> bool:
+    def validate_credential(
+        self, partner_id: str, credential_type: str, credential_value: str,
+    ) -> bool:
         credential = (
             self._db.query(PartnerCredential)
             .filter(
@@ -236,8 +261,12 @@ class CertificateManager:
             certificate_pem=pem,
             certificate_serial=data.get("certificate_serial"),
             issuer=data.get("issuer"),
-            valid_from=datetime.fromisoformat(data["valid_from"]) if isinstance(data.get("valid_from"), str) else data.get("valid_from", datetime.now(UTC)),
-            valid_to=datetime.fromisoformat(data["valid_to"]) if isinstance(data.get("valid_to"), str) else data.get("valid_to", datetime.now(UTC) + timedelta(days=365)),
+            valid_from=datetime.fromisoformat(data["valid_from"])
+            if isinstance(data.get("valid_from"), str)
+            else data.get("valid_from", datetime.now(UTC)),
+            valid_to=datetime.fromisoformat(data["valid_to"])
+            if isinstance(data.get("valid_to"), str)
+            else data.get("valid_to", datetime.now(UTC) + timedelta(days=365)),
             status="active",
             fingerprint=fingerprint,
         )
@@ -261,7 +290,11 @@ class CertificateManager:
         return not (now < cert.valid_from or now > cert.valid_to)
 
     def revoke_certificate(self, certificate_id: str) -> None:
-        cert = self._db.query(PartnerCertificate).filter(PartnerCertificate.id == certificate_id).first()
+        cert = (
+            self._db.query(PartnerCertificate)
+            .filter(PartnerCertificate.id == certificate_id)
+            .first()
+        )
         if not cert:
             return
         cert.status = "revoked"
@@ -329,7 +362,12 @@ class RateLimitManager:
             .first()
         )
         if limit:
-            for field in ("requests_per_minute", "requests_per_hour", "requests_per_day", "concurrent_limit"):
+            for field in (
+                "requests_per_minute",
+                "requests_per_hour",
+                "requests_per_day",
+                "concurrent_limit",
+            ):
                 if field in data:
                     setattr(limit, field, data[field])
             limit.updated_at = datetime.now(UTC)
@@ -359,9 +397,7 @@ class RateLimitManager:
 
     def _get_rate_limit(self, partner_id: str, endpoint: str) -> PartnerRateLimit | None:
         limits = (
-            self._db.query(PartnerRateLimit)
-            .filter(PartnerRateLimit.partner_id == partner_id)
-            .all()
+            self._db.query(PartnerRateLimit).filter(PartnerRateLimit.partner_id == partner_id).all()
         )
         for limit in limits:
             if self._match_pattern(endpoint, limit.endpoint_pattern):
@@ -383,6 +419,7 @@ class RateLimitManager:
         if pattern == "*":
             return True
         import fnmatch
+
         return fnmatch.fnmatch(endpoint, pattern)
 
 
@@ -446,8 +483,12 @@ class AuditManager:
         query = self._db.query(
             PartnerAuditLog.action,
             func.count(PartnerAuditLog.id).label("count"),
-            func.count(PartnerAuditLog.id).filter(PartnerAuditLog.status == "success").label("success_count"),
-            func.count(PartnerAuditLog.id).filter(PartnerAuditLog.status == "failure").label("failure_count"),
+            func.count(PartnerAuditLog.id)
+            .filter(PartnerAuditLog.status == "success")
+            .label("success_count"),
+            func.count(PartnerAuditLog.id)
+            .filter(PartnerAuditLog.status == "failure")
+            .label("failure_count"),
         ).filter(PartnerAuditLog.partner_id == partner_id)
         if from_date:
             query = query.filter(PartnerAuditLog.created_at >= from_date)
@@ -460,5 +501,8 @@ class AuditManager:
         return {
             "partner_id": partner_id,
             "total_actions": total,
-            "actions": {r.action: {"total": r.count, "success": r.success_count, "failure": r.failure_count} for r in rows},
+            "actions": {
+                r.action: {"total": r.count, "success": r.success_count, "failure": r.failure_count}
+                for r in rows
+            },
         }

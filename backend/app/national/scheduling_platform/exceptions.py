@@ -64,4 +64,6 @@ class InvalidAppointmentStateError(NationalDomainError):
         self.appointment_id = appointment_id
         self.current = current
         self.target = target
-        super().__init__(f"Invalid appointment state transition: {appointment_id} from {current} to {target}")
+        super().__init__(
+            f"Invalid appointment state transition: {appointment_id} from {current} to {target}",
+        )

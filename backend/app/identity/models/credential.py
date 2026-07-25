@@ -24,7 +24,9 @@ class Credential(IdentityBaseEntity):
     __tablename__ = "niam_credentials"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    account_id = Column(String(26), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id = Column(
+        String(26), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     credential_type = Column(String(30), nullable=False, index=True)
     credential_value = Column(Text, nullable=False)

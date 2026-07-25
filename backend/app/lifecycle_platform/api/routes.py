@@ -27,6 +27,7 @@ router = APIRouter(prefix="/lifecycle", tags=["National Platform Lifecycle & Gov
 def _get_service(db: Session = Depends(get_db)) -> LifecycleService:
     try:
         from app.kernel import Kernel
+
         kernel = Kernel.get_instance()
         event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
     except Exception:
@@ -35,6 +36,7 @@ def _get_service(db: Session = Depends(get_db)) -> LifecycleService:
 
 
 # ── Component Registry ──
+
 
 @router.post("/components", status_code=status.HTTP_201_CREATED)
 async def register_component(
@@ -55,7 +57,9 @@ async def list_components(
     limit: int = Query(100, ge=1, le=1000),
     service: LifecycleService = Depends(_get_service),
 ) -> list[dict[str, Any]]:
-    return [_component_to_dict(c) for c in service.list_components(component_type, stage, skip, limit)]
+    return [
+        _component_to_dict(c) for c in service.list_components(component_type, stage, skip, limit)
+    ]
 
 
 @router.get("/components/{component_id}")
@@ -66,7 +70,9 @@ async def get_component(
     try:
         return _component_to_dict(service.get_component(component_id))
     except ComponentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.get("/components/name/{name}")
@@ -77,7 +83,9 @@ async def find_component(
     try:
         return _component_to_dict(service.find_component(name))
     except ComponentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.put("/components/{component_id}/stage")
@@ -87,12 +95,17 @@ async def update_component_stage(
     service: LifecycleService = Depends(_get_service),
 ) -> dict[str, Any]:
     try:
-        return _component_to_dict(service.update_component_stage(component_id, body.get("stage", "")))
+        return _component_to_dict(
+            service.update_component_stage(component_id, body.get("stage", "")),
+        )
     except ComponentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ── Releases ──
+
 
 @router.post("/releases", status_code=status.HTTP_201_CREATED)
 async def create_release(
@@ -111,7 +124,10 @@ async def list_releases(
     limit: int = Query(100, ge=1, le=1000),
     service: LifecycleService = Depends(_get_service),
 ) -> list[dict[str, Any]]:
-    return [_release_to_dict(r) for r in service.list_releases(component_id, channel, status, skip, limit)]
+    return [
+        _release_to_dict(r)
+        for r in service.list_releases(component_id, channel, status, skip, limit)
+    ]
 
 
 @router.get("/releases/{release_id}")
@@ -122,7 +138,9 @@ async def get_release(
     try:
         return _release_to_dict(service.get_release(release_id))
     except ReleaseNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/releases/{release_id}/approve")
@@ -134,10 +152,13 @@ async def approve_release(
     try:
         return _release_to_dict(service.approve_release(release_id, body))
     except ReleaseNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ── Compatibility Matrix ──
+
 
 @router.post("/compatibility", status_code=status.HTTP_201_CREATED)
 async def record_compatibility(
@@ -172,6 +193,7 @@ async def list_compatibility(
 
 # ── Upgrade Paths ──
 
+
 @router.post("/upgrade-paths", status_code=status.HTTP_201_CREATED)
 async def create_upgrade_path(
     body: dict[str, Any],
@@ -198,10 +220,13 @@ async def find_upgrade_path(
     try:
         return _upgrade_to_dict(service.find_upgrade_path(component, from_version, to_version))
     except UpgradePathNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ── Deprecation ──
+
 
 @router.post("/deprecations", status_code=status.HTTP_201_CREATED)
 async def issue_deprecation(
@@ -221,6 +246,7 @@ async def list_deprecations(
 
 # ── Dashboard ──
 
+
 @router.get("/dashboard")
 async def get_dashboard(
     service: LifecycleService = Depends(_get_service),
@@ -235,33 +261,65 @@ async def health() -> dict[str, Any]:
 
 # ── Serializers ──
 
+
 def _component_to_dict(c: Component) -> dict[str, Any]:
-    return {"id": c.id, "name": c.name, "component_type": c.component_type,
-            "current_version": c.current_version, "stage": c.stage, "owner": c.owner,
-            "description": c.description, "repository": c.repository}
+    return {
+        "id": c.id,
+        "name": c.name,
+        "component_type": c.component_type,
+        "current_version": c.current_version,
+        "stage": c.stage,
+        "owner": c.owner,
+        "description": c.description,
+        "repository": c.repository,
+    }
 
 
 def _release_to_dict(r: Release) -> dict[str, Any]:
-    return {"id": r.id, "component_id": r.component_id, "version": r.version,
-            "channel": r.channel, "status": r.status, "release_notes": r.release_notes,
-            "certification_level": r.certification_level, "approved_by": r.approved_by,
-            "deployed_by": r.deployed_by, "artifact_url": r.artifact_url}
+    return {
+        "id": r.id,
+        "component_id": r.component_id,
+        "version": r.version,
+        "channel": r.channel,
+        "status": r.status,
+        "release_notes": r.release_notes,
+        "certification_level": r.certification_level,
+        "approved_by": r.approved_by,
+        "deployed_by": r.deployed_by,
+        "artifact_url": r.artifact_url,
+    }
 
 
 def _compat_to_dict(e: CompatibilityEntry) -> dict[str, Any]:
-    return {"id": e.id, "component_a": e.component_a, "component_b": e.component_b,
-            "version_a": e.version_a, "version_b": e.version_b, "level": e.level,
-            "notes": e.notes}
+    return {
+        "id": e.id,
+        "component_a": e.component_a,
+        "component_b": e.component_b,
+        "version_a": e.version_a,
+        "version_b": e.version_b,
+        "level": e.level,
+        "notes": e.notes,
+    }
 
 
 def _upgrade_to_dict(u: UpgradePath) -> dict[str, Any]:
-    return {"id": u.id, "component": u.component, "from_version": u.from_version,
-            "to_version": u.to_version, "severity": u.severity,
-            "estimated_duration_minutes": u.estimated_duration_minutes}
+    return {
+        "id": u.id,
+        "component": u.component,
+        "from_version": u.from_version,
+        "to_version": u.to_version,
+        "severity": u.severity,
+        "estimated_duration_minutes": u.estimated_duration_minutes,
+    }
 
 
 def _deprecation_to_dict(d: DeprecationNotice) -> dict[str, Any]:
-    return {"id": d.id, "component_id": d.component_id, "component_name": d.component_name,
-            "deprecation_policy": d.deprecation_policy,
-            "replacement_component": d.replacement_component,
-            "migration_guide": d.migration_guide, "announced_by": d.announced_by}
+    return {
+        "id": d.id,
+        "component_id": d.component_id,
+        "component_name": d.component_name,
+        "deprecation_policy": d.deprecation_policy,
+        "replacement_component": d.replacement_component,
+        "migration_guide": d.migration_guide,
+        "announced_by": d.announced_by,
+    }

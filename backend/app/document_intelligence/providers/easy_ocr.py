@@ -31,6 +31,7 @@ class EasyOcrProvider(OcrProviderBase):
     def version(self) -> str:
         try:
             import easyocr
+
             return easyocr.__version__
         except Exception:
             return "unknown"
@@ -38,6 +39,7 @@ class EasyOcrProvider(OcrProviderBase):
     async def initialize(self) -> None:
         try:
             import easyocr
+
             self._reader = easyocr.Reader(
                 ["ar", "en"],
                 gpu=False,
@@ -63,7 +65,9 @@ class EasyOcrProvider(OcrProviderBase):
         ]
 
     async def ocr_image(
-        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        image_data: bytes,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         if not self._initialized:
             await self.initialize()
@@ -88,11 +92,10 @@ class EasyOcrProvider(OcrProviderBase):
                     confidences.append(float(confidence))
 
                 page.text = " ".join(text_parts)
-                page.confidence = (
-                    sum(confidences) / len(confidences) if confidences else 0.0
-                )
+                page.confidence = sum(confidences) / len(confidences) if confidences else 0.0
             finally:
                 import os
+
                 os.unlink(tmp_path)
 
         except Exception as exc:
@@ -103,6 +106,8 @@ class EasyOcrProvider(OcrProviderBase):
         return page
 
     async def ocr_image_path(
-        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        image_path: Path,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         return await self.ocr_image(image_path.read_bytes(), language)

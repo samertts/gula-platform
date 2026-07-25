@@ -212,7 +212,9 @@ def log_interaction(
     # Intent is free-form for forward compatibility but we warn on unknowns.
     if payload.intent and payload.intent not in INTENT_VALUES:
         logger.info(
-            "ai.dataset.intent.unknown intent=%s lab_id=%s", payload.intent, current_user.lab_id,
+            "ai.dataset.intent.unknown intent=%s lab_id=%s",
+            payload.intent,
+            current_user.lab_id,
         )
 
     if payload.risk_level is not None and payload.risk_level not in RISK_LEVEL_SET:
@@ -351,7 +353,8 @@ def append_retrieval_refs(
     )
     if interaction is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"},
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "INTERACTION_NOT_FOUND"},
         )
 
     now = _now()
@@ -402,7 +405,8 @@ def submit_feedback(
     )
     if interaction is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"},
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "INTERACTION_NOT_FOUND"},
         )
 
     fb = AIFeedback(
@@ -444,7 +448,8 @@ def log_unresolved(
         )
         if exists is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail={"code": "INTERACTION_NOT_FOUND"},
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "INTERACTION_NOT_FOUND"},
             )
 
     q = AIUnresolvedQuestion(

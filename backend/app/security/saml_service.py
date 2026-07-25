@@ -38,7 +38,9 @@ def validate_assertion(
 ) -> bool:
     issuer_el = assertion.find("./saml:Issuer", SAML_NS)
     if issuer_el is None or issuer_el.text != expected_issuer:
-        logger.warning("SAML issuer mismatch: %s", issuer_el.text if issuer_el is not None else None)
+        logger.warning(
+            "SAML issuer mismatch: %s", issuer_el.text if issuer_el is not None else None
+        )
         return False
 
     conditions = assertion.find("./saml:Conditions", SAML_NS)

@@ -11,8 +11,18 @@ class MergeRecord(AuditEntity):
     status = Column(SAEnum(MergeStatus), nullable=False, default=MergeStatus.PENDING)
     method = Column(SAEnum(MergeMethod), nullable=False)
 
-    primary_citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
-    secondary_citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
+    primary_citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    secondary_citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
 
     confidence_score = Column(Integer, nullable=True)
     match_features = Column(JSON, nullable=True)
@@ -42,10 +52,25 @@ class MergeAudit(AuditEntity):
     __tablename__ = "national_merge_audit"
 
     event_type = Column(String(20), nullable=False)
-    merge_record_id = Column(String(26), ForeignKey("national_merge_records.id", ondelete="RESTRICT"), nullable=True, index=True)
+    merge_record_id = Column(
+        String(26),
+        ForeignKey("national_merge_records.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
-    primary_citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True)
-    secondary_citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
+    primary_citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    secondary_citizen_id = Column(
+        String(26),
+        ForeignKey("national_citizens.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
 
     action = Column(String(50), nullable=False)
     performed_by = Column(String(26), nullable=False)

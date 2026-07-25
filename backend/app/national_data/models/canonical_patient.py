@@ -42,41 +42,47 @@ class CanonicalPatient(DataPlatformBase):
     nationality: str | None
 
     @classmethod
-    def query_all(cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:
-        query = db.query(
-            LimsPatient.id,
-            LimsPatient.lab_id,
-            LimsPatient.health_id,
-            LimsPatient.national_id_hash,
-            LimsPatient.family_id_hash,
-            LimsPatient.full_name,
-            LimsPatient.phone,
-            LimsPatient.birth_date,
-            LimsPatient.gender,
-            LimsPatient.email,
-            LimsPatient.guardian_id,
-            NationalPatient.id.label("national_patient_id"),
-            Citizen.id.label("citizen_id"),
-            Citizen.first_name,
-            Citizen.father_name,
-            Citizen.grandfather_name,
-            Citizen.last_name,
-            Citizen.mother_name,
-            Citizen.full_name_ar,
-            Citizen.date_of_birth,
-            Citizen.blood_group,
-            Citizen.governorate,
-            Citizen.district,
-            Citizen.nationality,
-        ).outerjoin(
-            NationalPatient,
-            and_(
-                NationalPatient.lab_patient_id == LimsPatient.id,
-                NationalPatient.lab_id == LimsPatient.lab_id,
-            ),
-        ).outerjoin(
-            Citizen,
-            Citizen.id == NationalPatient.citizen_id,
+    def query_all(
+        cls, db: Session, lab_id: int | None = None, skip: int = 0, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        query = (
+            db.query(
+                LimsPatient.id,
+                LimsPatient.lab_id,
+                LimsPatient.health_id,
+                LimsPatient.national_id_hash,
+                LimsPatient.family_id_hash,
+                LimsPatient.full_name,
+                LimsPatient.phone,
+                LimsPatient.birth_date,
+                LimsPatient.gender,
+                LimsPatient.email,
+                LimsPatient.guardian_id,
+                NationalPatient.id.label("national_patient_id"),
+                Citizen.id.label("citizen_id"),
+                Citizen.first_name,
+                Citizen.father_name,
+                Citizen.grandfather_name,
+                Citizen.last_name,
+                Citizen.mother_name,
+                Citizen.full_name_ar,
+                Citizen.date_of_birth,
+                Citizen.blood_group,
+                Citizen.governorate,
+                Citizen.district,
+                Citizen.nationality,
+            )
+            .outerjoin(
+                NationalPatient,
+                and_(
+                    NationalPatient.lab_patient_id == LimsPatient.id,
+                    NationalPatient.lab_id == LimsPatient.lab_id,
+                ),
+            )
+            .outerjoin(
+                Citizen,
+                Citizen.id == NationalPatient.citizen_id,
+            )
         )
 
         if lab_id is not None:
@@ -86,43 +92,50 @@ class CanonicalPatient(DataPlatformBase):
         return [dict(row._mapping) for row in rows]
 
     @classmethod
-    def get_by_id(cls, db: Session, patient_id: int, lab_id: int | None = None) -> dict[str, Any] | None:
-        query = db.query(
-            LimsPatient.id,
-            LimsPatient.lab_id,
-            LimsPatient.health_id,
-            LimsPatient.national_id_hash,
-            LimsPatient.family_id_hash,
-            LimsPatient.full_name,
-            LimsPatient.phone,
-            LimsPatient.birth_date,
-            LimsPatient.gender,
-            LimsPatient.email,
-            LimsPatient.guardian_id,
-            NationalPatient.id.label("national_patient_id"),
-            Citizen.id.label("citizen_id"),
-            Citizen.first_name,
-            Citizen.father_name,
-            Citizen.grandfather_name,
-            Citizen.last_name,
-            Citizen.mother_name,
-            Citizen.full_name_ar,
-            Citizen.date_of_birth,
-            Citizen.blood_group,
-            Citizen.governorate,
-            Citizen.district,
-            Citizen.nationality,
-        ).outerjoin(
-            NationalPatient,
-            and_(
-                NationalPatient.lab_patient_id == LimsPatient.id,
-                NationalPatient.lab_id == LimsPatient.lab_id,
-            ),
-        ).outerjoin(
-            Citizen,
-            Citizen.id == NationalPatient.citizen_id,
-        ).filter(
-            LimsPatient.id == patient_id,
+    def get_by_id(
+        cls, db: Session, patient_id: int, lab_id: int | None = None
+    ) -> dict[str, Any] | None:
+        query = (
+            db.query(
+                LimsPatient.id,
+                LimsPatient.lab_id,
+                LimsPatient.health_id,
+                LimsPatient.national_id_hash,
+                LimsPatient.family_id_hash,
+                LimsPatient.full_name,
+                LimsPatient.phone,
+                LimsPatient.birth_date,
+                LimsPatient.gender,
+                LimsPatient.email,
+                LimsPatient.guardian_id,
+                NationalPatient.id.label("national_patient_id"),
+                Citizen.id.label("citizen_id"),
+                Citizen.first_name,
+                Citizen.father_name,
+                Citizen.grandfather_name,
+                Citizen.last_name,
+                Citizen.mother_name,
+                Citizen.full_name_ar,
+                Citizen.date_of_birth,
+                Citizen.blood_group,
+                Citizen.governorate,
+                Citizen.district,
+                Citizen.nationality,
+            )
+            .outerjoin(
+                NationalPatient,
+                and_(
+                    NationalPatient.lab_patient_id == LimsPatient.id,
+                    NationalPatient.lab_id == LimsPatient.lab_id,
+                ),
+            )
+            .outerjoin(
+                Citizen,
+                Citizen.id == NationalPatient.citizen_id,
+            )
+            .filter(
+                LimsPatient.id == patient_id,
+            )
         )
 
         if lab_id is not None:

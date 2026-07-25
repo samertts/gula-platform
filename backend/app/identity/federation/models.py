@@ -18,7 +18,9 @@ class FederatedProvider(IdentityBaseEntity):
     name_ar = Column(String(300), nullable=True)
 
     provider_type = Column(
-        String(50), nullable=False, index=True,
+        String(50),
+        nullable=False,
+        index=True,
         default="oauth2",
     )
 
@@ -54,16 +56,22 @@ class FederatedIdentity(IdentityBaseEntity):
     fed_id = Column(String(100), unique=True, nullable=False, index=True)
 
     person_id = Column(
-        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_persons.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     identity_id = Column(
-        String(26), ForeignKey("niam_identities.id", ondelete="SET NULL"),
-        nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_identities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     provider_id = Column(
-        String(26), ForeignKey("niam_fed_providers.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_fed_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     external_subject_id = Column(String(500), nullable=False, index=True)
@@ -88,20 +96,28 @@ class IdentityLink(IdentityBaseEntity):
     link_id = Column(String(100), unique=True, nullable=False, index=True)
 
     person_id = Column(
-        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_persons.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     source_org_id = Column(
-        String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     target_org_id = Column(
-        String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     link_type = Column(
-        String(30), nullable=False, index=True,
+        String(30),
+        nullable=False,
+        index=True,
         default="cross_org",
     )
 
@@ -128,16 +144,22 @@ class FederatedSession(IdentityBaseEntity):
     session_id = Column(String(100), unique=True, nullable=False, index=True)
 
     account_id = Column(
-        String(26), ForeignKey("niam_accounts.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     provider_id = Column(
-        String(26), ForeignKey("niam_fed_providers.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_fed_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     fed_identity_id = Column(
-        String(26), ForeignKey("niam_fed_identities.id", ondelete="SET NULL"),
-        nullable=True, index=True,
+        String(26),
+        ForeignKey("niam_fed_identities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     id_token = Column(Text, nullable=True)
@@ -163,12 +185,16 @@ class CrossOrganizationTrust(IdentityBaseEntity):
     trust_id = Column(String(100), unique=True, nullable=False, index=True)
 
     source_org_id = Column(
-        String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     target_org_id = Column(
-        String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     trust_type = Column(String(50), nullable=False, default="bilateral")
@@ -178,7 +204,9 @@ class CrossOrganizationTrust(IdentityBaseEntity):
     permission_mapping = Column(JSON, nullable=True)
     role_mapping = Column(JSON, nullable=True)
 
-    established_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    established_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     established_by = Column(String(100), nullable=True)
 
     expires_at = Column(DateTime(timezone=True), nullable=True)

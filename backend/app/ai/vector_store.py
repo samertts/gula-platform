@@ -29,7 +29,6 @@ class VectorSearchResult:
 
 
 class VectorStore:
-
     def __init__(self, lab_id: int | None = None):
         self.lab_id = lab_id
         self._pgvector_available: bool | None = None
@@ -42,7 +41,9 @@ class VectorStore:
             return False
         try:
             db = next(get_db())
-            result = db.execute(text("SELECT extname FROM pg_extension WHERE extname = 'vector'")).fetchone()
+            result = db.execute(
+                text("SELECT extname FROM pg_extension WHERE extname = 'vector'"),
+            ).fetchone()
             self._pgvector_available = result is not None
             db.close()
         except Exception:
@@ -65,7 +66,9 @@ class VectorStore:
         lab = lab_id or self.lab_id
 
         if self._check_pgvector():
-            return self._index_pgvector(text, embedding, content_type, content_id, metadata or {}, lab, content_hash)
+            return self._index_pgvector(
+                text, embedding, content_type, content_id, metadata or {}, lab, content_hash,
+            )
 
         return {
             "id": None,
@@ -74,7 +77,9 @@ class VectorStore:
             "note": "pgvector not available; stored as metadata only",
         }
 
-    def _index_pgvector(self, text, embedding, content_type, content_id, metadata, lab_id, content_hash):
+    def _index_pgvector(
+        self, text, embedding, content_type, content_id, metadata, lab_id, content_hash,
+    ):
         db = next(get_db())
         try:
             existing = db.execute(
@@ -85,14 +90,34 @@ class VectorStore:
             meta_json = json.dumps(metadata, ensure_ascii=False)
             if existing:
                 db.execute(
-                    text("UPDATE ai_embeddings SET embedding = :vec::vector, text = :txt, metadata = :meta::jsonb, model = :model WHERE id = :id"),
-                    {"vec": vec_str, "txt": text, "meta": meta_json, "model": "gemini-embedding-exp-03-07", "id": existing[0]},
+                    text(
+                        "UPDATE ai_embeddings SET embedding = :vec::vector, text = :txt, metadata = :meta::jsonb, model = :model WHERE id = :id",
+                    ),
+                    {
+                        "vec": vec_str,
+                        "txt": text,
+                        "meta": meta_json,
+                        "model": "gemini-embedding-exp-03-07",
+                        "id": existing[0],
+                    },
                 )
                 record_id = existing[0]
             else:
                 result = db.execute(
-                    text("INSERT INTO ai_embeddings (lab_id, content_type, content_id, content_hash, text, embedding, model, dimensions, metadata) VALUES (:lab, :ct, :cid, :ch, :txt, :vec::vector, :model, :dims, :meta::jsonb) RETURNING id"),
-                    {"lab": lab_id, "ct": content_type, "cid": content_id, "ch": content_hash, "txt": text, "vec": vec_str, "model": "gemini-embedding-exp-03-07", "dims": len(embedding), "meta": meta_json},
+                    text(
+                        "INSERT INTO ai_embeddings (lab_id, content_type, content_id, content_hash, text, embedding, model, dimensions, metadata) VALUES (:lab, :ct, :cid, :ch, :txt, :vec::vector, :model, :dims, :meta::jsonb) RETURNING id",
+                    ),
+                    {
+                        "lab": lab_id,
+                        "ct": content_type,
+                        "cid": content_id,
+                        "ch": content_hash,
+                        "txt": text,
+                        "vec": vec_str,
+                        "model": "gemini-embedding-exp-03-07",
+                        "dims": len(embedding),
+                        "meta": meta_json,
+                    },
                 )
                 record_id = result.fetchone()[0]
             db.commit()
@@ -133,18 +158,30 @@ class VectorStore:
                 where_clauses.append("e.content_type = :ct")
                 params["ct"] = content_type
             where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
-            sql = text(f"SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE {where_sql} ORDER BY score DESC LIMIT :limit")
+            sql = text(
+                f"SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE {where_sql} ORDER BY score DESC LIMIT :limit",
+            )
             rows = db.execute(sql, params).fetchall()
             results = []
             for row in rows:
                 score = float(row.score)
                 if score < threshold:
                     continue
-                meta = row.metadata if isinstance(row.metadata, dict) else json.loads(row.metadata or "{}")
-                results.append(VectorSearchResult(
-                    id=row.id, content_type=row.content_type, content_id=row.content_id,
-                    text=row.text, score=round(score, 4), metadata=meta,
-                ))
+                meta = (
+                    row.metadata
+                    if isinstance(row.metadata, dict)
+                    else json.loads(row.metadata or "{}")
+                )
+                results.append(
+                    VectorSearchResult(
+                        id=row.id,
+                        content_type=row.content_type,
+                        content_id=row.content_id,
+                        text=row.text,
+                        score=round(score, 4),
+                        metadata=meta,
+                    ),
+                )
             return results
         except Exception as exc:
             logger.error("[VectorStore] pgvector search failed: %s", exc)
@@ -171,11 +208,21 @@ class VectorStore:
             scored.sort(key=lambda x: x[0], reverse=True)
             results = []
             for score, row in scored[:limit]:
-                meta = row.metadata if isinstance(row.metadata, dict) else json.loads(row.metadata or "{}")
-                results.append(VectorSearchResult(
-                    id=row.id, content_type=row.content_type, content_id=row.content_id,
-                    text=row.text, score=round(score, 4), metadata=meta,
-                ))
+                meta = (
+                    row.metadata
+                    if isinstance(row.metadata, dict)
+                    else json.loads(row.metadata or "{}")
+                )
+                results.append(
+                    VectorSearchResult(
+                        id=row.id,
+                        content_type=row.content_type,
+                        content_id=row.content_id,
+                        text=row.text,
+                        score=round(score, 4),
+                        metadata=meta,
+                    ),
+                )
             return results
         except Exception:
             return []
@@ -187,7 +234,9 @@ class VectorStore:
             db = next(get_db())
             try:
                 db.execute(
-                    text("DELETE FROM ai_embeddings WHERE content_type = :ct AND content_id = :cid"),
+                    text(
+                        "DELETE FROM ai_embeddings WHERE content_type = :ct AND content_id = :cid",
+                    ),
                     {"ct": content_type, "cid": content_id},
                 )
                 db.commit()
@@ -200,7 +249,9 @@ class VectorStore:
                 db.close()
         return True
 
-    def search_by_metadata(self, metadata_filter: dict[str, Any], limit: int = 50) -> list[VectorSearchResult]:
+    def search_by_metadata(
+        self, metadata_filter: dict[str, Any], limit: int = 50,
+    ) -> list[VectorSearchResult]:
         db = next(get_db())
         try:
             filter_pairs = ["metadata @> :filter_json::jsonb"]
@@ -210,14 +261,21 @@ class VectorStore:
                 params["lab"] = self.lab_id
             where = " AND ".join(filter_pairs)
             rows = db.execute(
-                text(f"SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE {where} LIMIT :limit"),
+                text(
+                    f"SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE {where} LIMIT :limit",
+                ),
                 params,
             ).fetchall()
             return [
                 VectorSearchResult(
-                    id=row.id, content_type=row.content_type, content_id=row.content_id,
-                    text=row.text, score=1.0,
-                    metadata=row.metadata if isinstance(row.metadata, dict) else json.loads(row.metadata or "{}"),
+                    id=row.id,
+                    content_type=row.content_type,
+                    content_id=row.content_id,
+                    text=row.text,
+                    score=1.0,
+                    metadata=row.metadata
+                    if isinstance(row.metadata, dict)
+                    else json.loads(row.metadata or "{}"),
                 )
                 for row in rows
             ]

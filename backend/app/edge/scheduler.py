@@ -131,7 +131,9 @@ def submit_task(
 
 
 def _device_matches_task(
-    device: EdgeDevice, task: EdgeTask, pol: policy_mod.ResolvedPolicy,
+    device: EdgeDevice,
+    task: EdgeTask,
+    pol: policy_mod.ResolvedPolicy,
 ) -> bool:
     if not device.is_eligible():
         return False
@@ -153,7 +155,8 @@ def _device_concurrency(db: Session, device: EdgeDevice) -> int:
     return (
         db.query(EdgeTask)
         .filter(
-            EdgeTask.device_id == device.device_id, EdgeTask.status.in_(("dispatched", "running")),
+            EdgeTask.device_id == device.device_id,
+            EdgeTask.status.in_(("dispatched", "running")),
         )
         .count()
     )

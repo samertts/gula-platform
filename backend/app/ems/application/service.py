@@ -60,7 +60,9 @@ class EMSService:
     # ---- Incident Management ----
 
     def create_incident(self, data: dict[str, Any]) -> EmergencyIncident:
-        model = EmergencyIncidentModel(**{k: v for k, v in data.items() if hasattr(EmergencyIncidentModel, k)})
+        model = EmergencyIncidentModel(
+            **{k: v for k, v in data.items() if hasattr(EmergencyIncidentModel, k)}
+        )
         model.created_at = datetime.now(UTC)
         model.updated_at = datetime.now(UTC)
         self.db.add(model)
@@ -77,9 +79,15 @@ class EMSService:
         return self._incident_from_model(model)
 
     def list_incidents(
-        self, status: str | None = None, category: str | None = None, skip: int = 0, limit: int = 100,
+        self,
+        status: str | None = None,
+        category: str | None = None,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[EmergencyIncident]:
-        query = self.db.query(EmergencyIncidentModel).filter(EmergencyIncidentModel.is_deleted.isnot(True))
+        query = self.db.query(EmergencyIncidentModel).filter(
+            EmergencyIncidentModel.is_deleted.isnot(True)
+        )
         if status:
             query = query.filter_by(status=status)
         if category:
@@ -100,7 +108,9 @@ class EMSService:
             "at_destination": ["completed"],
         }
         if new_status not in valid_transitions.get(model.status, []):
-            raise InvalidIncidentStateError(f"Cannot transition from {model.status} to {new_status}")
+            raise InvalidIncidentStateError(
+                f"Cannot transition from {model.status} to {new_status}"
+            )
         setattr(model, f"{new_status}_time", datetime.now(UTC))
         model.status = new_status
         model.updated_at = datetime.now(UTC)
@@ -108,7 +118,9 @@ class EMSService:
         self.db.refresh(model)
         return self._incident_from_model(model)
 
-    def dispatch_incident(self, incident_id: str, ambulance_id: str, crew_ids: list[str] | None = None) -> DispatchAssignment:
+    def dispatch_incident(
+        self, incident_id: str, ambulance_id: str, crew_ids: list[str] | None = None
+    ) -> DispatchAssignment:
         incident = self.db.query(EmergencyIncidentModel).filter_by(id=incident_id).first()
         if not incident:
             raise IncidentNotFoundError()
@@ -116,7 +128,9 @@ class EMSService:
         if not ambulance:
             raise AmbulanceNotFoundError()
         if ambulance.status != AmbulanceStatus.AVAILABLE.value:
-            raise AmbulanceNotAvailableError(f"Ambulance {ambulance_id} is currently {ambulance.status}")
+            raise AmbulanceNotAvailableError(
+                f"Ambulance {ambulance_id} is currently {ambulance.status}"
+            )
         ambulance.status = AmbulanceStatus.EN_ROUTE.value
         incident.status = IncidentStatus.DISPATCHED.value
         incident.dispatch_time = datetime.now(UTC)
@@ -148,7 +162,9 @@ class EMSService:
             raise AmbulanceNotFoundError()
         return self._ambulance_from_model(model)
 
-    def list_ambulances(self, status: str | None = None, skip: int = 0, limit: int = 100) -> list[Ambulance]:
+    def list_ambulances(
+        self, status: str | None = None, skip: int = 0, limit: int = 100
+    ) -> list[Ambulance]:
         query = self.db.query(AmbulanceModel).filter(AmbulanceModel.is_deleted.isnot(True))
         if status:
             query = query.filter_by(status=status)
@@ -166,7 +182,9 @@ class EMSService:
         self.db.refresh(model)
         return self._ambulance_from_model(model)
 
-    def update_ambulance_status(self, ambulance_id: str, status: str, reason: str = "") -> Ambulance:
+    def update_ambulance_status(
+        self, ambulance_id: str, status: str, reason: str = ""
+    ) -> Ambulance:
         model = self.db.query(AmbulanceModel).filter_by(id=ambulance_id).first()
         if not model:
             raise AmbulanceNotFoundError()
@@ -179,13 +197,17 @@ class EMSService:
     # ---- Crew Management ----
 
     def register_crew_member(self, data: dict[str, Any]) -> AmbulanceCrew:
-        model = AmbulanceCrewModel(**{k: v for k, v in data.items() if hasattr(AmbulanceCrewModel, k)})
+        model = AmbulanceCrewModel(
+            **{k: v for k, v in data.items() if hasattr(AmbulanceCrewModel, k)}
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
         return self._crew_from_model(model)
 
-    def list_crew(self, station_id: str | None = None, skip: int = 0, limit: int = 100) -> list[AmbulanceCrew]:
+    def list_crew(
+        self, station_id: str | None = None, skip: int = 0, limit: int = 100
+    ) -> list[AmbulanceCrew]:
         query = self.db.query(AmbulanceCrewModel).filter(AmbulanceCrewModel.is_deleted.isnot(True))
         if station_id:
             query = query.filter_by(station_id=station_id)
@@ -214,7 +236,9 @@ class EMSService:
         else:
             category = TriageCategory.MINOR.value
         data["category"] = category
-        model = TriageAssessmentModel(**{k: v for k, v in data.items() if hasattr(TriageAssessmentModel, k)})
+        model = TriageAssessmentModel(
+            **{k: v for k, v in data.items() if hasattr(TriageAssessmentModel, k)}
+        )
         model.assessed_at = datetime.now(UTC)
         self.db.add(model)
         self.db.commit()
@@ -240,7 +264,9 @@ class EMSService:
             raise ePCRNotFoundError()
         return self._epcr_from_model(model)
 
-    def list_epcrs(self, incident_id: str | None = None, skip: int = 0, limit: int = 100) -> list[ePCR]:
+    def list_epcrs(
+        self, incident_id: str | None = None, skip: int = 0, limit: int = 100
+    ) -> list[ePCR]:
         query = self.db.query(ePCRModel).filter(ePCRModel.is_deleted.isnot(True))
         if incident_id:
             query = query.filter_by(incident_id=incident_id)
@@ -270,23 +296,34 @@ class EMSService:
             model = existing
         else:
             data["last_updated"] = datetime.now(UTC)
-            model = HospitalStatusModel(**{k: v for k, v in data.items() if hasattr(HospitalStatusModel, k)})
+            model = HospitalStatusModel(
+                **{k: v for k, v in data.items() if hasattr(HospitalStatusModel, k)}
+            )
             self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
         return self._hospital_status_from_model(model)
 
-    def get_nearest_hospitals(self, lat: float, lng: float, limit: int = 10) -> list[dict[str, Any]]:
-        hospitals = self.db.query(HospitalStatusModel).filter(
-            HospitalStatusModel.diversion_status.isnot(True),
-            HospitalStatusModel.available_beds > 0,
-        ).limit(limit).all()
+    def get_nearest_hospitals(
+        self, lat: float, lng: float, limit: int = 10
+    ) -> list[dict[str, Any]]:
+        hospitals = (
+            self.db.query(HospitalStatusModel)
+            .filter(
+                HospitalStatusModel.diversion_status.isnot(True),
+                HospitalStatusModel.available_beds > 0,
+            )
+            .limit(limit)
+            .all()
+        )
         return [self._hospital_status_from_model(h).__dict__ for h in hospitals]
 
     # ---- Disaster Management ----
 
     def declare_disaster(self, data: dict[str, Any]) -> DisasterEvent:
-        model = DisasterEventModel(**{k: v for k, v in data.items() if hasattr(DisasterEventModel, k)})
+        model = DisasterEventModel(
+            **{k: v for k, v in data.items() if hasattr(DisasterEventModel, k)}
+        )
         model.declared_at = datetime.now(UTC)
         model.created_at = datetime.now(UTC)
         model.updated_at = datetime.now(UTC)
@@ -297,7 +334,9 @@ class EMSService:
         self._emit(create_disaster_event(disaster))
         return disaster
 
-    def list_disasters(self, phase: str | None = None, skip: int = 0, limit: int = 100) -> list[DisasterEvent]:
+    def list_disasters(
+        self, phase: str | None = None, skip: int = 0, limit: int = 100
+    ) -> list[DisasterEvent]:
         query = self.db.query(DisasterEventModel).filter(DisasterEventModel.is_deleted.isnot(True))
         if phase:
             query = query.filter_by(phase=phase)
@@ -305,7 +344,9 @@ class EMSService:
         return [self._disaster_from_model(m) for m in query.all()]
 
     def create_incident_command(self, data: dict[str, Any]) -> IncidentCommandSystem:
-        model = IncidentCommandModel(**{k: v for k, v in data.items() if hasattr(IncidentCommandModel, k)})
+        model = IncidentCommandModel(
+            **{k: v for k, v in data.items() if hasattr(IncidentCommandModel, k)}
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
@@ -321,17 +362,38 @@ class EMSService:
     # ---- Dashboard ----
 
     def get_dashboard_stats(self) -> dict[str, Any]:
-        active_incidents = self.db.query(EmergencyIncidentModel).filter(
-            EmergencyIncidentModel.status.in_(["pending", "dispatched", "en_route", "on_scene", "transporting"]),
-        ).count()
-        available_ambulances = self.db.query(AmbulanceModel).filter_by(status="available", vehicle_status="active").count()
-        on_duty_crew = self.db.query(AmbulanceCrewModel).filter_by(is_available=True, is_active=True).count()
-        total_disasters = self.db.query(DisasterEventModel).filter(
-            DisasterEventModel.phase.in_(["response", "recovery"]),
-        ).count()
-        total_today = self.db.query(EmergencyIncidentModel).filter(
-            EmergencyIncidentModel.created_at >= datetime.now(UTC).replace(hour=0, minute=0, second=0),
-        ).count()
+        active_incidents = (
+            self.db.query(EmergencyIncidentModel)
+            .filter(
+                EmergencyIncidentModel.status.in_(
+                    ["pending", "dispatched", "en_route", "on_scene", "transporting"]
+                ),
+            )
+            .count()
+        )
+        available_ambulances = (
+            self.db.query(AmbulanceModel)
+            .filter_by(status="available", vehicle_status="active")
+            .count()
+        )
+        on_duty_crew = (
+            self.db.query(AmbulanceCrewModel).filter_by(is_available=True, is_active=True).count()
+        )
+        total_disasters = (
+            self.db.query(DisasterEventModel)
+            .filter(
+                DisasterEventModel.phase.in_(["response", "recovery"]),
+            )
+            .count()
+        )
+        total_today = (
+            self.db.query(EmergencyIncidentModel)
+            .filter(
+                EmergencyIncidentModel.created_at
+                >= datetime.now(UTC).replace(hour=0, minute=0, second=0),
+            )
+            .count()
+        )
         return {
             "active_incidents": active_incidents,
             "available_ambulances": available_ambulances,
@@ -391,7 +453,9 @@ class EMSService:
         )
 
     def _dispatch_from_model(self, model: DispatchAssignmentModel) -> DispatchAssignment:
-        return DispatchAssignment(id=model.id, incident_id=model.incident_id, ambulance_id=model.ambulance_id or "")
+        return DispatchAssignment(
+            id=model.id, incident_id=model.incident_id, ambulance_id=model.ambulance_id or ""
+        )
 
     def _ambulance_from_model(self, model: AmbulanceModel) -> Ambulance:
         return Ambulance(
@@ -419,61 +483,93 @@ class EMSService:
 
     def _crew_from_model(self, model: AmbulanceCrewModel) -> AmbulanceCrew:
         return AmbulanceCrew(
-            id=model.id, user_id=model.user_id or "", full_name=model.full_name, role=model.role or "emt",
+            id=model.id,
+            user_id=model.user_id or "",
+            full_name=model.full_name,
+            role=model.role or "emt",
             is_available=model.is_available if model.is_available is not None else True,
-            station_id=model.station_id or "", facility_id=model.facility_id or "",
-            certifications=model.certifications or [], phone=model.phone or "",
+            station_id=model.station_id or "",
+            facility_id=model.facility_id or "",
+            certifications=model.certifications or [],
+            phone=model.phone or "",
             is_active=model.is_active if model.is_active is not None else True,
         )
 
     def _shift_from_model(self, model: CrewShiftModel) -> CrewShift:
-        return CrewShift(id=model.id, crew_id=model.crew_id, start_time=model.start_time, end_time=model.end_time)
+        return CrewShift(
+            id=model.id, crew_id=model.crew_id, start_time=model.start_time, end_time=model.end_time
+        )
 
     def _triage_from_model(self, model: TriageAssessmentModel) -> TriageAssessment:
         return TriageAssessment(
-            id=model.id, incident_id=model.incident_id or "", patient_name=model.patient_name or "",
-            category=model.category or "minor", system=model.system or "start",
-            respiratory_rate=model.respiratory_rate, heart_rate=model.heart_rate,
-            systolic_bp=model.systolic_bp, ambulatory=model.ambulatory if model.ambulatory is not None else True,
+            id=model.id,
+            incident_id=model.incident_id or "",
+            patient_name=model.patient_name or "",
+            category=model.category or "minor",
+            system=model.system or "start",
+            respiratory_rate=model.respiratory_rate,
+            heart_rate=model.heart_rate,
+            systolic_bp=model.systolic_bp,
+            ambulatory=model.ambulatory if model.ambulatory is not None else True,
         )
 
     def _epcr_from_model(self, model: ePCRModel) -> ePCR:
         return ePCR(
-            id=model.id, incident_id=model.incident_id, patient_name=model.patient_name or "",
-            status=model.status or "draft", chief_complaint=model.chief_complaint or "",
+            id=model.id,
+            incident_id=model.incident_id,
+            patient_name=model.patient_name or "",
+            status=model.status or "draft",
+            chief_complaint=model.chief_complaint or "",
             narrative=model.narrative or "",
         )
 
     def _disaster_from_model(self, model: DisasterEventModel) -> DisasterEvent:
         return DisasterEvent(
-            id=model.id, event_name=model.event_name, disaster_type=model.disaster_type or "other",
-            phase=model.phase or "response", severity_level=model.severity_level or 3,
-            location_address=model.location_address or "", region=model.region or "",
-            governorate=model.governorate or "", description=model.description or "",
-            casualties_count=model.casualties_count or 0, fatalities_count=model.fatalities_count or 0,
-            missing_count=model.missing_count or 0, displaced_count=model.displaced_count or 0,
+            id=model.id,
+            event_name=model.event_name,
+            disaster_type=model.disaster_type or "other",
+            phase=model.phase or "response",
+            severity_level=model.severity_level or 3,
+            location_address=model.location_address or "",
+            region=model.region or "",
+            governorate=model.governorate or "",
+            description=model.description or "",
+            casualties_count=model.casualties_count or 0,
+            fatalities_count=model.fatalities_count or 0,
+            missing_count=model.missing_count or 0,
+            displaced_count=model.displaced_count or 0,
         )
 
     def _ics_from_model(self, model: IncidentCommandModel) -> IncidentCommandSystem:
         return IncidentCommandSystem(
-            id=model.id, disaster_event_id=model.disaster_event_id or "",
-            incident_name=model.incident_name or "", command_staff=model.command_staff or {},
+            id=model.id,
+            disaster_event_id=model.disaster_event_id or "",
+            incident_name=model.incident_name or "",
+            command_staff=model.command_staff or {},
             status=model.status or "active",
         )
 
     def _shelter_from_model(self, model: ShelterModel) -> Shelter:
         return Shelter(
-            id=model.id, name=model.name, disaster_event_id=model.disaster_event_id or "",
-            capacity=model.capacity or 0, current_occupants=model.current_occupants or 0,
+            id=model.id,
+            name=model.name,
+            disaster_event_id=model.disaster_event_id or "",
+            capacity=model.capacity or 0,
+            current_occupants=model.current_occupants or 0,
             status=model.status or "active",
         )
 
     def _hospital_status_from_model(self, model: HospitalStatusModel) -> HospitalStatus:
         return HospitalStatus(
-            id=model.id, facility_id=model.facility_id, facility_name=model.facility_name or "",
-            total_beds=model.total_beds or 0, available_beds=model.available_beds or 0,
-            icu_beds=model.icu_beds or 0, available_icu_beds=model.available_icu_beds or 0,
-            ventilators_total=model.ventilators_total or 0, ventilators_available=model.ventilators_available or 0,
+            id=model.id,
+            facility_id=model.facility_id,
+            facility_name=model.facility_name or "",
+            total_beds=model.total_beds or 0,
+            available_beds=model.available_beds or 0,
+            icu_beds=model.icu_beds or 0,
+            available_icu_beds=model.available_icu_beds or 0,
+            ventilators_total=model.ventilators_total or 0,
+            ventilators_available=model.ventilators_available or 0,
             emergency_room_status=model.emergency_room_status or "normal",
             diversion_status=model.diversion_status or False,
         )
@@ -502,5 +598,8 @@ def create_disaster_event(disaster: DisasterEvent) -> NationalDomainEvent:
         event_type="ems.disaster.declared",
         aggregate_type="DisasterEvent",
         aggregate_id=disaster.id,
-        payload={"disaster_type": disaster.disaster_type, "severity_level": disaster.severity_level},
+        payload={
+            "disaster_type": disaster.disaster_type,
+            "severity_level": disaster.severity_level,
+        },
     )

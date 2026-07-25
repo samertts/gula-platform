@@ -12,7 +12,6 @@ from app.identity.compliance.models import ComplianceCheck, ComplianceFramework,
 
 
 class ComplianceService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -131,7 +130,12 @@ class ComplianceService:
         overall_score = int((passed / total) * 100) if total > 0 else 0
 
         findings_list = [
-            {"check_id": c.check_id, "requirement_id": c.requirement_id, "status": c.status, "finding": c.finding}
+            {
+                "check_id": c.check_id,
+                "requirement_id": c.requirement_id,
+                "status": c.status,
+                "finding": c.finding,
+            }
             for c in checks
         ]
 
@@ -190,12 +194,14 @@ class ComplianceService:
             total = row.total_checks or 0
             passed = row.passed_checks or 0
             score = int((passed / total) * 100) if total > 0 else 0
-            statuses.append({
-                "framework_id": row.framework_id,
-                "framework_name": row.name,
-                "framework_type": row.framework_type,
-                "total_checks": total,
-                "passed_checks": passed,
-                "compliance_score": score,
-            })
+            statuses.append(
+                {
+                    "framework_id": row.framework_id,
+                    "framework_name": row.name,
+                    "framework_type": row.framework_type,
+                    "total_checks": total,
+                    "passed_checks": passed,
+                    "compliance_score": score,
+                }
+            )
         return statuses

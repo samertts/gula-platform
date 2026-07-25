@@ -23,6 +23,7 @@ class CertificationEngine:
     def evaluators(self) -> dict[CertificationDimension, type]:
         if self._evaluators is None:
             from . import _EVALUATOR_MAP
+
             self._evaluators = dict(_EVALUATOR_MAP)
         return self._evaluators
 
@@ -78,9 +79,7 @@ class CertificationEngine:
         passed = sum(1 for d in dims.values() if d.passed)
         total = len(dims)
         weaknesses = [
-            f"{dim.value}: {result.score:.2f}"
-            for dim, result in dims.items()
-            if result.score < 0.7
+            f"{dim.value}: {result.score:.2f}" for dim, result in dims.items() if result.score < 0.7
         ]
 
         summary = (

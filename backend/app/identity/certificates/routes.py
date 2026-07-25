@@ -168,6 +168,7 @@ async def generate_api_key(
     expires = None
     if expires_at:
         from datetime import datetime
+
         expires = datetime.fromisoformat(expires_at)
     ak, raw_key = await svc.generate_key(
         name=name,

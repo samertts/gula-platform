@@ -173,7 +173,9 @@ class DeviceTrustService:
         if device.failed_attempts >= 5:
             device.trust_level = TrustLevel.LOW
             device.is_active = False
-            logger.warning("Device %s deactivated after %d failed attempts", device_id, device.failed_attempts)
+            logger.warning(
+                "Device %s deactivated after %d failed attempts", device_id, device.failed_attempts
+            )
 
     def get_device(self, device_id: str) -> TrustedDevice | None:
         return self._devices.get(device_id)
@@ -275,6 +277,7 @@ def _extract_browser(ua: str) -> str:
 
 def _extract_browser_version(ua: str) -> str:
     import re
+
     m = re.search(r"(Chrome|Firefox|Safari|Edge|Opera)/(\d+\.\d+)", ua)
     if m:
         return m.group(2)

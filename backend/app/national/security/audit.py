@@ -37,17 +37,26 @@ class SecurityAuditService:
         import hashlib
         import json
         import uuid
+
         event.event_id = str(uuid.uuid4())
-        content = json.dumps({
-            "event_type": event.event_type, "timestamp": event.timestamp.isoformat(),
-            "user_id": event.user_id, "action": event.action, "resource_type": event.resource_type,
-            "resource_id": event.resource_id,
-        }, sort_keys=True)
+        content = json.dumps(
+            {
+                "event_type": event.event_type,
+                "timestamp": event.timestamp.isoformat(),
+                "user_id": event.user_id,
+                "action": event.action,
+                "resource_type": event.resource_type,
+                "resource_id": event.resource_id,
+            },
+            sort_keys=True,
+        )
         prev_hash = self._events[-1].immutable_hash if self._events else "0" * 64
         event.immutable_hash = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
         self._events.append(event)
 
-    def get_events(self, resource_type: str | None = None, resource_id: str | None = None) -> list[SecurityAuditEvent]:
+    def get_events(
+        self, resource_type: str | None = None, resource_id: str | None = None,
+    ) -> list[SecurityAuditEvent]:
         results = self._events
         if resource_type:
             results = [e for e in results if e.resource_type == resource_type]

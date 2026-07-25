@@ -19,10 +19,22 @@ class Assignment(IdentityBaseEntity):
     __tablename__ = "niam_assignments"
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
-    employment_id = Column(String(26), ForeignKey("niam_employments.id", ondelete="CASCADE"), nullable=False, index=True)
-    person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True)
+    employment_id = Column(
+        String(26),
+        ForeignKey("niam_employments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    organization_id = Column(
+        String(26),
+        ForeignKey("niam_organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     facility_id = Column(String(26), nullable=True, index=True)
     department_id = Column(String(26), nullable=True, index=True)
     unit = Column(String(200), nullable=True)
@@ -43,13 +55,19 @@ class Assignment(IdentityBaseEntity):
     is_emergency = Column(Boolean, default=False, nullable=False)
     is_delegated = Column(Boolean, default=False, nullable=False)
 
-    delegated_from = Column(String(26), ForeignKey("niam_assignments.id", ondelete="SET NULL"), nullable=True)
-    delegated_by = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True)
+    delegated_from = Column(
+        String(26), ForeignKey("niam_assignments.id", ondelete="SET NULL"), nullable=True
+    )
+    delegated_by = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True
+    )
 
     max_duration_hours = Column(Integer, nullable=True)
     requires_mfa = Column(Boolean, default=False, nullable=False)
 
-    assigned_by = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True)
+    assigned_by = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True
+    )
     assigned_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     notes = Column(Text, nullable=True)

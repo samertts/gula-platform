@@ -70,7 +70,12 @@ class Program(Base):
     budget = Column(String(100), nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
     missions = relationship("Mission", back_populates="program", cascade="all, delete-orphan")
 
@@ -82,7 +87,9 @@ class Mission(Base):
     __tablename__ = "roadmap_missions"
 
     id = Column(Integer, primary_key=True, index=True)
-    program_id = Column(Integer, ForeignKey("roadmap_programs.id", ondelete="CASCADE"), nullable=False, index=True)
+    program_id = Column(
+        Integer, ForeignKey("roadmap_programs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name = Column(String(200), nullable=False)
     code = Column(String(50), nullable=False, index=True)
     description = Column(Text, nullable=True)
@@ -95,7 +102,12 @@ class Mission(Base):
     risk_level = Column(String(20), default=RiskLevel.LOW, nullable=False)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
     program = relationship("Program", back_populates="missions")
     epics = relationship("Epic", back_populates="mission", cascade="all, delete-orphan")
@@ -110,7 +122,9 @@ class Epic(Base):
     __tablename__ = "roadmap_epics"
 
     id = Column(Integer, primary_key=True, index=True)
-    mission_id = Column(Integer, ForeignKey("roadmap_missions.id", ondelete="CASCADE"), nullable=False, index=True)
+    mission_id = Column(
+        Integer, ForeignKey("roadmap_missions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name = Column(String(200), nullable=False)
     code = Column(String(50), nullable=False, index=True)
     description = Column(Text, nullable=True)
@@ -119,7 +133,12 @@ class Epic(Base):
     story_points = Column(Integer, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
     mission = relationship("Mission", back_populates="epics")
     tasks = relationship("RoadmapTask", back_populates="epic", cascade="all, delete-orphan")
@@ -132,7 +151,9 @@ class RoadmapTask(Base):
     __tablename__ = "roadmap_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    epic_id = Column(Integer, ForeignKey("roadmap_epics.id", ondelete="CASCADE"), nullable=False, index=True)
+    epic_id = Column(
+        Integer, ForeignKey("roadmap_epics.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     status = Column(String(20), default=TaskStatus.TODO, nullable=False, index=True)
@@ -143,7 +164,12 @@ class RoadmapTask(Base):
     dependencies = Column(JSON, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -157,7 +183,9 @@ class Milestone(Base):
     __tablename__ = "roadmap_milestones"
 
     id = Column(Integer, primary_key=True, index=True)
-    mission_id = Column(Integer, ForeignKey("roadmap_missions.id", ondelete="CASCADE"), nullable=False, index=True)
+    mission_id = Column(
+        Integer, ForeignKey("roadmap_missions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     target_date = Column(DateTime(timezone=True), nullable=False)
@@ -176,7 +204,9 @@ class Risk(Base):
     __tablename__ = "roadmap_risks"
 
     id = Column(Integer, primary_key=True, index=True)
-    mission_id = Column(Integer, ForeignKey("roadmap_missions.id", ondelete="CASCADE"), nullable=False, index=True)
+    mission_id = Column(
+        Integer, ForeignKey("roadmap_missions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     description = Column(Text, nullable=False)
     risk_level = Column(String(20), default=RiskLevel.MEDIUM, nullable=False)
     probability = Column(Float, nullable=True)
@@ -185,7 +215,12 @@ class Risk(Base):
     status = Column(String(20), default="OPEN", nullable=False)
     owner = Column(String(200), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
     mission = relationship("Mission", back_populates="risks")
 
@@ -224,9 +259,13 @@ class ArchitectureDecision(Base):
     created_by = Column(String(200), nullable=True)
     approved_by = Column(String(200), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    superseded_by = Column(Integer, ForeignKey("roadmap_architecture_decisions.id", ondelete="SET NULL"), nullable=True)
+    superseded_by = Column(
+        Integer, ForeignKey("roadmap_architecture_decisions.id", ondelete="SET NULL"), nullable=True
+    )
 
-    superseding = relationship("ArchitectureDecision", remote_side="ArchitectureDecision.id", backref="superseded")
+    superseding = relationship(
+        "ArchitectureDecision", remote_side="ArchitectureDecision.id", backref="superseded"
+    )
 
     def __repr__(self):
         return f"<ArchitectureDecision(id={self.id}, title='{self.title}', status='{self.status}')>"

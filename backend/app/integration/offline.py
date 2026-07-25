@@ -95,7 +95,9 @@ class DeltaSyncEngine:
     def __init__(self, sync_service: SyncService) -> None:
         self._sync = sync_service
 
-    def compute_delta(self, local_version: int, remote_version: int, changes: list[SyncChange]) -> list[SyncChange]:
+    def compute_delta(
+        self, local_version: int, remote_version: int, changes: list[SyncChange]
+    ) -> list[SyncChange]:
         return [c for c in changes if c.version > local_version and c.version <= remote_version]
 
     def push_delta(self, changes: list[SyncChange]) -> int:
@@ -159,7 +161,8 @@ class EdgeSyncEngine:
                 "last_sync": self._last_sync.get(nid),
                 "registered": True,
             }
-            for nid in nodes if nid in self._edge_nodes
+            for nid in nodes
+            if nid in self._edge_nodes
         ]
 
 

@@ -79,13 +79,15 @@ class CitizenPlatform:
         access_logs = AccessLogs()
 
         identity = HealthIdentityService(
-            citizen_service=citizen_service or NationalCitizenService.__new__(NationalCitizenService),
+            citizen_service=citizen_service
+            or NationalCitizenService.__new__(NationalCitizenService),
             encryption_key=encryption_key,
             hmac_key=hmac_key,
         )
 
         appointments = AppointmentService(
-            scheduling_service=scheduling_service or SchedulingPlatformService.__new__(SchedulingPlatformService),
+            scheduling_service=scheduling_service
+            or SchedulingPlatformService.__new__(SchedulingPlatformService),
         )
 
         medications = MedicationService()

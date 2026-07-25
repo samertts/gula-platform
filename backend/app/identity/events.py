@@ -2,7 +2,6 @@ from typing import Any
 
 
 class IdentityEventBus:
-
     def __init__(self) -> None:
         self._handlers: dict[str, list[callable]] = {}
 

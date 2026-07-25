@@ -335,7 +335,9 @@ class Authorization(InsBase):
     requesting_practitioner_id = Column(Integer, nullable=True, index=True)
 
     authorization_number = Column(String(100), nullable=False, unique=True, index=True)
-    status = Column(SAEnum(AuthorizationStatus), nullable=False, default=AuthorizationStatus.REQUESTED)
+    status = Column(
+        SAEnum(AuthorizationStatus), nullable=False, default=AuthorizationStatus.REQUESTED
+    )
     service_category = Column(SAEnum(ServiceCategory), nullable=True)
 
     service_code = Column(String(50), nullable=True)
@@ -393,7 +395,9 @@ class InsuranceClaim(InsBase):
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
     provider_id = Column(Integer, ForeignKey("ins_providers.id"), nullable=False, index=True)
     order_id = Column(Integer, nullable=True, index=True)
-    authorization_id = Column(Integer, ForeignKey("ins_authorizations.id"), nullable=True, index=True)
+    authorization_id = Column(
+        Integer, ForeignKey("ins_authorizations.id"), nullable=True, index=True
+    )
     referral_id = Column(Integer, nullable=True, index=True)
 
     claim_number = Column(String(100), nullable=False, unique=True, index=True)
@@ -449,7 +453,9 @@ class InsuranceClaimItem(InsBase):
     __tablename__ = "ins_claim_items"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    claim_id = Column(Integer, ForeignKey("ins_claims.id", ondelete="CASCADE"), nullable=False, index=True)
+    claim_id = Column(
+        Integer, ForeignKey("ins_claims.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     service_code = Column(String(50), nullable=False)
     service_name = Column(String(255), nullable=True)
@@ -680,12 +686,16 @@ class ProviderContract(InsBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, nullable=False, index=True)
 
-    insurance_provider_id = Column(Integer, ForeignKey("ins_providers.id"), nullable=False, index=True)
+    insurance_provider_id = Column(
+        Integer, ForeignKey("ins_providers.id"), nullable=False, index=True
+    )
     facility_id = Column(Integer, nullable=False, index=True)
     facility_type = Column(String(50), nullable=True)
 
     contract_number = Column(String(100), nullable=False, unique=True, index=True)
-    status = Column(SAEnum(ProviderContractStatus), nullable=False, default=ProviderContractStatus.DRAFT)
+    status = Column(
+        SAEnum(ProviderContractStatus), nullable=False, default=ProviderContractStatus.DRAFT
+    )
 
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=True)

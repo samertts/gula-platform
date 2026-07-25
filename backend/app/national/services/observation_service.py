@@ -11,10 +11,14 @@ from app.national.exceptions import PatientNotFoundError
 
 
 def get_observation(db: Session, observation_id: str) -> Observation | None:
-    return db.query(Observation).filter(
-        Observation.id == observation_id,
-        ~Observation.is_deleted,
-    ).first()
+    return (
+        db.query(Observation)
+        .filter(
+            Observation.id == observation_id,
+            ~Observation.is_deleted,
+        )
+        .first()
+    )
 
 
 def get_observations_by_patient(
@@ -23,12 +27,19 @@ def get_observations_by_patient(
     skip: int = 0,
     limit: int = 50,
 ) -> list[Observation]:
-    return db.query(Observation).filter(
-        Observation.patient_id == patient_id,
-        ~Observation.is_deleted,
-    ).order_by(
-        Observation.effective_datetime.desc(),
-    ).offset(skip).limit(limit).all()
+    return (
+        db.query(Observation)
+        .filter(
+            Observation.patient_id == patient_id,
+            ~Observation.is_deleted,
+        )
+        .order_by(
+            Observation.effective_datetime.desc(),
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_observations_by_encounter(
@@ -37,12 +48,19 @@ def get_observations_by_encounter(
     skip: int = 0,
     limit: int = 50,
 ) -> list[Observation]:
-    return db.query(Observation).filter(
-        Observation.encounter_id == encounter_id,
-        ~Observation.is_deleted,
-    ).order_by(
-        Observation.effective_datetime.desc(),
-    ).offset(skip).limit(limit).all()
+    return (
+        db.query(Observation)
+        .filter(
+            Observation.encounter_id == encounter_id,
+            ~Observation.is_deleted,
+        )
+        .order_by(
+            Observation.effective_datetime.desc(),
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_vital_signs_by_patient(
@@ -50,13 +68,19 @@ def get_vital_signs_by_patient(
     patient_id: str,
     limit: int = 100,
 ) -> list[Observation]:
-    return db.query(Observation).filter(
-        Observation.patient_id == patient_id,
-        Observation.category == "vital-signs",
-        ~Observation.is_deleted,
-    ).order_by(
-        Observation.effective_datetime.desc(),
-    ).limit(limit).all()
+    return (
+        db.query(Observation)
+        .filter(
+            Observation.patient_id == patient_id,
+            Observation.category == "vital-signs",
+            ~Observation.is_deleted,
+        )
+        .order_by(
+            Observation.effective_datetime.desc(),
+        )
+        .limit(limit)
+        .all()
+    )
 
 
 def create_observation(db: Session, data: dict[str, Any]) -> Observation:
@@ -119,6 +143,11 @@ def search_observations(
     if filters:
         query = query.filter(and_(*filters))
 
-    return query.order_by(
-        Observation.effective_datetime.desc(),
-    ).offset(skip).limit(limit).all()
+    return (
+        query.order_by(
+            Observation.effective_datetime.desc(),
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )

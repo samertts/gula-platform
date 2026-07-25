@@ -55,7 +55,8 @@ class InteroperabilityGovernanceService:
         )
 
     def list_active_protocols(
-        self, protocol_type: InteropProtocolType | None = None,
+        self,
+        protocol_type: InteropProtocolType | None = None,
     ) -> list[InteropProtocol]:
         q = self.db.query(InteropProtocol).filter(
             InteropProtocol.status == InteropProtocolStatus.ACTIVE,
@@ -139,7 +140,9 @@ class InteroperabilityGovernanceService:
         return mapping
 
     def lookup_terminology(
-        self, source_system: str, source_code: str,
+        self,
+        source_system: str,
+        source_code: str,
     ) -> list[TerminologyMapping]:
         return (
             self.db.query(TerminologyMapping)

@@ -202,8 +202,8 @@ REDIS_CLUSTER_NODES = os.getenv("REDIS_CLUSTER_NODES", "")
 # ─── Multi-Level Cache Configuration ─────────────────────────────────────────
 # Controls the L1 (in-memory) + L2 (Redis) cache coordinator in core/cache_manager.py
 CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
-CACHE_L1_TTL = int(os.getenv("CACHE_L1_TTL", "60"))       # default L1 TTL (seconds)
-CACHE_L2_TTL = int(os.getenv("CACHE_L2_TTL", "300"))      # default L2 TTL (seconds)
+CACHE_L1_TTL = int(os.getenv("CACHE_L1_TTL", "60"))  # default L1 TTL (seconds)
+CACHE_L2_TTL = int(os.getenv("CACHE_L2_TTL", "300"))  # default L2 TTL (seconds)
 CACHE_L1_MAX_SIZE = int(os.getenv("CACHE_L1_MAX_SIZE", "10000"))
 CACHE_METRICS_ENABLED = os.getenv("CACHE_METRICS_ENABLED", "true").lower() == "true"
 
@@ -211,7 +211,9 @@ CACHE_METRICS_ENABLED = os.getenv("CACHE_METRICS_ENABLED", "true").lower() == "t
 # When set, read queries are routed to this URL instead of DATABASE_URL.
 # Requires PgBouncer or similar connection pooler in front of replicas.
 READ_REPLICA_URL = os.getenv("READ_REPLICA_URL", "")
-READ_REPLICA_ENABLED = bool(READ_REPLICA_URL) or os.getenv("READ_REPLICA_ENABLED", "false").lower() == "true"
+READ_REPLICA_ENABLED = (
+    bool(READ_REPLICA_URL) or os.getenv("READ_REPLICA_ENABLED", "false").lower() == "true"
+)
 
 # ─── AI Providers ────────────────────────────────────────────────────────────
 # All optional — platform functions without any AI key (rules-based fallback).
@@ -325,7 +327,9 @@ MINISTRY_ADMIN_PASSWORD_HASH = os.getenv("MINISTRY_ADMIN_PASSWORD_HASH", "")
 ORGANIZATION_ADMIN_EMAIL = os.getenv("ORGANIZATION_ADMIN_EMAIL", "org-admin@gula-platform.org")
 ORGANIZATION_ADMIN_PASSWORD = os.getenv("ORGANIZATION_ADMIN_PASSWORD", "")
 ORGANIZATION_ADMIN_PASSWORD_HASH = os.getenv("ORGANIZATION_ADMIN_PASSWORD_HASH", "")
-DIRECTORATE_ADMIN_EMAIL = os.getenv("DIRECTORATE_ADMIN_EMAIL", "directorate-admin@gula-platform.org")
+DIRECTORATE_ADMIN_EMAIL = os.getenv(
+    "DIRECTORATE_ADMIN_EMAIL", "directorate-admin@gula-platform.org",
+)
 DIRECTORATE_ADMIN_PASSWORD = os.getenv("DIRECTORATE_ADMIN_PASSWORD", "")
 DIRECTORATE_ADMIN_PASSWORD_HASH = os.getenv("DIRECTORATE_ADMIN_PASSWORD_HASH", "")
 LAB_MANAGER_EMAIL = os.getenv("LAB_MANAGER_EMAIL", "lab-manager@gula-platform.org")

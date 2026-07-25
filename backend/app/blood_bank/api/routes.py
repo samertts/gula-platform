@@ -22,6 +22,7 @@ router = APIRouter(prefix="/blood-bank", tags=["National Blood Bank Platform"])
 def _get_service(db: Session = Depends(get_db)) -> BloodBankService:
     try:
         from app.kernel import Kernel
+
         kernel = Kernel.get_instance()
         event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
     except Exception:
@@ -30,6 +31,7 @@ def _get_service(db: Session = Depends(get_db)) -> BloodBankService:
 
 
 # ---- Donor Management ----
+
 
 @router.post("/donors", status_code=status.HTTP_201_CREATED)
 async def register_donor(
@@ -59,7 +61,9 @@ async def get_donor(
     try:
         return _donor_to_dict(service.get_donor(donor_id))
     except DonorNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/donors/{donor_id}/defer")
@@ -70,14 +74,23 @@ async def defer_donor(
 ) -> dict[str, Any]:
     try:
         deferral = service.defer_donor(donor_id, body)
-        return {"id": deferral.id, "donor_id": donor_id, "deferral_days": deferral.deferral_days,
-                "deferred_until": deferral.deferred_until.isoformat() if deferral.deferred_until else None,
-                "reason": deferral.reason}
+        return {
+            "id": deferral.id,
+            "donor_id": donor_id,
+            "deferral_days": deferral.deferral_days,
+            "deferred_until": deferral.deferred_until.isoformat()
+            if deferral.deferred_until
+            else None,
+            "reason": deferral.reason,
+        }
     except DonorNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ---- Donations ----
+
 
 @router.post("/donations", status_code=status.HTTP_201_CREATED)
 async def register_donation(
@@ -88,7 +101,9 @@ async def register_donation(
         donation = service.register_donation(body)
         return _donation_to_dict(donation)
     except DonorNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except DonorDeferredError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -104,6 +119,7 @@ async def complete_donation(
 
 # ---- Components ----
 
+
 @router.post("/components", status_code=status.HTTP_201_CREATED)
 async def process_component(
     body: dict[str, Any],
@@ -114,6 +130,7 @@ async def process_component(
 
 
 # ---- Inventory ----
+
 
 @router.get("/inventory")
 async def get_inventory(
@@ -149,6 +166,7 @@ async def issue_units(
 
 # ---- Crossmatch ----
 
+
 @router.post("/crossmatch", status_code=status.HTTP_201_CREATED)
 async def perform_crossmatch(
     body: dict[str, Any],
@@ -180,6 +198,7 @@ async def get_compatible_blood_groups(
 
 # ---- Transfusion ----
 
+
 @router.post("/transfusions", status_code=status.HTTP_201_CREATED)
 async def record_transfusion(
     body: dict[str, Any],
@@ -197,7 +216,9 @@ async def start_transfusion(
     try:
         return _transfusion_to_dict(service.start_transfusion(transfusion_id))
     except TransfusionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/transfusions/{transfusion_id}/complete")
@@ -208,10 +229,13 @@ async def complete_transfusion(
     try:
         return _transfusion_to_dict(service.complete_transfusion(transfusion_id))
     except TransfusionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 # ---- Blood Requests ----
+
 
 @router.post("/requests", status_code=status.HTTP_201_CREATED)
 async def create_blood_request(
@@ -236,11 +260,18 @@ async def health() -> dict[str, Any]:
 
 # ---- Serializers ----
 
+
 def _donor_to_dict(d: Any) -> dict[str, Any]:
     return {
-        "id": d.id, "citizen_id": d.citizen_id, "full_name": d.full_name, "phone": d.phone,
-        "blood_group": d.blood_group, "rh_factor": d.rh_factor, "status": d.status,
-        "total_donations": d.total_donations, "total_volume_ml": d.total_volume_ml,
+        "id": d.id,
+        "citizen_id": d.citizen_id,
+        "full_name": d.full_name,
+        "phone": d.phone,
+        "blood_group": d.blood_group,
+        "rh_factor": d.rh_factor,
+        "status": d.status,
+        "total_donations": d.total_donations,
+        "total_volume_ml": d.total_volume_ml,
         "last_donation_date": d.last_donation_date.isoformat() if d.last_donation_date else None,
         "next_eligible_date": d.next_eligible_date.isoformat() if d.next_eligible_date else None,
         "consent_signed": d.consent_signed,
@@ -249,39 +280,58 @@ def _donor_to_dict(d: Any) -> dict[str, Any]:
 
 def _donation_to_dict(d: Any) -> dict[str, Any]:
     return {
-        "id": d.id, "donor_id": d.donor_id, "donation_type": d.donation_type,
-        "volume_ml": d.volume_ml, "status": d.status,
-        "bag_identifier": d.bag_identifier, "isbt_128_code": d.isbt_128_code,
+        "id": d.id,
+        "donor_id": d.donor_id,
+        "donation_type": d.donation_type,
+        "volume_ml": d.volume_ml,
+        "status": d.status,
+        "bag_identifier": d.bag_identifier,
+        "isbt_128_code": d.isbt_128_code,
     }
 
 
 def _component_to_dict(c: Any) -> dict[str, Any]:
     return {
-        "id": c.id, "donation_id": c.donation_id, "component": c.component,
-        "status": c.status, "bag_identifier": c.bag_identifier, "isbt_128_code": c.isbt_128_code,
+        "id": c.id,
+        "donation_id": c.donation_id,
+        "component": c.component,
+        "status": c.status,
+        "bag_identifier": c.bag_identifier,
+        "isbt_128_code": c.isbt_128_code,
     }
 
 
 def _inventory_to_dict(i: Any) -> dict[str, Any]:
     return {
-        "id": i.id, "facility_id": i.facility_id, "blood_group": i.blood_group,
-        "rh_factor": i.rh_factor, "component": i.component, "quantity": i.quantity,
-        "reserved_quantity": i.reserved_quantity, "available_quantity": i.available_quantity,
-        "minimum_stock": i.minimum_stock, "critical_threshold": i.critical_threshold,
+        "id": i.id,
+        "facility_id": i.facility_id,
+        "blood_group": i.blood_group,
+        "rh_factor": i.rh_factor,
+        "component": i.component,
+        "quantity": i.quantity,
+        "reserved_quantity": i.reserved_quantity,
+        "available_quantity": i.available_quantity,
+        "minimum_stock": i.minimum_stock,
+        "critical_threshold": i.critical_threshold,
         "is_critical": i.is_critical,
     }
 
 
 def _unit_to_dict(u: Any) -> dict[str, Any]:
     return {
-        "id": u.id, "blood_group": u.blood_group, "component": u.component,
-        "bag_identifier": u.bag_identifier, "status": u.status,
+        "id": u.id,
+        "blood_group": u.blood_group,
+        "component": u.component,
+        "bag_identifier": u.bag_identifier,
+        "status": u.status,
     }
 
 
 def _crossmatch_to_dict(c: Any) -> dict[str, Any]:
     return {
-        "id": c.id, "patient_id": c.patient_id, "unit_id": c.unit_id,
+        "id": c.id,
+        "patient_id": c.patient_id,
+        "unit_id": c.unit_id,
         "status": c.status.value if hasattr(c.status, "value") else c.status,
         "abo_compatible": c.abo_compatible,
     }
@@ -289,13 +339,19 @@ def _crossmatch_to_dict(c: Any) -> dict[str, Any]:
 
 def _transfusion_to_dict(t: Any) -> dict[str, Any]:
     return {
-        "id": t.id, "patient_id": t.patient_id, "unit_id": t.unit_id,
+        "id": t.id,
+        "patient_id": t.patient_id,
+        "unit_id": t.unit_id,
         "status": t.status.value if hasattr(t.status, "value") else t.status,
     }
 
 
 def _request_to_dict(r: Any) -> dict[str, Any]:
     return {
-        "id": r.id, "patient_id": r.patient_id, "blood_group": r.blood_group,
-        "units_requested": r.units_requested, "urgency": r.urgency, "status": r.status,
+        "id": r.id,
+        "patient_id": r.patient_id,
+        "blood_group": r.blood_group,
+        "units_requested": r.units_requested,
+        "urgency": r.urgency,
+        "status": r.status,
     }

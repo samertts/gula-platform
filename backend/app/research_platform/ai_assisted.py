@@ -150,23 +150,62 @@ class StatisticalRecommender:
     ) -> list[dict]:
         recommendations = {
             "observational": [
-                {"method": "logistic_regression", "use_case": "binary outcomes", "assumptions": ["linearity", "independence"]},
-                {"method": "cox_regression", "use_case": "time-to-event analysis", "assumptions": ["proportional hazards"]},
-                {"method": "propensity_score", "use_case": "confounding control", "assumptions": ["positivity"]},
+                {
+                    "method": "logistic_regression",
+                    "use_case": "binary outcomes",
+                    "assumptions": ["linearity", "independence"],
+                },
+                {
+                    "method": "cox_regression",
+                    "use_case": "time-to-event analysis",
+                    "assumptions": ["proportional hazards"],
+                },
+                {
+                    "method": "propensity_score",
+                    "use_case": "confounding control",
+                    "assumptions": ["positivity"],
+                },
             ],
             "interventional": [
-                {"method": "t_test", "use_case": "two-group comparison", "assumptions": ["normality", "homogeneity"]},
-                {"method": "anova", "use_case": "multi-group comparison", "assumptions": ["normality", "sphericity"]},
-                {"method": "mixed_effects", "use_case": "repeated measures", "assumptions": ["random effects"]},
+                {
+                    "method": "t_test",
+                    "use_case": "two-group comparison",
+                    "assumptions": ["normality", "homogeneity"],
+                },
+                {
+                    "method": "anova",
+                    "use_case": "multi-group comparison",
+                    "assumptions": ["normality", "sphericity"],
+                },
+                {
+                    "method": "mixed_effects",
+                    "use_case": "repeated measures",
+                    "assumptions": ["random effects"],
+                },
             ],
             "retrospective": [
-                {"method": "multivariate_regression", "use_case": "risk factor analysis", "assumptions": ["no multicollinearity"]},
-                {"method": "matching", "use_case": "case-control", "assumptions": ["adequate matches"]},
+                {
+                    "method": "multivariate_regression",
+                    "use_case": "risk factor analysis",
+                    "assumptions": ["no multicollinearity"],
+                },
+                {
+                    "method": "matching",
+                    "use_case": "case-control",
+                    "assumptions": ["adequate matches"],
+                },
             ],
         }
-        return recommendations.get(study_type, [
-            {"method": "descriptive_statistics", "use_case": "data exploration", "assumptions": []},
-        ])
+        return recommendations.get(
+            study_type,
+            [
+                {
+                    "method": "descriptive_statistics",
+                    "use_case": "data exploration",
+                    "assumptions": [],
+                },
+            ],
+        )
 
     def power_analysis(
         self,
@@ -176,7 +215,7 @@ class StatisticalRecommender:
     ) -> dict[str, Any]:
         import math
 
-        n = math.ceil(2 * ((1.96 + 0.84) ** 2) / (effect_size ** 2))
+        n = math.ceil(2 * ((1.96 + 0.84) ** 2) / (effect_size**2))
         return {
             "effect_size": effect_size,
             "alpha": alpha,
@@ -188,7 +227,11 @@ class StatisticalRecommender:
     def assumption_checks(self, method: str, data_summary: dict) -> list[dict]:
         return [
             {"check": "normality", "status": "untested", "recommendation": "Shapiro-Wilk test"},
-            {"check": "homogeneity_of_variance", "status": "untested", "recommendation": "Levene's test"},
+            {
+                "check": "homogeneity_of_variance",
+                "status": "untested",
+                "recommendation": "Levene's test",
+            },
         ]
 
 
@@ -227,8 +270,16 @@ class StudyDesignAssistant:
         return [
             {"domain": "selection_bias", "risk": "low", "mitigation": "Random sampling"},
             {"domain": "performance_bias", "risk": "medium", "mitigation": "Blinding"},
-            {"domain": "detection_bias", "risk": "medium", "mitigation": "Standardized outcome assessment"},
-            {"domain": "attrition_bias", "risk": "low", "mitigation": "Intention-to-treat analysis"},
+            {
+                "domain": "detection_bias",
+                "risk": "medium",
+                "mitigation": "Standardized outcome assessment",
+            },
+            {
+                "domain": "attrition_bias",
+                "risk": "low",
+                "mitigation": "Intention-to-treat analysis",
+            },
         ]
 
     def protocol_outline(self, design_type: str) -> dict:
@@ -283,8 +334,14 @@ class AutomatedReporting:
         report = self.generate_report(project_id, report_type="manuscript")
         report["format"] = journal_format
         report["sections"] = [
-            "title", "abstract", "introduction", "methods",
-            "results", "discussion", "conclusion", "references",
+            "title",
+            "abstract",
+            "introduction",
+            "methods",
+            "results",
+            "discussion",
+            "conclusion",
+            "references",
         ]
         return report
 

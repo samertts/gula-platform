@@ -61,36 +61,62 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String(32), nullable=True),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default="false"),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
         )
 
     if not _table_exists("ecosystem_partner_credentials"):
         op.create_table(
             "ecosystem_partner_credentials",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-            sa.Column("partner_id", sa.String(26),
-                      sa.ForeignKey("ecosystem_partners.id"), nullable=False, index=True),
+            sa.Column(
+                "partner_id",
+                sa.String(26),
+                sa.ForeignKey("ecosystem_partners.id"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("credential_type", sa.String(50), nullable=False),
             sa.Column("credential_name", sa.String(255), nullable=False),
             sa.Column("credential_value", sa.Text(), nullable=False),
             sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("status", sa.String(20), nullable=False, server_default="active"),
             sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
         )
 
     if not _table_exists("ecosystem_partner_certificates"):
         op.create_table(
             "ecosystem_partner_certificates",
             sa.Column("id", sa.String(26), primary_key=True),
-            sa.Column("partner_id", sa.String(26),
-                      sa.ForeignKey("ecosystem_partners.id"), nullable=False, index=True),
+            sa.Column(
+                "partner_id",
+                sa.String(26),
+                sa.ForeignKey("ecosystem_partners.id"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("certificate_pem", sa.Text(), nullable=False),
             sa.Column("certificate_serial", sa.String(255), nullable=True, index=True),
             sa.Column("issuer", sa.String(255), nullable=True),
@@ -102,51 +128,87 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String(32), nullable=True),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default="false"),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
         )
 
     if not _table_exists("ecosystem_partner_rate_limits"):
         op.create_table(
             "ecosystem_partner_rate_limits",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-            sa.Column("partner_id", sa.String(26),
-                      sa.ForeignKey("ecosystem_partners.id"), nullable=False, index=True),
+            sa.Column(
+                "partner_id",
+                sa.String(26),
+                sa.ForeignKey("ecosystem_partners.id"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("endpoint_pattern", sa.String(500), nullable=False),
             sa.Column("requests_per_minute", sa.Integer(), nullable=False, server_default="60"),
             sa.Column("requests_per_hour", sa.Integer(), nullable=False, server_default="1000"),
             sa.Column("requests_per_day", sa.Integer(), nullable=False, server_default="10000"),
             sa.Column("concurrent_limit", sa.Integer(), nullable=False, server_default="10"),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
         )
 
     if not _table_exists("ecosystem_partner_audit_logs"):
         op.create_table(
             "ecosystem_partner_audit_logs",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-            sa.Column("partner_id", sa.String(26),
-                      sa.ForeignKey("ecosystem_partners.id"), nullable=False, index=True),
+            sa.Column(
+                "partner_id",
+                sa.String(26),
+                sa.ForeignKey("ecosystem_partners.id"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("action", sa.String(100), nullable=False),
             sa.Column("resource", sa.String(255), nullable=True),
             sa.Column("details", JSONB, nullable=True),
             sa.Column("ip_address", sa.String(45), nullable=True),
             sa.Column("user_agent", sa.String(500), nullable=True),
             sa.Column("status", sa.String(20), nullable=False, server_default="success"),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now(), index=True),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+                index=True,
+            ),
         )
 
     if not _table_exists("ecosystem_partner_agreements"):
         op.create_table(
             "ecosystem_partner_agreements",
             sa.Column("id", sa.String(26), primary_key=True),
-            sa.Column("partner_id", sa.String(26),
-                      sa.ForeignKey("ecosystem_partners.id"), nullable=False, index=True),
+            sa.Column(
+                "partner_id",
+                sa.String(26),
+                sa.ForeignKey("ecosystem_partners.id"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("agreement_type", sa.String(50), nullable=False),
             sa.Column("agreement_version", sa.String(20), nullable=False),
             sa.Column("content", sa.Text(), nullable=False),
@@ -157,10 +219,18 @@ def upgrade() -> None:
             sa.Column("fhir_resource_type", sa.String(32), nullable=True),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default="false"),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
-                      server_default=sa.func.now()),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
         )
 
 

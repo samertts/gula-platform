@@ -41,11 +41,15 @@ class HospitalService:
         user_id: int,
         data: dict[str, Any],
     ) -> HospitalMaster:
-        existing = db.query(HospitalMaster).filter(
-            HospitalMaster.lab_id == lab_id,
-            HospitalMaster.code == data["code"],
-            ~HospitalMaster.is_deleted,
-        ).first()
+        existing = (
+            db.query(HospitalMaster)
+            .filter(
+                HospitalMaster.lab_id == lab_id,
+                HospitalMaster.code == data["code"],
+                ~HospitalMaster.is_deleted,
+            )
+            .first()
+        )
         if existing:
             raise ConflictError(f"Hospital with code '{data['code']}' already exists")
         hospital = HospitalMaster(lab_id=lab_id, created_by=user_id, **data)
@@ -62,11 +66,15 @@ class HospitalService:
         user_id: int,
         data: dict[str, Any],
     ) -> HospitalMaster:
-        hospital = db.query(HospitalMaster).filter(
-            HospitalMaster.id == hospital_id,
-            HospitalMaster.lab_id == lab_id,
-            ~HospitalMaster.is_deleted,
-        ).first()
+        hospital = (
+            db.query(HospitalMaster)
+            .filter(
+                HospitalMaster.id == hospital_id,
+                HospitalMaster.lab_id == lab_id,
+                ~HospitalMaster.is_deleted,
+            )
+            .first()
+        )
         if not hospital:
             raise NotFoundError("Hospital not found")
         for k, v in data.items():
@@ -78,13 +86,20 @@ class HospitalService:
 
     @staticmethod
     def deactivate_hospital(
-        db: Session, hospital_id: int, lab_id: int, user_id: int,
+        db: Session,
+        hospital_id: int,
+        lab_id: int,
+        user_id: int,
     ) -> None:
-        hospital = db.query(HospitalMaster).filter(
-            HospitalMaster.id == hospital_id,
-            HospitalMaster.lab_id == lab_id,
-            ~HospitalMaster.is_deleted,
-        ).first()
+        hospital = (
+            db.query(HospitalMaster)
+            .filter(
+                HospitalMaster.id == hospital_id,
+                HospitalMaster.lab_id == lab_id,
+                ~HospitalMaster.is_deleted,
+            )
+            .first()
+        )
         if not hospital:
             raise NotFoundError("Hospital not found")
         hospital.is_active = False
@@ -94,29 +109,44 @@ class HospitalService:
 
     @staticmethod
     def get_hospital(db: Session, hospital_id: int, lab_id: int) -> HospitalMaster:
-        hospital = db.query(HospitalMaster).filter(
-            HospitalMaster.id == hospital_id,
-            HospitalMaster.lab_id == lab_id,
-            ~HospitalMaster.is_deleted,
-        ).first()
+        hospital = (
+            db.query(HospitalMaster)
+            .filter(
+                HospitalMaster.id == hospital_id,
+                HospitalMaster.lab_id == lab_id,
+                ~HospitalMaster.is_deleted,
+            )
+            .first()
+        )
         if not hospital:
             raise NotFoundError("Hospital not found")
         return hospital
 
     @staticmethod
     def list_hospitals(
-        db: Session, lab_id: int, skip: int = 0, limit: int = 50,
+        db: Session,
+        lab_id: int,
+        skip: int = 0,
+        limit: int = 50,
     ) -> list[HospitalMaster]:
-        return db.query(HospitalMaster).filter(
-            HospitalMaster.lab_id == lab_id,
-            ~HospitalMaster.is_deleted,
-        ).offset(skip).limit(limit).all()
+        return (
+            db.query(HospitalMaster)
+            .filter(
+                HospitalMaster.lab_id == lab_id,
+                ~HospitalMaster.is_deleted,
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     # ── Nested entity helpers ──────────────────────────────────────────────────
 
     @staticmethod
     def _get_entity(db: Session, model, entity_id: int, lab_id: int, parent_filter=None):
-        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, not model.is_deleted)
+        q = db.query(model).filter(
+            model.id == entity_id, model.lab_id == lab_id, not model.is_deleted
+        )
         if parent_filter is not None:
             q = q.filter(parent_filter)
         entity = q.first()
@@ -127,7 +157,9 @@ class HospitalService:
     # ── Campus CRUD ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_campus(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> Campus:
+    def create_campus(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict
+    ) -> Campus:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         campus = Campus(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(campus)
@@ -137,14 +169,22 @@ class HospitalService:
 
     @staticmethod
     def list_campuses(db: Session, lab_id: int, hospital_id: int) -> list[Campus]:
-        return db.query(Campus).filter(
-            Campus.hospital_id == hospital_id, Campus.lab_id == lab_id, ~Campus.is_deleted,
-        ).all()
+        return (
+            db.query(Campus)
+            .filter(
+                Campus.hospital_id == hospital_id,
+                Campus.lab_id == lab_id,
+                ~Campus.is_deleted,
+            )
+            .all()
+        )
 
     # ── Building CRUD ──────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_building(db: Session, lab_id: int, user_id: int, campus_id: int, data: dict) -> Building:
+    def create_building(
+        db: Session, lab_id: int, user_id: int, campus_id: int, data: dict
+    ) -> Building:
         HospitalService._get_entity(db, Campus, campus_id, lab_id)
         building = Building(lab_id=lab_id, created_by=user_id, campus_id=campus_id, **data)
         db.add(building)
@@ -153,9 +193,15 @@ class HospitalService:
 
     @staticmethod
     def list_buildings(db: Session, lab_id: int, campus_id: int) -> list[Building]:
-        return db.query(Building).filter(
-            Building.campus_id == campus_id, Building.lab_id == lab_id, ~Building.is_deleted,
-        ).all()
+        return (
+            db.query(Building)
+            .filter(
+                Building.campus_id == campus_id,
+                Building.lab_id == lab_id,
+                ~Building.is_deleted,
+            )
+            .all()
+        )
 
     # ── Floor CRUD ─────────────────────────────────────────────────────────────
 
@@ -169,26 +215,46 @@ class HospitalService:
 
     @staticmethod
     def list_floors(db: Session, lab_id: int, building_id: int) -> list[Floor]:
-        return db.query(Floor).filter(
-            Floor.building_id == building_id, Floor.lab_id == lab_id, ~Floor.is_deleted,
-        ).all()
+        return (
+            db.query(Floor)
+            .filter(
+                Floor.building_id == building_id,
+                Floor.lab_id == lab_id,
+                ~Floor.is_deleted,
+            )
+            .all()
+        )
 
     # ── HospitalDepartment CRUD ────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_department(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> HospitalDepartment:
+    def create_department(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict
+    ) -> HospitalDepartment:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         if data.get("parent_id"):
-            HospitalService._get_entity(db, HospitalDepartment, data["parent_id"], lab_id, HospitalDepartment.hospital_id == hospital_id)
-        dept = HospitalDepartment(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
+            HospitalService._get_entity(
+                db,
+                HospitalDepartment,
+                data["parent_id"],
+                lab_id,
+                HospitalDepartment.hospital_id == hospital_id,
+            )
+        dept = HospitalDepartment(
+            lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data
+        )
         db.add(dept)
         db.flush()
         return dept
 
     @staticmethod
-    def list_departments(db: Session, lab_id: int, hospital_id: int, parent_id: int | None = None) -> list[HospitalDepartment]:
+    def list_departments(
+        db: Session, lab_id: int, hospital_id: int, parent_id: int | None = None
+    ) -> list[HospitalDepartment]:
         q = db.query(HospitalDepartment).filter(
-            HospitalDepartment.hospital_id == hospital_id, HospitalDepartment.lab_id == lab_id, ~HospitalDepartment.is_deleted,
+            HospitalDepartment.hospital_id == hospital_id,
+            HospitalDepartment.lab_id == lab_id,
+            ~HospitalDepartment.is_deleted,
         )
         if parent_id is not None:
             q = q.filter(HospitalDepartment.parent_id == parent_id)
@@ -197,7 +263,9 @@ class HospitalService:
     # ── Clinic CRUD ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_clinic(db: Session, lab_id: int, user_id: int, department_id: int, data: dict) -> Clinic:
+    def create_clinic(
+        db: Session, lab_id: int, user_id: int, department_id: int, data: dict
+    ) -> Clinic:
         dept = HospitalService._get_entity(db, HospitalDepartment, department_id, lab_id)
         data.setdefault("hospital_id", dept.hospital_id)
         clinic = Clinic(lab_id=lab_id, created_by=user_id, department_id=department_id, **data)
@@ -224,7 +292,9 @@ class HospitalService:
 
     @staticmethod
     def list_rooms(
-        db: Session, lab_id: int, department_id: int | None = None,
+        db: Session,
+        lab_id: int,
+        department_id: int | None = None,
         room_type: str | None = None,
     ) -> list[Room]:
         q = db.query(Room).filter(Room.lab_id == lab_id, ~Room.is_deleted)
@@ -246,8 +316,11 @@ class HospitalService:
 
     @staticmethod
     def list_beds(
-        db: Session, lab_id: int, room_id: int | None = None,
-        status: str | None = None, bed_type: str | None = None,
+        db: Session,
+        lab_id: int,
+        room_id: int | None = None,
+        status: str | None = None,
+        bed_type: str | None = None,
     ) -> list[Bed]:
         q = db.query(Bed).filter(Bed.lab_id == lab_id, ~Bed.is_deleted)
         if room_id is not None:
@@ -260,13 +333,23 @@ class HospitalService:
 
     @staticmethod
     def assign_bed(
-        db: Session, lab_id: int, user_id: int, bed_id: int, patient_id: int,
-        reason: str | None = None, diagnosis: str | None = None,
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        bed_id: int,
+        patient_id: int,
+        reason: str | None = None,
+        diagnosis: str | None = None,
     ) -> Bed:
         bed = HospitalService._get_entity(db, Bed, bed_id, lab_id)
-        patient = db.query(Patient).filter(
-            Patient.id == patient_id, Patient.lab_id == lab_id,
-        ).first()
+        patient = (
+            db.query(Patient)
+            .filter(
+                Patient.id == patient_id,
+                Patient.lab_id == lab_id,
+            )
+            .first()
+        )
         if not patient:
             raise NotFoundError("Patient not found")
         if bed.status != "available":
@@ -274,30 +357,48 @@ class HospitalService:
         bed.status = "occupied"
         bed.current_patient_id = patient_id
         assignment = BedAssignment(
-            lab_id=lab_id, created_by=user_id,
-            bed_id=bed_id, patient_id=patient_id,
-            reason=reason, diagnosis=diagnosis,
+            lab_id=lab_id,
+            created_by=user_id,
+            bed_id=bed_id,
+            patient_id=patient_id,
+            reason=reason,
+            diagnosis=diagnosis,
             admission_date=datetime.now(UTC),
         )
         db.add(assignment)
         db.flush()
-        log_action(db, "bed.assign", bed_id, lab_id, user_id, {
-            "patient_id": patient_id, "reason": reason,
-        })
+        log_action(
+            db,
+            "bed.assign",
+            bed_id,
+            lab_id,
+            user_id,
+            {
+                "patient_id": patient_id,
+                "reason": reason,
+            },
+        )
         return bed
 
     @staticmethod
     def discharge_bed(
-        db: Session, lab_id: int, user_id: int, bed_id: int,
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        bed_id: int,
         discharge_reason: str | None = None,
     ) -> Bed:
         bed = HospitalService._get_entity(db, Bed, bed_id, lab_id)
         if bed.status != "occupied":
             raise ConflictError("Bed is not currently occupied")
-        active_assignment = db.query(BedAssignment).filter(
-            BedAssignment.bed_id == bed_id,
-            BedAssignment.discharge_date.is_(None),
-        ).first()
+        active_assignment = (
+            db.query(BedAssignment)
+            .filter(
+                BedAssignment.bed_id == bed_id,
+                BedAssignment.discharge_date.is_(None),
+            )
+            .first()
+        )
         if active_assignment:
             active_assignment.discharge_date = datetime.now(UTC)
             active_assignment.discharge_reason = discharge_reason
@@ -305,15 +406,25 @@ class HospitalService:
         bed.status = "cleaning"
         bed.current_patient_id = None
         db.flush()
-        log_action(db, "bed.discharge", bed_id, lab_id, user_id, {
-            "discharge_reason": discharge_reason,
-        })
+        log_action(
+            db,
+            "bed.discharge",
+            bed_id,
+            lab_id,
+            user_id,
+            {
+                "discharge_reason": discharge_reason,
+            },
+        )
         return bed
 
     @staticmethod
     def transfer_bed(
-        db: Session, lab_id: int, user_id: int,
-        from_bed_id: int, to_bed_id: int,
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        from_bed_id: int,
+        to_bed_id: int,
         reason: str | None = None,
     ) -> dict[str, Any]:
         source = HospitalService.discharge_bed(db, lab_id, user_id, from_bed_id, reason)
@@ -324,8 +435,10 @@ class HospitalService:
         target.status = "occupied"
         target.current_patient_id = patient_id
         assignment = BedAssignment(
-            lab_id=lab_id, created_by=user_id,
-            bed_id=to_bed_id, patient_id=patient_id,
+            lab_id=lab_id,
+            created_by=user_id,
+            bed_id=to_bed_id,
+            patient_id=patient_id,
             reason=reason or "Transferred",
             admission_date=datetime.now(UTC),
         )
@@ -334,10 +447,16 @@ class HospitalService:
         return {"from_bed": from_bed_id, "to_bed": to_bed_id, "patient_id": patient_id}
 
     @staticmethod
-    def bed_occupancy_stats(db: Session, lab_id: int, hospital_id: int | None = None) -> dict[str, Any]:
+    def bed_occupancy_stats(
+        db: Session, lab_id: int, hospital_id: int | None = None
+    ) -> dict[str, Any]:
         q = db.query(Bed).filter(Bed.lab_id == lab_id, ~Bed.is_deleted)
         if hospital_id is not None:
-            q = q.join(Room).join(HospitalDepartment).filter(HospitalDepartment.hospital_id == hospital_id)
+            q = (
+                q.join(Room)
+                .join(HospitalDepartment)
+                .filter(HospitalDepartment.hospital_id == hospital_id)
+            )
         total = q.count()
         available = q.filter(Bed.status == "available").count()
         occupied = q.filter(Bed.status == "occupied").count()
@@ -367,14 +486,22 @@ class HospitalService:
 
     @staticmethod
     def list_units(db: Session, lab_id: int, hospital_id: int) -> list[Unit]:
-        return db.query(Unit).filter(
-            Unit.hospital_id == hospital_id, Unit.lab_id == lab_id, ~Unit.is_deleted,
-        ).all()
+        return (
+            db.query(Unit)
+            .filter(
+                Unit.hospital_id == hospital_id,
+                Unit.lab_id == lab_id,
+                ~Unit.is_deleted,
+            )
+            .all()
+        )
 
     # ── Operation Theater CRUD ─────────────────────────────────────────────────
 
     @staticmethod
-    def create_ot(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> OperationTheater:
+    def create_ot(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict
+    ) -> OperationTheater:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         ot = OperationTheater(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(ot)
@@ -382,17 +509,25 @@ class HospitalService:
         return ot
 
     @staticmethod
-    def list_operation_theaters(db: Session, lab_id: int, hospital_id: int) -> list[OperationTheater]:
-        return db.query(OperationTheater).filter(
-            OperationTheater.hospital_id == hospital_id,
-            OperationTheater.lab_id == lab_id,
-            ~OperationTheater.is_deleted,
-        ).all()
+    def list_operation_theaters(
+        db: Session, lab_id: int, hospital_id: int
+    ) -> list[OperationTheater]:
+        return (
+            db.query(OperationTheater)
+            .filter(
+                OperationTheater.hospital_id == hospital_id,
+                OperationTheater.lab_id == lab_id,
+                ~OperationTheater.is_deleted,
+            )
+            .all()
+        )
 
     # ── Medical Equipment CRUD ─────────────────────────────────────────────────
 
     @staticmethod
-    def create_equipment(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> MedicalEquipment:
+    def create_equipment(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict
+    ) -> MedicalEquipment:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         equip = MedicalEquipment(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(equip)
@@ -401,8 +536,11 @@ class HospitalService:
 
     @staticmethod
     def list_equipment(
-        db: Session, lab_id: int, hospital_id: int,
-        category: str | None = None, status: str | None = None,
+        db: Session,
+        lab_id: int,
+        hospital_id: int,
+        category: str | None = None,
+        status: str | None = None,
     ) -> list[MedicalEquipment]:
         q = db.query(MedicalEquipment).filter(
             MedicalEquipment.hospital_id == hospital_id,
@@ -418,7 +556,9 @@ class HospitalService:
     # ── Cost Center CRUD ───────────────────────────────────────────────────────
 
     @staticmethod
-    def create_cost_center(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> CostCenter:
+    def create_cost_center(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict
+    ) -> CostCenter:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         cc = CostCenter(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(cc)
@@ -427,67 +567,116 @@ class HospitalService:
 
     @staticmethod
     def list_cost_centers(db: Session, lab_id: int, hospital_id: int) -> list[CostCenter]:
-        return db.query(CostCenter).filter(
-            CostCenter.hospital_id == hospital_id,
-            CostCenter.lab_id == lab_id,
-            ~CostCenter.is_deleted,
-        ).all()
+        return (
+            db.query(CostCenter)
+            .filter(
+                CostCenter.hospital_id == hospital_id,
+                CostCenter.lab_id == lab_id,
+                ~CostCenter.is_deleted,
+            )
+            .all()
+        )
 
     # ── Dashboard / KPIs ───────────────────────────────────────────────────────
 
     @staticmethod
     def dashboard(db: Session, lab_id: int, hospital_id: int) -> dict[str, Any]:
         HospitalService.get_hospital(db, hospital_id, lab_id)
-        dept_count = db.query(func.count(HospitalDepartment.id)).filter(
-            HospitalDepartment.hospital_id == hospital_id,
-            HospitalDepartment.lab_id == lab_id,
-            ~HospitalDepartment.is_deleted,
-        ).scalar() or 0
-        clinic_count = db.query(func.count(Clinic.id)).filter(
-            Clinic.hospital_id == hospital_id,
-            ~Clinic.is_deleted,
-        ).scalar() or 0
-        room_count = db.query(func.count(Room.id)).filter(
-            Room.department_id.in_(
-                db.query(HospitalDepartment.id).filter(
-                    HospitalDepartment.hospital_id == hospital_id,
-                    HospitalDepartment.lab_id == lab_id,
-                    ~HospitalDepartment.is_deleted,
+        dept_count = (
+            db.query(func.count(HospitalDepartment.id))
+            .filter(
+                HospitalDepartment.hospital_id == hospital_id,
+                HospitalDepartment.lab_id == lab_id,
+                ~HospitalDepartment.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        clinic_count = (
+            db.query(func.count(Clinic.id))
+            .filter(
+                Clinic.hospital_id == hospital_id,
+                ~Clinic.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        room_count = (
+            db.query(func.count(Room.id))
+            .filter(
+                Room.department_id.in_(
+                    db.query(HospitalDepartment.id).filter(
+                        HospitalDepartment.hospital_id == hospital_id,
+                        HospitalDepartment.lab_id == lab_id,
+                        ~HospitalDepartment.is_deleted,
+                    ),
                 ),
-            ),
-            ~Room.is_deleted,
-        ).scalar() or 0
-        bed_count = db.query(func.count(Bed.id)).filter(
-            Bed.lab_id == lab_id,
-            ~Bed.is_deleted,
-        ).scalar() or 0
-        occupied_beds = db.query(func.count(Bed.id)).filter(
-            Bed.lab_id == lab_id,
-            Bed.status == "occupied",
-            ~Bed.is_deleted,
-        ).scalar() or 0
-        equipment_count = db.query(func.count(MedicalEquipment.id)).filter(
-            MedicalEquipment.hospital_id == hospital_id,
-            MedicalEquipment.lab_id == lab_id,
-            ~MedicalEquipment.is_deleted,
-        ).scalar() or 0
-        operational_equipment = db.query(func.count(MedicalEquipment.id)).filter(
-            MedicalEquipment.hospital_id == hospital_id,
-            MedicalEquipment.lab_id == lab_id,
-            MedicalEquipment.status == "operational",
-            ~MedicalEquipment.is_deleted,
-        ).scalar() or 0
-        ot_count = db.query(func.count(OperationTheater.id)).filter(
-            OperationTheater.hospital_id == hospital_id,
-            OperationTheater.lab_id == lab_id,
-            ~OperationTheater.is_deleted,
-        ).scalar() or 0
-        available_ot = db.query(func.count(OperationTheater.id)).filter(
-            OperationTheater.hospital_id == hospital_id,
-            OperationTheater.lab_id == lab_id,
-            OperationTheater.status == "available",
-            ~OperationTheater.is_deleted,
-        ).scalar() or 0
+                ~Room.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        bed_count = (
+            db.query(func.count(Bed.id))
+            .filter(
+                Bed.lab_id == lab_id,
+                ~Bed.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        occupied_beds = (
+            db.query(func.count(Bed.id))
+            .filter(
+                Bed.lab_id == lab_id,
+                Bed.status == "occupied",
+                ~Bed.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        equipment_count = (
+            db.query(func.count(MedicalEquipment.id))
+            .filter(
+                MedicalEquipment.hospital_id == hospital_id,
+                MedicalEquipment.lab_id == lab_id,
+                ~MedicalEquipment.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        operational_equipment = (
+            db.query(func.count(MedicalEquipment.id))
+            .filter(
+                MedicalEquipment.hospital_id == hospital_id,
+                MedicalEquipment.lab_id == lab_id,
+                MedicalEquipment.status == "operational",
+                ~MedicalEquipment.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        ot_count = (
+            db.query(func.count(OperationTheater.id))
+            .filter(
+                OperationTheater.hospital_id == hospital_id,
+                OperationTheater.lab_id == lab_id,
+                ~OperationTheater.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
+        available_ot = (
+            db.query(func.count(OperationTheater.id))
+            .filter(
+                OperationTheater.hospital_id == hospital_id,
+                OperationTheater.lab_id == lab_id,
+                OperationTheater.status == "available",
+                ~OperationTheater.is_deleted,
+            )
+            .scalar()
+            or 0
+        )
         return {
             "hospital_id": hospital_id,
             "departments": dept_count,
@@ -502,8 +691,12 @@ class HospitalService:
 
     @staticmethod
     def list_appointments(
-        db: Session, lab_id: int, hospital_id: int | None = None,
-        patient_id: int | None = None, skip: int = 0, limit: int = 50,
+        db: Session,
+        lab_id: int,
+        hospital_id: int | None = None,
+        patient_id: int | None = None,
+        skip: int = 0,
+        limit: int = 50,
     ) -> list[Appointment]:
         q = db.query(Appointment).filter(Appointment.lab_id == lab_id)
         if patient_id is not None:
@@ -512,7 +705,10 @@ class HospitalService:
 
     @staticmethod
     def create_appointment(
-        db: Session, lab_id: int, user_id: int, data: dict[str, Any],
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        data: dict[str, Any],
     ) -> Appointment:
         apt = Appointment(lab_id=lab_id, **data)
         db.add(apt)

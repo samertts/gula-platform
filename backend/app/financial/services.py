@@ -21,6 +21,8 @@ def _engine_enabled() -> bool:
     if config is None:
         return False
     return bool(getattr(config, "ENABLE_FINANCIAL_ENGINE", False))
+
+
 from .models import (
     FinInvoice,
     FinInvoiceItem,
@@ -55,11 +57,7 @@ class BillingService:
             return []
         billing_date = billing_date or date.today()
         results: list[dict[str, Any]] = []
-        subscriptions = (
-            db.query(FinSubscription)
-            .filter(FinSubscription.status == "active")
-            .all()
-        )
+        subscriptions = db.query(FinSubscription).filter(FinSubscription.status == "active").all()
         for sub in subscriptions:
             provider = db.query(FinProvider).filter(FinProvider.id == sub.provider_id).first()
             if not provider:
@@ -95,10 +93,7 @@ class InvoiceService:
         if not _engine_enabled():
             return {}
         invoice_count = (
-            db.query(sa_func.count(FinInvoice.id))
-            .filter(FinInvoice.lab_id == lab_id)
-            .scalar()
-            or 0
+            db.query(sa_func.count(FinInvoice.id)).filter(FinInvoice.lab_id == lab_id).scalar() or 0
         )
         invoice_number = f"INV-{lab_id:04d}-{invoice_count + 1:06d}"
         now = datetime.now(UTC)
@@ -173,7 +168,11 @@ class InvoiceService:
 
     @staticmethod
     def list_invoices(
-        db: Session, lab_id: int, status: str | None = None, limit: int = 50, offset: int = 0,
+        db: Session,
+        lab_id: int,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[dict[str, Any]]:
         q = db.query(FinInvoice).filter(FinInvoice.lab_id == lab_id)
         if status:
@@ -282,7 +281,10 @@ class PaymentService:
 
     @staticmethod
     def list_payments(
-        db: Session, lab_id: int, limit: int = 50, offset: int = 0,
+        db: Session,
+        lab_id: int,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[dict[str, Any]]:
         q = (
             db.query(FinPayment)
@@ -325,16 +327,18 @@ class ReceivableService:
             outstanding = inv.amount - (inv.paid_amount or Decimal(0))
             due = inv.due_date or today
             aging_days = (today - due).days if due < today else 0
-            result.append({
-                "id": inv.id,
-                "lab_id": lab_id,
-                "invoice_id": inv.id,
-                "amount": outstanding,
-                "currency": inv.currency,
-                "status": inv.status,
-                "due_date": due,
-                "aging_days": max(aging_days, 0),
-            })
+            result.append(
+                {
+                    "id": inv.id,
+                    "lab_id": lab_id,
+                    "invoice_id": inv.id,
+                    "amount": outstanding,
+                    "currency": inv.currency,
+                    "status": inv.status,
+                    "due_date": due,
+                    "aging_days": max(aging_days, 0),
+                }
+            )
         return result
 
     @staticmethod
@@ -491,7 +495,13 @@ class FinancialReportService:
         total_invoiced = sum((inv.amount or Decimal(0)) for inv in invoices)
         total_collected = sum((p.amount or Decimal(0)) for p in payments)
         total_outstanding = total_invoiced - total_collected
-        breakdown: list[dict[str, Any]] = [{"period": f"{date_from} - {date_to}", "invoiced": total_invoiced, "collected": total_collected}]
+        breakdown: list[dict[str, Any]] = [
+            {
+                "period": f"{date_from} - {date_to}",
+                "invoiced": total_invoiced,
+                "collected": total_collected,
+            }
+        ]
 
         return {
             "lab_id": lab_id,

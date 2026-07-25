@@ -11,6 +11,7 @@ Critical invariants under test:
 4. **Schema neutrality** — all behaviour works against the existing schema;
    no new tables are introduced by this module.
 """
+
 from __future__ import annotations
 
 import os
@@ -39,6 +40,7 @@ def auth_headers(user_id: int, lab_id: int, role: str = "admin") -> dict:
 
 
 # ── Service-level tests ──────────────────────────────────────────────────────
+
 
 def test_card_token_roundtrip():
     from app.services.patient_card import issue_card_token, verify_card_token
@@ -80,6 +82,7 @@ def test_card_token_rejects_expired():
     expired_body = f"1.1.{int(time.time()) - 10}".encode("ascii")
     expired_b64 = base64.urlsafe_b64encode(expired_body).rstrip(b"=").decode()
     from app.services.patient_card import _sign
+
     sig = _sign(expired_body)
     expired_token = f"{expired_b64}.{sig}"
 
@@ -87,6 +90,7 @@ def test_card_token_rejects_expired():
         verify_card_token(expired_token)
     # And the original (1s TTL clamped to 60s) is still valid right now:
     from app.services.patient_card import verify_card_token as v
+
     pid, lab = v(token)
     assert (pid, lab) == (1, 1)
 
@@ -100,6 +104,7 @@ def test_card_token_malformed_inputs():
 
 
 # ── Route-level tests ────────────────────────────────────────────────────────
+
 
 @pytest.fixture()
 def lab_with_patient(db, make_lab, make_lab_user):
@@ -135,14 +140,16 @@ def lab_with_patient(db, make_lab, make_lab_user):
 
     for name, val, unit in [("Glucose", 95.0, "mg/dL"), ("HbA1c", 5.4, "%")]:
         tok = generate_token()
-        db.add(LabResult(
-            order_id=order.id,
-            test_name=name,
-            value=val,
-            unit=unit,
-            token=tok,
-            token_hash=hash_token(tok),
-        ))
+        db.add(
+            LabResult(
+                order_id=order.id,
+                test_name=name,
+                value=val,
+                unit=unit,
+                token=tok,
+                token_hash=hash_token(tok),
+            )
+        )
     db.commit()
 
     return {"lab": lab, "user": user, "patient": patient, "order": order}
@@ -216,18 +223,26 @@ def test_scan_invalid_token_400_and_audited(client, db, lab_with_patient):
     fix = lab_with_patient
     headers = auth_headers(fix["user"].id, fix["lab"].id, role="admin")
 
-    before = db.query(AuditLog).filter(
-        AuditLog.action == "scan_failed",
-        AuditLog.resource_type == "patient_card",
-    ).count()
+    before = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.action == "scan_failed",
+            AuditLog.resource_type == "patient_card",
+        )
+        .count()
+    )
 
     r = client.post("/patient-card/scan", json={"token": "garbage.token"}, headers=headers)
     assert r.status_code == 400
 
-    after = db.query(AuditLog).filter(
-        AuditLog.action == "scan_failed",
-        AuditLog.resource_type == "patient_card",
-    ).count()
+    after = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.action == "scan_failed",
+            AuditLog.resource_type == "patient_card",
+        )
+        .count()
+    )
     assert after == before + 1
 
 
@@ -253,19 +268,27 @@ def test_history_writes_audit_entry(client, db, lab_with_patient):
     fix = lab_with_patient
     headers = auth_headers(fix["user"].id, fix["lab"].id, role="admin")
 
-    before = db.query(AuditLog).filter(
-        AuditLog.action == "view_history",
-        AuditLog.resource_type == "patient_card",
-        AuditLog.resource_id == fix["patient"].id,
-    ).count()
+    before = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.action == "view_history",
+            AuditLog.resource_type == "patient_card",
+            AuditLog.resource_id == fix["patient"].id,
+        )
+        .count()
+    )
 
     client.get(f"/patient-card/{fix['patient'].id}/history", headers=headers)
 
-    after = db.query(AuditLog).filter(
-        AuditLog.action == "view_history",
-        AuditLog.resource_type == "patient_card",
-        AuditLog.resource_id == fix["patient"].id,
-    ).count()
+    after = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.action == "view_history",
+            AuditLog.resource_type == "patient_card",
+            AuditLog.resource_id == fix["patient"].id,
+        )
+        .count()
+    )
     assert after == before + 1
 
 

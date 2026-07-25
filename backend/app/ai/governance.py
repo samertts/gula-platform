@@ -40,18 +40,62 @@ class EvaluationResult:
 
 
 class ModelRegistry:
-
     def __init__(self):
         self._models: dict[str, ModelRegistryEntry] = {}
         self._load_defaults()
 
     def _load_defaults(self) -> None:
         defaults = [
-            ModelRegistryEntry(name="gemini-2.0-flash", provider="gemini", model_type="chat", version="2.0", capabilities=["chat", "clinical_interpretation", "arabic", "arabic_english"], config={"temperature": 0.5, "max_tokens": 600, "safety": True}, is_active=True, max_tokens=8192),
-            ModelRegistryEntry(name="gemini-2.0-flash-thinking", provider="gemini", model_type="reasoning", version="2.0", capabilities=["reasoning", "analysis", "complex_queries"], config={"temperature": 0.3, "max_tokens": 1000}, is_active=True, max_tokens=8192),
-            ModelRegistryEntry(name="text-embedding-004", provider="gemini", model_type="embedding", version="1.0", capabilities=["embedding", "semantic_search"], config={"dimensions": 768}, is_active=True, max_tokens=2048),
-            ModelRegistryEntry(name="llama3.2:3b", provider="ollama", model_type="chat", version="3.2", capabilities=["chat", "clinical_interpretation", "local"], config={"temperature": 0.3, "num_predict": 550}, is_active=True, max_tokens=4096),
-            ModelRegistryEntry(name="llama-3.1-8b-instant", provider="groq", model_type="chat", version="3.1", capabilities=["chat", "fast_inference"], config={"temperature": 0.3, "max_tokens": 500}, is_active=True, max_tokens=8192),
+            ModelRegistryEntry(
+                name="gemini-2.0-flash",
+                provider="gemini",
+                model_type="chat",
+                version="2.0",
+                capabilities=["chat", "clinical_interpretation", "arabic", "arabic_english"],
+                config={"temperature": 0.5, "max_tokens": 600, "safety": True},
+                is_active=True,
+                max_tokens=8192,
+            ),
+            ModelRegistryEntry(
+                name="gemini-2.0-flash-thinking",
+                provider="gemini",
+                model_type="reasoning",
+                version="2.0",
+                capabilities=["reasoning", "analysis", "complex_queries"],
+                config={"temperature": 0.3, "max_tokens": 1000},
+                is_active=True,
+                max_tokens=8192,
+            ),
+            ModelRegistryEntry(
+                name="text-embedding-004",
+                provider="gemini",
+                model_type="embedding",
+                version="1.0",
+                capabilities=["embedding", "semantic_search"],
+                config={"dimensions": 768},
+                is_active=True,
+                max_tokens=2048,
+            ),
+            ModelRegistryEntry(
+                name="llama3.2:3b",
+                provider="ollama",
+                model_type="chat",
+                version="3.2",
+                capabilities=["chat", "clinical_interpretation", "local"],
+                config={"temperature": 0.3, "num_predict": 550},
+                is_active=True,
+                max_tokens=4096,
+            ),
+            ModelRegistryEntry(
+                name="llama-3.1-8b-instant",
+                provider="groq",
+                model_type="chat",
+                version="3.1",
+                capabilities=["chat", "fast_inference"],
+                config={"temperature": 0.3, "max_tokens": 500},
+                is_active=True,
+                max_tokens=8192,
+            ),
         ]
         for m in defaults:
             self._models[m.name] = m
@@ -64,15 +108,47 @@ class ModelRegistry:
             return
         try:
             for m in entries:
-                existing = db.execute(text("SELECT id FROM ai_model_registry WHERE name = :name"), {"name": m.name}).fetchone()
+                existing = db.execute(
+                    text("SELECT id FROM ai_model_registry WHERE name = :name"), {"name": m.name},
+                ).fetchone()
                 config_json = json.dumps(m.config, ensure_ascii=False)
                 caps_json = json.dumps(m.capabilities, ensure_ascii=False)
                 if existing:
-                    db.execute(text("UPDATE ai_model_registry SET provider=:p, model_type=:mt, version=:v, capabilities=:caps::jsonb, config=:cfg::jsonb, is_active=:active, max_tokens=:mtok, cost_per_1k_input=:cpi, cost_per_1k_output=:cpo WHERE name=:name"),
-                               {"name": m.name, "p": m.provider, "mt": m.model_type, "v": m.version, "caps": caps_json, "cfg": config_json, "active": 1 if m.is_active else 0, "mtok": m.max_tokens, "cpi": m.cost_per_1k_input, "cpo": m.cost_per_1k_output})
+                    db.execute(
+                        text(
+                            "UPDATE ai_model_registry SET provider=:p, model_type=:mt, version=:v, capabilities=:caps::jsonb, config=:cfg::jsonb, is_active=:active, max_tokens=:mtok, cost_per_1k_input=:cpi, cost_per_1k_output=:cpo WHERE name=:name",
+                        ),
+                        {
+                            "name": m.name,
+                            "p": m.provider,
+                            "mt": m.model_type,
+                            "v": m.version,
+                            "caps": caps_json,
+                            "cfg": config_json,
+                            "active": 1 if m.is_active else 0,
+                            "mtok": m.max_tokens,
+                            "cpi": m.cost_per_1k_input,
+                            "cpo": m.cost_per_1k_output,
+                        },
+                    )
                 else:
-                    db.execute(text("INSERT INTO ai_model_registry (name, provider, model_type, version, capabilities, config, is_active, max_tokens, cost_per_1k_input, cost_per_1k_output) VALUES (:name, :p, :mt, :v, :caps::jsonb, :cfg::jsonb, :active, :mtok, :cpi, :cpo)"),
-                               {"name": m.name, "p": m.provider, "mt": m.model_type, "v": m.version, "caps": caps_json, "cfg": config_json, "active": 1 if m.is_active else 0, "mtok": m.max_tokens, "cpi": m.cost_per_1k_input, "cpo": m.cost_per_1k_output})
+                    db.execute(
+                        text(
+                            "INSERT INTO ai_model_registry (name, provider, model_type, version, capabilities, config, is_active, max_tokens, cost_per_1k_input, cost_per_1k_output) VALUES (:name, :p, :mt, :v, :caps::jsonb, :cfg::jsonb, :active, :mtok, :cpi, :cpo)",
+                        ),
+                        {
+                            "name": m.name,
+                            "p": m.provider,
+                            "mt": m.model_type,
+                            "v": m.version,
+                            "caps": caps_json,
+                            "cfg": config_json,
+                            "active": 1 if m.is_active else 0,
+                            "mtok": m.max_tokens,
+                            "cpi": m.cost_per_1k_input,
+                            "cpo": m.cost_per_1k_output,
+                        },
+                    )
             db.commit()
         except Exception as exc:
             db.rollback()
@@ -80,14 +156,23 @@ class ModelRegistry:
         finally:
             db.close()
 
-    def list_models(self, model_type: str | None = None, active_only: bool = True) -> list[dict[str, Any]]:
+    def list_models(
+        self, model_type: str | None = None, active_only: bool = True,
+    ) -> list[dict[str, Any]]:
         models = list(self._models.values())
         if model_type:
             models = [m for m in models if m.model_type == model_type]
         if active_only:
             models = [m for m in models if m.is_active]
         return [
-            {"name": m.name, "provider": m.provider, "type": m.model_type, "version": m.version, "capabilities": m.capabilities, "max_tokens": m.max_tokens}
+            {
+                "name": m.name,
+                "provider": m.provider,
+                "type": m.model_type,
+                "version": m.version,
+                "capabilities": m.capabilities,
+                "max_tokens": m.max_tokens,
+            }
             for m in models
         ]
 
@@ -109,7 +194,6 @@ model_registry = ModelRegistry()
 
 
 class PromptManager:
-
     def __init__(self):
         self._prompts: dict[str, dict[str, Any]] = {}
         self._load_defaults()
@@ -152,11 +236,23 @@ class PromptManager:
 
     def list_prompts(self) -> list[dict[str, Any]]:
         return [
-            {"name": name, "version": p["version"], "variables": p["variables"], "max_tokens": p["max_tokens"]}
+            {
+                "name": name,
+                "version": p["version"],
+                "variables": p["variables"],
+                "max_tokens": p["max_tokens"],
+            }
             for name, p in self._prompts.items()
         ]
 
-    def register_prompt(self, name: str, content: str, version: str = "1.0", variables: list[str] | None = None, max_tokens: int = 500) -> None:
+    def register_prompt(
+        self,
+        name: str,
+        content: str,
+        version: str = "1.0",
+        variables: list[str] | None = None,
+        max_tokens: int = 500,
+    ) -> None:
         self._prompts[name] = {
             "version": version,
             "content": content,
@@ -169,12 +265,15 @@ prompt_manager = PromptManager()
 
 
 class Evaluator:
-
     def __init__(self):
         self._results: list[EvaluationResult] = []
 
     async def evaluate(
-        self, prompt: str, response: str, model: str, duration_ms: float,
+        self,
+        prompt: str,
+        response: str,
+        model: str,
+        duration_ms: float,
     ) -> EvaluationResult:
         score = self._compute_score(prompt, response)
         metrics = self._compute_metrics(response)
@@ -195,7 +294,15 @@ class Evaluator:
         score = 1.0
         if len(response) < 10:
             score -= 0.3
-        forbidden = ["diagnosis:", "treatment:", "medication:", "prescribe", "تشخيص:", "العلاج:", "الدواء:"]
+        forbidden = [
+            "diagnosis:",
+            "treatment:",
+            "medication:",
+            "prescribe",
+            "تشخيص:",
+            "العلاج:",
+            "الدواء:",
+        ]
         for phrase in forbidden:
             if phrase in response:
                 score -= 0.2
@@ -221,8 +328,18 @@ class Evaluator:
         try:
             metrics_json = json.dumps(result.metrics, ensure_ascii=False)
             db.execute(
-                text("INSERT INTO ai_evaluations (eval_type, prompt, response, score, metrics, model, duration_ms) VALUES (:et, :prompt, :resp, :score, :metrics::jsonb, :model, :dur)"),
-                {"et": "governance", "prompt": result.prompt, "resp": result.response, "score": result.score, "metrics": metrics_json, "model": result.model, "dur": result.duration_ms},
+                text(
+                    "INSERT INTO ai_evaluations (eval_type, prompt, response, score, metrics, model, duration_ms) VALUES (:et, :prompt, :resp, :score, :metrics::jsonb, :model, :dur)",
+                ),
+                {
+                    "et": "governance",
+                    "prompt": result.prompt,
+                    "resp": result.response,
+                    "score": result.score,
+                    "metrics": metrics_json,
+                    "model": result.model,
+                    "dur": result.duration_ms,
+                },
             )
             db.commit()
         except Exception as exc:

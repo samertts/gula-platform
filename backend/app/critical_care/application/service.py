@@ -45,7 +45,14 @@ from app.critical_care.infrastructure.models import (
 from app.national.events.base import NationalDomainEvent
 
 
-def _calc_ews(hr: int | None, rr: int | None, sbp: int | None, temp: float | None, o2: float | None, conscious: bool) -> dict:
+def _calc_ews(
+    hr: int | None,
+    rr: int | None,
+    sbp: int | None,
+    temp: float | None,
+    o2: float | None,
+    conscious: bool,
+) -> dict:
     score = 0
     scores = {}
 
@@ -135,8 +142,15 @@ def _calc_ews(hr: int | None, rr: int | None, sbp: int | None, temp: float | Non
     }
 
 
-def _calc_sofa(pao2: float | None, fi_o2: float | None, plt: int | None, bili: float | None,
-               map: float | None, gcs: int | None, cr: float | None) -> dict:
+def _calc_sofa(
+    pao2: float | None,
+    fi_o2: float | None,
+    plt: int | None,
+    bili: float | None,
+    map: float | None,
+    gcs: int | None,
+    cr: float | None,
+) -> dict:
     resp = 0
     if pao2 is not None and fi_o2 is not None:
         ratio = pao2 / fi_o2 if fi_o2 > 0 else 400
@@ -195,8 +209,12 @@ def _calc_sofa(pao2: float | None, fi_o2: float | None, plt: int | None, bili: f
     mortality = min(100, (total * 5) + 10) if total < 12 else 80
     return {
         "score_value": total,
-        "respiratory": resp, "coagulation": coag, "liver": liver,
-        "cardiovascular": cv, "neurological": neuro, "renal": renal,
+        "respiratory": resp,
+        "coagulation": coag,
+        "liver": liver,
+        "cardiovascular": cv,
+        "neurological": neuro,
+        "renal": renal,
         "mortality_prediction": mortality,
     }
 
@@ -213,7 +231,9 @@ class CriticalCareService:
     # ---- Admissions ----
 
     def admit_patient(self, data: dict[str, Any]) -> ICUAdmission:
-        model = ICUAdmissionModel(**{k: v for k, v in data.items() if hasattr(ICUAdmissionModel, k)})
+        model = ICUAdmissionModel(
+            **{k: v for k, v in data.items() if hasattr(ICUAdmissionModel, k)},
+        )
         self.db.add(model)
         if data.get("bed_id"):
             bed = self.db.query(ICUBedModel).filter_by(id=data["bed_id"]).first()
@@ -225,28 +245,53 @@ class CriticalCareService:
                 bed.current_admission_id = ""
         self.db.commit()
         self.db.refresh(model)
-        return ICUAdmission(id=model.id, patient_id=model.patient_id, icu_type=model.icu_type,
-                            admission_type=model.admission_type, status=model.status,
-                            bed_id=model.bed_id or "", facility_id=model.facility_id or "")
+        return ICUAdmission(
+            id=model.id,
+            patient_id=model.patient_id,
+            icu_type=model.icu_type,
+            admission_type=model.admission_type,
+            status=model.status,
+            bed_id=model.bed_id or "",
+            facility_id=model.facility_id or "",
+        )
 
     def get_admission(self, admission_id: str) -> ICUAdmission:
         model = self.db.query(ICUAdmissionModel).filter_by(id=admission_id).first()
         if not model or model.is_deleted:
             raise ICUAdmissionNotFoundError()
-        return ICUAdmission(id=model.id, patient_id=model.patient_id, patient_name=model.patient_name or "",
-                            icu_type=model.icu_type, status=model.status or "stable",
-                            admission_diagnosis=model.admission_diagnosis or "")
+        return ICUAdmission(
+            id=model.id,
+            patient_id=model.patient_id,
+            patient_name=model.patient_name or "",
+            icu_type=model.icu_type,
+            status=model.status or "stable",
+            admission_diagnosis=model.admission_diagnosis or "",
+        )
 
-    def list_admissions(self, icu_type: str | None = None, status: str | None = None, skip: int = 0, limit: int = 100) -> list[ICUAdmission]:
+    def list_admissions(
+        self,
+        icu_type: str | None = None,
+        status: str | None = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> list[ICUAdmission]:
         query = self.db.query(ICUAdmissionModel).filter(ICUAdmissionModel.is_deleted.isnot(True))
         if icu_type:
             query = query.filter_by(icu_type=icu_type)
         if status:
             query = query.filter_by(status=status)
         query = query.order_by(ICUAdmissionModel.created_at.desc()).offset(skip).limit(limit)
-        return [ICUAdmission(id=m.id, patient_id=m.patient_id, patient_name=m.patient_name or "",
-                              icu_type=m.icu_type, status=m.status or "stable",
-                              admission_diagnosis=m.admission_diagnosis or "") for m in query.all()]
+        return [
+            ICUAdmission(
+                id=m.id,
+                patient_id=m.patient_id,
+                patient_name=m.patient_name or "",
+                icu_type=m.icu_type,
+                status=m.status or "stable",
+                admission_diagnosis=m.admission_diagnosis or "",
+            )
+            for m in query.all()
+        ]
 
     def discharge_patient(self, admission_id: str, data: dict[str, Any]) -> ICUAdmission:
         model = self.db.query(ICUAdmissionModel).filter_by(id=admission_id).first()
@@ -281,57 +326,114 @@ class CriticalCareService:
         beds = query.all()
         total = len(beds)
         occupied = sum(1 for b in beds if b.is_occupied)
-        return [{"total": total, "occupied": occupied, "available": total - occupied, "icu_type": icu_type or "all"}]
+        return [
+            {
+                "total": total,
+                "occupied": occupied,
+                "available": total - occupied,
+                "icu_type": icu_type or "all",
+            },
+        ]
 
     # ---- Vital Signs ----
 
     def record_vitals(self, data: dict[str, Any]) -> VitalSignsRecord:
-        model = VitalSignsRecordModel(**{k: v for k, v in data.items() if hasattr(VitalSignsRecordModel, k)})
+        model = VitalSignsRecordModel(
+            **{k: v for k, v in data.items() if hasattr(VitalSignsRecordModel, k)},
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return VitalSignsRecord(id=model.id, patient_id=model.patient_id,
-                                 heart_rate=model.heart_rate, respiratory_rate=model.respiratory_rate,
-                                 systolic_bp=model.systolic_bp, diastolic_bp=model.diastolic_bp,
-                                 temperature=model.temperature, oxygen_saturation=model.oxygen_saturation,
-                                 gcs_total=model.gcs_total, recorded_at=model.recorded_at)
+        return VitalSignsRecord(
+            id=model.id,
+            patient_id=model.patient_id,
+            heart_rate=model.heart_rate,
+            respiratory_rate=model.respiratory_rate,
+            systolic_bp=model.systolic_bp,
+            diastolic_bp=model.diastolic_bp,
+            temperature=model.temperature,
+            oxygen_saturation=model.oxygen_saturation,
+            gcs_total=model.gcs_total,
+            recorded_at=model.recorded_at,
+        )
 
     def get_vitals(self, patient_id: str, limit: int = 100) -> list[VitalSignsRecord]:
-        models = self.db.query(VitalSignsRecordModel).filter_by(patient_id=patient_id)\
-            .order_by(VitalSignsRecordModel.recorded_at.desc()).limit(limit).all()
-        return [VitalSignsRecord(id=m.id, patient_id=m.patient_id, heart_rate=m.heart_rate,
-                                 respiratory_rate=m.respiratory_rate, systolic_bp=m.systolic_bp,
-                                 temperature=m.temperature, oxygen_saturation=m.oxygen_saturation,
-                                 recorded_at=m.recorded_at) for m in models]
+        models = (
+            self.db.query(VitalSignsRecordModel)
+            .filter_by(patient_id=patient_id)
+            .order_by(VitalSignsRecordModel.recorded_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            VitalSignsRecord(
+                id=m.id,
+                patient_id=m.patient_id,
+                heart_rate=m.heart_rate,
+                respiratory_rate=m.respiratory_rate,
+                systolic_bp=m.systolic_bp,
+                temperature=m.temperature,
+                oxygen_saturation=m.oxygen_saturation,
+                recorded_at=m.recorded_at,
+            )
+            for m in models
+        ]
 
     # ---- Ventilator ----
 
     def set_ventilator(self, data: dict[str, Any]) -> VentilatorSetting:
-        model = VentilatorSettingModel(**{k: v for k, v in data.items() if hasattr(VentilatorSettingModel, k)})
+        model = VentilatorSettingModel(
+            **{k: v for k, v in data.items() if hasattr(VentilatorSettingModel, k)},
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return VentilatorSetting(id=model.id, patient_id=model.patient_id, mode=model.mode,
-                                  tidal_volume_ml=model.tidal_volume_ml, peep_cmh2o=model.peep_cmh2o,
-                                  fi_o2=model.fi_o2, respiratory_rate_set=model.respiratory_rate_set)
+        return VentilatorSetting(
+            id=model.id,
+            patient_id=model.patient_id,
+            mode=model.mode,
+            tidal_volume_ml=model.tidal_volume_ml,
+            peep_cmh2o=model.peep_cmh2o,
+            fi_o2=model.fi_o2,
+            respiratory_rate_set=model.respiratory_rate_set,
+        )
 
     def get_ventilator_settings(self, patient_id: str, limit: int = 50) -> list[VentilatorSetting]:
-        models = self.db.query(VentilatorSettingModel).filter_by(patient_id=patient_id)\
-            .order_by(VentilatorSettingModel.setting_time.desc()).limit(limit).all()
+        models = (
+            self.db.query(VentilatorSettingModel)
+            .filter_by(patient_id=patient_id)
+            .order_by(VentilatorSettingModel.setting_time.desc())
+            .limit(limit)
+            .all()
+        )
         return [VentilatorSetting(id=m.id, patient_id=m.patient_id, mode=m.mode) for m in models]
 
     # ---- Early Warning Scores ----
 
-    def calculate_ews(self, patient_id: str, admission_id: str, vitals_id: str | None = None) -> EarlyWarningScore:
-        vitals = self.db.query(VitalSignsRecordModel).filter_by(patient_id=patient_id)\
-            .order_by(VitalSignsRecordModel.recorded_at.desc()).first()
+    def calculate_ews(
+        self, patient_id: str, admission_id: str, vitals_id: str | None = None,
+    ) -> EarlyWarningScore:
+        vitals = (
+            self.db.query(VitalSignsRecordModel)
+            .filter_by(patient_id=patient_id)
+            .order_by(VitalSignsRecordModel.recorded_at.desc())
+            .first()
+        )
         if not vitals:
             raise MonitoringRecordNotFoundError()
-        result = _calc_ews(vitals.heart_rate, vitals.respiratory_rate, vitals.systolic_bp,
-                           vitals.temperature, vitals.oxygen_saturation, (vitals.gcs_total or 15) >= 13)
+        result = _calc_ews(
+            vitals.heart_rate,
+            vitals.respiratory_rate,
+            vitals.systolic_bp,
+            vitals.temperature,
+            vitals.oxygen_saturation,
+            (vitals.gcs_total or 15) >= 13,
+        )
         model = EarlyWarningScoreModel(
-            patient_id=patient_id, admission_id=admission_id,
-            score_time=datetime.now(UTC), score_system="news2",
+            patient_id=patient_id,
+            admission_id=admission_id,
+            score_time=datetime.now(UTC),
+            score_system="news2",
             score_value=result["score_value"],
             heart_rate_score=result.get("heart_rate_score", 0),
             respiratory_rate_score=result.get("respiratory_rate_score", 0),
@@ -346,38 +448,75 @@ class CriticalCareService:
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return EarlyWarningScore(id=model.id, patient_id=patient_id, score_value=model.score_value,
-                                  risk_category=model.risk_category, triggers_escalation=model.triggers_escalation,
-                                  score_system="news2", recommended_frequency=model.recommended_frequency,
-                                  calculated_by=model.calculated_by or "")
+        return EarlyWarningScore(
+            id=model.id,
+            patient_id=patient_id,
+            score_value=model.score_value,
+            risk_category=model.risk_category,
+            triggers_escalation=model.triggers_escalation,
+            score_system="news2",
+            recommended_frequency=model.recommended_frequency,
+            calculated_by=model.calculated_by or "",
+        )
 
     def calculate_sofa(self, patient_id: str, admission_id: str, data: dict[str, Any]) -> ICUScore:
         result = _calc_sofa(
-            data.get("pao2"), data.get("fi_o2"), data.get("platelets"),
-            data.get("bilirubin"), data.get("map"), data.get("gcs"), data.get("creatinine"),
+            data.get("pao2"),
+            data.get("fi_o2"),
+            data.get("platelets"),
+            data.get("bilirubin"),
+            data.get("map"),
+            data.get("gcs"),
+            data.get("creatinine"),
         )
         model = ICUScoreModel(
-            patient_id=patient_id, admission_id=admission_id,
-            score_time=datetime.now(UTC), score_type="sofa",
+            patient_id=patient_id,
+            admission_id=admission_id,
+            score_time=datetime.now(UTC),
+            score_type="sofa",
             score_value=result["score_value"],
-            score_components={k: v for k, v in result.items() if k in ("respiratory", "coagulation", "liver", "cardiovascular", "neurological", "renal")},
+            score_components={
+                k: v
+                for k, v in result.items()
+                if k
+                in (
+                    "respiratory",
+                    "coagulation",
+                    "liver",
+                    "cardiovascular",
+                    "neurological",
+                    "renal",
+                )
+            },
             mortality_prediction=result.get("mortality_prediction"),
         )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return ICUScore(id=model.id, patient_id=patient_id, score_type="sofa",
-                         score_value=model.score_value, mortality_prediction=model.mortality_prediction)
+        return ICUScore(
+            id=model.id,
+            patient_id=patient_id,
+            score_type="sofa",
+            score_value=model.score_value,
+            mortality_prediction=model.mortality_prediction,
+        )
 
     # ---- Infusions ----
 
     def start_infusion(self, data: dict[str, Any]) -> ContinuousInfusion:
-        model = ContinuousInfusionModel(**{k: v for k, v in data.items() if hasattr(ContinuousInfusionModel, k)})
+        model = ContinuousInfusionModel(
+            **{k: v for k, v in data.items() if hasattr(ContinuousInfusionModel, k)},
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return ContinuousInfusion(id=model.id, patient_id=model.patient_id, medication=model.medication,
-                                   rate=model.rate or "", status=model.status or "active")
+        return ContinuousInfusion(
+            id=model.id,
+            patient_id=model.patient_id,
+            medication=model.medication,
+            rate=model.rate or "",
+            status=model.status or "active",
+        )
 
     def stop_infusion(self, infusion_id: str) -> ContinuousInfusion:
         model = self.db.query(ContinuousInfusionModel).filter_by(id=infusion_id).first()
@@ -386,35 +525,60 @@ class CriticalCareService:
         model.status = "stopped"
         model.end_time = datetime.now(UTC)
         self.db.commit()
-        return ContinuousInfusion(id=model.id, patient_id=model.patient_id, medication=model.medication, status="stopped")
+        return ContinuousInfusion(
+            id=model.id, patient_id=model.patient_id, medication=model.medication, status="stopped",
+        )
 
     # ---- Fluid Balance ----
 
     def record_fluid_balance(self, data: dict[str, Any]) -> FluidBalance:
-        intake = (data.get("iv_fluids_ml", 0) + data.get("enteral_feeding_ml", 0) +
-                  data.get("oral_intake_ml", 0) + data.get("blood_products_ml", 0))
-        output = (data.get("urine_output_ml", 0) + data.get("stool_output_ml", 0) +
-                  data.get("ng_output_ml", 0) + data.get("drain_output_ml", 0) +
-                  data.get("estimated_blood_loss_ml", 0) + data.get("insensible_losses_ml", 200))
+        intake = (
+            data.get("iv_fluids_ml", 0)
+            + data.get("enteral_feeding_ml", 0)
+            + data.get("oral_intake_ml", 0)
+            + data.get("blood_products_ml", 0)
+        )
+        output = (
+            data.get("urine_output_ml", 0)
+            + data.get("stool_output_ml", 0)
+            + data.get("ng_output_ml", 0)
+            + data.get("drain_output_ml", 0)
+            + data.get("estimated_blood_loss_ml", 0)
+            + data.get("insensible_losses_ml", 200)
+        )
         data["total_intake_ml"] = intake
         data["total_output_ml"] = output
         data["net_balance_ml"] = intake - output
-        model = FluidBalanceModel(**{k: v for k, v in data.items() if hasattr(FluidBalanceModel, k)})
+        model = FluidBalanceModel(
+            **{k: v for k, v in data.items() if hasattr(FluidBalanceModel, k)},
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return FluidBalance(id=model.id, patient_id=model.patient_id, total_intake_ml=intake,
-                             total_output_ml=output, net_balance_ml=intake - output)
+        return FluidBalance(
+            id=model.id,
+            patient_id=model.patient_id,
+            total_intake_ml=intake,
+            total_output_ml=output,
+            net_balance_ml=intake - output,
+        )
 
     # ---- Alerts ----
 
     def raise_alert(self, data: dict[str, Any]) -> CriticalAlert:
-        model = CriticalAlertModel(**{k: v for k, v in data.items() if hasattr(CriticalAlertModel, k)})
+        model = CriticalAlertModel(
+            **{k: v for k, v in data.items() if hasattr(CriticalAlertModel, k)},
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return CriticalAlert(id=model.id, patient_id=model.patient_id, alert_type=model.alert_type,
-                              severity=model.severity, alert_message=model.alert_message or "")
+        return CriticalAlert(
+            id=model.id,
+            patient_id=model.patient_id,
+            alert_type=model.alert_type,
+            severity=model.severity,
+            alert_message=model.alert_message or "",
+        )
 
     def acknowledge_alert(self, alert_id: str, acknowledged_by: str) -> CriticalAlert:
         model = self.db.query(CriticalAlertModel).filter_by(id=alert_id).first()
@@ -423,8 +587,13 @@ class CriticalCareService:
         model.acknowledged_by = acknowledged_by
         model.acknowledged_at = datetime.now(UTC)
         self.db.commit()
-        return CriticalAlert(id=model.id, patient_id=model.patient_id, alert_type=model.alert_type,
-                              severity=model.severity, is_active=model.is_active)
+        return CriticalAlert(
+            id=model.id,
+            patient_id=model.patient_id,
+            alert_type=model.alert_type,
+            severity=model.severity,
+            is_active=model.is_active,
+        )
 
     # ---- Rounds ----
 
@@ -433,34 +602,60 @@ class CriticalCareService:
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return RoundRecord(id=model.id, patient_id=model.patient_id, attending_physician=model.attending_physician or "")
+        return RoundRecord(
+            id=model.id,
+            patient_id=model.patient_id,
+            attending_physician=model.attending_physician or "",
+        )
 
     # ---- Daily Checklist ----
 
     def complete_checklist(self, data: dict[str, Any]) -> DailyChecklist:
-        model = DailyChecklistModel(**{k: v for k, v in data.items() if hasattr(DailyChecklistModel, k)})
+        model = DailyChecklistModel(
+            **{k: v for k, v in data.items() if hasattr(DailyChecklistModel, k)},
+        )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
-        return DailyChecklist(id=model.id, patient_id=model.patient_id, checklist_date=model.checklist_date)
+        return DailyChecklist(
+            id=model.id, patient_id=model.patient_id, checklist_date=model.checklist_date,
+        )
 
     # ---- Dashboard ----
 
     def get_dashboard_stats(self) -> dict[str, Any]:
         total_beds = self.db.query(ICUBedModel).filter(ICUBedModel.is_active.is_(True)).count()
-        occupied_beds = self.db.query(ICUBedModel).filter(ICUBedModel.is_active.is_(True), ICUBedModel.is_occupied.is_(True)).count()
-        active_patients = self.db.query(ICUAdmissionModel).filter(
-            ICUAdmissionModel.status.in_(["stable", "improving", "deteriorating", "critical"]),
-        ).count()
+        occupied_beds = (
+            self.db.query(ICUBedModel)
+            .filter(ICUBedModel.is_active.is_(True), ICUBedModel.is_occupied.is_(True))
+            .count()
+        )
+        active_patients = (
+            self.db.query(ICUAdmissionModel)
+            .filter(
+                ICUAdmissionModel.status.in_(["stable", "improving", "deteriorating", "critical"]),
+            )
+            .count()
+        )
         ventilated = self.db.query(VentilatorSettingModel).count()
-        active_alerts = self.db.query(CriticalAlertModel).filter(CriticalAlertModel.is_active.is_(True)).count()
-        high_ews = self.db.query(EarlyWarningScoreModel).filter(
-            EarlyWarningScoreModel.risk_category.in_(["high", "medium"]),
-            EarlyWarningScoreModel.triggers_escalation.is_(True),
-        ).count()
+        active_alerts = (
+            self.db.query(CriticalAlertModel).filter(CriticalAlertModel.is_active.is_(True)).count()
+        )
+        high_ews = (
+            self.db.query(EarlyWarningScoreModel)
+            .filter(
+                EarlyWarningScoreModel.risk_category.in_(["high", "medium"]),
+                EarlyWarningScoreModel.triggers_escalation.is_(True),
+            )
+            .count()
+        )
         return {
-            "total_beds": total_beds, "occupied_beds": occupied_beds, "available_beds": total_beds - occupied_beds,
+            "total_beds": total_beds,
+            "occupied_beds": occupied_beds,
+            "available_beds": total_beds - occupied_beds,
             "bed_occupancy_pct": round((occupied_beds / total_beds * 100), 1) if total_beds else 0,
-            "active_patients": active_patients, "ventilator_settings": ventilated,
-            "active_alerts": active_alerts, "high_ews_alerts": high_ews,
+            "active_patients": active_patients,
+            "ventilator_settings": ventilated,
+            "active_alerts": active_alerts,
+            "high_ews_alerts": high_ews,
         }

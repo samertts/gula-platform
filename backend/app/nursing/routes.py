@@ -448,11 +448,15 @@ def shift_summary(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shift = db.query(NursingShift).filter(
-        NursingShift.nurse_id == str(current_user.id),
-        NursingShift.end_time.is_(None),
-        NursingShift.lab_id == current_user.lab_id,
-    ).first()
+    shift = (
+        db.query(NursingShift)
+        .filter(
+            NursingShift.nurse_id == str(current_user.id),
+            NursingShift.end_time.is_(None),
+            NursingShift.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not shift:
         return {"active_shift": False, "message": "لا يوجد وردية نشطة"}
     return _model_to_dict(shift)
@@ -480,9 +484,15 @@ def assign_patient(
     db: Session = Depends(get_db),
 ):
     assignment = NursingService.assign_patient(
-        db, current_user.lab_id, current_user.id,
-        body.nurse_id, body.patient_id, body.assignment_type,
-        body.department_id, body.encounter_id, body.notes,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.nurse_id,
+        body.patient_id,
+        body.assignment_type,
+        body.department_id,
+        body.encounter_id,
+        body.notes,
     )
     return _model_to_dict(assignment)
 
@@ -493,7 +503,9 @@ def unassign_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    NursingService.unassign_patient(db, current_user.lab_id, current_user.id, body.nurse_id, body.patient_id)
+    NursingService.unassign_patient(
+        db, current_user.lab_id, current_user.id, body.nurse_id, body.patient_id
+    )
     return {"detail": "Patient unassigned", "detail_ar": "تم إلغاء تعيين المريض"}
 
 
@@ -516,11 +528,22 @@ def list_tasks(
     db: Session = Depends(get_db),
 ):
     tasks = NursingService.get_tasks(
-        db, current_user.lab_id, assigned_to, patient_id,
-        status, task_type, date_from, date_to, skip, limit,
+        db,
+        current_user.lab_id,
+        assigned_to,
+        patient_id,
+        status,
+        task_type,
+        date_from,
+        date_to,
+        skip,
+        limit,
     )
     return _paginated_response(
-        [_model_to_dict(t) for t in tasks], len(tasks), skip, limit,
+        [_model_to_dict(t) for t in tasks],
+        len(tasks),
+        skip,
+        limit,
     )
 
 
@@ -530,7 +553,9 @@ def create_task(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    task = NursingService.create_task(db, current_user.lab_id, current_user.id, body.model_dump(exclude_none=True))
+    task = NursingService.create_task(
+        db, current_user.lab_id, current_user.id, body.model_dump(exclude_none=True)
+    )
     return _model_to_dict(task)
 
 
@@ -556,7 +581,12 @@ def complete_task(
     db: Session = Depends(get_db),
 ):
     task = NursingService.complete_task(
-        db, current_user.lab_id, current_user.id, task_id, body.patient_response, body.notes,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        task_id,
+        body.patient_response,
+        body.notes,
     )
     return _model_to_dict(task)
 
@@ -569,7 +599,12 @@ def defer_task(
     db: Session = Depends(get_db),
 ):
     task = NursingService.defer_task(
-        db, current_user.lab_id, current_user.id, task_id, body.new_due_time, body.reason,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        task_id,
+        body.new_due_time,
+        body.reason,
     )
     return _model_to_dict(task)
 
@@ -580,13 +615,18 @@ def list_overdue_tasks(
     db: Session = Depends(get_db),
 ):
     now = datetime.now(UTC)
-    tasks = db.query(NursingTask).filter(
-        NursingTask.assigned_to == str(current_user.id),
-        NursingTask.status.in_(["pending", "in_progress"]),
-        NursingTask.due_time <= now,
-        NursingTask.lab_id == current_user.lab_id,
-        ~NursingTask.is_deleted,
-    ).order_by(NursingTask.due_time.asc()).all()
+    tasks = (
+        db.query(NursingTask)
+        .filter(
+            NursingTask.assigned_to == str(current_user.id),
+            NursingTask.status.in_(["pending", "in_progress"]),
+            NursingTask.due_time <= now,
+            NursingTask.lab_id == current_user.lab_id,
+            ~NursingTask.is_deleted,
+        )
+        .order_by(NursingTask.due_time.asc())
+        .all()
+    )
     return {"items": [_model_to_dict(t) for t in tasks], "total": len(tasks)}
 
 
@@ -676,7 +716,9 @@ def get_fluid_balance(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    records = NursingService.get_fluid_balance(db, current_user.lab_id, patient_id, date_from, date_to)
+    records = NursingService.get_fluid_balance(
+        db, current_user.lab_id, patient_id, date_from, date_to
+    )
     return {"items": [_model_to_dict(r) for r in records], "total": len(records)}
 
 
@@ -737,11 +779,15 @@ def get_fall_risk_assessments(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    assessments = NursingService.get_fall_risk_assessments(db, current_user.lab_id, patient_id, limit)
+    assessments = NursingService.get_fall_risk_assessments(
+        db, current_user.lab_id, patient_id, limit
+    )
     return {"items": [_model_to_dict(a) for a in assessments], "total": len(assessments)}
 
 
-@router.post("/assessments/pressure-injury", summary="Record pressure injury assessment", status_code=201)
+@router.post(
+    "/assessments/pressure-injury", summary="Record pressure injury assessment", status_code=201
+)
 def assess_pressure_injury(
     body: PressureInjuryCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -749,7 +795,9 @@ def assess_pressure_injury(
 ):
     data = body.model_dump(exclude_none=True)
     data["assessed_by"] = str(current_user.id)
-    assessment = NursingService.assess_pressure_injury(db, current_user.lab_id, current_user.id, data)
+    assessment = NursingService.assess_pressure_injury(
+        db, current_user.lab_id, current_user.id, data
+    )
     return _model_to_dict(assessment)
 
 
@@ -760,7 +808,9 @@ def get_pressure_injury_assessments(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    assessments = NursingService.get_pressure_injury_assessments(db, current_user.lab_id, patient_id, limit)
+    assessments = NursingService.get_pressure_injury_assessments(
+        db, current_user.lab_id, patient_id, limit
+    )
     return {"items": [_model_to_dict(a) for a in assessments], "total": len(assessments)}
 
 
@@ -783,7 +833,9 @@ def get_nutrition_assessments(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    assessments = NursingService.get_nutrition_assessments(db, current_user.lab_id, patient_id, limit)
+    assessments = NursingService.get_nutrition_assessments(
+        db, current_user.lab_id, patient_id, limit
+    )
     return {"items": [_model_to_dict(a) for a in assessments], "total": len(assessments)}
 
 
@@ -914,7 +966,9 @@ def list_handovers(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    handovers = NursingService.get_shift_handovers(db, current_user.lab_id, department, handover_date)
+    handovers = NursingService.get_shift_handovers(
+        db, current_user.lab_id, department, handover_date
+    )
     return {"items": [_model_to_dict(h) for h in handovers], "total": len(handovers)}
 
 
@@ -924,11 +978,15 @@ def get_handover(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    handover = db.query(ShiftHandover).filter(
-        ShiftHandover.id == handover_id,
-        ShiftHandover.lab_id == current_user.lab_id,
-        ~ShiftHandover.is_deleted,
-    ).first()
+    handover = (
+        db.query(ShiftHandover)
+        .filter(
+            ShiftHandover.id == handover_id,
+            ShiftHandover.lab_id == current_user.lab_id,
+            ~ShiftHandover.is_deleted,
+        )
+        .first()
+    )
     if not handover:
         raise HTTPException(status_code=404, detail="Handover not found")
     return _model_to_dict(handover)
@@ -940,7 +998,9 @@ def complete_handover(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    handover = NursingService.complete_shift_handover(db, current_user.lab_id, current_user.id, handover_id)
+    handover = NursingService.complete_shift_handover(
+        db, current_user.lab_id, current_user.id, handover_id
+    )
     return _model_to_dict(handover)
 
 
@@ -980,7 +1040,12 @@ def update_checklist_item(
     db: Session = Depends(get_db),
 ):
     checklist = NursingService.update_checklist_item(
-        db, current_user.lab_id, current_user.id, checklist_id, item_idx, body.completed,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        checklist_id,
+        item_idx,
+        body.completed,
     )
     return _model_to_dict(checklist)
 
@@ -1023,7 +1088,9 @@ def accept_delegation(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    delegation = NursingService.accept_delegation(db, current_user.lab_id, current_user.id, delegation_id)
+    delegation = NursingService.accept_delegation(
+        db, current_user.lab_id, current_user.id, delegation_id
+    )
     return _model_to_dict(delegation)
 
 
@@ -1033,7 +1100,9 @@ def complete_delegation(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    delegation = NursingService.complete_delegation(db, current_user.lab_id, current_user.id, delegation_id)
+    delegation = NursingService.complete_delegation(
+        db, current_user.lab_id, current_user.id, delegation_id
+    )
     return _model_to_dict(delegation)
 
 
@@ -1070,7 +1139,9 @@ def acknowledge_escalation(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    escalation = NursingService.acknowledge_escalation(db, current_user.lab_id, current_user.id, escalation_id)
+    escalation = NursingService.acknowledge_escalation(
+        db, current_user.lab_id, current_user.id, escalation_id
+    )
     return _model_to_dict(escalation)
 
 
@@ -1082,7 +1153,11 @@ def resolve_escalation(
     db: Session = Depends(get_db),
 ):
     escalation = NursingService.resolve_escalation(
-        db, current_user.lab_id, current_user.id, escalation_id, body.resolution,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        escalation_id,
+        body.resolution,
     )
     return _model_to_dict(escalation)
 
@@ -1108,7 +1183,9 @@ def get_missed_doses(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return {"items": NursingService.get_missed_doses(db, current_user.lab_id, patient_id, dose_date)}
+    return {
+        "items": NursingService.get_missed_doses(db, current_user.lab_id, patient_id, dose_date)
+    }
 
 
 @router.get("/medication-schedule/{patient_id}/late-doses", summary="Get late doses")
@@ -1118,7 +1195,11 @@ def get_late_doses(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return {"items": MedicationAdminService.get_late_doses(db, current_user.lab_id, patient_id, window_minutes)}
+    return {
+        "items": MedicationAdminService.get_late_doses(
+            db, current_user.lab_id, patient_id, window_minutes
+        )
+    }
 
 
 @router.get("/medication-alerts/{patient_id}", summary="Get medication alerts")
@@ -1127,7 +1208,9 @@ def get_medication_alerts(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return {"items": MedicationAdminService.get_medication_alerts(db, current_user.lab_id, patient_id)}
+    return {
+        "items": MedicationAdminService.get_medication_alerts(db, current_user.lab_id, patient_id)
+    }
 
 
 @router.post("/medication-admin/verify", summary="Verify five rights")
@@ -1137,13 +1220,18 @@ def verify_five_rights(
     db: Session = Depends(get_db),
 ):
     result = MedicationAdminService.verify_five_rights(
-        body.right_patient, body.right_drug,
-        body.right_dose, body.right_route, body.right_time,
+        body.right_patient,
+        body.right_drug,
+        body.right_dose,
+        body.right_route,
+        body.right_time,
     )
     return {"passed": result.passed, "checks": result.checks, "message": result.message}
 
 
-@router.post("/medication-admin/record", summary="Record medication administration", status_code=201)
+@router.post(
+    "/medication-admin/record", summary="Record medication administration", status_code=201
+)
 def record_medication_admin(
     body: MedicationAdminRecord,
     current_user: LabUser = Depends(get_current_user),
@@ -1151,7 +1239,9 @@ def record_medication_admin(
 ):
     data = body.model_dump(exclude_none=True)
     data["administrator_id"] = str(current_user.id)
-    admin = MedicationAdminService.record_administration(db, current_user.lab_id, current_user.id, data)
+    admin = MedicationAdminService.record_administration(
+        db, current_user.lab_id, current_user.id, data
+    )
     return _model_to_dict(admin)
 
 
@@ -1162,7 +1252,10 @@ def sign_medication_admin(
     db: Session = Depends(get_db),
 ):
     return MedicationAdminService.electronic_signature(
-        db, current_user.lab_id, str(current_user.id), body.medication_admin_id,
+        db,
+        current_user.lab_id,
+        str(current_user.id),
+        body.medication_admin_id,
     )
 
 
@@ -1178,8 +1271,14 @@ def send_physician_message(
     db: Session = Depends(get_db),
 ):
     return CareCoordinatorService.send_physician_message(
-        db, current_user.lab_id, current_user.id,
-        body.physician_id, body.patient_id, body.subject, body.body, body.priority,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.physician_id,
+        body.patient_id,
+        body.subject,
+        body.body,
+        body.priority,
     )
 
 
@@ -1190,7 +1289,11 @@ def request_lab_collection(
     db: Session = Depends(get_db),
 ):
     return CareCoordinatorService.request_lab_collection(
-        db, current_user.lab_id, current_user.id, body.patient_id, body.tests,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.patient_id,
+        body.tests,
     )
 
 
@@ -1201,7 +1304,12 @@ def request_radiology(
     db: Session = Depends(get_db),
 ):
     return CareCoordinatorService.coordinate_radiology(
-        db, current_user.lab_id, current_user.id, body.patient_id, body.exam_type, body.urgency,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.patient_id,
+        body.exam_type,
+        body.urgency,
     )
 
 
@@ -1212,8 +1320,13 @@ def request_pharmacy(
     db: Session = Depends(get_db),
 ):
     return CareCoordinatorService.coordinate_pharmacy(
-        db, current_user.lab_id, current_user.id, body.patient_id,
-        body.medication, body.dose, body.route,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.patient_id,
+        body.medication,
+        body.dose,
+        body.route,
     )
 
 
@@ -1224,8 +1337,13 @@ def create_referral(
     db: Session = Depends(get_db),
 ):
     return CareCoordinatorService.manage_referral(
-        db, current_user.lab_id, current_user.id, body.patient_id,
-        body.to_specialty, body.reason, body.urgency,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.patient_id,
+        body.to_specialty,
+        body.reason,
+        body.urgency,
     )
 
 
@@ -1236,8 +1354,12 @@ def create_discharge_plan(
     db: Session = Depends(get_db),
 ):
     return CareCoordinatorService.plan_discharge(
-        db, current_user.lab_id, current_user.id, body.patient_id,
-        body.expected_date, body.discharge_needs,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.patient_id,
+        body.expected_date,
+        body.discharge_needs,
     )
 
 
@@ -1248,8 +1370,12 @@ def family_communication(
     db: Session = Depends(get_db),
 ):
     return CareCoordinatorService.family_communication(
-        db, current_user.lab_id, current_user.id, body.patient_id,
-        body.family_contact, body.message,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.patient_id,
+        body.family_contact,
+        body.message,
     )
 
 
@@ -1260,6 +1386,10 @@ def home_care_handover(
     db: Session = Depends(get_db),
 ):
     return CareCoordinatorService.home_care_handover(
-        db, current_user.lab_id, current_user.id, body.patient_id,
-        body.home_care_provider, body.summary,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.patient_id,
+        body.home_care_provider,
+        body.summary,
     )

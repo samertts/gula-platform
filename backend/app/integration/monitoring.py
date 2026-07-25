@@ -85,13 +85,17 @@ class FHIRDashboard:
     def __init__(self) -> None:
         self._operations: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
-    def record_operation(self, resource_type: str, operation: str, latency_ms: float, success: bool) -> None:
-        self._operations[resource_type].append({
-            "operation": operation,
-            "latency_ms": latency_ms,
-            "success": success,
-            "timestamp": time.time(),
-        })
+    def record_operation(
+        self, resource_type: str, operation: str, latency_ms: float, success: bool
+    ) -> None:
+        self._operations[resource_type].append(
+            {
+                "operation": operation,
+                "latency_ms": latency_ms,
+                "success": success,
+                "timestamp": time.time(),
+            }
+        )
 
     def summary(self) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -151,7 +155,7 @@ class LatencyDashboard:
         samples = self._latencies[component]
         samples.append(latency_ms)
         if len(samples) > self._max_samples:
-            self._latencies[component] = samples[-self._max_samples:]
+            self._latencies[component] = samples[-self._max_samples :]
 
     def summary(self) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -210,7 +214,9 @@ class IntegrationMonitor:
     def record_connector_health(self, name: str, latency_ms: float, success: bool) -> None:
         self.latency.record(f"connector_{name}", latency_ms)
 
-    def record_fhir_operation(self, resource_type: str, operation: str, latency_ms: float, success: bool) -> None:
+    def record_fhir_operation(
+        self, resource_type: str, operation: str, latency_ms: float, success: bool
+    ) -> None:
         self.fhir.record_operation(resource_type, operation, latency_ms, success)
         self.latency.record(f"fhir_{resource_type}_{operation}", latency_ms)
 

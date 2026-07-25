@@ -31,7 +31,9 @@ class EmergencyServices(BaseConnector):
             headers = {"Content-Type": "application/json"}
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
-            self._client = httpx.AsyncClient(timeout=self._timeout, verify=self._verify_ssl, headers=headers)
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, verify=self._verify_ssl, headers=headers
+            )
             self._connected = True
             logger.info("Emergency services connector connected")
             return True
@@ -48,7 +50,11 @@ class EmergencyServices(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -93,7 +99,11 @@ class EmergencyServices(BaseConnector):
                 json=alert,
             )
             if resp.is_success:
-                return {"success": True, "alert_id": resp.json().get("id", ""), "acknowledged": True}
+                return {
+                    "success": True,
+                    "alert_id": resp.json().get("id", ""),
+                    "acknowledged": True,
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Emergency alert failed: %s", exc)
@@ -116,7 +126,11 @@ class EmergencyServices(BaseConnector):
             )
             if resp.is_success:
                 result = resp.json()
-                return {"success": True, "ambulance_id": result.get("ambulance_id", ""), "eta_minutes": result.get("eta_minutes", 0)}
+                return {
+                    "success": True,
+                    "ambulance_id": result.get("ambulance_id", ""),
+                    "eta_minutes": result.get("eta_minutes", 0),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Ambulance dispatch failed: %s", exc)
@@ -129,7 +143,9 @@ class EmergencyServices(BaseConnector):
         if not alert_id:
             return {"success": False, "error": "alert_id required"}
         try:
-            resp = await self._client.get(urljoin(self._base_url, f"/api/emergency/alerts/{alert_id}"))
+            resp = await self._client.get(
+                urljoin(self._base_url, f"/api/emergency/alerts/{alert_id}")
+            )
             if resp.is_success:
                 return {"success": True, "status": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -153,7 +169,11 @@ class EmergencyServices(BaseConnector):
                 json=notification,
             )
             if resp.is_success:
-                return {"success": True, "notification_id": resp.json().get("id", ""), "recipients_reached": resp.json().get("recipients", 0)}
+                return {
+                    "success": True,
+                    "notification_id": resp.json().get("id", ""),
+                    "recipients_reached": resp.json().get("recipients", 0),
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Mass notification failed: %s", exc)

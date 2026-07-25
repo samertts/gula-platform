@@ -19,7 +19,6 @@ class SendResult:
 
 
 class NotificationChannelAdapter(ABC):
-
     @abstractmethod
     async def send(
         self,
@@ -35,7 +34,6 @@ class NotificationChannelAdapter(ABC):
 
 
 class EmailAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.EMAIL
@@ -52,7 +50,6 @@ class EmailAdapter(NotificationChannelAdapter):
 
 
 class SMSAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.SMS
@@ -69,7 +66,6 @@ class SMSAdapter(NotificationChannelAdapter):
 
 
 class PushAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.PUSH
@@ -86,7 +82,6 @@ class PushAdapter(NotificationChannelAdapter):
 
 
 class WebSocketAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.WEBSOCKET
@@ -103,7 +98,6 @@ class WebSocketAdapter(NotificationChannelAdapter):
 
 
 class InAppAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.IN_APP
@@ -120,7 +114,6 @@ class InAppAdapter(NotificationChannelAdapter):
 
 
 class WhatsAppAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.WHATSAPP
@@ -137,7 +130,6 @@ class WhatsAppAdapter(NotificationChannelAdapter):
 
 
 class TelegramAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.TELEGRAM
@@ -166,7 +158,6 @@ class TelegramAdapter(NotificationChannelAdapter):
 
 
 class GovernmentGatewayAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.GOVERNMENT_GATEWAY
@@ -180,13 +171,14 @@ class GovernmentGatewayAdapter(NotificationChannelAdapter):
     ) -> SendResult:
         logger.info(
             "[GOVERNMENT_GATEWAY] Sending to %s — subject=%s body_len=%d",
-            recipient, subject, len(body),
+            recipient,
+            subject,
+            len(body),
         )
         return SendResult(success=True, provider_message_id=f"gov_{recipient[:8]}")
 
 
 class WebhookAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.WEBHOOK
@@ -222,7 +214,6 @@ class WebhookAdapter(NotificationChannelAdapter):
 
 
 class FaxAdapter(NotificationChannelAdapter):
-
     @property
     def channel(self) -> NotificationChannel:
         return NotificationChannel.FAX
@@ -234,7 +225,9 @@ class FaxAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info("[FAX] Sending to %s — subject=%s pages=%d", recipient, subject, len(body) // 2000 + 1)
+        logger.info(
+            "[FAX] Sending to %s — subject=%s pages=%d", recipient, subject, len(body) // 2000 + 1,
+        )
         return SendResult(success=True, provider_message_id=f"fax_{recipient[:8]}")
 
 

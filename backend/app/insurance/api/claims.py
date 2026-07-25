@@ -232,9 +232,13 @@ def _claim_to_response(claim: InsuranceClaim) -> ClaimResponse:
 
 def _generate_claim_number(db: Session, lab_id: int) -> str:
     today = date.today()
-    count = db.query(InsuranceClaim).filter(
-        InsuranceClaim.lab_id == lab_id,
-    ).count()
+    count = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.lab_id == lab_id,
+        )
+        .count()
+    )
     return f"CLM-{lab_id}-{today.strftime('%Y%m%d')}-{count + 1:05d}"
 
 
@@ -281,24 +285,36 @@ def create_claim(
     db: Session = Depends(get_db),
 ):
     if data.idempotency_key:
-        existing = db.query(InsuranceClaim).filter(
-            InsuranceClaim.idempotency_key == data.idempotency_key,
-            InsuranceClaim.lab_id == current_user.lab_id,
-        ).first()
+        existing = (
+            db.query(InsuranceClaim)
+            .filter(
+                InsuranceClaim.idempotency_key == data.idempotency_key,
+                InsuranceClaim.lab_id == current_user.lab_id,
+            )
+            .first()
+        )
         if existing:
             return _claim_to_response(existing)
 
-    coverage = db.query(Coverage).filter(
-        Coverage.id == data.coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == data.coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 
-    provider = db.query(InsuranceProvider).filter(
-        InsuranceProvider.id == data.provider_id,
-        InsuranceProvider.lab_id == current_user.lab_id,
-    ).first()
+    provider = (
+        db.query(InsuranceProvider)
+        .filter(
+            InsuranceProvider.id == data.provider_id,
+            InsuranceProvider.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
@@ -345,10 +361,14 @@ def get_claim(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     return _claim_to_response(claim)
@@ -361,14 +381,21 @@ def update_claim(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     if claim.status != ClaimStatus.DRAFT:
-        raise HTTPException(status_code=400, detail=f"Can only update draft claims, current status: {claim.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Can only update draft claims, current status: {claim.status.value}",
+        )
 
     update_data = data.model_dump(exclude={"items"}, exclude_unset=True)
     for field, value in update_data.items():
@@ -404,10 +431,14 @@ def submit_claim(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
@@ -443,14 +474,21 @@ def validate_claim(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     if claim.status != ClaimStatus.DRAFT:
-        raise HTTPException(status_code=400, detail=f"Only draft claims can be validated, current status: {claim.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only draft claims can be validated, current status: {claim.status.value}",
+        )
 
     if not claim.items:
         raise HTTPException(status_code=400, detail="Claim has no items to validate")
@@ -480,14 +518,21 @@ def adjudicate_claim(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     if claim.status != ClaimStatus.SUBMITTED:
-        raise HTTPException(status_code=400, detail=f"Only submitted claims can be adjudicated, current status: {claim.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only submitted claims can be adjudicated, current status: {claim.status.value}",
+        )
 
     claim.status = ClaimStatus.ADJUDICATED
     claim.adjudicated_date = date.today()
@@ -525,14 +570,20 @@ def approve_claim(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     if claim.status not in (ClaimStatus.ADJUDICATED, ClaimStatus.SUBMITTED):
-        raise HTTPException(status_code=400, detail=f"Claim cannot be approved in status: {claim.status.value}")
+        raise HTTPException(
+            status_code=400, detail=f"Claim cannot be approved in status: {claim.status.value}"
+        )
 
     claim.status = ClaimStatus.ACCEPTED
     claim.total_paid = paid_amount or claim.total_allowed or claim.total_billed
@@ -559,14 +610,20 @@ def reject_claim(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     if claim.status in (ClaimStatus.REJECTED, ClaimStatus.DENIED, ClaimStatus.CANCELLED):
-        raise HTTPException(status_code=400, detail=f"Claim is already in terminal status: {claim.status.value}")
+        raise HTTPException(
+            status_code=400, detail=f"Claim is already in terminal status: {claim.status.value}"
+        )
 
     claim.status = ClaimStatus.REJECTED
     claim.rejection_reason = rejection_reason
@@ -591,14 +648,20 @@ def cancel_claim(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     if claim.status in (ClaimStatus.CANCELLED, ClaimStatus.PAID, ClaimStatus.REVERSED):
-        raise HTTPException(status_code=400, detail=f"Claim cannot be cancelled in status: {claim.status.value}")
+        raise HTTPException(
+            status_code=400, detail=f"Claim cannot be cancelled in status: {claim.status.value}"
+        )
 
     claim.status = ClaimStatus.CANCELLED
 
@@ -622,17 +685,26 @@ def list_claim_payments(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    return db.query(InsurancePayment).filter(
-        InsurancePayment.claim_id == claim_id,
-        InsurancePayment.lab_id == current_user.lab_id,
-    ).order_by(InsurancePayment.created_at.desc()).all()
+    return (
+        db.query(InsurancePayment)
+        .filter(
+            InsurancePayment.claim_id == claim_id,
+            InsurancePayment.lab_id == current_user.lab_id,
+        )
+        .order_by(InsurancePayment.created_at.desc())
+        .all()
+    )
 
 
 @router.get("/{claim_id}/appeals", response_model=list[AppealResponse])
@@ -641,17 +713,26 @@ def list_claim_appeals(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    return db.query(Appeal).filter(
-        Appeal.claim_id == claim_id,
-        Appeal.lab_id == current_user.lab_id,
-    ).order_by(Appeal.created_at.desc()).all()
+    return (
+        db.query(Appeal)
+        .filter(
+            Appeal.claim_id == claim_id,
+            Appeal.lab_id == current_user.lab_id,
+        )
+        .order_by(Appeal.created_at.desc())
+        .all()
+    )
 
 
 @router.post("/{claim_id}/appeals", status_code=201, response_model=AppealResponse)
@@ -661,14 +742,21 @@ def file_appeal(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     if claim.status not in (ClaimStatus.REJECTED, ClaimStatus.DENIED):
-        raise HTTPException(status_code=400, detail=f"Appeals can only be filed for rejected/denied claims, current status: {claim.status.value}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Appeals can only be filed for rejected/denied claims, current status: {claim.status.value}",
+        )
 
     appeal = Appeal(
         lab_id=current_user.lab_id,
@@ -704,17 +792,26 @@ def claim_audit_trail(
 ):
     from app.models.audit_log import AuditLog
 
-    claim = db.query(InsuranceClaim).filter(
-        InsuranceClaim.id == claim_id,
-        InsuranceClaim.lab_id == current_user.lab_id,
-    ).first()
+    claim = (
+        db.query(InsuranceClaim)
+        .filter(
+            InsuranceClaim.id == claim_id,
+            InsuranceClaim.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    entries = db.query(AuditLog).filter(
-        AuditLog.resource_type.in_(["insurance_claim", "appeal", "insurance_payment"]),
-        AuditLog.resource_id == claim_id,
-    ).order_by(AuditLog.created_at.asc()).all()
+    entries = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.resource_type.in_(["insurance_claim", "appeal", "insurance_payment"]),
+            AuditLog.resource_id == claim_id,
+        )
+        .order_by(AuditLog.created_at.asc())
+        .all()
+    )
 
     return [
         {

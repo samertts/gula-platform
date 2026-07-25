@@ -60,7 +60,13 @@ class MDMService:
         sources = set(survivor.get("source_systems", []) + duplicate.get("source_systems", []))
         survivor["source_systems"] = list(sources)
 
-        logger.info("Merged %s into %s (method=%s, reason=%s)", duplicate.get("id"), survivor.get("id"), method, reason)
+        logger.info(
+            "Merged %s into %s (method=%s, reason=%s)",
+            duplicate.get("id"),
+            survivor.get("id"),
+            method,
+            reason,
+        )
         return survivor
 
     async def split(
@@ -129,4 +135,5 @@ class MDMService:
 
     def _generate_id(self) -> str:
         import uuid
+
         return str(uuid.uuid4()).replace("-", "").upper()[:26]

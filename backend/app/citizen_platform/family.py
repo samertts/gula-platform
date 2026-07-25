@@ -101,16 +101,11 @@ class GuardianService:
         return False
 
     def get_guardians(self, citizen_id: str) -> list[dict[str, Any]]:
-        return [
-            g for g in self._guardians.get(citizen_id, []) if g["is_active"]
-        ]
+        return [g for g in self._guardians.get(citizen_id, []) if g["is_active"]]
 
     def is_guardian(self, guardian_citizen_id: str, ward_citizen_id: str) -> bool:
         guardians = self._guardians.get(ward_citizen_id, [])
-        return any(
-            g["guardian_id"] == guardian_citizen_id and g["is_active"]
-            for g in guardians
-        )
+        return any(g["guardian_id"] == guardian_citizen_id and g["is_active"] for g in guardians)
 
 
 class ConsentManager:
@@ -147,20 +142,19 @@ class ConsentManager:
         return False
 
     def check_consent(
-        self, citizen_id: str, granted_to: str, scope: str,
+        self,
+        citizen_id: str,
+        granted_to: str,
+        scope: str,
     ) -> bool:
         consents = self._consents.get(citizen_id, [])
         return any(
-            c["granted_to"] == granted_to
-            and c["scope"] == scope
-            and c["status"] == "active"
+            c["granted_to"] == granted_to and c["scope"] == scope and c["status"] == "active"
             for c in consents
         )
 
     def get_active_consents(self, citizen_id: str) -> list[dict[str, Any]]:
-        return [
-            c for c in self._consents.get(citizen_id, []) if c["status"] == "active"
-        ]
+        return [c for c in self._consents.get(citizen_id, []) if c["status"] == "active"]
 
     def get_consent_history(self, citizen_id: str) -> list[dict[str, Any]]:
         return self._consents.get(citizen_id, [])

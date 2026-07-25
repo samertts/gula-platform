@@ -88,6 +88,7 @@ class ReleaseManager:
 
         try:
             import asyncio
+
             await asyncio.sleep(0.3)
             release.status = ReleaseStatus.DEPLOYED
             release.deployed_at = datetime.now(UTC).isoformat()
@@ -148,8 +149,13 @@ class ReleaseManager:
             "total": len(self._releases),
             "by_status": {
                 s: sum(1 for r in self._releases.values() if r.status == s)
-                for s in [ReleaseStatus.PENDING, ReleaseStatus.APPROVED, ReleaseStatus.DEPLOYED,
-                          ReleaseStatus.ROLLED_BACK, ReleaseStatus.FAILED]
+                for s in [
+                    ReleaseStatus.PENDING,
+                    ReleaseStatus.APPROVED,
+                    ReleaseStatus.DEPLOYED,
+                    ReleaseStatus.ROLLED_BACK,
+                    ReleaseStatus.FAILED,
+                ]
             },
             "by_channel": {
                 c.value: sum(1 for r in self._releases.values() if r.channel == c)

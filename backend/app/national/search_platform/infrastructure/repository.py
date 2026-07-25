@@ -19,12 +19,13 @@ from app.national.search_platform.infrastructure.models import (
 
 
 class SQLAlchemySavedSearchRepository(SavedSearchRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save(self, saved: SavedSearch) -> SavedSearch:
-        model = self.db.query(NationalSavedSearch).filter(NationalSavedSearch.id == saved.id).first()
+        model = (
+            self.db.query(NationalSavedSearch).filter(NationalSavedSearch.id == saved.id).first()
+        )
         if model:
             model.name = saved.name
             model.description = saved.description
@@ -50,10 +51,14 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
         return model.to_domain()
 
     async def get(self, search_id: str) -> SavedSearch | None:
-        model = self.db.query(NationalSavedSearch).filter(
-            NationalSavedSearch.id == search_id,
-            ~NationalSavedSearch.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalSavedSearch)
+            .filter(
+                NationalSavedSearch.id == search_id,
+                ~NationalSavedSearch.is_deleted,
+            )
+            .first()
+        )
         if not model:
             return None
         return model.to_domain()
@@ -67,34 +72,45 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
         query = self.db.query(NationalSavedSearch).filter(~~NationalSavedSearch.is_deleted)
         if created_by:
             query = query.filter(NationalSavedSearch.created_by == created_by)
-        models = query.order_by(NationalSavedSearch.created_at.desc()).offset(skip).limit(limit).all()
+        models = (
+            query.order_by(NationalSavedSearch.created_at.desc()).offset(skip).limit(limit).all()
+        )
         return [m.to_domain() for m in models]
 
     async def delete(self, search_id: str) -> None:
-        model = self.db.query(NationalSavedSearch).filter(
-            NationalSavedSearch.id == search_id,
-            ~NationalSavedSearch.is_deleted,
-        ).first()
+        model = (
+            self.db.query(NationalSavedSearch)
+            .filter(
+                NationalSavedSearch.id == search_id,
+                ~NationalSavedSearch.is_deleted,
+            )
+            .first()
+        )
         if model:
             model.is_deleted = True
             model.deleted_at = datetime.now(UTC)
             self.db.commit()
 
     async def find_scheduled(self) -> list[SavedSearch]:
-        models = self.db.query(NationalSavedSearch).filter(
-            NationalSavedSearch.scheduled,
-            ~NationalSavedSearch.is_deleted,
-        ).all()
+        models = (
+            self.db.query(NationalSavedSearch)
+            .filter(
+                NationalSavedSearch.scheduled,
+                ~NationalSavedSearch.is_deleted,
+            )
+            .all()
+        )
         return [m.to_domain() for m in models]
 
 
 class SQLAlchemySearchResultRepository(SearchResultRepository):
-
     def __init__(self, db: Session) -> None:
         self.db = db
 
     async def save_result(self, result: SearchResult) -> SearchResult:
-        model = self.db.query(NationalSearchResult).filter(NationalSearchResult.id == result.id).first()
+        model = (
+            self.db.query(NationalSearchResult).filter(NationalSearchResult.id == result.id).first()
+        )
         if model:
             model.query_id = result.query_id
             model.index_type = result.index_type.value
@@ -135,10 +151,14 @@ class SQLAlchemySearchResultRepository(SearchResultRepository):
 
     async def get_stats(self) -> dict[str, Any]:
         total = self.db.query(func.count(NationalSearchResult.id)).scalar() or 0
-        by_index = self.db.query(
-            NationalSearchResult.index_type,
-            func.count(NationalSearchResult.id).label("count"),
-        ).group_by(NationalSearchResult.index_type).all()
+        by_index = (
+            self.db.query(
+                NationalSearchResult.index_type,
+                func.count(NationalSearchResult.id).label("count"),
+            )
+            .group_by(NationalSearchResult.index_type)
+            .all()
+        )
         return {
             "total_searches": total,
             "by_index_type": {row.index_type: row.count for row in by_index},

@@ -65,8 +65,12 @@ async def create_job(
             name=body.get("name", ""),
             type=body.get("type", ""),
             description=body.get("description", ""),
-            priority=JobPriority(body.get("priority", "medium")) if body.get("priority") else JobPriority.MEDIUM,
-            category=JobCategory(body.get("category", "other")) if body.get("category") else JobCategory.OTHER,
+            priority=JobPriority(body.get("priority", "medium"))
+            if body.get("priority")
+            else JobPriority.MEDIUM,
+            category=JobCategory(body.get("category", "other"))
+            if body.get("category")
+            else JobCategory.OTHER,
             max_retries=body.get("max_retries", 3),
             timeout_s=body.get("timeout_s", 300),
             tags=body.get("tags", []),
@@ -81,8 +85,12 @@ async def create_job(
                 schedule_type=ScheduleType(schedule_data.get("schedule_type", "once")),
                 cron_expression=schedule_data.get("cron_expression", ""),
                 interval_seconds=schedule_data.get("interval_seconds", 0),
-                start_at=datetime.fromisoformat(schedule_data["start_at"]) if schedule_data.get("start_at") else None,
-                end_at=datetime.fromisoformat(schedule_data["end_at"]) if schedule_data.get("end_at") else None,
+                start_at=datetime.fromisoformat(schedule_data["start_at"])
+                if schedule_data.get("start_at")
+                else None,
+                end_at=datetime.fromisoformat(schedule_data["end_at"])
+                if schedule_data.get("end_at")
+                else None,
                 timezone=schedule_data.get("timezone", "UTC"),
                 enabled=schedule_data.get("enabled", True),
             )
@@ -117,7 +125,9 @@ async def create_job(
             "status": job.status.value,
         }
     except JobValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error",
+        ) from e
 
 
 @router.get("/")
@@ -194,7 +204,9 @@ async def get_job(
             ],
         }
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.put("/{job_id}")
@@ -212,11 +224,15 @@ async def update_job(
             "version": job.version,
         }
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except JobStateTransitionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
     except JobValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error",
+        ) from e
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -227,7 +243,9 @@ async def delete_job(
     try:
         await service.delete_job(job_id)
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/{job_id}/execute")
@@ -244,11 +262,15 @@ async def execute_job_now(
             "attempt": execution.attempt,
         }
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except JobStateTransitionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
     except JobDependencyError as e:
-        raise HTTPException(status_code=status.HTTP_424_FAILED_DEPENDENCY, detail="Dependency failed") from e
+        raise HTTPException(
+            status_code=status.HTTP_424_FAILED_DEPENDENCY, detail="Dependency failed",
+        ) from e
 
 
 @router.post("/{job_id}/cancel")
@@ -263,7 +285,9 @@ async def cancel_job(
         await service.cancel_job(job_id, reason=body.get("reason", ""))
         return {"status": "cancelled", "job_id": job_id}
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except JobStateTransitionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -277,7 +301,9 @@ async def pause_job(
         await service.pause_job(job_id)
         return {"status": "paused", "job_id": job_id}
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except JobStateTransitionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -291,7 +317,9 @@ async def resume_job(
         await service.resume_job(job_id)
         return {"status": "pending", "job_id": job_id}
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except JobStateTransitionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
@@ -322,7 +350,9 @@ async def get_execution_history(
             for e in executions
         ]
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.get("/{job_id}/schedules")
@@ -349,7 +379,9 @@ async def get_schedules(
             for s in schedules
         ]
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.post("/{job_id}/schedules", status_code=status.HTTP_201_CREATED)
@@ -377,9 +409,13 @@ async def create_schedule(
             "enabled": schedule.enabled,
         }
     except JobNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
     except JobValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error",
+        ) from e
 
 
 @router.delete("/{job_id}/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -391,7 +427,9 @@ async def delete_schedule(
     try:
         await service.delete_schedule(job_id, schedule_id)
     except (JobNotFoundError, JobScheduleNotFoundError) as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found",
+        ) from e
 
 
 @router.get("/stats")
@@ -414,7 +452,9 @@ async def get_due_jobs(
             "job_name": d["job"].name,
             "job_type": d["job"].type,
             "schedule_type": d["schedule"].schedule_type.value,
-            "next_run_at": d["schedule"].next_run_at.isoformat() if d["schedule"].next_run_at else None,
+            "next_run_at": d["schedule"].next_run_at.isoformat()
+            if d["schedule"].next_run_at
+            else None,
         }
         for d in due
     ]

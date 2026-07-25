@@ -164,31 +164,41 @@ class CodeQualityEvaluator(DimensionEvaluator):
                 tree = ast.parse(py_file.read_text())
                 for node in ast.walk(tree):
                     if isinstance(node, ast.ClassDef):
-                        methods = sum(1 for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)))
+                        methods = sum(
+                            1
+                            for n in node.body
+                            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                        )
                         if methods > 15:
-                            smells.append({
-                                "type": "god_class",
-                                "file": str(py_file.relative_to(target)),
-                                "name": node.name,
-                                "methods": methods,
-                            })
+                            smells.append(
+                                {
+                                    "type": "god_class",
+                                    "file": str(py_file.relative_to(target)),
+                                    "name": node.name,
+                                    "methods": methods,
+                                },
+                            )
                     if isinstance(node, ast.FunctionDef):
                         if node.end_lineno and node.lineno:
                             if node.end_lineno - node.lineno > 100:
-                                smells.append({
-                                    "type": "long_method",
-                                    "file": str(py_file.relative_to(target)),
-                                    "name": node.name,
-                                    "lines": node.end_lineno - node.lineno + 1,
-                                })
+                                smells.append(
+                                    {
+                                        "type": "long_method",
+                                        "file": str(py_file.relative_to(target)),
+                                        "name": node.name,
+                                        "lines": node.end_lineno - node.lineno + 1,
+                                    },
+                                )
                         params = len(node.args.args) + len(node.args.kwonlyargs)
                         if params > 6:
-                            smells.append({
-                                "type": "too_many_parameters",
-                                "file": str(py_file.relative_to(target)),
-                                "name": node.name,
-                                "parameters": params,
-                            })
+                            smells.append(
+                                {
+                                    "type": "too_many_parameters",
+                                    "file": str(py_file.relative_to(target)),
+                                    "name": node.name,
+                                    "parameters": params,
+                                },
+                            )
             except SyntaxError:
                 continue
         return smells
@@ -203,7 +213,11 @@ class CodeQualityEvaluator(DimensionEvaluator):
                 for node in ast.walk(tree):
                     if isinstance(node, ast.FunctionDef):
                         if not node.name.startswith("__") and not node.name.startswith("_"):
-                            if not node.name.islower() and "_" not in node.name and not node.name.isupper():
+                            if (
+                                not node.name.islower()
+                                and "_" not in node.name
+                                and not node.name.isupper()
+                            ):
                                 violations += 1
                     if isinstance(node, ast.ClassDef):
                         if not node.name[0].isupper():
@@ -220,17 +234,56 @@ class CodeQualityEvaluator(DimensionEvaluator):
             try:
                 content = py_file.read_text()
                 tree = ast.parse(content)
-                imports = [node for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))]
+                imports = [
+                    node for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))
+                ]
                 if len(imports) <= 1:
                     continue
-                stdlib = {"sys", "os", "json", "re", "math", "datetime", "pathlib", "typing", "abc", "functools", "collections", "hashlib", "uuid", "enum", "dataclasses", "subprocess", "threading", "time", "io", "copy", "itertools", "ast", "xml", "textwrap", "inspect", "warnings", "importlib", "pickle", "base64", "statistics", "operator"}
+                stdlib = {
+                    "sys",
+                    "os",
+                    "json",
+                    "re",
+                    "math",
+                    "datetime",
+                    "pathlib",
+                    "typing",
+                    "abc",
+                    "functools",
+                    "collections",
+                    "hashlib",
+                    "uuid",
+                    "enum",
+                    "dataclasses",
+                    "subprocess",
+                    "threading",
+                    "time",
+                    "io",
+                    "copy",
+                    "itertools",
+                    "ast",
+                    "xml",
+                    "textwrap",
+                    "inspect",
+                    "warnings",
+                    "importlib",
+                    "pickle",
+                    "base64",
+                    "statistics",
+                    "operator",
+                }
                 for imp in imports:
                     module = ""
                     if isinstance(imp, ast.Import):
                         module = imp.names[0].name.split(".")[0]
                     elif isinstance(imp, ast.ImportFrom) and imp.module:
                         module = imp.module.split(".")[0]
-                    if module and module not in stdlib and not module.startswith("app.") and "." not in module:
+                    if (
+                        module
+                        and module not in stdlib
+                        and not module.startswith("app.")
+                        and "." not in module
+                    ):
                         pass
                     if module and (module.startswith(("app.", "..", "."))):
                         pass

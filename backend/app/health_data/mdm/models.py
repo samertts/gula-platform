@@ -10,7 +10,12 @@ from app.health_data.enums import DataQuality
 class SourceReference(TenantAuditHealthDataEntity):
     __tablename__ = "hd_mdm_source_references"
 
-    golden_record_id = Column(String(26), ForeignKey("hd_mdm_patient_index.id", ondelete="CASCADE"), nullable=False, index=True)
+    golden_record_id = Column(
+        String(26),
+        ForeignKey("hd_mdm_patient_index.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     source_system = Column(String(64), nullable=False)
     source_id = Column(String(128), nullable=False)
     source_url = Column(String(512), nullable=True)

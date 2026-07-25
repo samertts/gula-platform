@@ -32,7 +32,9 @@ class LaboratoryIntegration(BaseConnector):
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
             headers["X-LIS-Version"] = self.config.get("lis_version", "2.0")
-            self._client = httpx.AsyncClient(timeout=self._timeout, verify=self._verify_ssl, headers=headers)
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, verify=self._verify_ssl, headers=headers
+            )
             self._connected = True
             logger.info("Laboratory integration connected")
             return True
@@ -49,7 +51,11 @@ class LaboratoryIntegration(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -133,7 +139,11 @@ class LaboratoryIntegration(BaseConnector):
             resp = await self._client.get(urljoin(self._base_url, "/api/tests"))
             if resp.is_success:
                 tests = resp.json()
-                return {"success": True, "tests": tests, "count": len(tests) if isinstance(tests, list) else 0}
+                return {
+                    "success": True,
+                    "tests": tests,
+                    "count": len(tests) if isinstance(tests, list) else 0,
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Test catalog fetch failed: %s", exc)
@@ -168,7 +178,9 @@ class LaboratoryIntegration(BaseConnector):
             "notes": data.get("notes", ""),
         }
         try:
-            resp = await self._client.post(urljoin(self._base_url, "/api/results/validate"), json=validation)
+            resp = await self._client.post(
+                urljoin(self._base_url, "/api/results/validate"), json=validation
+            )
             if resp.is_success:
                 return {"success": True, "validated": True}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
@@ -192,7 +204,11 @@ class LaboratoryIntegration(BaseConnector):
             resp = await self._client.get(urljoin(self._base_url, "/api/results"), params=params)
             if resp.is_success:
                 results = resp.json()
-                return {"success": True, "results": results, "count": len(results) if isinstance(results, list) else 0}
+                return {
+                    "success": True,
+                    "results": results,
+                    "count": len(results) if isinstance(results, list) else 0,
+                }
             return {"success": False, "error": resp.text, "status_code": resp.status_code}
         except Exception as exc:
             logger.error("Patient results fetch failed: %s", exc)

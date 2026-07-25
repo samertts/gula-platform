@@ -196,7 +196,9 @@ def format_for_prometheus(prefix: str = "gula_ai") -> str:
     lines.append(f"{prefix}_tokens_total {data['tokens']['total']}")
     lines.append(f"\n# HELP {prefix}_approvals_pending Pending approvals")
     lines.append(f"# TYPE {prefix}_approvals_pending gauge")
-    lines.append(f"{prefix}_approvals_pending {data['approvals']['total'] - data['approvals']['approved'] - data['approvals']['rejected']}")
+    lines.append(
+        f"{prefix}_approvals_pending {data['approvals']['total'] - data['approvals']['approved'] - data['approvals']['rejected']}",
+    )
     lines.append(f"\n# HELP {prefix}_cost_total_usd Total cost in USD")
     lines.append(f"# TYPE {prefix}_cost_total_usd gauge")
     lines.append(f"{prefix}_cost_total_usd {data['cost_usd']}")

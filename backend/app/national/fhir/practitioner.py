@@ -14,11 +14,19 @@ class FHIRPractitionerMapper:
             "resourceType": cls.RESOURCE_TYPE,
             "id": practitioner.fhir_id or practitioner.id,
             "identifier": cls._build_identifiers(practitioner),
-            "name": [{"use": "official", "text": practitioner.full_name, "family": practitioner.full_name or ""}],
+            "name": [
+                {
+                    "use": "official",
+                    "text": practitioner.full_name,
+                    "family": practitioner.full_name or "",
+                },
+            ],
             "telecom": cls._build_telecom(practitioner),
             "address": [{"text": practitioner.facility_id or ""}],
             "gender": practitioner.gender.value if practitioner.gender else None,
-            "birthDate": practitioner.date_of_birth.isoformat() if practitioner.date_of_birth else None,
+            "birthDate": practitioner.date_of_birth.isoformat()
+            if practitioner.date_of_birth
+            else None,
             "active": practitioner.is_active,
         }
         if practitioner.specialty:
@@ -31,11 +39,13 @@ class FHIRPractitionerMapper:
     def _build_identifiers(cls, practitioner: Practitioner) -> list[dict]:
         identifiers = []
         if practitioner.license_number:
-            identifiers.append({
-                "use": "official",
-                "system": "https://gula.health/identifier/license",
-                "value": practitioner.license_number,
-            })
+            identifiers.append(
+                {
+                    "use": "official",
+                    "system": "https://gula.health/identifier/license",
+                    "value": practitioner.license_number,
+                },
+            )
         return identifiers
 
     @classmethod

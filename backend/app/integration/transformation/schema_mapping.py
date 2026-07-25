@@ -36,7 +36,9 @@ class SchemaMapper:
     def register_map(self, schema_map: SchemaMap) -> None:
         key = f"{schema_map.source_schema}:{schema_map.target_schema}"
         self._maps[key] = schema_map
-        logger.info("Schema map registered: %s -> %s", schema_map.source_schema, schema_map.target_schema)
+        logger.info(
+            "Schema map registered: %s -> %s", schema_map.source_schema, schema_map.target_schema
+        )
 
     def map(self, data: dict[str, Any], source_schema: str, target_schema: str) -> dict[str, Any]:
         key = f"{source_schema}:{target_schema}"

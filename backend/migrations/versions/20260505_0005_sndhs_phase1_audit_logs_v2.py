@@ -33,16 +33,17 @@ Schema
 Revision ID : 20260505_0005
 Revises     : 20260505_0004
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
 
 
-revision      = "20260505_0005"
+revision = "20260505_0005"
 down_revision = "20260505_0004"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _table_exists(table: str) -> bool:
@@ -102,16 +103,17 @@ def upgrade() -> None:
         ),
     )
 
-    op.create_index("ix_sndhs_audit_logs_user_id",     "sndhs_audit_logs", ["user_id"])
-    op.create_index("ix_sndhs_audit_logs_entity",      "sndhs_audit_logs", ["entity_type", "entity_id"])
-    op.create_index("ix_sndhs_audit_logs_action",      "sndhs_audit_logs", ["action"])
-    op.create_index("ix_sndhs_audit_logs_purpose",     "sndhs_audit_logs", ["purpose"])
-    op.create_index("ix_sndhs_audit_logs_created_at",  "sndhs_audit_logs", ["created_at"])
+    op.create_index("ix_sndhs_audit_logs_user_id", "sndhs_audit_logs", ["user_id"])
+    op.create_index("ix_sndhs_audit_logs_entity", "sndhs_audit_logs", ["entity_type", "entity_id"])
+    op.create_index("ix_sndhs_audit_logs_action", "sndhs_audit_logs", ["action"])
+    op.create_index("ix_sndhs_audit_logs_purpose", "sndhs_audit_logs", ["purpose"])
+    op.create_index("ix_sndhs_audit_logs_created_at", "sndhs_audit_logs", ["created_at"])
 
     if _pg():
         # Append-only enforcement at the database level.
-        op.execute(text(
-            """
+        op.execute(
+            text(
+                """
             CREATE OR REPLACE FUNCTION sndhs_audit_logs_no_mutation()
             RETURNS trigger AS $$
             BEGIN
@@ -122,33 +124,40 @@ def upgrade() -> None:
             END;
             $$ LANGUAGE plpgsql;
             """
-        ))
-        op.execute(text(
-            "DROP TRIGGER IF EXISTS trg_sndhs_audit_logs_no_update ON sndhs_audit_logs"
-        ))
-        op.execute(text(
-            "CREATE TRIGGER trg_sndhs_audit_logs_no_update "
-            "BEFORE UPDATE ON sndhs_audit_logs "
-            "FOR EACH ROW EXECUTE FUNCTION sndhs_audit_logs_no_mutation()"
-        ))
-        op.execute(text(
-            "DROP TRIGGER IF EXISTS trg_sndhs_audit_logs_no_delete ON sndhs_audit_logs"
-        ))
-        op.execute(text(
-            "CREATE TRIGGER trg_sndhs_audit_logs_no_delete "
-            "BEFORE DELETE ON sndhs_audit_logs "
-            "FOR EACH ROW EXECUTE FUNCTION sndhs_audit_logs_no_mutation()"
-        ))
+            )
+        )
+        op.execute(
+            text("DROP TRIGGER IF EXISTS trg_sndhs_audit_logs_no_update ON sndhs_audit_logs")
+        )
+        op.execute(
+            text(
+                "CREATE TRIGGER trg_sndhs_audit_logs_no_update "
+                "BEFORE UPDATE ON sndhs_audit_logs "
+                "FOR EACH ROW EXECUTE FUNCTION sndhs_audit_logs_no_mutation()"
+            )
+        )
+        op.execute(
+            text("DROP TRIGGER IF EXISTS trg_sndhs_audit_logs_no_delete ON sndhs_audit_logs")
+        )
+        op.execute(
+            text(
+                "CREATE TRIGGER trg_sndhs_audit_logs_no_delete "
+                "BEFORE DELETE ON sndhs_audit_logs "
+                "FOR EACH ROW EXECUTE FUNCTION sndhs_audit_logs_no_mutation()"
+            )
+        )
         # Belt-and-braces: revoke UPDATE / DELETE / TRUNCATE on the role
         # commonly used by the application. The grant must exist; if it
         # doesn't, this REVOKE is a no-op.
-        op.execute(text(
-            "DO $$ BEGIN "
-            "  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user) THEN "
-            "    EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON sndhs_audit_logs FROM %I', current_user); "
-            "  END IF; "
-            "EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;"
-        ))
+        op.execute(
+            text(
+                "DO $$ BEGIN "
+                "  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user) THEN "
+                "    EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON sndhs_audit_logs FROM %I', current_user); "
+                "  END IF; "
+                "EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;"
+            )
+        )
 
 
 def downgrade() -> None:
@@ -156,13 +165,17 @@ def downgrade() -> None:
         return
 
     if _pg():
-        op.execute(text("DROP TRIGGER IF EXISTS trg_sndhs_audit_logs_no_delete ON sndhs_audit_logs"))
-        op.execute(text("DROP TRIGGER IF EXISTS trg_sndhs_audit_logs_no_update ON sndhs_audit_logs"))
+        op.execute(
+            text("DROP TRIGGER IF EXISTS trg_sndhs_audit_logs_no_delete ON sndhs_audit_logs")
+        )
+        op.execute(
+            text("DROP TRIGGER IF EXISTS trg_sndhs_audit_logs_no_update ON sndhs_audit_logs")
+        )
         op.execute(text("DROP FUNCTION IF EXISTS sndhs_audit_logs_no_mutation()"))
 
     op.drop_index("ix_sndhs_audit_logs_created_at", table_name="sndhs_audit_logs")
-    op.drop_index("ix_sndhs_audit_logs_purpose",    table_name="sndhs_audit_logs")
-    op.drop_index("ix_sndhs_audit_logs_action",     table_name="sndhs_audit_logs")
-    op.drop_index("ix_sndhs_audit_logs_entity",     table_name="sndhs_audit_logs")
-    op.drop_index("ix_sndhs_audit_logs_user_id",    table_name="sndhs_audit_logs")
+    op.drop_index("ix_sndhs_audit_logs_purpose", table_name="sndhs_audit_logs")
+    op.drop_index("ix_sndhs_audit_logs_action", table_name="sndhs_audit_logs")
+    op.drop_index("ix_sndhs_audit_logs_entity", table_name="sndhs_audit_logs")
+    op.drop_index("ix_sndhs_audit_logs_user_id", table_name="sndhs_audit_logs")
     op.drop_table("sndhs_audit_logs")

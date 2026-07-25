@@ -24,8 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Check Python syntax
@@ -79,8 +79,8 @@ jobs:
     needs: [syntax-gate]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Run Data Preservation Quality Gate
@@ -118,8 +118,8 @@ jobs:
         ports:
           - 5432:5432
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
@@ -155,15 +155,15 @@ jobs:
     needs: [syntax-gate]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install ruff
         run: pip install ruff
       - name: Ruff check
         run: ruff check backend/app/ --select=E9,F --statistics
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -209,8 +209,8 @@ jobs:
         ports:
           - 6379:6379
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install deps
@@ -231,7 +231,7 @@ jobs:
           cd backend
           python -m pytest tests/ -v --timeout=60 --cov=app --cov-report=xml --cov-report=term-missing --maxfail=5 2>&1
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         if: always()
         with:
           name: coverage-report
@@ -244,24 +244,25 @@ jobs:
     needs: [syntax-gate]
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install safety
-        run: pip install safety detect-secrets
+        run: pip install safety==3.2.0 detect-secrets==1.5.0
       - name: Safety check
         run: |
           cd backend
           safety check -r requirements.txt --full-report
       - name: Bandit check
         run: |
-          pip install bandit
+          pip install bandit==1.8.3
           bandit -ll -ii -r backend/app/ -f txt
       - name: detect-secrets scan
         run: |
+          cp .secrets.baseline /tmp/secrets-ci-snapshot
           detect-secrets scan \
             --baseline .secrets.baseline \
             --exclude-files '.*\.env\.example$' \
@@ -272,7 +273,8 @@ jobs:
             --exclude-files '\.venv/.*' \
             --all-files
           echo "Checking baseline freshness..."
-          if git status --porcelain .secrets.baseline | grep -q .; then
-            echo "❌ .secrets.baseline out of date — run: detect-secrets scan --baseline .secrets.baseline --all-files"
+          if ! diff -q /tmp/secrets-ci-snapshot .secrets.baseline > /dev/null 2>&1; then
+            echo "❌ .secrets.baseline out of date"
+            diff /tmp/secrets-ci-snapshot .secrets.baseline
             exit 1
           fi

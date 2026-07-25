@@ -7,12 +7,14 @@ if TYPE_CHECKING:
     from app.kernel import Kernel
 
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "kernel_request_id", default="",
+    "kernel_request_id",
+    default="",
 )
 tenant_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("kernel_tenant_id", default="")
 user_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("kernel_user_id", default="")
 correlation_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "kernel_correlation_id", default="",
+    "kernel_correlation_id",
+    default="",
 )
 
 

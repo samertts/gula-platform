@@ -10,6 +10,7 @@ Covers:
   - IdempotencyResult.cache called on duplicate → no-op
   - purge_expired_keys: deletes old rows, returns count
 """
+
 from __future__ import annotations
 
 import json
@@ -35,12 +36,14 @@ from sqlalchemy.orm import sessionmaker
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture()
 def db():
     """SQLite DB with idempotency_keys table created manually (no migration needed)."""
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     with engine.connect() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text("""
             CREATE TABLE idempotency_keys (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 key        TEXT NOT NULL UNIQUE,
@@ -49,7 +52,8 @@ def db():
                 status_code INTEGER,
                 response_body TEXT
             )
-        """))
+        """)
+        )
         conn.commit()
     Session = sessionmaker(bind=engine)
     s = Session()
@@ -60,14 +64,23 @@ def db():
         engine.dispose()
 
 
-def _insert_key(db, key: str, lab_id: int, age_hours: float = 0,
-                status_code: int = 200, body: str = '{"ok": true}'):
+def _insert_key(
+    db,
+    key: str,
+    lab_id: int,
+    age_hours: float = 0,
+    status_code: int = 200,
+    body: str = '{"ok": true}',
+):
     """Directly insert a key row for testing."""
     created = datetime.now(UTC) - timedelta(hours=age_hours)
-    db.execute(text("""
+    db.execute(
+        text("""
         INSERT INTO idempotency_keys (key, lab_id, created_at, status_code, response_body)
         VALUES (:key, :lab_id, :created_at, :sc, :body)
-    """), {"key": key, "lab_id": lab_id, "created_at": created, "sc": status_code, "body": body})
+    """),
+        {"key": key, "lab_id": lab_id, "created_at": created, "sc": status_code, "body": body},
+    )
     db.commit()
 
 
@@ -77,13 +90,17 @@ def _key_count(db) -> int:
 
 # ── IdempotencyResult.cache ───────────────────────────────────────────────────
 
+
 class TestIdempotencyResultCache:
     def test_cache_stores_status_and_body(self, db):
         # Insert a pending key (no response yet)
-        db.execute(text("""
+        db.execute(
+            text("""
             INSERT INTO idempotency_keys (key, lab_id, created_at)
             VALUES ('test-key-001', 1, :now)
-        """), {"now": datetime.now(UTC)})
+        """),
+            {"now": datetime.now(UTC)},
+        )
         db.commit()
 
         result = IdempotencyResult(
@@ -97,7 +114,9 @@ class TestIdempotencyResultCache:
         result.cache(status_code=201, body={"order_id": 42})
 
         row = db.execute(
-            text("SELECT status_code, response_body FROM idempotency_keys WHERE key = 'test-key-001'")
+            text(
+                "SELECT status_code, response_body FROM idempotency_keys WHERE key = 'test-key-001'"
+            )
         ).fetchone()
         assert row[0] == 201
         assert json.loads(row[1])["order_id"] == 42
@@ -124,6 +143,7 @@ class TestIdempotencyResultCache:
 
 
 # ── Key validation ────────────────────────────────────────────────────────────
+
 
 class TestKeyValidation:
     def test_key_too_long_raises_400(self):
@@ -163,6 +183,7 @@ class TestKeyValidation:
 
 # ── Duplicate detection ───────────────────────────────────────────────────────
 
+
 class TestDuplicateDetection:
     def test_new_key_is_not_duplicate(self, db):
         from app.core.idempotency import idempotency_check
@@ -189,7 +210,9 @@ class TestDuplicateDetection:
         from app.core.idempotency import idempotency_check
 
         # Insert key that's 25 hours old (TTL is 24 hours)
-        _insert_key(db, "old-key-001", lab_id=1, age_hours=25, status_code=200, body='{"old": true}')
+        _insert_key(
+            db, "old-key-001", lab_id=1, age_hours=25, status_code=200, body='{"old": true}'
+        )
 
         mock_user = MagicMock()
         mock_user.lab_id = 1
@@ -204,13 +227,14 @@ class TestDuplicateDetection:
         _insert_key(db, "shared-key", lab_id=1, age_hours=1, status_code=200, body='{"lab": 1}')
 
         mock_user = MagicMock()
-        mock_user.lab_id = 2   # different lab
+        mock_user.lab_id = 2  # different lab
 
         result = idempotency_check(idempotency_key="shared-key", db=db, current_user=mock_user)
         assert result.is_duplicate is False
 
 
 # ── purge_expired_keys ────────────────────────────────────────────────────────
+
 
 class TestPurgeExpiredKeys:
     def test_purge_removes_old_keys_and_returns_count(self, db):

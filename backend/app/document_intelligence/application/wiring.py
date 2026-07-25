@@ -83,6 +83,7 @@ class DefaultEncryptionService(EncryptionService):
 
     async def hash_document(self, data: bytes) -> str:
         import hashlib
+
         return hashlib.sha256(data).hexdigest()
 
     async def verify_hash(self, data: bytes, expected_hash: str) -> bool:
@@ -93,7 +94,10 @@ class DefaultEncryptionService(EncryptionService):
         return b""
 
     async def verify_digital_signature(
-        self, data: bytes, signature: bytes, certificate: bytes | None = None,
+        self,
+        data: bytes,
+        signature: bytes,
+        certificate: bytes | None = None,
     ) -> bool:
         return False
 
@@ -115,12 +119,14 @@ class DefaultImagePreprocessor(ImagePreprocessor):
         if self._cv2 is None:
             try:
                 import cv2
+
                 self._cv2 = cv2
             except ImportError:
                 pass
         if self._numpy is None:
             try:
                 import numpy
+
                 self._numpy = numpy
             except ImportError:
                 pass
@@ -146,7 +152,9 @@ class DefaultImagePreprocessor(ImagePreprocessor):
         h, w = img.shape[:2]
         matrix = self._cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
         rotated = self._cv2.warpAffine(
-            img, matrix, (w, h),
+            img,
+            matrix,
+            (w, h),
             flags=self._cv2.INTER_CUBIC,
             borderMode=self._cv2.BORDER_REPLICATE,
         )
@@ -208,7 +216,9 @@ class DefaultImagePreprocessor(ImagePreprocessor):
         if self._cv2:
             arr = self._numpy.frombuffer(image_data, self._numpy.uint8)
             img = self._cv2.imdecode(arr, self._cv2.IMREAD_GRAYSCALE)
-            _, binary = self._cv2.threshold(img, 0, 255, self._cv2.THRESH_BINARY + self._cv2.THRESH_OTSU)
+            _, binary = self._cv2.threshold(
+                img, 0, 255, self._cv2.THRESH_BINARY + self._cv2.THRESH_OTSU,
+            )
             _, encoded = self._cv2.imencode(".png", binary)
             return encoded.tobytes()
         return image_data
@@ -245,12 +255,14 @@ class DefaultDocumentParser(DocumentParser):
         if self._pdf2image is None:
             try:
                 from pdf2image import convert_from_bytes
+
                 self._pdf2image = convert_from_bytes
             except ImportError:
                 pass
         if self._pymupdf is None:
             try:
                 import fitz
+
                 self._pymupdf = fitz
             except ImportError:
                 pass
@@ -259,6 +271,7 @@ class DefaultDocumentParser(DocumentParser):
         if self._docx is None:
             try:
                 from docx import Document
+
                 self._docx = Document
             except ImportError:
                 pass
@@ -266,6 +279,7 @@ class DefaultDocumentParser(DocumentParser):
     async def _to_pil(self) -> Any:
         if self._PIL is None:
             from PIL import Image
+
             self._PIL = Image
         return self._PIL
 
@@ -287,6 +301,7 @@ class DefaultDocumentParser(DocumentParser):
             pil_images = self._pdf2image(data, dpi=300)
             for img in pil_images:
                 import io
+
                 buf = io.BytesIO()
                 img.save(buf, format="PNG")
                 images.append(buf.getvalue())
@@ -302,6 +317,7 @@ class DefaultDocumentParser(DocumentParser):
         await self._lazy_init_docx()
         if self._docx:
             import io
+
             doc = self._docx(io.BytesIO(data))
             return "\n".join(p.text for p in doc.paragraphs)
         return ""
@@ -348,35 +364,88 @@ class DefaultDocumentClassifier(DocumentClassifier):
         self._custom_classes: dict[str, list[str]] = {}
         self._patterns: dict[str, list[str]] = {
             "laboratory_report": [
-                "hemoglobin", "glucose", "wbc", "rbc", "platelet", "hba1c",
-                "cholesterol", "creatinine", "bun", "alt", "ast", "lab result",
-                "نتيجة مختبر", "تحليل", "فحص", "مخبري",
+                "hemoglobin",
+                "glucose",
+                "wbc",
+                "rbc",
+                "platelet",
+                "hba1c",
+                "cholesterol",
+                "creatinine",
+                "bun",
+                "alt",
+                "ast",
+                "lab result",
+                "نتيجة مختبر",
+                "تحليل",
+                "فحص",
+                "مخبري",
             ],
             "radiology_report": [
-                "x-ray", "xray", "mri", "ct scan", "ultrasound", "radiology",
-                "radiologist", "imaging", "chest xray", "echo",
-                "أشعة", "رنين", "مقطعي", "تصوير", "سونار",
+                "x-ray",
+                "xray",
+                "mri",
+                "ct scan",
+                "ultrasound",
+                "radiology",
+                "radiologist",
+                "imaging",
+                "chest xray",
+                "echo",
+                "أشعة",
+                "رنين",
+                "مقطعي",
+                "تصوير",
+                "سونار",
             ],
             "prescription": [
-                "take", "tablet", "capsule", "dose", "mg", "prescription",
-                "doctor", "pharmacy", "medication", "rx",
-                "روشتة", "وصفة", "دواء", "جرعة", "علاج",
+                "take",
+                "tablet",
+                "capsule",
+                "dose",
+                "mg",
+                "prescription",
+                "doctor",
+                "pharmacy",
+                "medication",
+                "rx",
+                "روشتة",
+                "وصفة",
+                "دواء",
+                "جرعة",
+                "علاج",
             ],
             "national_id": [
-                "national id", "civil id", "identity card", "رقم وطني",
-                "هوية", "بطاقة", "جنسية", "رقم مدني",
+                "national id",
+                "civil id",
+                "identity card",
+                "رقم وطني",
+                "هوية",
+                "بطاقة",
+                "جنسية",
+                "رقم مدني",
             ],
             "medical_certificate": [
-                "medical certificate", "fit to work", "sick leave",
-                "شهادة طبية", "تقرير طبي", "إجازة مرضية",
+                "medical certificate",
+                "fit to work",
+                "sick leave",
+                "شهادة طبية",
+                "تقرير طبي",
+                "إجازة مرضية",
             ],
             "referral": [
-                "referral", "refer", "consultation", "تحويل", "إحالة",
+                "referral",
+                "refer",
+                "consultation",
+                "تحويل",
+                "إحالة",
             ],
         }
 
     async def classify(
-        self, text: str, pages: list[Any] | None = None,
+        self,
+        text: str,
+        pages: list[Any] | None = None,
     ) -> Any:
         from ..domain.entities import ClassificationResult
         from ..domain.enums import ClassificationConfidence, DocumentCategory
@@ -415,9 +484,13 @@ class DefaultDocumentClassifier(DocumentClassifier):
 
         total = sum(scores.values())
         best_category = max(scores, key=scores.get)
-        best_score = scores[best_category] / max(len(self._patterns.get(str(best_category), [])) * 2, total)
+        best_score = scores[best_category] / max(
+            len(self._patterns.get(str(best_category), [])) * 2, total,
+        )
 
-        alt = [(cat, score / max(total, 1)) for cat, score in scores.items() if cat != best_category]
+        alt = [
+            (cat, score / max(total, 1)) for cat, score in scores.items() if cat != best_category
+        ]
         alt.sort(key=lambda x: x[1], reverse=True)
         alt = alt[:3]
 
@@ -442,7 +515,8 @@ class DefaultDocumentClassifier(DocumentClassifier):
         )
 
     async def classify_batch(
-        self, documents: list[tuple[str, list | None]],
+        self,
+        documents: list[tuple[str, list | None]],
     ) -> list[Any]:
         return [await self.classify(text) for text, _ in documents]
 
@@ -467,7 +541,9 @@ class DefaultEntityExtractor(EntityExtractor):
         }
 
     async def extract(
-        self, text: str, category: Any | None = None,
+        self,
+        text: str,
+        category: Any | None = None,
     ) -> tuple[list, list, list]:
         import re
 
@@ -493,9 +569,7 @@ class DefaultEntityExtractor(EntityExtractor):
                             entity_type=entity_type,
                             value=value,
                             confidence=0.9,
-                            source_text=text[
-                                max(0, match.start() - 30) : match.end() + 30
-                            ],
+                            source_text=text[max(0, match.start() - 30) : match.end() + 30],
                         ),
                     )
 
@@ -524,13 +598,17 @@ class DefaultEntityExtractor(EntityExtractor):
         return entities, fields, tables
 
     async def extract_from_pages(
-        self, pages: list, category: Any | None = None,
+        self,
+        pages: list,
+        category: Any | None = None,
     ) -> tuple[list, list, list]:
         full_text = "\n\n".join(p.text for p in pages if hasattr(p, "text") and p.text)
         return await self.extract(full_text, category)
 
     async def extract_entities_of_type(
-        self, text: str, entity_types: list,
+        self,
+        text: str,
+        entity_types: list,
     ) -> list:
         all_entities, _, _ = await self.extract(text)
         return [e for e in all_entities if e.entity_type in entity_types]
@@ -544,15 +622,19 @@ class DefaultFhirMapper(FhirMapper):
             "status": "current",
             "docStatus": "final",
             "type": {"text": document.mime_type},
-            "subject": {"reference": f"Patient/{document.patient_id}"} if document.patient_id else None,
-            "content": [{
-                "attachment": {
-                    "contentType": document.mime_type,
-                    "size": document.size_bytes,
-                    "title": document.filename,
-                    "creation": document.created_at.isoformat(),
+            "subject": {"reference": f"Patient/{document.patient_id}"}
+            if document.patient_id
+            else None,
+            "content": [
+                {
+                    "attachment": {
+                        "contentType": document.mime_type,
+                        "size": document.size_bytes,
+                        "title": document.filename,
+                        "creation": document.created_at.isoformat(),
+                    },
                 },
-            }],
+            ],
             "context": {
                 "period": {"start": document.created_at.isoformat()},
             },
@@ -598,11 +680,18 @@ class DefaultFhirMapper(FhirMapper):
                 "status": "final",
                 "code": {"text": field.name},
                 "valueQuantity": {
-                    "value": float(field.normalized_value) if field.normalized_value.replace(".", "", 1).isdigit() else 0,
+                    "value": float(field.normalized_value)
+                    if field.normalized_value.replace(".", "", 1).isdigit()
+                    else 0,
                     "unit": field.metadata.get("unit", ""),
-                } if field.normalized_value else None,
+                }
+                if field.normalized_value
+                else None,
             }
-            loinc = next((e.loinc_code for e in entities if e.field_name == field.name and e.loinc_code), None)
+            loinc = next(
+                (e.loinc_code for e in entities if e.field_name == field.name and e.loinc_code),
+                None,
+            )
             if loinc:
                 obs["code"]["coding"] = [{"system": "http://loinc.org", "code": loinc}]
             observations.append(obs)
@@ -642,7 +731,9 @@ class DefaultFhirMapper(FhirMapper):
                     "code": {"text": e.value},
                 }
                 if e.icd_code:
-                    condition["code"]["coding"] = [{"system": "http://hl7.org/fhir/sid/icd-10", "code": e.icd_code}]
+                    condition["code"]["coding"] = [
+                        {"system": "http://hl7.org/fhir/sid/icd-10", "code": e.icd_code},
+                    ]
                 conditions.append(condition)
         return conditions
 
@@ -694,21 +785,26 @@ class DefaultKnowledgeExtractor(KnowledgeExtractor):
     async def extract_concepts(self, text: str, entities) -> list[dict]:
         concepts = []
         for entity in entities:
-            concepts.append({
-                "name": entity.value,
-                "type": str(entity.entity_type),
-                "confidence": entity.confidence,
-            })
+            concepts.append(
+                {
+                    "name": entity.value,
+                    "type": str(entity.entity_type),
+                    "confidence": entity.confidence,
+                },
+            )
         return concepts
 
     async def build_knowledge_graph(self, concepts: list[dict]) -> dict:
         return {
-            "nodes": [{"id": i, "name": c["name"], "type": c["type"]} for i, c in enumerate(concepts)],
+            "nodes": [
+                {"id": i, "name": c["name"], "type": c["type"]} for i, c in enumerate(concepts)
+            ],
             "edges": [],
         }
 
     async def generate_embeddings(self, text: str) -> list[float]:
         import hashlib
+
         digest = hashlib.sha256(text.encode()).digest()
         return [b / 255.0 for b in digest[:64]]
 
@@ -719,11 +815,13 @@ class DefaultKnowledgeExtractor(KnowledgeExtractor):
         timeline = []
         for entity in entities:
             if entity.entity_type.name in ("date", "diagnosis", "test_result"):
-                timeline.append({
-                    "type": str(entity.entity_type),
-                    "value": entity.value,
-                    "date": entity.metadata.get("date", ""),
-                })
+                timeline.append(
+                    {
+                        "type": str(entity.entity_type),
+                        "value": entity.value,
+                        "date": entity.metadata.get("date", ""),
+                    },
+                )
         return timeline
 
 
@@ -748,11 +846,13 @@ class DefaultSearchIndexer(SearchIndexer):
             "metadata": document.metadata,
             "tags": document.tags,
         }
-        self._text_index.append({
-            "id": doc_id,
-            "text": text,
-            "filename": document.filename,
-        })
+        self._text_index.append(
+            {
+                "id": doc_id,
+                "text": text,
+                "filename": document.filename,
+            },
+        )
         return doc_id
 
     async def search(self, query: str, filters: dict | None = None) -> list[dict]:
@@ -773,7 +873,9 @@ class DefaultSearchIndexer(SearchIndexer):
         limit = (filters or {}).get("limit", 50)
         return results[:limit]
 
-    async def hybrid_search(self, query: str, query_vector: list | None = None, limit: int = 50) -> list[dict]:
+    async def hybrid_search(
+        self, query: str, query_vector: list | None = None, limit: int = 50,
+    ) -> list[dict]:
         return await self.search(query, {"limit": limit})
 
     async def semantic_search(self, query: str, limit: int = 50) -> list[dict]:
@@ -791,6 +893,7 @@ class DefaultSearchIndexer(SearchIndexer):
 class DefaultMedicalParser(MedicalParser):
     async def parse_lab_report(self, text: str) -> dict[str, Any]:
         import re
+
         result: dict[str, Any] = {"tests": []}
         test_patterns = [
             (r"(Hemoglobin|Hb)\s*:?\s*(\d+\.?\d*)\s*(g/dL|g/L)?", "hematology"),
@@ -802,12 +905,14 @@ class DefaultMedicalParser(MedicalParser):
         ]
         for pattern, category in test_patterns:
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                result["tests"].append({
-                    "name": match.group(1),
-                    "value": match.group(2),
-                    "unit": match.group(3) if match.lastindex and match.lastindex >= 3 else "",
-                    "category": category,
-                })
+                result["tests"].append(
+                    {
+                        "name": match.group(1),
+                        "value": match.group(2),
+                        "unit": match.group(3) if match.lastindex and match.lastindex >= 3 else "",
+                        "category": category,
+                    },
+                )
         return result
 
     async def parse_radiology_report(self, text: str) -> dict[str, Any]:
@@ -815,8 +920,11 @@ class DefaultMedicalParser(MedicalParser):
 
     async def parse_prescription(self, text: str) -> dict[str, Any]:
         import re
+
         medications = []
-        med_pattern = re.findall(r"([\u0600-\u06FF\w\s]+?)\s*(\d+)\s*(mg|g|ml|mcg|tablet|capsule)?", text)
+        med_pattern = re.findall(
+            r"([\u0600-\u06FF\w\s]+?)\s*(\d+)\s*(mg|g|ml|mcg|tablet|capsule)?", text,
+        )
         for name, dose, unit in med_pattern:
             medications.append({"name": name.strip(), "dose": dose, "unit": unit})
         return {"medications": medications}
@@ -987,7 +1095,9 @@ def build_orchestrator(
     entity_repo: EntityRepository = SqlEntityRepository(session_factory)
     field_repo: FieldRepository = SqlFieldRepository(session_factory)
     table_repo: TableRepository = SqlTableRepository(session_factory)
-    classifier_repo: ClassificationResultRepository = SqlClassificationResultRepository(session_factory)
+    classifier_repo: ClassificationResultRepository = SqlClassificationResultRepository(
+        session_factory,
+    )
     pipeline_repo: PipelineResultRepository = SqlPipelineResultRepository(session_factory)
     storage: StorageRepository = LocalStorageRepository(storage_path)
 
@@ -1039,15 +1149,30 @@ def build_orchestrator(
 
     ingestion = DefaultIngestionService(doc_repo, storage, parser, encryptor, events, audit)
     ocr_pipeline = DefaultOcrPipelineService(
-        provider_manager.get_all(), parser, preprocessor, layout,
-        benchmark, ocr_repo, doc_repo, events, audit,
+        provider_manager.get_all(),
+        parser,
+        preprocessor,
+        layout,
+        benchmark,
+        ocr_repo,
+        doc_repo,
+        events,
+        audit,
     )
-    classifier_service = DefaultClassifierService(classifier, classifier_repo, doc_repo, events, audit)
-    entity_service = DefaultEntityExtractionService(extractor, entity_repo, field_repo, table_repo, medical_parser, events, audit)
+    classifier_service = DefaultClassifierService(
+        classifier, classifier_repo, doc_repo, events, audit,
+    )
+    entity_service = DefaultEntityExtractionService(
+        extractor, entity_repo, field_repo, table_repo, medical_parser, events, audit,
+    )
     fhir_service = DefaultFhirMappingService(fhir_mapper, events, audit)
-    knowledge_service = DefaultKnowledgePipelineService(knowledge_extractor, search_indexer, events, audit)
+    knowledge_service = DefaultKnowledgePipelineService(
+        knowledge_extractor, search_indexer, events, audit,
+    )
     search_service = DefaultSearchService(search_indexer)
-    real_lifecycle = InfrastructureDocumentLifecycleManager(doc_repo, retention_repo, lifecycle_repo, preservation_repo)
+    real_lifecycle = InfrastructureDocumentLifecycleManager(
+        doc_repo, retention_repo, lifecycle_repo, preservation_repo,
+    )
     remediation = DefaultRemediationService(doc_repo)
 
     gov_service = InfrastructureGovernmentRecordsService(gov_doc_repo, doc_repo)
@@ -1098,7 +1223,9 @@ def build_orchestrator(
 
 def get_orchestrator() -> DocumentIntelligenceOrchestrator:
     if _orchestrator is None:
-        raise RuntimeError("Document Intelligence Platform not initialized. Call build_orchestrator() first.")
+        raise RuntimeError(
+            "Document Intelligence Platform not initialized. Call build_orchestrator() first.",
+        )
     return _orchestrator
 
 

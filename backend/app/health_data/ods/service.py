@@ -79,7 +79,7 @@ class ODSService:
         if sort_by:
             data = sorted(data, key=lambda r: r.get(sort_by, ""), reverse=sort_desc)
 
-        return data[offset:offset + limit]
+        return data[offset : offset + limit]
 
     async def refresh(
         self,
@@ -103,7 +103,9 @@ class ODSService:
             self.set_data(view_name, data)
             duration = (time.monotonic() - start) * 1000
 
-            logger.info("ODS view refreshed: %s (%d rows) in %.1fms", view_name, len(data), duration)
+            logger.info(
+                "ODS view refreshed: %s (%d rows) in %.1fms", view_name, len(data), duration
+            )
             return ODSRefreshResult(
                 entity_type=view_name,
                 rows_refreshed=len(data),

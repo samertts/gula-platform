@@ -30,6 +30,7 @@ from app.financial.services import (
 
 # ── Pricing Module (pricing.py) ───────────────────────────────────────
 
+
 class TestCalculateFee:
     def test_basic_fee(self):
         result = calculate_fee(base_price=Decimal("10000"), quantity=1)
@@ -50,7 +51,9 @@ class TestCalculateFee:
         assert result == expected.quantize(Decimal("1"))
 
     def test_both_discounts(self):
-        result = calculate_fee(base_price=Decimal("20000"), quantity=1, quality_accredited=True, monthly_volume=200)
+        result = calculate_fee(
+            base_price=Decimal("20000"), quantity=1, quality_accredited=True, monthly_volume=200
+        )
         subtotal = Decimal("20000")
         discount = subtotal * Decimal("0.05") + subtotal * Decimal("0.10")
         expected = (subtotal - discount).quantize(Decimal("1"))
@@ -77,8 +80,12 @@ class TestCalculateFee:
             calculate_fee(base_price=Decimal("1000"), quantity=0)
 
     def test_volume_discount_threshold_boundary(self):
-        below = calculate_fee(base_price=Decimal("10000"), quantity=1, monthly_volume=VOLUME_DISCOUNT_THRESHOLD)
-        exact = calculate_fee(base_price=Decimal("10000"), quantity=1, monthly_volume=VOLUME_DISCOUNT_THRESHOLD + 1)
+        below = calculate_fee(
+            base_price=Decimal("10000"), quantity=1, monthly_volume=VOLUME_DISCOUNT_THRESHOLD
+        )
+        exact = calculate_fee(
+            base_price=Decimal("10000"), quantity=1, monthly_volume=VOLUME_DISCOUNT_THRESHOLD + 1
+        )
         assert below > exact  # discount kicks in above threshold
 
 
@@ -129,6 +136,7 @@ class TestEnforceMinimumBill:
 
 # ── Service Layer Edge Cases ──────────────────────────────────────────
 
+
 @pytest.fixture(autouse=True)
 def _enable_financial_engine(monkeypatch):
     monkeypatch.setattr("app.config.ENABLE_FINANCIAL_ENGINE", True)
@@ -172,18 +180,25 @@ class TestInvoiceServiceEdgeCases:
             {"description": "Blood Sugar", "quantity": 1, "unit_price": 3000, "total_price": 3000},
         ]
         result = InvoiceService.create_invoice(
-            db=db, lab_id=1, subscription_id=s.id,
-            amount=Decimal("13000.00"), items=items,
+            db=db,
+            lab_id=1,
+            subscription_id=s.id,
+            amount=Decimal("13000.00"),
+            items=items,
         )
         assert result["lab_id"] == 1
-        invoice_items = db.query(FinInvoiceItem).filter(FinInvoiceItem.invoice_id == result["id"]).all()
+        invoice_items = (
+            db.query(FinInvoiceItem).filter(FinInvoiceItem.invoice_id == result["id"]).all()
+        )
         assert len(invoice_items) == 2
         assert invoice_items[0].description == "CBC Test"
 
     def test_create_without_subscription(self, db):
         _create_provider(db, lab_id=2)
         result = InvoiceService.create_invoice(
-            db=db, lab_id=2, subscription_id=None,
+            db=db,
+            lab_id=2,
+            subscription_id=None,
             amount=Decimal("25000.00"),
         )
         assert result["lab_id"] == 2
@@ -191,10 +206,15 @@ class TestInvoiceServiceEdgeCases:
 
     def test_list_invoices_status_filter(self, db):
         from datetime import date, timedelta
+
         p = _create_provider(db, lab_id=1)
         s = _create_subscription(db, provider_id=p.id)
-        InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal("10000.00"))
-        InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal("20000.00"))
+        InvoiceService.create_invoice(
+            db=db, lab_id=1, subscription_id=s.id, amount=Decimal("10000.00")
+        )
+        InvoiceService.create_invoice(
+            db=db, lab_id=1, subscription_id=s.id, amount=Decimal("20000.00")
+        )
         issued = InvoiceService.list_invoices(db, lab_id=1, status="issued")
         assert len(issued) >= 2
         paid = InvoiceService.list_invoices(db, lab_id=1, status="paid")
@@ -204,7 +224,9 @@ class TestInvoiceServiceEdgeCases:
         p = _create_provider(db, lab_id=1)
         s = _create_subscription(db, provider_id=p.id)
         for i in range(5):
-            InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal(f"{i+1}0000.00"))
+            InvoiceService.create_invoice(
+                db=db, lab_id=1, subscription_id=s.id, amount=Decimal(f"{i + 1}0000.00")
+            )
         page1 = InvoiceService.list_invoices(db, lab_id=1, limit=2, offset=0)
         page2 = InvoiceService.list_invoices(db, lab_id=1, limit=2, offset=2)
         assert len(page1) == 2
@@ -215,13 +237,19 @@ class TestInvoiceServiceEdgeCases:
 class TestPaymentServiceEdgeCases:
     def test_different_methods(self, db):
         from app.financial.services import InvoiceService, PaymentService
+
         p = _create_provider(db, lab_id=1)
         s = _create_subscription(db, provider_id=p.id)
-        inv = InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal("50000.00"))
+        inv = InvoiceService.create_invoice(
+            db=db, lab_id=1, subscription_id=s.id, amount=Decimal("50000.00")
+        )
         for method in ["bank_transfer", "credit_card", "cash", "check"]:
             result = PaymentService.process_payment(
-                db=db, invoice_id=inv["id"], lab_id=1,
-                amount=Decimal("10000.00"), method=method,
+                db=db,
+                invoice_id=inv["id"],
+                lab_id=1,
+                amount=Decimal("10000.00"),
+                method=method,
                 reference=f"ref-{method}",
             )
             assert result["method"] == method
@@ -229,12 +257,18 @@ class TestPaymentServiceEdgeCases:
 
     def test_with_reference_and_notes(self, db):
         from app.financial.services import InvoiceService, PaymentService
+
         p = _create_provider(db, lab_id=1)
         s = _create_subscription(db, provider_id=p.id)
-        inv = InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal("30000.00"))
+        inv = InvoiceService.create_invoice(
+            db=db, lab_id=1, subscription_id=s.id, amount=Decimal("30000.00")
+        )
         result = PaymentService.process_payment(
-            db=db, invoice_id=inv["id"], lab_id=1,
-            amount=Decimal("30000.00"), reference="TXN-001",
+            db=db,
+            invoice_id=inv["id"],
+            lab_id=1,
+            amount=Decimal("30000.00"),
+            reference="TXN-001",
             notes="Test payment",
         )
         assert result["reference"] == "TXN-001"
@@ -242,11 +276,16 @@ class TestPaymentServiceEdgeCases:
 
     def test_payment_lab_isolation_wrong_lab(self, db):
         from app.financial.services import InvoiceService, PaymentService
+
         p = _create_provider(db, lab_id=1)
         s = _create_subscription(db, provider_id=p.id)
-        inv = InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal("10000.00"))
+        inv = InvoiceService.create_invoice(
+            db=db, lab_id=1, subscription_id=s.id, amount=Decimal("10000.00")
+        )
         with pytest.raises(ValueError, match="Invoice not found"):
-            PaymentService.process_payment(db=db, invoice_id=inv["id"], lab_id=999, amount=Decimal("10000.00"))
+            PaymentService.process_payment(
+                db=db, invoice_id=inv["id"], lab_id=999, amount=Decimal("10000.00")
+            )
 
 
 class TestPayableService:
@@ -272,8 +311,12 @@ class TestPayableService:
     def test_get_payables_provider_isolation(self, db):
         p1 = _create_provider(db, lab_id=1)
         p2 = _create_provider(db, lab_id=2)
-        db.add(FinPayable(provider_id=p1.id, amount=Decimal("10000"), currency="IQD", status="pending"))
-        db.add(FinPayable(provider_id=p2.id, amount=Decimal("20000"), currency="IQD", status="pending"))
+        db.add(
+            FinPayable(provider_id=p1.id, amount=Decimal("10000"), currency="IQD", status="pending")
+        )
+        db.add(
+            FinPayable(provider_id=p2.id, amount=Decimal("20000"), currency="IQD", status="pending")
+        )
         db.flush()
         assert len(PayableService.get_payables(db, provider_id=p1.id)) == 1
         assert len(PayableService.get_payables(db, provider_id=p2.id)) == 1
@@ -286,14 +329,24 @@ class TestReceivableServiceEdgeCases:
 
     def test_get_aging_summary_empty(self, db):
         summary = ReceivableService.get_aging_summary(db, lab_id=999)
-        assert summary == {"0-30": Decimal("0"), "31-60": Decimal("0"), "61-90": Decimal("0"), "90+": Decimal("0")}
+        assert summary == {
+            "0-30": Decimal("0"),
+            "31-60": Decimal("0"),
+            "61-90": Decimal("0"),
+            "90+": Decimal("0"),
+        }
 
     def test_get_receivables_only_unpaid(self, db):
         from app.financial.services import InvoiceService, PaymentService
+
         p = _create_provider(db, lab_id=1)
         s = _create_subscription(db, provider_id=p.id)
-        inv = InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal("50000.00"))
-        PaymentService.process_payment(db=db, invoice_id=inv["id"], lab_id=1, amount=Decimal("50000.00"))
+        inv = InvoiceService.create_invoice(
+            db=db, lab_id=1, subscription_id=s.id, amount=Decimal("50000.00")
+        )
+        PaymentService.process_payment(
+            db=db, invoice_id=inv["id"], lab_id=1, amount=Decimal("50000.00")
+        )
         receivables = ReceivableService.get_receivables(db, lab_id=1)
         # paid invoices should not appear in receivables
         assert all(r["status"] != "paid" for r in receivables)
@@ -320,25 +373,36 @@ class TestBillingServiceEdgeCases:
 class TestPricingServiceEdgeCases:
     def test_get_price_with_quality_score(self, db):
         rule = FinPricingRule(
-            name="Lipid Panel", test_type="LIPID",
-            base_price=Decimal("25000"), active=True,
+            name="Lipid Panel",
+            test_type="LIPID",
+            base_price=Decimal("25000"),
+            active=True,
         )
         db.add(rule)
         db.flush()
-        result = PricingService.get_price(db, test_name="LIPID", lab_id=1, quantity=1, quality_score=0.9)
+        result = PricingService.get_price(
+            db, test_name="LIPID", lab_id=1, quantity=1, quality_score=0.9
+        )
         assert result["quality_discount_pct"] == 5.0
         assert result["total"] < result["base_price"]
 
     def test_get_price_with_volume(self, db):
         result = PricingService.get_price(
-            db, test_name="ANY", lab_id=1, quantity=1, monthly_volume=200,
+            db,
+            test_name="ANY",
+            lab_id=1,
+            quantity=1,
+            monthly_volume=200,
         )
         assert result["volume_discount_pct"] == 10.0
 
     def test_create_rule_with_discounts(self, db):
         result = PricingService.create_rule(
-            db=db, name="Advanced CBC", test_type="CBC-ADV",
-            base_price=Decimal("20000"), quality_discount_pct=10.0,
+            db=db,
+            name="Advanced CBC",
+            test_type="CBC-ADV",
+            base_price=Decimal("20000"),
+            quality_discount_pct=10.0,
             volume_discount_pct=5.0,
         )
         assert result["name"] == "Advanced CBC"
@@ -346,7 +410,9 @@ class TestPricingServiceEdgeCases:
 
     def test_create_rule_no_test_type(self, db):
         result = PricingService.create_rule(
-            db=db, name="Generic", test_type=None,
+            db=db,
+            name="Generic",
+            test_type=None,
             base_price=Decimal("5000"),
         )
         assert result["test_type"] is None
@@ -355,11 +421,15 @@ class TestPricingServiceEdgeCases:
 class TestFinancialReportServiceEdgeCases:
     def test_generate_report_no_payments(self, db):
         from app.financial.services import InvoiceService
+
         p = _create_provider(db, lab_id=1)
         s = _create_subscription(db, provider_id=p.id)
-        InvoiceService.create_invoice(db=db, lab_id=1, subscription_id=s.id, amount=Decimal("50000.00"))
+        InvoiceService.create_invoice(
+            db=db, lab_id=1, subscription_id=s.id, amount=Decimal("50000.00")
+        )
         report = FinancialReportService.generate_report(
-            db=db, lab_id=1,
+            db=db,
+            lab_id=1,
             date_from=date(2020, 1, 1),
             date_to=date(2030, 12, 31),
         )
@@ -371,7 +441,8 @@ class TestFinancialReportServiceEdgeCases:
 
     def test_generate_report_group_by(self, db):
         report = FinancialReportService.generate_report(
-            db=db, lab_id=1,
+            db=db,
+            lab_id=1,
             date_from=date(2024, 1, 1),
             date_to=date(2024, 12, 31),
             group_by="quarter",
@@ -384,6 +455,7 @@ class TestEngineDisabled:
     def test_billing_service_returns_empty(self, monkeypatch, db):
         monkeypatch.setattr("app.financial.services._engine_enabled", lambda: False)
         from app.financial.services import _engine_enabled
+
         assert _engine_enabled() is False
         results = BillingService.run_billing_cycle(db)
         assert results == []
@@ -395,5 +467,7 @@ class TestEngineDisabled:
 
     def test_payment_service_returns_empty(self, monkeypatch, db):
         monkeypatch.setattr("app.financial.services._engine_enabled", lambda: False)
-        result = PaymentService.process_payment(db=db, invoice_id=1, lab_id=1, amount=Decimal("10000"))
+        result = PaymentService.process_payment(
+            db=db, invoice_id=1, lab_id=1, amount=Decimal("10000")
+        )
         assert result == {}

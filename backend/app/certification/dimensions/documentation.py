@@ -162,7 +162,11 @@ class DocumentationEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "openapi" in content.lower() or "swagger" in content.lower() or "FastAPI" in content:
+                if (
+                    "openapi" in content.lower()
+                    or "swagger" in content.lower()
+                    or "FastAPI" in content
+                ):
                     return True
             except Exception:
                 continue
@@ -188,7 +192,9 @@ class DocumentationEvaluator(DimensionEvaluator):
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                         total_functions += 1
                         if node.body and isinstance(node.body[0], ast.Expr):
-                            if isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str):
+                            if isinstance(node.body[0].value, ast.Constant) and isinstance(
+                                node.body[0].value.value, str,
+                            ):
                                 documented_functions += 1
             except SyntaxError:
                 continue

@@ -26,11 +26,19 @@ class HospitalMaster(HospitalBaseEntity):
     country = Column(String(10), default="IQ")
 
     campuses = relationship("Campus", back_populates="hospital", cascade="all, delete-orphan")
-    departments = relationship("Department", back_populates="hospital", cascade="all, delete-orphan")
+    departments = relationship(
+        "Department", back_populates="hospital", cascade="all, delete-orphan"
+    )
     units = relationship("Unit", back_populates="hospital", cascade="all, delete-orphan")
-    operation_theaters = relationship("OperationTheater", back_populates="hospital", cascade="all, delete-orphan")
-    equipment = relationship("MedicalEquipment", back_populates="hospital", cascade="all, delete-orphan")
-    cost_centers = relationship("CostCenter", back_populates="hospital", cascade="all, delete-orphan")
+    operation_theaters = relationship(
+        "OperationTheater", back_populates="hospital", cascade="all, delete-orphan"
+    )
+    equipment = relationship(
+        "MedicalEquipment", back_populates="hospital", cascade="all, delete-orphan"
+    )
+    cost_centers = relationship(
+        "CostCenter", back_populates="hospital", cascade="all, delete-orphan"
+    )
     clinics = relationship("Clinic", back_populates="hospital", cascade="all, delete-orphan")
 
 
@@ -38,7 +46,9 @@ class Campus(HospitalBaseEntity):
     __tablename__ = "hospital_campuses"
 
     id = Column(Integer, primary_key=True, index=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True)
+    hospital_id = Column(
+        Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
@@ -52,7 +62,9 @@ class Building(HospitalBaseEntity):
     __tablename__ = "hospital_buildings"
 
     id = Column(Integer, primary_key=True, index=True)
-    campus_id = Column(Integer, ForeignKey("hospital_campuses.id", ondelete="CASCADE"), nullable=False, index=True)
+    campus_id = Column(
+        Integer, ForeignKey("hospital_campuses.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
@@ -66,7 +78,9 @@ class Floor(HospitalBaseEntity):
     __tablename__ = "hospital_floors"
 
     id = Column(Integer, primary_key=True, index=True)
-    building_id = Column(Integer, ForeignKey("hospital_buildings.id", ondelete="CASCADE"), nullable=False, index=True)
+    building_id = Column(
+        Integer, ForeignKey("hospital_buildings.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
@@ -80,8 +94,15 @@ class HospitalDepartment(HospitalBaseEntity):
     __tablename__ = "hospital_departments"
 
     id = Column(Integer, primary_key=True, index=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True)
-    parent_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    hospital_id = Column(
+        Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    parent_id = Column(
+        Integer,
+        ForeignKey("hospital_departments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
@@ -89,19 +110,34 @@ class HospitalDepartment(HospitalBaseEntity):
     phone = Column(String(20), nullable=True)
 
     hospital = relationship("HospitalMaster", back_populates="departments")
-    children = relationship("HospitalDepartment", backref=backref("parent", remote_side=[id]), cascade="all, delete-orphan")
+    children = relationship(
+        "HospitalDepartment",
+        backref=backref("parent", remote_side=[id]),
+        cascade="all, delete-orphan",
+    )
     clinics = relationship("Clinic", back_populates="department", cascade="all, delete-orphan")
     rooms = relationship("Room", back_populates="department", cascade="all, delete-orphan")
-    operation_theaters = relationship("OperationTheater", back_populates="department", cascade="all, delete-orphan")
-    equipment = relationship("MedicalEquipment", back_populates="department", cascade="all, delete-orphan")
+    operation_theaters = relationship(
+        "OperationTheater", back_populates="department", cascade="all, delete-orphan"
+    )
+    equipment = relationship(
+        "MedicalEquipment", back_populates="department", cascade="all, delete-orphan"
+    )
 
 
 class Clinic(HospitalBaseEntity):
     __tablename__ = "hospital_clinics"
 
     id = Column(Integer, primary_key=True, index=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="CASCADE"), nullable=False, index=True)
+    hospital_id = Column(
+        Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    department_id = Column(
+        Integer,
+        ForeignKey("hospital_departments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
@@ -117,9 +153,18 @@ class Room(HospitalBaseEntity):
     __tablename__ = "hospital_rooms"
 
     id = Column(Integer, primary_key=True, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="CASCADE"), nullable=False, index=True)
-    clinic_id = Column(Integer, ForeignKey("hospital_clinics.id", ondelete="SET NULL"), nullable=True, index=True)
-    floor_id = Column(Integer, ForeignKey("hospital_floors.id", ondelete="SET NULL"), nullable=True, index=True)
+    department_id = Column(
+        Integer,
+        ForeignKey("hospital_departments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    clinic_id = Column(
+        Integer, ForeignKey("hospital_clinics.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    floor_id = Column(
+        Integer, ForeignKey("hospital_floors.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     room_type = Column(String(50), nullable=False, index=True)
@@ -135,7 +180,9 @@ class Bed(HospitalBaseEntity):
     __tablename__ = "hospital_beds"
 
     id = Column(Integer, primary_key=True, index=True)
-    room_id = Column(Integer, ForeignKey("hospital_rooms.id", ondelete="CASCADE"), nullable=False, index=True)
+    room_id = Column(
+        Integer, ForeignKey("hospital_rooms.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     bed_number = Column(String(20), nullable=False)
     bed_type = Column(String(30), nullable=False, default="standard", index=True)
     status = Column(String(20), nullable=False, default="available", index=True)
@@ -150,7 +197,9 @@ class Unit(HospitalBaseEntity):
     __tablename__ = "hospital_units"
 
     id = Column(Integer, primary_key=True, index=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True)
+    hospital_id = Column(
+        Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
@@ -163,8 +212,15 @@ class OperationTheater(HospitalBaseEntity):
     __tablename__ = "hospital_operation_theaters"
 
     id = Column(Integer, primary_key=True, index=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    hospital_id = Column(
+        Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    department_id = Column(
+        Integer,
+        ForeignKey("hospital_departments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
@@ -180,8 +236,15 @@ class MedicalEquipment(HospitalBaseEntity):
     __tablename__ = "hospital_medical_equipment"
 
     id = Column(Integer, primary_key=True, index=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True)
-    department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    hospital_id = Column(
+        Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    department_id = Column(
+        Integer,
+        ForeignKey("hospital_departments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     equipment_code = Column(String(50), nullable=False, index=True)
     equipment_name = Column(String(300), nullable=False)
     equipment_name_ar = Column(String(300), nullable=True)
@@ -201,7 +264,9 @@ class CostCenter(HospitalBaseEntity):
     __tablename__ = "hospital_cost_centers"
 
     id = Column(Integer, primary_key=True, index=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True)
+    hospital_id = Column(
+        Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     code = Column(String(50), nullable=False, index=True)
     name = Column(String(300), nullable=False)
     name_ar = Column(String(300), nullable=True)
@@ -216,9 +281,13 @@ class BedAssignment(HospitalBaseEntity):
     __tablename__ = "bed_assignments"
 
     id = Column(Integer, primary_key=True, index=True)
-    bed_id = Column(Integer, ForeignKey("hospital_beds.id", ondelete="CASCADE"), nullable=False, index=True)
+    bed_id = Column(
+        Integer, ForeignKey("hospital_beds.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     patient_id = Column(Integer, nullable=False, index=True)
-    admission_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    admission_date = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
     discharge_date = Column(DateTime(timezone=True), nullable=True)
     reason = Column(String(500), nullable=True)
     diagnosis = Column(String(500), nullable=True)

@@ -59,7 +59,8 @@ class TestResultCreate(BaseModel):
     sample_type: str | None = Field("blood", max_length=50)
     doctor_name: str | None = Field(None, max_length=200)
     order_id: int | None = Field(
-        None, description="Attach to an existing order; otherwise a new one is created.",
+        None,
+        description="Attach to an existing order; otherwise a new one is created.",
     )
 
     @field_validator("test_name", "doctor_name")
@@ -103,7 +104,10 @@ def _result_dict(r: LabResult, patient: Patient | None = None) -> dict:
     interpretation = None
     if r.value is not None:
         interpretation = interpret_result(
-            r.test_name, r.value, r.normal_range_low, r.normal_range_high,
+            r.test_name,
+            r.value,
+            r.normal_range_low,
+            r.normal_range_high,
         )
     flag = r.flag or "unknown"
     is_critical = flag == "critical"

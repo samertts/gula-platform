@@ -62,11 +62,17 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_admissions_lab_id", "critical_care_admissions", ["lab_id"])
-        op.create_index("ix_critical_care_admissions_patient_id", "critical_care_admissions", ["patient_id"])
-        op.create_index("ix_critical_care_admissions_fhir_id", "critical_care_admissions", ["fhir_id"])
+        op.create_index(
+            "ix_critical_care_admissions_lab_id", "critical_care_admissions", ["lab_id"]
+        )
+        op.create_index(
+            "ix_critical_care_admissions_patient_id", "critical_care_admissions", ["patient_id"]
+        )
+        op.create_index(
+            "ix_critical_care_admissions_fhir_id", "critical_care_admissions", ["fhir_id"]
+        )
 
     if not _table_exists("critical_care_beds"):
         op.create_table(
@@ -94,7 +100,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_critical_care_beds_lab_id", "critical_care_beds", ["lab_id"])
         op.create_index("ix_critical_care_beds_fhir_id", "critical_care_beds", ["fhir_id"])
@@ -128,11 +134,19 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_assessments_fhir_id", "critical_care_assessments", ["fhir_id"])
-        op.create_index("ix_critical_care_assessments_lab_id", "critical_care_assessments", ["lab_id"])
-        op.create_index("ix_critical_care_assessments_admission_id", "critical_care_assessments", ["admission_id"])
+        op.create_index(
+            "ix_critical_care_assessments_fhir_id", "critical_care_assessments", ["fhir_id"]
+        )
+        op.create_index(
+            "ix_critical_care_assessments_lab_id", "critical_care_assessments", ["lab_id"]
+        )
+        op.create_index(
+            "ix_critical_care_assessments_admission_id",
+            "critical_care_assessments",
+            ["admission_id"],
+        )
 
     if not _table_exists("critical_care_vital_signs"):
         op.create_table(
@@ -180,11 +194,17 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_vital_signs_patient_id", "critical_care_vital_signs", ["patient_id"])
-        op.create_index("ix_critical_care_vital_signs_lab_id", "critical_care_vital_signs", ["lab_id"])
-        op.create_index("ix_critical_care_vital_signs_fhir_id", "critical_care_vital_signs", ["fhir_id"])
+        op.create_index(
+            "ix_critical_care_vital_signs_patient_id", "critical_care_vital_signs", ["patient_id"]
+        )
+        op.create_index(
+            "ix_critical_care_vital_signs_lab_id", "critical_care_vital_signs", ["lab_id"]
+        )
+        op.create_index(
+            "ix_critical_care_vital_signs_fhir_id", "critical_care_vital_signs", ["fhir_id"]
+        )
 
     if not _table_exists("critical_care_ventilator_settings"):
         op.create_table(
@@ -225,11 +245,23 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_ventilator_settings_patient_id", "critical_care_ventilator_settings", ["patient_id"])
-        op.create_index("ix_critical_care_ventilator_settings_fhir_id", "critical_care_ventilator_settings", ["fhir_id"])
-        op.create_index("ix_critical_care_ventilator_settings_lab_id", "critical_care_ventilator_settings", ["lab_id"])
+        op.create_index(
+            "ix_critical_care_ventilator_settings_patient_id",
+            "critical_care_ventilator_settings",
+            ["patient_id"],
+        )
+        op.create_index(
+            "ix_critical_care_ventilator_settings_fhir_id",
+            "critical_care_ventilator_settings",
+            ["fhir_id"],
+        )
+        op.create_index(
+            "ix_critical_care_ventilator_settings_lab_id",
+            "critical_care_ventilator_settings",
+            ["lab_id"],
+        )
 
     if not _table_exists("critical_care_infusions"):
         op.create_table(
@@ -267,11 +299,15 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_infusions_fhir_id", "critical_care_infusions", ["fhir_id"])
+        op.create_index(
+            "ix_critical_care_infusions_fhir_id", "critical_care_infusions", ["fhir_id"]
+        )
         op.create_index("ix_critical_care_infusions_lab_id", "critical_care_infusions", ["lab_id"])
-        op.create_index("ix_critical_care_infusions_patient_id", "critical_care_infusions", ["patient_id"])
+        op.create_index(
+            "ix_critical_care_infusions_patient_id", "critical_care_infusions", ["patient_id"]
+        )
 
     if not _table_exists("critical_care_fluid_balance"):
         op.create_table(
@@ -303,11 +339,19 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_fluid_balance_fhir_id", "critical_care_fluid_balance", ["fhir_id"])
-        op.create_index("ix_critical_care_fluid_balance_lab_id", "critical_care_fluid_balance", ["lab_id"])
-        op.create_index("ix_critical_care_fluid_balance_patient_id", "critical_care_fluid_balance", ["patient_id"])
+        op.create_index(
+            "ix_critical_care_fluid_balance_fhir_id", "critical_care_fluid_balance", ["fhir_id"]
+        )
+        op.create_index(
+            "ix_critical_care_fluid_balance_lab_id", "critical_care_fluid_balance", ["lab_id"]
+        )
+        op.create_index(
+            "ix_critical_care_fluid_balance_patient_id",
+            "critical_care_fluid_balance",
+            ["patient_id"],
+        )
 
     if not _table_exists("critical_care_early_warning_scores"):
         op.create_table(
@@ -336,11 +380,23 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_early_warning_scores_lab_id", "critical_care_early_warning_scores", ["lab_id"])
-        op.create_index("ix_critical_care_early_warning_scores_fhir_id", "critical_care_early_warning_scores", ["fhir_id"])
-        op.create_index("ix_critical_care_early_warning_scores_patient_id", "critical_care_early_warning_scores", ["patient_id"])
+        op.create_index(
+            "ix_critical_care_early_warning_scores_lab_id",
+            "critical_care_early_warning_scores",
+            ["lab_id"],
+        )
+        op.create_index(
+            "ix_critical_care_early_warning_scores_fhir_id",
+            "critical_care_early_warning_scores",
+            ["fhir_id"],
+        )
+        op.create_index(
+            "ix_critical_care_early_warning_scores_patient_id",
+            "critical_care_early_warning_scores",
+            ["patient_id"],
+        )
 
     if not _table_exists("critical_care_scores"):
         op.create_table(
@@ -361,9 +417,11 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_scores_patient_id", "critical_care_scores", ["patient_id"])
+        op.create_index(
+            "ix_critical_care_scores_patient_id", "critical_care_scores", ["patient_id"]
+        )
         op.create_index("ix_critical_care_scores_lab_id", "critical_care_scores", ["lab_id"])
         op.create_index("ix_critical_care_scores_fhir_id", "critical_care_scores", ["fhir_id"])
 
@@ -394,9 +452,11 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_alerts_patient_id", "critical_care_alerts", ["patient_id"])
+        op.create_index(
+            "ix_critical_care_alerts_patient_id", "critical_care_alerts", ["patient_id"]
+        )
         op.create_index("ix_critical_care_alerts_fhir_id", "critical_care_alerts", ["fhir_id"])
         op.create_index("ix_critical_care_alerts_lab_id", "critical_care_alerts", ["lab_id"])
 
@@ -424,10 +484,18 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_device_integrations_lab_id", "critical_care_device_integrations", ["lab_id"])
-        op.create_index("ix_critical_care_device_integrations_fhir_id", "critical_care_device_integrations", ["fhir_id"])
+        op.create_index(
+            "ix_critical_care_device_integrations_lab_id",
+            "critical_care_device_integrations",
+            ["lab_id"],
+        )
+        op.create_index(
+            "ix_critical_care_device_integrations_fhir_id",
+            "critical_care_device_integrations",
+            ["fhir_id"],
+        )
 
     if not _table_exists("critical_care_daily_checklists"):
         op.create_table(
@@ -461,10 +529,16 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_critical_care_daily_checklists_lab_id", "critical_care_daily_checklists", ["lab_id"])
-        op.create_index("ix_critical_care_daily_checklists_fhir_id", "critical_care_daily_checklists", ["fhir_id"])
+        op.create_index(
+            "ix_critical_care_daily_checklists_lab_id", "critical_care_daily_checklists", ["lab_id"]
+        )
+        op.create_index(
+            "ix_critical_care_daily_checklists_fhir_id",
+            "critical_care_daily_checklists",
+            ["fhir_id"],
+        )
 
     if not _table_exists("critical_care_rounds"):
         op.create_table(
@@ -493,11 +567,10 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_critical_care_rounds_lab_id", "critical_care_rounds", ["lab_id"])
         op.create_index("ix_critical_care_rounds_fhir_id", "critical_care_rounds", ["fhir_id"])
-
 
 
 def downgrade() -> None:

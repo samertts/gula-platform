@@ -31,7 +31,9 @@ class PrimaryCareIntegration(BaseConnector):
             headers = {"Content-Type": "application/json"}
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
-            self._client = httpx.AsyncClient(timeout=self._timeout, verify=self._verify_ssl, headers=headers)
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, verify=self._verify_ssl, headers=headers
+            )
             self._connected = True
             logger.info("Primary care integration connected")
             return True
@@ -48,7 +50,11 @@ class PrimaryCareIntegration(BaseConnector):
         return True
 
     async def health_check(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"name": self.name, "connected": self._connected, "timestamp": time.time()}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "connected": self._connected,
+            "timestamp": time.time(),
+        }
         if not self._client:
             result["status"] = "disconnected"
             return result
@@ -150,7 +156,9 @@ class PrimaryCareIntegration(BaseConnector):
         if not patient_id:
             return {"success": False, "error": "patient_id required"}
         try:
-            resp = await self._client.get(urljoin(self._base_url, f"/api/patients/{patient_id}/history"))
+            resp = await self._client.get(
+                urljoin(self._base_url, f"/api/patients/{patient_id}/history")
+            )
             if resp.is_success:
                 return {"success": True, "history": resp.json()}
             return {"success": False, "error": resp.text, "status_code": resp.status_code}

@@ -189,7 +189,12 @@ class PolicyEngine:
         """
         if not _CONTROL_LAYER_ENABLED:
             return PolicyDecision(
-                True, RiskLevel.LOW, action, "control layer disabled", _ENV, context or {},
+                True,
+                RiskLevel.LOW,
+                action,
+                "control layer disabled",
+                _ENV,
+                context or {},
             )
 
         ctx = context or {}
@@ -198,7 +203,12 @@ class PolicyEngine:
         # Default deny for unknown actions
         if action not in _POLICY_TABLE:
             decision = PolicyDecision(
-                False, RiskLevel.CRITICAL, action, "unknown action — default deny", env, ctx,
+                False,
+                RiskLevel.CRITICAL,
+                action,
+                "unknown action — default deny",
+                env,
+                ctx,
             )
             self._record(decision)
             return decision
@@ -208,7 +218,12 @@ class PolicyEngine:
         # CRITICAL always blocked
         if risk == RiskLevel.CRITICAL:
             decision = PolicyDecision(
-                False, risk, action, "CRITICAL risk — requires out-of-band change", env, ctx,
+                False,
+                risk,
+                action,
+                "CRITICAL risk — requires out-of-band change",
+                env,
+                ctx,
             )
             self._record(decision)
             return decision
@@ -216,7 +231,12 @@ class PolicyEngine:
         # Production restriction
         if env == "production" and not allow_in_prod:
             decision = PolicyDecision(
-                False, risk, action, f"blocked in production (risk={risk.value})", env, ctx,
+                False,
+                risk,
+                action,
+                f"blocked in production (risk={risk.value})",
+                env,
+                ctx,
             )
             self._record(decision)
             return decision
@@ -242,7 +262,12 @@ class PolicyEngine:
 
         if is_kill_switch_active():
             decision = PolicyDecision(
-                False, risk, action, "kill switch ACTIVE — all autonomous actions halted", env, ctx,
+                False,
+                risk,
+                action,
+                "kill switch ACTIVE — all autonomous actions halted",
+                env,
+                ctx,
             )
             self._record(decision)
             return decision

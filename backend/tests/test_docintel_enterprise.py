@@ -50,6 +50,7 @@ from app.document_intelligence.security import (
 # DISTRIBUTED TASK QUEUE TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestTaskQueue:
     @pytest.mark.asyncio
     async def test_enqueue_and_execute(self):
@@ -211,6 +212,7 @@ class TestPartitionManager:
 # MULTI-TENANCY TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestTenantManager:
     def test_register_and_get(self):
         mgr = TenantManager()
@@ -278,6 +280,7 @@ class TestQuotaManager:
 # BACKUP/DR TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestBackupService:
     @pytest.mark.asyncio
     async def test_create_and_restore(self):
@@ -327,6 +330,7 @@ class TestBackupScheduler:
         async def backup_fn():
             calls.append("ran")
             from app.document_intelligence.backup_dr import BackupManifest
+
             return BackupManifest()
 
         scheduler.add_schedule("hourly", 3600, backup_fn)
@@ -338,6 +342,7 @@ class TestBackupScheduler:
 # ═══════════════════════════════════════════════════════════════════
 # OBSERVABILITY TESTS
 # ═══════════════════════════════════════════════════════════════════
+
 
 class TestMetricsCollector:
     def test_counter(self):
@@ -491,6 +496,7 @@ class TestAlertManager:
 # SECURITY TESTS
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestInputValidator:
     def test_sanitize_string(self):
         assert InputValidator.sanitize_string("  hello  ") == "hello"
@@ -608,6 +614,7 @@ class TestEncryptionService:
 # ═══════════════════════════════════════════════════════════════════
 # PERFORMANCE TESTS
 # ═══════════════════════════════════════════════════════════════════
+
 
 class TestLRUCache:
     def test_set_and_get(self):

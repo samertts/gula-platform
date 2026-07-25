@@ -22,7 +22,6 @@ class EvaluationResult:
 
 
 class ExpressionEngine:
-
     def evaluate_rule(self, rule: RuleDefinition, context: dict[str, Any]) -> RuleEvaluationResult:
         start = datetime.now(UTC)
         all_passed = True
@@ -64,10 +63,14 @@ class ExpressionEngine:
         if op == "not":
             if conditions:
                 return self._evaluate_not(conditions[0], context)
-            return EvaluationResult(passed=True, error="NOT operator requires exactly one condition")
+            return EvaluationResult(
+                passed=True, error="NOT operator requires exactly one condition",
+            )
         return self._evaluate_single_condition(expression, context)
 
-    def _evaluate_and(self, conditions: list[dict[str, Any]], context: dict[str, Any]) -> EvaluationResult:
+    def _evaluate_and(
+        self, conditions: list[dict[str, Any]], context: dict[str, Any],
+    ) -> EvaluationResult:
         details: list[str] = []
         for c in conditions:
             r = self.evaluate(c, context)
@@ -76,7 +79,9 @@ class ExpressionEngine:
                 return EvaluationResult(passed=False, details=details)
         return EvaluationResult(passed=True, details=details)
 
-    def _evaluate_or(self, conditions: list[dict[str, Any]], context: dict[str, Any]) -> EvaluationResult:
+    def _evaluate_or(
+        self, conditions: list[dict[str, Any]], context: dict[str, Any],
+    ) -> EvaluationResult:
         details: list[str] = []
         for c in conditions:
             r = self.evaluate(c, context)
@@ -89,11 +94,17 @@ class ExpressionEngine:
         r = self.evaluate(condition, context)
         return EvaluationResult(passed=not r.passed, details=r.details)
 
-    def _evaluate_condition(self, condition: RuleCondition, context: dict[str, Any]) -> EvaluationResult:
+    def _evaluate_condition(
+        self, condition: RuleCondition, context: dict[str, Any],
+    ) -> EvaluationResult:
         field_value = self._resolve_field(condition.field, context)
-        return self._evaluate_comparison(condition.field, field_value, condition.operator, condition.value)
+        return self._evaluate_comparison(
+            condition.field, field_value, condition.operator, condition.value,
+        )
 
-    def _evaluate_single_condition(self, expr: dict[str, Any], context: dict[str, Any]) -> EvaluationResult:
+    def _evaluate_single_condition(
+        self, expr: dict[str, Any], context: dict[str, Any],
+    ) -> EvaluationResult:
         field = expr.get("field", "")
         op = expr.get("operator", "eq")
         value = expr.get("value")
@@ -125,7 +136,9 @@ class ExpressionEngine:
                 return None
         return value
 
-    def _evaluate_comparison(self, field: str, field_value: Any, operator: Operator, target_value: Any) -> EvaluationResult:
+    def _evaluate_comparison(
+        self, field: str, field_value: Any, operator: Operator, target_value: Any,
+    ) -> EvaluationResult:
         if operator == Operator.EXISTS:
             return EvaluationResult(
                 passed=field_value is not None,
@@ -154,27 +167,45 @@ class ExpressionEngine:
         elif operator == Operator.LTE:
             result = self._safe_compare(field_value, target_value, lambda a, b: a <= b)
         elif operator == Operator.IN:
-            result = field_value in (target_value if isinstance(target_value, (list, tuple)) else [target_value])
+            result = field_value in (
+                target_value if isinstance(target_value, (list, tuple)) else [target_value]
+            )
         elif operator == Operator.NOT_IN:
-            result = field_value not in (target_value if isinstance(target_value, (list, tuple)) else [target_value])
+            result = field_value not in (
+                target_value if isinstance(target_value, (list, tuple)) else [target_value]
+            )
         elif operator == Operator.BETWEEN:
             if isinstance(target_value, (list, tuple)) and len(target_value) == 2:
-                result = self._safe_compare(field_value, target_value[0], lambda a, b: a >= b) and self._safe_compare(field_value, target_value[1], lambda a, b: a <= b)
+                result = self._safe_compare(
+                    field_value, target_value[0], lambda a, b: a >= b,
+                ) and self._safe_compare(field_value, target_value[1], lambda a, b: a <= b)
             else:
-                return EvaluationResult(passed=False, details=[f"BETWEEN requires a list of 2 values for {field}"])
+                return EvaluationResult(
+                    passed=False, details=[f"BETWEEN requires a list of 2 values for {field}"],
+                )
         elif operator == Operator.CONTAINS:
             result = str(target_value) in str(field_value) if field_value is not None else False
         elif operator == Operator.NOT_CONTAINS:
             result = str(target_value) not in str(field_value) if field_value is not None else True
         elif operator == Operator.STARTS_WITH:
-            result = str(field_value).startswith(str(target_value)) if field_value is not None else False
+            result = (
+                str(field_value).startswith(str(target_value)) if field_value is not None else False
+            )
         elif operator == Operator.ENDS_WITH:
-            result = str(field_value).endswith(str(target_value)) if field_value is not None else False
+            result = (
+                str(field_value).endswith(str(target_value)) if field_value is not None else False
+            )
         elif operator == Operator.MATCHES:
             try:
-                result = bool(re.search(str(target_value), str(field_value))) if field_value is not None else False
+                result = (
+                    bool(re.search(str(target_value), str(field_value)))
+                    if field_value is not None
+                    else False
+                )
             except re.error:
-                return EvaluationResult(passed=False, details=[f"Invalid regex pattern for {field}"])
+                return EvaluationResult(
+                    passed=False, details=[f"Invalid regex pattern for {field}"],
+                )
         else:
             return EvaluationResult(passed=False, details=[f"Unsupported operator: {operator}"])
         return EvaluationResult(
@@ -186,7 +217,10 @@ class ExpressionEngine:
         try:
             if isinstance(a, str) and isinstance(b, str):
                 return cmp(a, b)
-            return cmp(float(a) if not isinstance(a, (int, float)) else a, float(b) if not isinstance(b, (int, float)) else b)
+            return cmp(
+                float(a) if not isinstance(a, (int, float)) else a,
+                float(b) if not isinstance(b, (int, float)) else b,
+            )
         except (TypeError, ValueError):
             return False
 

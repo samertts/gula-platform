@@ -24,8 +24,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       POSTGRES_DB: labdb
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=en_US.UTF-8"
-      # Tune shared memory for PostgreSQL inside Docker
       POSTGRES_SHARED_BUFFERS: ${PG_SHARED_BUFFERS:-512MB}
+    # SECURITY: Prevent privilege escalation inside container
+    security_opt:
+      - no-new-privileges:true
     # SECURITY: No external ports - only accessible via internal network
     expose:
       - "5432"
@@ -63,6 +65,9 @@ services:
         --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
         --save 900 1
         --save 300 10
+    # SECURITY: Prevent privilege escalation inside container
+    security_opt:
+      - no-new-privileges:true
     # SECURITY: No external ports - only accessible via internal network
     expose:
       - "6379"
@@ -237,6 +242,9 @@ services:
   frontend:
     image: nginx:1.28-alpine
     restart: always
+    mem_limit: 128m
+    mem_reservation: 32m
+    cpus: "0.3"
     security_opt:
       - no-new-privileges:true
 
@@ -263,6 +271,9 @@ services:
     image: nginx:1.28-alpine
     container_name: gula-api-gateway
     restart: always
+    mem_limit: 256m
+    mem_reservation: 64m
+    cpus: "0.5"
     security_opt:
       - no-new-privileges:true
 
@@ -401,6 +412,8 @@ services:
       dockerfile: Dockerfile
     container_name: gula-device-bridge
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     mem_limit: 256m
     mem_reservation: 64m
     cpus: "0.5"

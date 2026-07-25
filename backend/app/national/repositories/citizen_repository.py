@@ -16,10 +16,18 @@ class CitizenRepository(Repository[Citizen]):
         return self.db.query(Citizen).filter(Citizen.id == id, ~Citizen.is_deleted).first()
 
     async def get_by_health_number(self, health_number: str) -> Citizen | None:
-        return self.db.query(Citizen).filter(Citizen.health_number == health_number, ~Citizen.is_deleted).first()
+        return (
+            self.db.query(Citizen)
+            .filter(Citizen.health_number == health_number, ~Citizen.is_deleted)
+            .first()
+        )
 
     async def get_by_national_id_hash(self, nid_hash: str) -> Citizen | None:
-        return self.db.query(Citizen).filter(Citizen.national_id_hash == nid_hash, ~Citizen.is_deleted).first()
+        return (
+            self.db.query(Citizen)
+            .filter(Citizen.national_id_hash == nid_hash, ~Citizen.is_deleted)
+            .first()
+        )
 
     async def list(self, skip: int = 0, limit: int = 100, **filters: Any) -> list[Citizen]:
         query = self.db.query(Citizen).filter(~Citizen.is_deleted)

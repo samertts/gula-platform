@@ -5,6 +5,7 @@ the normalizer, the deterministic HID generator, and the weighted scoring.
 No database is required — ``find_duplicates`` is exercised via a fake
 query object so the matcher logic is tested in isolation.
 """
+
 import os
 
 os.environ.setdefault("ENV", "test")
@@ -27,6 +28,7 @@ from app.services.identity_matching import (
 )
 
 # ──────────────────────── normalize_arabic_name ──────────────────────────────
+
 
 class TestNormalizeArabicName:
     def test_strips_tashkeel(self):
@@ -66,6 +68,7 @@ class TestNormalizeArabicName:
 
 
 # ───────────────────────── generate_health_id ────────────────────────────────
+
 
 class TestGenerateHealthId:
     def test_format_is_HID_dash_8_dash_2(self):
@@ -121,6 +124,7 @@ class TestGenerateHealthId:
 
 
 # ──────────────────────── calculate_match_score ──────────────────────────────
+
 
 def _citizen(**kw):
     """Helper — a plain dict is what the scorer expects to receive."""
@@ -225,6 +229,7 @@ class TestCalculateMatchScore:
 
 
 # ─────────────────────────── find_duplicates ─────────────────────────────────
+
 
 class _FakeQuery:
     """Minimal stand-in for a SQLAlchemy Query — records filter calls and

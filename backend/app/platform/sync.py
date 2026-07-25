@@ -57,9 +57,16 @@ class SyncService:
         }
 
 
-PlatformRegistry.register("sync", SyncService(), capabilities=[
-    {"name": "push_changes", "description": "Push local changes to the sync queue"},
-    {"name": "pull_changes", "description": "Pull remote changes since a timestamp"},
-    {"name": "resolve_conflicts", "description": "Resolve a conflict between local and remote changes"},
-    {"name": "get_sync_status", "description": "Get the current sync status"},
-])
+PlatformRegistry.register(
+    "sync",
+    SyncService(),
+    capabilities=[
+        {"name": "push_changes", "description": "Push local changes to the sync queue"},
+        {"name": "pull_changes", "description": "Pull remote changes since a timestamp"},
+        {
+            "name": "resolve_conflicts",
+            "description": "Resolve a conflict between local and remote changes",
+        },
+        {"name": "get_sync_status", "description": "Get the current sync status"},
+    ],
+)

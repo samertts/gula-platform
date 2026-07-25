@@ -24,6 +24,7 @@ class TestIdentityGovernance:
 
     def test_register_newborn(self):
         from datetime import date
+
         svc = IdentityGovernanceService()
         record = svc.register_newborn(
             full_name="Baby Ali",

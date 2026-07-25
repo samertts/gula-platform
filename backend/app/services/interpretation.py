@@ -1138,7 +1138,10 @@ INTERPRETATIONS = {
 
 
 def interpret_result(
-    test_name: str, value: float, normal_low: float | None = None, normal_high: float | None = None,
+    test_name: str,
+    value: float,
+    normal_low: float | None = None,
+    normal_high: float | None = None,
 ) -> dict:
     """Interpret a lab result and return explanation + advice.
     Returns both English and Arabic interpretations.
@@ -1202,7 +1205,9 @@ def _interpret_with_rules(interp: dict, value: float) -> dict:
 
 
 def _interpret_generic(
-    value: float, normal_low: float | None = None, normal_high: float | None = None,
+    value: float,
+    normal_low: float | None = None,
+    normal_high: float | None = None,
 ) -> dict:
     """Generic interpretation when no specific rules exist."""
     if normal_low is not None and normal_high is not None:

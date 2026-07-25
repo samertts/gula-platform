@@ -15,12 +15,30 @@ class SearchParameter:
 
 SEARCH_PARAMETERS: dict[str, list[SearchParameter]] = {
     "Patient": [
-        SearchParameter(name="identifier", type="token", description="Patient identifier", path="Patient.identifier"),
-        SearchParameter(name="name", type="string", description="Patient name", path="Patient.name"),
-        SearchParameter(name="birthdate", type="date", description="Patient birth date", path="Patient.birthDate"),
-        SearchParameter(name="gender", type="token", description="Patient gender", path="Patient.gender"),
-        SearchParameter(name="phone", type="token", description="Patient phone", path="Patient.telecom"),
-        SearchParameter(name="address", type="string", description="Patient address", path="Patient.address"),
+        SearchParameter(
+            name="identifier",
+            type="token",
+            description="Patient identifier",
+            path="Patient.identifier",
+        ),
+        SearchParameter(
+            name="name", type="string", description="Patient name", path="Patient.name",
+        ),
+        SearchParameter(
+            name="birthdate",
+            type="date",
+            description="Patient birth date",
+            path="Patient.birthDate",
+        ),
+        SearchParameter(
+            name="gender", type="token", description="Patient gender", path="Patient.gender",
+        ),
+        SearchParameter(
+            name="phone", type="token", description="Patient phone", path="Patient.telecom",
+        ),
+        SearchParameter(
+            name="address", type="string", description="Patient address", path="Patient.address",
+        ),
     ],
     "Practitioner": [
         SearchParameter(name="identifier", type="token", path="Practitioner.identifier"),

@@ -53,7 +53,9 @@ class SovereigntyRule(TrustBaseEntity):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     data_category = Column(Enum(DataCategory), nullable=False)
-    sovereignty_level = Column(Enum(SovereigntyLevel), nullable=False, default=SovereigntyLevel.NATIONAL_ONLY)
+    sovereignty_level = Column(
+        Enum(SovereigntyLevel), nullable=False, default=SovereigntyLevel.NATIONAL_ONLY
+    )
     allows_cross_border = Column(Integer, nullable=False, default=0)
     requires_encryption = Column(Integer, nullable=False, default=1)
     requires_consent = Column(Integer, nullable=False, default=1)
@@ -88,7 +90,9 @@ class ComplianceEvidence(TrustBaseEntity):
     evidence_type = Column(String(100), nullable=False)
     evidence_id = Column(String(128), nullable=False, unique=True)
     source = Column(String(200), nullable=False)
-    collected_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    collected_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
     collected_by = Column(Integer, ForeignKey("lab_users.id"), nullable=True)
     status = Column(Enum(ComplianceStatus), nullable=False, default=ComplianceStatus.PENDING_REVIEW)
     evidence_hash = Column(String(128), nullable=False)

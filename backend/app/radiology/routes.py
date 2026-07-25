@@ -297,7 +297,12 @@ def list_orders(
         skip=skip,
         limit=limit,
     )
-    return {"items": [_to_dict(o) for o in orders], "total": len(orders), "skip": skip, "limit": limit}
+    return {
+        "items": [_to_dict(o) for o in orders],
+        "total": len(orders),
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get("/orders/{order_id}")
@@ -351,7 +356,12 @@ def search_orders(
         skip=skip,
         limit=limit,
     )
-    return {"items": [_to_dict(o) for o in orders], "total": len(orders), "skip": skip, "limit": limit}
+    return {
+        "items": [_to_dict(o) for o in orders],
+        "total": len(orders),
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get("/appointments")
@@ -391,7 +401,9 @@ def create_appointment(
     appt = svc.schedule_appointment(
         order_id=data.order_id,
         patient_id=data.patient_id,
-        scheduled_date=datetime.fromisoformat(data.scheduled_date) if isinstance(data.scheduled_date, str) else data.scheduled_date,
+        scheduled_date=datetime.fromisoformat(data.scheduled_date)
+        if isinstance(data.scheduled_date, str)
+        else data.scheduled_date,
         scheduled_time=data.scheduled_time,
         duration_minutes=data.duration_minutes,
         modality=data.modality,
@@ -476,7 +488,12 @@ def list_exams(
         skip=skip,
         limit=limit,
     )
-    return {"items": [_to_dict(e) for e in exams], "total": len(exams), "skip": skip, "limit": limit}
+    return {
+        "items": [_to_dict(e) for e in exams],
+        "total": len(exams),
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.post("/exams", status_code=201)
@@ -665,7 +682,12 @@ def list_reports(
         skip=skip,
         limit=limit,
     )
-    return {"items": [_to_dict(r) for r in reports], "total": len(reports), "skip": skip, "limit": limit}
+    return {
+        "items": [_to_dict(r) for r in reports],
+        "total": len(reports),
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.post("/reports", status_code=201)
@@ -803,7 +825,12 @@ def search_reports(
         skip=skip,
         limit=limit,
     )
-    return {"items": [_to_dict(r) for r in reports], "total": len(reports), "skip": skip, "limit": limit}
+    return {
+        "items": [_to_dict(r) for r in reports],
+        "total": len(reports),
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get("/report-templates")
@@ -881,7 +908,12 @@ def search_studies(
         skip=skip,
         limit=limit,
     )
-    return {"items": [_to_dict(s) for s in studies], "total": len(studies), "skip": skip, "limit": limit}
+    return {
+        "items": [_to_dict(s) for s in studies],
+        "total": len(studies),
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get("/studies/{study_uid}/series")
@@ -898,7 +930,9 @@ def get_study_series(
         if uid not in series_set:
             series_set[uid] = {
                 "series_instance_uid": uid,
-                "modality": inst.modality.value if hasattr(inst.modality, "value") else str(inst.modality),
+                "modality": inst.modality.value
+                if hasattr(inst.modality, "value")
+                else str(inst.modality),
                 "instance_count": 0,
             }
         series_set[uid]["instance_count"] += 1
@@ -944,7 +978,9 @@ def download_image(
         "sop_instance_uid": record.sop_instance_uid,
         "file_path": record.file_path,
         "file_size": record.file_size,
-        "storage_tier": record.storage_tier.value if hasattr(record.storage_tier, "value") else str(record.storage_tier),
+        "storage_tier": record.storage_tier.value
+        if hasattr(record.storage_tier, "value")
+        else str(record.storage_tier),
     }
 
 
@@ -1130,7 +1166,12 @@ def list_critical_findings(
         skip=skip,
         limit=limit,
     )
-    return {"items": [_to_dict(f) for f in findings], "total": len(findings), "skip": skip, "limit": limit}
+    return {
+        "items": [_to_dict(f) for f in findings],
+        "total": len(findings),
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.post("/critical-findings", status_code=201)
@@ -1299,11 +1340,15 @@ def citizen_images(
     viewer = ImageViewerService(db)
     items = []
     for rec in records:
-        items.append({
-            "sop_instance_uid": rec.sop_instance_uid,
-            "modality": rec.modality.value if hasattr(rec.modality, "value") else str(rec.modality),
-            "viewer_url": viewer.get_streaming_url(rec.sop_instance_uid),
-        })
+        items.append(
+            {
+                "sop_instance_uid": rec.sop_instance_uid,
+                "modality": rec.modality.value
+                if hasattr(rec.modality, "value")
+                else str(rec.modality),
+                "viewer_url": viewer.get_streaming_url(rec.sop_instance_uid),
+            }
+        )
     return {"items": items, "total": len(items)}
 
 

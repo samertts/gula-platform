@@ -13,18 +13,21 @@ from app.national.search_platform.domain.enums import SearchIndexType
 
 
 class IndexAdapter(ABC):
-
     @abstractmethod
     async def search(self, query: SearchQuery) -> tuple[list[SearchResult], int]: ...
 
     @abstractmethod
-    async def suggest(self, query_text: str, index_types: list[str] | None = None, limit: int = 10) -> list[SearchSuggestion]: ...
+    async def suggest(
+        self, query_text: str, index_types: list[str] | None = None, limit: int = 10,
+    ) -> list[SearchSuggestion]: ...
 
     @abstractmethod
     async def get_facets(self, query: SearchQuery) -> list[SearchFacet]: ...
 
     @abstractmethod
-    async def index_document(self, index_type: str, document_id: str, data: dict[str, Any]) -> None: ...
+    async def index_document(
+        self, index_type: str, document_id: str, data: dict[str, Any],
+    ) -> None: ...
 
     @abstractmethod
     async def remove_document(self, index_type: str, document_id: str) -> None: ...
@@ -37,7 +40,6 @@ class IndexAdapter(ABC):
 
 
 class PostgresFullTextSearch(IndexAdapter):
-
     def __init__(self, db: Any) -> None:
         self.db = db
 
@@ -62,7 +64,9 @@ class PostgresFullTextSearch(IndexAdapter):
             ORDER BY score DESC
             LIMIT :limit OFFSET :offset
         """
-        rows = self.db.execute(sql, {"q": tsquery, "limit": query.limit, "offset": query.offset}).fetchall()
+        rows = self.db.execute(
+            sql, {"q": tsquery, "limit": query.limit, "offset": query.offset},
+        ).fetchall()
         count_sql = """
             SELECT COUNT(*) FROM (
                 SELECT id FROM patients WHERE to_tsvector('simple', name || ' ' || COALESCE(phone, '') || ' ' || COALESCE(national_id, '')) @@ to_tsquery('simple', :q)
@@ -73,17 +77,21 @@ class PostgresFullTextSearch(IndexAdapter):
         total = self.db.execute(count_sql, {"q": tsquery}).scalar() or 0
         results = []
         for row in rows:
-            results.append(SearchResult(
-                id="",
-                index_type=row.index_type,
-                resource_id=row.resource_id,
-                title=row.title,
-                description=row.description,
-                score=float(row.score) if hasattr(row, "score") and row.score else 0.0,
-            ))
+            results.append(
+                SearchResult(
+                    id="",
+                    index_type=row.index_type,
+                    resource_id=row.resource_id,
+                    title=row.title,
+                    description=row.description,
+                    score=float(row.score) if hasattr(row, "score") and row.score else 0.0,
+                ),
+            )
         return results, total
 
-    async def suggest(self, query_text: str, index_types: list[str] | None = None, limit: int = 10) -> list[SearchSuggestion]:
+    async def suggest(
+        self, query_text: str, index_types: list[str] | None = None, limit: int = 10,
+    ) -> list[SearchSuggestion]:
         pattern = f"{query_text}%"
         rows = self.db.execute(
             "SELECT name AS text, 1.0 AS score FROM patients WHERE name ILIKE :p LIMIT :limit",
@@ -108,14 +116,15 @@ class PostgresFullTextSearch(IndexAdapter):
 
 
 class ElasticsearchAdapter(IndexAdapter):
-
     def __init__(self, hosts: list[str] | None = None) -> None:
         self.hosts = hosts or ["http://localhost:9200"]
 
     async def search(self, query: SearchQuery) -> tuple[list[SearchResult], int]:
         return [], 0
 
-    async def suggest(self, query_text: str, index_types: list[str] | None = None, limit: int = 10) -> list[SearchSuggestion]:
+    async def suggest(
+        self, query_text: str, index_types: list[str] | None = None, limit: int = 10,
+    ) -> list[SearchSuggestion]:
         return []
 
     async def get_facets(self, query: SearchQuery) -> list[SearchFacet]:
@@ -135,14 +144,15 @@ class ElasticsearchAdapter(IndexAdapter):
 
 
 class FHIRSearchAdapter(IndexAdapter):
-
     def __init__(self, base_url: str = "") -> None:
         self.base_url = base_url
 
     async def search(self, query: SearchQuery) -> tuple[list[SearchResult], int]:
         return [], 0
 
-    async def suggest(self, query_text: str, index_types: list[str] | None = None, limit: int = 10) -> list[SearchSuggestion]:
+    async def suggest(
+        self, query_text: str, index_types: list[str] | None = None, limit: int = 10,
+    ) -> list[SearchSuggestion]:
         return []
 
     async def get_facets(self, query: SearchQuery) -> list[SearchFacet]:
@@ -162,7 +172,6 @@ class FHIRSearchAdapter(IndexAdapter):
 
 
 class InMemoryIndex(IndexAdapter):
-
     def __init__(self) -> None:
         self.documents: dict[str, list[dict[str, Any]]] = {}
 
@@ -175,28 +184,36 @@ class InMemoryIndex(IndexAdapter):
             if query.index_types and SearchIndexType(idx_type) not in query.index_types:
                 continue
             for doc in docs:
-                text = f"{doc.get('title', '')} {doc.get('description', '')} {doc.get('content', '')}"
+                text = (
+                    f"{doc.get('title', '')} {doc.get('description', '')} {doc.get('content', '')}"
+                )
                 if q in text.lower():
-                    results.append(SearchResult(
-                        id="",
-                        index_type=SearchIndexType(idx_type),
-                        resource_id=doc.get("id", ""),
-                        title=doc.get("title", ""),
-                        description=doc.get("description", ""),
-                        score=1.0,
-                    ))
+                    results.append(
+                        SearchResult(
+                            id="",
+                            index_type=SearchIndexType(idx_type),
+                            resource_id=doc.get("id", ""),
+                            title=doc.get("title", ""),
+                            description=doc.get("description", ""),
+                            score=1.0,
+                        ),
+                    )
         total = len(results)
-        paged = results[query.offset:query.offset + query.limit]
+        paged = results[query.offset : query.offset + query.limit]
         return paged, total
 
-    async def suggest(self, query_text: str, index_types: list[str] | None = None, limit: int = 10) -> list[SearchSuggestion]:
+    async def suggest(
+        self, query_text: str, index_types: list[str] | None = None, limit: int = 10,
+    ) -> list[SearchSuggestion]:
         pattern = query_text.lower()
         suggestions: list[SearchSuggestion] = []
         for idx_type, docs in self.documents.items():
             for doc in docs:
                 title = doc.get("title", "").lower()
                 if title.startswith(pattern):
-                    suggestions.append(SearchSuggestion(text=doc["title"], score=1.0, type=idx_type))
+                    suggestions.append(
+                        SearchSuggestion(text=doc["title"], score=1.0, type=idx_type),
+                    )
         return suggestions[:limit]
 
     async def get_facets(self, query: SearchQuery) -> list[SearchFacet]:
@@ -217,4 +234,8 @@ class InMemoryIndex(IndexAdapter):
         return 0
 
     async def health(self) -> dict[str, Any]:
-        return {"status": "ok", "backend": "in_memory", "document_count": sum(len(d) for d in self.documents.values())}
+        return {
+            "status": "ok",
+            "backend": "in_memory",
+            "document_count": sum(len(d) for d in self.documents.values()),
+        }

@@ -5,6 +5,7 @@ required.  The conftest.py runtime isolation (RUNTIME_MODE=test,
 FEATURE_BACKGROUND_TASKS=false) remains in force — these tests call the
 task primitives directly and never spawn background loops.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -17,6 +18,7 @@ from app.tasks.worker import TaskWorker
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def fresh_queue() -> _InMemoryQueue:
     """Return a brand-new in-memory queue (not the module singleton)."""
     return _InMemoryQueue()
@@ -27,6 +29,7 @@ def fresh_worker(queue: _InMemoryQueue) -> TaskWorker:
 
 
 # ── Schema ────────────────────────────────────────────────────────────────────
+
 
 def test_task_payload_defaults():
     t = TaskPayload(type="ping", payload={"x": 1})
@@ -49,17 +52,18 @@ def test_task_payload_next_attempt():
 def test_task_payload_json_roundtrip():
     t = TaskPayload(type="send_notification", payload={"user": 99})
     raw = t.model_dump_json()
-    t2  = TaskPayload.model_validate_json(raw)
-    assert t2.task_id   == t.task_id
-    assert t2.type      == t.type
-    assert t2.payload   == t.payload
+    t2 = TaskPayload.model_validate_json(raw)
+    assert t2.task_id == t.task_id
+    assert t2.type == t.type
+    assert t2.payload == t.payload
 
 
 # ── Queue ─────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_queue_enqueue_dequeue():
-    q   = fresh_queue()
+    q = fresh_queue()
     task = TaskPayload(type="ping")
     await q.enqueue(task)
     assert await q.queue_depth() == 1
@@ -77,7 +81,7 @@ async def test_queue_dequeue_empty_returns_none():
 
 @pytest.mark.asyncio
 async def test_queue_dead_letter():
-    q    = fresh_queue()
+    q = fresh_queue()
     task = TaskPayload(type="broken", max_retries=0)
     await q.dead_letter(task, "simulated failure")
     assert await q.dlq_depth() == 1
@@ -86,7 +90,7 @@ async def test_queue_dead_letter():
 
 @pytest.mark.asyncio
 async def test_queue_mark_running_and_ack():
-    q    = fresh_queue()
+    q = fresh_queue()
     task = TaskPayload(type="ping")
     await q.mark_running(task.task_id)
     assert task.task_id in q._running
@@ -95,6 +99,7 @@ async def test_queue_mark_running_and_ack():
 
 
 # ── Registry ─────────────────────────────────────────────────────────────────
+
 
 def test_task_handler_decorator_registers():
     type_name = "_test_handler_registration"
@@ -114,10 +119,11 @@ def test_get_handler_unknown_returns_none():
 
 # ── TaskWorker — happy path ───────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_worker_executes_task_successfully():
-    q    = fresh_queue()
-    w    = fresh_worker(q)
+    q = fresh_queue()
+    w = fresh_worker(q)
     type_name = "_test_success"
     _REGISTRY.pop(type_name, None)
 
@@ -130,8 +136,8 @@ async def test_worker_executes_task_successfully():
 
     result = await w.run_once()
     assert result is not None
-    assert result.status  == TaskStatus.DONE
-    assert result.result  == {"echo": 42}
+    assert result.status == TaskStatus.DONE
+    assert result.result == {"echo": 42}
     assert result.task_id == task.task_id
 
     _REGISTRY.pop(type_name, None)
@@ -140,12 +146,12 @@ async def test_worker_executes_task_successfully():
 @pytest.mark.asyncio
 async def test_worker_crash_isolation_single_task():
     """A crashing task must not stop the worker loop — siblings are unaffected."""
-    q          = fresh_queue()
-    w          = fresh_worker(q)
+    q = fresh_queue()
+    w = fresh_worker(q)
     type_crash = "_test_crash"
-    type_ok    = "_test_after_crash"
+    type_ok = "_test_after_crash"
     _REGISTRY.pop(type_crash, None)
-    _REGISTRY.pop(type_ok,    None)
+    _REGISTRY.pop(type_ok, None)
 
     @task_handler(type_crash)
     async def _crash(payload: dict):
@@ -156,7 +162,7 @@ async def test_worker_crash_isolation_single_task():
         return "survived"
 
     crash_task = TaskPayload(type=type_crash, max_retries=0)
-    ok_task    = TaskPayload(type=type_ok)
+    ok_task = TaskPayload(type=type_ok)
 
     await q.enqueue(crash_task)
     await q.enqueue(ok_task)
@@ -171,15 +177,16 @@ async def test_worker_crash_isolation_single_task():
     assert r2.result == "survived"
 
     _REGISTRY.pop(type_crash, None)
-    _REGISTRY.pop(type_ok,    None)
+    _REGISTRY.pop(type_ok, None)
 
 
 # ── TaskWorker — retry logic ──────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_worker_retries_on_failure():
     """A task that fails should be re-enqueued with retry_count incremented."""
-    q         = fresh_queue()
+    q = fresh_queue()
     type_name = "_test_retry"
     _REGISTRY.pop(type_name, None)
 
@@ -200,19 +207,20 @@ async def test_worker_retries_on_failure():
         pass
 
     import app.tasks.worker as worker_mod
+
     original_sleep = asyncio.sleep
     worker_mod.asyncio.sleep = _no_sleep
 
     try:
-        w   = fresh_worker(q)
-        r1  = await w.run_once()    # retry_count=0 → next=1 (1<3) → FAILED
+        w = fresh_worker(q)
+        r1 = await w.run_once()  # retry_count=0 → next=1 (1<3) → FAILED
         assert r1.status == TaskStatus.FAILED
         assert await q.queue_depth() == 1
 
-        r2 = await w.run_once()     # retry_count=1 → next=2 (2<3) → FAILED
+        r2 = await w.run_once()  # retry_count=1 → next=2 (2<3) → FAILED
         assert r2.status == TaskStatus.FAILED
 
-        r3 = await w.run_once()     # retry_count=2 → next=3 (3>=3) → DEAD
+        r3 = await w.run_once()  # retry_count=2 → next=3 (3>=3) → DEAD
         assert r3.status == TaskStatus.DEAD
         assert await q.dlq_depth() == 1
     finally:
@@ -223,10 +231,11 @@ async def test_worker_retries_on_failure():
 
 # ── TaskWorker — unknown task type → DLQ ─────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_worker_unknown_type_goes_to_dlq():
-    q    = fresh_queue()
-    w    = fresh_worker(q)
+    q = fresh_queue()
+    w = fresh_worker(q)
     task = TaskPayload(type="__no_handler_registered__")
     await q.enqueue(task)
 
@@ -237,10 +246,11 @@ async def test_worker_unknown_type_goes_to_dlq():
 
 # ── TaskWorker — timeout enforcement ─────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_worker_timeout_error_goes_to_dlq():
     """asyncio.TimeoutError raised by a handler → DLQ when max_retries=0."""
-    q         = fresh_queue()
+    q = fresh_queue()
     type_name = "_test_timeout"
     _REGISTRY.pop(type_name, None)
 
@@ -253,7 +263,7 @@ async def test_worker_timeout_error_goes_to_dlq():
     await q.enqueue(task)
 
     try:
-        w      = fresh_worker(q)
+        w = fresh_worker(q)
         result = await w.run_once()
         assert result.status == TaskStatus.DEAD
         assert await q.dlq_depth() == 1
@@ -262,6 +272,7 @@ async def test_worker_timeout_error_goes_to_dlq():
 
 
 # ── Queue FIFO ordering ───────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_queue_fifo_order():

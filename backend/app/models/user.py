@@ -19,9 +19,13 @@ class User(Base):
     role = Column(String(50), nullable=False, default="citizen")
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="SET NULL"), nullable=True)
     user_type = Column(String(50), nullable=True, index=True)
-    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
     facility_id = Column(Integer, ForeignKey("facilities.id", ondelete="SET NULL"), nullable=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True)
+    tenant_id = Column(
+        Integer, ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
     governorate_id = Column(String(50), nullable=True, index=True)
     directorate_id = Column(String(50), nullable=True, index=True)
     department_id = Column(String(100), nullable=True)
@@ -37,5 +41,9 @@ class User(Base):
     last_login = Column(DateTime(timezone=True), nullable=True)
 
     lab = relationship("Lab", back_populates="staff_users")
-    organization = relationship("Organization", back_populates="users", foreign_keys=[organization_id])
-    role_assignments = relationship("RoleAssignment", back_populates="user", foreign_keys="RoleAssignment.user_id")
+    organization = relationship(
+        "Organization", back_populates="users", foreign_keys=[organization_id],
+    )
+    role_assignments = relationship(
+        "RoleAssignment", back_populates="user", foreign_keys="RoleAssignment.user_id",
+    )

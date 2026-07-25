@@ -60,13 +60,17 @@ class RateLimitPolicy(BasePolicy):
         self._buckets[key] = bucket
         return PolicyResult(PolicyDecision.ALLOW, self.name)
 
-    def check_rate_limit(self, client_id: str, endpoint: str, max_requests: int = 60, window_seconds: int = 60) -> PolicyResult:
-        return self.evaluate({
-            "client_id": client_id,
-            "endpoint": endpoint,
-            "rate_limit_max": max_requests,
-            "rate_limit_window": window_seconds,
-        })
+    def check_rate_limit(
+        self, client_id: str, endpoint: str, max_requests: int = 60, window_seconds: int = 60,
+    ) -> PolicyResult:
+        return self.evaluate(
+            {
+                "client_id": client_id,
+                "endpoint": endpoint,
+                "rate_limit_max": max_requests,
+                "rate_limit_window": window_seconds,
+            },
+        )
 
 
 class QuotaPolicy(BasePolicy):
@@ -83,7 +87,9 @@ class QuotaPolicy(BasePolicy):
 
         current = self._usage.get(client_id, 0)
         if current >= max_quota:
-            return PolicyResult(PolicyDecision.DENY, self.name, f"quota exceeded: {current}/{max_quota}")
+            return PolicyResult(
+                PolicyDecision.DENY, self.name, f"quota exceeded: {current}/{max_quota}",
+            )
 
         self._usage[client_id] = current + 1
         return PolicyResult(PolicyDecision.ALLOW, self.name)
@@ -132,6 +138,7 @@ class IPWhitelistPolicy(BasePolicy):
     def _ip_in_cidr(self, address: str, cidr: str) -> bool:
         try:
             import ipaddress
+
             return ipaddress.ip_address(address) in ipaddress.ip_network(cidr, strict=False)
         except ImportError:
             return address == cidr.split("/", maxsplit=1)[0]
@@ -167,6 +174,7 @@ class IPBlacklistPolicy(BasePolicy):
             if "/" in entry:
                 try:
                     import ipaddress
+
                     if ipaddress.ip_address(address) in ipaddress.ip_network(entry, strict=False):
                         return True
                 except ImportError:
@@ -201,7 +209,9 @@ class TimeRestrictionPolicy(BasePolicy):
             )
         return PolicyResult(PolicyDecision.ALLOW, self.name)
 
-    def check_time(self, allowed_hours: list[int] | None = None, allowed_days: list[int] | None = None) -> PolicyResult:
+    def check_time(
+        self, allowed_hours: list[int] | None = None, allowed_days: list[int] | None = None,
+    ) -> PolicyResult:
         if allowed_hours is not None:
             self._allowed_hours = allowed_hours
         if allowed_days is not None:
@@ -231,6 +241,7 @@ class OAuth2Policy(BasePolicy):
 
     def _validate_token(self, token: str, required_scopes: list[str]) -> PolicyResult:
         import json
+
         try:
             parts = token.split(".")
             if len(parts) != 3:
@@ -246,15 +257,25 @@ class OAuth2Policy(BasePolicy):
             if exp and time.time() > exp:
                 return PolicyResult(PolicyDecision.DENY, self.name, "token expired")
 
-            token_scopes = payload.get("scope", "").split() if isinstance(payload.get("scope"), str) else payload.get("scopes", [])
+            token_scopes = (
+                payload.get("scope", "").split()
+                if isinstance(payload.get("scope"), str)
+                else payload.get("scopes", [])
+            )
             for scope in required_scopes:
                 if scope not in token_scopes:
-                    return PolicyResult(PolicyDecision.DENY, self.name, f"missing required scope: {scope}")
+                    return PolicyResult(
+                        PolicyDecision.DENY, self.name, f"missing required scope: {scope}",
+                    )
 
             issuer = payload.get("iss", "")
             if issuer in self._token_validators:
                 if not self._token_validators[issuer](token):
-                    return PolicyResult(PolicyDecision.DENY, self.name, f"token validation failed for issuer {issuer}")
+                    return PolicyResult(
+                        PolicyDecision.DENY,
+                        self.name,
+                        f"token validation failed for issuer {issuer}",
+                    )
 
             return PolicyResult(PolicyDecision.ALLOW, self.name)
 
@@ -378,11 +399,18 @@ class GatewayPolicyEngine:
         return self._policies.get(name)
 
     def list_policies(self) -> list[dict]:
-        return [{"name": name, "type": type(policy).__name__} for name, policy in self._policies.items()]
+        return [
+            {"name": name, "type": type(policy).__name__} for name, policy in self._policies.items()
+        ]
 
     def evaluate(self, request: dict) -> PolicyResult:
         route_key = f"{request.get('method', 'GET')} {request.get('path', '')}"
-        route_config = self._routes.get(route_key) or self._routes.get(f"* {request.get('path', '')}") or self._routes.get(f"{request.get('method', 'GET')} *") or self._routes.get("* *")
+        route_config = (
+            self._routes.get(route_key)
+            or self._routes.get(f"* {request.get('path', '')}")
+            or self._routes.get(f"{request.get('method', 'GET')} *")
+            or self._routes.get("* *")
+        )
         if not route_config:
             return PolicyResult(PolicyDecision.DENY, "gateway", "no route configured")
 
@@ -413,6 +441,7 @@ class GatewayPolicyEngine:
 
 def base64url_decode(data: bytes) -> bytes:
     import base64
+
     rem = len(data) % 4
     if rem:
         data += b"=" * (4 - rem)

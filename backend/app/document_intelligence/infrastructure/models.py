@@ -79,19 +79,27 @@ class ScannedDocumentModel(DocIntelBase):
     source = Column(String(128), nullable=False, default="api")
     source_reference = Column(String(256), nullable=True)
     storage_backend = Column(
-        Enum(StorageBackend), nullable=False, default=StorageBackend.encrypted_local,
+        Enum(StorageBackend),
+        nullable=False,
+        default=StorageBackend.encrypted_local,
     )
     storage_path = Column(String(1024), nullable=False)
     storage_uri = Column(String(2048), nullable=True)
     checksum_sha256 = Column(String(64), nullable=False)
     status = Column(
-        Enum(DocumentStatus), nullable=False, default=DocumentStatus.pending_ingestion,
+        Enum(DocumentStatus),
+        nullable=False,
+        default=DocumentStatus.pending_ingestion,
     )
     priority = Column(
-        Enum(ProcessingPriority), nullable=False, default=ProcessingPriority.normal,
+        Enum(ProcessingPriority),
+        nullable=False,
+        default=ProcessingPriority.normal,
     )
     language = Column(
-        Enum(OcrLanguage), nullable=False, default=OcrLanguage.arabic_english,
+        Enum(OcrLanguage),
+        nullable=False,
+        default=OcrLanguage.arabic_english,
     )
     error_message = Column(Text, nullable=True, default="")
     retry_count = Column(Integer, nullable=False, default=0)
@@ -101,11 +109,24 @@ class ScannedDocumentModel(DocIntelBase):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     processed_at = Column(DateTime, nullable=True)
 
-    ocr_results = relationship("OcrResultModel", back_populates="document", cascade="all, delete-orphan")
-    entities = relationship("ExtractedEntityModel", back_populates="document", cascade="all, delete-orphan")
-    fields = relationship("ExtractedFieldModel", back_populates="document", cascade="all, delete-orphan")
-    tables = relationship("ExtractedTableModel", back_populates="document", cascade="all, delete-orphan")
-    pipeline_result = relationship("PipelineResultModel", back_populates="document", uselist=False, cascade="all, delete-orphan")
+    ocr_results = relationship(
+        "OcrResultModel", back_populates="document", cascade="all, delete-orphan",
+    )
+    entities = relationship(
+        "ExtractedEntityModel", back_populates="document", cascade="all, delete-orphan",
+    )
+    fields = relationship(
+        "ExtractedFieldModel", back_populates="document", cascade="all, delete-orphan",
+    )
+    tables = relationship(
+        "ExtractedTableModel", back_populates="document", cascade="all, delete-orphan",
+    )
+    pipeline_result = relationship(
+        "PipelineResultModel",
+        back_populates="document",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     def to_domain(self) -> ScannedDocument:
         return ScannedDocument(
@@ -172,7 +193,10 @@ class OcrResultModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     full_text = Column(Text, nullable=True, default="")
     ocr_engine = Column(Enum(OcrEngine), nullable=False)
@@ -222,7 +246,10 @@ class ExtractedEntityModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     entity_type = Column(Enum(EntityType), nullable=False)
     value = Column(Text, nullable=False)
@@ -277,7 +304,10 @@ class ExtractedFieldModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     name = Column(String(256), nullable=False)
     value = Column(Text, nullable=True)
@@ -326,7 +356,10 @@ class ExtractedTableModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     page_number = Column(Integer, nullable=False, default=0)
     headers = Column(JSON, nullable=True, default=list)
@@ -366,7 +399,10 @@ class ClassificationResultModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     category = Column(Enum(DocumentCategory), nullable=False)
     confidence = Column(Enum(ClassificationConfidence), nullable=False)
@@ -414,7 +450,11 @@ class PipelineResultModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, unique=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
     phases_completed = Column(JSON, nullable=True, default=list)
     fhir_resources = Column(JSON, nullable=True, default=list)
@@ -431,7 +471,11 @@ class PipelineResultModel(DocIntelBase):
     document = relationship("ScannedDocumentModel", back_populates="pipeline_result")
 
     def to_domain(self) -> ProcessingPipelineResult:
-        phases = [ProcessingPhase(p) for p in (self.phases_completed or []) if p in [e.value for e in ProcessingPhase]]
+        phases = [
+            ProcessingPhase(p)
+            for p in (self.phases_completed or [])
+            if p in [e.value for e in ProcessingPhase]
+        ]
         return ProcessingPipelineResult(
             document_id=self.document_id,
             phases_completed=phases,
@@ -466,7 +510,10 @@ class DocumentVersionModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     version_number = Column(Integer, nullable=False)
     storage_path = Column(String(1024), nullable=False)
@@ -484,13 +531,19 @@ class GovernmentDocumentModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, unique=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
     reference_number = Column(String(128), nullable=False, index=True)
     issuing_authority = Column(String(256), nullable=False)
     recipient_authority = Column(String(256), nullable=True)
     subject = Column(String(512), nullable=True)
-    classification = Column(Enum(ConfidentialityLevel), nullable=False, default=ConfidentialityLevel.internal)
+    classification = Column(
+        Enum(ConfidentialityLevel), nullable=False, default=ConfidentialityLevel.internal,
+    )
     decision_number = Column(String(128), nullable=True)
     committee_name = Column(String(256), nullable=True)
     contract_number = Column(String(128), nullable=True)
@@ -555,7 +608,10 @@ class DocumentReviewModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     reviewer_id = Column(String(128), nullable=False)
     reviewer_name = Column(String(256), nullable=False)
@@ -605,7 +661,10 @@ class DocumentAnnotationModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     page_number = Column(Integer, nullable=False, default=0)
     author_id = Column(String(128), nullable=False)
@@ -654,15 +713,23 @@ class DigitalPreservationRecordModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, unique=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
-    standard = Column(Enum(DigitalPreservationStandard), nullable=False, default=DigitalPreservationStandard.oais)
+    standard = Column(
+        Enum(DigitalPreservationStandard), nullable=False, default=DigitalPreservationStandard.oais,
+    )
     preservation_level = Column(String(64), nullable=False, default="full")
     original_format = Column(String(64), nullable=False)
     preservation_format = Column(String(64), nullable=False)
     original_checksum = Column(String(128), nullable=False)
     preservation_checksum = Column(String(128), nullable=False)
-    checksum_method = Column(Enum(IntegrityCheckMethod), nullable=False, default=IntegrityCheckMethod.sha256)
+    checksum_method = Column(
+        Enum(IntegrityCheckMethod), nullable=False, default=IntegrityCheckMethod.sha256,
+    )
     preservation_location = Column(String(1024), nullable=False)
     cold_storage_location = Column(String(1024), nullable=True)
     integrity_log = Column(JSON, nullable=True, default=list)
@@ -721,8 +788,12 @@ class GovernancePolicyModel(DocIntelBase):
     name = Column(String(256), nullable=False, unique=True)
     description = Column(Text, nullable=True)
     domain = Column(Enum(GovernanceDomain), nullable=False)
-    severity = Column(Enum(GovernanceRuleSeverity), nullable=False, default=GovernanceRuleSeverity.warning)
-    action = Column(Enum(GovernancePolicyAction), nullable=False, default=GovernancePolicyAction.flag)
+    severity = Column(
+        Enum(GovernanceRuleSeverity), nullable=False, default=GovernanceRuleSeverity.warning,
+    )
+    action = Column(
+        Enum(GovernancePolicyAction), nullable=False, default=GovernancePolicyAction.flag,
+    )
     conditions = Column(JSON, nullable=False, default=dict)
     enabled = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -761,15 +832,24 @@ class GovernanceEventModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=True,
+        index=True,
     )
     policy_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_governance_policies.id"), nullable=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_governance_policies.id"),
+        nullable=True,
     )
     domain = Column(Enum(GovernanceDomain), nullable=False)
-    severity = Column(Enum(GovernanceRuleSeverity), nullable=False, default=GovernanceRuleSeverity.info)
+    severity = Column(
+        Enum(GovernanceRuleSeverity), nullable=False, default=GovernanceRuleSeverity.info,
+    )
     message = Column(Text, nullable=False)
-    action_taken = Column(Enum(GovernancePolicyAction), nullable=False, default=GovernancePolicyAction.notify)
+    action_taken = Column(
+        Enum(GovernancePolicyAction), nullable=False, default=GovernancePolicyAction.notify,
+    )
     details = Column(JSON, nullable=True, default=dict)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
@@ -805,7 +885,10 @@ class DocumentEventModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     channel = Column(Enum(EventChannel), nullable=False)
     actor_id = Column(String(128), nullable=False)
@@ -842,7 +925,10 @@ class DocumentLifecycleModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     event_type = Column(String(64), nullable=False)
     previous_status = Column(Enum(DocumentStatus), nullable=True)
@@ -888,10 +974,16 @@ class KnowledgeGraphEdgeModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     source_document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=True,
+        index=True,
     )
     target_document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=True,
+        index=True,
     )
     source_entity = Column(String(256), nullable=False)
     target_entity = Column(String(256), nullable=False)
@@ -966,7 +1058,10 @@ class AccessControlModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        index=True,
     )
     user_id = Column(String(128), nullable=False, index=True)
     role = Column(Enum(CollaborationRole), nullable=False, default=CollaborationRole.viewer)
@@ -983,7 +1078,11 @@ class DocumentRetentionModel(DocIntelBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     document_id = Column(
-        UUID(as_uuid=True), ForeignKey("docint_documents.id"), nullable=False, unique=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("docint_documents.id"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
     policy = Column(Enum(RetentionPolicy), nullable=False, default=RetentionPolicy.standard_7y)
     archive_status = Column(Enum(ArchiveStatus), nullable=False, default=ArchiveStatus.active)

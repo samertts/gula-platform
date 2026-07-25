@@ -66,13 +66,17 @@ class DiseaseSurveillanceEngine:
         key = f"{disease_code}:{region}"
         if key not in self._case_reports:
             self._case_reports[key] = []
-        self._case_reports[key].append({
-            "cases": cases,
-            "population": population,
-            "timestamp": time.time(),
-        })
+        self._case_reports[key].append(
+            {
+                "cases": cases,
+                "population": population,
+                "timestamp": time.time(),
+            },
+        )
 
-    def monitor_disease(self, disease_code: str, region: str, period: int = 30) -> SurveillanceReport:
+    def monitor_disease(
+        self, disease_code: str, region: str, period: int = 30,
+    ) -> SurveillanceReport:
         key = f"{disease_code}:{region}"
         reports = self._case_reports.get(key, [])
         cutoff = time.time() - period * 86400
@@ -87,7 +91,13 @@ class DiseaseSurveillanceEngine:
             half = len(filtered) // 2
             recent = sum(r["cases"] for r in filtered[half:])
             early = sum(r["cases"] for r in filtered[:half])
-            trend = "increasing" if recent > early * 1.2 else "decreasing" if recent < early * 0.8 else "stable"
+            trend = (
+                "increasing"
+                if recent > early * 1.2
+                else "decreasing"
+                if recent < early * 0.8
+                else "stable"
+            )
         recommendations: list[str] = []
         if anomaly["is_anomaly"]:
             recommendations.append("Increase surveillance frequency")
@@ -170,20 +180,24 @@ class OutbreakDetectionEngine:
             for j in range(len(coordinates)):
                 if i != j:
                     dist = math.sqrt(
-                        (coordinates[i][0] - coordinates[j][0]) ** 2 +
-                        (coordinates[i][1] - coordinates[j][1]) ** 2,
+                        (coordinates[i][0] - coordinates[j][0]) ** 2
+                        + (coordinates[i][1] - coordinates[j][1]) ** 2,
                     )
                     if dist < 0.05:
                         cluster_members.append(j)
             if len(cluster_members) >= 3:
                 cluster_id = f"cluster_{len(clusters) + 1}"
-                clusters.append({
-                    "cluster_id": cluster_id,
-                    "size": len(cluster_members),
-                    "centroid_lat": sum(coordinates[m][0] for m in cluster_members) / len(cluster_members),
-                    "centroid_lon": sum(coordinates[m][1] for m in cluster_members) / len(cluster_members),
-                    "member_indices": cluster_members,
-                })
+                clusters.append(
+                    {
+                        "cluster_id": cluster_id,
+                        "size": len(cluster_members),
+                        "centroid_lat": sum(coordinates[m][0] for m in cluster_members)
+                        / len(cluster_members),
+                        "centroid_lon": sum(coordinates[m][1] for m in cluster_members)
+                        / len(cluster_members),
+                        "member_indices": cluster_members,
+                    },
+                )
         return clusters
 
     def detect_outbreak(
@@ -222,10 +236,11 @@ class OutbreakDetectionEngine:
         if len(sorted_times) < 2:
             return 1.0
         serial_intervals = [
-            (sorted_times[i] - sorted_times[i - 1]) / 86400
-            for i in range(1, len(sorted_times))
+            (sorted_times[i] - sorted_times[i - 1]) / 86400 for i in range(1, len(sorted_times))
         ]
-        avg_interval = sum(serial_intervals) / len(serial_intervals) if serial_intervals else generation_time
+        avg_interval = (
+            sum(serial_intervals) / len(serial_intervals) if serial_intervals else generation_time
+        )
         growth_rate = math.log(len(cases)) / avg_interval if avg_interval > 0 else 0.1
         r0 = round(1 + growth_rate * generation_time, 2)
         return max(0.5, min(r0, 20.0))
@@ -269,7 +284,9 @@ class VaccinationCoverageEngine:
         )
         self._coverage_records[key].append(data)
 
-    def calculate_coverage(self, vaccine: str, region: str, demographic: dict[str, Any] | None = None) -> CoverageData:
+    def calculate_coverage(
+        self, vaccine: str, region: str, demographic: dict[str, Any] | None = None,
+    ) -> CoverageData:
         key = f"{vaccine}:{region}"
         records = self._coverage_records.get(key, [])
         if not records:
@@ -300,13 +317,15 @@ class VaccinationCoverageEngine:
             if not key.startswith(f"{vaccine}:"):
                 continue
             for rec in records:
-                trends.append({
-                    "vaccine": rec.vaccine,
-                    "region": rec.region,
-                    "coverage_percent": rec.coverage_percent,
-                    "target_percent": rec.target_percent,
-                    "gap": round(max(0, rec.target_percent - rec.coverage_percent), 1),
-                })
+                trends.append(
+                    {
+                        "vaccine": rec.vaccine,
+                        "region": rec.region,
+                        "coverage_percent": rec.coverage_percent,
+                        "target_percent": rec.target_percent,
+                        "gap": round(max(0, rec.target_percent - rec.coverage_percent), 1),
+                    },
+                )
         return trends
 
     def identify_coverage_gaps(self, coverage_data: list[CoverageData]) -> list[dict[str, Any]]:
@@ -314,15 +333,17 @@ class VaccinationCoverageEngine:
         for data in coverage_data:
             gap = max(0, data.target_percent - data.coverage_percent)
             if gap > 0:
-                gaps.append({
-                    "vaccine": data.vaccine,
-                    "region": data.region,
-                    "current_coverage": data.coverage_percent,
-                    "target": data.target_percent,
-                    "gap": round(gap, 1),
-                    "severity": "critical" if gap > 20 else "high" if gap > 10 else "medium",
-                    "unvaccinated_population": int(data.population * gap / 100),
-                })
+                gaps.append(
+                    {
+                        "vaccine": data.vaccine,
+                        "region": data.region,
+                        "current_coverage": data.coverage_percent,
+                        "target": data.target_percent,
+                        "gap": round(gap, 1),
+                        "severity": "critical" if gap > 20 else "high" if gap > 10 else "medium",
+                        "unvaccinated_population": int(data.population * gap / 100),
+                    },
+                )
         return sorted(gaps, key=lambda g: -g["gap"])
 
 
@@ -333,7 +354,9 @@ class PopulationRiskEngine:
     def load_risk_data(self, region: str, data: dict[str, Any]) -> None:
         self._risk_data[region] = data
 
-    def assess_population_risk(self, region: str, risk_factors: dict[str, Any] | None = None) -> dict[str, Any]:
+    def assess_population_risk(
+        self, region: str, risk_factors: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         data = self._risk_data.get(region, {})
         factors = risk_factors or data.get("factors", {})
         scores: dict[str, float] = {}
@@ -362,7 +385,9 @@ class PopulationRiskEngine:
         return {
             "risk_type": risk_type,
             "regions": regions,
-            "highest_risk_region": max(regions, key=lambda r: regions[r]["risk_score"]) if regions else None,
+            "highest_risk_region": max(regions, key=lambda r: regions[r]["risk_score"])
+            if regions
+            else None,
         }
 
     def identify_vulnerable_populations(self, risk_data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -370,12 +395,14 @@ class PopulationRiskEngine:
         vulnerable: list[dict[str, Any]] = []
         for factor, score in sorted(factor_scores.items(), key=lambda x: -x[1]):
             if score > 0.5:
-                vulnerable.append({
-                    "factor": factor,
-                    "risk_score": score,
-                    "estimated_population": int(risk_data.get("population", 0) * score),
-                    "recommendation": f"Targeted intervention for {factor}",
-                })
+                vulnerable.append(
+                    {
+                        "factor": factor,
+                        "risk_score": score,
+                        "estimated_population": int(risk_data.get("population", 0) * score),
+                        "recommendation": f"Targeted intervention for {factor}",
+                    },
+                )
         return vulnerable
 
 
@@ -383,17 +410,23 @@ class MortalityAnalyzer:
     def __init__(self) -> None:
         self._mortality_data: dict[str, list[dict[str, Any]]] = {}
 
-    def record_mortality(self, region: str, deaths: int, population: int, cause: str = "all_cause") -> None:
+    def record_mortality(
+        self, region: str, deaths: int, population: int, cause: str = "all_cause",
+    ) -> None:
         key = f"{region}:{cause}"
         if key not in self._mortality_data:
             self._mortality_data[key] = []
-        self._mortality_data[key].append({
-            "deaths": deaths,
-            "population": population,
-            "timestamp": time.time(),
-        })
+        self._mortality_data[key].append(
+            {
+                "deaths": deaths,
+                "population": population,
+                "timestamp": time.time(),
+            },
+        )
 
-    def analyze_mortality(self, region: str, period: int = 365, causes: list[str] | None = None) -> dict[str, Any]:
+    def analyze_mortality(
+        self, region: str, period: int = 365, causes: list[str] | None = None,
+    ) -> dict[str, Any]:
         target_causes = causes or ["all_cause"]
         analysis: dict[str, Any] = {
             "region": region,
@@ -423,7 +456,9 @@ class MortalityAnalyzer:
             return 0.0
         return round((deaths / population) * 100000, 2)
 
-    def get_mortality_trends(self, years: int = 10, cause: str = "all_cause") -> list[dict[str, Any]]:
+    def get_mortality_trends(
+        self, years: int = 10, cause: str = "all_cause",
+    ) -> list[dict[str, Any]]:
         trends: list[dict[str, Any]] = []
         for key, records in self._mortality_data.items():
             if not key.endswith(f":{cause}"):
@@ -431,14 +466,16 @@ class MortalityAnalyzer:
             region = key.split(":")[0]
             for rec in records:
                 rate = self.calculate_mortality_rate(rec["deaths"], rec["population"])
-                trends.append({
-                    "region": region,
-                    "cause": cause,
-                    "deaths": rec["deaths"],
-                    "population": rec["population"],
-                    "mortality_rate_per_100k": rate,
-                    "timestamp": rec["timestamp"],
-                })
+                trends.append(
+                    {
+                        "region": region,
+                        "cause": cause,
+                        "deaths": rec["deaths"],
+                        "population": rec["population"],
+                        "mortality_rate_per_100k": rate,
+                        "timestamp": rec["timestamp"],
+                    },
+                )
         return sorted(trends, key=lambda t: t["timestamp"])
 
 
@@ -446,16 +483,20 @@ class MaternalHealthEngine:
     def __init__(self) -> None:
         self._maternal_data: dict[str, list[dict[str, Any]]] = {}
 
-    def record_maternal_data(self, region: str, deaths: int, live_births: int, anc_visits: int, expected_pregnancies: int) -> None:
+    def record_maternal_data(
+        self, region: str, deaths: int, live_births: int, anc_visits: int, expected_pregnancies: int,
+    ) -> None:
         if region not in self._maternal_data:
             self._maternal_data[region] = []
-        self._maternal_data[region].append({
-            "deaths": deaths,
-            "live_births": live_births,
-            "anc_visits": anc_visits,
-            "expected_pregnancies": expected_pregnancies,
-            "timestamp": time.time(),
-        })
+        self._maternal_data[region].append(
+            {
+                "deaths": deaths,
+                "live_births": live_births,
+                "anc_visits": anc_visits,
+                "expected_pregnancies": expected_pregnancies,
+                "timestamp": time.time(),
+            },
+        )
 
     def track_maternal_indicators(self, region: str, period: int = 365) -> dict[str, Any]:
         records = self._maternal_data.get(region, [])
@@ -502,16 +543,25 @@ class ChildHealthEngine:
     def __init__(self) -> None:
         self._child_data: dict[str, list[dict[str, Any]]] = {}
 
-    def record_child_data(self, region: str, deaths_under_5: int, live_births: int, immunized: int, target_population: int) -> None:
+    def record_child_data(
+        self,
+        region: str,
+        deaths_under_5: int,
+        live_births: int,
+        immunized: int,
+        target_population: int,
+    ) -> None:
         if region not in self._child_data:
             self._child_data[region] = []
-        self._child_data[region].append({
-            "deaths_under_5": deaths_under_5,
-            "live_births": live_births,
-            "immunized": immunized,
-            "target_population": target_population,
-            "timestamp": time.time(),
-        })
+        self._child_data[region].append(
+            {
+                "deaths_under_5": deaths_under_5,
+                "live_births": live_births,
+                "immunized": immunized,
+                "target_population": target_population,
+                "timestamp": time.time(),
+            },
+        )
 
     def track_child_indicators(self, region: str, period: int = 365) -> dict[str, Any]:
         records = self._child_data.get(region, [])

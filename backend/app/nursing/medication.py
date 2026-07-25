@@ -26,7 +26,6 @@ class FiveRightsResult:
 
 
 class MedicationAdminService:
-
     @staticmethod
     def verify_five_rights(
         right_patient: bool,
@@ -81,7 +80,10 @@ class MedicationAdminService:
 
     @staticmethod
     def record_administration(
-        db: Session, lab_id: int, user_id: int, admin_data: dict,
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        admin_data: dict,
     ) -> MedicationAdministration:
         admin = MedicationAdministration(
             lab_id=lab_id,
@@ -91,56 +93,87 @@ class MedicationAdminService:
         admin.recorded_time = datetime.now(UTC)
         db.add(admin)
         db.flush()
-        log_action(db, "nursing.medication.administer", "medication_administration", admin.id, user_id, lab_id, admin_data)
+        log_action(
+            db,
+            "nursing.medication.administer",
+            "medication_administration",
+            admin.id,
+            user_id,
+            lab_id,
+            admin_data,
+        )
         return admin
 
     @staticmethod
     def get_missed_doses(
-        db: Session, lab_id: int, patient_id: int,
-        start_date: date | None = None, end_date: date | None = None,
+        db: Session,
+        lab_id: int,
+        patient_id: int,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[dict[str, Any]]:
         start_date = start_date or date.today()
         end_date = end_date or date.today()
-        requests = db.query(MedicationRequest).filter(
-            MedicationRequest.patient_id == patient_id,
-            MedicationRequest.lab_id == lab_id,
-            ~MedicationRequest.is_deleted,
-            MedicationRequest.status == "active",
-        ).all()
+        requests = (
+            db.query(MedicationRequest)
+            .filter(
+                MedicationRequest.patient_id == patient_id,
+                MedicationRequest.lab_id == lab_id,
+                ~MedicationRequest.is_deleted,
+                MedicationRequest.status == "active",
+            )
+            .all()
+        )
         missed = []
         for req in requests:
-            given = db.query(MedicationAdministration).filter(
-                MedicationAdministration.medication_request_id == req.id,
-                MedicationAdministration.patient_id == patient_id,
-                func.date(MedicationAdministration.administration_time).between(start_date, end_date),
-                MedicationAdministration.status == "completed",
-            ).count()
+            given = (
+                db.query(MedicationAdministration)
+                .filter(
+                    MedicationAdministration.medication_request_id == req.id,
+                    MedicationAdministration.patient_id == patient_id,
+                    func.date(MedicationAdministration.administration_time).between(
+                        start_date, end_date
+                    ),
+                    MedicationAdministration.status == "completed",
+                )
+                .count()
+            )
             if given == 0:
-                missed.append({
-                    "request_id": req.id,
-                    "medication_name": req.medication_name,
-                    "medication_name_ar": req.medication_name_ar,
-                    "dosage_instruction": req.dosage_instruction,
-                    "route": req.route,
-                    "frequency": req.frequency,
-                    "start_date": start_date.isoformat(),
-                    "end_date": end_date.isoformat(),
-                    "status": "missed",
-                })
+                missed.append(
+                    {
+                        "request_id": req.id,
+                        "medication_name": req.medication_name,
+                        "medication_name_ar": req.medication_name_ar,
+                        "dosage_instruction": req.dosage_instruction,
+                        "route": req.route,
+                        "frequency": req.frequency,
+                        "start_date": start_date.isoformat(),
+                        "end_date": end_date.isoformat(),
+                        "status": "missed",
+                    }
+                )
         return missed
 
     @staticmethod
     def get_late_doses(
-        db: Session, lab_id: int, patient_id: int, window_minutes: int = 30,
+        db: Session,
+        lab_id: int,
+        patient_id: int,
+        window_minutes: int = 30,
     ) -> list[dict[str, Any]]:
         cutoff = datetime.now(UTC) - timedelta(minutes=window_minutes)
-        late = db.query(MedicationAdministration).filter(
-            MedicationAdministration.patient_id == patient_id,
-            MedicationAdministration.lab_id == lab_id,
-            ~MedicationAdministration.is_deleted,
-            MedicationAdministration.status == "completed",
-            MedicationAdministration.recorded_time > cutoff,
-        ).order_by(MedicationAdministration.recorded_time.desc()).all()
+        late = (
+            db.query(MedicationAdministration)
+            .filter(
+                MedicationAdministration.patient_id == patient_id,
+                MedicationAdministration.lab_id == lab_id,
+                ~MedicationAdministration.is_deleted,
+                MedicationAdministration.status == "completed",
+                MedicationAdministration.recorded_time > cutoff,
+            )
+            .order_by(MedicationAdministration.recorded_time.desc())
+            .all()
+        )
         return [
             {
                 "id": a.id,
@@ -149,11 +182,14 @@ class MedicationAdminService:
                 "dose_value": a.dose_value,
                 "dose_unit": a.dose_unit,
                 "route": a.route,
-                "scheduled_time": a.administration_time.isoformat() if a.administration_time else None,
+                "scheduled_time": a.administration_time.isoformat()
+                if a.administration_time
+                else None,
                 "recorded_time": a.recorded_time.isoformat() if a.recorded_time else None,
                 "delay_minutes": (
                     (a.recorded_time - a.administration_time).total_seconds() / 60
-                    if a.recorded_time and a.administration_time else None
+                    if a.recorded_time and a.administration_time
+                    else None
                 ),
             }
             for a in late
@@ -161,42 +197,63 @@ class MedicationAdminService:
 
     @staticmethod
     def get_medication_alerts(
-        db: Session, lab_id: int, patient_id: int,
+        db: Session,
+        lab_id: int,
+        patient_id: int,
     ) -> list[dict[str, Any]]:
         alerts: list[dict[str, Any]] = []
-        requests = db.query(MedicationRequest).filter(
-            MedicationRequest.patient_id == patient_id,
-            MedicationRequest.lab_id == lab_id,
-            ~MedicationRequest.is_deleted,
-            MedicationRequest.status == "active",
-        ).all()
+        requests = (
+            db.query(MedicationRequest)
+            .filter(
+                MedicationRequest.patient_id == patient_id,
+                MedicationRequest.lab_id == lab_id,
+                ~MedicationRequest.is_deleted,
+                MedicationRequest.status == "active",
+            )
+            .all()
+        )
         for req in requests:
             if req.quantity and req.duration_days:
                 daily_dose = req.quantity / req.duration_days
                 if daily_dose > 4:
-                    alerts.append({
-                        "type": "max_dose_warning",
-                        "severity": "warning",
-                        "medication_name": req.medication_name,
-                        "message": f"Daily dose ({daily_dose:.0f} units) exceeds threshold",
-                        "message_ar": f"الجرعة اليومية ({daily_dose:.0f} وحدة) تتجاوز الحد المسموح",
-                    })
+                    alerts.append(
+                        {
+                            "type": "max_dose_warning",
+                            "severity": "warning",
+                            "medication_name": req.medication_name,
+                            "message": f"Daily dose ({daily_dose:.0f} units) exceeds threshold",
+                            "message_ar": f"الجرعة اليومية ({daily_dose:.0f} وحدة) تتجاوز الحد المسموح",
+                        }
+                    )
         return alerts
 
     @staticmethod
     def electronic_signature(
-        db: Session, lab_id: int, nurse_id: str, medication_admin_id: str,
+        db: Session,
+        lab_id: int,
+        nurse_id: str,
+        medication_admin_id: str,
     ) -> dict[str, Any]:
-        admin = db.query(MedicationAdministration).filter(
-            MedicationAdministration.id == medication_admin_id,
-            MedicationAdministration.lab_id == lab_id,
-        ).first()
+        admin = (
+            db.query(MedicationAdministration)
+            .filter(
+                MedicationAdministration.id == medication_admin_id,
+                MedicationAdministration.lab_id == lab_id,
+            )
+            .first()
+        )
         if not admin:
-            raise HTTPException(status_code=404, detail="Medication administration record not found")
+            raise HTTPException(
+                status_code=404, detail="Medication administration record not found"
+            )
         signed_at = datetime.now(UTC)
         log_action(
-            db, "nursing.medication.sign", "medication_administration",
-            medication_admin_id, nurse_id, lab_id,
+            db,
+            "nursing.medication.sign",
+            "medication_administration",
+            medication_admin_id,
+            nurse_id,
+            lab_id,
             {"signed_at": signed_at.isoformat()},
         )
         return {

@@ -20,6 +20,7 @@ Blast radius: zero. This is a pure pytest regression suite — no app code is
 modified.  Risk: tests can flap if a route legitimately changes shape; in
 that case the route's new contract should be reflected here, not bypassed.
 """
+
 from __future__ import annotations
 
 import os
@@ -53,29 +54,41 @@ def two_labs(db):
 
     Returns a dict so tests can read by semantic name without index gymnastics.
     """
-    lab_a = Lab(name="Lab A", license_number="LIC-AAA", lab_type="private",
-                city="Baghdad", is_active=True)
-    lab_b = Lab(name="Lab B", license_number="LIC-BBB", lab_type="private",
-                city="Mosul", is_active=True)
+    lab_a = Lab(
+        name="Lab A", license_number="LIC-AAA", lab_type="private", city="Baghdad", is_active=True
+    )
+    lab_b = Lab(
+        name="Lab B", license_number="LIC-BBB", lab_type="private", city="Mosul", is_active=True
+    )
     db.add_all([lab_a, lab_b])
     db.flush()
 
     admin_a = LabUser(
-        lab_id=lab_a.id, name="Admin A", email="admin_a@a.com",
-        password_hash=hash_password("Pa55word"), role="admin", is_active=True,
+        lab_id=lab_a.id,
+        name="Admin A",
+        email="admin_a@a.com",
+        password_hash=hash_password("Pa55word"),
+        role="admin",
+        is_active=True,
     )
     admin_b = LabUser(
-        lab_id=lab_b.id, name="Admin B", email="admin_b@b.com",
-        password_hash=hash_password("Pa55word"), role="admin", is_active=True,
+        lab_id=lab_b.id,
+        name="Admin B",
+        email="admin_b@b.com",
+        password_hash=hash_password("Pa55word"),
+        role="admin",
+        is_active=True,
     )
     db.add_all([admin_a, admin_b])
     db.flush()
 
     # Each lab gets its own patient → order → result → sample chain
-    pat_a = Patient(lab_id=lab_a.id, full_name="Patient A", phone="07700000001",
-                    health_id="HID-A-001")
-    pat_b = Patient(lab_id=lab_b.id, full_name="Patient B", phone="07700000002",
-                    health_id="HID-B-001")
+    pat_a = Patient(
+        lab_id=lab_a.id, full_name="Patient A", phone="07700000001", health_id="HID-A-001"
+    )
+    pat_b = Patient(
+        lab_id=lab_b.id, full_name="Patient B", phone="07700000002", health_id="HID-B-001"
+    )
     db.add_all([pat_a, pat_b])
     db.flush()
 
@@ -84,27 +97,37 @@ def two_labs(db):
     db.add_all([order_a, order_b])
     db.flush()
 
-    result_a = LabResult(order_id=order_a.id, test_name="Glucose", value=110.0,
-                         unit="mg/dL", flag="normal")
-    result_b = LabResult(order_id=order_b.id, test_name="Glucose", value=90.0,
-                         unit="mg/dL", flag="normal")
+    result_a = LabResult(
+        order_id=order_a.id, test_name="Glucose", value=110.0, unit="mg/dL", flag="normal"
+    )
+    result_b = LabResult(
+        order_id=order_b.id, test_name="Glucose", value=90.0, unit="mg/dL", flag="normal"
+    )
     db.add_all([result_a, result_b])
     db.flush()
 
-    sample_a = Sample(order_id=order_a.id, sample_type="blood",
-                      barcode="BARCODE-AAA-001", status="collected")
-    sample_b = Sample(order_id=order_b.id, sample_type="blood",
-                      barcode="BARCODE-BBB-001", status="collected")
+    sample_a = Sample(
+        order_id=order_a.id, sample_type="blood", barcode="BARCODE-AAA-001", status="collected"
+    )
+    sample_b = Sample(
+        order_id=order_b.id, sample_type="blood", barcode="BARCODE-BBB-001", status="collected"
+    )
     db.add_all([sample_a, sample_b])
     db.commit()
 
     return {
-        "lab_a": lab_a, "lab_b": lab_b,
-        "admin_a": admin_a, "admin_b": admin_b,
-        "patient_a": pat_a, "patient_b": pat_b,
-        "order_a": order_a, "order_b": order_b,
-        "result_a": result_a, "result_b": result_b,
-        "sample_a": sample_a, "sample_b": sample_b,
+        "lab_a": lab_a,
+        "lab_b": lab_b,
+        "admin_a": admin_a,
+        "admin_b": admin_b,
+        "patient_a": pat_a,
+        "patient_b": pat_b,
+        "order_a": order_a,
+        "order_b": order_b,
+        "result_a": result_a,
+        "result_b": result_b,
+        "sample_a": sample_a,
+        "sample_b": sample_b,
     }
 
 
@@ -130,12 +153,10 @@ def _assert_no_foreign_data(json_body, *forbidden_strings: str):
     catches leaks in nested fields too (e.g. patient inside an order).
     """
     import json as _json
+
     blob = _json.dumps(json_body, default=str)
     for s in forbidden_strings:
-        assert s not in blob, (
-            f"Foreign-tenant string {s!r} leaked into response: "
-            f"{blob[:400]}..."
-        )
+        assert s not in blob, f"Foreign-tenant string {s!r} leaked into response: {blob[:400]}..."
 
 
 # ─── Phase 1.A — Cross-tenant GET on individual resources ────────────────────
@@ -191,9 +212,7 @@ class TestSingleResourceCrossTenant:
         )
         assert res.status_code in _REJECT_OK
 
-    def test_get_fhir_diagnostic_report_other_lab_returns_404(
-        self, client, two_labs
-    ):
+    def test_get_fhir_diagnostic_report_other_lab_returns_404(self, client, two_labs):
         admin_a = two_labs["admin_a"]
         order_b_id = two_labs["order_b"].id
         res = client.get(
@@ -355,11 +374,16 @@ class TestSearchFilterIsolation:
         """Paginating to skip a row should NEVER expose foreign data."""
         # Add a few more patients to lab A to exercise pagination
         from app.models.patient import Patient as P
+
         for i in range(5):
-            db.add(P(lab_id=two_labs["lab_a"].id,
-                     full_name=f"Patient A{i}",
-                     phone=f"0770000{1000+i}",
-                     health_id=f"HID-A-EXTRA-{i}"))
+            db.add(
+                P(
+                    lab_id=two_labs["lab_a"].id,
+                    full_name=f"Patient A{i}",
+                    phone=f"0770000{1000 + i}",
+                    health_id=f"HID-A-EXTRA-{i}",
+                )
+            )
         db.commit()
 
         admin_a = two_labs["admin_a"]
@@ -398,31 +422,31 @@ class TestAuditTrailTenantBoundary:
 
 
 _AUTH_ROUTES = [
-    ("GET",  "/patients"),
-    ("GET",  "/patients/1"),
+    ("GET", "/patients"),
+    ("GET", "/patients/1"),
     ("POST", "/patients"),
-    ("PUT",  "/patients/1"),
-    ("GET",  "/orders"),
-    ("GET",  "/orders/1"),
+    ("PUT", "/patients/1"),
+    ("GET", "/orders"),
+    ("GET", "/orders/1"),
     ("POST", "/orders/1/validate"),
     ("POST", "/orders/1/cancel"),
-    ("GET",  "/samples"),
-    ("GET",  "/samples/X"),
-    ("PUT",  "/samples/X"),
-    ("GET",  "/alerts"),
-    ("GET",  "/alerts/stats"),
-    ("GET",  "/labs/me"),
-    ("GET",  "/labs/me/employees"),
-    ("GET",  "/compliance/fhir/patient/1"),
-    ("GET",  "/compliance/fhir/observation/1"),
-    ("GET",  "/compliance/fhir/diagnostic-report/1"),
-    ("GET",  "/compliance/audit-integrity"),
-    ("GET",  "/compliance/security-report"),
-    ("GET",  "/compliance/audit-summary"),
-    ("GET",  "/tiers/my"),
+    ("GET", "/samples"),
+    ("GET", "/samples/X"),
+    ("PUT", "/samples/X"),
+    ("GET", "/alerts"),
+    ("GET", "/alerts/stats"),
+    ("GET", "/labs/me"),
+    ("GET", "/labs/me/employees"),
+    ("GET", "/compliance/fhir/patient/1"),
+    ("GET", "/compliance/fhir/observation/1"),
+    ("GET", "/compliance/fhir/diagnostic-report/1"),
+    ("GET", "/compliance/audit-integrity"),
+    ("GET", "/compliance/security-report"),
+    ("GET", "/compliance/audit-summary"),
+    ("GET", "/tiers/my"),
     ("POST", "/tiers/upgrade"),
-    ("GET",  "/tiers/upgrade-requests"),
-    ("GET",  "/admin/tiers/demands"),
+    ("GET", "/tiers/upgrade-requests"),
+    ("GET", "/admin/tiers/demands"),
 ]
 
 
@@ -470,8 +494,6 @@ class TestTokenForgery:
 
     def test_unsigned_token_rejected(self, client):
         """Bearer headers without a valid signature must produce 401."""
-        for bad in ("Bearer notatoken",
-                    "Bearer abc.def.ghi",
-                    "Bearer "):
+        for bad in ("Bearer notatoken", "Bearer abc.def.ghi", "Bearer "):
             res = client.get("/patients", headers={"Authorization": bad})
             assert res.status_code in (401, 403)

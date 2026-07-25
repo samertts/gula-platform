@@ -90,14 +90,20 @@ class TestOfflineSyncEngine:
     def test_clear_synced(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op1 = engine.create_operation(
-            entity_type="patient", entity_id="p1",
-            operation="update", data={},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p1",
+            operation="update",
+            data={},
+            device_id="d1",
+            user_id="u1",
         )
         op2 = engine.create_operation(
-            entity_type="patient", entity_id="p2",
-            operation="update", data={},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p2",
+            operation="update",
+            data={},
+            device_id="d1",
+            user_id="u1",
         )
         engine.mark_synced(op1.operation_id)
         cleared = engine.clear_synced()
@@ -109,14 +115,20 @@ class TestOfflineSyncEngine:
     def test_vector_clock(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         engine.create_operation(
-            entity_type="patient", entity_id="p-clock",
-            operation="update", data={"v": 1},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-clock",
+            operation="update",
+            data={"v": 1},
+            device_id="d1",
+            user_id="u1",
         )
         engine.create_operation(
-            entity_type="patient", entity_id="p-clock",
-            operation="update", data={"v": 2},
-            device_id="d2", user_id="u1",
+            entity_type="patient",
+            entity_id="p-clock",
+            operation="update",
+            data={"v": 2},
+            device_id="d2",
+            user_id="u1",
         )
         clock = engine.get_vector_clock("p-clock")
         assert clock.get("d1", 0) >= 1
@@ -125,9 +137,12 @@ class TestOfflineSyncEngine:
     def test_last_write_wins_resolution(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op_a = engine.create_operation(
-            entity_type="patient", entity_id="p-conflict",
-            operation="update", data={"name": "Alice"},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-conflict",
+            operation="update",
+            data={"name": "Alice"},
+            device_id="d1",
+            user_id="u1",
         )
         op_a.timestamp = 1000
         op_b = SyncOperation(
@@ -142,9 +157,7 @@ class TestOfflineSyncEngine:
             timestamp=2000,
             signature="",
         )
-        op_b.signature = engine._sign_operation(
-            op_b.operation_id, op_b.data, op_b.device_id
-        )
+        op_b.signature = engine._sign_operation(op_b.operation_id, op_b.data, op_b.device_id)
 
         engine.receive_operation(op_a)
         engine.receive_operation(op_b)
@@ -163,9 +176,12 @@ class TestOfflineSyncEngine:
     def test_conflict_detection(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op1 = engine.create_operation(
-            entity_type="patient", entity_id="p-cd",
-            operation="update", data={"field": "a"},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-cd",
+            operation="update",
+            data={"field": "a"},
+            device_id="d1",
+            user_id="u1",
         )
         op2 = SyncOperation(
             operation_id="cd-op-2",
@@ -179,9 +195,7 @@ class TestOfflineSyncEngine:
             timestamp=9999,
             signature="",
         )
-        op2.signature = engine._sign_operation(
-            op2.operation_id, op2.data, op2.device_id
-        )
+        op2.signature = engine._sign_operation(op2.operation_id, op2.data, op2.device_id)
 
         engine.receive_operation(op1)
         result = engine.receive_operation(op2)
@@ -193,9 +207,12 @@ class TestOfflineSyncEngine:
     def test_crdt_merge(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op_a = engine.create_operation(
-            entity_type="patient", entity_id="p-crdt",
-            operation="update", data={"name": "Ali", "phone": "123"},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-crdt",
+            operation="update",
+            data={"name": "Ali", "phone": "123"},
+            device_id="d1",
+            user_id="u1",
         )
         op_b = SyncOperation(
             operation_id="crdt-op-2",
@@ -209,9 +226,7 @@ class TestOfflineSyncEngine:
             timestamp=9999,
             signature="",
         )
-        op_b.signature = engine._sign_operation(
-            op_b.operation_id, op_b.data, op_b.device_id
-        )
+        op_b.signature = engine._sign_operation(op_b.operation_id, op_b.data, op_b.device_id)
 
         engine.receive_operation(op_a)
         engine.receive_operation(op_b)
@@ -230,9 +245,12 @@ class TestOfflineSyncEngine:
     def test_sync_log(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op = engine.create_operation(
-            entity_type="patient", entity_id="p-log",
-            operation="update", data={},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-log",
+            operation="update",
+            data={},
+            device_id="d1",
+            user_id="u1",
         )
         engine.mark_synced(op.operation_id)
         log = engine.get_sync_log()
@@ -242,9 +260,12 @@ class TestOfflineSyncEngine:
     def test_receive_duplicate(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op = engine.create_operation(
-            entity_type="patient", entity_id="p-dup",
-            operation="update", data={"x": 1},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-dup",
+            operation="update",
+            data={"x": 1},
+            device_id="d1",
+            user_id="u1",
         )
         r1 = engine.receive_operation(op)
         r2 = engine.receive_operation(op)
@@ -253,14 +274,20 @@ class TestOfflineSyncEngine:
     def test_no_conflict_causal_ops(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op1 = engine.create_operation(
-            entity_type="patient", entity_id="p-causal",
-            operation="update", data={"v": 1},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-causal",
+            operation="update",
+            data={"v": 1},
+            device_id="d1",
+            user_id="u1",
         )
         op2 = engine.create_operation(
-            entity_type="patient", entity_id="p-causal",
-            operation="update", data={"v": 2},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-causal",
+            operation="update",
+            data={"v": 2},
+            device_id="d1",
+            user_id="u1",
         )
         engine.receive_operation(op1)
         result = engine.receive_operation(op2)
@@ -269,15 +296,21 @@ class TestOfflineSyncEngine:
     def test_vector_clock_increments(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op1 = engine.create_operation(
-            entity_type="patient", entity_id="p-vc",
-            operation="update", data={},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-vc",
+            operation="update",
+            data={},
+            device_id="d1",
+            user_id="u1",
         )
         assert op1.vector_clock["d1"] == 1
         op2 = engine.create_operation(
-            entity_type="patient", entity_id="p-vc",
-            operation="update", data={},
-            device_id="d1", user_id="u1",
+            entity_type="patient",
+            entity_id="p-vc",
+            operation="update",
+            data={},
+            device_id="d1",
+            user_id="u1",
         )
         assert op2.vector_clock["d1"] == 2
 

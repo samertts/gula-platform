@@ -9,6 +9,7 @@ class TestReporting_serviceCapability:
         from app.capabilities.reporting_service.capability import (
             Reporting_serviceCapability,
         )
+
         return Reporting_serviceCapability()
 
     @pytest.mark.asyncio

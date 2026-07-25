@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from sqlalchemy import delete, select, update
 
@@ -8,8 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.identity.base import IdentityBaseEntity
 
 
-class IdentityRepositoryBase(Generic[T]):
-
+class IdentityRepositoryBase[T: "IdentityBaseEntity"]:
     model_class: type[T]
 
     def __init__(self, session: AsyncSession) -> None:
@@ -38,9 +37,7 @@ class IdentityRepositoryBase(Generic[T]):
 
     async def soft_delete(self, entity_id: str) -> None:
         stmt = (
-            update(self.model_class)
-            .where(self.model_class.id == entity_id)
-            .values(is_active=False)
+            update(self.model_class).where(self.model_class.id == entity_id).values(is_active=False)
         )
         await self.session.execute(stmt)
         await self.session.flush()
@@ -63,8 +60,12 @@ class IdentityRepositoryBase(Generic[T]):
     async def count(self) -> int:
         from sqlalchemy.func import count
 
-        stmt = select(count()).select_from(self.model_class).where(
-            self.model_class.is_active.is_(True),
+        stmt = (
+            select(count())
+            .select_from(self.model_class)
+            .where(
+                self.model_class.is_active.is_(True),
+            )
         )
         result = await self.session.execute(stmt)
         return result.scalar() or 0

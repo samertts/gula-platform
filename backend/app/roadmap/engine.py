@@ -124,7 +124,9 @@ class RoadmapEngine:
         self.db.add(mission)
         self.db.commit()
         self.db.refresh(mission)
-        logger.info("Mission created: %s (%s) under program %d", mission.name, mission.code, program_id)
+        logger.info(
+            "Mission created: %s (%s) under program %d", mission.name, mission.code, program_id
+        )
         return mission
 
     def get_mission(self, mission_id: int) -> Mission | None:
@@ -226,22 +228,19 @@ class RoadmapEngine:
     # ── Dependency graph ───────────────────────────────────────────────────────
 
     def get_dependency_graph(self, mission_id: int) -> dict[str, Any]:
-        tasks = (
-            self.db.query(RoadmapTask)
-            .join(Epic)
-            .filter(Epic.mission_id == mission_id)
-            .all()
-        )
+        tasks = self.db.query(RoadmapTask).join(Epic).filter(Epic.mission_id == mission_id).all()
         nodes = []
         edges = []
         task_map = {t.id: t for t in tasks}
         for t in tasks:
-            nodes.append({
-                "id": t.id,
-                "name": t.name,
-                "status": t.status,
-                "epic_id": t.epic_id,
-            })
+            nodes.append(
+                {
+                    "id": t.id,
+                    "name": t.name,
+                    "status": t.status,
+                    "epic_id": t.epic_id,
+                }
+            )
             deps = t.dependencies or []
             for dep_id in deps:
                 if dep_id in task_map:
@@ -284,12 +283,7 @@ class RoadmapEngine:
         return cycles
 
     def get_critical_path(self, mission_id: int) -> list[RoadmapTask]:
-        tasks = (
-            self.db.query(RoadmapTask)
-            .join(Epic)
-            .filter(Epic.mission_id == mission_id)
-            .all()
-        )
+        tasks = self.db.query(RoadmapTask).join(Epic).filter(Epic.mission_id == mission_id).all()
         if not tasks:
             return []
 
@@ -358,10 +352,14 @@ class RoadmapEngine:
             "total_epics": total_epics,
             "total_tasks": total_tasks,
             "completed_tasks": completed_tasks,
-            "task_completion_pct": round(completed_tasks / total_tasks * 100, 1) if total_tasks else 0,
+            "task_completion_pct": round(completed_tasks / total_tasks * 100, 1)
+            if total_tasks
+            else 0,
             "total_story_points": total_story_points,
             "completed_story_points": completed_story_points,
-            "story_points_pct": round(completed_story_points / total_story_points * 100, 1) if total_story_points else 0,
+            "story_points_pct": round(completed_story_points / total_story_points * 100, 1)
+            if total_story_points
+            else 0,
         }
 
     def get_mission_progress(self, mission_id: int) -> dict[str, Any]:
@@ -412,19 +410,21 @@ class RoadmapEngine:
         risks = []
         for mission in missions:
             for risk in mission.risks:
-                risks.append({
-                    "risk_id": risk.id,
-                    "mission_id": mission.id,
-                    "mission_name": mission.name,
-                    "description": risk.description,
-                    "risk_level": risk.risk_level,
-                    "probability": risk.probability,
-                    "impact": risk.impact,
-                    "score": round((risk.probability or 0) * (risk.impact or 0), 2),
-                    "mitigation": risk.mitigation,
-                    "status": risk.status,
-                    "owner": risk.owner,
-                })
+                risks.append(
+                    {
+                        "risk_id": risk.id,
+                        "mission_id": mission.id,
+                        "mission_name": mission.name,
+                        "description": risk.description,
+                        "risk_level": risk.risk_level,
+                        "probability": risk.probability,
+                        "impact": risk.impact,
+                        "score": round((risk.probability or 0) * (risk.impact or 0), 2),
+                        "mitigation": risk.mitigation,
+                        "status": risk.status,
+                        "owner": risk.owner,
+                    }
+                )
         return sorted(risks, key=lambda r: r["score"], reverse=True)
 
     def get_technical_debt_summary(self) -> dict[str, Any]:
@@ -593,7 +593,9 @@ class RoadmapEngine:
 
         risks = self.db.query(Risk).all()
         open_risks = sum(1 for r in risks if r.status == "OPEN")
-        high_risks = sum(1 for r in risks if r.risk_level in (RiskLevel.HIGH.value, RiskLevel.CRITICAL.value))
+        high_risks = sum(
+            1 for r in risks if r.risk_level in (RiskLevel.HIGH.value, RiskLevel.CRITICAL.value)
+        )
 
         debts = self.db.query(TechnicalDebt).all()
         open_debt = sum(1 for d in debts if d.status != "RESOLVED")
@@ -610,7 +612,9 @@ class RoadmapEngine:
                 "total": total_missions,
                 "completed": completed_missions,
                 "blocked": blocked_missions,
-                "completion_pct": round(completed_missions / total_missions * 100, 1) if total_missions else 0,
+                "completion_pct": round(completed_missions / total_missions * 100, 1)
+                if total_missions
+                else 0,
             },
             "epics": {
                 "total": total_epics,

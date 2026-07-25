@@ -29,7 +29,13 @@ class StockAdjustmentService:
         self.user_id = user_id
         self.lab_id = lab_id
 
-    def _audit(self, action: str, resource_type: str, resource_id: str | None = None, details: str | None = None):
+    def _audit(
+        self,
+        action: str,
+        resource_type: str,
+        resource_id: str | None = None,
+        details: str | None = None,
+    ):
         log_action(
             db=self.db,
             action=action,
@@ -48,12 +54,16 @@ class StockAdjustmentService:
         store_id: str | None = None,
         reason: str = "Stock receipt",
     ) -> StockLevel:
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == drug_catalog_id,
-            StockLevel.batch_id == batch_id,
-            StockLevel.warehouse_id == warehouse_id,
-            StockLevel.store_id == store_id,
-        ).first()
+        stock = (
+            self.db.query(StockLevel)
+            .filter(
+                StockLevel.drug_catalog_id == drug_catalog_id,
+                StockLevel.batch_id == batch_id,
+                StockLevel.warehouse_id == warehouse_id,
+                StockLevel.store_id == store_id,
+            )
+            .first()
+        )
 
         if stock:
             stock.quantity += quantity
@@ -94,7 +104,9 @@ class StockAdjustmentService:
             batch.quantity_remaining += quantity
             self.db.flush()
 
-        self._audit("inventory.add_stock", "stock_level", stock.id, f"Added {quantity} units: {reason}")
+        self._audit(
+            "inventory.add_stock", "stock_level", stock.id, f"Added {quantity} units: {reason}"
+        )
         return stock
 
     def remove_stock(
@@ -107,15 +119,23 @@ class StockAdjustmentService:
         reason: str = "Stock removal",
         movement_type: StockMovementType = StockMovementType.DISPENSED,
     ) -> StockLevel | None:
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == drug_catalog_id,
-            StockLevel.batch_id == batch_id,
-            StockLevel.warehouse_id == warehouse_id,
-            StockLevel.store_id == store_id,
-        ).first()
+        stock = (
+            self.db.query(StockLevel)
+            .filter(
+                StockLevel.drug_catalog_id == drug_catalog_id,
+                StockLevel.batch_id == batch_id,
+                StockLevel.warehouse_id == warehouse_id,
+                StockLevel.store_id == store_id,
+            )
+            .first()
+        )
 
         if not stock or stock.available_quantity < quantity:
-            logger.warning("Insufficient stock for removal: have %d, need %d", stock.available_quantity if stock else 0, quantity)
+            logger.warning(
+                "Insufficient stock for removal: have %d, need %d",
+                stock.available_quantity if stock else 0,
+                quantity,
+            )
             return None
 
         stock.quantity -= quantity
@@ -142,7 +162,9 @@ class StockAdjustmentService:
             batch.quantity_remaining = max(0, batch.quantity_remaining - quantity)
             self.db.flush()
 
-        self._audit("inventory.remove_stock", "stock_level", stock.id, f"Removed {quantity} units: {reason}")
+        self._audit(
+            "inventory.remove_stock", "stock_level", stock.id, f"Removed {quantity} units: {reason}"
+        )
         return stock
 
     def adjust_stock(
@@ -154,12 +176,16 @@ class StockAdjustmentService:
         store_id: str | None = None,
         reason: str = "Physical count adjustment",
     ) -> StockLevel:
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == drug_catalog_id,
-            StockLevel.batch_id == batch_id,
-            StockLevel.warehouse_id == warehouse_id,
-            StockLevel.store_id == store_id,
-        ).first()
+        stock = (
+            self.db.query(StockLevel)
+            .filter(
+                StockLevel.drug_catalog_id == drug_catalog_id,
+                StockLevel.batch_id == batch_id,
+                StockLevel.warehouse_id == warehouse_id,
+                StockLevel.store_id == store_id,
+            )
+            .first()
+        )
 
         if stock:
             delta = new_quantity - stock.quantity
@@ -204,7 +230,9 @@ class StockAdjustmentService:
                 batch.quantity_remaining = max(0, batch.quantity_remaining + delta)
                 self.db.flush()
 
-        self._audit("inventory.adjust_stock", "stock_level", stock.id, f"Set to {new_quantity}: {reason}")
+        self._audit(
+            "inventory.adjust_stock", "stock_level", stock.id, f"Set to {new_quantity}: {reason}"
+        )
         return stock
 
 
@@ -226,19 +254,25 @@ class ExpiryMonitoringService:
 
         results: list[dict[str, Any]] = []
         for batch in q.order_by(DrugBatch.expiry_date).all():
-            drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
-            results.append({
-                "batch_id": batch.id,
-                "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
-                "drug_name_ar": drug.name_ar if drug else None,
-                "batch_number": batch.batch_number,
-                "expiry_date": batch.expiry_date.isoformat(),
-                "days_remaining": (batch.expiry_date - date.today()).days,
-                "quantity_remaining": batch.quantity_remaining,
-                "storage_condition": batch.storage_condition.value if batch.storage_condition else None,
-                "is_quarantined": batch.is_quarantined,
-            })
+            drug = (
+                self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
+            )
+            results.append(
+                {
+                    "batch_id": batch.id,
+                    "drug_catalog_id": batch.drug_catalog_id,
+                    "drug_name": drug.name if drug else "Unknown",
+                    "drug_name_ar": drug.name_ar if drug else None,
+                    "batch_number": batch.batch_number,
+                    "expiry_date": batch.expiry_date.isoformat(),
+                    "days_remaining": (batch.expiry_date - date.today()).days,
+                    "quantity_remaining": batch.quantity_remaining,
+                    "storage_condition": batch.storage_condition.value
+                    if batch.storage_condition
+                    else None,
+                    "is_quarantined": batch.is_quarantined,
+                }
+            )
 
         return results
 
@@ -253,16 +287,20 @@ class ExpiryMonitoringService:
 
         results: list[dict[str, Any]] = []
         for batch in q.order_by(DrugBatch.expiry_date).all():
-            drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
-            results.append({
-                "batch_id": batch.id,
-                "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
-                "batch_number": batch.batch_number,
-                "expiry_date": batch.expiry_date.isoformat(),
-                "days_expired": (date.today() - batch.expiry_date).days,
-                "quantity_remaining": batch.quantity_remaining,
-            })
+            drug = (
+                self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
+            )
+            results.append(
+                {
+                    "batch_id": batch.id,
+                    "drug_catalog_id": batch.drug_catalog_id,
+                    "drug_name": drug.name if drug else "Unknown",
+                    "batch_number": batch.batch_number,
+                    "expiry_date": batch.expiry_date.isoformat(),
+                    "days_expired": (date.today() - batch.expiry_date).days,
+                    "quantity_remaining": batch.quantity_remaining,
+                }
+            )
 
         return results
 
@@ -281,16 +319,22 @@ class ExpiryMonitoringService:
             batch.is_quarantined = True
             self.db.flush()
 
-            stock = self.db.query(StockLevel).filter(
-                StockLevel.batch_id == batch.id,
-                ~StockLevel.is_deleted,
-            ).first()
+            stock = (
+                self.db.query(StockLevel)
+                .filter(
+                    StockLevel.batch_id == batch.id,
+                    ~StockLevel.is_deleted,
+                )
+                .first()
+            )
             if stock:
                 stock.available_quantity = 0
                 self.db.flush()
 
             count += 1
-            logger.info("Auto-quarantined batch %s (expired %s)", batch.batch_number, batch.expiry_date)
+            logger.info(
+                "Auto-quarantined batch %s (expired %s)", batch.batch_number, batch.expiry_date
+            )
 
         self.db.flush()
         return count
@@ -311,13 +355,21 @@ class ReorderService:
         if average_daily_usage is None:
             average_daily_usage = self._calculate_average_usage(drug_catalog_id, days=90)
 
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == drug_catalog_id,
-            ~StockLevel.is_deleted,
-        ).first()
+        stock = (
+            self.db.query(StockLevel)
+            .filter(
+                StockLevel.drug_catalog_id == drug_catalog_id,
+                ~StockLevel.is_deleted,
+            )
+            .first()
+        )
 
         current_stock = stock.available_quantity if stock else 0
-        reorder_point = stock.reorder_point if stock and stock.reorder_point else (average_daily_usage * (lead_time_days + safety_stock_days))
+        reorder_point = (
+            stock.reorder_point
+            if stock and stock.reorder_point
+            else (average_daily_usage * (lead_time_days + safety_stock_days))
+        )
 
         if current_stock <= reorder_point:
             reorder_qty = max(
@@ -345,13 +397,19 @@ class ReorderService:
 
     def _calculate_average_usage(self, drug_catalog_id: str, days: int = 90) -> int:
         start_date = datetime.now(UTC) - timedelta(days=days)
-        result = self.db.query(
-            func.coalesce(func.sum(StockMovement.quantity), 0),
-        ).filter(
-            StockMovement.drug_catalog_id == drug_catalog_id,
-            StockMovement.movement_type.in_([StockMovementType.DISPENSED, StockMovementType.WASTED]),
-            StockMovement.movement_date >= start_date,
-        ).scalar()
+        result = (
+            self.db.query(
+                func.coalesce(func.sum(StockMovement.quantity), 0),
+            )
+            .filter(
+                StockMovement.drug_catalog_id == drug_catalog_id,
+                StockMovement.movement_type.in_(
+                    [StockMovementType.DISPENSED, StockMovementType.WASTED]
+                ),
+                StockMovement.movement_date >= start_date,
+            )
+            .scalar()
+        )
 
         return max(1, round(result / days)) if result else 1
 
@@ -387,11 +445,13 @@ class ColdChainService:
 
     def get_cold_chain_drugs(self) -> list[dict[str, Any]]:
         q = self.db.query(DrugBatch).filter(
-            DrugBatch.storage_condition.in_([
-                StorageCondition.COLD_CHAIN,
-                StorageCondition.REFRIGERATED,
-                StorageCondition.FROZEN,
-            ]),
+            DrugBatch.storage_condition.in_(
+                [
+                    StorageCondition.COLD_CHAIN,
+                    StorageCondition.REFRIGERATED,
+                    StorageCondition.FROZEN,
+                ]
+            ),
             ~DrugBatch.is_deleted,
             not DrugBatch.is_quarantined,
             DrugBatch.quantity_remaining > 0,
@@ -401,22 +461,23 @@ class ColdChainService:
 
         results: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for batch in q.all():
-            drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
-            results[batch.storage_condition.value].append({
-                "batch_id": batch.id,
-                "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
-                "batch_number": batch.batch_number,
-                "expiry_date": batch.expiry_date.isoformat() if batch.expiry_date else None,
-                "quantity_remaining": batch.quantity_remaining,
-                "storage_condition": batch.storage_condition.value,
-                "location": batch.location,
-            })
+            drug = (
+                self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
+            )
+            results[batch.storage_condition.value].append(
+                {
+                    "batch_id": batch.id,
+                    "drug_catalog_id": batch.drug_catalog_id,
+                    "drug_name": drug.name if drug else "Unknown",
+                    "batch_number": batch.batch_number,
+                    "expiry_date": batch.expiry_date.isoformat() if batch.expiry_date else None,
+                    "quantity_remaining": batch.quantity_remaining,
+                    "storage_condition": batch.storage_condition.value,
+                    "location": batch.location,
+                }
+            )
 
-        return [
-            {"condition": condition, "items": items}
-            for condition, items in results.items()
-        ]
+        return [{"condition": condition, "items": items} for condition, items in results.items()]
 
     def log_temperature_excursion(
         self,
@@ -437,12 +498,18 @@ class ColdChainService:
             "location": location,
             "timestamp": datetime.now(UTC).isoformat(),
             "notes": notes,
-            "severity": self._classify_excursion(recorded_temp, min_temp, max_temp, duration_minutes),
+            "severity": self._classify_excursion(
+                recorded_temp, min_temp, max_temp, duration_minutes
+            ),
         }
         self._excursions.append(excursion)
         logger.warning(
             "Temperature excursion for batch %s: %.1f°C (range %.1f-%.1f) for %d min",
-            batch_id, recorded_temp, min_temp, max_temp, duration_minutes,
+            batch_id,
+            recorded_temp,
+            min_temp,
+            max_temp,
+            duration_minutes,
         )
 
         batch = self.db.query(DrugBatch).filter(DrugBatch.id == batch_id).first()
@@ -453,8 +520,14 @@ class ColdChainService:
 
         return excursion
 
-    def _classify_excursion(self, temp: float, min_temp: float, max_temp: float, duration_min: int) -> str:
-        deviation = max(abs(temp - min_temp), abs(temp - max_temp)) if temp < min_temp or temp > max_temp else 0
+    def _classify_excursion(
+        self, temp: float, min_temp: float, max_temp: float, duration_min: int
+    ) -> str:
+        deviation = (
+            max(abs(temp - min_temp), abs(temp - max_temp))
+            if temp < min_temp or temp > max_temp
+            else 0
+        )
         if deviation > 15 or duration_min > 120:
             return "critical"
         if deviation > 8 or duration_min > 60:
@@ -507,10 +580,14 @@ class RecallService:
                 batch.is_quarantined = True
                 self.db.flush()
 
-                stock = self.db.query(StockLevel).filter(
-                    StockLevel.batch_id == batch_id,
-                    ~StockLevel.is_deleted,
-                ).first()
+                stock = (
+                    self.db.query(StockLevel)
+                    .filter(
+                        StockLevel.batch_id == batch_id,
+                        ~StockLevel.is_deleted,
+                    )
+                    .first()
+                )
                 if stock:
                     stock.available_quantity = 0
                     self.db.flush()
@@ -579,9 +656,13 @@ class ForecastingService:
             period_start = date.today().replace(day=1) + timedelta(days=32 * i)
             period_start = period_start.replace(day=1)
             if period_start.month == 12:
-                period_end = period_start.replace(year=period_start.year + 1, month=1, day=1) - timedelta(days=1)
+                period_end = period_start.replace(
+                    year=period_start.year + 1, month=1, day=1
+                ) - timedelta(days=1)
             else:
-                period_end = period_start.replace(month=period_start.month + 1, day=1) - timedelta(days=1)
+                period_end = period_start.replace(month=period_start.month + 1, day=1) - timedelta(
+                    days=1
+                )
 
             month_idx = (period_start.month - 1) % 12
             seasonal_factor = self._seasonal_factor(month_idx)
@@ -599,22 +680,29 @@ class ForecastingService:
             self.db.add(forecast)
             self.db.flush()
 
-            forecasts.append({
-                "period_start": period_start.isoformat(),
-                "period_end": period_end.isoformat(),
-                "predicted_consumption": predicted,
-                "confidence_score": forecast.confidence_score,
-            })
+            forecasts.append(
+                {
+                    "period_start": period_start.isoformat(),
+                    "period_end": period_end.isoformat(),
+                    "predicted_consumption": predicted,
+                    "confidence_score": forecast.confidence_score,
+                }
+            )
 
         return forecasts
 
     def _get_historical_usage(self, drug_catalog_id: str, days: int = 180) -> list[int]:
         start_date = datetime.now(UTC) - timedelta(days=days)
-        movements = self.db.query(StockMovement).filter(
-            StockMovement.drug_catalog_id == drug_catalog_id,
-            StockMovement.movement_type == StockMovementType.DISPENSED,
-            StockMovement.movement_date >= start_date,
-        ).order_by(StockMovement.movement_date).all()
+        movements = (
+            self.db.query(StockMovement)
+            .filter(
+                StockMovement.drug_catalog_id == drug_catalog_id,
+                StockMovement.movement_type == StockMovementType.DISPENSED,
+                StockMovement.movement_date >= start_date,
+            )
+            .order_by(StockMovement.movement_date)
+            .all()
+        )
 
         monthly: dict[str, int] = defaultdict(int)
         for m in movements:
@@ -628,10 +716,14 @@ class ForecastingService:
         return factors[month_idx % 12]
 
     def get_prediction_accuracy(self, drug_catalog_id: str) -> dict[str, Any]:
-        forecasts = self.db.query(InventoryForecast).filter(
-            InventoryForecast.drug_catalog_id == drug_catalog_id,
-            InventoryForecast.actual_consumption.isnot(None),
-        ).all()
+        forecasts = (
+            self.db.query(InventoryForecast)
+            .filter(
+                InventoryForecast.drug_catalog_id == drug_catalog_id,
+                InventoryForecast.actual_consumption.isnot(None),
+            )
+            .all()
+        )
 
         if not forecasts:
             return {"drug_catalog_id": drug_catalog_id, "accuracy": None, "periods_analyzed": 0}
@@ -639,11 +731,17 @@ class ForecastingService:
         errors: list[float] = []
         for f in forecasts:
             if f.predicted_consumption and f.predicted_consumption > 0:
-                error = abs(f.predicted_consumption - f.actual_consumption) / f.predicted_consumption
+                error = (
+                    abs(f.predicted_consumption - f.actual_consumption) / f.predicted_consumption
+                )
                 errors.append(error)
 
         if not errors:
-            return {"drug_catalog_id": drug_catalog_id, "accuracy": None, "periods_analyzed": len(forecasts)}
+            return {
+                "drug_catalog_id": drug_catalog_id,
+                "accuracy": None,
+                "periods_analyzed": len(forecasts),
+            }
 
         mape = (sum(errors) / len(errors)) * 100
         return {

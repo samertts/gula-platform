@@ -29,6 +29,4 @@ class DataCatalogEntry(BaseEntity):
 
     tags = Column(String(500), nullable=True)
 
-    __table_args__ = (
-        {"extend_existing": True},
-    )
+    __table_args__ = ({"extend_existing": True},)

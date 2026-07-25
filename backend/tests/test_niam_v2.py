@@ -178,6 +178,7 @@ class TestTrustModels:
 
     def test_trust_framework_model(self):
         from app.identity.trust.models import TrustFramework
+
         tf = TrustFramework(
             uuid=str(uuid.uuid4()),
             framework_id="TF-NIST-800-63",
@@ -192,6 +193,7 @@ class TestTrustModels:
 
     def test_assurance_profile_model(self):
         from app.identity.trust.models import IdentityAssuranceProfile
+
         ap = IdentityAssuranceProfile(
             uuid=str(uuid.uuid4()),
             person_id="p1",
@@ -212,6 +214,7 @@ class TestTrustModels:
 
     def test_trust_anchor_model(self):
         from app.identity.trust.models import TrustAnchor
+
         ta = TrustAnchor(
             uuid=str(uuid.uuid4()),
             anchor_id="TA-ROOT-GULA",
@@ -232,6 +235,7 @@ class TestFederationModels:
 
     def test_federated_provider_model(self):
         from app.identity.federation.models import FederatedProvider
+
         fp = FederatedProvider(
             uuid=str(uuid.uuid4()),
             provider_id="FP-MOH-IDP",
@@ -248,6 +252,7 @@ class TestFederationModels:
 
     def test_federated_identity_model(self):
         from app.identity.federation.models import FederatedIdentity
+
         fi = FederatedIdentity(
             uuid=str(uuid.uuid4()),
             fed_id="FI-001",
@@ -268,6 +273,7 @@ class TestCertificateModels:
 
     def test_digital_certificate_model(self):
         from app.identity.certificates.models import DigitalCertificate
+
         dc = DigitalCertificate(
             uuid=str(uuid.uuid4()),
             certificate_id="CERT-DC-001",
@@ -286,6 +292,7 @@ class TestCertificateModels:
 
     def test_certificate_authority_model(self):
         from app.identity.certificates.models import CertificateAuthority
+
         ca = CertificateAuthority(
             uuid=str(uuid.uuid4()),
             ca_id="CA-ROOT-001",
@@ -301,6 +308,7 @@ class TestCertificateModels:
 
     def test_api_key_model(self):
         from app.identity.certificates.models import APIKey
+
         ak = APIKey(
             uuid=str(uuid.uuid4()),
             api_key_id="KEY-001",
@@ -321,6 +329,7 @@ class TestLifecycleModels:
 
     def test_enterprise_registration_model(self):
         from app.identity.lifecycle.models import EnterpriseRegistration
+
         er = EnterpriseRegistration(
             uuid=str(uuid.uuid4()),
             reg_id="ER-001",
@@ -335,6 +344,7 @@ class TestLifecycleModels:
 
     def test_government_appointment_model(self):
         from app.identity.lifecycle.models import GovernmentAppointment
+
         ga = GovernmentAppointment(
             uuid=str(uuid.uuid4()),
             appointment_id="GA-001",
@@ -354,6 +364,7 @@ class TestLifecycleModels:
 
     def test_citizen_lifecycle_model(self):
         from app.identity.lifecycle.models import CitizenLifecycle
+
         cl = CitizenLifecycle(
             uuid=str(uuid.uuid4()),
             citizen_id="CIT-001",
@@ -368,6 +379,7 @@ class TestLifecycleModels:
 
     def test_guardian_account_model(self):
         from app.identity.lifecycle.models import GuardianAccount
+
         ga = GuardianAccount(
             uuid=str(uuid.uuid4()),
             guardian_id="GU-001",
@@ -388,6 +400,7 @@ class TestWorkflowModels:
 
     def test_workflow_definition_model(self):
         from app.identity.workflows.models import WorkflowDefinition
+
         wd = WorkflowDefinition(
             uuid=str(uuid.uuid4()),
             def_id="WF-APPROVAL-001",
@@ -402,6 +415,7 @@ class TestWorkflowModels:
 
     def test_workflow_instance_model(self):
         from app.identity.workflows.models import WorkflowInstance
+
         wi = WorkflowInstance(
             uuid=str(uuid.uuid4()),
             instance_id="WI-001",
@@ -418,6 +432,7 @@ class TestWorkflowModels:
 
     def test_workflow_approval_model(self):
         from app.identity.workflows.models import WorkflowApproval
+
         wa = WorkflowApproval(
             uuid=str(uuid.uuid4()),
             approval_id="WA-001",
@@ -437,6 +452,7 @@ class TestNotificationModels:
 
     def test_notification_template_model(self):
         from app.identity.notifications.models import NotificationTemplate
+
         nt = NotificationTemplate(
             uuid=str(uuid.uuid4()),
             template_id="TMP-LOGIN-ALERT",
@@ -452,6 +468,7 @@ class TestNotificationModels:
 
     def test_notification_queue_model(self):
         from app.identity.notifications.models import NotificationQueue
+
         nq = NotificationQueue(
             uuid=str(uuid.uuid4()),
             queue_id="Q-001",
@@ -474,6 +491,7 @@ class TestAdaptiveAuthModels:
 
     def test_risk_event_model(self):
         from app.identity.adaptive_auth.models import RiskEvent
+
         re = RiskEvent(
             uuid=str(uuid.uuid4()),
             event_id="RE-001",
@@ -488,6 +506,7 @@ class TestAdaptiveAuthModels:
 
     def test_session_policy_model(self):
         from app.identity.adaptive_auth.models import SessionPolicy
+
         sp = SessionPolicy(
             uuid=str(uuid.uuid4()),
             policy_id="SP-CITIZEN",
@@ -507,6 +526,7 @@ class TestAdminModels:
 
     def test_enterprise_portal_model(self):
         from app.identity.admin.models import EnterprisePortal
+
         ep = EnterprisePortal(
             uuid=str(uuid.uuid4()),
             portal_id="PORT-001",
@@ -523,6 +543,7 @@ class TestAdminModels:
 
     def test_fhir_connection_model(self):
         from app.identity.admin.models import FHIRConnection
+
         fc = FHIRConnection(
             uuid=str(uuid.uuid4()),
             conn_id="FHIR-001",
@@ -539,6 +560,7 @@ class TestAdminModels:
 
     def test_portal_subscription_model(self):
         from app.identity.admin.models import PortalSubscription
+
         ps = PortalSubscription(
             uuid=str(uuid.uuid4()),
             sub_id="SUB-001",
@@ -561,6 +583,7 @@ class TestComplianceModels:
 
     def test_compliance_framework_model(self):
         from app.identity.compliance.models import ComplianceFramework
+
         cf = ComplianceFramework(
             uuid=str(uuid.uuid4()),
             framework_id="CF-NIST-800-63",
@@ -575,6 +598,7 @@ class TestComplianceModels:
 
     def test_compliance_check_model(self):
         from app.identity.compliance.models import ComplianceCheck
+
         cc = ComplianceCheck(
             uuid=str(uuid.uuid4()),
             check_id="CHK-001",
@@ -593,6 +617,7 @@ class TestComplianceModels:
 
     def test_compliance_report_model(self):
         from app.identity.compliance.models import ComplianceReport
+
         cr = ComplianceReport(
             uuid=str(uuid.uuid4()),
             report_id="RPT-001",
@@ -684,6 +709,7 @@ class TestAuditHashChain:
     async def test_audit_service_with_hash_chain(self, mock_session):
         from app.identity.models.audit import AuditAction
         from app.identity.services.audit_service import AuditService
+
         svc = AuditService(mock_session)
 
         mock_result = MagicMock()
@@ -705,6 +731,7 @@ class TestAuditHashChain:
     async def test_audit_hash_chain_linked(self, mock_session):
         from app.identity.models.audit import AuditAction
         from app.identity.services.audit_service import AuditService
+
         svc = AuditService(mock_session)
 
         mock_result = MagicMock()
@@ -735,6 +762,7 @@ class TestUpdatedModels:
 
     def test_machine_identity_has_new_fields(self):
         from app.identity.models.machine_identity import MachineIdentity
+
         m = MachineIdentity(
             uuid=str(uuid.uuid4()),
             organization_id="org1",
@@ -757,6 +785,7 @@ class TestUpdatedModels:
 
     def test_session_has_governance_fields(self):
         from app.identity.models.session import UserSession
+
         s = UserSession(
             uuid=str(uuid.uuid4()),
             account_id="a1",
@@ -781,6 +810,7 @@ class TestAuditActionsExpanded:
 
     def test_new_audit_actions_exist(self):
         from app.identity.models.audit import AuditAction
+
         new_actions = [
             "authority_created",
             "appeal_submitted",
@@ -812,4 +842,5 @@ class TestAuditActionsExpanded:
 
     def test_audit_action_count(self):
         from app.identity.models.audit import AuditAction
+
         assert len(AuditAction) >= 90, f"Only {len(AuditAction)} audit actions defined"

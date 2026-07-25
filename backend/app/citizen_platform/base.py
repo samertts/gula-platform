@@ -19,7 +19,9 @@ class CitizenAuditMixin:
     updated_by = Column(String(64), nullable=True)
 
 
-class CitizenEntity(TimestampMixin, SoftDeleteMixin, BaseEntityMixin, OptimisticLockMixin, CitizenPlatformBase):
+class CitizenEntity(
+    TimestampMixin, SoftDeleteMixin, BaseEntityMixin, OptimisticLockMixin, CitizenPlatformBase,
+):
     __abstract__ = True
 
     id = Column(String(26), primary_key=True, default=_ulid)

@@ -95,35 +95,41 @@ class TestGetLab:
 
     def test_get_lab_includes_all_fields(self, db_session, lab, admin_user):
         result = lab_service.get_lab(db_session, lab.id)
-        expected_fields = {"id", "name", "city", "address", "phone", "lab_type",
-                          "license_number", "director_name", "website",
-                          "is_active", "created_at"}
+        expected_fields = {
+            "id",
+            "name",
+            "city",
+            "address",
+            "phone",
+            "lab_type",
+            "license_number",
+            "director_name",
+            "website",
+            "is_active",
+            "created_at",
+        }
         assert set(result.keys()) == expected_fields
 
 
 class TestUpdateLab:
     def test_admin_can_update_lab_name(self, db_session, lab, admin_user):
-        result = lab_service.update_lab(
-            db_session, lab.id, {"name": "Updated Lab"}, admin_user
-        )
+        result = lab_service.update_lab(db_session, lab.id, {"name": "Updated Lab"}, admin_user)
         assert result["name"] == "Updated Lab"
 
     def test_non_admin_cannot_update_lab(self, db_session, lab, staff_user):
         with pytest.raises(ForbiddenError):
-            lab_service.update_lab(
-                db_session, lab.id, {"name": "Hacked"}, staff_user
-            )
+            lab_service.update_lab(db_session, lab.id, {"name": "Hacked"}, staff_user)
 
     def test_update_unknown_lab_raises_not_found(self, db_session, admin_user):
         with pytest.raises(NotFoundError):
-            lab_service.update_lab(
-                db_session, 99999, {"name": "Ghost"}, admin_user
-            )
+            lab_service.update_lab(db_session, 99999, {"name": "Ghost"}, admin_user)
 
     def test_only_allowed_fields_updated(self, db_session, lab, admin_user):
         lab_service.update_lab(
-            db_session, lab.id, {"name": "New Name", "city": "New City",
-                                 "lab_type": "government"}, admin_user
+            db_session,
+            lab.id,
+            {"name": "New Name", "city": "New City", "lab_type": "government"},
+            admin_user,
         )
         result = lab_service.get_lab(db_session, lab.id)
         assert result["name"] == "New Name"
@@ -145,8 +151,12 @@ class TestListEmployees:
         db_session.add(other_lab)
         db_session.commit()
         other_user = LabUser(
-            lab_id=other_lab.id, name="Other", email="other@test.com",
-            password_hash=hash_password("pw"), role="staff", is_active=True,
+            lab_id=other_lab.id,
+            name="Other",
+            email="other@test.com",
+            password_hash=hash_password("pw"),
+            role="staff",
+            is_active=True,
         )
         db_session.add(other_user)
         db_session.commit()
@@ -194,7 +204,12 @@ class TestUpdateEmployee:
     def test_cannot_deactivate_self(self, db_session, lab, admin_user):
         with pytest.raises(ValidationError):
             lab_service.update_employee(
-                db_session, lab.id, admin_user.id, is_active=False, role=None, current_user=admin_user
+                db_session,
+                lab.id,
+                admin_user.id,
+                is_active=False,
+                role=None,
+                current_user=admin_user,
             )
 
     def test_nonexistent_employee_raises_not_found(self, db_session, lab, admin_user):
@@ -206,7 +221,12 @@ class TestUpdateEmployee:
     def test_non_admin_cannot_update_employee(self, db_session, lab, staff_user):
         with pytest.raises(ForbiddenError):
             lab_service.update_employee(
-                db_session, lab.id, staff_user.id, is_active=False, role=None, current_user=staff_user
+                db_session,
+                lab.id,
+                staff_user.id,
+                is_active=False,
+                role=None,
+                current_user=staff_user,
             )
 
 

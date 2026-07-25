@@ -247,7 +247,11 @@ class LaboratoryGovernanceService:
         deviation_percent = None
         result = None
         if submitted_result is not None and target_value is not None:
-            deviation_percent = abs((submitted_result - target_value) / target_value) * 100 if target_value != 0 else None
+            deviation_percent = (
+                abs((submitted_result - target_value) / target_value) * 100
+                if target_value != 0
+                else None
+            )
             if deviation_percent is not None:
                 if deviation_percent <= 5:
                     result = EQAResult.ACCEPTABLE
@@ -381,35 +385,61 @@ class LaboratoryGovernanceService:
         return ref
 
     def get_lab_stats(self, lab_id: int) -> dict[str, Any]:
-        equip_count = self.db.query(EquipmentRegistry).filter(
-            EquipmentRegistry.lab_id == lab_id,
-            EquipmentRegistry.status == EquipmentStatus.OPERATIONAL,
-        ).count()
-        analyzer_count = self.db.query(AnalyzerRegistry).filter(
-            AnalyzerRegistry.lab_id == lab_id,
-            AnalyzerRegistry.status == "operational",
-        ).count()
-        eqa_acceptable = self.db.query(EQARecord).filter(
-            EQARecord.lab_id == lab_id,
-            EQARecord.result == EQAResult.ACCEPTABLE,
-        ).count()
-        eqa_total = self.db.query(EQARecord).filter(
-            EQARecord.lab_id == lab_id,
-        ).count()
-        qc_in_control = self.db.query(QCModRecord).filter(
-            QCModRecord.lab_id == lab_id,
-            QCModRecord.status == QCStatus.IN_CONTROL,
-        ).count()
-        qc_total = self.db.query(QCModRecord).filter(
-            QCModRecord.lab_id == lab_id,
-        ).count()
+        equip_count = (
+            self.db.query(EquipmentRegistry)
+            .filter(
+                EquipmentRegistry.lab_id == lab_id,
+                EquipmentRegistry.status == EquipmentStatus.OPERATIONAL,
+            )
+            .count()
+        )
+        analyzer_count = (
+            self.db.query(AnalyzerRegistry)
+            .filter(
+                AnalyzerRegistry.lab_id == lab_id,
+                AnalyzerRegistry.status == "operational",
+            )
+            .count()
+        )
+        eqa_acceptable = (
+            self.db.query(EQARecord)
+            .filter(
+                EQARecord.lab_id == lab_id,
+                EQARecord.result == EQAResult.ACCEPTABLE,
+            )
+            .count()
+        )
+        eqa_total = (
+            self.db.query(EQARecord)
+            .filter(
+                EQARecord.lab_id == lab_id,
+            )
+            .count()
+        )
+        qc_in_control = (
+            self.db.query(QCModRecord)
+            .filter(
+                QCModRecord.lab_id == lab_id,
+                QCModRecord.status == QCStatus.IN_CONTROL,
+            )
+            .count()
+        )
+        qc_total = (
+            self.db.query(QCModRecord)
+            .filter(
+                QCModRecord.lab_id == lab_id,
+            )
+            .count()
+        )
         return {
             "lab_id": lab_id,
             "operational_equipment": equip_count,
             "operational_analyzers": analyzer_count,
             "eqa_acceptable_rate": (eqa_acceptable / eqa_total * 100) if eqa_total > 0 else None,
             "qc_in_control_rate": (qc_in_control / qc_total * 100) if qc_total > 0 else None,
-            "reagent_count": self.db.query(ReagentInventory).filter(ReagentInventory.lab_id == lab_id).count(),
+            "reagent_count": self.db.query(ReagentInventory)
+            .filter(ReagentInventory.lab_id == lab_id)
+            .count(),
         }
 
     def get_low_stock_reagents(self, lab_id: int) -> list[ReagentInventory]:

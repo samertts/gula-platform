@@ -39,10 +39,21 @@ def configure(
     _schema_mapper = mapper or SchemaMapper()
 
 
-GATEWAY_PROTOCOLS = frozenset({
-    "fhir", "hl7", "dicom", "soap", "sftp", "graphql", "mqtt",
-    "websocket", "grpc", "file", "amqp",
-})
+GATEWAY_PROTOCOLS = frozenset(
+    {
+        "fhir",
+        "hl7",
+        "dicom",
+        "soap",
+        "sftp",
+        "graphql",
+        "mqtt",
+        "websocket",
+        "grpc",
+        "file",
+        "amqp",
+    }
+)
 
 
 @router.get("/gateways")
@@ -90,10 +101,13 @@ async def send_via_gateway(
     gateway = gateways[0]
     try:
         from backend.app.integration.gateway import GatewayMessage
+
         message = GatewayMessage(**payload)
         result = await gateway.send(message)
         if _integration_monitor:
-            _integration_monitor.record_api_call(f"gateway_{protocol}", result.latency_ms, result.success)
+            _integration_monitor.record_api_call(
+                f"gateway_{protocol}", result.latency_ms, result.success
+            )
         return {
             "success": result.success,
             "status_code": result.status_code,
@@ -126,6 +140,7 @@ async def receive_via_gateway(
 @router.get("/catalog")
 async def api_catalog() -> dict[str, Any]:
     from backend.app.integration.api_management import APICatalog
+
     catalog = APICatalog()
     services = catalog.list_services()
     return {
@@ -173,6 +188,7 @@ async def standards_conformance() -> dict[str, Any]:
         IHEService,
         TerminologyService,
     )
+
     fhir = FHIRService()
     hl7 = HL7Service()
     dicom = DICOMService()

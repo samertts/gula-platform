@@ -123,9 +123,12 @@ class APICompatibilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "Sunset" in content or "Deprecation" in content or "deprecated" in content.lower():
-                    if "header" in content.lower() or "Header" in content:
-                        return True
+                if (
+                    "Sunset" in content
+                    or "Deprecation" in content
+                    or "deprecated" in content.lower()
+                ) and ("header" in content.lower() or "Header" in content):
+                    return True
             except Exception:
                 continue
         return False
@@ -134,7 +137,11 @@ class APICompatibilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "backward" in content.lower() or "backward_compat" in content.lower() or "compat" in content.lower():
+                if (
+                    "backward" in content.lower()
+                    or "backward_compat" in content.lower()
+                    or "compat" in content.lower()
+                ):
                     return True
             except Exception:
                 continue
@@ -144,7 +151,11 @@ class APICompatibilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "schema" in content.lower() and ("evol" in content.lower() or "version" in content.lower() or "migrat" in content.lower()):
+                if "schema" in content.lower() and (
+                    "evol" in content.lower()
+                    or "version" in content.lower()
+                    or "migrat" in content.lower()
+                ):
                     return True
             except Exception:
                 continue

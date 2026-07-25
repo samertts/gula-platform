@@ -50,22 +50,28 @@ class ClinicalGuideline(BaseEntity):
     source_url = Column(String(1024), nullable=True)
     reference_count = Column(Integer, default=0, nullable=False)
 
-    derived_from = relationship("ClinicalGuideline", remote_side="ClinicalGuideline.id", backref="derived_versions")
-    approvals = relationship("GuidelineApproval", back_populates="guideline", cascade="all, delete-orphan")
-    recommendations = relationship("ClinicalRecommendation", back_populates="guideline", cascade="all, delete-orphan")
+    derived_from = relationship(
+        "ClinicalGuideline", remote_side="ClinicalGuideline.id", backref="derived_versions",
+    )
+    approvals = relationship(
+        "GuidelineApproval", back_populates="guideline", cascade="all, delete-orphan",
+    )
+    recommendations = relationship(
+        "ClinicalRecommendation", back_populates="guideline", cascade="all, delete-orphan",
+    )
 
 
 class ClinicalProtocol(BaseEntity):
     __tablename__ = "clinical_protocols"
-    __table_args__ = (
-        Index("ix_protocol_status", "status"),
-    )
+    __table_args__ = (Index("ix_protocol_status", "status"),)
 
     title = Column(String(512), nullable=False)
     protocol_id = Column(String(64), nullable=True, unique=True)
     version = Column(String(32), nullable=False)
     status = Column(Enum(GuidelineStatus), default=GuidelineStatus.DRAFT, nullable=False)
-    guideline_id = Column(String(26), ForeignKey("clinical_guidelines.id", ondelete="SET NULL"), nullable=True)
+    guideline_id = Column(
+        String(26), ForeignKey("clinical_guidelines.id", ondelete="SET NULL"), nullable=True,
+    )
     department = Column(String(128), nullable=True)
     procedure_category = Column(String(128), nullable=True)
     description = Column(Text, nullable=True)
@@ -88,9 +94,7 @@ class ClinicalProtocol(BaseEntity):
 
 class ClinicalPathway(BaseEntity):
     __tablename__ = "clinical_pathways"
-    __table_args__ = (
-        Index("ix_pathway_status", "status"),
-    )
+    __table_args__ = (Index("ix_pathway_status", "status"),)
 
     name = Column(String(512), nullable=False)
     version = Column(String(32), nullable=False)
@@ -109,13 +113,17 @@ class ClinicalPathway(BaseEntity):
     expiration_date = Column(Date, nullable=True)
     owner = Column(String(128), nullable=True)
 
-    phases_rel = relationship("PathwayPhase", back_populates="pathway", cascade="all, delete-orphan")
+    phases_rel = relationship(
+        "PathwayPhase", back_populates="pathway", cascade="all, delete-orphan",
+    )
 
 
 class PathwayPhase(BaseEntity):
     __tablename__ = "clinical_pathway_phases"
 
-    pathway_id = Column(String(26), ForeignKey("clinical_pathways.id", ondelete="CASCADE"), nullable=False)
+    pathway_id = Column(
+        String(26), ForeignKey("clinical_pathways.id", ondelete="CASCADE"), nullable=False,
+    )
     phase_number = Column(Integer, nullable=False)
     name = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
@@ -130,9 +138,7 @@ class PathwayPhase(BaseEntity):
 
 class StandingOrder(BaseEntity):
     __tablename__ = "clinical_standing_orders"
-    __table_args__ = (
-        Index("ix_standing_order_department", "department"),
-    )
+    __table_args__ = (Index("ix_standing_order_department", "department"),)
 
     title = Column(String(512), nullable=False)
     order_id = Column(String(64), nullable=True, unique=True)
@@ -150,7 +156,9 @@ class StandingOrder(BaseEntity):
     effective_start = Column(Date, nullable=True)
     effective_end = Column(Date, nullable=True)
     approver_role = Column(String(64), nullable=True)
-    protocol_id = Column(String(26), ForeignKey("clinical_protocols.id", ondelete="SET NULL"), nullable=True)
+    protocol_id = Column(
+        String(26), ForeignKey("clinical_protocols.id", ondelete="SET NULL"), nullable=True,
+    )
 
     protocol = relationship("ClinicalProtocol", backref="standing_orders")
 
@@ -162,7 +170,9 @@ class ClinicalRecommendation(BaseEntity):
         Index("ix_recommendation_level", "evidence_level"),
     )
 
-    guideline_id = Column(String(26), ForeignKey("clinical_guidelines.id", ondelete="CASCADE"), nullable=False)
+    guideline_id = Column(
+        String(26), ForeignKey("clinical_guidelines.id", ondelete="CASCADE"), nullable=False,
+    )
     recommendation_number = Column(String(16), nullable=True)
     title = Column(String(512), nullable=False)
     text = Column(Text, nullable=False)
@@ -182,11 +192,11 @@ class ClinicalRecommendation(BaseEntity):
 
 class GuidelineApproval(BaseEntity):
     __tablename__ = "clinical_guideline_approvals"
-    __table_args__ = (
-        Index("ix_guideline_approval_guideline", "guideline_id"),
-    )
+    __table_args__ = (Index("ix_guideline_approval_guideline", "guideline_id"),)
 
-    guideline_id = Column(String(26), ForeignKey("clinical_guidelines.id", ondelete="CASCADE"), nullable=False)
+    guideline_id = Column(
+        String(26), ForeignKey("clinical_guidelines.id", ondelete="CASCADE"), nullable=False,
+    )
     approver_id = Column(String(26), nullable=False, index=True)
     approver_name = Column(String(256), nullable=False)
     approver_role = Column(String(128), nullable=True)

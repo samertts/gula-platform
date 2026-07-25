@@ -30,7 +30,9 @@ class ImportResult:
 
 
 class ExportService:
-    def export_csv(self, headers: list[str], rows: list[list], filename: str = "export.csv") -> ExportResult:
+    def export_csv(
+        self, headers: list[str], rows: list[list], filename: str = "export.csv"
+    ) -> ExportResult:
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(headers)
@@ -39,7 +41,12 @@ class ExportService:
 
     def export_json(self, data: Any, filename: str = "export.json") -> ExportResult:
         import json
-        return ExportResult(success=True, data=json.dumps(data, ensure_ascii=False, default=str, indent=2), mime_type="application/json")
+
+        return ExportResult(
+            success=True,
+            data=json.dumps(data, ensure_ascii=False, default=str, indent=2),
+            mime_type="application/json",
+        )
 
     def export_fhir(self, resources: list[dict], filename: str = "export.json") -> ExportResult:
         bundle = {
@@ -47,11 +54,16 @@ class ExportService:
             "type": "collection",
             "entry": [{"resource": r} for r in resources],
         }
-        return ExportResult(success=True, data=json.dumps(bundle, ensure_ascii=False, default=str, indent=2), mime_type="application/fhir+json")
+        return ExportResult(
+            success=True,
+            data=json.dumps(bundle, ensure_ascii=False, default=str, indent=2),
+            mime_type="application/fhir+json",
+        )
 
     def export_pdf(self, html_content: str, filename: str = "export.pdf") -> ExportResult:
         try:
             from weasyprint import HTML
+
             pdf_bytes = HTML(string=html_content).write_pdf()
             return ExportResult(success=True, data=pdf_bytes, mime_type="application/pdf")
         except ImportError:
@@ -75,14 +87,22 @@ class ImportService:
         return [data]
 
 
-PlatformRegistry.register("export", ExportService(), capabilities=[
-    {"name": "export_csv", "description": "Export data as CSV"},
-    {"name": "export_json", "description": "Export data as JSON"},
-    {"name": "export_fhir", "description": "Export data as FHIR Bundle"},
-    {"name": "export_pdf", "description": "Export HTML content as PDF"},
-])
-PlatformRegistry.register("import", ImportService(), capabilities=[
-    {"name": "import_csv", "description": "Import data from CSV"},
-    {"name": "import_json", "description": "Import data from JSON"},
-    {"name": "import_fhir", "description": "Import data from FHIR format"},
-])
+PlatformRegistry.register(
+    "export",
+    ExportService(),
+    capabilities=[
+        {"name": "export_csv", "description": "Export data as CSV"},
+        {"name": "export_json", "description": "Export data as JSON"},
+        {"name": "export_fhir", "description": "Export data as FHIR Bundle"},
+        {"name": "export_pdf", "description": "Export HTML content as PDF"},
+    ],
+)
+PlatformRegistry.register(
+    "import",
+    ImportService(),
+    capabilities=[
+        {"name": "import_csv", "description": "Import data from CSV"},
+        {"name": "import_json", "description": "Import data from JSON"},
+        {"name": "import_fhir", "description": "Import data from FHIR format"},
+    ],
+)

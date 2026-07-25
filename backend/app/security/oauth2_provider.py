@@ -74,9 +74,13 @@ def generate_token_id() -> str:
 def verify_pkce(code_verifier: str, code_challenge: str, method: str) -> bool:
     if method != "S256":
         return False
-    computed = urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode("ascii")).digest(),
-    ).rstrip(b"=").decode()
+    computed = (
+        urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode("ascii")).digest(),
+        )
+        .rstrip(b"=")
+        .decode()
+    )
     return computed == code_challenge
 
 
@@ -119,11 +123,15 @@ def create_access_token_oauth2(
         payload["user_id"] = user_id
     if scope:
         payload["scope"] = scope
-    token = create_access_token(payload, secret_key=SECRET_KEY, algorithm=JWT_ALGORITHM, expire_minutes=expire_minutes)
+    token = create_access_token(
+        payload, secret_key=SECRET_KEY, algorithm=JWT_ALGORITHM, expire_minutes=expire_minutes
+    )
     return token, expire_minutes * 60
 
 
-def create_refresh_token_oauth2(client_id: str, user_id: int | None = None, scope: str | None = None) -> str:
+def create_refresh_token_oauth2(
+    client_id: str, user_id: int | None = None, scope: str | None = None
+) -> str:
     payload = {
         "jti": generate_token_id(),
         "client_id": client_id,
@@ -134,6 +142,7 @@ def create_refresh_token_oauth2(client_id: str, user_id: int | None = None, scop
     if scope:
         payload["scope"] = scope
     from ..config import REFRESH_TOKEN_EXPIRE_DAYS, REFRESH_TOKEN_SECRET
+
     return create_access_token(
         payload,
         secret_key=REFRESH_TOKEN_SECRET,
@@ -154,6 +163,7 @@ def decode_oauth2_token(token: str) -> dict[str, Any] | None:
 
 def decode_oauth2_refresh_token(token: str) -> dict[str, Any] | None:
     from ..config import REFRESH_TOKEN_SECRET
+
     try:
         payload = decode_access_token(token, REFRESH_TOKEN_SECRET, [JWT_ALGORITHM])
         if payload.get("type") != "oauth2_refresh":
@@ -182,7 +192,11 @@ def build_openid_config() -> dict[str, Any]:
         "jwks_uri": f"{BASE_URL}/oauth2/jwks.json",
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "client_credentials", "refresh_token"],
-        "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post", "none"],
+        "token_endpoint_auth_methods_supported": [
+            "client_secret_basic",
+            "client_secret_post",
+            "none",
+        ],
         "subject_types_supported": ["public"],
         "id_token_signing_alg_values_supported": ["HS256"],
         "scopes_supported": ["openid", "profile", "email", "read", "write"],

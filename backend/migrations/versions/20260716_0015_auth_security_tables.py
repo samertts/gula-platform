@@ -12,6 +12,7 @@ Tables:
   - service_accounts    — Machine-to-machine API keys
   - lab_users           — ADD reset_token, reset_token_expires columns
 """
+
 from __future__ import annotations
 
 from typing import Union
@@ -85,9 +86,16 @@ def upgrade() -> None:
             sa.Column("allowed_scopes", sa.Text(), nullable=True),
             sa.Column("grant_types", sa.Text(), nullable=True),
             sa.Column("response_types", sa.Text(), nullable=True),
-            sa.Column("is_confidential", sa.Boolean(), nullable=True, server_default=sa.text("false")),
+            sa.Column(
+                "is_confidential", sa.Boolean(), nullable=True, server_default=sa.text("false")
+            ),
             sa.Column("is_active", sa.Boolean(), nullable=True, server_default=sa.text("true")),
-            sa.Column("token_endpoint_auth_method", sa.String(length=50), nullable=True, server_default=sa.text("'client_secret_basic'")),
+            sa.Column(
+                "token_endpoint_auth_method",
+                sa.String(length=50),
+                nullable=True,
+                server_default=sa.text("'client_secret_basic'"),
+            ),
             sa.Column("created_by", sa.Integer(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
@@ -132,9 +140,13 @@ def upgrade() -> None:
 
     # ── lab_users: password reset columns ──
     if not _has_column("lab_users", "reset_token"):
-        op.add_column("lab_users", sa.Column("reset_token", sa.String(length=255), nullable=True, index=True))
+        op.add_column(
+            "lab_users", sa.Column("reset_token", sa.String(length=255), nullable=True, index=True)
+        )
     if not _has_column("lab_users", "reset_token_expires"):
-        op.add_column("lab_users", sa.Column("reset_token_expires", sa.DateTime(timezone=True), nullable=True))
+        op.add_column(
+            "lab_users", sa.Column("reset_token_expires", sa.DateTime(timezone=True), nullable=True)
+        )
 
 
 def downgrade() -> None:

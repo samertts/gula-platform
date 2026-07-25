@@ -4,7 +4,6 @@ Uses Integer PK (intentional — data warehouse fact tables use auto-increment).
 Mixins are imported from shared.models.
 """
 
-
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import declarative_base
 

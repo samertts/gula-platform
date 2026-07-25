@@ -72,7 +72,8 @@ class KpiRegistry:
     def search(self, query: str) -> list[KPIDefinition]:
         q = query.lower()
         return [
-            k for k in self._kpis.values()
+            k
+            for k in self._kpis.values()
             if q in k.code.lower() or q in k.name.lower() or q in (k.name_ar or "").lower()
         ]
 
@@ -231,7 +232,8 @@ class KPIEngine:
 
     def get_alerts(self) -> list[KPIResult]:
         return [
-            r for r in self._results.values()
+            r
+            for r in self._results.values()
             if r.status in ("below_target", "above_target", "error")
         ]
 

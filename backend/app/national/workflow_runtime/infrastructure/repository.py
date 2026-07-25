@@ -58,7 +58,10 @@ class SQLAlchemyWorkflowDefinitionRepository(WorkflowDefinitionRepository):
             return model.to_domain()
 
     async def list(
-        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        filters: dict | None = None,
     ) -> list[WorkflowDefinition]:
         async with SessionLocal() as session:
             query = session.query(NationalWorkflowDefinition)
@@ -171,7 +174,10 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             return model.to_domain()
 
     async def list(
-        self, skip: int = 0, limit: int = 100, filters: dict | None = None,
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        filters: dict | None = None,
     ) -> list[WorkflowExecution]:
         async with SessionLocal() as session:
             query = session.query(NationalWorkflowExecution)
@@ -193,12 +199,14 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         return await self.list(filters={"trigger": trigger})
 
     async def find_by_correlation_id(
-        self, correlation_id: str,
+        self,
+        correlation_id: str,
     ) -> list[WorkflowExecution]:
         return await self.list(filters={"correlation_id": correlation_id})
 
     async def find_stalled(
-        self, timeout_minutes: int = 30,
+        self,
+        timeout_minutes: int = 30,
     ) -> list[WorkflowExecution]:
         cutoff = datetime.now(UTC) - timedelta(minutes=timeout_minutes)
         async with SessionLocal() as session:

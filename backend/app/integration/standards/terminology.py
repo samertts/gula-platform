@@ -64,7 +64,9 @@ class TerminologyService:
         return system_id in self._supported_systems
 
     def list_systems(self) -> list[str]:
-        return list(self._supported_systems.keys()) + [s.id for s in self._systems.values() if s.id not in self._supported_systems]
+        return list(self._supported_systems.keys()) + [
+            s.id for s in self._systems.values() if s.id not in self._supported_systems
+        ]
 
     def is_supported(self, system_id: str) -> bool:
         return system_id in self._supported_systems or system_id in self._systems

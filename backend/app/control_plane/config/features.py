@@ -26,7 +26,9 @@ class FeatureManager:
             self._kernel_ffm = ffm
         return self._kernel_ffm
 
-    def register(self, name: str, enabled: bool = False, description: str = "", owner: str = "") -> FeatureFlag:
+    def register(
+        self, name: str, enabled: bool = False, description: str = "", owner: str = "",
+    ) -> FeatureFlag:
         ffm = self._get_ffm()
         flag = FeatureFlag(name=name, enabled=enabled, description=description, owner=owner)
         ffm.register(flag)

@@ -51,7 +51,11 @@ class SOAPGateway(MessageGateway):
             return GatewayResult(success=False, error="Not connected")
         start = time.monotonic()
         try:
-            soap_body = message.payload if isinstance(message.payload, str) else self._build_envelope(message.payload)
+            soap_body = (
+                message.payload
+                if isinstance(message.payload, str)
+                else self._build_envelope(message.payload)
+            )
             headers = {}
             if message.headers.get("SOAPAction"):
                 headers["SOAPAction"] = message.headers["SOAPAction"]
@@ -84,9 +88,9 @@ class SOAPGateway(MessageGateway):
             f'<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" '
             f'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
             f'xmlns:xsd="http://www.w3.org/2001/XMLSchema">'
-            f'<soap:Header/><soap:Body>'
+            f"<soap:Header/><soap:Body>"
             f'<{method} xmlns="{ns}">{param_xml}</{method}>'
-            f'</soap:Body></soap:Envelope>'
+            f"</soap:Body></soap:Envelope>"
         )
 
 

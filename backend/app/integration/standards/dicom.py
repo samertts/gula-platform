@@ -38,7 +38,9 @@ class DICOMService:
         self._ae_title = "GULA"
 
     def create_study(self, **kwargs: Any) -> DICOMStudy:
-        return DICOMStudy(**{k: v for k, v in kwargs.items() if k in DICOMStudy.__dataclass_fields__})
+        return DICOMStudy(
+            **{k: v for k, v in kwargs.items() if k in DICOMStudy.__dataclass_fields__}
+        )
 
     def supports_service(self, service: str) -> bool:
         return service.upper() in DICOM_SERVICES

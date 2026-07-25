@@ -77,8 +77,14 @@ class FHIRResourceEntry:
             "profile_url": self.profile_url,
             "version": self.version,
             "description": self.description,
-            "search_params": [{"name": p.name, "type": p.type, "description": p.description} for p in self.search_params],
-            "operations": [{"name": o.name, "description": o.description, "http_method": o.http_method} for o in self.operations],
+            "search_params": [
+                {"name": p.name, "type": p.type, "description": p.description}
+                for p in self.search_params
+            ],
+            "operations": [
+                {"name": o.name, "description": o.description, "http_method": o.http_method}
+                for o in self.operations
+            ],
             "required_elements": self.required_elements,
             "is_custom_profile": self.is_custom_profile,
             "source_path": self.source_path,
@@ -125,8 +131,13 @@ class FHIRCatalog:
         warnings = []
         required = _REQUIRED_FHIR_ELEMENTS.get(resource_type, [])
         for elem in required:
-            if elem not in [p.name for p in resource.search_params] and elem not in resource.required_elements:
-                warnings.append(f"Required element '{elem}' not documented in search params or required elements")
+            if (
+                elem not in [p.name for p in resource.search_params]
+                and elem not in resource.required_elements
+            ):
+                warnings.append(
+                    f"Required element '{elem}' not documented in search params or required elements",
+                )
         if resource.version not in _FHIR_VERSIONS:
             warnings.append(f"Unknown FHIR version '{resource.version}'")
         if not resource.search_params and resource_type in _REQUIRED_FHIR_ELEMENTS:
@@ -146,7 +157,14 @@ class FHIRCatalog:
             security={
                 "cors": True,
                 "service": [
-                    {"coding": [{"system": "http://hl7.org/fhir/restful-security-service", "code": "Bearer"}]},
+                    {
+                        "coding": [
+                            {
+                                "system": "http://hl7.org/fhir/restful-security-service",
+                                "code": "Bearer",
+                            },
+                        ],
+                    },
                 ],
                 "description": "JWT-based authentication with RBAC",
             },
@@ -177,7 +195,8 @@ class FHIRCatalog:
     def search(self, query: str) -> list[FHIRResourceEntry]:
         q = query.lower()
         return [
-            r for r in self._resources.values()
+            r
+            for r in self._resources.values()
             if q in r.resource_type.lower() or q in r.description.lower()
         ]
 
@@ -186,7 +205,9 @@ class FHIRCatalog:
             "total_resources": len(self._resources),
             "fhir_version": "4.0.1",
             "resource_types": sorted(self._resources.keys()),
-            "custom_profiles": [r.resource_type for r in self._resources.values() if r.is_custom_profile],
+            "custom_profiles": [
+                r.resource_type for r in self._resources.values() if r.is_custom_profile
+            ],
         }
 
     def _find_fhir_dirs(self) -> list[str]:
@@ -225,7 +246,11 @@ class FHIRCatalog:
                 is_custom_profile=profile_url is not None,
                 source_path=os.path.relpath(filepath, self._project_root),
                 search_params=[
-                    FHIRSearchParam(name=sp.get("name", ""), type=sp.get("type", ""), description=sp.get("documentation", ""))
+                    FHIRSearchParam(
+                        name=sp.get("name", ""),
+                        type=sp.get("type", ""),
+                        description=sp.get("documentation", ""),
+                    )
                     for sp in data.get("searchParam", [])
                 ],
                 operations=[
@@ -240,6 +265,7 @@ class FHIRCatalog:
     def _parse_fhir_python(self, filepath: str) -> None:
         try:
             import ast
+
             with open(filepath, encoding="utf-8") as f:
                 tree = ast.parse(f.read())
             for node in ast.walk(tree):
@@ -263,7 +289,9 @@ class FHIRCatalog:
                 version="4.0.1",
                 required_elements=elements,
                 search_params=[
-                    FHIRSearchParam(name="identifier", type="token", description="External identifier"),
+                    FHIRSearchParam(
+                        name="identifier", type="token", description="External identifier",
+                    ),
                     FHIRSearchParam(name="_id", type="token", description="Logical resource ID"),
                 ],
             )

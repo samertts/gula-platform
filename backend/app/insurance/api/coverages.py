@@ -116,14 +116,20 @@ def create_coverage(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    policy = db.query(InsurancePolicy).filter(
-        InsurancePolicy.id == data.policy_id,
-        InsurancePolicy.lab_id == current_user.lab_id,
-    ).first()
+    policy = (
+        db.query(InsurancePolicy)
+        .filter(
+            InsurancePolicy.id == data.policy_id,
+            InsurancePolicy.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
     if policy.status.value != "active":
-        raise HTTPException(status_code=400, detail=f"Policy status is '{policy.status.value}', must be active")
+        raise HTTPException(
+            status_code=400, detail=f"Policy status is '{policy.status.value}', must be active"
+        )
 
     coverage = Coverage(
         lab_id=current_user.lab_id,
@@ -159,10 +165,14 @@ def get_coverage(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
     return coverage
@@ -175,10 +185,14 @@ def update_coverage(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 
@@ -209,13 +223,21 @@ def terminate_coverage(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
-    if coverage.status in (CoverageStatus.TERMINATED, CoverageStatus.CANCELLED, CoverageStatus.EXPIRED):
+    if coverage.status in (
+        CoverageStatus.TERMINATED,
+        CoverageStatus.CANCELLED,
+        CoverageStatus.EXPIRED,
+    ):
         raise HTTPException(status_code=400, detail=f"Coverage is already {coverage.status.value}")
 
     coverage.status = CoverageStatus.TERMINATED
@@ -240,10 +262,14 @@ def verify_coverage(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 
@@ -263,10 +289,14 @@ def list_coverage_benefits(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 
@@ -274,14 +304,22 @@ def list_coverage_benefits(
         InsurancePolicy.id == coverage.policy_id,
     ).first()
 
-    benefits = db.query(BenefitPackage).filter(
-        BenefitPackage.policy_id == coverage.policy_id,
-        BenefitPackage.is_active,
-    ).all()
+    benefits = (
+        db.query(BenefitPackage)
+        .filter(
+            BenefitPackage.policy_id == coverage.policy_id,
+            BenefitPackage.is_active,
+        )
+        .all()
+    )
 
-    utilization = db.query(BenefitUtilization).filter(
-        BenefitUtilization.coverage_id == coverage_id,
-    ).all()
+    utilization = (
+        db.query(BenefitUtilization)
+        .filter(
+            BenefitUtilization.coverage_id == coverage_id,
+        )
+        .all()
+    )
 
     util_by_service = {u.service_code: u for u in utilization if u.service_code}
 
@@ -302,11 +340,19 @@ def list_coverage_benefits(
                 "service_category": b.service_category.value if b.service_category else None,
                 "coverage_percentage": b.coverage_percentage,
                 "copay_percentage": b.copay_percentage,
-                "max_benefit_per_claim": float(b.max_benefit_per_claim) if b.max_benefit_per_claim else None,
-                "max_benefit_per_year": float(b.max_benefit_per_year) if b.max_benefit_per_year else None,
+                "max_benefit_per_claim": float(b.max_benefit_per_claim)
+                if b.max_benefit_per_claim
+                else None,
+                "max_benefit_per_year": float(b.max_benefit_per_year)
+                if b.max_benefit_per_year
+                else None,
                 "max_visits_per_year": b.max_visits_per_year,
                 "requires_pre_auth": b.requires_pre_auth,
-                "remaining": float(util_by_service.get(b.code, BenefitUtilization()).total_remaining) if b.code in util_by_service else None,
+                "remaining": float(
+                    util_by_service.get(b.code, BenefitUtilization()).total_remaining
+                )
+                if b.code in util_by_service
+                else None,
             }
             for b in benefits
         ],
@@ -320,34 +366,52 @@ def coverage_utilization_report(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    coverage = db.query(Coverage).filter(
-        Coverage.id == coverage_id,
-        Coverage.lab_id == current_user.lab_id,
-    ).first()
+    coverage = (
+        db.query(Coverage)
+        .filter(
+            Coverage.id == coverage_id,
+            Coverage.lab_id == current_user.lab_id,
+        )
+        .first()
+    )
     if not coverage:
         raise HTTPException(status_code=404, detail="Coverage not found")
 
     cal_year = year or date.today().year
 
-    deductible = db.query(DeductibleTracking).filter(
-        DeductibleTracking.coverage_id == coverage_id,
-        DeductibleTracking.calendar_year == cal_year,
-    ).first()
+    deductible = (
+        db.query(DeductibleTracking)
+        .filter(
+            DeductibleTracking.coverage_id == coverage_id,
+            DeductibleTracking.calendar_year == cal_year,
+        )
+        .first()
+    )
 
-    utilization = db.query(BenefitUtilization).filter(
-        BenefitUtilization.coverage_id == coverage_id,
-    ).all()
+    utilization = (
+        db.query(BenefitUtilization)
+        .filter(
+            BenefitUtilization.coverage_id == coverage_id,
+        )
+        .all()
+    )
 
     return {
         "coverage_id": coverage_id,
         "patient_id": coverage.patient_id,
         "year": cal_year,
         "deductible": {
-            "total": float(deductible.total_deductible) if deductible else float(coverage.deductible_total or 0),
+            "total": float(deductible.total_deductible)
+            if deductible
+            else float(coverage.deductible_total or 0),
             "applied": float(deductible.applied_deductible) if deductible else 0,
-            "remaining": float(deductible.remaining_deductible) if deductible else float(coverage.deductible_remaining or 0),
+            "remaining": float(deductible.remaining_deductible)
+            if deductible
+            else float(coverage.deductible_remaining or 0),
             "is_met": deductible.is_met if deductible else False,
-        } if deductible or coverage.deductible_total else None,
+        }
+        if deductible or coverage.deductible_total
+        else None,
         "utilization": [
             {
                 "service_code": u.service_code,

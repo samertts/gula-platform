@@ -6,7 +6,9 @@ from app.national_data.base import BaseEntity
 class DeviceRegistry(BaseEntity):
     __tablename__ = "dp_device_registry"
 
-    device_bridge_id = Column(Integer, ForeignKey("edge_devices.id", ondelete="SET NULL"), nullable=True)
+    device_bridge_id = Column(
+        Integer, ForeignKey("edge_devices.id", ondelete="SET NULL"), nullable=True
+    )
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="SET NULL"), nullable=True, index=True)
 
     device_name = Column(String(200), nullable=False)

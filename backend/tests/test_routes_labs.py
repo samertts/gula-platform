@@ -28,6 +28,7 @@ Covers (PUT /labs/me/employees/{id}):
   - TENANT ISOLATION: cannot update employee from another lab → 404
   - Cannot deactivate yourself → 400
 """
+
 from __future__ import annotations
 
 import os
@@ -51,6 +52,7 @@ from sqlalchemy.pool import StaticPool
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="function")
 def db_engine():
     import app.models.audit_log
@@ -67,6 +69,7 @@ def db_engine():
     import app.models.subscription
     import app.models.user
     from app.services.mpi.models import Citizen, IdentityClaim
+
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -108,6 +111,7 @@ def client(db):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _create_lab(db, name: str = "Test Lab", active: bool = True) -> Lab:
     lab = Lab(name=name, is_active=active)
     db.add(lab)
@@ -115,14 +119,20 @@ def _create_lab(db, name: str = "Test Lab", active: bool = True) -> Lab:
     return lab
 
 
-def _create_user(db, lab_id: int, role: str = "admin",
-                 email: str | None = None, active: bool = True) -> LabUser:
+def _create_user(
+    db, lab_id: int, role: str = "admin", email: str | None = None, active: bool = True
+) -> LabUser:
     _c = LabUser.query if hasattr(LabUser, "query") else None
     import uuid
+
     em = email or f"user-{uuid.uuid4().hex[:8]}@lab.com"
     user = LabUser(
-        lab_id=lab_id, name="Test User", email=em,
-        password_hash=hash_password("Test1234"), role=role, is_active=active,
+        lab_id=lab_id,
+        name="Test User",
+        email=em,
+        password_hash=hash_password("Test1234"),
+        role=role,
+        is_active=active,
     )
     db.add(user)
     db.flush()
@@ -135,6 +145,7 @@ def _token(user_id: int, lab_id: int, role: str = "admin") -> dict:
 
 
 # ── GET /labs/me ──────────────────────────────────────────────────────────────
+
 
 class TestGetMyLab:
     def test_returns_own_lab_info(self, client, db):
@@ -172,6 +183,7 @@ class TestGetMyLab:
 
 
 # ── PUT /labs/me ──────────────────────────────────────────────────────────────
+
 
 class TestUpdateMyLab:
     def test_admin_can_update_lab_name(self, client, db):
@@ -228,6 +240,7 @@ class TestUpdateMyLab:
 
 # ── GET /labs/me/employees ────────────────────────────────────────────────────
 
+
 class TestListEmployees:
     def test_admin_can_list_own_employees(self, client, db):
         lab = _create_lab(db)
@@ -270,8 +283,14 @@ class TestListEmployees:
 
 # ── POST /labs/me/employees ───────────────────────────────────────────────────
 
+
 class TestCreateEmployee:
-    _NEW_EMP = {"name": "Ali Karim", "email": "ali@lab.com", "password": "Ali12345", "role": "technician"}
+    _NEW_EMP = {
+        "name": "Ali Karim",
+        "email": "ali@lab.com",
+        "password": "Ali12345",
+        "role": "technician",
+    }
 
     def test_admin_can_create_employee(self, client, db):
         lab = _create_lab(db)
@@ -338,6 +357,7 @@ class TestCreateEmployee:
 
 
 # ── PUT /labs/me/employees/{id} ───────────────────────────────────────────────
+
 
 class TestUpdateEmployee:
     def test_admin_can_deactivate_employee(self, client, db):

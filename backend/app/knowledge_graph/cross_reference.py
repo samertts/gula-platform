@@ -13,12 +13,36 @@ from .service_catalog import service_catalog
 logger = logging.getLogger("gula.knowledge_graph.cross_reference")
 
 _ENTITY_TYPE_MAP = {
-    "api": {"catalog": "api_catalog", "label": "API Endpoint", "list_fn": lambda: api_catalog.get_all_endpoints()},
-    "service": {"catalog": "service_catalog", "label": "Service", "list_fn": lambda: service_catalog._services},
-    "capability": {"catalog": "service_catalog", "label": "Capability", "list_fn": lambda: service_catalog._capabilities},
-    "entity": {"catalog": "data_dictionary", "label": "Data Entity", "list_fn": lambda: data_dictionary.get_all_entities()},
-    "event": {"catalog": "event_catalog", "label": "Event", "list_fn": lambda: event_catalog._events},
-    "fhir": {"catalog": "fhir_catalog", "label": "FHIR Resource", "list_fn": lambda: fhir_catalog._resources},
+    "api": {
+        "catalog": "api_catalog",
+        "label": "API Endpoint",
+        "list_fn": lambda: api_catalog.get_all_endpoints(),
+    },
+    "service": {
+        "catalog": "service_catalog",
+        "label": "Service",
+        "list_fn": lambda: service_catalog._services,
+    },
+    "capability": {
+        "catalog": "service_catalog",
+        "label": "Capability",
+        "list_fn": lambda: service_catalog._capabilities,
+    },
+    "entity": {
+        "catalog": "data_dictionary",
+        "label": "Data Entity",
+        "list_fn": lambda: data_dictionary.get_all_entities(),
+    },
+    "event": {
+        "catalog": "event_catalog",
+        "label": "Event",
+        "list_fn": lambda: event_catalog._events,
+    },
+    "fhir": {
+        "catalog": "fhir_catalog",
+        "label": "FHIR Resource",
+        "list_fn": lambda: fhir_catalog._resources,
+    },
     "adr": {"catalog": "adr_manager", "label": "ADR", "list_fn": lambda: adr_manager._adrs},
 }
 
@@ -36,71 +60,83 @@ class CrossReferenceEngine:
             if path_parts:
                 for svc_name, _svc_entry in service_catalog._services.items():
                     if svc_name.lower() in path_parts[0].lower():
-                        links.append({
-                            "source_type": "api",
-                            "source_id": f"{ep.method}:{ep.path}",
-                            "target_type": "service",
-                            "target_id": svc_name,
-                            "relationship": "IMPLEMENTS",
-                        })
+                        links.append(
+                            {
+                                "source_type": "api",
+                                "source_id": f"{ep.method}:{ep.path}",
+                                "target_type": "service",
+                                "target_id": svc_name,
+                                "relationship": "IMPLEMENTS",
+                            },
+                        )
 
         # API → Data Entity
         for ep in api_catalog.get_all_endpoints():
             for ent in data_dictionary.get_all_entities():
                 if ent.table_name.lower() in ep.path.lower() or ent.name.lower() in ep.path.lower():
-                    links.append({
-                        "source_type": "api",
-                        "source_id": f"{ep.method}:{ep.path}",
-                        "target_type": "entity",
-                        "target_id": ent.table_name,
-                        "relationship": "ACCESSES",
-                    })
+                    links.append(
+                        {
+                            "source_type": "api",
+                            "source_id": f"{ep.method}:{ep.path}",
+                            "target_type": "entity",
+                            "target_id": ent.table_name,
+                            "relationship": "ACCESSES",
+                        },
+                    )
 
         # FHIR → Data Entity
         for fhir_name, _fhir_entry in fhir_catalog._resources.items():
             for ent in data_dictionary.get_all_entities():
                 if ent.fhir_resource == fhir_name or ent.table_name.lower() == fhir_name.lower():
-                    links.append({
-                        "source_type": "fhir",
-                        "source_id": fhir_name,
-                        "target_type": "entity",
-                        "target_id": ent.table_name,
-                        "relationship": "MAPS_TO",
-                    })
+                    links.append(
+                        {
+                            "source_type": "fhir",
+                            "source_id": fhir_name,
+                            "target_type": "entity",
+                            "target_id": ent.table_name,
+                            "relationship": "MAPS_TO",
+                        },
+                    )
 
         # Event → Service
         for evt_name in event_catalog._events:
             for svc_name in service_catalog._services:
                 if svc_name.lower() in evt_name.lower() or evt_name.lower() in svc_name.lower():
-                    links.append({
-                        "source_type": "event",
-                        "source_id": evt_name,
-                        "target_type": "service",
-                        "target_id": svc_name,
-                        "relationship": "PUBLISHED_BY",
-                    })
+                    links.append(
+                        {
+                            "source_type": "event",
+                            "source_id": evt_name,
+                            "target_type": "service",
+                            "target_id": svc_name,
+                            "relationship": "PUBLISHED_BY",
+                        },
+                    )
 
         # ADR → Domain topics
         for adr_record in adr_manager._adrs.values():
             domain_lower = adr_record.domain.lower()
             for svc_name in service_catalog._services:
                 if domain_lower in svc_name.lower() or svc_name.lower() in domain_lower:
-                    links.append({
-                        "source_type": "adr",
-                        "source_id": adr_record.adr_id,
-                        "target_type": "service",
-                        "target_id": svc_name,
-                        "relationship": "DECIDES",
-                    })
+                    links.append(
+                        {
+                            "source_type": "adr",
+                            "source_id": adr_record.adr_id,
+                            "target_type": "service",
+                            "target_id": svc_name,
+                            "relationship": "DECIDES",
+                        },
+                    )
             for evt_name in event_catalog._events:
                 if domain_lower in evt_name.lower():
-                    links.append({
-                        "source_type": "adr",
-                        "source_id": adr_record.adr_id,
-                        "target_type": "event",
-                        "target_id": evt_name,
-                        "relationship": "DECIDES",
-                    })
+                    links.append(
+                        {
+                            "source_type": "adr",
+                            "source_id": adr_record.adr_id,
+                            "target_type": "event",
+                            "target_id": evt_name,
+                            "relationship": "DECIDES",
+                        },
+                    )
 
         self._links = links
         logger.info("Built %d cross-references between catalogs", len(links))
@@ -113,16 +149,20 @@ class CrossReferenceEngine:
         for link in self._links:
             if link["source_type"] == entity_type and link["source_id"] == entity_id:
                 ttype = link["target_type"]
-                related.setdefault(ttype, []).append({
-                    "id": link["target_id"],
-                    "relationship": link["relationship"],
-                })
+                related.setdefault(ttype, []).append(
+                    {
+                        "id": link["target_id"],
+                        "relationship": link["relationship"],
+                    },
+                )
             elif link["target_type"] == entity_type and link["target_id"] == entity_id:
                 ttype = link["source_type"]
-                related.setdefault(ttype, []).append({
-                    "id": link["source_id"],
-                    "relationship": link["relationship"],
-                })
+                related.setdefault(ttype, []).append(
+                    {
+                        "id": link["source_id"],
+                        "relationship": link["relationship"],
+                    },
+                )
         return {
             "entity_type": entity_type,
             "entity_id": entity_id,
@@ -207,91 +247,107 @@ class CrossReferenceEngine:
         for ep in api_catalog.get_all_endpoints():
             nid = f"api:{ep.method}:{ep.path}"
             if (nid, "api") not in seen_nodes:
-                nodes.append({
-                    "id": nid,
-                    "type": "api",
-                    "label": f"{ep.method.upper()} {ep.path}",
-                    "group": "API",
-                    "metadata": {"tags": ep.tags, "module": ep.module},
-                })
+                nodes.append(
+                    {
+                        "id": nid,
+                        "type": "api",
+                        "label": f"{ep.method.upper()} {ep.path}",
+                        "group": "API",
+                        "metadata": {"tags": ep.tags, "module": ep.module},
+                    },
+                )
                 seen_nodes.add((nid, "api"))
 
         for svc_name in service_catalog._services:
             nid = f"service:{svc_name}"
             if (nid, "service") not in seen_nodes:
-                nodes.append({
-                    "id": nid,
-                    "type": "service",
-                    "label": svc_name,
-                    "group": "Service",
-                })
+                nodes.append(
+                    {
+                        "id": nid,
+                        "type": "service",
+                        "label": svc_name,
+                        "group": "Service",
+                    },
+                )
                 seen_nodes.add((nid, "service"))
 
         for cap_name in service_catalog._capabilities:
             nid = f"capability:{cap_name}"
             if (nid, "capability") not in seen_nodes:
-                nodes.append({
-                    "id": nid,
-                    "type": "capability",
-                    "label": cap_name,
-                    "group": "Capability",
-                })
+                nodes.append(
+                    {
+                        "id": nid,
+                        "type": "capability",
+                        "label": cap_name,
+                        "group": "Capability",
+                    },
+                )
                 seen_nodes.add((nid, "capability"))
 
         for ent in data_dictionary.get_all_entities():
             nid = f"entity:{ent.table_name}"
             if (nid, "entity") not in seen_nodes:
-                nodes.append({
-                    "id": nid,
-                    "type": "entity",
-                    "label": ent.name,
-                    "group": "Data Entity",
-                })
+                nodes.append(
+                    {
+                        "id": nid,
+                        "type": "entity",
+                        "label": ent.name,
+                        "group": "Data Entity",
+                    },
+                )
                 seen_nodes.add((nid, "entity"))
 
         for fhir_name in fhir_catalog._resources:
             nid = f"fhir:{fhir_name}"
             if (nid, "fhir") not in seen_nodes:
-                nodes.append({
-                    "id": nid,
-                    "type": "fhir",
-                    "label": fhir_name,
-                    "group": "FHIR",
-                })
+                nodes.append(
+                    {
+                        "id": nid,
+                        "type": "fhir",
+                        "label": fhir_name,
+                        "group": "FHIR",
+                    },
+                )
                 seen_nodes.add((nid, "fhir"))
 
         for evt_name in event_catalog._events:
             nid = f"event:{evt_name}"
             if (nid, "event") not in seen_nodes:
-                nodes.append({
-                    "id": nid,
-                    "type": "event",
-                    "label": evt_name,
-                    "group": "Event",
-                })
+                nodes.append(
+                    {
+                        "id": nid,
+                        "type": "event",
+                        "label": evt_name,
+                        "group": "Event",
+                    },
+                )
                 seen_nodes.add((nid, "event"))
 
         for adr_record in adr_manager._adrs.values():
             nid = f"adr:{adr_record.adr_id}"
             if (nid, "adr") not in seen_nodes:
-                nodes.append({
-                    "id": nid,
-                    "type": "adr",
-                    "label": f"{adr_record.adr_id}: {adr_record.title[:60]}",
-                    "group": "ADR",
-                    "metadata": {"status": adr_record.status, "domain": adr_record.domain},
-                })
+                nodes.append(
+                    {
+                        "id": nid,
+                        "type": "adr",
+                        "label": f"{adr_record.adr_id}: {adr_record.title[:60]}",
+                        "group": "ADR",
+                        "metadata": {"status": adr_record.status, "domain": adr_record.domain},
+                    },
+                )
                 seen_nodes.add((nid, "adr"))
 
         for link in self._links:
             src_id = f"{link['source_type']}:{link['source_id']}"
             tgt_id = f"{link['target_type']}:{link['target_id']}"
             if src_id in [n["id"] for n in nodes] and tgt_id in [n["id"] for n in nodes]:
-                edges.append({
-                    "source": src_id,
-                    "target": tgt_id,
-                    "relationship": link["relationship"],
-                })
+                edges.append(
+                    {
+                        "source": src_id,
+                        "target": tgt_id,
+                        "relationship": link["relationship"],
+                    },
+                )
 
         return {
             "nodes": nodes,
@@ -300,8 +356,7 @@ class CrossReferenceEngine:
                 "total_nodes": len(nodes),
                 "total_edges": len(edges),
                 "by_type": {
-                    t: sum(1 for n in nodes if n["type"] == t)
-                    for t in {n["type"] for n in nodes}
+                    t: sum(1 for n in nodes if n["type"] == t) for t in {n["type"] for n in nodes}
                 },
             },
         }

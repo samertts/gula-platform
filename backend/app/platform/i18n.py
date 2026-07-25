@@ -86,8 +86,12 @@ class TranslationService:
         return list(_SUPPORTED_LOCALES)
 
 
-PlatformRegistry.register("i18n", TranslationService(), capabilities=[
-    {"name": "translate", "description": "Translate a key to the current or specified locale"},
-    {"name": "get_locale", "description": "Get the current locale"},
-    {"name": "get_supported_locales", "description": "Get all supported locales"},
-])
+PlatformRegistry.register(
+    "i18n",
+    TranslationService(),
+    capabilities=[
+        {"name": "translate", "description": "Translate a key to the current or specified locale"},
+        {"name": "get_locale", "description": "Get the current locale"},
+        {"name": "get_supported_locales", "description": "Get all supported locales"},
+    ],
+)

@@ -40,26 +40,36 @@ class ModalityWorklistService:
         self.db = db
 
     def generate_worklist(self, modality_device_id: str) -> list[dict[str, Any]]:
-        device = self.db.query(ModalityDevice).filter(
-            ModalityDevice.id == modality_device_id,
-            ModalityDevice.is_active,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        device = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.id == modality_device_id,
+                ModalityDevice.is_active,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
         if not device:
             logger.warning("Worklist requested for unknown/inactive device: %s", modality_device_id)
             return []
 
-        exams = self.db.query(RadiologyExam).filter(
-            RadiologyExam.modality == device.modality_type,
-            RadiologyExam.status.in_(["scheduled", "checked_in"]),
-            ~RadiologyExam.is_deleted,
-        ).all()
+        exams = (
+            self.db.query(RadiologyExam)
+            .filter(
+                RadiologyExam.modality == device.modality_type,
+                RadiologyExam.status.in_(["scheduled", "checked_in"]),
+                ~RadiologyExam.is_deleted,
+            )
+            .all()
+        )
 
         worklist: list[dict[str, Any]] = []
         for exam in exams:
             order = None
             if exam.order_id:
-                order = self.db.query(RadiologyOrder).filter(RadiologyOrder.id == exam.order_id).first()
+                order = (
+                    self.db.query(RadiologyOrder).filter(RadiologyOrder.id == exam.order_id).first()
+                )
 
             entry = self._build_worklist_entry(device, exam, order)
             self._persist_worklist_entry(device.id, exam, entry)
@@ -68,7 +78,9 @@ class ModalityWorklistService:
         logger.info("Generated worklist for device %s: %d items", device.device_name, len(worklist))
         return worklist
 
-    def _build_worklist_entry(self, device: ModalityDevice, exam: RadiologyExam, order: RadiologyOrder | None) -> dict[str, Any]:
+    def _build_worklist_entry(
+        self, device: ModalityDevice, exam: RadiologyExam, order: RadiologyOrder | None
+    ) -> dict[str, Any]:
         return {
             "AccessionNumber": exam.accession_number,
             "PatientID": exam.patient_id,
@@ -77,8 +89,12 @@ class ModalityWorklistService:
             "PatientBirthDate": "",
             "RequestedProcedureID": exam.id,
             "RequestedProcedureDescription": exam.exam_name or "",
-            "ScheduledProcedureStepStartDate": exam.created_at.strftime("%Y%m%d") if exam.created_at else "",
-            "ScheduledProcedureStepStartTime": exam.created_at.strftime("%H%M%S") if exam.created_at else "",
+            "ScheduledProcedureStepStartDate": exam.created_at.strftime("%Y%m%d")
+            if exam.created_at
+            else "",
+            "ScheduledProcedureStepStartTime": exam.created_at.strftime("%H%M%S")
+            if exam.created_at
+            else "",
             "ScheduledStationAETitle": device.ae_title or "",
             "ScheduledStationName": device.device_name,
             "Modality": device.modality_type.value.upper(),
@@ -87,12 +103,18 @@ class ModalityWorklistService:
             "ClinicalIndication": order.clinical_indication if order else "",
         }
 
-    def _persist_worklist_entry(self, device_id: str, exam: RadiologyExam, entry_data: dict[str, Any]) -> None:
-        existing = self.db.query(WorklistEntry).filter(
-            WorklistEntry.accession_number == exam.accession_number,
-            WorklistEntry.modality_device_id == device_id,
-            ~WorklistEntry.is_deleted,
-        ).first()
+    def _persist_worklist_entry(
+        self, device_id: str, exam: RadiologyExam, entry_data: dict[str, Any]
+    ) -> None:
+        existing = (
+            self.db.query(WorklistEntry)
+            .filter(
+                WorklistEntry.accession_number == exam.accession_number,
+                WorklistEntry.modality_device_id == device_id,
+                ~WorklistEntry.is_deleted,
+            )
+            .first()
+        )
         if existing:
             existing.status = "scheduled"
             existing.updated_at = datetime.now(UTC)
@@ -111,21 +133,30 @@ class ModalityWorklistService:
         self.db.commit()
 
     def get_worklist_for_device(self, device_id: str) -> list[WorklistEntry]:
-        return self.db.query(WorklistEntry).filter(
-            WorklistEntry.modality_device_id == device_id,
-            WorklistEntry.status == "scheduled",
-            ~WorklistEntry.is_deleted,
-        ).order_by(WorklistEntry.scheduled_datetime.asc()).all()
+        return (
+            self.db.query(WorklistEntry)
+            .filter(
+                WorklistEntry.modality_device_id == device_id,
+                WorklistEntry.status == "scheduled",
+                ~WorklistEntry.is_deleted,
+            )
+            .order_by(WorklistEntry.scheduled_datetime.asc())
+            .all()
+        )
 
     def process_siu_message(self, hl7_siu: dict[str, Any]) -> bool:
         accession = hl7_siu.get("accession_number", "")
         hl7_status = hl7_siu.get("status", "").upper()
         mapped_status = HL7_SIU_STATUS_MAP.get(hl7_status, "scheduled")
 
-        entry = self.db.query(WorklistEntry).filter(
-            WorklistEntry.accession_number == accession,
-            ~WorklistEntry.is_deleted,
-        ).first()
+        entry = (
+            self.db.query(WorklistEntry)
+            .filter(
+                WorklistEntry.accession_number == accession,
+                ~WorklistEntry.is_deleted,
+            )
+            .first()
+        )
         if entry:
             entry.status = mapped_status
             entry.updated_at = datetime.now(UTC)
@@ -133,10 +164,14 @@ class ModalityWorklistService:
             logger.info("SIU update for %s: %s -> %s", accession, hl7_status, mapped_status)
             return True
 
-        exam = self.db.query(RadiologyExam).filter(
-            RadiologyExam.accession_number == accession,
-            ~RadiologyExam.is_deleted,
-        ).first()
+        exam = (
+            self.db.query(RadiologyExam)
+            .filter(
+                RadiologyExam.accession_number == accession,
+                ~RadiologyExam.is_deleted,
+            )
+            .first()
+        )
         if exam:
             try:
                 exam.status = mapped_status
@@ -162,15 +197,23 @@ class MPPSHandler:
         accession_number = mpps_data.get("accession_number", "")
         mpps_status = mpps_data.get("status", "")
 
-        worklist_entry = self.db.query(WorklistEntry).filter(
-            WorklistEntry.accession_number == accession_number,
-            ~WorklistEntry.is_deleted,
-        ).first()
+        worklist_entry = (
+            self.db.query(WorklistEntry)
+            .filter(
+                WorklistEntry.accession_number == accession_number,
+                ~WorklistEntry.is_deleted,
+            )
+            .first()
+        )
 
-        exam = self.db.query(RadiologyExam).filter(
-            RadiologyExam.accession_number == accession_number,
-            ~RadiologyExam.is_deleted,
-        ).first()
+        exam = (
+            self.db.query(RadiologyExam)
+            .filter(
+                RadiologyExam.accession_number == accession_number,
+                ~RadiologyExam.is_deleted,
+            )
+            .first()
+        )
 
         mpps = MPPS(
             worklist_entry_id=worklist_entry.id if worklist_entry else None,
@@ -204,10 +247,15 @@ class MPPSHandler:
         return mpps
 
     def get_mpps_by_exam(self, exam_id: str) -> list[MPPS]:
-        return self.db.query(MPPS).filter(
-            MPPS.exam_id == exam_id,
-            ~MPPS.is_deleted,
-        ).order_by(MPPS.created_at.desc()).all()
+        return (
+            self.db.query(MPPS)
+            .filter(
+                MPPS.exam_id == exam_id,
+                ~MPPS.is_deleted,
+            )
+            .order_by(MPPS.created_at.desc())
+            .all()
+        )
 
 
 # ==============================================================================
@@ -261,10 +309,14 @@ class DeviceMonitoringService:
         return device
 
     def record_heartbeat(self, device_id: str) -> ModalityDevice | None:
-        device = self.db.query(ModalityDevice).filter(
-            ModalityDevice.device_id == device_id,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        device = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.device_id == device_id,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
         if not device:
             return None
         device.last_connection = datetime.now(UTC)
@@ -274,10 +326,14 @@ class DeviceMonitoringService:
         return device
 
     def mark_device_offline(self, device_id: str) -> ModalityDevice | None:
-        device = self.db.query(ModalityDevice).filter(
-            ModalityDevice.device_id == device_id,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        device = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.device_id == device_id,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
         if not device:
             return None
         device.status = DeviceStatus.OFFLINE
@@ -286,10 +342,14 @@ class DeviceMonitoringService:
         return device
 
     def update_device_status(self, device_id: str, status: DeviceStatus) -> ModalityDevice | None:
-        device = self.db.query(ModalityDevice).filter(
-            ModalityDevice.device_id == device_id,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        device = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.device_id == device_id,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
         if not device:
             return None
         device.status = status
@@ -300,18 +360,28 @@ class DeviceMonitoringService:
         return device
 
     def get_device(self, device_id: str) -> ModalityDevice | None:
-        return self.db.query(ModalityDevice).filter(
-            ModalityDevice.device_id == device_id,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        return (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.device_id == device_id,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
 
     def get_device_by_id(self, pk_id: str) -> ModalityDevice | None:
-        return self.db.query(ModalityDevice).filter(
-            ModalityDevice.id == pk_id,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        return (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.id == pk_id,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
 
-    def list_devices(self, modality_type: str | None = None, status: str | None = None) -> list[ModalityDevice]:
+    def list_devices(
+        self, modality_type: str | None = None, status: str | None = None
+    ) -> list[ModalityDevice]:
         q = self.db.query(ModalityDevice).filter(~~ModalityDevice.is_deleted)
         if modality_type:
             q = q.filter(ModalityDevice.modality_type == modality_type.upper())
@@ -321,22 +391,38 @@ class DeviceMonitoringService:
 
     def get_device_health(self) -> dict[str, Any]:
         total = self.db.query(ModalityDevice).filter(~~ModalityDevice.is_deleted).count()
-        online = self.db.query(ModalityDevice).filter(
-            ModalityDevice.status == DeviceStatus.ONLINE,
-            ~ModalityDevice.is_deleted,
-        ).count()
-        offline = self.db.query(ModalityDevice).filter(
-            ModalityDevice.status == DeviceStatus.OFFLINE,
-            ~ModalityDevice.is_deleted,
-        ).count()
-        error = self.db.query(ModalityDevice).filter(
-            ModalityDevice.status == DeviceStatus.ERROR,
-            ~ModalityDevice.is_deleted,
-        ).count()
-        maintenance = self.db.query(ModalityDevice).filter(
-            ModalityDevice.status == DeviceStatus.MAINTENANCE,
-            ~ModalityDevice.is_deleted,
-        ).count()
+        online = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.status == DeviceStatus.ONLINE,
+                ~ModalityDevice.is_deleted,
+            )
+            .count()
+        )
+        offline = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.status == DeviceStatus.OFFLINE,
+                ~ModalityDevice.is_deleted,
+            )
+            .count()
+        )
+        error = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.status == DeviceStatus.ERROR,
+                ~ModalityDevice.is_deleted,
+            )
+            .count()
+        )
+        maintenance = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.status == DeviceStatus.MAINTENANCE,
+                ~ModalityDevice.is_deleted,
+            )
+            .count()
+        )
         return {
             "total": total,
             "online": online,
@@ -348,11 +434,15 @@ class DeviceMonitoringService:
 
     def detect_stale_devices(self, stale_minutes: int = 10) -> list[ModalityDevice]:
         cutoff = datetime.now(UTC) - __import__("datetime").timedelta(minutes=stale_minutes)
-        stale = self.db.query(ModalityDevice).filter(
-            ModalityDevice.last_connection < cutoff,
-            ModalityDevice.status == DeviceStatus.ONLINE,
-            ~ModalityDevice.is_deleted,
-        ).all()
+        stale = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.last_connection < cutoff,
+                ModalityDevice.status == DeviceStatus.ONLINE,
+                ~ModalityDevice.is_deleted,
+            )
+            .all()
+        )
         for device in stale:
             device.status = DeviceStatus.OFFLINE
             logger.warning("Device marked offline (stale): %s", device.device_name)
@@ -360,10 +450,17 @@ class DeviceMonitoringService:
             self.db.commit()
         return stale
 
-    def check_storage_capacity(self, device_id: str, threshold_bytes: int = 1073741824) -> dict[str, Any]:
-        total_stored = self.db.query(DICOMStorage).filter(
-            ~~DICOMStorage.is_deleted,
-        ).with_entities(DICOMStorage.file_size).all()
+    def check_storage_capacity(
+        self, device_id: str, threshold_bytes: int = 1073741824
+    ) -> dict[str, Any]:
+        total_stored = (
+            self.db.query(DICOMStorage)
+            .filter(
+                ~~DICOMStorage.is_deleted,
+            )
+            .with_entities(DICOMStorage.file_size)
+            .all()
+        )
         used = sum(r[0] or 0 for r in total_stored)
         return {
             "device_id": device_id,
@@ -390,11 +487,15 @@ class DicomGatewayService:
         self.ae_title = ae_title
 
     def proxy_c_find(self, target_device_id: str, query: dict[str, Any]) -> list[dict[str, Any]]:
-        device = self.db.query(ModalityDevice).filter(
-            ModalityDevice.id == target_device_id,
-            ModalityDevice.is_active,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        device = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.id == target_device_id,
+                ModalityDevice.is_active,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
         if not device:
             logger.warning("C-FIND proxy: target device %s not found", target_device_id)
             return []
@@ -402,32 +503,46 @@ class DicomGatewayService:
         return []
 
     def proxy_c_move(self, target_device_id: str, study_uid: str, destination_ae: str) -> bool:
-        device = self.db.query(ModalityDevice).filter(
-            ModalityDevice.id == target_device_id,
-            ModalityDevice.is_active,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        device = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.id == target_device_id,
+                ModalityDevice.is_active,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
         if not device:
             return False
-        logger.info("Proxying C-MOVE %s from %s to %s", study_uid, device.device_name, destination_ae)
+        logger.info(
+            "Proxying C-MOVE %s from %s to %s", study_uid, device.device_name, destination_ae
+        )
         return True
 
     def proxy_c_store(self, target_device_id: str, dicom_data: bytes) -> bool:
-        device = self.db.query(ModalityDevice).filter(
-            ModalityDevice.id == target_device_id,
-            ModalityDevice.is_active,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        device = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.id == target_device_id,
+                ModalityDevice.is_active,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
         if not device:
             return False
         logger.info("Proxying C-STORE %d bytes to %s", len(dicom_data), device.device_name)
         return True
 
     def get_device_info(self, device_id: str) -> dict[str, Any] | None:
-        device = self.db.query(ModalityDevice).filter(
-            ModalityDevice.id == device_id,
-            ~ModalityDevice.is_deleted,
-        ).first()
+        device = (
+            self.db.query(ModalityDevice)
+            .filter(
+                ModalityDevice.id == device_id,
+                ~ModalityDevice.is_deleted,
+            )
+            .first()
+        )
         if not device:
             return None
         return {
@@ -436,7 +551,11 @@ class DicomGatewayService:
             "ae_title": device.ae_title,
             "ip_address": device.ip_address,
             "port": device.port,
-            "modality": device.modality_type.value if hasattr(device.modality_type, "value") else str(device.modality_type),
-            "status": device.status.value if hasattr(device.status, "value") else str(device.status),
+            "modality": device.modality_type.value
+            if hasattr(device.modality_type, "value")
+            else str(device.modality_type),
+            "status": device.status.value
+            if hasattr(device.status, "value")
+            else str(device.status),
             "is_active": device.is_active,
         }

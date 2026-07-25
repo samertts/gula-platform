@@ -145,13 +145,15 @@ class DrugInteractionDetector:
         for allergy in allergies:
             allergen = allergy.get("allergen", "").lower()
             if drug_lower == allergen or drug_lower.startswith(allergen):
-                alerts.append({
-                    "drug": drug_name,
-                    "allergen": allergy.get("allergen", ""),
-                    "severity": allergy.get("severity", "unknown"),
-                    "reaction": allergy.get("reaction", ""),
-                    "alert": f"Patient is allergic to {allergy.get('allergen', '')}",
-                })
+                alerts.append(
+                    {
+                        "drug": drug_name,
+                        "allergen": allergy.get("allergen", ""),
+                        "severity": allergy.get("severity", "unknown"),
+                        "reaction": allergy.get("reaction", ""),
+                        "alert": f"Patient is allergic to {allergy.get('allergen', '')}",
+                    },
+                )
         return alerts
 
 
@@ -199,6 +201,6 @@ class ClinicalSummarizer:
         summary = ClinicalSummary(patient_id=patient_id)
         for i, batch in enumerate(past_results):
             flags = [r.get("flag", "") for r in batch if r.get("flag")]
-            summary.key_findings.extend([f"Batch {i+1} flags: {flags}"])
+            summary.key_findings.extend([f"Batch {i + 1} flags: {flags}"])
         summary.generated_at = time.time()
         return summary

@@ -6,8 +6,18 @@ from app.national_data.base import BaseEntity
 class KnowledgeGraphEdge(BaseEntity):
     __tablename__ = "dp_knowledge_graph_edges"
 
-    source_node_id = Column(Integer, ForeignKey("dp_knowledge_graph_nodes.id", ondelete="CASCADE"), nullable=False, index=True)
-    target_node_id = Column(Integer, ForeignKey("dp_knowledge_graph_nodes.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_node_id = Column(
+        Integer,
+        ForeignKey("dp_knowledge_graph_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_node_id = Column(
+        Integer,
+        ForeignKey("dp_knowledge_graph_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     edge_type = Column(String(100), nullable=False, index=True)
     edge_label = Column(String(200), nullable=True)

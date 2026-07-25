@@ -123,7 +123,16 @@ class RoomCreate(BaseModel):
     @field_validator("room_type")
     @classmethod
     def validate_type(cls, v):
-        allowed = {"ward", "icu", "nicu", "emergency", "operation_theater", "dialysis", "lab", "pharmacy"}
+        allowed = {
+            "ward",
+            "icu",
+            "nicu",
+            "emergency",
+            "operation_theater",
+            "dialysis",
+            "lab",
+            "pharmacy",
+        }
         if v not in allowed:
             raise ValueError(f"room_type must be one of {allowed}")
         return v
@@ -163,8 +172,18 @@ class UnitCreate(NestedCreate):
     @field_validator("unit_type")
     @classmethod
     def validate_type(cls, v):
-        allowed = {"icu", "nicu", "ccu", "emergency", "dialysis", "operation_theater",
-                    "laboratory", "radiology", "pharmacy", "blood_bank"}
+        allowed = {
+            "icu",
+            "nicu",
+            "ccu",
+            "emergency",
+            "dialysis",
+            "operation_theater",
+            "laboratory",
+            "radiology",
+            "pharmacy",
+            "blood_bank",
+        }
         if v not in allowed:
             raise ValueError(f"unit_type must be one of {allowed}")
         return v
@@ -229,6 +248,7 @@ class AppointmentCreate(BaseModel):
 
 # ── Helpers ─────────────────────────────────────────────────────────────────────
 
+
 def _model_to_dict(model_instance) -> dict[str, Any]:
     exclude = {"lab_id", "is_deleted", "deleted_at", "version"}
     result = {}
@@ -262,12 +282,19 @@ def list_hospitals(
     current_user: LabUser = Depends(get_current_user),
 ):
     hospitals = HospitalService.list_hospitals(db, current_user.lab_id, skip, limit)
-    total = db.query(HospitalMaster).filter(
-        HospitalMaster.lab_id == current_user.lab_id,
-        ~HospitalMaster.is_deleted,
-    ).count()
+    total = (
+        db.query(HospitalMaster)
+        .filter(
+            HospitalMaster.lab_id == current_user.lab_id,
+            ~HospitalMaster.is_deleted,
+        )
+        .count()
+    )
     return _paginated_response(
-        [_model_to_dict(h) for h in hospitals], total, skip, limit,
+        [_model_to_dict(h) for h in hospitals],
+        total,
+        skip,
+        limit,
     )
 
 
@@ -287,7 +314,10 @@ def create_hospital(
     current_user: LabUser = Depends(get_current_user),
 ):
     hospital = HospitalService.create_hospital(
-        db, current_user.lab_id, current_user.id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.model_dump(),
     )
     return _model_to_dict(hospital)
 
@@ -303,7 +333,11 @@ def update_hospital(
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
     hospital = HospitalService.update_hospital(
-        db, hospital_id, current_user.lab_id, current_user.id, data,
+        db,
+        hospital_id,
+        current_user.lab_id,
+        current_user.id,
+        data,
     )
     return _model_to_dict(hospital)
 
@@ -339,7 +373,11 @@ def create_campus(
     current_user: LabUser = Depends(get_current_user),
 ):
     campus = HospitalService.create_campus(
-        db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        hospital_id,
+        body.model_dump(),
     )
     return _model_to_dict(campus)
 
@@ -380,7 +418,11 @@ def create_building(
     current_user: LabUser = Depends(get_current_user),
 ):
     building = HospitalService.create_building(
-        db, current_user.lab_id, current_user.id, campus_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        campus_id,
+        body.model_dump(),
     )
     return _model_to_dict(building)
 
@@ -406,7 +448,11 @@ def create_floor(
     current_user: LabUser = Depends(get_current_user),
 ):
     floor = HospitalService.create_floor(
-        db, current_user.lab_id, current_user.id, building_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        building_id,
+        body.model_dump(),
     )
     return _model_to_dict(floor)
 
@@ -422,7 +468,10 @@ def list_departments(
     current_user: LabUser = Depends(get_current_user),
 ):
     depts = HospitalService.list_departments(
-        db, current_user.lab_id, hospital_id, parent_id,
+        db,
+        current_user.lab_id,
+        hospital_id,
+        parent_id,
     )
     return [_model_to_dict(d) for d in depts]
 
@@ -435,7 +484,11 @@ def create_department(
     current_user: LabUser = Depends(get_current_user),
 ):
     dept = HospitalService.create_department(
-        db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        hospital_id,
+        body.model_dump(),
     )
     return _model_to_dict(dept)
 
@@ -476,7 +529,11 @@ def create_clinic(
     current_user: LabUser = Depends(get_current_user),
 ):
     clinic = HospitalService.create_clinic(
-        db, current_user.lab_id, current_user.id, dept_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        dept_id,
+        body.model_dump(),
     )
     return _model_to_dict(clinic)
 
@@ -503,7 +560,11 @@ def create_room(
     current_user: LabUser = Depends(get_current_user),
 ):
     room = HospitalService.create_room(
-        db, current_user.lab_id, current_user.id, dept_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        dept_id,
+        body.model_dump(),
     )
     return _model_to_dict(room)
 
@@ -531,7 +592,11 @@ def create_bed(
     current_user: LabUser = Depends(get_current_user),
 ):
     bed = HospitalService.create_bed(
-        db, current_user.lab_id, current_user.id, room_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        room_id,
+        body.model_dump(),
     )
     return _model_to_dict(bed)
 
@@ -547,8 +612,13 @@ def assign_bed(
     current_user: LabUser = Depends(get_current_user),
 ):
     bed = HospitalService.assign_bed(
-        db, current_user.lab_id, current_user.id, bed_id,
-        body.patient_id, body.reason, body.diagnosis,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        bed_id,
+        body.patient_id,
+        body.reason,
+        body.diagnosis,
     )
     return _model_to_dict(bed)
 
@@ -561,7 +631,11 @@ def discharge_bed(
     current_user: LabUser = Depends(get_current_user),
 ):
     bed = HospitalService.discharge_bed(
-        db, current_user.lab_id, current_user.id, bed_id, body.discharge_reason,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        bed_id,
+        body.discharge_reason,
     )
     return _model_to_dict(bed)
 
@@ -574,8 +648,12 @@ def transfer_bed(
     current_user: LabUser = Depends(get_current_user),
 ):
     return HospitalService.transfer_bed(
-        db, current_user.lab_id, current_user.id,
-        bed_id, body.to_bed_id, body.reason,
+        db,
+        current_user.lab_id,
+        current_user.id,
+        bed_id,
+        body.to_bed_id,
+        body.reason,
     )
 
 
@@ -612,7 +690,11 @@ def create_unit(
     current_user: LabUser = Depends(get_current_user),
 ):
     unit = HospitalService.create_unit(
-        db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        hospital_id,
+        body.model_dump(),
     )
     return _model_to_dict(unit)
 
@@ -630,7 +712,9 @@ def list_operation_theaters(
     return [_model_to_dict(ot) for ot in ots]
 
 
-@router.post("/{hospital_id}/operation-theaters", summary="Create operation theater", status_code=201)
+@router.post(
+    "/{hospital_id}/operation-theaters", summary="Create operation theater", status_code=201
+)
 def create_operation_theater(
     hospital_id: int,
     body: OperationTheaterCreate,
@@ -638,7 +722,11 @@ def create_operation_theater(
     current_user: LabUser = Depends(get_current_user),
 ):
     ot = HospitalService.create_ot(
-        db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        hospital_id,
+        body.model_dump(),
     )
     return _model_to_dict(ot)
 
@@ -671,7 +759,11 @@ def list_equipment(
     current_user: LabUser = Depends(get_current_user),
 ):
     equipment = HospitalService.list_equipment(
-        db, current_user.lab_id, hospital_id, category, equipment_status,
+        db,
+        current_user.lab_id,
+        hospital_id,
+        category,
+        equipment_status,
     )
     return [_model_to_dict(e) for e in equipment]
 
@@ -684,7 +776,11 @@ def create_equipment(
     current_user: LabUser = Depends(get_current_user),
 ):
     equip = HospitalService.create_equipment(
-        db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        hospital_id,
+        body.model_dump(),
     )
     return _model_to_dict(equip)
 
@@ -725,7 +821,11 @@ def create_cost_center(
     current_user: LabUser = Depends(get_current_user),
 ):
     cc = HospitalService.create_cost_center(
-        db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        hospital_id,
+        body.model_dump(),
     )
     return _model_to_dict(cc)
 
@@ -743,11 +843,18 @@ def list_appointments(
     current_user: LabUser = Depends(get_current_user),
 ):
     appointments = HospitalService.list_appointments(
-        db, current_user.lab_id, hospital_id, patient_id, skip, limit,
+        db,
+        current_user.lab_id,
+        hospital_id,
+        patient_id,
+        skip,
+        limit,
     )
     return _paginated_response(
         [_model_to_dict(a) for a in appointments],
-        len(appointments), skip, limit,
+        len(appointments),
+        skip,
+        limit,
     )
 
 
@@ -758,7 +865,10 @@ def create_appointment(
     current_user: LabUser = Depends(get_current_user),
 ):
     apt = HospitalService.create_appointment(
-        db, current_user.lab_id, current_user.id, body.model_dump(),
+        db,
+        current_user.lab_id,
+        current_user.id,
+        body.model_dump(),
     )
     return _model_to_dict(apt)
 
@@ -785,9 +895,14 @@ def bed_assignment_history(
     current_user: LabUser = Depends(get_current_user),
 ):
     HospitalService._get_entity(db, Bed, bed_id, current_user.lab_id)
-    assignments = db.query(BedAssignment).filter(
-        BedAssignment.bed_id == bed_id,
-        BedAssignment.lab_id == current_user.lab_id,
-        ~BedAssignment.is_deleted,
-    ).order_by(BedAssignment.admission_date.desc()).all()
+    assignments = (
+        db.query(BedAssignment)
+        .filter(
+            BedAssignment.bed_id == bed_id,
+            BedAssignment.lab_id == current_user.lab_id,
+            ~BedAssignment.is_deleted,
+        )
+        .order_by(BedAssignment.admission_date.desc())
+        .all()
+    )
     return [_model_to_dict(a) for a in assignments]

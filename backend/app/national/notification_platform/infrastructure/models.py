@@ -39,11 +39,24 @@ class NationalNotificationModel(NationalBase):
     correlation_id = Column(String(64), nullable=True, index=True)
     created_by = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
-    batch_id = Column(String(26), ForeignKey("national_notification_batches.id"), nullable=True, index=True)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    batch_id = Column(
+        String(26), ForeignKey("national_notification_batches.id"), nullable=True, index=True,
+    )
 
-    delivery_reports = relationship("NationalDeliveryReportModel", back_populates="notification", lazy="selectin")
-    batch = relationship("NationalNotificationBatchModel", back_populates="notifications_rel", foreign_keys=[batch_id])
+    delivery_reports = relationship(
+        "NationalDeliveryReportModel", back_populates="notification", lazy="selectin",
+    )
+    batch = relationship(
+        "NationalNotificationBatchModel",
+        back_populates="notifications_rel",
+        foreign_keys=[batch_id],
+    )
 
 
 class NationalNotificationTemplateModel(NationalBase):
@@ -61,7 +74,12 @@ class NationalNotificationTemplateModel(NationalBase):
     category = Column(String(32), nullable=False, default="system")
     created_by = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
     version = Column(Integer, nullable=False, default=1)
 
 
@@ -69,7 +87,9 @@ class NationalDeliveryReportModel(NationalBase):
     __tablename__ = DELIVERY_TABLE
 
     id = Column(String(26), primary_key=True)
-    notification_id = Column(String(26), ForeignKey(f"{NOTIFICATION_TABLE}.id"), nullable=False, index=True)
+    notification_id = Column(
+        String(26), ForeignKey(f"{NOTIFICATION_TABLE}.id"), nullable=False, index=True,
+    )
     provider_status = Column(String(32), nullable=True)
     provider_message_id = Column(String(128), nullable=True)
     provider_response = Column(Text, nullable=True)
@@ -96,7 +116,12 @@ class NationalNotificationPreferenceModel(NationalBase):
     categories_opt_in = Column(JSON, nullable=True)
     categories_opt_out = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
     __table_args__ = (
         __import__("sqlalchemy").UniqueConstraint("user_id", "channel", name="uq_user_channel"),

@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api/v1/trust", tags=["Trust Platform"])
 
 # ── Schemas ──
 
+
 class ConsentCreateRequest(BaseModel):
     patient_id: int
     purpose: str
@@ -60,6 +61,7 @@ class ComplianceCheckRequest(BaseModel):
 
 
 # ── Consent Routes ──
+
 
 @router.post("/consent", response_model=ConsentResponse)
 def create_consent(
@@ -163,6 +165,7 @@ def get_access_history(
 
 # ── Sovereignty Routes ──
 
+
 @router.get("/sovereignty/rules")
 def get_sovereignty_rules(
     db: Session = Depends(get_db),
@@ -202,6 +205,7 @@ def validate_cross_border(
 
 
 # ── Trust Service Routes ──
+
 
 @router.post("/sign")
 def sign_document(
@@ -257,6 +261,7 @@ def verify_document(
 
 
 # ── Compliance Routes ──
+
 
 @router.post("/compliance/check")
 def run_compliance_check(

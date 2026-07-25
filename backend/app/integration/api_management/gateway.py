@@ -54,7 +54,9 @@ class APIGateway:
                 return True
         return False
 
-    async def forward(self, method: str, path: str, headers: dict[str, str] | None = None, body: Any = None) -> dict[str, Any]:
+    async def forward(
+        self, method: str, path: str, headers: dict[str, str] | None = None, body: Any = None
+    ) -> dict[str, Any]:
         if not self._client:
             raise RuntimeError("API Gateway not started")
 

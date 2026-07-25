@@ -42,7 +42,9 @@ class FHIRBulkExport:
         )
         self._exports[export.export_id] = export
         logger.info(
-            "FHIR bulk export started: %s (type=%s)", export.export_id, resource_type,
+            "FHIR bulk export started: %s (type=%s)",
+            export.export_id,
+            resource_type,
         )
         return export
 
@@ -147,10 +149,7 @@ class StatisticsAPI:
     ) -> dict[str, Any]:
         data = self._warehouse.get_fact(dataset)
         if filters:
-            data = [
-                r for r in data
-                if all(r.get(k) == v for k, v in (filters or {}).items())
-            ]
+            data = [r for r in data if all(r.get(k) == v for k, v in (filters or {}).items())]
         values = [r.get(column) for r in data if r.get(column) is not None]
         if not values:
             return {"error": "no data"}
@@ -194,7 +193,12 @@ class StatisticsAPI:
                 elif agg_func == "avg":
                     groups.setdefault(key, 0)
                     groups[key] = (groups.get(key, 0) + val) / 2
-            return {"aggregation": agg_func, "measure": measure, "group_by": group_by, "values": groups}
+            return {
+                "aggregation": agg_func,
+                "measure": measure,
+                "group_by": group_by,
+                "values": groups,
+            }
         total = sum(r.get(measure, 0) or 0 for r in data)
         return {"aggregation": agg_func, "measure": measure, "value": total}
 
@@ -223,7 +227,11 @@ class StatisticsAPI:
                 "column_y": column_y,
                 "pearson_r": round(r, 4),
                 "n": len(pairs),
-                "interpretation": "strong" if abs(r) > 0.7 else "moderate" if abs(r) > 0.4 else "weak",
+                "interpretation": "strong"
+                if abs(r) > 0.7
+                else "moderate"
+                if abs(r) > 0.4
+                else "weak",
             }
         except Exception as exc:
             return {"error": str(exc)}
@@ -277,6 +285,7 @@ class OpenDataAPI:
     def search_datasets(self, query: str) -> list[dict]:
         q = query.lower()
         return [
-            ds for ds in self._catalog.values()
+            ds
+            for ds in self._catalog.values()
             if q in ds["name"].lower() or q in ds.get("description", "").lower()
         ]

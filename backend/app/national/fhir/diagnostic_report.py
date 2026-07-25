@@ -7,14 +7,28 @@ class FHIRDiagnosticReportMapper:
     RESOURCE_TYPE = "DiagnosticReport"
 
     @classmethod
-    def from_lab_order(cls, order: dict, results: list[dict], patient_id: str, encounter_id: str | None = None) -> dict[str, Any]:
+    def from_lab_order(
+        cls, order: dict, results: list[dict], patient_id: str, encounter_id: str | None = None,
+    ) -> dict[str, Any]:
         resource = {
             "resourceType": cls.RESOURCE_TYPE,
             "id": str(order.get("id", "")),
             "status": "final",
-            "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0074", "code": "LAB"}]}],
+            "category": [
+                {
+                    "coding": [
+                        {"system": "http://terminology.hl7.org/CodeSystem/v2-0074", "code": "LAB"},
+                    ],
+                },
+            ],
             "code": {
-                "coding": [{"system": "http://loinc.org", "code": order.get("order_code", ""), "display": order.get("order_name", "")}],
+                "coding": [
+                    {
+                        "system": "http://loinc.org",
+                        "code": order.get("order_code", ""),
+                        "display": order.get("order_name", ""),
+                    },
+                ],
                 "text": order.get("order_name", ""),
             },
             "subject": {"reference": f"Patient/{patient_id}"},
@@ -31,20 +45,46 @@ class FHIRDiagnosticReportMapper:
         return {k: v for k, v in resource.items() if v is not None}
 
     @classmethod
-    def from_observation_batch(cls, observations: list[dict], patient_id: str, panel_code: str = "", panel_name: str = "") -> dict[str, Any]:
+    def from_observation_batch(
+        cls, observations: list[dict], patient_id: str, panel_code: str = "", panel_name: str = "",
+    ) -> dict[str, Any]:
         resource = {
             "resourceType": cls.RESOURCE_TYPE,
             "id": panel_code or str(hash(tuple(o.get("id", "") for o in observations))),
             "status": "final",
-            "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0074", "code": "LAB"}]}],
+            "category": [
+                {
+                    "coding": [
+                        {"system": "http://terminology.hl7.org/CodeSystem/v2-0074", "code": "LAB"},
+                    ],
+                },
+            ],
             "code": {
-                "coding": [{"system": "http://loinc.org", "code": panel_code, "display": panel_name}],
+                "coding": [
+                    {"system": "http://loinc.org", "code": panel_code, "display": panel_name},
+                ],
                 "text": panel_name,
             },
             "subject": {"reference": f"Patient/{patient_id}"},
-            "effectiveDateTime": next((o.get("effective_datetime", "") or o.get("created_at", "") for o in observations if o.get("effective_datetime") or o.get("created_at")), ""),
-            "issued": next((o.get("issued_at", "") or o.get("updated_at", "") for o in observations if o.get("issued_at") or o.get("updated_at")), ""),
-            "result": [{"reference": f"Observation/{o.get('id')}"} for o in observations if o.get("id")],
+            "effectiveDateTime": next(
+                (
+                    o.get("effective_datetime", "") or o.get("created_at", "")
+                    for o in observations
+                    if o.get("effective_datetime") or o.get("created_at")
+                ),
+                "",
+            ),
+            "issued": next(
+                (
+                    o.get("issued_at", "") or o.get("updated_at", "")
+                    for o in observations
+                    if o.get("issued_at") or o.get("updated_at")
+                ),
+                "",
+            ),
+            "result": [
+                {"reference": f"Observation/{o.get('id')}"} for o in observations if o.get("id")
+            ],
         }
         return {k: v for k, v in resource.items() if v is not None}
 
@@ -73,4 +113,10 @@ class FHIRDiagnosticReportMapper:
         url = order.get("report_url") or order.get("pdf_url")
         if not url:
             return None
-        return [{"url": url, "title": order.get("order_name", "Lab Report"), "contentType": "application/pdf"}]
+        return [
+            {
+                "url": url,
+                "title": order.get("order_name", "Lab Report"),
+                "contentType": "application/pdf",
+            },
+        ]

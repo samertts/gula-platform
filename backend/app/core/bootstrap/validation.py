@@ -104,11 +104,7 @@ def _validate_facilities(db: Session, report: ValidationReport) -> None:
     else:
         report.add_warning("facilities", "No facilities found")
 
-    facility_types = (
-        db.query(Facility.facility_type)
-        .distinct()
-        .all()
-    )
+    facility_types = db.query(Facility.facility_type).distinct().all()
     if facility_types:
         types_list = [ft[0] for ft in facility_types]
         report.add_pass("facility_types", f"Types: {', '.join(types_list)}")
@@ -138,8 +134,14 @@ def _validate_users(db: Session, report: ValidationReport) -> None:
     else:
         report.add_fail("master_admin", "No master admin found")
 
-    for role in ["ministry_admin", "organization_admin", "directorate_admin",
-                 "lab_manager", "auditor", "security_officer"]:
+    for role in [
+        "ministry_admin",
+        "organization_admin",
+        "directorate_admin",
+        "lab_manager",
+        "auditor",
+        "security_officer",
+    ]:
         count = db.query(LabUser).filter(LabUser.role == role).count()
         if count > 0:
             report.add_pass(f"role_{role}", f"{count} user(s) with role '{role}'")
@@ -169,11 +171,7 @@ def _validate_permissions(db: Session, report: ValidationReport) -> None:
     else:
         report.add_fail("permissions", "No permissions found")
 
-    domains = (
-        db.query(Permission.domain)
-        .distinct()
-        .all()
-    )
+    domains = db.query(Permission.domain).distinct().all()
     if domains:
         domain_list = [d[0] for d in domains]
         report.add_pass("permission_domains", f"Domains: {', '.join(sorted(domain_list))}")
@@ -200,41 +198,25 @@ def _validate_subscriptions(db: Session, report: ValidationReport) -> None:
 
 
 def _validate_relationships(db: Session, report: ValidationReport) -> None:
-    orgs_with_parent = (
-        db.query(Organization)
-        .filter(Organization.parent_org_id.isnot(None))
-        .count()
-    )
+    orgs_with_parent = db.query(Organization).filter(Organization.parent_org_id.isnot(None)).count()
     report.add_pass(
         "org_hierarchy",
         f"{orgs_with_parent} organizations have parent references",
     )
 
-    facilities_with_org = (
-        db.query(Facility)
-        .filter(Facility.organization_id.isnot(None))
-        .count()
-    )
+    facilities_with_org = db.query(Facility).filter(Facility.organization_id.isnot(None)).count()
     report.add_pass(
         "facility_org_links",
         f"{facilities_with_org} facilities linked to organizations",
     )
 
-    users_with_lab = (
-        db.query(LabUser)
-        .filter(LabUser.lab_id.isnot(None))
-        .count()
-    )
+    users_with_lab = db.query(LabUser).filter(LabUser.lab_id.isnot(None)).count()
     report.add_pass(
         "user_lab_links",
         f"{users_with_lab} users linked to labs",
     )
 
-    subs_with_lab = (
-        db.query(LabSubscription)
-        .filter(LabSubscription.lab_id.isnot(None))
-        .count()
-    )
+    subs_with_lab = db.query(LabSubscription).filter(LabSubscription.lab_id.isnot(None)).count()
     report.add_pass(
         "subscription_lab_links",
         f"{subs_with_lab} subscriptions linked to labs",

@@ -59,7 +59,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ph_disease_cases_lab_id", "ph_disease_cases", ["lab_id"])
         op.create_index("ix_ph_disease_cases_region", "ph_disease_cases", ["region"])
@@ -97,7 +97,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ph_outbreak_alerts_region", "ph_outbreak_alerts", ["region"])
         op.create_index("ix_ph_outbreak_alerts_lab_id", "ph_outbreak_alerts", ["lab_id"])
@@ -133,11 +133,15 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ph_immunization_records_lab_id", "ph_immunization_records", ["lab_id"])
-        op.create_index("ix_ph_immunization_records_patient_id", "ph_immunization_records", ["patient_id"])
-        op.create_index("ix_ph_immunization_records_fhir_id", "ph_immunization_records", ["fhir_id"])
+        op.create_index(
+            "ix_ph_immunization_records_patient_id", "ph_immunization_records", ["patient_id"]
+        )
+        op.create_index(
+            "ix_ph_immunization_records_fhir_id", "ph_immunization_records", ["fhir_id"]
+        )
 
     if not _table_exists("ph_reports"):
         op.create_table(
@@ -165,7 +169,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ph_reports_lab_id", "ph_reports", ["lab_id"])
         op.create_index("ix_ph_reports_fhir_id", "ph_reports", ["fhir_id"])
@@ -193,10 +197,12 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ph_surveillance_signals_region", "ph_surveillance_signals", ["region"])
-        op.create_index("ix_ph_surveillance_signals_fhir_id", "ph_surveillance_signals", ["fhir_id"])
+        op.create_index(
+            "ix_ph_surveillance_signals_fhir_id", "ph_surveillance_signals", ["fhir_id"]
+        )
         op.create_index("ix_ph_surveillance_signals_lab_id", "ph_surveillance_signals", ["lab_id"])
 
     if not _table_exists("ph_environmental_health"):
@@ -222,12 +228,13 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_ph_environmental_health_lab_id", "ph_environmental_health", ["lab_id"])
-        op.create_index("ix_ph_environmental_health_fhir_id", "ph_environmental_health", ["fhir_id"])
+        op.create_index(
+            "ix_ph_environmental_health_fhir_id", "ph_environmental_health", ["fhir_id"]
+        )
         op.create_index("ix_ph_environmental_health_region", "ph_environmental_health", ["region"])
-
 
 
 def downgrade() -> None:

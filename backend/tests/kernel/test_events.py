@@ -43,6 +43,7 @@ class TestEventDefaults:
 class TestEventReplay:
     def test_replay(self, kernel, event_bus):
         import asyncio
+
         received = []
 
         def handler(event):

@@ -90,9 +90,12 @@ class GraphQuery:
         max_depth: int = 2,
     ) -> list[dict[str, Any]]:
         from app.knowledge_graph.models import EdgeType
+
         edge_types = None
         if relationship_types:
-            edge_types = [EdgeType(rt) for rt in relationship_types if hasattr(EdgeType, rt.upper())]
+            edge_types = [
+                EdgeType(rt) for rt in relationship_types if hasattr(EdgeType, rt.upper())
+            ]
         return await self._engine.get_neighbors(qualified_name, edge_types, max_depth)
 
     async def find_path(
@@ -108,6 +111,7 @@ class GraphQuery:
         entity_types: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         from app.knowledge_graph.models import NodeType
+
         node_types = None
         if entity_types:
             node_types = [NodeType(et) for et in entity_types if hasattr(NodeType, et.upper())]
@@ -128,6 +132,7 @@ class GraphBuilder:
         tags: list[str] | None = None,
     ) -> dict[str, Any]:
         from app.knowledge_graph.models import NodeType
+
         node_type_map = {
             EntityType.PATIENT: NodeType.MODEL,
             EntityType.LABORATORY: NodeType.MODEL,
@@ -163,6 +168,7 @@ class GraphBuilder:
         relationship: GraphRelationship,
     ) -> dict[str, Any] | None:
         from app.knowledge_graph.models import EdgeType
+
         edge_type_map = {
             RelationshipType.HAS_RESULT: EdgeType.REFERENCES,
             RelationshipType.ORDERED_BY: EdgeType.DEPENDS_ON,

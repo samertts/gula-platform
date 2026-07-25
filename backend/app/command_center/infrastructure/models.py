@@ -30,7 +30,9 @@ class EmergencyDeclarationModel(TenantEntity):
 class ResourceRequestModel(TenantEntity):
     __tablename__ = "cc_resource_requests"
 
-    emergency_id = Column(String(100), ForeignKey("cc_emergency_declarations.id"), nullable=True, index=True)
+    emergency_id = Column(
+        String(100), ForeignKey("cc_emergency_declarations.id"), nullable=True, index=True,
+    )
     resource_type = Column(String(50), nullable=False)
     quantity = Column(Integer, default=1)
     priority = Column(String(50), default="medium")
@@ -49,7 +51,9 @@ class ResourceRequestModel(TenantEntity):
 class SituationReportModel(TenantEntity):
     __tablename__ = "cc_situation_reports"
 
-    emergency_id = Column(String(100), ForeignKey("cc_emergency_declarations.id"), nullable=True, index=True)
+    emergency_id = Column(
+        String(100), ForeignKey("cc_emergency_declarations.id"), nullable=True, index=True,
+    )
     report_number = Column(Integer, default=1)
     operational_period = Column(String(50), nullable=True)
     summary = Column(Text, nullable=True)

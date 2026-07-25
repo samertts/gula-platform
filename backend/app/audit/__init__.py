@@ -17,16 +17,19 @@ logger = logging.getLogger("gula.audit")
 
 def audit_log(action: str) -> Callable:
     """Decorator that writes an audit log entry on successful endpoint execution."""
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
             try:
                 request: Request | None = kwargs.get("request") or next(
-                    (a for a in args if isinstance(a, Request)), None,
+                    (a for a in args if isinstance(a, Request)),
+                    None,
                 )
                 db: SASession | None = kwargs.get("db") or next(
-                    (a for a in args if isinstance(a, SASession)), None,
+                    (a for a in args if isinstance(a, SASession)),
+                    None,
                 )
                 if request and db:
                     user_id = getattr(request.state, "user_id", None) or 0
@@ -43,7 +46,9 @@ def audit_log(action: str) -> Callable:
             except Exception:
                 logger.warning("audit_log decorator failed", exc_info=True)
             return result
+
         return wrapper
+
     return decorator
 
 

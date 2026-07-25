@@ -25,6 +25,7 @@ router = APIRouter(prefix="/pilot-platform", tags=["National Pilot Deployment & 
 def _get_service(db: Session = Depends(get_db)) -> PilotPlatformService:
     try:
         from app.kernel import Kernel
+
         kernel = Kernel.get_instance()
         event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
     except Exception:
@@ -33,6 +34,7 @@ def _get_service(db: Session = Depends(get_db)) -> PilotPlatformService:
 
 
 # ── Pilot Programs ──
+
 
 @router.post("/pilots", status_code=status.HTTP_201_CREATED)
 async def create_pilot(
@@ -61,7 +63,9 @@ async def get_pilot(
     try:
         return _program_to_dict(service.get_pilot(pilot_id))
     except PilotNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found"
+        ) from e
 
 
 @router.put("/pilots/{pilot_id}/phase")
@@ -73,10 +77,13 @@ async def advance_phase(
     try:
         return _program_to_dict(service.advance_phase(pilot_id, body.get("phase", "")))
     except PilotNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found"
+        ) from e
 
 
 # ── Pilot Facilities ──
+
 
 @router.post("/facilities", status_code=status.HTTP_201_CREATED)
 async def enroll_facility(
@@ -98,6 +105,7 @@ async def list_pilot_facilities(
 
 # ── Readiness Assessments ──
 
+
 @router.post("/readiness", status_code=status.HTTP_201_CREATED)
 async def assess_readiness(
     body: dict[str, Any],
@@ -115,10 +123,13 @@ async def get_facility_readiness(
     try:
         return _readiness_to_dict(service.get_facility_readiness(facility_id, pilot_id))
     except ReadinessAssessmentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found"
+        ) from e
 
 
 # ── Go/No-Go Gates ──
+
 
 @router.post("/gates", status_code=status.HTTP_201_CREATED)
 async def decide_gate(
@@ -139,6 +150,7 @@ async def list_gates(
 
 # ── Deployment Records ──
 
+
 @router.post("/deployments", status_code=status.HTTP_201_CREATED)
 async def record_deployment(
     body: dict[str, Any],
@@ -158,6 +170,7 @@ async def list_deployments(
 
 # ── Certification Integration ──
 
+
 @router.get("/certify/{module_path:path}")
 async def evaluate_certification(
     module_path: str,
@@ -168,6 +181,7 @@ async def evaluate_certification(
 
 
 # ── Dashboard ──
+
 
 @router.get("/dashboard")
 async def get_dashboard(
@@ -183,30 +197,62 @@ async def health() -> dict[str, Any]:
 
 # ── Serializers ──
 
+
 def _program_to_dict(p: PilotProgram) -> dict[str, Any]:
-    return {"id": p.id, "module_name": p.module_name, "version": p.version,
-            "current_phase": p.current_phase, "status": p.status, "strategy": p.strategy,
-            "pilot_lead": p.pilot_lead, "description": p.description}
+    return {
+        "id": p.id,
+        "module_name": p.module_name,
+        "version": p.version,
+        "current_phase": p.current_phase,
+        "status": p.status,
+        "strategy": p.strategy,
+        "pilot_lead": p.pilot_lead,
+        "description": p.description,
+    }
 
 
 def _facility_to_dict(f: PilotFacility) -> dict[str, Any]:
-    return {"id": f.id, "pilot_id": f.pilot_id, "facility_id": f.facility_id,
-            "facility_name": f.facility_name, "readiness_level": f.readiness_level,
-            "readiness_score": f.readiness_score}
+    return {
+        "id": f.id,
+        "pilot_id": f.pilot_id,
+        "facility_id": f.facility_id,
+        "facility_name": f.facility_name,
+        "readiness_level": f.readiness_level,
+        "readiness_score": f.readiness_score,
+    }
 
 
 def _readiness_to_dict(r: ReadinessChecklist) -> dict[str, Any]:
-    return {"id": r.id, "pilot_id": r.pilot_id, "facility_id": r.facility_id,
-            "overall_score": r.overall_score, "level": r.level, "assessed_by": r.assessed_by}
+    return {
+        "id": r.id,
+        "pilot_id": r.pilot_id,
+        "facility_id": r.facility_id,
+        "overall_score": r.overall_score,
+        "level": r.level,
+        "assessed_by": r.assessed_by,
+    }
 
 
 def _gate_to_dict(g: GoNoGoGate) -> dict[str, Any]:
-    return {"id": g.id, "pilot_id": g.pilot_id, "facility_id": g.facility_id,
-            "gate_name": g.gate_name, "result": g.result, "approver": g.approver,
-            "comments": g.comments}
+    return {
+        "id": g.id,
+        "pilot_id": g.pilot_id,
+        "facility_id": g.facility_id,
+        "gate_name": g.gate_name,
+        "result": g.result,
+        "approver": g.approver,
+        "comments": g.comments,
+    }
 
 
 def _deployment_to_dict(d: DeploymentRecord) -> dict[str, Any]:
-    return {"id": d.id, "pilot_id": d.pilot_id, "module": d.module, "version": d.version,
-            "facility_id": d.facility_id, "strategy": d.strategy, "status": d.status,
-            "health_check_passed": d.health_check_passed}
+    return {
+        "id": d.id,
+        "pilot_id": d.pilot_id,
+        "module": d.module,
+        "version": d.version,
+        "facility_id": d.facility_id,
+        "strategy": d.strategy,
+        "status": d.status,
+        "health_check_passed": d.health_check_passed,
+    }

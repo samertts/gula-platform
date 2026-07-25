@@ -17,7 +17,6 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
 class AuthenticationService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.account_service = AccountService(session)

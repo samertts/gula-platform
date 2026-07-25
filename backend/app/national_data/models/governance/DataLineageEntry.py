@@ -22,7 +22,9 @@ class DataLineageEntry(BaseEntity):
     pipeline_run_id = Column(String(100), nullable=True)
     pipeline_version = Column(String(50), nullable=True)
 
-    processed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    processed_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     processing_duration_ms = Column(Integer, nullable=True)
 
     status = Column(String(20), default="completed", nullable=False, index=True)

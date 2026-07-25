@@ -6,8 +6,12 @@ from app.national_data.base import BaseEntity
 class DuplicateRecord(BaseEntity):
     __tablename__ = "dp_duplicate_records"
 
-    golden_record_id = Column(Integer, ForeignKey("dp_golden_records.id", ondelete="CASCADE"), nullable=False, index=True)
-    source_patient_id = Column(Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True)
+    golden_record_id = Column(
+        Integer, ForeignKey("dp_golden_records.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_patient_id = Column(
+        Integer, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True
+    )
     source_national_patient_id = Column(String(26), nullable=True)
     source_system = Column(String(50), nullable=False)
 

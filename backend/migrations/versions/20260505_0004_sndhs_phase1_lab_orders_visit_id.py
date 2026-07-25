@@ -17,16 +17,17 @@ This step is purely metadata and safe at any time.
 Revision ID : 20260505_0004
 Revises     : 20260505_0003
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
 
 
-revision      = "20260505_0004"
+revision = "20260505_0004"
 down_revision = "20260505_0003"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def _has_column(table: str, column: str) -> bool:
@@ -41,10 +42,10 @@ def _index_exists(name: str) -> bool:
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         return name in {ix["name"] for ix in inspect(bind).get_indexes("lab_orders")}
-    row = bind.execute(text(
-        "SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() "
-        "AND indexname = :n"
-    ), {"n": name}).first()
+    row = bind.execute(
+        text("SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = :n"),
+        {"n": name},
+    ).first()
     return row is not None
 
 
@@ -62,10 +63,12 @@ def upgrade() -> None:
     if _pg():
         if not _index_exists("ix_lab_orders_visit_id"):
             with op.get_context().autocommit_block():
-                op.execute(text(
-                    "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_lab_orders_visit_id "
-                    "ON lab_orders (visit_id)"
-                ))
+                op.execute(
+                    text(
+                        "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_lab_orders_visit_id "
+                        "ON lab_orders (visit_id)"
+                    )
+                )
     else:
         if not _index_exists("ix_lab_orders_visit_id"):
             op.create_index("ix_lab_orders_visit_id", "lab_orders", ["visit_id"])

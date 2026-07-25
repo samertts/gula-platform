@@ -21,11 +21,12 @@ os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0W
 #    100 threads calling interpret_result simultaneously — no crashes, no races
 # =============================================================================
 
-class TestConcurrentInterpretation:
 
+class TestConcurrentInterpretation:
     def test_100_concurrent_interpretations_no_crash(self):
         """100 threads calling interpret_result simultaneously must not crash."""
         from app.services.interpretation import interpret_result
+
         errors = []
         results = []
         lock = threading.Lock()
@@ -61,6 +62,7 @@ class TestConcurrentInterpretation:
     def test_interpretation_results_consistent_under_load(self):
         """Same input must always produce same output regardless of concurrency."""
         from app.services.interpretation import interpret_result
+
         results = []
         lock = threading.Lock()
 
@@ -84,11 +86,12 @@ class TestConcurrentInterpretation:
 # 2. CONCURRENT WESTGARD EVALUATION
 # =============================================================================
 
-class TestConcurrentWestgard:
 
+class TestConcurrentWestgard:
     def test_50_concurrent_westgard_calls(self):
         """50 threads evaluating QC simultaneously."""
         from app.routes.quality_control import evaluate_westgard
+
         errors = []
         results = []
         lock = threading.Lock()
@@ -119,11 +122,12 @@ class TestConcurrentWestgard:
 #    Most critical: concurrent access must not allow more requests than limit
 # =============================================================================
 
-class TestRateLimiterConcurrency:
 
+class TestRateLimiterConcurrency:
     def test_rate_limiter_exact_limit_under_contention(self):
         """Under heavy concurrency, rate limiter must never allow > max_requests."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         allowed = []
         lock = threading.Lock()
@@ -144,12 +148,15 @@ class TestRateLimiterConcurrency:
         total_blocked = sum(1 for r in allowed if not r)
 
         # Must not allow more than MAX
-        assert total_allowed <= MAX, f"Rate limiter allowed {total_allowed} > {MAX} under contention"
+        assert total_allowed <= MAX, (
+            f"Rate limiter allowed {total_allowed} > {MAX} under contention"
+        )
         assert total_blocked >= 90, f"Only blocked {total_blocked}/90 expected"
 
     def test_rate_limiter_no_deadlock_under_load(self):
         """Rate limiter must not deadlock with 200 concurrent threads."""
         from app.security.rate_limit import RateLimiter
+
         limiter = RateLimiter()
         completed = []
         lock = threading.Lock()
@@ -159,8 +166,9 @@ class TestRateLimiterConcurrency:
             with lock:
                 completed.append(True)
 
-        threads = [threading.Thread(target=attempt, args=(f"10.0.{i % 5}.{i % 255}",))
-                   for i in range(200)]
+        threads = [
+            threading.Thread(target=attempt, args=(f"10.0.{i % 5}.{i % 255}",)) for i in range(200)
+        ]
         for t in threads:
             t.start()
         for t in threads:
@@ -173,11 +181,12 @@ class TestRateLimiterConcurrency:
 # 4. INTRUSION DETECTOR CONCURRENCY
 # =============================================================================
 
-class TestIntrusionDetectorConcurrency:
 
+class TestIntrusionDetectorConcurrency:
     def test_concurrent_attack_detection(self):
         """Multiple IPs attacking simultaneously — each tracked independently."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=5, window_seconds=300)
         results = {}
         lock = threading.Lock()
@@ -204,6 +213,7 @@ class TestIntrusionDetectorConcurrency:
     def test_detector_no_cross_ip_contamination(self):
         """Attacks from one IP must not affect other IPs."""
         from app.security.intrusion_detection import IntrusionDetector
+
         detector = IntrusionDetector(max_attempts=3, window_seconds=300)
 
         # Fill up bad IP
@@ -222,11 +232,12 @@ class TestIntrusionDetectorConcurrency:
 # 5. TOKEN GENERATION UNIQUENESS UNDER CONCURRENCY
 # =============================================================================
 
-class TestTokenUniqueness:
 
+class TestTokenUniqueness:
     def test_jwt_tokens_unique_per_user_under_concurrency(self):
         """Tokens for distinct users must all be unique, no crashes."""
         from app.security.auth import create_token
+
         tokens = []
         lock = threading.Lock()
         errors = []
@@ -254,6 +265,7 @@ class TestTokenUniqueness:
     def test_encryption_thread_safe(self):
         """encrypt() must be thread-safe for concurrent calls."""
         from app.security.encryption import decrypt, encrypt
+
         results = []
         errors = []
         lock = threading.Lock()
@@ -283,12 +295,14 @@ class TestTokenUniqueness:
 # 6. PERFORMANCE UNDER SUSTAINED LOAD
 # =============================================================================
 
+
 class TestSustainedLoadPerformance:
     """Simulate lab peak hours: 10 techs, 5 minutes, ~300 actions."""
 
     def test_interpretation_throughput_1000_per_second(self):
         """Clinical engine must handle ≥ 1000 interpretations/second."""
         from app.services.interpretation import interpret_result
+
         count = 0
         start = time.perf_counter()
         deadline = start + 1.0  # 1 second window
@@ -302,6 +316,7 @@ class TestSustainedLoadPerformance:
     def test_westgard_throughput_500_per_second(self):
         """QC engine must handle ≥ 500 evaluations/second."""
         from app.routes.quality_control import evaluate_westgard
+
         count = 0
         start = time.perf_counter()
         deadline = start + 1.0
@@ -315,6 +330,7 @@ class TestSustainedLoadPerformance:
     def test_critical_check_throughput_2000_per_second(self):
         """Critical alerts check must handle ≥ 2000 checks/second."""
         from app.services.critical_alerts import check_critical
+
         count = 0
         start = time.perf_counter()
         deadline = start + 1.0
@@ -330,6 +346,7 @@ class TestSustainedLoadPerformance:
     def test_p99_latency_interpretation(self):
         """P99 latency for interpretation must be < 1ms."""
         from app.services.interpretation import interpret_result
+
         times = []
 
         for _ in range(5000):
@@ -343,6 +360,7 @@ class TestSustainedLoadPerformance:
     def test_p99_latency_westgard(self):
         """P99 latency for Westgard must be < 1ms."""
         from app.routes.quality_control import evaluate_westgard
+
         times = []
 
         for _ in range(5000):
@@ -358,8 +376,8 @@ class TestSustainedLoadPerformance:
 # 7. MEMORY STABILITY (No leaks under repeated calls)
 # =============================================================================
 
-class TestMemoryStability:
 
+class TestMemoryStability:
     def test_no_memory_growth_interpretation(self):
         """Repeated calls must not grow memory unboundedly."""
         import tracemalloc
@@ -387,6 +405,7 @@ class TestMemoryStability:
 
         from app.security.rate_limit import RateLimiter
         from app.security.redis_client import _MemoryStore
+
         limiter = RateLimiter()
         mem_store = _MemoryStore()
 
@@ -403,16 +422,18 @@ class TestMemoryStability:
 # 8. CRITICAL CLINICAL SCENARIOS (Multi-test interactions)
 # =============================================================================
 
+
 class TestClinicalScenarios:
     """Test realistic multi-test clinical patterns."""
 
     def test_sepsis_pattern_all_critical(self):
         """WBC=18, Hemoglobin=6, Platelets=50 → all should flag abnormal."""
         from app.services.interpretation import get_flag, interpret_result
+
         scenarios = [
-            ("wbc",        18.0,  4.0,  11.0, "H"),
-            ("hemoglobin",  6.0, 12.0,  17.0, "critical"),  # critically low
-            ("platelets",  50.0, 150.0, 400.0, "L"),
+            ("wbc", 18.0, 4.0, 11.0, "H"),
+            ("hemoglobin", 6.0, 12.0, 17.0, "critical"),  # critically low
+            ("platelets", 50.0, 150.0, 400.0, "L"),
         ]
         for test, val, low, high, _expected_flag in scenarios:
             flag = get_flag(val, low, high, test.capitalize())

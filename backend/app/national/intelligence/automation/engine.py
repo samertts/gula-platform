@@ -263,7 +263,9 @@ class RuleAutomationEngine:
         logger.info("[RuleAutomation] registered rule=%s name=%s", rule.id, rule.name)
         return rule.id
 
-    def evaluate_rules(self, context: dict[str, Any], rules: list[AutomationRule] | None = None) -> list[dict[str, Any]]:
+    def evaluate_rules(
+        self, context: dict[str, Any], rules: list[AutomationRule] | None = None,
+    ) -> list[dict[str, Any]]:
         target_rules = rules or list(self._rules.values())
         triggered: list[dict[str, Any]] = []
         for rule in sorted(target_rules, key=lambda r: -r.priority):
@@ -273,18 +275,22 @@ class RuleAutomationEngine:
                 continue
             try:
                 if rule.condition(context):
-                    triggered.append({
-                        "rule_id": rule.id,
-                        "rule_name": rule.name,
-                        "context": context,
-                        "matched_at": time.time(),
-                    })
+                    triggered.append(
+                        {
+                            "rule_id": rule.id,
+                            "rule_name": rule.name,
+                            "context": context,
+                            "matched_at": time.time(),
+                        },
+                    )
                     logger.info("[RuleAutomation] rule triggered id=%s name=%s", rule.id, rule.name)
             except Exception as exc:
                 logger.error("[RuleAutomation] rule evaluation error id=%s error=%s", rule.id, exc)
         return triggered
 
-    def execute_actions(self, actions: list[Callable[[dict[str, Any]], Any]], context: dict[str, Any]) -> list[Any]:
+    def execute_actions(
+        self, actions: list[Callable[[dict[str, Any]], Any]], context: dict[str, Any],
+    ) -> list[Any]:
         results = []
         for action in actions:
             try:
@@ -302,12 +308,14 @@ class RuleAutomationEngine:
             rule = self._rules.get(match["rule_id"])
             if rule and rule.actions:
                 action_results = self.execute_actions(rule.actions, match["context"])
-                outcomes.append({
-                    "rule_id": rule.id,
-                    "rule_name": rule.name,
-                    "actions_executed": len(rule.actions),
-                    "action_results": action_results,
-                })
+                outcomes.append(
+                    {
+                        "rule_id": rule.id,
+                        "rule_name": rule.name,
+                        "actions_executed": len(rule.actions),
+                        "action_results": action_results,
+                    },
+                )
         return outcomes
 
 
@@ -442,7 +450,9 @@ class NotificationAutomationEngine:
             )
         return triggered
 
-    def dispatch_notification(self, rule: NotificationRule, context: dict[str, Any]) -> dict[str, Any]:
+    def dispatch_notification(
+        self, rule: NotificationRule, context: dict[str, Any],
+    ) -> dict[str, Any]:
         message = rule.template
         for key, value in context.items():
             placeholder = f"{{{key}}}"
@@ -537,7 +547,9 @@ class EscalationEngine:
                 logger.info("[EscalationEngine] executed escalation id=%s", escalation_id)
                 return record
             except Exception as exc:
-                logger.error("[EscalationEngine] execution failed id=%s error=%s", escalation_id, exc)
+                logger.error(
+                    "[EscalationEngine] execution failed id=%s error=%s", escalation_id, exc,
+                )
                 record["error"] = str(exc)
                 return record
         record["resolved"] = True
@@ -633,12 +645,14 @@ class JobOrchestrator:
             deps_met = all(dep in completed_steps for dep in step.dependencies)
             if not deps_met:
                 step.status = TaskStatus.PENDING
-                step_results.append({
-                    "step_id": step.id,
-                    "step_name": step.name,
-                    "status": step.status.value,
-                    "message": "Waiting for dependencies",
-                })
+                step_results.append(
+                    {
+                        "step_id": step.id,
+                        "step_name": step.name,
+                        "status": step.status.value,
+                        "message": "Waiting for dependencies",
+                    },
+                )
                 continue
             handler = self._handlers.get(step.action)
             if handler is None:
@@ -647,12 +661,14 @@ class JobOrchestrator:
                 job.status = TaskStatus.FAILED
                 job.error = step.error
                 job.completed_at = time.time()
-                step_results.append({
-                    "step_id": step.id,
-                    "step_name": step.name,
-                    "status": step.status.value,
-                    "error": step.error,
-                })
+                step_results.append(
+                    {
+                        "step_id": step.id,
+                        "step_name": step.name,
+                        "status": step.status.value,
+                        "error": step.error,
+                    },
+                )
                 return {
                     "job_id": job.id,
                     "job_name": job.name,
@@ -666,24 +682,28 @@ class JobOrchestrator:
                 step.result = result
                 step.status = TaskStatus.COMPLETED
                 completed_steps.add(step.id)
-                step_results.append({
-                    "step_id": step.id,
-                    "step_name": step.name,
-                    "status": step.status.value,
-                    "result": result,
-                })
+                step_results.append(
+                    {
+                        "step_id": step.id,
+                        "step_name": step.name,
+                        "status": step.status.value,
+                        "result": result,
+                    },
+                )
             except Exception as exc:
                 step.status = TaskStatus.FAILED
                 step.error = str(exc)
                 job.status = TaskStatus.FAILED
                 job.error = step.error
                 job.completed_at = time.time()
-                step_results.append({
-                    "step_id": step.id,
-                    "step_name": step.name,
-                    "status": step.status.value,
-                    "error": step.error,
-                })
+                step_results.append(
+                    {
+                        "step_id": step.id,
+                        "step_name": step.name,
+                        "status": step.status.value,
+                        "error": step.error,
+                    },
+                )
                 return {
                     "job_id": job.id,
                     "job_name": job.name,

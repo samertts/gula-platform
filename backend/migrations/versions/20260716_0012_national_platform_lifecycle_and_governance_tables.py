@@ -46,14 +46,19 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_lc_component_registry_fhir_id", "lc_component_registry", ["fhir_id"])
 
     if not _table_exists("lc_releases"):
         op.create_table(
             "lc_releases",
-            sa.Column("component_id", sa.String(), sa.ForeignKey("lc_component_registry.id"), nullable=False),
+            sa.Column(
+                "component_id",
+                sa.String(),
+                sa.ForeignKey("lc_component_registry.id"),
+                nullable=False,
+            ),
             sa.Column("version", sa.String(), nullable=False),
             sa.Column("channel", sa.String(), default="stable"),
             sa.Column("status", sa.String(), default="draft"),
@@ -76,7 +81,7 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
-            sa.Column("deleted_at", sa.DateTime(timezone=True))
+            sa.Column("deleted_at", sa.DateTime(timezone=True)),
         )
         op.create_index("ix_lc_releases_fhir_id", "lc_releases", ["fhir_id"])
         op.create_index("ix_lc_releases_component_id", "lc_releases", ["component_id"])
@@ -100,9 +105,11 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
-        op.create_index("ix_lc_compatibility_matrix_fhir_id", "lc_compatibility_matrix", ["fhir_id"])
+        op.create_index(
+            "ix_lc_compatibility_matrix_fhir_id", "lc_compatibility_matrix", ["fhir_id"]
+        )
 
     if not _table_exists("lc_upgrade_paths"):
         op.create_table(
@@ -125,14 +132,19 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_lc_upgrade_paths_fhir_id", "lc_upgrade_paths", ["fhir_id"])
 
     if not _table_exists("lc_deprecation_notices"):
         op.create_table(
             "lc_deprecation_notices",
-            sa.Column("component_id", sa.String(), sa.ForeignKey("lc_component_registry.id"), nullable=False),
+            sa.Column(
+                "component_id",
+                sa.String(),
+                sa.ForeignKey("lc_component_registry.id"),
+                nullable=False,
+            ),
             sa.Column("component_name", sa.String()),
             sa.Column("current_version", sa.String()),
             sa.Column("deprecation_policy", sa.String(), default="notice_90_days"),
@@ -151,11 +163,12 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("is_deleted", sa.Boolean(), nullable=False, default=False),
             sa.Column("deleted_at", sa.DateTime(timezone=True)),
-            sa.Column("version", sa.Integer(), nullable=False, default=1)
+            sa.Column("version", sa.Integer(), nullable=False, default=1),
         )
         op.create_index("ix_lc_deprecation_notices_fhir_id", "lc_deprecation_notices", ["fhir_id"])
-        op.create_index("ix_lc_deprecation_notices_component_id", "lc_deprecation_notices", ["component_id"])
-
+        op.create_index(
+            "ix_lc_deprecation_notices_component_id", "lc_deprecation_notices", ["component_id"]
+        )
 
 
 def downgrade() -> None:

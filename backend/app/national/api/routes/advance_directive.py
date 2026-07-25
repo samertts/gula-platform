@@ -86,12 +86,19 @@ class AdvanceDirectiveListResponse(BaseModel):
 
 
 def _get_directive_or_404(db: Session, directive_id: str) -> AdvanceDirective:
-    directive = db.query(AdvanceDirective).filter(
-        AdvanceDirective.id == directive_id,
-        ~AdvanceDirective.is_deleted,
-    ).first()
+    directive = (
+        db.query(AdvanceDirective)
+        .filter(
+            AdvanceDirective.id == directive_id,
+            ~AdvanceDirective.is_deleted,
+        )
+        .first()
+    )
     if not directive:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Advance directive not found: {directive_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Advance directive not found: {directive_id}",
+        )
     return directive
 
 
@@ -161,7 +168,9 @@ async def get_advance_directives_by_patient(
         ~AdvanceDirective.is_deleted,
     )
     total = query.count()
-    directives = query.order_by(AdvanceDirective.effective_date.desc()).offset(skip).limit(limit).all()
+    directives = (
+        query.order_by(AdvanceDirective.effective_date.desc()).offset(skip).limit(limit).all()
+    )
     return AdvanceDirectiveListResponse(items=directives, total=total, skip=skip, limit=limit)
 
 
