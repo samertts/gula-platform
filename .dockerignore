@@ -7,6 +7,8 @@ __pycache__/
 *.pyc
 *.pyo
 node_modules/
+.venv/
+.uv/
 tests/
 .reports/
 reports/
@@ -20,3 +22,8 @@ docs/
 .DS_Store
 docker-compose*.yml
 Makefile
+frontend-v2/
+archive/
+.terraform/
+*.tfstate
+*.tfstate.backup
