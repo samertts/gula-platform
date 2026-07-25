@@ -1,0 +1,145 @@
+compliance:
+  active_frameworks:
+    owasp_asvs:
+      version: "4.0.3"
+      level: 3
+      required_passing: 95
+    nist_csf:
+      version: "2.0"
+      tier: "Tier 4 (Adaptive)"
+      required_passing: 90
+    nist_800_53:
+      version: "Rev 5"
+      baseline: HIGH
+      required_passing: 90
+    iso_27001:
+      version: "2022"
+      required_passing: 100
+      requirement_sets:
+        - A.5 (Information Security Policies)
+        - A.6 (Organization of Info Security)
+        - A.8 (Asset Management)
+        - A.9 (Access Control)
+        - A.10 (Cryptography)
+        - A.12 (Operations Security)
+        - A.13 (Communications Security)
+        - A.14 (System Acquisition & Development)
+        - A.16 (Incident Management)
+        - A.18 (Compliance)
+    iso_27799:
+      version: "2016"
+      required_passing: 100
+    hipaa:
+      rule:
+        - Privacy Rule
+        - Security Rule
+        - Breach Notification Rule
+      required_passing: 100
+    gdpr:
+      required_passing: 100
+      articles:
+        - Art 5 (Principles)
+        - Art 6 (Lawfulness)
+        - Art 9 (Special Categories)
+        - Art 17 (Right to Erasure)
+        - Art 32 (Security of Processing)
+        - Art 33 (Breach Notification)
+        - Art 35 (DPIA)
+    iraqi_healthcare:
+      regulation:
+        - MoH Data Protection Directive
+        - National Health Information Policy
+        - Governorate Health Data Standards
+      required_passing: 95
+
+  assessment_schedules:
+    full_assessment:
+      cron: "0 0 1 * *"
+      description: "Monthly full compliance assessment"
+      frameworks:
+        - owasp_asvs
+        - nist_csf
+        - hipaa
+        - iraqi_healthcare
+
+    quarterly_assessment:
+      cron: "0 0 1 */3 *"
+      description: "Quarterly deep compliance assessment"
+      frameworks:
+        - iso_27001
+        - iso_27799
+        - nist_800_53
+        - gdpr
+
+    continuous_monitoring:
+      interval_minutes: 60
+      description: "Hourly continuous compliance monitoring"
+      frameworks:
+        - owasp_asvs
+        - hipaa
+
+  thresholds:
+    pass_percentage: 85
+    fail_percentage: 50
+    critical_findings_allowed: 0
+    high_findings_allowed: 2
+    medium_findings_allowed: 10
+
+  evidence_requirements:
+    automated_collection: true
+    retention_days: 3650
+    required_evidence_types:
+      - control_test_results
+      - configuration_snapshots
+      - audit_log_excerpts
+      - vulnerability_scan_reports
+      - penetration_test_reports
+      - access_review_reports
+      - training_completion_records
+      - incident_reports
+      - risk_assessment_documents
+      - policy_acceptance_records
+
+  report_templates:
+    executive_summary:
+      format: pdf
+      sections:
+        - overall_score
+        - framework_status
+        - critical_findings
+        - risk_trend
+        - recommendations
+
+    detailed_report:
+      format: html
+      sections:
+        - framework_summary
+        - control_results
+        - evidence_index
+        - gap_analysis
+        - remediation_plan
+        - risk_register_update
+
+    regulatory_filing:
+      format: pdf
+      sections:
+        - framework_name
+        - assessment_period
+        - control_compliance_matrix
+        - non_compliance_justifications
+        - certification_readiness
+        - authorized_signature
+
+  certification_targets:
+    iso_27001:
+      target_date: "2027-06-30"
+      status: in_progress
+      readiness_assessment: quarterly
+    hipaa:
+      target_date: "2027-03-31"
+      status: in_progress
+      readiness_assessment: monthly
+    fhir_r4_security:
+      target_date: "2026-12-31"
+      status: in_progress
+      readiness_assessment: continuous

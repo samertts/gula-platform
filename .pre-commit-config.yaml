@@ -1,11 +1,11 @@
 # Pre-commit hooks for GULA Platform.
-# Install once:  pip install pre-commit && pre-commit install
-# Run manually:  pre-commit run --all-files
+# Install:  pip install pre-commit detect-secrets && pre-commit install
+# Run:      pre-commit run --all-files
 
 repos:
-  # Generic hygiene
+  # ── Generic Hygiene ──────────────────────────────────────────────────────────
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-yaml
         exclude: ^config/
@@ -14,37 +14,119 @@ repos:
         exclude: ^backend/.*\.ipynb$
       - id: check-merge-conflict
       - id: end-of-file-fixer
-        exclude: ^(client/src/|frontend/)
       - id: trailing-whitespace
-        exclude: ^(client/src/|frontend/)
       - id: check-added-large-files
-        args: ["--maxkb=512"]
+        args: ["--maxkb=1024"]
       - id: detect-private-key
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: forbid-submodules
 
-  # Secret scanning (mirrors CI secret-scanning.yml)
+  # ── Secret Scanning (detect-secrets + Gitleaks) ──────────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: >
+          (?x)^(
+            .*\.env\.example|
+            .*test.*|
+            .*tests.*|
+            .*\.min\.(js|css)|
+            venv/.*|
+            .venv/.*|
+            node_modules/.*
+          )$
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.24.0
     hooks:
+      - id: gitleaks-docker
       - id: gitleaks
+        stages: [manual]
 
-  # Python: syntax + undefined-name gate (mirror of CI syntax-gate)
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+  # ── Python: Linting ──────────────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.0
     hooks:
-      - id: flake8
-        files: ^backend/app/
-        args: ["--select=E9,F821", "--max-line-length=200"]
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
 
-  # Migration policy: forbid editing existing alembic revisions
+  # ── Python: Type Checking ────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+        exclude: ^(venv/|\.venv/|node_modules/|backend/tests/)
+
+  # ── YAML ─────────────────────────────────────────────────────────────────────
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [--format, parsable, --strict]
+
+  # ── Docker ───────────────────────────────────────────────────────────────────
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+
+  # ── Security: Checkov (IaC scanning) ─────────────────────────────────────────
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.2.0
+    hooks:
+      - id: checkov
+        verbose: true
+        args: [--quiet]
+
+  # ── Local Hooks ──────────────────────────────────────────────────────────────
   - repo: local
     hooks:
+      # Fail on any .env file being staged
+      - id: forbid-env-files
+        name: forbid .env files in commits
+        entry: >
+          bash -c 'if git diff --cached --name-only | grep -E "^\.env$|\.env\.local$|\.env\.production$" ; then
+          echo "ERROR: .env files must never be committed"; exit 1; fi'
+        language: system
+        stages: [commit]
+
+      # Check for hardcoded secrets in staged files
+      - id: check-hardcoded-secrets
+        name: check hardcoded secrets
+        entry: bash -c '
+          git diff --cached --name-only | while read f; do
+            if [ -f "$f" ]; then
+              python3 -m detect_secrets scan --no-baseline "$f" 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if data.get(\"results\") and any(data[\"results\"].values()):
+    print(f\"SECRETS FOUND in $f\")
+    sys.exit(1)
+"
+            fi
+          done
+        '
+        language: system
+        stages: [commit]
+
+      # Migration policy: forbid editing existing alembic revisions
       - id: forbid-edit-existing-migrations
         name: forbid editing existing alembic migrations
-        entry: scripts/check_migration_policy.sh
-        language: script
+        entry: bash -c '
+          git diff --cached --name-only | grep -q "^backend/migrations/versions/.*\.py$" &&
+          echo "ERROR: editing existing migrations is forbidden" && exit 1 || exit 0
+        '
+        language: system
         files: ^backend/migrations/versions/.+\.py$
         stages: [commit]
 
+      # Byte-compile changed backend files
       - id: backend-py-compile
         name: byte-compile changed backend python files
         entry: python3 -m py_compile

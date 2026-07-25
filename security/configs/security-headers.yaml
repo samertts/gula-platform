@@ -1,0 +1,157 @@
+security_headers:
+  content_security_policy:
+    enabled: true
+    use_nonce: true
+    use_strict_dynamic: true
+    directives:
+      default-src:
+        - "'self'"
+      script-src:
+        - "'self'"
+        - "'strict-dynamic'"
+        - "'unsafe-inline'"
+      style-src:
+        - "'self'"
+        - "'unsafe-inline'"
+      img-src:
+        - "'self'"
+        - "data:"
+        - "https:"
+      font-src:
+        - "'self'"
+        - "data:"
+      connect-src:
+        - "'self'"
+        - "https://api.gula.iq"
+      frame-src:
+        - "'none'"
+      object-src:
+        - "'none'"
+      base-uri:
+        - "'self'"
+      form-action:
+        - "'self'"
+      manifest-src:
+        - "'self'"
+      media-src:
+        - "'self'"
+      worker-src:
+        - "'self'"
+        - "blob:"
+
+  strict_transport_security:
+    enabled: true
+    max_age: 31536000
+    include_sub_domains: true
+    preload: true
+
+  x_content_type_options:
+    enabled: true
+    value: nosniff
+
+  x_frame_options:
+    enabled: true
+    value: DENY
+
+  x_xss_protection:
+    enabled: true
+    value: "0"
+
+  referrer_policy:
+    enabled: true
+    value: strict-origin-when-cross-origin
+
+  permissions_policy:
+    enabled: true
+    default_block: true
+    features:
+      accelerometer: []
+      ambient-light-sensor: []
+      autoplay: []
+      battery: []
+      camera: []
+      cross-origin-isolated: []
+      display-capture: []
+      document-domain: []
+      encrypted-media: []
+      execution-while-not-rendered: []
+      execution-while-out-of-viewport: []
+      fullscreen: []
+      geolocation: []
+      gyroscope: []
+      keyboard-map: []
+      magnetometer: []
+      microphone: []
+      midi: []
+      navigation-override: []
+      payment: []
+      picture-in-picture: []
+      publickey-credentials-get: []
+      screen-wake-lock: []
+      sync-xhr: []
+      usb: []
+      web-share: []
+      xr-spatial-tracking: []
+
+  cross_origin_embedder_policy:
+    enabled: true
+    value: require-corp
+
+  cross_origin_opener_policy:
+    enabled: true
+    value: same-origin
+
+  cross_origin_resource_policy:
+    enabled: true
+    value: same-origin
+
+  cors:
+    enabled: true
+    allowed_origins:
+      - "https://app.gula.iq"
+      - "https://admin.gula.iq"
+    allowed_methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allowed_headers:
+      - Authorization
+      - Content-Type
+      - X-Request-ID
+      - X-CSRF-Token
+    expose_headers:
+      - X-Request-ID
+    allow_credentials: true
+    max_age: 3600
+
+  csrf:
+    enabled: true
+    cookie_name: gula_csrf
+    header_name: X-CSRF-Token
+    secure: true
+    same_site: strict
+    httponly: true
+
+environment_overrides:
+  development:
+    content_security_policy:
+      use_nonce: false
+    strict_transport_security:
+      enabled: false
+    cors:
+      allowed_origins:
+        - "http://localhost:3000"
+        - "http://localhost:5173"
+
+  staging:
+    strict_transport_security:
+      max_age: 86400
+    cors:
+      allowed_origins:
+        - "https://staging.gula.iq"
+
+  production:
+    all_defaults: true

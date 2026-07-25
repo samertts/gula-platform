@@ -1,10 +1,25 @@
-# Environment
-.env
-*.env.local
-.env.deploy
-.deploy/
+# =============================================================================
+# GULA Platform — .gitignore
+# =============================================================================
 
-# Python
+# ── Environment & Secrets ──────────────────────────────────────────────────────
+.env
+.env.*.local
+*.credentials
+*.secret
+*.auth
+config/secrets/
+secrets/
+
+# ── Deployment ────────────────────────────────────────────────────────────────
+.deploy/
+.env.deploy
+*.tfstate
+*.tfstate.backup
+terraform/.terraform/
+*.plan
+
+# ── Python ────────────────────────────────────────────────────────────────────
 venv/
 .venv/
 __pycache__/
@@ -14,48 +29,70 @@ coverage.xml
 *.pyo
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.so
 
-# Node
+# ── JavaScript / TypeScript ────────────────────────────────────────────────────
 node_modules/
 dist/
 build/
+.next/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Logs
+# ── Logs ───────────────────────────────────────────────────────────────────────
 *.log
 logs/
 
-# Data
+# ── Data ───────────────────────────────────────────────────────────────────────
 data/db/
 *.sqlite3
 
-# Reports
+# ── Reports & Artifacts ────────────────────────────────────────────────────────
 reports/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Docker
-docker-compose.override.yml
-
-# Secrets
-*.pem
-*.key
-config/ssl/*.crt
-config/ssl/*.key
-wheels
-openapi.json
-*.pyc
-__pycache__/
-
-# Security audit artifacts
 trivy_*.json
 codeql_*.md
 enterprise_security_*.md
 security_root_causes.md
+
+# ── OS ─────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ── IDE ────────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+
+# ── Docker ─────────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Cryptographic Material ─────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+*.jks
+*.keystore
+config/ssl/*
+
+# ── Build Artifacts ────────────────────────────────────────────────────────────
+wheels
+openapi.json
+*.whl
+*.egg
+
+# ── Terraform ──────────────────────────────────────────────────────────────────
+*.terraform.lock.hcl
+crash.log
+
+# ── Security Scanning ──────────────────────────────────────────────────────────
+.semgrep/logs/

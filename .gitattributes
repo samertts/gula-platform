@@ -1,0 +1,72 @@
+# Auto-detect text files
+* text=auto
+
+# Source code
+*.py text diff=python
+*.js text
+*.ts text
+*.tsx text
+*.jsx text
+*.css text
+*.scss text
+*.html text diff=html
+*.json text
+*.yaml text
+*.yml text
+*.toml text
+*.md text diff=markdown
+*.sql text
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Configuration
+*.env.example text
+*.ini text
+*.cfg text
+*.conf text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+
+# Lock files
+package-lock.json -diff
+pnpm-lock.yaml -diff
+yarn.lock -diff
+
+# Generated files
+*.pyc binary
+*.pyo binary
+*.so binary
+*.dll binary
+*.class binary
+
+# Archives
+*.gz binary
+*.zip binary
+*.tar binary
+*.tgz binary
+*.bz2 binary
+*.xz binary
+
+# Security - prevent accidental secret exposure
+.env linguist-generated=true
+*.key binary
+*.pem binary
+*.p12 binary
+*.pfx binary
+*.jks binary
+secrets/** linguist-generated=true
+credentials/** linguist-generated=true
+
+# Linguist overrides
+frontend-v3/src/api/generated/* linguist-generated=true

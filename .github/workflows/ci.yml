@@ -245,11 +245,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install safety
-        run: pip install safety
+        run: pip install safety detect-secrets
       - name: Safety check
         run: |
           cd backend
@@ -258,3 +260,19 @@ jobs:
         run: |
           pip install bandit
           bandit -ll -ii -r backend/app/ -f txt
+      - name: detect-secrets scan
+        run: |
+          detect-secrets scan \
+            --baseline .secrets.baseline \
+            --exclude-files '.*\.env\.example$' \
+            --exclude-files '.*test.*' \
+            --exclude-files '.*tests.*' \
+            --exclude-files 'node_modules/.*' \
+            --exclude-files 'venv/.*' \
+            --exclude-files '\.venv/.*' \
+            --all-files
+          echo "Checking baseline freshness..."
+          if git status --porcelain .secrets.baseline | grep -q .; then
+            echo "❌ .secrets.baseline out of date — run: detect-secrets scan --baseline .secrets.baseline --all-files"
+            exit 1
+          fi

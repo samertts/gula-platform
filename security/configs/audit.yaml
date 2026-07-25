@@ -1,0 +1,152 @@
+audit:
+  event_retention:
+    standard_events_days: 365
+    security_events_days: 2555
+    authentication_events_days: 730
+    patient_data_access_days: 2555
+    audit_log_operations_days: 3650
+
+  required_events:
+    authentication:
+      - user_login_success
+      - user_login_failure
+      - user_logout
+      - password_change
+      - password_reset
+      - mfa_enrollment
+      - mfa_verification_success
+      - mfa_verification_failure
+
+    authorization:
+      - access_granted
+      - access_denied
+      - privilege_escalation
+      - role_assignment
+      - role_revocation
+
+    data_access:
+      - patient_record_view
+      - patient_record_modify
+      - patient_record_delete
+      - phi_accessed
+      - phi_exported
+      - bulk_data_export
+
+    security:
+      - secret_rotated
+      - key_rotated
+      - certificate_expiring
+      - certificate_revoked
+      - configuration_change
+      - policy_violation
+      - tamper_detected
+      - incident_reported
+      - incident_resolved
+
+    system:
+      - service_start
+      - service_stop
+      - service_crash
+      - backup_started
+      - backup_completed
+      - backup_failed
+      - restore_started
+      - restore_completed
+
+  alert_rules:
+    - name: excessive_login_failures
+      condition: count(user_login_failure) > 5 in 5m
+      severity: HIGH
+      notify:
+        - oncall
+        - security_team
+
+    - name: phi_access_anomaly
+      condition: count(phi_accessed) > 100 in 1h from_single_user
+      severity: CRITICAL
+      notify:
+        - security_team
+        - dpo
+
+    - name: tamper_detected
+      condition: event_type == tamper_detected
+      severity: CRITICAL
+      notify:
+        - security_team
+        - ciso
+        - oncall
+
+    - name: bulk_data_export
+      condition: event_type == bulk_data_export
+      severity: HIGH
+      notify:
+        - security_team
+        - dpo
+
+    - name: privilege_escalation
+      condition: event_type == privilege_escalation
+      severity: HIGH
+      notify:
+        - security_team
+        - ciso
+
+  export_schedules:
+    siem_export:
+      enabled: true
+      interval_minutes: 5
+      format: json
+      destination: syslog://siem.gula.iq:514
+      filter:
+        severity_min: LOW
+
+    archive_export:
+      enabled: true
+      cron: "0 3 * * *"
+      format: parquet
+      destination: s3://gula-audit-archive/
+      retention_days: 3650
+
+    compliance_export:
+      enabled: true
+      cron: "0 4 1 * *"
+      format: csv
+      destination: s3://gula-compliance-evidence/
+      filter:
+        event_types:
+          - phi_accessed
+          - patient_record_modify
+          - access_denied
+          - privilege_escalation
+
+  immutable_log:
+    enabled: true
+    hash_algorithm: SHA3_256
+    chain_storage: database
+    verification_schedule_cron: "0 */6 * * *"
+    tamper_detection_action: ALERT_AND_BLOCK
+    storage_backends:
+      database:
+        enabled: true
+        connection_pool_size: 10
+      file:
+        enabled: true
+        path: /var/log/gula/audit/
+        max_file_size_mb: 500
+        max_files: 100
+      s3:
+        enabled: true
+        bucket: gula-audit-chain
+        prefix: hash-chains/
+
+  hash_algorithms:
+    primary: SHA3_256
+    secondary: SHA512
+    tertiary: BLAKE2b_256
+
+  verification:
+    check_integrity: true
+    verify_all_entries: false
+    verify_percentage: 10
+    auto_repair: false
+    alert_on_tamper: true
+    alert_on_verification_failure: true

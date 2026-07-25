@@ -1,0 +1,41 @@
+rotation:
+  secrets:
+    rotation_enabled: true
+    check_interval_hours: 24
+    backends:
+      env: true
+      vault: true
+      github_secrets: true
+
+  encryption_keys:
+    auto_rotate: true
+    rotation_period_days: 90
+    grace_period_hours: 48
+    re_encrypt_batch_size: 100
+
+  jwt_signing_keys:
+    rotation_enabled: true
+    active_keys: 2
+    overlap_period_hours: 24
+
+notification:
+  email:
+    enabled: true
+    recipients:
+      - security@gula.iq
+  slack:
+    enabled: true
+    channel: "#security-rotations"
+  webhook:
+    enabled: false
+
+audit:
+  log_rotations: true
+  log_path: /var/log/gula/security/rotations.log
+  export_to_siem: true
+
+validation:
+  min_secret_length: 32
+  require_entropy_check: true
+  min_entropy_bits: 128
+  allowed_characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{}|;:,.<>?"

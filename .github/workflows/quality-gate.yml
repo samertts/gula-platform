@@ -74,3 +74,30 @@ jobs:
             exit 1
           fi
           echo "✅ All Dockerfiles use pinned base images"
+      - name: Verify secret scanning config
+        run: |
+          echo "🔍 Verifying secret scanning configuration..."
+          if [ ! -f .secrets.baseline ]; then
+            echo "❌ Missing .secrets.baseline"
+            exit 1
+          fi
+          if [ ! -f .pre-commit-config.yaml ]; then
+            echo "❌ Missing .pre-commit-config.yaml"
+            exit 1
+          fi
+          if ! grep -q "detect-secrets\|gitleaks" .pre-commit-config.yaml 2>/dev/null; then
+            echo "❌ No secret scanning in pre-commit config"
+            exit 1
+          fi
+          if ! grep -q "\.env" .gitignore 2>/dev/null; then
+            echo "❌ .env not in .gitignore"
+            exit 1
+          fi
+          echo "✅ Secret scanning configuration verified"
+      - name: Check for tracked .env files
+        run: |
+          if git ls-files | grep -E '^\.env$|\.env\.local$'; then
+            echo "❌ .env files are tracked in git"
+            exit 1
+          fi
+          echo "✅ No .env files tracked in git"

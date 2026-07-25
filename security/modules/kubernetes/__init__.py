@@ -1,35 +1,25 @@
-GSF-012: Kubernetes Module — Kubernetes security policies.
-
-Provides Kubernetes-specific security controls for the GULA platform
-including Pod Security Standards (PSS) enforcement via OPA Gatekeeper
-and Kyverno, network policy management, RBAC hardening, secret
-management, and audit logging. Implements defense-in-depth for the
-GULA Kubernetes cluster.
+GSF-005: Kubernetes Security Module — Pod security and cluster hardening.
 
 Exports:
-    K8sSecurityEngine: Kubernetes security orchestration
-    PodSecurityEnforcer: Pod Security Standards enforcement
-    OpaGatekeeperIntegration: OPA Gatekeeper constraint management
-    KyvernoPolicyManager: Kyverno policy lifecycle management
-    K8sNetworkPolicyManager: Kubernetes NetworkPolicy configurations
-    K8sRbacHardener: RBAC hardening analysis and remediation
-    K8sAuditCollector: Kubernetes audit log collection and analysis
+    PodSecurityContext: Pod-level security context model
+    PodSecurityPolicy: Pod security policy model
+    NetworkPolicySpec: Network policy specification model
+    K8sSecurityConfig: Kubernetes security configuration
+    KubernetesSecurityManager: Kubernetes security analysis and enforcement
 """
 
-from security.modules.kubernetes.engine import K8sSecurityEngine
-from security.modules.kubernetes.pss import PodSecurityEnforcer
-from security.modules.kubernetes.gatekeeper import OpaGatekeeperIntegration
-from security.modules.kubernetes.kyverno import KyvernoPolicyManager
-from security.modules.kubernetes.network import K8sNetworkPolicyManager
-from security.modules.kubernetes.rbac import K8sRbacHardener
-from security.modules.kubernetes.audit import K8sAuditCollector
+from security.modules.kubernetes.models import (
+    PodSecurityContext,
+    PodSecurityPolicy,
+    NetworkPolicySpec,
+    K8sSecurityConfig,
+)
+from security.modules.kubernetes.security import KubernetesSecurityManager
 
 __all__ = [
-    "K8sSecurityEngine",
-    "PodSecurityEnforcer",
-    "OpaGatekeeperIntegration",
-    "KyvernoPolicyManager",
-    "K8sNetworkPolicyManager",
-    "K8sRbacHardener",
-    "K8sAuditCollector",
+    "PodSecurityContext",
+    "PodSecurityPolicy",
+    "NetworkPolicySpec",
+    "K8sSecurityConfig",
+    "KubernetesSecurityManager",
 ]

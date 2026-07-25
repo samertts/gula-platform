@@ -1,0 +1,183 @@
+threat_detection:
+  enabled: true
+  mode: active
+
+  detection_rules:
+    brute_force_login:
+      type: threshold
+      parameters:
+        threshold: 10
+        window_seconds: 300
+        field: source_ip
+      severity: HIGH
+      mitre_attack_id: T1110
+      action: block_ip
+
+    credential_stuffing:
+      type: anomaly
+      parameters:
+        threshold: 20
+        window_seconds: 60
+        field: username
+      severity: CRITICAL
+      mitre_attack_id: T1110.004
+      action: block_ip_and_alert
+
+    api_abuse:
+      type: threshold
+      parameters:
+        threshold: 1000
+        window_seconds: 60
+        field: source_ip
+      severity: MEDIUM
+      mitre_attack_id: T1499
+      action: rate_limit
+
+    token_reuse:
+      type: correlation
+      parameters:
+        event_types:
+          - jwt_used_after_revocation
+          - token_replay_detected
+      severity: CRITICAL
+      mitre_attack_id: T1528
+      action: revoke_and_alert
+
+    phi_access_pattern:
+      type: behavioral
+      parameters:
+        model: isolation_forest
+        features:
+          - access_frequency
+          - record_types
+          - time_of_day
+          - department
+        contamination: 0.01
+      severity: HIGH
+      mitre_attack_id: T1530
+      action: alert
+
+    horizontal_privilege_escalation:
+      type: correlation
+      parameters:
+        event_types:
+          - access_denied
+          - access_granted_unusual_resource
+        window_seconds: 3600
+      severity: HIGH
+      mitre_attack_id: T1078
+      action: alert_and_review
+
+    data_exfiltration:
+      type: threshold
+      parameters:
+        threshold: 500
+        window_seconds: 3600
+        field: bytes_exported
+      severity: CRITICAL
+      mitre_attack_id: T1048
+      action: block_and_alert
+
+    impossible_travel:
+      type: anomaly
+      parameters:
+        max_speed_kmh: 1000
+        time_window_minutes: 60
+      severity: HIGH
+      mitre_attack_id: T1078.004
+      action: alert_and_mfa_challenge
+
+    malware_indicator:
+      type: signature
+      parameters:
+        ioc_sources:
+          - crowdstrike
+          - virus_total
+          - internal_feeds
+        check_interval_minutes: 15
+      severity: CRITICAL
+      mitre_attack_id: T1204
+      action: isolate_and_alert
+
+  severity_thresholds:
+    CRITICAL:
+      score_min: 90
+      response_required: true
+      response_timeout_minutes: 15
+    HIGH:
+      score_min: 70
+      response_required: true
+      response_timeout_minutes: 60
+    MEDIUM:
+      score_min: 40
+      response_required: false
+      response_timeout_minutes: 480
+    LOW:
+      score_min: 10
+      response_required: false
+      response_timeout_minutes: 1440
+
+  correlation_rules:
+    - name: multi_vector_attack
+      description: Detects coordinated attack across multiple vectors
+      time_window_minutes: 30
+      min_events: 3
+      event_types:
+        - brute_force_login
+        - api_abuse
+        - token_reuse
+
+    - name: insider_threat
+      description: Detects potential insider threat behavior
+      time_window_hours: 24
+      min_events: 5
+      event_types:
+        - phi_access_pattern
+        - horizontal_privilege_escalation
+        - data_exfiltration
+
+  response_actions:
+    block_ip:
+      type: firewall
+      duration_minutes: 60
+    rate_limit:
+      type: gateway
+      duration_minutes: 30
+      rate_per_second: 10
+    revoke_and_alert:
+      type: identity
+      notify: true
+    alert_and_mfa_challenge:
+      type: identity
+      mfa_prompt: true
+    isolate_and_alert:
+      type: network
+      notify: true
+      isolate_endpoint: true
+
+  risk_scoring:
+    base_score: 50
+    max_score: 100
+    factors:
+      event_severity:
+        CRITICAL: 40
+        HIGH: 25
+        MEDIUM: 15
+        LOW: 5
+      user_risk:
+        privileged_user: 15
+        recent_incidents: 10
+        new_account: 20
+      asset_criticality:
+        phi_database: 30
+        auth_service: 25
+        api_gateway: 20
+        public_endpoint: 10
+      time_factors:
+        after_hours: 10
+        weekend: 5
+        holiday: 15
+      geolocation:
+        unusual_country: 20
+        unusual_city: 10
+        high_risk_country: 30

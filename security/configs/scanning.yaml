@@ -1,0 +1,149 @@
+scanning:
+  sast:
+    bandit:
+      enabled: true
+      config_file: .bandit.yaml
+      severity:
+        - low
+        - medium
+        - high
+      confidence:
+        - medium
+        - high
+      exclude_paths:
+        - tests/
+        - .venv/
+        - node_modules/
+      threshold: medium
+
+    semgrep:
+      enabled: true
+      config:
+        - p/python
+        - p/flask
+        - p/fastapi
+        - p/jwt
+        - p/owasp-top-ten
+        - p/command-injection
+      severity:
+        - WARNING
+        - ERROR
+      rules_path: security/rules/semgrep/
+      timeout: 300
+
+    codeql:
+      enabled: true
+      languages:
+        - python
+        - javascript
+        - typescript
+      queries:
+        - security-extended
+        - security-and-quality
+      build_mode: none
+
+  dast:
+    zap:
+      enabled: true
+      target_url: https://staging.gula.iq
+      scan_type: API
+      report_format: html
+      include_paths:
+        - /api/v1/
+        - /api/v2/
+      exclude_paths:
+        - /api/v1/health
+      scan_duration_minutes: 60
+
+  container:
+    trivy:
+      enabled: true
+      severity:
+        - CRITICAL
+        - HIGH
+        - MEDIUM
+      ignore_unfixed: false
+      timeout: 10m
+      vulnerability_threshold: HIGH
+      secret_threshold: CRITICAL
+      misconfiguration_threshold: HIGH
+      image_ref: gula-platform/gula-api:latest
+      scanners:
+        - vuln
+        - secret
+        - misconfig
+
+  iac:
+    checkov:
+      enabled: true
+      framework:
+        - terraform
+        - kubernetes
+        - dockerfile
+        - github_actions
+      skip_check: []
+      soft_fail: false
+      download_external_modules: true
+      threshold: HIGH
+
+    terrascan:
+      enabled: true
+      policy_type:
+        - aws
+        - kubernetes
+        - docker
+
+  secrets:
+    gitleaks:
+      enabled: true
+      config_path: security/configs/.gitleaks.toml
+      verbose: true
+      redact: true
+
+    custom_patterns:
+      enabled: true
+      patterns:
+        - name: gula-api-key
+          regex: gula_[a-zA-Z0-9]{32,64}
+          severity: CRITICAL
+        - name: gula-jwt
+          regex: eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+
+          severity: HIGH
+        - name: fhir-server-url
+          regex: https://fhir\.gula\.iq/[a-zA-Z0-9]+
+          severity: LOW
+        - name: iraqi-nin
+          regex: \b\d{14}\b
+          severity: MEDIUM
+          context_required: true
+          allowed_contexts:
+            - test
+            - example
+            - sample
+
+  sbom:
+    syft:
+      enabled: true
+      format: cyclonedx-json
+      scope: all-layers
+
+  schedules:
+    full_scan:
+      cron: "0 2 * * 0"
+      description: "Weekly full security scan (Sunday 2 AM)"
+    quick_scan:
+      cron: "0 6 * * 1-6"
+      description: "Daily quick scan (6 AM weekdays)"
+    pr_scan:
+      trigger: pull_request
+      description: "Scan on every PR to main/staging"
+
+  thresholds:
+    critical_vulnerabilities: 0
+    high_vulnerabilities: 0
+    medium_vulnerabilities: 5
+    secrets_found: 0
+    iac_misconfigurations: 0
+    quality_gate:
+      pass: true
+      score_minimum: 85
