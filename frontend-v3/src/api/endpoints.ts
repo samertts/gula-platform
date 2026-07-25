@@ -3,6 +3,7 @@ import type {
   LoginRequest,
   LoginResponse,
   Patient,
+  PaginatedResponse,
   LabOrder,
   LabResult,
   Sample,
@@ -36,6 +37,8 @@ import type {
   ClinicalOrder,
   FHIRResource,
 } from "@/types";
+
+type PatientListResponse = PaginatedResponse<Patient>;
 
 // ── Auth ──
 export const authApi = {
@@ -72,7 +75,7 @@ export const dashboardApi = {
 // ── Patients ──
 export const patientsApi = {
   list: (params?: { search?: string; skip?: number; limit?: number }) =>
-    api.get<Patient[]>("/patients", { params }).then((r) => r.data),
+    api.get<PatientListResponse>("/patients", { params }).then((r) => r.data),
   create: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/patients", data).then((r) => r.data),
   get: (id: number) =>
@@ -105,7 +108,7 @@ export const ordersApi = {
 // ── Test Results ──
 export const resultsApi = {
   list: (params?: { health_id?: string; category?: string; date_from?: string; date_to?: string; is_abnormal?: boolean; skip?: number; limit?: number }) =>
-    api.get<LabResult[]>("/test-results", { params }).then((r) => r.data),
+    api.get<PaginatedResponse<LabResult>>("/test-results", { params }).then((r) => r.data),
   get: (id: number) =>
     api.get<LabResult>(`/test-results/${id}`).then((r) => r.data),
   create: (data: Record<string, unknown>) =>

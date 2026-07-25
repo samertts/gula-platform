@@ -49,7 +49,7 @@ export function LabsPage() {
         <CardContent className="pt-6">
           <DataTable
             columns={columns}
-            data={(data as any)?.labs || (data as any)?.items || []}
+            data={data?.labs || []}
             loading={isLoading}
             toolbar={
               <div className="relative">

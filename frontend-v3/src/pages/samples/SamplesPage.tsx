@@ -49,7 +49,7 @@ export function SamplesPage() {
         <CardContent className="pt-6">
           <DataTable
             columns={columns}
-            data={(data as any)?.items || (data as any)?.samples || []}
+            data={data?.samples || []}
             loading={isLoading}
             toolbar={
               <div className="relative">

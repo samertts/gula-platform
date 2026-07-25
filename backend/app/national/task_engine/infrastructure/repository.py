@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import desc, text
 
-from datetime import UTC
 from backend.app.database import SessionLocal
 from backend.app.national.task_engine.domain.entities import (
     NationalTask,

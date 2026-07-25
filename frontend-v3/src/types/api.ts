@@ -9,11 +9,23 @@ export interface ApiResponse<T = unknown> {
 
 export interface PaginatedResponse<T> {
   total: number;
-  skip: number;
-  limit: number;
+  skip?: number;
+  limit?: number;
   items?: T[];
   results?: T[];
   data?: T[];
+  patients?: T[];
+  labs?: T[];
+  users?: T[];
+  samples?: T[];
+  orders?: T[];
+  logs?: T[];
+  tiers?: T[];
+  notifications?: T[];
+  qc_results?: T[];
+  notes?: T[];
+  allergies?: T[];
+  citizens?: T[];
 }
 
 export interface LoginRequest {

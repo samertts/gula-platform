@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from datetime import UTC
 from backend.app.national.workflow_runtime.domain.enums import (
     CompensationStrategy,
     WorkflowApprovalStrategy,

@@ -6,7 +6,7 @@ from typing import Any, Generic, TypeVar
 T = TypeVar("T")
 
 
-class Repository[T](ABC):
+class Repository(Generic[T], ABC):
     @abstractmethod
     async def get(self, id: str) -> T | None: ...
 

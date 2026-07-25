@@ -45,7 +45,7 @@ export function PatientsPage() {
         <CardContent className="pt-6">
           <DataTable
             columns={columns}
-            data={(data as any)?.items || (data as any)?.patients || []}
+            data={data?.patients || data?.items || []}
             loading={isLoading}
             toolbar={
               <div className="relative">

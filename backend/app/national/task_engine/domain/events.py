@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
-
-from datetime import UTC
+from datetime import UTC, datetime
 
 
 @dataclass

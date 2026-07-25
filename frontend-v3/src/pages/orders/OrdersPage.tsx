@@ -60,7 +60,7 @@ export function OrdersPage() {
         <CardContent className="pt-6">
           <DataTable
             columns={columns}
-            data={(data as any)?.items || (data as any)?.orders || []}
+            data={data || []}
             loading={isLoading}
             toolbar={
               <div className="relative">

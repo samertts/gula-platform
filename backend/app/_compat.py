@@ -1,13 +1,12 @@
-import sys
 import datetime as _datetime
+import sys
 
 if sys.version_info >= (3, 11):  # noqa: UP036 — Python <3.11 compat
     from datetime import UTC
     from enum import StrEnum
 else:
-    from datetime import timezone
 
-    UTC = timezone.utc
+    UTC = UTC
     _datetime.UTC = UTC
     from enum import Enum
 

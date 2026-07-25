@@ -56,7 +56,7 @@ export function ResultsPage() {
         <CardContent className="pt-6">
           <DataTable
             columns={columns}
-            data={(data as any)?.items || (data as any)?.results || []}
+            data={data?.results || data?.items || []}
             loading={isLoading}
             toolbar={
               <div className="relative">

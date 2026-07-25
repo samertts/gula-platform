@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import desc, text
 
-from datetime import UTC
 from backend.app.database import SessionLocal
 from backend.app.national.workflow_runtime.domain.entities import (
     WorkflowDefinition,
