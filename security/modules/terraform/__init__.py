@@ -1,32 +1,16 @@
-GSF-013: Terraform Module — Infrastructure policy-as-code.
-
-Provides infrastructure security policy enforcement for the GULA platform
-via Terraform policy-as-code. Integrates with OPA/Rego and Sentinel
-to validate infrastructure configurations before deployment, detect
-drift, and enforce security baselines across cloud and on-premises
-environments.
+GSF-005: Terraform Security Module — IaC security analysis.
 
 Exports:
-    TerraformSecurityEngine: Infrastructure security orchestration
-    PolicyAsCodeEnforcer: Rego/Sentinel policy enforcement for Terraform
-    DriftDetector: Infrastructure drift detection and alerting
-    StateAnalyzer: Terraform state security analysis
-    ModuleValidator: Terraform module security validation
-    CloudIamAnalyzer: Cloud IAM configuration analysis
+    TerraformSecurityConfig: Terraform security configuration model
+    TerraformAuditFinding: Terraform audit finding model
+    TerraformSecurityManager: Terraform security analysis and enforcement
 """
 
-from security.modules.terraform.engine import TerraformSecurityEngine
-from security.modules.terraform.policy import PolicyAsCodeEnforcer
-from security.modules.terraform.drift import DriftDetector
-from security.modules.terraform.state import StateAnalyzer
-from security.modules.terraform.modules import ModuleValidator
-from security.modules.terraform.iam import CloudIamAnalyzer
+from security.modules.terraform.models import TerraformSecurityConfig, TerraformAuditFinding
+from security.modules.terraform.security import TerraformSecurityManager
 
 __all__ = [
-    "TerraformSecurityEngine",
-    "PolicyAsCodeEnforcer",
-    "DriftDetector",
-    "StateAnalyzer",
-    "ModuleValidator",
-    "CloudIamAnalyzer",
+    "TerraformSecurityConfig",
+    "TerraformAuditFinding",
+    "TerraformSecurityManager",
 ]
