@@ -564,10 +564,8 @@ class TestModelsImports:
         from app.identity.repositories import (
             AccountRepository,
             AssignmentRepository,
-            DeviceRepository,
             EmploymentRepository,
             IdentityRepository,
-            OrganizationRepository,
             PersonRepository,
             SessionRepository,
         )

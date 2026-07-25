@@ -183,7 +183,7 @@ class TestObservabilityBenchmarks:
 
         reset_metrics()
         start = time.perf_counter()
-        for i in range(10000):
+        for _i in range(10000):
             track_request("test", "benchmark", "success")
         elapsed = time.perf_counter() - start
         rate = 10000 / elapsed

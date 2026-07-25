@@ -121,7 +121,7 @@ class TestRanking:
         ]
         filtered = anti_dominance_control(labs, max_per_owner=3)
         assert len(filtered) == 4  # 3 from owner 1 + 1 from owner 2
-        assert 1004 not in [l.lab_id for l in filtered]  # 4th from owner 1 excluded
+        assert 1004 not in [lab.lab_id for lab in filtered]  # 4th from owner 1 excluded
 
     def test_distance_normalization(self):
         close_lab = LabRanking(lab_id=1, quality_score=0.5, avg_rating=3.0, distance_km=1.0, monthly_volume=50)

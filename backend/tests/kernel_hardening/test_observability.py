@@ -19,8 +19,8 @@ class TestObservabilityHealth:
         asyncio.run(kernel.stop())
 
     def test_is_ready_after_boot(self):
-        from app.kernel.integration import _kernel_instance as ki
         import app.kernel.integration as kintegration
+        from app.kernel.integration import _kernel_instance as ki
         kintegration._kernel_instance = None
         config = KernelConfig(environment="test")
         kernel = init_kernel(config=config)

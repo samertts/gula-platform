@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from ..domain.exceptions import ForbiddenError, NotFoundError, ConflictError, ValidationError
+from ..domain.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..security.auth import hash_password

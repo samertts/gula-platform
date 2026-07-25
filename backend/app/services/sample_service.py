@@ -169,9 +169,8 @@ def update_sample(
     if status:
         if status not in VALID_STATUSES:
             raise ValidationError("Invalid status")
-        if status == "rejected":
-            if not rejection_reason or not rejection_reason.strip():
-                raise ValidationError("Rejection reason required when rejecting a sample")
+        if status == "rejected" and (not rejection_reason or not rejection_reason.strip()):
+            raise ValidationError("Rejection reason required when rejecting a sample")
         sample.status = status
 
     if rejection_reason is not None:

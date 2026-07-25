@@ -169,21 +169,21 @@ class MedicalLeaveService:
 
     def get_leave_history(self, citizen_id: str) -> list[MedicalLeaveDocument]:
         leaves = self._leaves.get(citizen_id, [])
-        leaves.sort(key=lambda l: l.from_date, reverse=True)
+        leaves.sort(key=lambda leaf: leaf.from_date, reverse=True)
         return leaves
 
     def verify_leave(self, leave_number: str) -> dict[str, Any]:
         for leaves in self._leaves.values():
-            for l in leaves:
-                if l.leave_number == leave_number:
+            for leaf in leaves:
+                if leaf.leave_number == leave_number:
                     return {
-                        "valid": l.status == "active",
-                        "citizen_id": l.citizen_id,
-                        "from_date": l.from_date,
-                        "to_date": l.to_date,
-                        "total_days": l.total_days,
-                        "issued_by": l.issued_by_name or l.issued_by,
-                        "diagnosis": l.diagnosis,
+                        "valid": leaf.status == "active",
+                        "citizen_id": leaf.citizen_id,
+                        "from_date": leaf.from_date,
+                        "to_date": leaf.to_date,
+                        "total_days": leaf.total_days,
+                        "issued_by": leaf.issued_by_name or leaf.issued_by,
+                        "diagnosis": leaf.diagnosis,
                     }
         return {"valid": False, "reason": "leave_not_found"}
 

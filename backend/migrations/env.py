@@ -38,6 +38,7 @@ from app.care_continuum.base import CareContinuumBase
 # Wrapped in try/except: migration `upgrade head` still works if model files are
 # incomplete or have changed names since the migration was written.
 import importlib
+import contextlib
 for _mod in [
     "app.ems.infrastructure.models",
     "app.blood_bank.infrastructure.models",
@@ -48,10 +49,8 @@ for _mod in [
     "app.pilot_platform.infrastructure.models",
     "app.lifecycle_platform.infrastructure.models",
 ]:
-    try:
+    with contextlib.suppress(ImportError):
         importlib.import_module(_mod)
-    except ImportError:
-        pass
 
 # ClinicalBase models
 import app.clinical.terminology.models  # noqa: E402

@@ -37,7 +37,7 @@ async def trust_device(
     device = await service.repo.get_by_uuid(device_uuid)
     if not device:
         return {"error": "not_found"}
-    result = await service.trust_device(device.id)
+    await service.trust_device(device.id)
     return {"success": True}
 
 
@@ -50,5 +50,5 @@ async def revoke_device(
     device = await service.repo.get_by_uuid(device_uuid)
     if not device:
         return {"error": "not_found"}
-    result = await service.revoke_device(device.id)
+    await service.revoke_device(device.id)
     return {"success": True}

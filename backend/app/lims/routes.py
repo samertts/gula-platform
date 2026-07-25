@@ -9,6 +9,7 @@ All routes are prefixed with /lims and follow existing GULA patterns:
 
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -880,10 +881,8 @@ def release_result(
         lims_models.Specimen.id == result.specimen_id,
     ).first()
     if specimen:
-        try:
+        with contextlib.suppress(Exception):
             SpecimenService.transition(db, specimen, "released", current_user.id)
-        except Exception:
-            pass  # Already in released or later state
 
     db.commit()
     return release

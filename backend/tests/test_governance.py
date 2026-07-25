@@ -443,7 +443,7 @@ class TestLaboratoryGovernance:
         labs = svc.list_labs()
         assert len(labs) >= 2
         gov_labs = svc.list_labs(lab_type=LabType.GOVERNMENT)
-        assert all(l.lab_type == LabType.GOVERNMENT for l in gov_labs)
+        assert all(lab.lab_type == LabType.GOVERNMENT for lab in gov_labs)
 
     def test_register_equipment(self, db_session: Session):
         svc = LaboratoryGovernanceService(db_session)

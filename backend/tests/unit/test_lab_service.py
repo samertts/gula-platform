@@ -13,7 +13,7 @@ os.environ.setdefault("REDIS_URL", "")
 
 import pytest
 from app.database import Base
-from app.domain.exceptions import NotFoundError, ForbiddenError, ConflictError, ValidationError
+from app.domain.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
 from app.security.auth import hash_password
@@ -42,11 +42,11 @@ def db_session():
 
 @pytest.fixture
 def lab(db_session):
-    l = Lab(name="Test Lab", city="Baghdad", lab_type="private", is_active=True)
-    db_session.add(l)
+    lab = Lab(name="Test Lab", city="Baghdad", lab_type="private", is_active=True)
+    db_session.add(lab)
     db_session.commit()
-    db_session.refresh(l)
-    return l
+    db_session.refresh(lab)
+    return lab
 
 
 @pytest.fixture

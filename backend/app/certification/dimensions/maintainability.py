@@ -74,7 +74,7 @@ class MaintainabilityEvaluator(DimensionEvaluator):
 
         function_length = self._measure_function_length(target)
         avg_length = statistics.mean(function_length) if function_length else 0
-        long_functions = sum(1 for l in function_length if l > 50)
+        long_functions = sum(1 for length in function_length if length > 50)
         self._add_evidence(
             "avg_function_length",
             value=round(avg_length, 1),

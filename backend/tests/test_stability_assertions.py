@@ -227,7 +227,7 @@ class TestFlappingKiller:
         )
         assert transitions <= 1, (
             f"System flapped {transitions} times in 10 slow/fast cycles! "
-            f"Levels: {[l.name for l in levels_seen]}. "
+            f"Levels: {[level.name for level in levels_seen]}. "
             "Expected ≤1 transition (NONE→L1 on first slow, then stable)."
         )
 

@@ -681,10 +681,10 @@ class ClinicalDecisionSupportEngine:
         ldl = obs_by_code.get("18262-6") or obs_by_code.get("ldl_cholesterol")
         if ldl:
             try:
-                l = float(ldl)
-                if l > 160:
+                ldl_val = float(ldl)
+                if ldl_val > 160:
                     score += 0.1
-                    factors.append({"name": "ldl_cholesterol", "value": l, "contribution": 0.1, "risk": "elevated"})
+                    factors.append({"name": "ldl_cholesterol", "value": ldl_val, "contribution": 0.1, "risk": "elevated"})
             except (ValueError, TypeError):
                 pass
 

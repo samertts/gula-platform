@@ -126,7 +126,7 @@ def list_all_labs(
 
     total = query.count()
     labs = query.order_by(Lab.created_at.desc()).offset(skip).limit(limit).all()
-    lab_ids = [l.id for l in labs]
+    lab_ids = [lab.id for lab in labs]
 
     user_counts = (
         dict(
@@ -154,17 +154,17 @@ def list_all_labs(
         "total": total,
         "labs": [
             {
-                "id": l.id,
-                "name": l.name,
-                "city": l.city,
-                "phone": l.phone,
-                "license_number": l.license_number,
-                "is_active": l.is_active,
-                "created_at": l.created_at.isoformat() if l.created_at else None,
-                "user_count": user_counts.get(l.id, 0),
-                "patient_count": patient_counts.get(l.id, 0),
+                "id": lab.id,
+                "name": lab.name,
+                "city": lab.city,
+                "phone": lab.phone,
+                "license_number": lab.license_number,
+                "is_active": lab.is_active,
+                "created_at": lab.created_at.isoformat() if lab.created_at else None,
+                "user_count": user_counts.get(lab.id, 0),
+                "patient_count": patient_counts.get(lab.id, 0),
             }
-            for l in labs
+            for lab in labs
         ],
     }
 
@@ -685,7 +685,7 @@ def list_users(
     # Batch load lab names
     lab_ids = {u.lab_id for u in users}
     labs_map = (
-        {l.id: l.name for l in db.query(Lab).filter(Lab.id.in_(lab_ids)).all()} if lab_ids else {}
+        {lab.id: lab.name for lab in db.query(Lab).filter(Lab.id.in_(lab_ids)).all()} if lab_ids else {}
     )
 
     return {
@@ -932,17 +932,17 @@ def get_audit_logs(
         "total": total,
         "logs": [
             {
-                "id": l.id,
-                "action": l.action,
-                "resource_type": l.resource_type,
-                "resource_id": l.resource_id,
-                "user_id": l.user_id,
-                "user_role": l.user_role,
-                "details": l.details,
-                "ip_address": l.ip_address,
-                "created_at": l.created_at.isoformat() if l.created_at else None,
+                "id": log.id,
+                "action": log.action,
+                "resource_type": log.resource_type,
+                "resource_id": log.resource_id,
+                "user_id": log.user_id,
+                "user_role": log.user_role,
+                "details": log.details,
+                "ip_address": log.ip_address,
+                "created_at": log.created_at.isoformat() if log.created_at else None,
             }
-            for l in logs
+            for log in logs
         ],
     }
 

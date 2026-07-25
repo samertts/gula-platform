@@ -190,16 +190,16 @@ class AccessLogs:
     ) -> list[AccessLogEntry]:
         logs = self._logs.get(citizen_id, [])
         if from_date:
-            logs = [l for l in logs if l.accessed_at >= from_date]
+            logs = [log for log in logs if log.accessed_at >= from_date]
         if to_date:
-            logs = [l for l in logs if l.accessed_at <= to_date]
+            logs = [log for log in logs if log.accessed_at <= to_date]
         if action:
-            logs = [l for l in logs if l.action == action]
-        logs.sort(key=lambda l: l.accessed_at, reverse=True)
+            logs = [log for log in logs if log.action == action]
+        logs.sort(key=lambda log: log.accessed_at, reverse=True)
         return logs[:limit]
 
     def get_emergency_access_logs(self, citizen_id: str) -> list[AccessLogEntry]:
-        return [l for l in self._logs.get(citizen_id, []) if l.is_emergency]
+        return [log for log in self._logs.get(citizen_id, []) if log.is_emergency]
 
 
 class DataSharingControls:

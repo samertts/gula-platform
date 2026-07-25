@@ -132,7 +132,7 @@ class TestKnowledgeGraph:
 
     def test_get_neighbors_by_relationship(self):
         neighbors = self.kg.get_neighbors(2, relationship_type="indicates")
-        for n, rel, w in neighbors:
+        for _n, rel, _w in neighbors:
             assert rel == "indicates"
 
     def test_shortest_path(self):

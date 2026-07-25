@@ -151,7 +151,7 @@ class TestRiskBasedAuth:
             device_trust_level="medium",
             hour_of_day=14,
         )
-        svc._velocity_tracker["user-009"] = [t for t in range(10)]
+        svc._velocity_tracker["user-009"] = list(range(10))
         ctx.login_velocity = 10
         decision = svc.evaluate(ctx)
         velocity_factors = [f for f in decision.factors if "velocity" in f.lower()]

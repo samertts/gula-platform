@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -76,7 +76,7 @@ class GovernancePolicyEngine:
                 action=action,
                 reason=f"Unknown governance action: {action.value}",
                 context=context or {},
-                ts=datetime.now(timezone.utc).isoformat(),
+                ts=datetime.now(UTC).isoformat(),
             )
 
         return GovernancePolicyDecision(
@@ -88,7 +88,7 @@ class GovernancePolicyEngine:
                 **(context or {}),
                 "require_approval": policy["require_approval"],
             },
-            ts=datetime.now(timezone.utc).isoformat(),
+            ts=datetime.now(UTC).isoformat(),
         )
 
     def require_elevated_approval(

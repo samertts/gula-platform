@@ -233,7 +233,7 @@ class DataDictionary:
         return inventory
 
     def get_data_lineage(self) -> list[dict]:
-        return [l.to_dict() for l in self._lineage]
+        return [entry.to_dict() for entry in self._lineage]
 
     def get_summary(self) -> dict:
         total_fields = sum(len(e.fields) for e in self._entities.values())

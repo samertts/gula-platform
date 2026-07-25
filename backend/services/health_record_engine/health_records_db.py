@@ -7,7 +7,7 @@ def load_records():
     try:
         with open(DB_FILE) as f:
             return json.load(f)
-    except:
+    except Exception:
         return []
 
 

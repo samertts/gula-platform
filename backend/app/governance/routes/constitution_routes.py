@@ -57,14 +57,12 @@ async def get_constitution():
 
 @router.get("/constitution/check")
 async def constitution_check():
-    report = engine.generate_compliance_report()
-    return report
+    return engine.generate_compliance_report()
 
 
 @router.post("/constitution/evaluate")
 async def constitution_evaluate(req: EvaluateRequest):
-    result = engine.explain_decision(req.request_type, req.context)
-    return result
+    return engine.explain_decision(req.request_type, req.context)
 
 
 @router.get("/technology-catalog")
@@ -108,7 +106,7 @@ async def architecture_review(req: ADRRequest):
 
 @router.get("/architecture-review/scan")
 async def architecture_scan():
-    findings = reviewer.review_all()
+    reviewer.review_all()
     return reviewer.get_report()
 
 

@@ -38,7 +38,7 @@ class AuthenticationService:
         if not account:
             return None
 
-        tokens = await self._create_session(
+        return await self._create_session(
             account=account,
             ip_address=ip_address,
             user_agent=user_agent,
@@ -46,7 +46,6 @@ class AuthenticationService:
             location_city=location_city,
             location_country=location_country,
         )
-        return tokens
 
     async def _create_session(
         self,

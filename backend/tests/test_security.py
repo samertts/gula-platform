@@ -167,7 +167,7 @@ class TestEncryption:
         """Decrypting invalid data should raise exception."""
         import pytest
         from app.security.encryption import decrypt
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             decrypt("not-encrypted-data")
 
 
@@ -338,7 +338,7 @@ class TestInputValidation:
         """Patient name should reject too-short names."""
         import pytest
         from app.routes.patients import PatientCreate
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             PatientCreate(full_name="A", phone="07901234567")  # name too short
 
     def test_patient_phone_validation(self):
@@ -349,21 +349,21 @@ class TestInputValidation:
         p = PatientCreate(full_name="Test Name", phone="07901234567")
         assert p.phone == "07901234567"
         # Invalid number
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             PatientCreate(full_name="Test Name", phone="12345")
 
     def test_patient_gender_validation(self):
         """Gender should only accept valid values."""
         import pytest
         from app.routes.patients import PatientCreate
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             PatientCreate(full_name="Test Name", phone="07901234567", gender="unknown")
 
     def test_patient_birth_date_future_rejected(self):
         """Future birth dates should be rejected."""
         import pytest
         from app.routes.patients import PatientCreate
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             PatientCreate(
                 full_name="Test Name",
                 phone="07901234567",
@@ -374,7 +374,7 @@ class TestInputValidation:
         """Invalid email should be rejected."""
         import pytest
         from app.routes.patients import PatientCreate
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             PatientCreate(
                 full_name="Test Name",
                 phone="07901234567",

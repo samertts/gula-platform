@@ -182,4 +182,4 @@ def purge_expired_keys(db: Session) -> int:
         {"cutoff": cutoff},
     )
     db.commit()
-    return result.rowcount
+    return result.rowcount  # type: ignore[no-any-return,attr-defined]

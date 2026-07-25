@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -306,20 +307,20 @@ class TestDefaultEntityExtractor:
 
     @pytest.mark.asyncio
     async def test_extract_health_id(self, extractor):
-        entities, fields, tables = await extractor.extract("Patient HN-2024123")
+        entities, _fields, _tables = await extractor.extract("Patient HN-2024123")
         health_ids = [e for e in entities if e.entity_type == EntityType.health_id]
         assert len(health_ids) > 0
         assert "HN-2024123" in health_ids[0].value
 
     @pytest.mark.asyncio
     async def test_extract_lab_values(self, extractor):
-        entities, fields, tables = await extractor.extract("Hemoglobin: 14.5 g/dL")
+        _entities, fields, _tables = await extractor.extract("Hemoglobin: 14.5 g/dL")
         assert len(fields) > 0
         assert fields[0].name == "Hemoglobin"
 
     @pytest.mark.asyncio
     async def test_extract_icd_code(self, extractor):
-        entities, fields, tables = await extractor.extract("Diagnosis: E11.9")
+        entities, _fields, _tables = await extractor.extract("Diagnosis: E11.9")
         icd_codes = [e for e in entities if e.entity_type == EntityType.icd_code]
         assert len(icd_codes) > 0
 
@@ -425,7 +426,7 @@ class MockRepo:
         doc_id = args[0] if args else kwargs.get("document_id")
         if doc_id:
             # Check if it was stored
-            for key, val in self._store.items():
+            for _key, val in self._store.items():
                 if hasattr(val, "id") and val.id == doc_id:
                     return val
             # Return a default ScannedDocument for lookups

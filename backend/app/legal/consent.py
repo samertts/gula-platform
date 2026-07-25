@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def record_consent(user_id, terms_version, privacy_version):
@@ -7,5 +7,5 @@ def record_consent(user_id, terms_version, privacy_version):
         "user_id": user_id,
         "terms_version": terms_version,
         "privacy_version": privacy_version,
-        "timestamp": datetime.now(timezone.utc),
+        "timestamp": datetime.now(UTC),
     }

@@ -312,7 +312,7 @@ def citizen_results(
     lab_ids = {o.lab_id for o in orders}
     if lab_ids:
         labs = db.query(Lab).filter(Lab.id.in_(lab_ids)).all()
-        lab_map = {l.id: l.name for l in labs}
+        lab_map = {lab.id: lab.name for lab in labs}
 
     # Flatten to individual results
     all_results = []
@@ -375,7 +375,7 @@ def citizen_orders(
     lab_map = {}
     if lab_ids:
         labs = db.query(Lab).filter(Lab.id.in_(lab_ids)).all()
-        lab_map = {l.id: l.name for l in labs}
+        lab_map = {lab.id: lab.name for lab in labs}
 
     result = []
     for o in orders:

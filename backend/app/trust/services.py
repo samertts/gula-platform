@@ -228,12 +228,12 @@ class TrustService:
             "verified": len(logs) > 0,
             "signatures": [
                 {
-                    "id": l.id,
-                    "type": l.service_type.value,
-                    "timestamp": l.created_at.isoformat(),
-                    "signature": l.signature_value[:16] + "..." if l.signature_value else None,
+                    "id": log.id,
+                    "type": log.service_type.value,
+                    "timestamp": log.created_at.isoformat(),
+                    "signature": log.signature_value[:16] + "..." if log.signature_value else None,
                 }
-                for l in logs
+                for log in logs
             ],
             "total_records": len(logs),
         }

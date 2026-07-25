@@ -47,7 +47,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for name, table, columns in reversed(INDEXES):
+    for name, table, _columns in reversed(INDEXES):
         if _index_exists(name):
             op.drop_index(name, table_name=table)
             print(f"  ✗ Dropped index {name} on {table}")

@@ -107,7 +107,7 @@ class CodeQualityEvaluator(DimensionEvaluator):
                 )
                 if result.returncode != 0:
                     output = result.stdout + result.stderr
-                    return len([l for l in output.splitlines() if l.strip()])
+                    return len([line for line in output.splitlines() if line.strip()])
                 return 0
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 continue

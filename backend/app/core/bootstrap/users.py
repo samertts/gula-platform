@@ -105,7 +105,7 @@ def seed_national_admin_accounts(db: Session | None = None) -> int:
 
     created = 0
     try:
-        cfg = load_bootstrap_config()
+        load_bootstrap_config()
         platform_lab = db.query(Lab).filter(Lab.name == PLATFORM_LAB_NAME).first()
         if not platform_lab:
             logger.warning("Platform lab not found — creating it")

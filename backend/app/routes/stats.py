@@ -7,6 +7,7 @@ Redis caching: 5-minute TTL for trend data (heavy aggregation queries).
 Cache key format: stats:{lab_id}:{endpoint}:{params_hash}
 """
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -66,10 +67,8 @@ def _cache_set(key: str, data: dict, ttl: int = _CACHE_TTL) -> None:
     r = _get_redis()
     if not r:
         return
-    try:
+    with contextlib.suppress(Exception):
         r.setex(key, ttl, json.dumps(data, default=str))
-    except Exception:  # nosec B110 — intentional: cache failures must not break the API
-        pass
 
 
 def _cache_key(lab_id: int, endpoint: str, **params) -> str:

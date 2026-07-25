@@ -1,4 +1,5 @@
 import collections
+import contextlib
 import contextvars
 import logging
 import os
@@ -77,10 +78,8 @@ class _SlidingWindow:
             payload = json.dumps(
                 [(ts + offset, etype) for ts, etype in self._events if ts >= cutoff],
             )
-        try:
+        with contextlib.suppress(Exception):
             redis_client.set(key, payload, ex=self._max_age + 60)
-        except Exception:
-            pass  # best-effort — never raise from persistence code
 
     def restore_from_redis(
         self,

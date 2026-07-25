@@ -8,7 +8,7 @@ def load_db():
     try:
         with open(DB_FILE) as f:
             return json.load(f)
-    except:
+    except Exception:
         return []
 
 

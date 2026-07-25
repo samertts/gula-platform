@@ -45,11 +45,11 @@ def db_session():
 
 @pytest.fixture
 def lab(db_session):
-    l = Lab(name="Test Lab", city="Baghdad", lab_type="private", is_active=True)
-    db_session.add(l)
+    lab = Lab(name="Test Lab", city="Baghdad", lab_type="private", is_active=True)
+    db_session.add(lab)
     db_session.commit()
-    db_session.refresh(l)
-    return l
+    db_session.refresh(lab)
+    return lab
 
 
 @pytest.fixture
@@ -148,7 +148,7 @@ class TestListSamples:
         assert result2["total"] == 0
 
     def test_list_samples_pagination(self, db_session, lab, order, admin_user):
-        for i in range(3):
+        for _i in range(3):
             s = Sample(order_id=order.id, sample_type="blood", status="collected")
             db_session.add(s)
         db_session.commit()

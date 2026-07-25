@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -141,7 +141,7 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
                 counts["doctors"] += 1
 
         patients = db.query(Patient).filter(Patient.lab_id == lab.id).all()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for i, patient in enumerate(patients):
             test = TEST_TYPES_POOL[i % len(TEST_TYPES_POOL)]

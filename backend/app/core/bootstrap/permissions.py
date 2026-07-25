@@ -104,7 +104,6 @@ def define_permissions() -> list[PermissionDef]:
     AU = AUDITOR_ROLE
     QM = QUALITY_MANAGER_ROLE
     SO = SECURITY_OFFICER_ROLE
-    AP = API_CLIENT_ROLE
     PG = PATIENT_ROLE
 
     return [

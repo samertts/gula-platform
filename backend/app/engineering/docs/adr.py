@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
@@ -27,7 +27,7 @@ class ADRGenerator(BaseGenerator):
         if spec is None:
             spec = ADRSpec(title=kwargs.get("title", "Undecided"))
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         num = spec.number or now.strftime("%Y%m%d%H%M%S")
         slug = spec.title.lower().replace(" ", "-").replace("_", "-")
         filename = f"{num:04d}-{slug}" if isinstance(num, int) else f"{num}-{slug}"
@@ -86,7 +86,7 @@ class ArchitectureGenerator(BaseGenerator):
         components = kwargs.get("components", [])
         relations = kwargs.get("relations", [])
 
-        layers_section = "\n".join(f"- **{l.capitalize()} Layer**" for l in layers)
+        layers_section = "\n".join(f"- **{layer.capitalize()} Layer**" for layer in layers)
 
         comps_section = ""
         if components:

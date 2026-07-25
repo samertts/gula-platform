@@ -6,6 +6,7 @@ Run with: python -m pytest backend/tests/test_resilience.py -v
 Tests are self-contained - no database or external services required.
 """
 
+import contextlib
 import hashlib
 import os
 import secrets
@@ -67,10 +68,8 @@ class TestDatabaseResilience:
         db = next(gen)
         assert db is not None
         # Simulate normal close (send None to advance past yield to finally)
-        try:
+        with contextlib.suppress(StopIteration):
             next(gen)
-        except StopIteration:
-            pass  # Expected - generator finished cleanly
 
     def test_db_session_rollback_on_exception(self):
         """get_db should rollback on exception."""
@@ -78,10 +77,8 @@ class TestDatabaseResilience:
         gen = get_db()
         db = next(gen)
         # Simulate error during request processing
-        try:
+        with contextlib.suppress(ValueError, StopIteration):
             gen.throw(ValueError("Simulated DB error"))
-        except (ValueError, StopIteration):
-            pass  # Expected - session is cleaned up
 
 
 # ===== 2. AUTHENTICATION FAILURE SCENARIOS =====

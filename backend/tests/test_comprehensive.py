@@ -368,7 +368,7 @@ class TestDataEncryption:
     def test_decrypt_invalid_raises(self):
         import pytest
         from app.security.encryption import decrypt
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             decrypt("not-valid-ciphertext")
 
     def test_empty_string_encrypt(self):
@@ -735,7 +735,7 @@ class TestAPIRouteStructure:
             try:
                 __import__(module)
             except ImportError as e:
-                raise AssertionError(f"Failed to import {module}: {e}")
+                raise AssertionError(f"Failed to import {module}: {e}") from e
 
     def test_results_route_has_test_profiles(self):
         """Results route must define standard test profiles."""
@@ -803,7 +803,7 @@ class TestSecurityProtections:
             try:
                 interpret_result(char, 100, 70, 100)
             except Exception as e:
-                raise AssertionError(f"Crashed with input '{char[:20]}...': {e}")
+                raise AssertionError(f"Crashed with input '{char[:20]}...': {e}") from e
 
     def test_path_traversal_in_filenames(self):
         """Path traversal must be detected."""

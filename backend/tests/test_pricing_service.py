@@ -102,11 +102,11 @@ class TestApplyQualityDiscount:
         assert result >= MINIMUM_BILL
 
     def test_invalid_low_score_raises(self):
-        with pytest.raises(ValueError, match="quality_score must be 0.0–1.0"):
+        with pytest.raises(ValueError, match=r"quality_score must be 0.0–1.0"):
             apply_quality_discount(Decimal("10000"), -0.1)
 
     def test_invalid_high_score_raises(self):
-        with pytest.raises(ValueError, match="quality_score must be 0.0–1.0"):
+        with pytest.raises(ValueError, match=r"quality_score must be 0.0–1.0"):
             apply_quality_discount(Decimal("10000"), 1.1)
 
 
