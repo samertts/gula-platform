@@ -1,3 +1,4 @@
+"""
 GSF-008: Threat Detection Module — Security event monitoring and risk analysis.
 
 Note: The directory is `threat-detection/` but Python imports use `threat_detection`.

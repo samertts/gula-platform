@@ -1,34 +1,42 @@
-GSF-011: Container Module — Container security.
+"""
+GSF-005: Container Security Module — Container, Kubernetes, and Terraform security.
 
-Provides container security controls for the GULA platform including
-image signing and verification, vulnerability scanning integration,
-seccomp profile generation, AppArmor profiles, and container runtime
-security. Ensures container images meet security baselines before
-deployment.
+Provides comprehensive security analysis for containerized infrastructure
+including Docker container auditing, Docker Compose security validation,
+Redis/MQ/PostgreSQL/Nginx container security checks, Kubernetes pod security
+standards enforcement, and Terraform state/configuration security.
 
 Exports:
-    ContainerSecurityEngine: Container security orchestration
-    ImageSigner: Cosign-based container image signing
-    ImageVerifier: Container image signature verification
-    VulnerabilityScanner: Trivy/Grype integration
-    SeccompProfileGenerator: seccomp profile generation
-    AppArmorProfileGenerator: AppArmor profile generation
-    ContainerRuntimeEnforcer: Runtime security monitoring
+    ContainerSecurityProfile: Container security profile model
+    ImageSecurityPolicy: Container image security policy model
+    DockerSecurityManager: Docker security analysis and enforcement
+    ComposeSecurityManager: Docker Compose security auditing
+    RedisSecurityManager: Redis container security validation
+    RabbitMQSecurityManager: RabbitMQ container security validation
+    PostgreSQLSecurityManager: PostgreSQL container security validation
+    NginxSecurityManager: Nginx container security validation
 """
 
-from security.modules.container.engine import ContainerSecurityEngine
-from security.modules.container.signing import ImageSigner, ImageVerifier
-from security.modules.container.scanner import VulnerabilityScanner
-from security.modules.container.seccomp import SeccompProfileGenerator
-from security.modules.container.apparmor import AppArmorProfileGenerator
-from security.modules.container.runtime import ContainerRuntimeEnforcer
+from security.modules.container.models import (
+    ContainerSecurityProfile,
+    ImageSecurityPolicy,
+    DockerSecurityConfig,
+)
+from security.modules.container.docker import DockerSecurityManager
+from security.modules.container.compose import ComposeSecurityManager
+from security.modules.container.redis import RedisSecurityManager
+from security.modules.container.rabbitmq import RabbitMQSecurityManager
+from security.modules.container.postgresql import PostgreSQLSecurityManager
+from security.modules.container.nginx import NginxSecurityManager
 
 __all__ = [
-    "ContainerSecurityEngine",
-    "ImageSigner",
-    "ImageVerifier",
-    "VulnerabilityScanner",
-    "SeccompProfileGenerator",
-    "AppArmorProfileGenerator",
-    "ContainerRuntimeEnforcer",
+    "ContainerSecurityProfile",
+    "ImageSecurityPolicy",
+    "DockerSecurityConfig",
+    "DockerSecurityManager",
+    "ComposeSecurityManager",
+    "RedisSecurityManager",
+    "RabbitMQSecurityManager",
+    "PostgreSQLSecurityManager",
+    "NginxSecurityManager",
 ]

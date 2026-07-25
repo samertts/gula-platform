@@ -1,3 +1,4 @@
+"""
 GSF-008: Audit Module — Immutable audit logging and event tracking.
 
 Exports:

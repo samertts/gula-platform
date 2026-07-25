@@ -1,10 +1,14 @@
+from typing import Generic, TypeVar
+
 from sqlalchemy import delete, select, update
+
+T = TypeVar("T", bound="IdentityBaseEntity")
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.identity.base import IdentityBaseEntity
 
 
-class IdentityRepositoryBase[T: IdentityBaseEntity]:
+class IdentityRepositoryBase(Generic[T]):
 
     model_class: type[T]
 

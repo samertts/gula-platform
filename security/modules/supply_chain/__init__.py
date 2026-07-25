@@ -1,3 +1,4 @@
+"""
 GSF-007: Supply Chain Security Module — Dependency scanning and code analysis.
 
 Provides comprehensive supply chain security including SBOM generation,

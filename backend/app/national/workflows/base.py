@@ -4,9 +4,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from app._compat import UTC
+
+T = TypeVar("T")
 
 
 class WorkflowState(Enum):
@@ -51,7 +53,7 @@ class WorkflowStep:
     compensation: str | None = None
 
 
-class WorkflowEngine[T](ABC):
+class WorkflowEngine(Generic[T], ABC):
     def __init__(self) -> None:
         self._steps: list[WorkflowStep] = []
         self._compensation_stack: list[str] = []

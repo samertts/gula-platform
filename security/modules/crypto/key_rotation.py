@@ -228,7 +228,7 @@ class KeyRotationManager:
         serialized = json.dumps(key_data, separators=(",", ":")).encode()
         aesgcm = AESGCM(hashlib.sha256(passphrase).digest())
         iv = SecureRandom.bytes(12)
-        ciphertext = aesgcm.encrypt(iv, serialized, b"backup".encode())
+        ciphertext = aesgcm.encrypt(iv, serialized, b"backup")
         return iv + ciphertext
 
     def restore_keys(self, backup_data: bytes, passphrase: bytes) -> None:
@@ -236,7 +236,7 @@ class KeyRotationManager:
         iv = backup_data[:12]
         ciphertext = backup_data[12:]
         aesgcm = AESGCM(hashlib.sha256(passphrase).digest())
-        serialized = aesgcm.decrypt(iv, ciphertext, b"backup".encode())
+        serialized = aesgcm.decrypt(iv, ciphertext, b"backup")
         key_data: dict[str, Any] = json.loads(serialized.decode())
 
         with self._lock:

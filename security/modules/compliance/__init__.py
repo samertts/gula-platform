@@ -1,3 +1,4 @@
+"""
 GSF-009: Compliance Module — Multi-framework compliance validation.
 
 Provides comprehensive compliance verification across multiple frameworks

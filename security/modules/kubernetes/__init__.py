@@ -1,3 +1,4 @@
+"""
 GSF-005: Kubernetes Security Module — Pod security and cluster hardening.
 
 Exports:

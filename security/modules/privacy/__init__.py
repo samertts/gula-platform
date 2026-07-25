@@ -1,3 +1,4 @@
+"""
 GSF-009: Privacy Module — Data privacy enforcement.
 
 Exports:

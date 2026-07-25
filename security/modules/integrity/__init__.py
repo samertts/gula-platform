@@ -1,3 +1,4 @@
+"""
 GSF-008: Integrity Module — File and database integrity monitoring.
 
 Exports:

@@ -1,3 +1,4 @@
+"""
 GSF-005: Terraform Security Module — IaC security analysis.
 
 Exports:
