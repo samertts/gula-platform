@@ -50,7 +50,7 @@ export function AdminLabsPage() {
         <CardContent className="pt-6">
           <DataTable
             columns={columns}
-            data={(data as any)?.items || (data as any)?.labs || []}
+            data={data?.labs ?? []}
             loading={isLoading}
             toolbar={
               <div className="relative">
@@ -107,7 +107,7 @@ export function AdminUsersPage() {
         <CardContent className="pt-6">
           <DataTable
             columns={columns}
-            data={(data as any)?.items || (data as any)?.users || []}
+            data={data?.users ?? []}
             loading={isLoading}
             toolbar={
               <div className="relative">
@@ -146,7 +146,7 @@ export function AdminAuditPage() {
         <CardContent className="pt-6">
           <DataTable
             columns={columns}
-            data={(data as any)?.items || (data as any)?.logs || []}
+            data={data?.logs ?? []}
             loading={isLoading}
           />
         </CardContent>

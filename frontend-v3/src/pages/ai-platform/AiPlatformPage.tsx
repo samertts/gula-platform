@@ -54,25 +54,25 @@ function OverviewTab() {
         <Card>
           <CardHeader><CardTitle>إجمالي الطلبات</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{(metrics.data as any)?.total_requests ?? "—"}</p>
+            <p className="text-3xl font-bold">{metrics.data?.total_requests ?? "—"}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>معدل النجاح</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{(metrics.data as any)?.success_rate ?? "—"}%</p>
+            <p className="text-3xl font-bold">{metrics.data?.success_rate ?? "—"}%</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>متوسط وقت الاستجابة</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{(metrics.data as any)?.avg_latency_ms ?? "—"}ms</p>
+            <p className="text-3xl font-bold">{metrics.data?.avg_latency_ms ?? "—"}ms</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>الطلبات اليوم</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{(metrics.data as any)?.today_requests ?? "—"}</p>
+            <p className="text-3xl font-bold">{metrics.data?.today_requests ?? "—"}</p>
           </CardContent>
         </Card>
       </div>
@@ -86,7 +86,7 @@ function OverviewTab() {
             ) : (
               <>
                 <p className="text-3xl font-bold">
-                  {Array.isArray(governanceModels.data) ? governanceModels.data.length : (governanceModels.data as any)?.total ?? (governanceModels.data as any)?.count ?? "—"}
+                  {governanceModels.data?.total ?? governanceModels.data?.count ?? "—"}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">نموذج حوكمة مسجل</p>
               </>
@@ -101,7 +101,7 @@ function OverviewTab() {
             ) : (
               <>
                 <p className="text-3xl font-bold">
-                  {Array.isArray(governancePrompts.data) ? governancePrompts.data.length : (governancePrompts.data as any)?.total ?? (governancePrompts.data as any)?.count ?? "—"}
+                  {governancePrompts.data?.total ?? governancePrompts.data?.count ?? "—"}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">قالب نصي معتمد</p>
               </>
@@ -176,7 +176,7 @@ function SearchRagTab() {
           {searchData && !searchLoading && (
             <div className="space-y-3">
               <h4 className="font-medium">نتائج البحث:</h4>
-              {Array.isArray((searchData as any)?.results) && (searchData as any).results.length === 0 ? (
+              {Array.isArray(searchData?.results) && (searchData?.results as unknown[]).length === 0 ? (
                 <EmptyState icon={Search} title="لا توجد نتائج" description="لم يتم العثور على نتائج للبحث" />
               ) : (
                 <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
@@ -262,15 +262,15 @@ function KnowledgeGraphTab() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">العقد</p>
-                <p className="text-2xl font-bold">{(kgInfo.data as any)?.nodes ?? (kgInfo.data as any)?.node_count ?? "—"}</p>
+                <p className="text-2xl font-bold">{kgInfo.data?.nodes ?? kgInfo.data?.node_count ?? "—"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">العلاقات</p>
-                <p className="text-2xl font-bold">{(kgInfo.data as any)?.edges ?? (kgInfo.data as any)?.edge_count ?? (kgInfo.data as any)?.relationships ?? "—"}</p>
+                <p className="text-2xl font-bold">{kgInfo.data?.edges ?? kgInfo.data?.edge_count ?? kgInfo.data?.relationships ?? "—"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">أنواع العقد</p>
-                <p className="text-2xl font-bold">{(kgInfo.data as any)?.node_types ?? "—"}</p>
+                <p className="text-2xl font-bold">{kgInfo.data?.node_types ?? "—"}</p>
               </div>
             </div>
           )}
@@ -349,11 +349,11 @@ function AgentToolsTab() {
             <ErrorDisplay onRetry={() => tools.refetch()} />
           ) : (
             <div className="space-y-3">
-              {Array.isArray(tools.data) && tools.data.length === 0 ? (
+              {!tools.data?.tools?.length ? (
                 <EmptyState icon={Bot} title="لا توجد أدوات" description="لم يتم العثور على أدوات وكلاء" />
               ) : (
                 <div className="grid gap-3">
-                  {(Array.isArray(tools.data) ? tools.data : ((tools.data as Record<string, unknown>)?.tools as unknown[]) ?? []).map((t: unknown, idx: number) => {
+                  {tools.data.tools.map((t, idx: number) => {
                     const tool = t as Record<string, unknown>;
                     const name = (tool.name as string) || (tool.tool_name as string) || (tool.id as string) || `أداة ${idx + 1}`;
                     const desc = (tool.description as string) || (tool.desc as string) || "";
@@ -418,7 +418,7 @@ function SessionsTab() {
     setSessionError(null);
     try {
       const res = await aiPlatformApi.createSession();
-      const newId = (res as Record<string, unknown>)?.session_id as string || (res as Record<string, unknown>)?.id as string || (res as Record<string, unknown>)?.sessionId as string;
+      const newId = (res?.session_id as string) || (res?.id as string) || (res?.sessionId as string);
       setSessionId(newId);
       setMessages([]);
     } catch (err) {
@@ -438,7 +438,7 @@ function SessionsTab() {
     setMessage("");
     try {
       const res = await aiPlatformApi.sessionMessage({ session_id: sessionId, message: msg });
-      const reply = (res as Record<string, unknown>)?.response || (res as Record<string, unknown>)?.reply || (res as Record<string, unknown>)?.message || JSON.stringify(res);
+      const reply = (res?.response as string) || (res?.reply as string) || (res?.message as string) || JSON.stringify(res);
       setMessages((prev) => [...prev, { role: "assistant", content: typeof reply === "string" ? reply : JSON.stringify(reply) }]);
     } catch (err) {
       setSessionError(err instanceof Error ? err.message : "حدث خطأ في إرسال الرسالة");

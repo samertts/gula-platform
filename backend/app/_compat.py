@@ -1,16 +1,18 @@
 import datetime as _datetime
 import sys
 
-if sys.version_info >= (3, 11):  # noqa: UP036 — Python <3.11 compat
+if sys.version_info >= (3, 11):
     from datetime import UTC
     from enum import StrEnum
 else:
+    from datetime import timezone
 
-    UTC = UTC
-    _datetime.UTC = UTC
-    from enum import Enum
+    UTC = timezone.utc
+    _datetime.UTC = UTC  # type: ignore[attr-defined]
 
-    class StrEnum(str, Enum):  # noqa: UP042 — Python <3.11 compat
+    from enum import Enum as _Enum
+
+    class StrEnum(str, _Enum):
         pass
 
 

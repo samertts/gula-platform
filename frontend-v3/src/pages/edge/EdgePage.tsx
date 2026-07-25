@@ -53,7 +53,7 @@ function EdgeDevices() {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorDisplay onRetry={refetch} />;
 
-  const devices: EdgeDevice[] = Array.isArray(data) ? data : (data as any)?.devices || [];
+  const devices: EdgeDevice[] = data?.devices ?? [];
   const filtered = devices.filter(
     (d) =>
       !search ||
@@ -170,7 +170,7 @@ function EdgeTasks() {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorDisplay onRetry={refetch} />;
 
-  const tasks: EdgeTask[] = Array.isArray(data) ? data : (data as any)?.tasks || [];
+  const tasks: EdgeTask[] = data?.tasks ?? [];
 
   const statusLabels: Record<string, string> = {
     pending: "معلق", running: "قيد التنفيذ", completed: "مكتمل", failed: "فشل", cancelled: "ملغي",

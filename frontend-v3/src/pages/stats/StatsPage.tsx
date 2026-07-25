@@ -25,7 +25,7 @@ export function StatsPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">إجمالي المرضى</p>
-              <p className="text-2xl font-bold">{(data as any)?.total_patients ?? 0}</p>
+              <p className="text-2xl font-bold">{data?.total_patients ?? 0}</p>
             </div>
           </CardContent>
         </Card>
@@ -36,7 +36,7 @@ export function StatsPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">إجمالي الطلبات</p>
-              <p className="text-2xl font-bold">{(data as any)?.total_orders ?? 0}</p>
+              <p className="text-2xl font-bold">{data?.total_orders ?? 0}</p>
             </div>
           </CardContent>
         </Card>
@@ -47,7 +47,7 @@ export function StatsPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">المستخدمين النشطين</p>
-              <p className="text-2xl font-bold">{(data as any)?.active_users ?? 0}</p>
+              <p className="text-2xl font-bold">{data?.active_users ?? 0}</p>
             </div>
           </CardContent>
         </Card>
@@ -58,7 +58,7 @@ export function StatsPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">مدة الإنجاز</p>
-              <p className="text-2xl font-bold">{(data as any)?.avg_turnaround ?? "-"}</p>
+              <p className="text-2xl font-bold">{data?.avg_turnaround ?? "-"}</p>
             </div>
           </CardContent>
         </Card>

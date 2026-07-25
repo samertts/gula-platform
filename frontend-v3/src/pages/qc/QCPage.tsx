@@ -39,7 +39,7 @@ export function QCPage() {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorDisplay onRetry={refetch} />;
 
-  const items = (data as any)?.qc_results || (data as any)?.items || [];
+  const items = data?.qc_results ?? [];
 
   return (
     <div className="space-y-6">

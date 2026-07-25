@@ -35,7 +35,7 @@ export function DashboardPage() {
               <div>
                 <p className="text-sm text-muted-foreground">{card.label}</p>
                 <p className="text-2xl font-bold">
-                  {isLoading ? "..." : (data as any)?.[card.key] ?? 0}
+                  {isLoading ? "..." : (data as unknown as Record<string, number | undefined>)?.[card.key] ?? 0}
                 </p>
               </div>
             </CardContent>

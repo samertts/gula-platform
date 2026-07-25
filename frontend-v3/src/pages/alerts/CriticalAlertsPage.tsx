@@ -26,7 +26,7 @@ export function CriticalAlertsPage() {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorDisplay onRetry={refetch} />;
 
-  const alerts = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.alerts || [];
+  const alerts = data ?? [];
 
   return (
     <div className="space-y-6">

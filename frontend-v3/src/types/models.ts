@@ -177,6 +177,10 @@ export interface DashboardData {
   orders: number;
   tests: number;
   critical: number;
+  total_patients?: number;
+  today_orders?: number;
+  today_results?: number;
+  critical_alerts?: number;
   today: { patients: number; orders: number; tests: number };
   this_week: { patients: number; orders: number; tests: number };
   abnormal_results: AbnormalResult[];
@@ -243,6 +247,10 @@ export interface FlagDistribution {
 }
 
 export interface StatsSummary {
+  total_patients: number;
+  total_orders: number;
+  active_users: number;
+  avg_turnaround: string | number;
   totals: {
     patients: number;
     orders: number;

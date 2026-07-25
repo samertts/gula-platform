@@ -13,7 +13,7 @@ export function CompliancePage() {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorDisplay onRetry={refetch} />;
 
-  const status = (data as any)?.status || "unknown";
+  const status = data?.status ?? "unknown";
 
   return (
     <div className="space-y-6">

@@ -36,6 +36,8 @@ import type {
   EHRImmunization,
   ClinicalOrder,
   FHIRResource,
+  EdgeDevice,
+  EdgeTask,
 } from "@/types";
 
 type PatientListResponse = PaginatedResponse<Patient>;
@@ -372,7 +374,7 @@ export const aiPlatformApi = {
     api.get<{ dimensions: number; model_name: string; total_embeddings: number }>("/api/ai/v2/embedding-info").then((r) => r.data),
   ragQuery: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/v2/rag/query", data).then((r) => r.data),
   knowledgeGraphInfo: () =>
-    api.get<{ node_count: number; edge_count: number; relation_types: string[] }>("/api/ai/v2/knowledge-graph/info").then((r) => r.data),
+    api.get<{ nodes?: number; edges?: number; relationships?: number; node_types?: number; node_count: number; edge_count: number; relation_types: string[] }>("/api/ai/v2/knowledge-graph/info").then((r) => r.data),
   knowledgeGraphSearch: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/api/ai/v2/knowledge-graph/search", data).then((r) => r.data),
   knowledgeGraphNode: (nodeId: string) =>
@@ -398,15 +400,15 @@ export const aiPlatformApi = {
   cdsEvaluateOrder: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/api/ai/v2/cds/evaluate-order", data).then((r) => r.data),
   governanceModels: () =>
-    api.get<{ models: { name: string; version: string; status: string; approved: boolean }[] }>("/api/ai/v2/governance/models").then((r) => r.data),
+    api.get<{ total?: number; count?: number; models: { name: string; version: string; status: string; approved: boolean }[] }>("/api/ai/v2/governance/models").then((r) => r.data),
   governancePrompts: () =>
-    api.get<{ prompts: { id: string; name: string; version: string; status: string }[] }>("/api/ai/v2/governance/prompts").then((r) => r.data),
+    api.get<{ total?: number; count?: number; prompts: { id: string; name: string; version: string; status: string }[] }>("/api/ai/v2/governance/prompts").then((r) => r.data),
   governanceEvaluations: () =>
     api.get<{ evaluations: { id: string; prompt_id: string; model: string; passed: boolean; score: number; timestamp: string }[] }>("/api/ai/v2/governance/evaluations").then((r) => r.data),
   securityScan: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/api/ai/v2/security/scan", data).then((r) => r.data),
   metrics: () =>
-    api.get<{ total_requests: number; total_tokens: number; avg_latency_ms: number; error_rate: number; period_hours: number }>("/api/ai/v2/metrics").then((r) => r.data),
+    api.get<{ total_requests: number; success_rate?: number; today_requests?: number; total_tokens: number; avg_latency_ms: number; error_rate: number; period_hours: number }>("/api/ai/v2/metrics").then((r) => r.data),
   metricsPrometheus: () =>
     api.get<string>("/api/ai/v2/metrics/prometheus").then((r) => r.data),
 };
@@ -500,7 +502,7 @@ export const complianceApi = {
       .then((r) => r.data),
   systemStatus: () =>
     api
-      .get<{ components: { name: string; status: string; latency_ms?: number }[] }>("/compliance/system-status")
+      .get<{ status: string; components: { name: string; status: string; latency_ms?: number }[] }>("/compliance/system-status")
       .then((r) => r.data),
 };
 
@@ -1238,7 +1240,7 @@ export const nationalStreamingApi = {
 // ── Edge ──
 export const edgeApi = {
   // Devices
-  listDevices: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/edge/devices", { params }).then((r) => r.data),
+  listDevices: (params?: Record<string, unknown>) => api.get<{ devices: EdgeDevice[] }>("/edge/devices", { params }).then((r) => r.data),
   getDevice: (deviceId: string) => api.get<Record<string, unknown>>(`/edge/devices/${deviceId}`).then((r) => r.data),
   quarantineDevice: (deviceId: string) => api.post<Record<string, unknown>>(`/edge/devices/${deviceId}/quarantine`).then((r) => r.data),
   revokeDevice: (deviceId: string) => api.post<Record<string, unknown>>(`/edge/devices/${deviceId}/revoke`).then((r) => r.data),
@@ -1247,7 +1249,7 @@ export const edgeApi = {
 
   // Tasks
   createTask: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/edge/tasks", data).then((r) => r.data),
-  listTasks: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/edge/tasks", { params }).then((r) => r.data),
+  listTasks: (params?: Record<string, unknown>) => api.get<{ tasks: EdgeTask[] }>("/edge/tasks", { params }).then((r) => r.data),
   getTask: (taskUid: string) => api.get<Record<string, unknown>>(`/edge/tasks/${taskUid}`).then((r) => r.data),
   cancelTask: (taskUid: string) => api.post<Record<string, unknown>>(`/edge/tasks/${taskUid}/cancel`).then((r) => r.data),
 
@@ -1256,7 +1258,7 @@ export const edgeApi = {
   updatePolicy: (data: Record<string, unknown>) => api.put<Record<string, unknown>>("/edge/policy", data).then((r) => r.data),
 
   // Fleet
-  fleetSummary: () => api.get<Record<string, unknown>>("/edge/fleet/summary").then((r) => r.data),
+  fleetSummary: () => api.get<{ devices_total: number; online_devices: number; pending_tasks: number; tasks_completed_total: number }>("/edge/fleet/summary").then((r) => r.data),
 
   // Models
   createModel: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/edge/models", data).then((r) => r.data),
